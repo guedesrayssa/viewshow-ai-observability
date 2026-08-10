@@ -65,7 +65,7 @@
 | **RF07** | Dashboard de navegação em eventos: o sistema deve disponibilizar um dashboard para navegação e visualização gráfica dos eventos coletados. | Apontar o problema, a origem provável, as evidências e o recorte afetado, com aprofundamento progressivo. Evitar o uso de métricas brutas. Uso de filtros cumulativos com sugestão de valores recebidos é requisitado. |
 | **RF08** | Métricas e alertas operacionais: o sistema deve disponibilizar métricas operacionais e alertas relacionados à qualidade de experiência e à ocorrência de falhas, para apoiar equipes de engenharia e observabilidade. | Um alerta deve conter, sem dado PII: modelo do dispositivo, versão do SO e do app, identificador anonimizado, conteúdo/série/episódio, região/POP, sinal, métricas de saúde (ex.: p95/p99 de latência) e estimativa de usuários afetados. |
 | **RF09** | Consultas para análise de falhas críticas: o sistema deve disponibilizar consultas simples e filtradas voltadas à identificação e análise de falhas críticas nos eventos armazenados. | Evitando erros como freezing de TV, transição IPv4/IPv6 e falha de DNS em modelo específico. |
-| **RF11** | Exportação de dados: o sistema deve permitir a exportação dos dados consultados/filtrados. |Seguindo o formatos planilha (CSV/XLSX) e PDF  |
+| **RF10** | Exportação de dados: o sistema deve permitir a exportação dos dados consultados/filtrados. | Seguindo os formatos planilha (CSV/XLSX) e PDF. |
 
 <sup>Fonte: material produzido pelos autores (2026).</sup>
 
