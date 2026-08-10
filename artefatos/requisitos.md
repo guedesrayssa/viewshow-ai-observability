@@ -5,50 +5,60 @@
 ## Sumário
 
 1. [Visão geral](#1-visão-geral)
-2. [Alinhamento com a elicitação do parceiro](#2-alinhamento-com-a-elicitação-do-parceiro)
-3. [Requisitos Funcionais (RF)](#3-requisitos-funcionais-rf)
+2. [Requisitos Funcionais (RF)](#2-requisitos-funcionais-rf)
+3. [Alinhamento com a elicitação do parceiro](#3-alinhamento-com-a-elicitação-do-parceiro)
 4. [Requisitos Não Funcionais (RNF) e Planos de Teste](#4-requisitos-não-funcionais-rnf-e-planos-de-teste)
 5. [Procedimento de testes e validação](#5-procedimento-de-testes-e-validação)
-6. [Itens avaliados](#6-itens-avaliados)
+6. [Referências](#6-referências)
 
 ---
 
 ## 1. Visão geral
 
-&emsp; [Descreva brevemente o que é o sistema, seu propósito principal e como ele se insere no contexto da Globo/Globoplay.]
+&emsp; O sistema é uma plataforma distribuída de telemetria proprietária, desenvolvida para o Globoplay, com o objetivo de coletar, normalizar e diagnosticar eventos operacionais e de qualidade de experiência (QoE) emitidos pelos frontends do produto, independentemente de dispositivo, sistema operacional ou protocolo de comunicação. A solução existe porque as plataformas de monitoração de mercado assumem protocolos modernos e homogêneos e não cobrem a base real de dispositivos em uso pelo Globoplay, que inclui Smart TVs legadas (fabricadas entre 2013 e 2026), com pouca capacidade de processamento e sem suporte a SDKs modernos de telemetria.
+
+&emsp; Dois conceitos aparecem no fluxo abaixo e merecem definição antes do diagrama. Armazenamento hot e cold são dois níveis de armazenamento com custo e velocidade de acesso diferentes: o hot guarda os dados mais recentes em um meio rápido (e mais caro), usado nas consultas do dia a dia; o cold guarda o histórico mais antigo em um meio mais barato (e mais lento), usado apenas quando é preciso investigar um evento passado. Já o modelo de ML (Machine Learning, ou aprendizado de máquina) é o componente que analisa os registros recentes de um dispositivo com falha e sugere automaticamente a causa raiz mais provável, reduzindo o trabalho manual de investigação.
 
 ```text
-┌──────────────────────────┐
-│  [Componente 1]          │   [Descrição do componente]
-│  [Ex: Front-end]         │   - [Responsabilidade principal]
-└──────────┬───────────────┘
-           │ [Ação/Comunicação]
-           ▼
-┌──────────────────────────┐
-│  [Componente 2]          │   [Descrição do componente]
-│  [Ex: Back-end API]      │   - [Responsabilidade principal]
-└──────────┬───────────────┘
-           │ [Ação/Comunicação]
-           ▼
-┌──────────────────────────┐
-│  [Componente 3]          │   [Descrição do componente]
-│  [Ex: Modelo de ML]      │   - [Responsabilidade principal]
-└──────────────────────────┘
+┌────────────────────────────┐
+│ Frontends multiplataforma  │  Emitem eventos (request, vitals, screen_view,
+│ (Smart TV, mobile, web)    │  video_view, session, error)
+└──────────────┬─────────────┘
+               │ protocolo moderno ou legado
+               ▼
+┌────────────────────────────┐
+│ API de Ingestão            │  Recebe e valida o payload bruto,
+│                             │  publica na fila sem perda de dados
+└──────────────┬─────────────┘
+               │ mensagem enfileirada
+               ▼
+┌────────────────────────────┐
+│ Worker de Normalização     │  Converte cada schema de origem para o
+│                             │  formato interno padronizado (signal_point)
+└──────────────┬─────────────┘
+               │ evento normalizado
+      ┌────────┴────────┐
+      ▼                 ▼
+┌───────────────┐ ┌───────────────────┐
+│ Armazenamento │ │ Modelo de ML       │  Diagnóstico de causa raiz
+│ hot (30d) /   │ │ (janela de 5h de   │  usando as últimas 5h de logs
+│ cold (11m)    │ │ logs do device)    │  do dispositivo com falha
+└───────┬───────┘ └─────────┬──────────┘
+        └────────┬──────────┘
+                  ▼
+      ┌────────────────────────┐
+      │ Dashboard / API         │  Filtros cumulativos, alertas
+      │ de consulta             │  operacionais, exportação (CSV/XLSX/PDF)
+      └────────────────────────┘
 ```
 
-&emsp; [Adicione um parágrafo explicando brevemente o fluxo de dados ou a interação entre os blocos ilustrados no diagrama acima.]
+&emsp; O fluxo começa nos frontends, que emitem eventos brutos para uma API única de ingestão, capaz de aceitar tanto protocolos modernos quanto legados. Cada evento é publicado em uma fila, garantindo que picos de tráfego (ex: estreias, jogos ao vivo) não gerem perda de dados mesmo com o consumo acontecendo de forma assíncrona. Um worker consome a fila e normaliza o payload, independente da plataforma de origem, para um esquema interno padronizado (signal_point), que alimenta tanto o armazenamento (hot para os últimos 30 dias, cold para o restante do histórico de 1 ano) quanto o modelo de ML responsável por inferir a causa raiz de falhas a partir da janela recente de logs do dispositivo afetado. O resultado fica disponível no dashboard e nas APIs de consulta, usados pelas equipes de engenharia, observabilidade e produto para diagnóstico e acompanhamento de qualidade. O desenho segue as práticas de arquitetura cloud native descritas por Hassan (2024): fila assíncrona entre ingestão e processamento, workers stateless e serviços empacotados em contêineres independentes, o que sustenta diretamente os requisitos de escala do RNF01 e de portabilidade do RNF06.
 
 ---
 
-## 2. Alinhamento com a elicitação do parceiro
+## 2. Requisitos Funcionais (RF)
 
-&emsp; [Descreva como os requisitos levantados se conectam com as dores e necessidades mapeadas durante as reuniões com os especialistas da Globo. Mencione os problemas atuais e como o sistema proposto visa resolvê-los.]
-
-&emsp; [Detalhe os impactos esperados no negócio (ex: redução de tempo de triagem, automação) que justificam a construção da solução.]
-
----
-
-## 3. Requisitos Funcionais (RF)
+&emsp; Os requisitos funcionais (RF) a seguir descrevem as funcionalidades que o sistema deve oferecer para atender à necessidade de observabilidade do Globoplay apresentada na Seção 1. Cada requisito recebe um ID sequencial (RF01 a RF10) e é acompanhado da evidência de elicitação que o originou, coletada nas reuniões com os especialistas da Globo; a Seção 3 detalha como esse conjunto de requisitos se conecta às dores levantadas com o parceiro.
 
 <div align="center">
 
@@ -56,10 +66,10 @@
 
 | ID | Descrição do Requisito | Alinhamento com a Elicitação (Globo) |
 |:---|:---|:---|
-| **RF01** | Ingestão de eventos multiplataforma: o sistema deve receber e armazenar eventos de frontend do Globoplay oriundos de diferentes dispositivos e plataformas (TVs, mobile, web), incluindo dispositivos com suporte limitado a padrões atuais de coleta de telemetria. | A solução deve contemplar plataformas distintas como iOS, Android, Android TV, webOS, Fire TV, tvOS e navegadores web (Quicksilver), com suporte a Smart TVs fabricadas entre 2013 e 2026. O campo App Target das amostras confirma a heterogeneidade real: dom-philco-netrange-2021, dom-samsung-tizen-2017, dom-panasonic_s-linux-unknown, dom-tcl-linux-2018, dom-lg-webos-2017 — plataformas com pouca memória/CPU e sem suporte a SDKs modernos de telemetria. |
-| **RF02** | Ingestão em alta escala sem perda de dados: o sistema deve receber e armazenar eventos em larga escala, sem perda de dados (lossless), inclusive em cenários de pico de acesso e de conectividade instável. | Eventos podem chegar duplicados, com pequenas diferenças de timestamp, exigindo regra de tolerância temporal no pipeline. É recomendável consumir os dados via fila/camada intermediária, em quase tempo real, sem receber diretamente o volume bruto de pico. |
+| **RF01** | Ingestão de eventos multiplataforma: o sistema deve receber e armazenar eventos de frontend do Globoplay oriundos de diferentes dispositivos e plataformas (TVs, mobile, web), incluindo dispositivos com suporte limitado a padrões atuais de coleta de telemetria. | A solução deve contemplar plataformas distintas como iOS, Android, Android TV, webOS, Fire TV, tvOS e navegadores web (Quicksilver), com suporte a Smart TVs fabricadas entre 2013 e 2026. O campo App Target das amostras confirma a heterogeneidade real: dom-philco-netrange-2021, dom-samsung-tizen-2017, dom-panasonic_s-linux-unknown, dom-tcl-linux-2018, dom-lg-webos-2017, plataformas com pouca memória/CPU e sem suporte a SDKs modernos de telemetria. |
+| **RF02** | Ingestão de eventos: o sistema deve receber e armazenar os eventos publicados pelas aplicações frontend do Globoplay. | Eventos podem chegar duplicados, com pequenas diferenças de timestamp, exigindo regra de tolerância temporal no pipeline. O consumo via fila/camada intermediária, em quase tempo real, é a arquitetura adotada para viabilizar este requisito (ver Seção 1), uma decisão de arquitetura/tecnologia, não parte da descrição funcional. A meta de escala sem perda de dados sob picos de acesso está quantificada no RNF01 (Capacidade) e no RNF03 (Tolerância a Falhas), para não duplicar aqui uma meta de qualidade que já tem requisito próprio. |
 | **RF03** | Normalização dos dados: o sistema deve normalizar os eventos recebidos, independentemente do protocolo/formato de origem, para um formato padronizado interno antes de armazená-los. | Cada área técnica tem seu próprio padrão de monitoração (Prometheus, NewRelic, Apollo GraphQL etc.). Os 6 exemplos de evento já compartilham um envelope comum (Timestamp, App Bucket, App Env, App Target, App Version, Device Id, Device Manufacturer, Device Model, Device Model Year, Device Os, Device Os Version, Event Name, Session Id), o que facilita a normalização. |
-| **RF04** | Cadastro e login restritos ao domínio Globo: o sistema deve permitir cadastro e login exclusivamente para usuários com e-mail corporativo do domínio da Globo. | Os dados analisados já chegam anonimizados. O cadastro garante que apenas usuários vinculados à organização acessem a plataforma, controlando quem consulta as informações e mantendo a restrição de não compartilhar dados/desafios do projeto com terceiros. |
+| **RF04** | Cadastro e login de usuários: o sistema deve permitir que usuários se cadastrem e realizem login para acessar a plataforma, aceitando apenas e-mails do domínio corporativo da Globo como regra de validação no cadastro. | Funcionalidade definida pela equipe para restringir o acesso à plataforma a usuários da organização, operacionalizando a expectativa de confidencialidade do projeto (não compartilhar dados/desafios com terceiros). O mecanismo de imposição desse controle, autenticação centralizada (SSO), resposta HTTP 401/403 e garantia de confidencialidade, está detalhado no RNF04, para não duplicar aqui um atributo de qualidade que já tem requisito próprio. |
 | **RF05** | Visualização de dados brutos e normalizados: o sistema deve permitir a visualização tanto dos dados injetados (brutos) quanto dos dados já normalizados. | "Bruto" é o evento como chegou pela API de ingestão; "normalizado" é o dado no esquema padronizado (signal_point). Visualizar o dado bruto ajuda a auditar se a normalização preservou o significado original de cada campo. |
 | **RF06** | Cobertura mínima de eventos (MVP): o sistema deve coletar, no mínimo, request (status e latência), vitals (ANR), screen_view (carregamento de página e tempo), video_view (carregamento de mídia, status e tempo), session (início/app startup) e error (todo tipo de erro, incluindo falhas originadas nos demais eventos). | Confirmado com amostras reais (uma por tipo), batendo com a lista mínima do MVP. Campos específicos incluem Duration, Route Params/Path, Media Id/Kind, Error Message/Name/Stack, entre outros. Nenhuma amostra trouxe região/UF/POP; campos unknown aparecem de fato nos dados (Device Os Version, Device Model Year). |
 | **RF07** | Dashboard de navegação em eventos: o sistema deve disponibilizar um dashboard para navegação e visualização gráfica dos eventos coletados. | Apontar o problema, a origem provável, as evidências e o recorte afetado, com aprofundamento progressivo. Evitar o uso de métricas brutas. Uso de filtros cumulativos com sugestão de valores recebidos é requisitado. |
@@ -73,19 +83,43 @@
 
 ---
 
-## 4. Requisitos Não Funcionais (RNF) e Planos de Teste
+## 3. Alinhamento com a elicitação do parceiro
 
-&emsp; Os requisitos não funcionais a seguir foram definidos com base nas características de qualidade da norma ISO/IEC 25010, cobrindo Eficiência de Desempenho, Confiabilidade, Segurança, Portabilidade, Adequação Funcional, Usabilidade, Compatibilidade e Manutenibilidade. Como o projeto está em fase de ideação e será construído em um prazo de 10 semanas, os planos de teste descritos abaixo assumem um ambiente simulado, com dados sintéticos. Testes de carga, disponibilidade e volume utilizam janelas de validação compactadas (da ordem de horas a no máximo 3 dias corridos), em vez de monitoramento de produção em larga escala.
+&emsp; Os requisitos funcionais apresentados na Seção 2 foram derivados diretamente das dores e necessidades levantadas nas reuniões de elicitação com os especialistas do Grupo Globo (times de engenharia, observabilidade e produto do Globoplay) e formalizadas no Termo de Abertura de Projeto (TAPI) assinado com o parceiro. A Tabela 2 resume essa rastreabilidade, ligando cada dor elicitada aos RFs que a endereçam.
 
 <div align="center">
 
-<sup>Tabela 2: Requisitos Não Funcionais e Planos de Teste (ISO 25010)</sup>
+<sup>Tabela 2: Rastreabilidade entre a elicitação com a Globo e os Requisitos Funcionais</sup>
+
+| Dor / necessidade elicitada com a Globo | RFs relacionados | Impacto de negócio esperado |
+|:---|:---|:---|
+| Alta diversidade de dispositivos, SOs e protocolos que as ferramentas de monitoração de mercado não cobrem (Smart TVs de 2013 a 2026, com pouca memória/CPU e sem SDKs modernos de telemetria) | RF01, RF03, RF06 | Visibilidade sobre 100% da base instalada e redução de custo com ferramentas externas que hoje não atendem à realidade do produto |
+| Falta de visibilidade operacional do frontend, aumentando o tempo de diagnóstico de incidentes e dificultando a análise de experiência do usuário | RF02, RF07, RF08, RF09 | Aceleração da resolução de incidentes, aumento da eficiência operacional e contribuição ao cumprimento dos níveis de serviço (SLA) |
+| Necessidade de confiar que a normalização preserva o significado original de cada campo, dado que cada área técnica hoje usa um padrão próprio de monitoração | RF05 | Confiabilidade do diagnóstico apresentado no dashboard e capacidade de auditoria do pipeline |
+| Restrição contratual de não compartilhar dados e desafios do projeto com terceiros | RF04 | Controle de acesso restrito ao domínio corporativo da Globo, sem exposição de dados para fora da organização |
+| Necessidade das equipes de produto e observabilidade de levar recortes de dados para análises e relatórios fora da plataforma | RF10 | Autonomia das equipes de observabilidade e produto na investigação de incidentes |
+
+<sup>Fonte: material produzido pelos autores (2026), com base na elicitação e no TAPI do parceiro.</sup>
+
+</div>
+
+&emsp; Em conjunto, esses requisitos endereçam o problema central levantado pela Globo: a ausência de uma ferramenta de monitoração proprietária capaz de cobrir toda a base heterogênea de dispositivos do Globoplay eleva o tempo de diagnóstico de incidentes e o custo com soluções externas que não atendem integralmente à realidade do produto. Ao resolver essa lacuna, o sistema proposto viabiliza a detecção precoce de degradações, a identificação de padrões não perceptíveis em métricas agregadas e a redução do tempo até a causa raiz, justificando o investimento tanto pela redução de custo operacional quanto pelo ganho direto em qualidade de experiência para o usuário final.
+
+---
+
+## 4. Requisitos Não Funcionais (RNF) e Planos de Teste
+
+&emsp; Os requisitos não funcionais a seguir foram definidos com base nas características de qualidade da norma ISO/IEC 25010 (INTERNATIONAL ORGANIZATION FOR STANDARDIZATION, 2011), cobrindo Eficiência de Desempenho, Confiabilidade, Segurança, Portabilidade, Adequação Funcional, Usabilidade, Compatibilidade e Manutenibilidade. Como o projeto está em fase de ideação e será construído em um prazo de 10 semanas, os planos de teste descritos abaixo assumem um ambiente simulado, com dados sintéticos. Testes de carga, disponibilidade e volume utilizam janelas de validação compactadas (da ordem de horas a no máximo 3 dias corridos), em vez de monitoramento de produção em larga escala.
+
+<div align="center">
+
+<sup>Tabela 3: Requisitos Não Funcionais e Planos de Teste (ISO 25010)</sup>
 
 | ID | Categoria (ISO 25010) | Descrição do Requisito | Plano de Teste (Validação) |
 |:---|:---|:---|:---|
 | **RNF01** | **Eficiência de Desempenho** *(Capacidade)* | O serviço consumidor (worker) deve escalar horizontalmente para processar picos massivos na fila, equivalentes a 50 milhões de eventos simultâneos (semelhante à final do BBB), sem gerar acúmulo crítico de mensagens. | **Teste de Carga Simulada:** injetar lotes massivos de mensagens sintéticas na fila em ambiente de homologação (staging) e monitorar as métricas do consumidor; o teste passa se o sistema aciona novas instâncias automaticamente e estabiliza o consumo sem acúmulo crescente. |
 | **RNF02** | **Eficiência de Desempenho** *(Comportamento Temporal)* | O tempo total entre a captura do evento na fila, sua normalização, a inferência pelo modelo de ML e a gravação final para consulta não deve ultrapassar 2 minutos. | **Teste de Latência Ponta a Ponta:** injetar um evento de teste com timestamp conhecido na fila e consultar continuamente a API do dashboard; o teste passa se o dado aparecer na query com delta de tempo de até 120 segundos. |
-| **RNF03** | **Confiabilidade** *(Tolerância a Falhas)* | O worker de normalização não deve falhar ou parar o consumo ao encontrar payloads inválidos ou corrompidos, devendo redirecionar essas mensagens para uma Dead Letter Queue (DLQ). | **Teste de Isolamento de Falhas:** publicar intencionalmente mensagens corrompidas (ex: JSON quebrado) misturadas a mensagens válidas; o teste passa se o sistema move as mensagens corrompidas para a DLQ sem interromper o processamento do lote. |
+| **RNF03** | **Confiabilidade** *(Tolerância a Falhas)* | O worker de normalização não deve falhar ou parar o consumo ao encontrar payloads inválidos ou corrompidos: o processamento do lote deve continuar, isolando apenas a(s) mensagem(ns) problemática(s). | **Teste de Isolamento de Falhas:** publicar intencionalmente mensagens corrompidas (ex: JSON quebrado) misturadas a mensagens válidas; o teste passa se o sistema isola as mensagens corrompidas (ex.: via Dead Letter Queue) sem interromper o processamento do lote. |
 | **RNF04** | **Segurança** *(Confidencialidade)* | O painel de visualização e as APIs de consulta devem permitir acesso apenas via autenticação centralizada (SSO), restrita exclusivamente aos e-mails do domínio corporativo da Globo. | **Teste de Controle de Acesso:** realizar tentativas automatizadas de login com e-mails externos e chamadas sem token; o teste passa se o sistema barrar o acesso e retornar erro HTTP 401/403 em todos os casos. |
 | **RNF05** | **Eficiência de Desempenho** *(Utilização de Recursos)* | O sistema deve manter dados de até 30 dias em armazenamento de acesso rápido (Hot Storage) e os 11 meses restantes em armazenamento de baixo custo (Cold Storage), viabilizando histórico de 1 ano. | **Teste de Política de Ciclo de Vida:** analisar os scripts de infraestrutura (IaC) e validar se as políticas de ciclo de vida (Lifecycle Policies) do banco de dados/armazenamento estão configuradas para transição automática dos dados após 30 dias. |
 | **RNF06** | **Portabilidade** *(Adaptabilidade)* | Os serviços de normalização e ML devem ser empacotados em contêineres independentes, permitindo execução em infraestruturas elásticas na nuvem sem dependência de hardware específico. | **Teste de Compilação Limpa (Build):** gerar a imagem do contêiner (Docker) em ambiente limpo, sem configurações prévias; o teste passa se a aplicação iniciar usando apenas variáveis de ambiente, sem exigir configuração manual no sistema operacional. |
@@ -105,16 +139,19 @@
 
 ## 5. Procedimento de testes e validação
 
-&emsp; [Descreva de forma geral como e onde os testes listados na Seção 4 serão executados ao longo do projeto. Mencione possíveis ferramentas a serem utilizadas (ex: JMeter, K6, notebooks Jupyter para o ML, Lighthouse para o frontend).]
+&emsp; Os planos de teste descritos na Tabela 3 (Seção 4) são executados em ambiente de homologação (staging, um ambiente de testes separado do ambiente usado pelos usuários reais), com dados sintéticos (dados fictícios, gerados propositalmente para simular o cenário de uso, sem envolver usuários reais), dado que o projeto está em fase de ideação e tem prazo de 10 semanas. A validação está organizada em quatro frentes, cada uma com ferramenta e cadência próprias:
 
-&emsp; [Adicione detalhes sobre quando essa validação será feita (ex: durante a pipeline de CI/CD, validação manual, etc).]
+- **Pipeline de integração e entrega contínua (CI/CD, a cada push de código):** cobertura mínima de testes automatizados (RNF12, medida com ferramentas como Jest ou coverage.py) e build (processo de compilação e empacotamento) limpo dos contêineres de normalização e ML (RNF06); ambos bloqueiam a integração automaticamente quando o critério não é atendido.
+- **Carga e disponibilidade (janelas de horas a 3 dias corridos, em staging):** capacidade de escala do worker sob picos massivos (RNF01) e latência ponta a ponta (RNF02), medidas com ferramentas de teste de carga que simulam grandes volumes de requisições (K6 ou JMeter); disponibilidade do dashboard e das APIs (RNF09), com verificações automáticas de integridade (health-checks) a cada 1 minuto e falhas induzidas (desligamento forçado de um contêiner); e a política de ciclo de vida do armazenamento hot/cold definido na Seção 1 (RNF05), validada por inspeção do código que descreve a infraestrutura (IaC, sigla de Infraestrutura como Código).
+- **Modelo de ML e frontend (execução manual, antes de cada entrega):** qualidade do diagnóstico de causa raiz (RNF08), avaliada em um notebook Jupyter (ambiente interativo de execução de código Python) contra um conjunto de dados separado exclusivamente para teste e nunca usado no treinamento do modelo, chamado de conjunto de holdout, calculando as métricas de precisão, sensibilidade e F1-Score já descritas na Tabela 3; performance de carregamento do dashboard (RNF07), auditada com ferramentas de análise automática de páginas web (Google Lighthouse ou Playwright); e usabilidade do fluxo de diagnóstico (RNF10), validada com uma sessão guiada com um operador real do sistema.
+- **Segurança e compatibilidade (execução manual, antes de cada entrega):** controle de acesso restrito ao domínio Globo (RNF04), testado com tentativas automatizadas de login externo e chamadas sem token de autenticação; tolerância a payloads (pacotes de dados recebidos) corrompidos (RNF03), testada com mensagens em formato inválido misturadas ao lote de mensagens válidas; e normalização multi-formato (RNF11), testada com pacotes de exemplo de cada plataforma-alvo.
+
+&emsp; A execução é responsabilidade do time técnico do grupo. Para os requisitos com maior risco de negócio, RNF04 (segurança/confidencialidade) e RNF08 (qualidade do diagnóstico exibido ao parceiro), os resultados dos testes são revisados também com o líder técnico da Globo, garantindo que os critérios de aceite reflitam o contexto real de uso do Globoplay e não apenas o ambiente simulado do projeto.
 
 ---
 
-## 6. Itens avaliados
+## 6. Referências
 
-&emsp; [Texto opcional mapeando a entrega aos critérios da rubrica para facilitar a correção da faculdade. Exemplo:]
-1. **(RF):** [Indique onde os requisitos funcionais estão e como estão numerados]
-2. **(Elicitação):** [Indique como o alinhamento com a Globo foi garantido]
-3. **(RNF / ISO 25010):** [Indique a tabela que mapeia as categorias da ISO 25010]
-4. **(Planos de teste):** [Indique onde os planos textuais podem ser encontrados]
+HASSAN, Abdullah Abu. **Step by step practical guide to architecting cloud native applications**. Microsoft Tech Community, 15 fev. 2024. Disponível em: https://techcommunity.microsoft.com/blog/appsonazureblog/step-by-step-practical-guide-to-architecting-cloud-native-applications/4057960. Acesso em: 10 ago. 2026.
+
+INTERNATIONAL ORGANIZATION FOR STANDARDIZATION. **ISO/IEC 25010:2011**: systems and software engineering — systems and software quality requirements and evaluation (SQuaRE) — system and software quality models. Geneva: ISO/IEC, 2011.
