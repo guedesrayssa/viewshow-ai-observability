@@ -16,8 +16,10 @@ Este documento apresenta o entendimento de experiência do usuário da solução
   - [3.4 User Stories da Persona 3](#34-user-stories-da-persona-3)
   - [3.5 Priorização](#35-priorização)
 - [4. Correlação entre personas, necessidades e User Stories](#4-correlação-entre-personas-necessidades-e-user-stories)
-- [5. Conclusão](#5-conclusão)
-- [6. Referências](#6-referências)
+- [5. Wireframe](#5-wireframe)
+- [6. Protótipo](#6-protótipo)
+- [7. Conclusão](#7-conclusão)
+- [8. Referências](#8-referências)
 
 ## 1. Introdução
 
@@ -35,8 +37,10 @@ Foram mapeadas três personas complementares, apresentadas na ordem de participa
 
 ### 2.1 Persona 1 — Matheus Souza
 
-**Cargo:** Analista de Atendimento Técnico N1  
-**Classificação:** Persona operacional primária  
+**Cargo:** Analista de Atendimento Técnico N1
+
+**Classificação:** Persona operacional primária
+
 **Responsabilidade:** Receber incidentes, interpretar evidências, estimar a criticidade e direcionar cada caso ao time adequado.
 
 Matheus trabalha em regime operacional, inclusive durante plantões com pouca disponibilidade de especialistas. Recebe incidentes por telefone, e-mail, WhatsApp, alertas e registros internos. Frequentemente precisa tomar decisões a partir de informações incompletas e consultar diferentes ferramentas de telemetria para compreender a jornada do usuário e buscar a causa raiz.
@@ -68,8 +72,10 @@ Matheus não corrige código, altera métricas nem configura componentes de prod
 
 ### 2.2 Persona 2 — Giovanna Matsu
 
-**Cargo:** Engenheira de Software  
-**Classificação:** Persona técnica primária  
+**Cargo:** Engenheira de Software
+
+**Classificação:** Persona técnica primária
+
 **Responsabilidade:** Validar diagnósticos, investigar tecnicamente as falhas, corrigir o componente sob sua responsabilidade e verificar se a experiência foi restabelecida.
 
 Giovanna recebe incidentes encaminhados pelo atendimento N1 e também atua em degradações sistêmicas. Embora o chamado possa conter um pré-diagnóstico, ela precisa revalidar a hipótese, descartar relações com outros componentes e correlacionar dados dispersos em múltiplos sistemas. A investigação pode depender de combinações específicas de dispositivo, sistema, versão, região, conteúdo ou infraestrutura.
@@ -103,8 +109,10 @@ A correção, o deploy e o rollback permanecem nos repositórios e pipelines exi
 
 ### 2.3 Persona 3 — Fernanda Oliveira
 
-**Cargo:** Product Manager de Experiência do Globoplay  
-**Classificação:** Persona secundária, direcionada à evolução posterior ao núcleo técnico  
+**Cargo:** Product Manager de Experiência do Globoplay
+
+**Classificação:** Persona secundária, direcionada à evolução posterior ao núcleo técnico
+
 **Responsabilidade:** Priorizar problemas de experiência e acompanhar se as correções produziram melhorias técnicas mensuráveis.
 
 Fernanda acessa a plataforma periodicamente para transformar dados técnicos em uma visão estratégica do produto. Ela precisa compreender quais problemas afetam mais sessões e segmentos, comparar a experiência entre plataformas e acompanhar o histórico de degradações. Sua análise utiliza dados agregados e não exige acesso a logs brutos.
@@ -396,11 +404,15 @@ A prioridade considera o núcleo de diagnóstico do incidente, a continuidade da
 | **Giovanna Matsu** | Validar a causa, aprofundar a investigação e verificar a recuperação. | US-ENG-01, US-ENG-02, US-ENG-03, US-ENG-04 e US-ENG-05 |
 | **Fernanda Oliveira** | Priorizar melhorias e acompanhar a evolução técnica da experiência. | US-PM-01, US-PM-02, US-PM-03, US-PM-04 e US-PM-05 |
 
-## 5. Conclusão
+## 5. Wireframe
+
+## 6. Protótipo
+
+## 7. Conclusão
 
 As personas representam etapas complementares da resposta a incidentes do Globoplay. Matheus transforma sinais dispersos em um encaminhamento justificado; Giovanna valida tecnicamente a hipótese e acompanha a recuperação; Fernanda utiliza informações agregadas para priorizar melhorias e reconhecer recorrências. As quinze User Stories mantêm esse encadeamento sem confundir as responsabilidades de cada perfil e fornecem critérios testáveis para orientar o desenvolvimento e a futura construção dos fluxos do protótipo.
 
-## 6. Referências
+## 8. Referências
 
 - ADAPTWORKS. [Como escrever as melhores User Stories com INVEST](https://blog.adapt.works/como-escrever-as-melhores-user-stories-com-invest/). 2020. Acesso em: 11 ago. 2026.
 - GLOBO; INTELI. *Sessão da tarde: requisitos, MVP, personas e User Stories*. Material de projeto fornecido pelo parceiro, 2026.
