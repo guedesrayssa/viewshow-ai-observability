@@ -8,6 +8,9 @@
 2. [Requisitos Funcionais (RF)](#2-requisitos-funcionais-rf)
 3. [Alinhamento com a elicitação do parceiro](#3-alinhamento-com-a-elicitação-do-parceiro)
 4. [Requisitos Não Funcionais (RNF) e Planos de Teste](#4-requisitos-não-funcionais-rnf-e-planos-de-teste)
+   - 4.1. [Atributos de Qualidade](#41-atributos-de-qualidade)
+   - 4.2. [Requisitos de Interface Externa (RIE)](#42-requisitos-de-interface-externa-rie)
+   - 4.3. [Restrições (RESTR)](#43-restrições-restr)
 5. [Procedimento de testes e validação](#5-procedimento-de-testes-e-validação)
 6. [Referências](#6-referências)
 
@@ -77,7 +80,7 @@
 | **RF09** | Consultas para análise de falhas críticas: o sistema deve disponibilizar consultas simples e filtradas voltadas à identificação e análise de falhas críticas nos eventos armazenados. | Evitando erros como freezing de TV, transição IPv4/IPv6 e falha de DNS em modelo específico. |
 | **RF10** | Exportação de dados: o sistema deve permitir a exportação dos dados consultados/filtrados. | Seguindo os formatos planilha (CSV/XLSX) e PDF. |
 
-<sup>Fonte: material produzido pelos autores (2026).</sup>
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -99,7 +102,7 @@
 | Restrição contratual de não compartilhar dados e desafios do projeto com terceiros | RF04 | Controle de acesso restrito ao domínio corporativo da Globo, sem exposição de dados para fora da organização |
 | Necessidade das equipes de produto e observabilidade de levar recortes de dados para análises e relatórios fora da plataforma | RF10 | Autonomia das equipes de observabilidade e produto na investigação de incidentes |
 
-<sup>Fonte: material produzido pelos autores (2026), com base na elicitação e no TAPI do parceiro.</sup>
+<sup>Fonte: Material produzido pelos autores (2026), com base na elicitação e no TAPI do parceiro.</sup>
 
 </div>
 
@@ -109,11 +112,15 @@
 
 ## 4. Requisitos Não Funcionais (RNF) e Planos de Teste
 
-&emsp; Os requisitos não funcionais a seguir foram definidos com base nas características de qualidade da norma ISO/IEC 25010 (INTERNATIONAL ORGANIZATION FOR STANDARDIZATION, 2011), cobrindo Eficiência de Desempenho, Confiabilidade, Segurança, Portabilidade, Adequação Funcional, Usabilidade, Compatibilidade e Manutenibilidade. Como o projeto está em fase de ideação e será construído em um prazo de 10 semanas, os planos de teste descritos abaixo assumem um ambiente simulado, com dados sintéticos. Testes de carga, disponibilidade e volume utilizam janelas de validação compactadas (da ordem de horas a no máximo 3 dias corridos), em vez de monitoramento de produção em larga escala.
+&emsp; Os requisitos não funcionais a seguir estabelecem sob que condições o sistema deve operar e o que limita as alternativas de solução do projeto. Seguindo a estrutura de especificação de requisitos da ISO/IEC/IEEE 29148 (2018), estão separados em atributos de qualidade (Seção 4.1), requisitos de interface externa (Seção 4.2) e restrições (Seção 4.3), cada um acompanhado do critério que comprova seu atendimento. Como o projeto está em fase de ideação e será construído em um prazo de 10 semanas, os planos de teste descritos abaixo assumem um ambiente simulado, com dados sintéticos, e utilizam janelas de validação compactadas (da ordem de horas a no máximo 3 dias corridos), em vez de monitoramento de produção em larga escala.
+
+### 4.1. Atributos de Qualidade
+
+&emsp; Os atributos de qualidade a seguir foram definidos com base nas características da norma ISO/IEC 25010 (INTERNATIONAL ORGANIZATION FOR STANDARDIZATION, 2011), cobrindo Eficiência de Desempenho, Confiabilidade, Segurança, Portabilidade, Adequação Funcional, Usabilidade, Compatibilidade e Manutenibilidade. Mantêm o identificador RNF já referenciado nas Seções 1, 2 e 5.
 
 <div align="center">
 
-<sup>Tabela 3: Requisitos Não Funcionais e Planos de Teste (ISO 25010)</sup>
+<sup>Tabela 3: Atributos de Qualidade e Planos de Teste (ISO 25010)</sup>
 
 | ID | Categoria (ISO 25010) | Descrição do Requisito | Plano de Teste (Validação) |
 |:---|:---|:---|:---|
@@ -130,8 +137,44 @@
 | **RNF11** | **Compatibilidade** *(Interoperabilidade)* | O worker de normalização deve aceitar e converter eventos de múltiplas plataformas (Smart TV, iOS, Android, Web) com estruturas de dados (schemas) distintas, sem exigir alteração de código por cliente. | **Teste de Normalização Multi-Formato:** enviar payloads (pacotes de dados) de exemplo simulando cada plataforma-alvo com estrutura diferente; o teste passa se todos forem convertidos corretamente para o formato interno padronizado, sem erros ou perda de campos. |
 | **RNF12** | **Manutenibilidade** *(Testabilidade)* | Os serviços de normalização e ML devem manter cobertura mínima de testes automatizados de 70%, permitindo manutenção segura por múltiplos desenvolvedores. | **Teste de Cobertura na Integração Contínua (CI):** executar a ferramenta de cobertura de testes (ex: Jest, coverage.py) na pipeline de Integração Contínua (CI) a cada push (envio de código); o teste passa se o percentual reportado for ≥ 70% e o pipeline bloquear a integração automaticamente quando a cobertura cair abaixo do limite. |
 | **RNF13** | **Eficiência de Desempenho** *(Utilização de Recursos)* | O modelo de ML deve utilizar, como contexto para o diagnóstico, somente os registros de log (logs) das últimas 5 horas do dispositivo que reportou a falha, limitando o volume de dados processado por diagnóstico e mantendo o custo computacional previsível. | **Teste de Janela de Contexto Temporal:** injetar um histórico de logs sintético com mais de 5 horas de duração para um dispositivo de teste e verificar, por meio de instrumentação do worker de ML, quais registros são efetivamente enviados ao modelo; o teste passa se apenas os eventos dentro da janela das 5 horas anteriores ao evento de falha forem considerados no diagnóstico. |
+| **RNF14** | **Eficiência de Desempenho** *(Comportamento Temporal)* | O dashboard e as APIs de consulta devem retornar os resultados de uma busca filtrada em até 2 segundos para 95% das solicitações (P95). | **Teste de Latência de Consulta:** disparar um lote de buscas filtradas sintéticas (variando dispositivo, período e tipo de evento) contra o ambiente de homologação e medir o tempo de resposta de cada uma; o teste passa se o percentil 95 (P95) do tempo de resposta for ≤ 2 segundos. |
+| **RNF15** | **Confiabilidade** *(Capacidade de Recuperação)* | Uma degradação de qualidade de experiência (ex.: aumento anormal de erros ou de latência) deve ser sinalizada ao operador em até 30 segundos após o recebimento dos eventos que permitam sua detecção. | **Teste de Tempo de Alerta:** injetar uma sequência de eventos sintéticos que caracterize uma degradação (ex.: pico de erros de um modelo de dispositivo) e cronometrar o intervalo entre o último evento injetado e o disparo do alerta correspondente; o teste passa se o alerta for emitido em até 30 segundos. |
 
-<sup>Fonte: material produzido pelos autores (2026).</sup>
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
+### 4.2. Requisitos de Interface Externa (RIE)
+
+&emsp; Os requisitos de interface externa a seguir descrevem os pontos de troca de dados entre o sistema e aplicações mantidas fora do projeto, cujo comportamento não pode ser alterado por ele, definindo o dado trocado e a resposta esperada em cada sentido. O RIE01 viabiliza o controle de acesso de RF04 e RNF04; o RIE02 é a porta de entrada dos eventos tratados em RF01, RF02 e RF03.
+
+<div align="center">
+
+<sup>Tabela 4: Requisitos de Interface Externa e Planos de Teste</sup>
+
+| ID | Sistema externo | Descrição do Requisito | Plano de Teste (Validação) |
+|:---|:---|:---|:---|
+| **RIE01** | Serviço corporativo de autenticação da Globo (SSO) | O sistema deve enviar as credenciais do usuário ao serviço corporativo de autenticação por meio de requisição HTTPS e receber como resposta o token de sessão e o e-mail institucional associado, utilizados para autorizar o acesso ao dashboard e às APIs de consulta. | **Teste de Integração com o Provedor de Identidade:** substituir o serviço real por um simulador (mock) configurado para devolver token válido, token expirado e credencial de domínio externo; o teste passa se o acesso for liberado apenas na primeira situação e o sistema responder HTTP 401/403 nas demais, sem persistir credencial em base local. |
+| **RIE02** | Frontends do Globoplay (Smart TV, mobile, web) | O sistema deve expor uma API de ingestão que recebe os eventos de telemetria emitidos pelos frontends do Globoplay nos protocolos moderno e legado descritos na Seção 1, respondendo confirmação de recebimento ao emissor somente após a publicação do evento na fila. | **Teste de Contrato da API de Ingestão:** enviar payloads de exemplo de cada plataforma-alvo pelos dois protocolos suportados e inspecionar o conteúdo da fila; o teste passa se todo evento confirmado ao emissor estiver presente na fila e se payloads fora do contrato forem rejeitados com erro explícito, sem confirmação de recebimento. |
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
+### 4.3. Restrições (RESTR)
+
+&emsp; As restrições a seguir delimitam o espaço de solução do projeto antes de qualquer decisão de arquitetura e, por descreverem propriedades da solução construída e não comportamentos observáveis em execução, são verificadas por inspeção. As decisões de plataforma de implantação, como banco de dados, sistema operacional dos servidores e linguagem da aplicação, permanecem em aberto nesta fase e serão incorporadas à tabela quando definidas.
+
+<div align="center">
+
+<sup>Tabela 5: Restrições e Formas de Verificação</sup>
+
+| ID | Origem | Descrição do Requisito | Verificação |
+|:---|:---|:---|:---|
+| **RESTR01** | Organizacional (política de acesso corporativo da Globo) | A autenticação de usuários deve ser delegada ao serviço corporativo de autenticação já existente na Globo, não cabendo ao sistema armazenar senhas nem implementar rotina própria de validação de credencial. | **Inspeção de Arquitetura e do Esquema de Dados:** revisar o módulo de autenticação e o modelo do banco de dados; a verificação passa se não houver campo de senha persistido nem rotina própria de hash ou validação de credencial, e se todo fluxo de login delegar ao provedor corporativo especificado no RIE01. |
+| **RESTR02** | Técnica (base instalada de dispositivos do Globoplay) | O sistema deve processar os eventos no formato em que os dispositivos clientes já os emitem, não podendo condicionar seu funcionamento à atualização do sistema operacional, do firmware ou do aplicativo instalado nesses dispositivos. | **Inspeção do Contrato de Ingestão:** confrontar os formatos aceitos pelo pipeline com as amostras reais de evento das plataformas legadas listadas no RF01; a verificação passa se nenhuma delas exigir alteração no dispositivo emissor para ser aceita e normalizada. |
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -139,12 +182,13 @@
 
 ## 5. Procedimento de testes e validação
 
-&emsp; Os planos de teste descritos na Tabela 3 (Seção 4) são executados em ambiente de homologação (staging, um ambiente de testes separado do ambiente usado pelos usuários reais), com dados sintéticos (dados fictícios, gerados propositalmente para simular o cenário de uso, sem envolver usuários reais), dado que o projeto está em fase de ideação e tem prazo de 10 semanas. A validação está organizada em quatro frentes, cada uma com ferramenta e cadência próprias:
+&emsp; Os planos de teste descritos nas Tabelas 3 a 5 (Seção 4) são executados em ambiente de homologação (staging, um ambiente de testes separado do ambiente usado pelos usuários reais), com dados sintéticos (dados fictícios, gerados propositalmente para simular o cenário de uso, sem envolver usuários reais), dado que o projeto está em fase de ideação e tem prazo de 10 semanas. A validação está organizada em cinco frentes, cada uma com ferramenta e cadência próprias:
 
 - **Pipeline de integração e entrega contínua (CI/CD, a cada push de código):** cobertura mínima de testes automatizados (RNF12, medida com ferramentas como Jest ou coverage.py) e build (processo de compilação e empacotamento) limpo dos contêineres de normalização e ML (RNF06); ambos bloqueiam a integração automaticamente quando o critério não é atendido.
-- **Carga e disponibilidade (janelas de horas a 3 dias corridos, em staging):** capacidade de escala do worker sob picos massivos (RNF01) e latência ponta a ponta (RNF02), medidas com ferramentas de teste de carga que simulam grandes volumes de requisições (K6 ou JMeter); disponibilidade do dashboard e das APIs (RNF09), com verificações automáticas de integridade (health-checks) a cada 1 minuto e falhas induzidas (desligamento forçado de um contêiner); e a política de ciclo de vida do armazenamento hot/cold definido na Seção 1 (RNF05), validada por inspeção do código que descreve a infraestrutura (IaC, sigla de Infraestrutura como Código).
+- **Carga e disponibilidade (janelas de horas a 3 dias corridos, em staging):** capacidade de escala do worker sob picos massivos (RNF01) e latência ponta a ponta (RNF02), medidas com ferramentas de teste de carga que simulam grandes volumes de requisições (K6 ou JMeter); disponibilidade do dashboard e das APIs (RNF09), com verificações automáticas de integridade (health-checks) a cada 1 minuto e falhas induzidas (desligamento forçado de um contêiner); a política de ciclo de vida do armazenamento hot/cold definido na Seção 1 (RNF05), validada por inspeção do código que descreve a infraestrutura (IaC, sigla de Infraestrutura como Código); latência de busca no dashboard (RNF14), medida com o mesmo tipo de ferramenta de carga sobre a API de consulta; e tempo de sinalização de degradação ao operador (RNF15), cronometrado sobre o pipeline de alertas.
 - **Modelo de ML e frontend (execução manual, antes de cada entrega):** qualidade do diagnóstico de causa raiz (RNF08), avaliada em um notebook Jupyter (ambiente interativo de execução de código Python) contra um conjunto de dados separado exclusivamente para teste e nunca usado no treinamento do modelo, chamado de conjunto de holdout, calculando as métricas de precisão, sensibilidade e F1-Score já descritas na Tabela 3; performance de carregamento do dashboard (RNF07), auditada com ferramentas de análise automática de páginas web (Google Lighthouse ou Playwright); e usabilidade do fluxo de diagnóstico (RNF10), validada com uma sessão guiada com um operador real do sistema.
 - **Segurança e compatibilidade (execução manual, antes de cada entrega):** controle de acesso restrito ao domínio Globo (RNF04), testado com tentativas automatizadas de login externo e chamadas sem token de autenticação; tolerância a payloads (pacotes de dados recebidos) corrompidos (RNF03), testada com mensagens em formato inválido misturadas ao lote de mensagens válidas; e normalização multi-formato (RNF11), testada com pacotes de exemplo de cada plataforma-alvo.
+- **Interfaces externas e restrições (testes de integração/revisão de arquitetura, antes de cada entrega):** autenticação via SSO corporativo (RIE01, RESTR01), testada com mocks (simulações) do serviço de autenticação retornando respostas válidas e inválidas; recebimento de eventos pela API de ingestão (RIE02), testado com o mesmo lote de payloads multi-plataforma usado na validação do RNF11; e ausência de exigência de modificação do sistema operacional dos dispositivos clientes (RESTR02), validada por inspeção da especificação de coleta (SDK/agente de telemetria) frente aos dispositivos legados citados no RF01.
 
 &emsp; A execução é responsabilidade do time técnico do grupo. Para os requisitos com maior risco de negócio, RNF04 (segurança/confidencialidade) e RNF08 (qualidade do diagnóstico exibido ao parceiro), os resultados dos testes são revisados também com o líder técnico da Globo, garantindo que os critérios de aceite reflitam o contexto real de uso do Globoplay e não apenas o ambiente simulado do projeto.
 
@@ -155,3 +199,5 @@
 HASSAN, Abdullah Abu. **Step by step practical guide to architecting cloud native applications**. Microsoft Tech Community, 15 fev. 2024. Disponível em: https://techcommunity.microsoft.com/blog/appsonazureblog/step-by-step-practical-guide-to-architecting-cloud-native-applications/4057960. Acesso em: 10 ago. 2026.
 
 INTERNATIONAL ORGANIZATION FOR STANDARDIZATION. **ISO/IEC 25010:2011**: systems and software engineering — systems and software quality requirements and evaluation (SQuaRE) — system and software quality models. Geneva: ISO/IEC, 2011.
+
+INTERNATIONAL ORGANIZATION FOR STANDARDIZATION. **ISO/IEC/IEEE 29148:2018**: systems and software engineering — life cycle processes — requirements engineering. Geneva: ISO/IEC/IEEE, 2018.
