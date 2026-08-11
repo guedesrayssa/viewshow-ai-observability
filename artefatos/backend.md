@@ -95,3 +95,38 @@ flowchart TB
     style visao fill:#fff,stroke:#555,stroke-width:1px;
     style rca fill:#fff,stroke:#555,stroke-width:1px;
 ```
+
+## Referência dos endpoints
+
+### Ingestão
+
+| Método | Endpoint | Descrição |
+| --- | --- | --- |
+| POST | `/v1/telemetry/events` | Recebe eventos de reprodução, individualmente ou em lote. |
+| POST | `/v1/telemetry/errors` | Recebe exceções e falhas da aplicação. |
+| POST | `/v1/telemetry/heartbeat` | Registra presença de sessões ativas para cálculo de CCU. |
+
+### Dashboard e qualidade
+
+| Método | Endpoint | Descrição |
+| --- | --- | --- |
+| GET | `/v1/analytics/realtime/overview` | Retorna CCU, volume de eventos e taxa de erros. |
+| GET | `/v1/analytics/realtime/alerts` | Lista alertas e anomalias ativos. |
+| GET | `/v1/analytics/qoe/metrics` | Retorna VST, rebuffer rate e bitrate médio. |
+| GET | `/v1/analytics/qoe/timeseries` | Retorna a série temporal de métricas de QoE. |
+| GET | `/v1/analytics/errors/summary` | Resume erros e a taxa de sessões sem falhas. |
+| GET | `/v1/analytics/errors/top` | Lista os códigos de erro mais frequentes. |
+| GET | `/v1/analytics/errors/{error_code}/details` | Detalha ocorrências de um código de erro. |
+| GET | `/v1/analytics/breakdown/devices` | Segmenta métricas por dispositivo, SO e versão do app. |
+| GET | `/v1/analytics/breakdown/network` | Segmenta métricas por ISP, CDN e conexão. |
+
+### RCA
+
+| Método | Endpoint | Descrição |
+| --- | --- | --- |
+| GET | `/v1/analytics/rca/modules-breakdown` | Aponta os módulos internos relacionados às falhas. |
+| GET | `/v1/analytics/rca/topology-health` | Retorna a saúde da topologia e dependências. |
+| GET | `/v1/analytics/rca/fingerprints` | Lista padrões recorrentes de erros. |
+| GET | `/v1/analytics/rca/fingerprints/{fingerprint_id}` | Detalha os serviços e impacto de um padrão. |
+| GET | `/v1/analytics/rca/traces/{trace_id}` | Retorna a trilha ponta a ponta de uma requisição. |
+| GET | `/v1/analytics/rca/correlations` | Retorna correlações entre surtos de erros. |
