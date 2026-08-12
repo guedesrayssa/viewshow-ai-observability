@@ -2,6 +2,7 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;A Proposta de Valor (Value Proposition Canvas) é um modelo estratégico de posicionamento de mercado que define o conjunto de benefícios tangíveis e intangíveis que uma organização se compromete a entregar aos seus segmentos de clientes. Ela atua como o núcleo de diferenciação competitiva, alinhando as capacidades operacionais da empresa com as necessidades específicas do mercado-alvo.
 
+<img src="../assets/negocios/Canvas_prop.png" alt="Canvas De Proposta de Valor" width="500">
 
 ---
 
