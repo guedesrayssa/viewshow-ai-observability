@@ -24,3 +24,15 @@ const API_BASE_URL = "COLOCAAR O IP PUBLICO DA EC2 DO BACK";
  * @type {number}
  */
 const REFRESH_INTERVAL_MS = 30000;
+
+/**
+ * Janela de tempo consultada em todos os endpoints de analytics, no formato
+ * `<número><s|m|h|d>`.
+ *
+ * A API assume **15 minutos** quando o parâmetro não é enviado, o que faria
+ * dados semeados há mais tempo sumirem da tela. Uma janela mais larga mantém
+ * a demonstração estável.
+ *
+ * @type {string}
+ */
+const ANALYTICS_WINDOW = "24h";

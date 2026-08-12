@@ -2,8 +2,8 @@
  * @file app.js
  * Renderização da página e orquestração das chamadas à API.
  *
- * Carrega os cinco endpoints de analytics em paralelo e desenha cada seção de
- * forma independente: uma seção que falha exibe seu próprio estado de erro
+ * Carrega os quatro endpoints de visão geral em paralelo e desenha cada seção
+ * de forma independente: uma seção que falha exibe seu próprio estado de erro
  * sem derrubar o restante da página.
  *
  * Depende de `config.js` e `api.js`, carregados antes deste arquivo.
@@ -12,35 +12,51 @@
 /* ========================== Formatação de valores ========================== */
 
 /**
- * Formata um número inteiro no padrão brasileiro, com separador de milhar.
+ * Formata um número no padrão brasileiro, com separador de milhar.
  *
  * @param {number} value - Valor a formatar.
- * @returns {string} Número formatado, ou `"—"` se o valor não for numérico.
+ * @param {number} [decimals=0] - Casas decimais exibidas.
+ * @returns {string} Número formatado, ou `"—"` quando não há valor.
  *
  * @example
- * formatInteger(48213); // "48.213"
+ * formatNumber(48213); // "48.213"
  */
-function formatInteger(value) {
+function formatNumber(value, decimals = 0) {
   if (typeof value !== "number" || Number.isNaN(value)) return "—";
-  return value.toLocaleString("pt-BR");
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
 
 /**
  * Converte uma proporção de 0 a 1 em percentual legível.
  *
- * @param {number} value - Proporção entre 0 e 1.
+ * A API devolve `null` quando a métrica não teve base de cálculo — caso
+ * diferente de zero, e por isso exibido como `"—"`.
+ *
+ * @param {number|null} value - Proporção entre 0 e 1, ou `null`.
  * @param {number} [decimals=2] - Casas decimais exibidas.
- * @returns {string} Percentual formatado, ou `"—"` se o valor não for numérico.
+ * @returns {string} Percentual formatado, ou `"—"` quando não há amostra.
  *
  * @example
- * formatRateAsPercent(0.0142); // "1,42%"
+ * formatPercent(0.0142); // "1,42%"
  */
-function formatRateAsPercent(value, decimals = 2) {
+function formatPercent(value, decimals = 2) {
   if (typeof value !== "number" || Number.isNaN(value)) return "—";
-  return `${(value * 100).toLocaleString("pt-BR", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })}%`;
+  return `${formatNumber(value * 100, decimals)}%`;
+}
+
+/**
+ * Formata um instante ISO-8601 como data e hora local abreviada.
+ *
+ * @param {string} iso - Instante no formato ISO-8601.
+ * @returns {string} Data e hora legíveis, ou `"—"` se a entrada for inválida.
+ */
+function formatDateTime(iso) {
+  const moment = new Date(iso);
+  if (Number.isNaN(moment.getTime())) return "—";
+  return moment.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 /**
@@ -60,15 +76,18 @@ function escapeHtml(value) {
 }
 
 /**
- * Escolhe uma cor da rampa de severidade conforme a posição do erro no
- * ranking. É uma decisão puramente visual: a API ainda não classifica
- * severidade, então a cor comunica apenas a ordem relativa de impacto.
+ * Escolhe a cor do marcador de um erro no ranking.
  *
- * @param {number} position - Índice do erro no ranking, começando em zero.
+ * Erros com ocorrências fatais recebem o tom mais crítico da rampa; os demais
+ * seguem a posição no ranking, em tons progressivamente mais brandos.
+ *
+ * @param {{fatal_occurrences: number}} error - Entrada do ranking.
+ * @param {number} position - Índice no ranking, começando em zero.
  * @returns {string} Variável CSS da cor correspondente.
  */
-function severityColorByRank(position) {
-  const ramp = ["--sev-1", "--sev-2", "--sev-3", "--sev-4", "--sev-5"];
+function severityColor(error, position) {
+  if (error.fatal_occurrences > 0) return "var(--sev-1)";
+  const ramp = ["--sev-3", "--sev-4", "--sev-5"];
   return `var(${ramp[Math.min(position, ramp.length - 1)]})`;
 }
 
@@ -129,38 +148,54 @@ function renderSkeleton(container, count, variant = "card") {
 /**
  * Desenha a seção de visão geral: a manchete de saúde e os cartões de resumo.
  *
- * A manchete reproduz o comportamento previsto no design — mensagem tranquila
- * quando a taxa de sessões sem falha está acima do limite, e mensagem de
- * atenção caso contrário.
+ * A manchete distingue três situações: sem base de cálculo, saudável e
+ * degradada. `crash_free_rate` mede apenas falhas **fatais**, então uma taxa
+ * alta não significa ausência de erros.
  *
- * @param {{total_errors: number, error_rate: number, crash_free_rate: number}} summary
- *   Resumo devolvido por `GET /v1/analytics/errors/summary`.
+ * @param {{total_errors: number, fatal_errors: number, unique_error_codes: number,
+ *   affected_sessions: number, total_sessions: number, error_rate: number|null,
+ *   crash_free_rate: number|null}} summary - Bloco `summary` devolvido por
+ *   `GET /v1/analytics/errors/summary`.
  * @returns {void}
  */
 function renderSummary(summary) {
   const headline = document.getElementById("headline-text");
   const caption = document.getElementById("headline-caption");
-  const healthy = summary.crash_free_rate >= 0.99;
+  const crashFree = summary.crash_free_rate;
 
-  headline.textContent = healthy ? "Tudo bem por aqui!" : "Atenção necessária";
-  caption.textContent = healthy
-    ? "Nenhuma degradação relevante detectada no período."
-    : `${formatRateAsPercent(1 - summary.crash_free_rate)} das sessões registraram falha.`;
+  if (typeof crashFree !== "number") {
+    headline.textContent = "Sem dados na janela";
+    caption.textContent = "Nenhuma sessão observada no período consultado.";
+  } else if (crashFree >= 0.99) {
+    headline.textContent = "Tudo bem por aqui!";
+    caption.textContent = "Nenhuma sessão relevante afetada por falha fatal.";
+  } else {
+    headline.textContent = "Atenção necessária";
+    caption.textContent = `${formatPercent(1 - crashFree)} das sessões sofreram falha fatal.`;
+  }
 
   document.getElementById("summary-cards").innerHTML = [
     cardTemplate({
       label: "Erros no período",
-      value: formatInteger(summary.total_errors),
+      value: formatNumber(summary.total_errors),
+      note: `${formatNumber(summary.unique_error_codes)} código(s) distinto(s)`,
+    }),
+    cardTemplate({
+      label: "Erros fatais",
+      value: formatNumber(summary.fatal_errors),
+      note: "Falhas que encerram a sessão",
     }),
     cardTemplate({
       label: "Taxa de erro",
-      value: formatRateAsPercent(summary.error_rate),
-      note: "Erros sobre sessões ativas",
+      value: formatPercent(summary.error_rate),
+      note: "Erros sobre eventos de reprodução",
     }),
     cardTemplate({
       label: "Sessões sem falha",
-      value: formatRateAsPercent(summary.crash_free_rate),
-      note: "Crash-free rate",
+      value: formatPercent(summary.crash_free_rate),
+      note: `${formatNumber(summary.affected_sessions)} de ${formatNumber(
+        summary.total_sessions,
+      )} sessões com erro`,
     }),
   ].join("");
 }
@@ -168,44 +203,63 @@ function renderSummary(summary) {
 /**
  * Desenha os cartões de qualidade de experiência.
  *
- * @param {{vst_ms: number, rebuffer_rate: number, average_bitrate_kbps: number}} metrics
- *   Indicadores devolvidos por `GET /v1/analytics/qoe/metrics`.
+ * O tempo de início do vídeo chega em percentis. A mediana (p50) representa a
+ * experiência típica e o p95 a cauda ruim, que é onde o problema aparece.
+ *
+ * @param {{events: number, sessions: number, playback_hours: number,
+ *   startup_time_ms: {samples: number, p50: number|null, p95: number|null,
+ *   average: number|null}, rebuffer: {rate: number|null, count: number},
+ *   average_bitrate_kbps: number|null}} metrics - Bloco `metrics` devolvido
+ *   por `GET /v1/analytics/qoe/metrics`.
  * @returns {void}
  */
 function renderQoeMetrics(metrics) {
+  const startup = metrics.startup_time_ms;
+
   document.getElementById("qoe-cards").innerHTML = [
     cardTemplate({
-      label: "Tempo de início do vídeo",
-      value: formatInteger(metrics.vst_ms),
+      label: "Início do vídeo (p50)",
+      value: formatNumber(startup.p50),
       unit: "ms",
-      note: "VST — do play até o primeiro quadro",
+      note: `p95 em ${formatNumber(startup.p95)} ms · ${formatNumber(
+        startup.samples,
+      )} amostra(s)`,
     }),
     cardTemplate({
       label: "Taxa de rebuffer",
-      value: formatRateAsPercent(metrics.rebuffer_rate),
-      note: "Proporção da sessão em travamento",
+      value: formatPercent(metrics.rebuffer.rate),
+      note: `${formatNumber(metrics.rebuffer.count)} travamento(s)`,
     }),
     cardTemplate({
       label: "Bitrate médio",
-      value: formatInteger(metrics.average_bitrate_kbps),
+      value: formatNumber(metrics.average_bitrate_kbps),
       unit: "kbps",
-      note: "Qualidade média entregue",
+      note: "Ponderado pelo tempo de reprodução",
+    }),
+    cardTemplate({
+      label: "Volume observado",
+      value: formatNumber(metrics.events),
+      note: `${formatNumber(metrics.sessions)} sessão(ões) · ${formatNumber(
+        metrics.playback_hours,
+        1,
+      )} h de reprodução`,
     }),
   ].join("");
 }
 
 /**
- * Desenha a série temporal de qualidade como um gráfico de barras simples.
+ * Desenha a evolução do tempo de início do vídeo como barras.
  *
- * O formato de cada ponto ainda não foi definido pela API, que hoje devolve a
- * lista vazia. Para não travar a interface, a função procura a primeira
- * propriedade numérica de cada ponto e a utiliza como altura da barra.
+ * Cada ponto da série carrega o mesmo bloco de métricas do endpoint de QoE,
+ * agregado sobre o seu intervalo. O gráfico usa a mediana do tempo de início,
+ * que é a métrica de QoE mais legível em barras.
  *
- * @param {Array<Object>} points - Pontos devolvidos por
- *   `GET /v1/analytics/qoe/timeseries`.
+ * @param {Array<{start: string, end: string, metrics: Object}>} points - Pontos
+ *   devolvidos por `GET /v1/analytics/qoe/timeseries`.
+ * @param {number} intervalSeconds - Duração de cada intervalo, em segundos.
  * @returns {void}
  */
-function renderQoeTimeseries(points) {
+function renderQoeTimeseries(points, intervalSeconds) {
   const container = document.getElementById("qoe-timeseries");
 
   if (!Array.isArray(points) || points.length === 0) {
@@ -213,25 +267,41 @@ function renderQoeTimeseries(points) {
     return;
   }
 
-  const values = points.map((point) => {
-    const numeric = Object.values(point).find((value) => typeof value === "number");
-    return typeof numeric === "number" ? numeric : 0;
-  });
+  const values = points.map((point) => point.metrics?.startup_time_ms?.p50 ?? null);
 
-  const max = Math.max(...values, 1);
-  container.innerHTML = `<div class="spark">${values
-    .map(
-      (value) =>
-        `<div class="spark__bar" style="height:${Math.max((value / max) * 100, 2)}%"></div>`,
-    )
-    .join("")}</div>`;
+  if (values.every((value) => value === null)) {
+    renderState(container, "Nenhuma amostra de tempo de início do vídeo na janela.");
+    return;
+  }
+
+  const max = Math.max(...values.filter((value) => value !== null), 1);
+  const bars = values
+    .map((value, index) => {
+      const height = value === null ? 0 : Math.max((value / max) * 100, 2);
+      const label =
+        value === null
+          ? `${formatDateTime(points[index].start)} — sem amostra`
+          : `${formatDateTime(points[index].start)} — ${formatNumber(value)} ms`;
+      return `<div class="spark__bar${
+        value === null ? " spark__bar--empty" : ""
+      }" style="height:${height}%" title="${escapeHtml(label)}"></div>`;
+    })
+    .join("");
+
+  const minutes = Math.round(intervalSeconds / 60);
+  container.innerHTML = `
+    <p class="panel__caption">Mediana do tempo de início do vídeo, em intervalos de ${escapeHtml(
+      minutes >= 1 ? `${minutes} min` : `${intervalSeconds} s`,
+    )}. Pico de ${escapeHtml(formatNumber(max))} ms.</p>
+    <div class="spark">${bars}</div>`;
 }
 
 /**
  * Desenha o ranking de erros como uma lista de botões selecionáveis.
  *
- * @param {Array<{error_code: string, occurrences: number}>} errors - Ranking
- *   devolvido por `GET /v1/analytics/errors/top`.
+ * @param {Array<{error_code: string, occurrences: number, share: number|null,
+ *   affected_sessions: number, fatal_occurrences: number, top_module: string}>} errors
+ *   Lista devolvida por `GET /v1/analytics/errors/top`.
  * @param {function(string): void} onSelect - Função chamada com o código do
  *   erro quando uma linha é acionada.
  * @returns {void}
@@ -240,21 +310,32 @@ function renderErrorsList(errors, onSelect) {
   const container = document.getElementById("errors-list");
 
   if (!Array.isArray(errors) || errors.length === 0) {
-    renderState(container, "Nenhum erro registrado no período.");
+    renderState(container, "Nenhum erro registrado na janela consultada.");
     return;
   }
 
   container.innerHTML = errors
-    .map(
-      (error, index) => `
+    .map((error, index) => {
+      const meta = [
+        error.top_module,
+        `${formatNumber(error.affected_sessions)} sessão(ões)`,
+        error.fatal_occurrences > 0 ? `${formatNumber(error.fatal_occurrences)} fatal(is)` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      return `
         <button class="error-row" type="button" data-code="${escapeHtml(error.error_code)}">
-          <span class="error-row__dot" style="background:${severityColorByRank(index)}"></span>
-          <span class="error-row__code">${escapeHtml(error.error_code)}</span>
-          <span class="error-row__count">${formatInteger(
+          <span class="error-row__dot" style="background:${severityColor(error, index)}"></span>
+          <span class="error-row__main">
+            <span class="error-row__code">${escapeHtml(error.error_code)}</span>
+            <span class="error-row__meta">${escapeHtml(meta)}</span>
+          </span>
+          <span class="error-row__count">${formatNumber(
             error.occurrences,
-          )}<small>ocorrências</small></span>
-        </button>`,
-    )
+          )}<small>${escapeHtml(formatPercent(error.share, 1))}</small></span>
+        </button>`;
+    })
     .join("");
 
   container.querySelectorAll(".error-row").forEach((row) => {
@@ -269,53 +350,85 @@ function renderErrorsList(errors, onSelect) {
 }
 
 /**
- * Desenha o painel de detalhe de um erro.
+ * Monta uma lista compacta de uma das segmentações do detalhe do erro.
  *
- * As ocorrências chegam da API exatamente como foram enviadas pelos
- * dispositivos, sem formato fixo. Por isso a função renderiza dinamicamente
- * todas as chaves presentes em cada ocorrência, em vez de assumir campos.
+ * Cada item da segmentação vem com uma chave própria, nomeada conforme a
+ * dimensão (`device_model`, `app_version`, `cdn`, `module`, `service`).
  *
- * @param {{error_code: string, occurrences: number, errors: Array<Object>}} details
- *   Detalhes devolvidos por `GET /v1/analytics/errors/{error_code}/details`.
+ * @param {string} title - Título exibido acima da lista.
+ * @param {Array<Object>} entries - Itens da segmentação.
+ * @param {string} key - Nome da chave que carrega o valor da dimensão.
+ * @returns {string} Marcação HTML, ou string vazia se não houver itens.
+ */
+function breakdownTemplate(title, entries, key) {
+  if (!Array.isArray(entries) || entries.length === 0) return "";
+
+  const rows = entries
+    .slice(0, 4)
+    .map(
+      (entry) => `
+        <span class="kv__key">${escapeHtml(entry[key] ?? "—")}</span>
+        <span class="kv__value">${escapeHtml(formatNumber(entry.occurrences))} · ${escapeHtml(
+          formatPercent(entry.share, 0),
+        )}</span>`,
+    )
+    .join("");
+
+  return `
+    <div class="breakdown">
+      <div class="breakdown__title">${escapeHtml(title)}</div>
+      <div class="kv">${rows}</div>
+    </div>`;
+}
+
+/**
+ * Desenha o painel de detalhe de um erro: impacto, segmentações e amostras
+ * de mensagem.
+ *
+ * @param {{error_code: string, occurrences: number, share_of_errors: number|null,
+ *   affected_sessions: number, fatal_occurrences: number, first_seen: string,
+ *   last_seen: string, breakdown: Object<string, Array<Object>>,
+ *   sample_messages: Array<string>}} details - Resposta de
+ *   `GET /v1/analytics/errors/{error_code}/details`.
  * @returns {void}
  */
 function renderErrorDetails(details) {
   const container = document.getElementById("error-details");
-  const samples = Array.isArray(details.errors) ? details.errors.slice(0, 5) : [];
+  const breakdown = details.breakdown || {};
 
-  const header = `
+  const impact = [
+    `${formatNumber(details.occurrences)} ocorrência(s)`,
+    `${formatNumber(details.affected_sessions)} sessão(ões) afetada(s)`,
+    `${formatPercent(details.share_of_errors, 1)} dos erros`,
+  ].join(" · ");
+
+  const fatal =
+    details.fatal_occurrences > 0
+      ? `<p class="detail__fatal">${formatNumber(details.fatal_occurrences)} ocorrência(s) fatal(is)</p>`
+      : "";
+
+  const messages =
+    Array.isArray(details.sample_messages) && details.sample_messages.length > 0
+      ? `<div class="breakdown">
+           <div class="breakdown__title">Mensagens</div>
+           ${details.sample_messages
+             .map((message) => `<p class="detail__message">${escapeHtml(message)}</p>`)
+             .join("")}
+         </div>`
+      : "";
+
+  container.innerHTML = `
     <p class="detail__code">${escapeHtml(details.error_code)}</p>
-    <p class="detail__meta">${formatInteger(details.occurrences)} ocorrência(s) registrada(s)</p>`;
-
-  if (samples.length === 0) {
-    container.innerHTML = `${header}<p class="state">Sem ocorrências detalhadas.</p>`;
-    return;
-  }
-
-  const occurrences = samples
-    .map((sample, index) => {
-      const rows = Object.entries(sample)
-        .map(
-          ([key, value]) => `
-            <span class="kv__key">${escapeHtml(key)}</span>
-            <span class="kv__value">${escapeHtml(
-              typeof value === "object" && value !== null ? JSON.stringify(value) : value,
-            )}</span>`,
-        )
-        .join("");
-
-      return `
-        <div class="occurrence">
-          <div class="occurrence__index">Ocorrência ${index + 1}</div>
-          <div class="kv">${rows}</div>
-        </div>`;
-    })
-    .join("");
-
-  const omitted = details.errors.length - samples.length;
-  const footer = omitted > 0 ? `<p class="state">e mais ${formatInteger(omitted)}…</p>` : "";
-
-  container.innerHTML = header + occurrences + footer;
+    <p class="detail__meta">${escapeHtml(impact)}</p>
+    ${fatal}
+    <p class="detail__meta">Entre ${escapeHtml(formatDateTime(details.first_seen))} e ${escapeHtml(
+      formatDateTime(details.last_seen),
+    )}</p>
+    ${breakdownTemplate("Dispositivos", breakdown.devices, "device_model")}
+    ${breakdownTemplate("Versões do app", breakdown.app_versions, "app_version")}
+    ${breakdownTemplate("Módulos", breakdown.modules, "module")}
+    ${breakdownTemplate("CDNs", breakdown.cdns, "cdn")}
+    ${messages}`;
 }
 
 /* ================================ Orquestração ================================ */
@@ -335,7 +448,7 @@ function setApiStatus(status, label) {
 }
 
 /**
- * Carrega os cinco endpoints em paralelo e redesenha a página.
+ * Carrega os endpoints da visão geral em paralelo e redesenha a página.
  *
  * Usa `Promise.allSettled` para que a falha de um endpoint não impeça a
  * renderização dos demais. O banner global só aparece quando nenhuma das
@@ -351,8 +464,8 @@ async function loadDashboard() {
   setApiStatus("loading");
   banner.hidden = true;
 
-  renderSkeleton(document.getElementById("summary-cards"), 3);
-  renderSkeleton(document.getElementById("qoe-cards"), 3);
+  renderSkeleton(document.getElementById("summary-cards"), 4);
+  renderSkeleton(document.getElementById("qoe-cards"), 4);
   renderSkeleton(document.getElementById("errors-list"), 4, "row");
   renderState(document.getElementById("error-details"), "Selecione um erro na lista.");
 
@@ -376,13 +489,12 @@ async function loadDashboard() {
    * @param {PromiseRejectedResult} result - Resultado rejeitado da chamada.
    * @returns {string} Mensagem a exibir na seção.
    */
-  const sectionMessage = (result) =>
-    allFailed ? "Indisponível" : result.reason.message;
+  const sectionMessage = (result) => (allFailed ? "Indisponível" : result.reason.message);
 
   const latencies = [];
 
   if (summary.status === "fulfilled") {
-    renderSummary(summary.value.data);
+    renderSummary(summary.value.data.summary);
     latencies.push(`resumo ${summary.value.elapsedMs}ms`);
   } else {
     document.getElementById("headline-text").textContent = "Dados indisponíveis";
@@ -393,14 +505,17 @@ async function loadDashboard() {
   }
 
   if (qoe.status === "fulfilled") {
-    renderQoeMetrics(qoe.value.data);
+    renderQoeMetrics(qoe.value.data.metrics);
     latencies.push(`qoe ${qoe.value.elapsedMs}ms`);
   } else {
     renderState(document.getElementById("qoe-cards"), sectionMessage(qoe), "error");
   }
 
   if (timeseries.status === "fulfilled") {
-    renderQoeTimeseries(timeseries.value.data.points);
+    renderQoeTimeseries(
+      timeseries.value.data.points,
+      timeseries.value.data.interval_seconds,
+    );
     latencies.push(`série ${timeseries.value.elapsedMs}ms`);
   } else {
     renderState(document.getElementById("qoe-timeseries"), sectionMessage(timeseries), "error");
@@ -424,7 +539,7 @@ async function loadDashboard() {
   }
 
   document.getElementById("last-update").textContent =
-    `Última atualização: ${new Date().toLocaleTimeString("pt-BR")}`;
+    `Janela de ${ANALYTICS_WINDOW} · atualizado às ${new Date().toLocaleTimeString("pt-BR")}`;
   document.getElementById("endpoint-latency").textContent = latencies.join(" · ");
 
   button.disabled = false;
@@ -432,6 +547,10 @@ async function loadDashboard() {
 
 /**
  * Carrega e exibe o detalhamento de um código de erro selecionado na lista.
+ *
+ * A API responde 404 quando o código não tem ocorrências na janela — situação
+ * possível se os dados mudarem entre a carga do ranking e o clique. Esse caso
+ * recebe uma mensagem própria, em vez do texto genérico de erro.
  *
  * @param {string} errorCode - Código do erro selecionado.
  * @returns {Promise<void>} Resolve quando o painel foi atualizado.
@@ -444,7 +563,11 @@ async function selectError(errorCode) {
     const { data } = await getErrorDetails(errorCode);
     renderErrorDetails(data);
   } catch (error) {
-    renderState(container, error.message, "error");
+    const message =
+      error.status === 404
+        ? "Este erro não tem mais ocorrências na janela consultada."
+        : error.message;
+    renderState(container, message, "error");
   }
 }
 
