@@ -122,4 +122,10 @@ Em termos emocionais, há várias pressões importantes:
 
 &nbsp;&nbsp;&nbsp;&nbsp;Esses benefícios estão claramente alinhados às expectativas dos clientes internos (engenharia, SRE, produto, gestão) e também refletem efeitos externos desejáveis (melhor percepção do usuário, vantagem competitiva), atendendo ao nível máximo esperado pelo grupo Globo. 
 
+## Conclusão
 
+&nbsp;&nbsp;&nbsp;&nbsp;A análise do Canvas de Proposta de Valor evidencia que o projeto responde de forma direta e consistente às necessidades específicas do parceiro no contexto de streaming multiplataforma. O perfil do cliente, composto por times de engenharia de aplicativos, plataforma de vídeo, SRE/observabilidade e produto, opera em um ambiente de alta escala e grande heterogeneidade de dispositivos, no qual visibilidade operacional não é um opcional, mas um pré‑requisito para manter a qualidade de experiência e cumprir SLAs.
+
+&nbsp;&nbsp;&nbsp;&nbsp;Do ponto de vista das tarefas do cliente, a solução se posiciona como um habilitador central para monitorar a saúde do frontend, detectar degradações de QoE, investigar causa raiz de incidentes, integrar dados ao ecossistema interno e, ao mesmo tempo, controlar custos de observabilidade. As dores identificadas, especialmente os pontos cegos em dispositivos legados, a dependência de métricas agregadas, o diagnóstico lento e o custo elevado de ferramentas externas, são diretamente endereçadas pela proposta de valor por meio de APIs unificadas, suporte a protocolos legados, normalização de eventos, segmentação rica e correlação por sessão.
+
+&nbsp;&nbsp;&nbsp;&nbsp;Em contrapartida, os ganhos mapeados, como visibilidade completa por dispositivo e plataforma, detecção precoce de problemas, redução de MTTD/MTTR, diminuição do gasto com soluções de mercado e maior autonomia técnica, derivam de capacidades concretas da solução. Internamente, isso se traduz em operação mais eficiente, menor exposição a riscos de SLA e melhor uso de recursos financeiros. Externamente, contribui para uma experiência de streaming mais estável e consistente, reforçando a percepção de confiabilidade da plataforma perante os usuários e o mercado.
