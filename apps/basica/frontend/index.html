@@ -25,23 +25,6 @@
   </head>
 
   <body>
-    <!-- Barra lateral: identidade visual e atalhos para as seções da página -->
-    <aside class="rail" aria-label="Navegação">
-      <div class="rail__logo" aria-hidden="true">
-        <svg viewBox="0 0 32 32" width="26" height="26">
-          <path
-            d="M16 0c0 8.8 7.2 16 16 16-8.8 0-16 7.2-16 16 0-8.8-7.2-16-16-16 8.8 0 16-7.2 16-16z"
-            fill="currentColor"
-          />
-        </svg>
-      </div>
-      <nav class="rail__nav">
-        <a class="rail__link" href="#visao-geral" title="Visão geral">Visão geral</a>
-        <a class="rail__link" href="#qualidade" title="Qualidade">Qualidade</a>
-        <a class="rail__link" href="#erros" title="Erros">Erros</a>
-      </nav>
-    </aside>
-
     <main class="page">
       <header class="page__header">
         <div>
@@ -65,7 +48,7 @@
       </div>
 
       <!-- ============================ Visão geral ============================ -->
-      <section id="visao-geral" class="section">
+      <section class="section">
         <div class="headline">
           <h2 id="headline-text" class="headline__text">Carregando…</h2>
           <p id="headline-caption" class="headline__caption"></p>
@@ -74,7 +57,7 @@
       </section>
 
       <!-- ============================= Qualidade ============================= -->
-      <section id="qualidade" class="section">
+      <section class="section">
         <h2 class="section__title">Qualidade de experiência</h2>
         <div id="qoe-cards" class="cards" aria-live="polite"></div>
 
@@ -85,7 +68,7 @@
       </section>
 
       <!-- =============================== Erros =============================== -->
-      <section id="erros" class="section">
+      <section class="section">
         <h2 class="section__title">Erros mais frequentes</h2>
         <p class="section__hint">
           Selecione um erro da lista para ver as ocorrências registradas.

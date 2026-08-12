@@ -15,7 +15,7 @@
  *
  * @type {string}
  */
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "COLOCAAR O IP PUBLICO DA EC2 DO BACK";
 
 /**
  * Intervalo, em milissegundos, entre atualizações automáticas dos dados.

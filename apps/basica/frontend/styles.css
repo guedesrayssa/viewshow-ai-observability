@@ -56,7 +56,6 @@
   --surface: #f5f6f7;
   --border: #e3e5e8;
   --white: #ffffff;
-  --rail: #23262b;
 
   --radius: 12px;
   --shadow: 0 1px 2px rgba(20, 24, 30, 0.05), 0 4px 16px rgba(20, 24, 30, 0.04);
@@ -76,7 +75,6 @@ body {
   font-weight: 400;
   color: var(--text);
   background: var(--surface);
-  display: flex;
   min-height: 100vh;
 }
 
@@ -87,60 +85,18 @@ h3 {
   font-weight: 600;
 }
 
-/* ============================ Barra lateral ============================ */
-
-.rail {
-  width: 76px;
-  flex-shrink: 0;
-  background: var(--rail);
-  color: var(--white);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  padding: 22px 0;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-}
-
-.rail__logo {
-  color: var(--white);
-  display: flex;
-}
-
-.rail__nav {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-}
-
-.rail__link {
-  color: rgba(255, 255, 255, 0.62);
-  text-decoration: none;
-  font-size: 10px;
-  font-weight: 500;
-  text-align: center;
-  padding: 10px 4px;
-  border-left: 3px solid transparent;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-
-.rail__link:hover,
-.rail__link:focus-visible {
-  color: var(--white);
-  background: rgba(255, 255, 255, 0.06);
-  border-left-color: var(--brand-purple);
-}
-
 /* =============================== Página =============================== */
 
 .page {
-  flex: 1;
-  min-width: 0;
-  padding: 36px 40px 56px;
-  max-width: 1400px;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 44px 40px 56px;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 28px 20px 40px;
+  }
 }
 
 .page__header {
@@ -264,7 +220,6 @@ h3 {
 
 .section {
   margin-bottom: 44px;
-  scroll-margin-top: 24px;
 }
 
 .section__title {
