@@ -1,0 +1,33 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# ---------- Node ----------
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+
+# ---------- Variáveis de ambiente ----------
+# .env.example é versionado de propósito e não deve ser ignorado.
+.env
+.env.local
+.env.*.local
+
+# ---------- Ferramentas e sistema operacional ----------
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ---------- AWS ----------
+.aws-sam/
+*.pem
