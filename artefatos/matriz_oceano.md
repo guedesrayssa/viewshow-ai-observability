@@ -4,6 +4,14 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;No contexto deste projeto, a matriz foi construída considerando a realidade operacional do Globoplay e o cenário competitivo de ferramentas de monitoramento/telemetria de frontend disponíveis no mercado (por exemplo, soluções de RUM/APM voltadas a aplicações web e mobile). A análise toma como referência um conjunto de oito atributos considerados críticos para os times de engenharia, SRE e produto, permitindo visualizar como a plataforma proprietária proposta se diferencia das alternativas tradicionais.
 
+<figure>
+  <img src="../assets/negocios/Matriz_oceano.png" alt="Matriz Do Oceano Azul" width="500">
+  <figcaption>
+  </figcaption>
+</figure>
+<strong>Figura 1:</strong> Matriz Do Oceano Azul. <br>
+    <em>Fonte: Grupo 05 (2026).</em>
+
 ---
 
 ## Atributos considerados
