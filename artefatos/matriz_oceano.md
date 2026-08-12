@@ -182,3 +182,11 @@
 &nbsp;&nbsp;&nbsp;&nbsp;Ao criar esse atributo, a plataforma permite que a telemetria evolua junto com o produto, sem ficar limitada à taxonomia de eventos de um vendor. Isso gera **um salto de valor** em termos de relevância dos dados coletados e de aderência às perguntas que a operação e o negócio realmente precisam responder.
 
 ---
+
+## Conclusão
+
+&nbsp;&nbsp;&nbsp;&nbsp;A Matriz de Avaliação de Valor do Oceano Azul mostra que a plataforma de telemetria proposta não busca apenas “ser mais uma ferramenta de monitoramento”, mas reconstruir o espaço de valor desse tipo de solução para o contexto específico do Globoplay. Ao **reduzir** o custo total de telemetria e **eliminar** a dependência estratégica de fornecedores externos, o projeto ataca diretamente as limitações econômicas e de governança da abordagem atual.  
+
+&nbsp;&nbsp;&nbsp;&nbsp;Simultaneamente, ao **aumentar** granularidade de segmentação, capacidade de diagnóstico, integração com o ecossistema interno e qualidade das métricas de QoE, a solução eleva o nível de serviço entregue às equipes técnicas. Por fim, ao **criar** cobertura estruturada para dispositivos legados e um modelo de dados customizável, a plataforma oferece atributos que o mercado praticamente não disponibiliza, gerando uma nova curva de valor alinhada às necessidades reais da operação de streaming em um país continental.  
+
+&nbsp;&nbsp;&nbsp;&nbsp;Dessa forma, a matriz evidencia que a estratégia do projeto está em linha com os princípios do Oceano Azul: **reduzir e eliminar fatores que aumentam custo sem agregar valor proporcional** e, ao mesmo tempo, **aumentar e criar fatores que ampliam significativamente o valor percebido pelos clientes internos e, indiretamente, pelos usuários finais do serviço de streaming**.
