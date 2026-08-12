@@ -35,7 +35,7 @@ Foram mapeadas três personas complementares, apresentadas na ordem de participa
 
 ## 2. Personas
 
-### 2.1 Persona 1 — Matheus Souza
+### 2.1 Persona 1 - Matheus Souza
 
 **Cargo:** Analista de Atendimento Técnico N1
 
@@ -63,7 +63,7 @@ Matheus trabalha em regime operacional, inclusive durante plantões com pouca di
 - Identificar quantas sessões ou pessoas usuárias foram afetadas.
 - Consultar causas prováveis, níveis de confiança e evidências.
 - Segmentar dados por dispositivo, versão, região, conteúdo, sinal, CDN e componente.
-- Receber uma indicação justificada da equipe ou fila responsável.
+- Reunir dados e evidências para identificar a equipe ou fila mais provável.
 
 #### Decisão central
 
@@ -71,7 +71,7 @@ Matheus trabalha em regime operacional, inclusive durante plantões com pouca di
 
 Matheus não corrige código, altera métricas nem configura componentes de produção por meio da plataforma.
 
-### 2.2 Persona 2 — Giovanna Matsu
+### 2.2 Persona 2 - Giovanna Matsu
 
 **Cargo:** Engenheira de Software
 
@@ -109,7 +109,7 @@ Giovanna recebe incidentes encaminhados pelo atendimento N1 e também atua em de
 
 A correção, o deploy e o rollback permanecem nos repositórios e pipelines existentes; a plataforma apoia a investigação e a validação.
 
-### 2.3 Persona 3 — Fernanda Oliveira
+### 2.3 Persona 3 - Fernanda Oliveira
 
 **Cargo:** Product Manager de Experiência do Globoplay
 
@@ -221,20 +221,21 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** Médias gerais podem ocultar falhas que atingem uma combinação específica de modelo de TV, versão, região, ISP, conteúdo ou CDN.
 
-#### US-N1-05 — Identificar a equipe responsável
+#### US-N1-05 — Reunir insumos para o direcionamento
 
-**User Story:** Como analista de atendimento técnico N1, eu quero receber uma indicação da equipe ou fila mais provável para tratar o incidente, para reduzir encaminhamentos incorretos e o tempo gasto entre diferentes áreas.
+**User Story:** Como analista de atendimento técnico N1, eu quero ter dados e insumos suficientes para identificar a equipe ou fila mais provável para tratar o incidente, para reduzir encaminhamentos incorretos e o tempo gasto nas correções.
 
 **Critérios de aceitação:**
 
-- O sistema deve sugerir uma fila ou equipe com base na hipótese mais provável.
-- A sugestão deve estar associada a um componente, como player, CDN, backend, identidade, web, iOS, Android ou aplicação de TV.
-- A plataforma deve apresentar a justificativa da recomendação.
+- O sistema deve apresentar a hipótese mais provável, seu nível de confiança e as evidências associadas.
+- Os dados devem permitir identificar os componentes possivelmente envolvidos, como player, CDN, backend, identidade, web, iOS, Android ou aplicação de TV.
+- A plataforma deve apresentar o recorte afetado, incluindo dispositivo, versão, região, conteúdo ou infraestrutura, conforme a disponibilidade dos dados.
 - A pessoa usuária deve poder copiar ou registrar um resumo com hipótese, evidências e recorte afetado.
-- Quando a hipótese envolver mais de um componente, o sistema deve indicar a possível necessidade de investigação conjunta.
+- Quando as evidências envolverem mais de um componente, a plataforma deve deixar essa relação explícita para apoiar a avaliação do analista.
+- A decisão sobre a equipe ou fila de encaminhamento deve permanecer sob responsabilidade do analista N1.
 - A plataforma não deve corrigir código, alterar configurações nem publicar mudanças.
 
-**Fundamentação:** O papel do N1 é interpretar as informações e encaminhar o incidente ao time com maior probabilidade de resolvê-lo.
+**Fundamentação:** O papel do N1 é interpretar as informações disponíveis e decidir o encaminhamento do incidente. A plataforma apoia essa decisão com hipóteses, evidências e contexto, sem assumir automaticamente qual equipe será responsável pelo tratamento.
 
 ### 3.3 User Stories da Persona 2
 
@@ -418,4 +419,3 @@ As personas representam etapas complementares da resposta a incidentes do Globop
 ## 8. Referências
 
 - ADAPTWORKS. [Como escrever as melhores User Stories com INVEST](https://blog.adapt.works/como-escrever-as-melhores-user-stories-com-invest/). 2020. Acesso em: 11 ago. 2026.
-- GLOBO; INTELI. *Sessão da tarde: requisitos, MVP, personas e User Stories*. Material de projeto fornecido pelo parceiro, 2026.
