@@ -1,0 +1,5 @@
+# Matriz de Avaliação de Valor – Estratégia do Oceano Azul
+
+&nbsp;&nbsp;&nbsp;&nbsp;A Matriz de Avaliação de Valor do Oceano Azul é uma ferramenta estratégica que permite comparar, de forma estruturada, a proposta de valor de um projeto em relação às soluções existentes no mercado. A partir da identificação de atributos relevantes para o cliente, a matriz orienta decisões sobre quais fatores devem ser **Reduzidos**, **Eliminados**, **Aumentados** ou **Criados** (framework ERRC), com o objetivo de simultaneamente reduzir custos e elevar o valor percebido pelo cliente.  
+
+&nbsp;&nbsp;&nbsp;&nbsp;No contexto deste projeto, a matriz foi construída considerando a realidade operacional do Globoplay e o cenário competitivo de ferramentas de monitoramento/telemetria de frontend disponíveis no mercado (por exemplo, soluções de RUM/APM voltadas a aplicações web e mobile). A análise toma como referência um conjunto de oito atributos considerados críticos para os times de engenharia, SRE e produto, permitindo visualizar como a plataforma proprietária proposta se diferencia das alternativas tradicionais.
