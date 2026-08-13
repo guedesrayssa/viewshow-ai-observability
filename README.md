@@ -1,93 +1,134 @@
-# G05
+<table>
+  <tr>
+    <td><a href="https://www.inteli.edu.br/"><img src="logo-inteli.png" alt="Inteli" width="140"></a></td>
+    <td align="right"><img src="logo-globo.png" alt="Globo" width="140"></td>
+  </tr>
+</table>
 
+# Plataforma de Telemetria de Frontend do Globoplay
 
+**Grupo 05** — Módulo 7, Engenharia de Software — Inteli
+**Parceiro:** Globo
 
-## Getting started
+## Integrantes
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- João Freitas
+- Marcos Marcondes
+- Messias Olivindo
+- Raiane Brandão
+- Rayssa Guedes França
+- Victor Santos
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Descrição do projeto
 
-## Add your files
+As plataformas de monitoração de mercado pressupõem protocolos modernos e um
+parque de dispositivos homogêneo, o que deixa de fora justamente a base real do
+Globoplay: Smart TVs fabricadas entre 2013 e 2026, com pouca capacidade de
+processamento e sem suporte aos SDKs atuais de telemetria — de modo que falhas
+de reprodução nesses aparelhos só chegam à engenharia pelo relato do usuário,
+sem dado que permita diagnosticar a causa. A solução é uma plataforma
+proprietária de telemetria que recebe eventos de reprodução, erros e sinais de
+presença emitidos por qualquer frontend, normaliza tudo em um formato único e
+expõe indicadores de qualidade de experiência e de falhas por meio de uma API de
+consulta e de um painel, permitindo que as equipes de engenharia e observabilidade
+enxerguem a degradação enquanto ela acontece, em vez de depois do fato.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Estrutura de pastas
 
+| Pasta | Conteúdo |
+| --- | --- |
+| `/artefatos` | Documentação: requisitos, arquitetura do backend, análise financeira, roteiro de implantação na AWS, relatório de testes e a coleção do Postman |
+| `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
+| `/assets` | Imagens usadas na documentação |
+| `/slides` | Apresentações das sprints |
+
+## Execução local
+
+Requer **Python 3.10 ou superior** e um navegador. Nada além disso: o painel é
+HTML, CSS e JavaScript servidos como estão, sem etapa de build.
+
+```bash
+git clone https://git.inteli.edu.br/graduacao/2026-2a/t15/g05.git
+cd g05/apps/basica/backend
+
+python3 -m venv .venv
+source .venv/bin/activate          # no Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+python wsgi.py                     # API em http://127.0.0.1:5000
 ```
-cd existing_repo
-git remote add origin https://git.inteli.edu.br/graduacao/2026-2a/t15/g05.git
-git branch -M main
-git push -uf origin main
+
+Em outro terminal, popule a base e sirva o painel:
+
+```bash
+cd apps/basica/backend
+.venv/bin/python scripts/seed_demo.py          # dados de demonstração
+
+cd ../frontend
+python3 -m http.server 5173                    # painel em http://localhost:5173
 ```
 
-## Integrate with your tools
+O painel já vem apontado para `http://localhost:5000`. Para apontá-lo a outra
+API, altere `API_BASE_URL` em `apps/basica/frontend/config.js` — é o único
+arquivo que muda entre ambientes.
 
-- [ ] [Set up project integrations](https://git.inteli.edu.br/graduacao/2026-2a/t15/g05/-/settings/integrations)
+Sem configuração adicional a API guarda os dados em memória, e eles somem ao
+reiniciar. Para persistir no DynamoDB, veja
+[`artefatos/backend.md`](artefatos/backend.md).
 
-## Collaborate with your team
+### Testes
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+cd apps/basica/backend
+.venv/bin/python -m unittest discover -s tests -t .   # 160 testes
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+```
 
-## Test and Deploy
+Os testes de GET e POST da API estão na coleção do Postman em
+[`artefatos/postman`](artefatos/postman). Importe a coleção e o ambiente
+`local`, ou rode pela linha de comando:
 
-Use the built-in continuous integration in GitLab.
+```bash
+npx newman run artefatos/postman/telemetria-globoplay.postman_collection.json \
+    -e artefatos/postman/local.postman_environment.json
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+### GitHub Codespaces
 
-***
+Abra o repositório em um Codespace e execute os mesmos comandos acima. O
+Codespace já traz Python 3 e Node; as portas 5000 e 5173 são encaminhadas
+automaticamente, e o painel funciona pela URL pública encaminhada sem nenhum
+ajuste, porque a API libera CORS para qualquer origem no modo padrão.
 
-# Editing this README
+## Execução na AWS
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+A aplicação roda com a API em uma instância **EC2**, os dados no **DynamoDB** e
+o painel publicado como site estático em um bucket **S3**.
 
-## Suggestions for a good README
+O passo a passo completo — criação da instância, Elastic IP, provisionamento da
+tabela, serviço do systemd, bucket, CORS e verificação final — está em
+[`artefatos/deploy-aws.md`](artefatos/deploy-aws.md).
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Resumo dos comandos, com a infraestrutura já criada:
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+# na instância EC2
+sudo cp apps/basica/deploy/telemetria.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now telemetria
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+# na máquina local, publica o painel apontado para a API
+cd apps/basica/deploy
+./deploy-frontend.sh <nome-do-bucket> http://<ip-da-ec2>
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Como o ambiente é um laboratório da AWS Academy, cuja sessão encerra após quatro
+horas, a instância é configurada com Elastic IP e com o serviço habilitado no
+systemd. Isso faz a API voltar sozinha, no mesmo endereço, bastando iniciar a
+instância na sessão seguinte.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## Documentação adicional
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- [Arquitetura e endpoints do backend](artefatos/backend.md)
+- [Especificação de requisitos](artefatos/requisitos.md)
+- [Roteiro de implantação na AWS](artefatos/deploy-aws.md)
+- [Análise financeira](artefatos/analise_financeira.md)
