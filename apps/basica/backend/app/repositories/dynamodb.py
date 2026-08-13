@@ -157,9 +157,7 @@ class DynamoDbTelemetryRepository(TelemetryRepository):
             )
         ]
         for chunk in _chunks(keys, _BATCH_WRITE_LIMIT):
-            self._write_batch(
-                [{"DeleteRequest": {"Key": self._encode(key)}} for key in chunk]
-            )
+            self._write_batch([{"DeleteRequest": {"Key": self._encode(key)}} for key in chunk])
 
     # Internos -----------------------------------------------------------
 

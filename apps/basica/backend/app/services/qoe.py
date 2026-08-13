@@ -70,7 +70,7 @@ class QoeService:
                 "end": to_iso(bucket.end),
                 "metrics": self.summarize(events).as_dict(),
             }
-            for bucket, events in zip(buckets, grouped)
+            for bucket, events in zip(buckets, grouped, strict=True)
         ]
         return {
             "window": window.as_dict(),

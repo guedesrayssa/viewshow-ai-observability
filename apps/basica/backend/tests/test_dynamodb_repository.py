@@ -189,7 +189,7 @@ class _StubClient:
         self.query_requests.append(request)
         return self.query_pages[len(self.query_requests) - 1]
 
-    def batch_write_item(self, RequestItems):  # noqa: N803 - assinatura do boto3
+    def batch_write_item(self, RequestItems):
         self.write_calls += 1
         if self.write_calls <= self.unprocessed_rounds:
             table, requests = next(iter(RequestItems.items()))
@@ -239,9 +239,11 @@ class DynamoDbBatchWriteTests(unittest.TestCase):
         client = _StubClient(unprocessed_rounds=_MAX_WRITE_ATTEMPTS + 1)
         store = DynamoDbTelemetryRepository(table_name=TABLE, client=client)
 
-        with mock.patch("app.repositories.dynamodb.time.sleep"):
-            with self.assertRaises(RuntimeError):
-                store.add_events([event(minutes=1)])
+        with (
+            mock.patch("app.repositories.dynamodb.time.sleep"),
+            self.assertRaises(RuntimeError),
+        ):
+            store.add_events([event(minutes=1)])
 
     def test_batches_respect_the_25_item_limit(self):
         client = _StubClient()
