@@ -54,7 +54,7 @@ Foram mapeadas três personas complementares, apresentadas na ordem de participa
 Matheus trabalha em regime operacional, inclusive durante plantões com pouca disponibilidade de especialistas. Recebe incidentes por telefone, e-mail, WhatsApp, alertas e registros internos. Frequentemente precisa tomar decisões a partir de informações incompletas e consultar diferentes ferramentas de telemetria para compreender a jornada do usuário e buscar a causa raiz.
 
 <div align="center">
-	<img src="../assets/persona-1.png" alt="Imagem da Persona 1">
+	<img src="../assets/persona1.png" alt="Imagem da Persona 1">
 	<p><em>Figura 1 - Descrição da Persona 1. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
@@ -90,7 +90,7 @@ Matheus não corrige código, altera métricas nem configura componentes de prod
 Giovanna recebe incidentes encaminhados pelo atendimento N1 e também atua em degradações sistêmicas. Embora o chamado possa conter um pré-diagnóstico, ela precisa revalidar a hipótese, descartar relações com outros componentes e correlacionar dados dispersos em múltiplos sistemas. A investigação pode depender de combinações específicas de dispositivo, sistema, versão, região, conteúdo ou infraestrutura.
 
 <div align="center">
-	<img src="../assets/persona-2.png" alt="Imagem da Persona 2">
+	<img src="../assets/persona2.png" alt="Imagem da Persona 2">
 	<p><em>Figura 2 - Descrição da Persona 2. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
@@ -128,7 +128,7 @@ A correção, o deploy e o rollback permanecem nos repositórios e pipelines exi
 Fernanda acessa a plataforma periodicamente para transformar dados técnicos em uma visão estratégica do produto. Ela precisa compreender quais problemas afetam mais sessões e segmentos, comparar a experiência entre plataformas e acompanhar o histórico de degradações. Sua análise utiliza dados agregados e não exige acesso a logs brutos.
 
 <div align="center">
-	<img src="../assets/persona-3.png" alt="Imagem da Persona 3">
+	<img src="../assets/persona3.png" alt="Imagem da Persona 3">
 	<p><em>Figura 3 - Descrição da Persona 3. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
