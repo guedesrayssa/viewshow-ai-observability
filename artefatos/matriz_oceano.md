@@ -1,6 +1,6 @@
 # Matriz de Avaliação de Valor – Estratégia do Oceano Azul
 
-&nbsp;&nbsp;&nbsp;&nbsp;A Matriz de Avaliação de Valor do Oceano Azul é uma ferramenta estratégica que permite comparar, de forma estruturada, a proposta de valor de um projeto em relação às soluções existentes no mercado. A partir da identificação de atributos relevantes para o cliente, a matriz orienta decisões sobre quais fatores devem ser **Reduzidos**, **Eliminados**, **Aumentados** ou **Criados** (framework ERRC), com o objetivo de reduzir custos e elevar o valor percebido pelo cliente.  
+&nbsp;&nbsp;&nbsp;&nbsp;A Matriz de Avaliação de Valor do Oceano Azul é uma ferramenta estratégica que permite comparar, de forma estruturada, a proposta de valor de um projeto em relação às soluções existentes no mercado. A partir da identificação de atributos relevantes para o cliente, a matriz orienta decisões sobre quais fatores devem ser **Reduzidos**, **Eliminados**, **Aumentados** ou **Criados** (framework ERRC), com o objetivo de reduzir custos e elevar o valor percebido pelo cliente (KIM; MAUBORGNE, 2005).  
 
 &nbsp;&nbsp;&nbsp;&nbsp;No contexto deste projeto, a matriz foi construída considerando a realidade operacional do Globoplay, serviço de streaming que atende à totalidade do território brasileiro, um país de dimensões continentais, e o cenário competitivo de ferramentas de monitoramento/telemetria de frontend disponíveis no mercado (por exemplo, soluções de RUM/APM voltadas a aplicações web e mobile). A análise toma como referência um conjunto de oito atributos considerados críticos para os times de engenharia, SRE e produto, permitindo visualizar como a plataforma proprietária proposta se diferencia das alternativas tradicionais.
 
@@ -206,3 +206,9 @@
 &nbsp;&nbsp;&nbsp;&nbsp;Simultaneamente, ao **aumentar** granularidade de segmentação, capacidade de diagnóstico, integração com o ecossistema interno e qualidade das métricas de QoE, a solução eleva o nível de serviço entregue às equipes técnicas. Ao **criar** cobertura estruturada para dispositivos legados e um modelo de dados customizável, a plataforma oferece atributos que o mercado praticamente não disponibiliza, gerando uma nova curva de valor alinhada às necessidades reais da operação de streaming em um país continental.  
 
 &nbsp;&nbsp;&nbsp;&nbsp;Dessa forma, a matriz demonstra que a estratégia do projeto está em linha com os princípios do Oceano Azul: **reduzir e eliminar fatores que aumentam custo sem agregar valor proporcional** e, ao mesmo tempo, **aumentar e criar fatores que ampliam significativamente o valor percebido pelos clientes internos e, indiretamente, pelos usuários finais do serviço de streaming**.
+
+---
+
+## Referências
+
+KIM, W. Chan; MAUBORGNE, Renée. **Blue Ocean Strategy**: How to Create Uncontested Market Space and Make the Competition Irrelevant. Boston: Harvard Business School Press, 2005.

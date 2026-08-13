@@ -1,6 +1,6 @@
 # Canvas de Proposta de Valor 
 
-&nbsp;&nbsp;&nbsp;&nbsp;A Proposta de Valor (Value Proposition Canvas) é um modelo estratégico de posicionamento de mercado que define o conjunto de benefícios tangíveis e intangíveis que uma organização se compromete a entregar aos seus segmentos de clientes. Ela atua como o núcleo de diferenciação competitiva, alinhando as capacidades operacionais da empresa com as necessidades específicas do mercado-alvo.
+&nbsp;&nbsp;&nbsp;&nbsp;A Proposta de Valor (Value Proposition Canvas) é um modelo estratégico de posicionamento de mercado que define o conjunto de benefícios tangíveis e intangíveis que uma organização se compromete a entregar aos seus segmentos de clientes (OSTERWALDER et al., 2014). Ela atua como o núcleo de diferenciação competitiva, alinhando as capacidades operacionais da empresa com as necessidades específicas do mercado-alvo.
 
 <figure>
   <img src="../assets/negocios/Canvas_prop.png" alt="Canvas De Proposta de Valor" width="500">
@@ -72,13 +72,13 @@ Em termos emocionais, há várias pressões importantes:
 
 ## Dores do Cliente
 
-&nbsp;&nbsp;&nbsp;&nbsp;As dores a seguir são delimitadas em relação ao projeto e descrevem problemas concretos que a solução se propõe a solucionar. Os relatos foram levantados junto ao parceiro Globoplay, com base em entrevistas e reuniões de levantamento de requisitos com as equipes de Engenharia, SRE e Produto (Globoplay, 2026), e cada dor é classificada quanto à sua **severidade** (Extrema ou Moderada), conforme o nível de impacto na operação e na experiência do usuário.
+&nbsp;&nbsp;&nbsp;&nbsp;As dores a seguir são delimitadas em relação ao projeto e descrevem problemas concretos que a solução se propõe a solucionar. Os relatos foram levantados junto ao parceiro Globoplay, com base em entrevistas e reuniões de levantamento de requisitos com as equipes de Engenharia, SRE e Produto (GRUPO GLOBO, 2026), e cada dor é classificada quanto à sua **severidade** (Extrema ou Moderada), conforme o nível de impacto na operação e na experiência do usuário.
 
 ### Pontos cegos em dispositivos legados
 
 **Severidade:** Extrema
 
-&nbsp;&nbsp;&nbsp;&nbsp;Parte relevante da audiência usa TVs e dispositivos legados que não suportam padrões modernos de telemetria. Hoje, esses clientes praticamente “somem” dos dashboards (relato do parceiro Globoplay, 2026), o que significa que incidentes concentrados nessa base só são percebidos quando chegam em suporte, redes sociais ou indicadores indiretos. Essa falta de visibilidade compromete o controle operacional e aumenta o risco de crises em segmentos específicos.
+&nbsp;&nbsp;&nbsp;&nbsp;Parte relevante da audiência usa TVs e dispositivos legados que não suportam padrões modernos de telemetria. Hoje, esses clientes praticamente “somem” dos dashboards (GRUPO GLOBO, 2026), o que significa que incidentes concentrados nessa base só são percebidos quando chegam em suporte, redes sociais ou indicadores indiretos. Essa falta de visibilidade compromete o controle operacional e aumenta o risco de crises em segmentos específicos.
 
 ### Métricas agregadas e baixa segmentação escondem problemas locais
 
@@ -218,3 +218,10 @@ Em termos emocionais, há várias pressões importantes:
 &nbsp;&nbsp;&nbsp;&nbsp;Do ponto de vista das tarefas do cliente, a solução se posiciona como um habilitador central para monitorar a saúde do frontend, detectar degradações de QoE, investigar causa raiz de incidentes, integrar dados ao ecossistema interno e, ao mesmo tempo, controlar custos de observabilidade. As dores identificadas, especialmente os pontos cegos em dispositivos legados, a dependência de métricas agregadas, o diagnóstico lento e o custo elevado de ferramentas externas, são diretamente endereçadas pela proposta de valor por meio de APIs unificadas, suporte a protocolos legados, normalização de eventos, segmentação rica e correlação por sessão.
 
 &nbsp;&nbsp;&nbsp;&nbsp;Em contrapartida, os ganhos mapeados, como visibilidade completa por dispositivo e plataforma, detecção precoce de problemas, redução de MTTD/MTTR, diminuição do gasto com soluções de mercado e maior autonomia técnica, derivam de capacidades concretas da solução. Internamente, isso se traduz em operação mais eficiente, menor exposição a riscos de SLA e melhor uso de recursos financeiros. Externamente, contribui para uma experiência de streaming mais estável e consistente, reforçando a percepção de confiabilidade da plataforma perante os usuários e o mercado.
+
+---
+
+## Referências
+
+OSTERWALDER, Alexander et al. **Value Proposition Design**: How to Create Products and Services Customers Want. Hoboken: John Wiley & Sons, 2014.
+
