@@ -597,11 +597,11 @@ A marca usa uma estrela central associada à ideia de visão e destaque, envolvi
 ### 7.3 Componentes reutilizáveis
 
 <div align="center">
-  <img src="../assets/components.png" alt="Biblioteca de componentes do View Show" style="max-width:900px;height:auto;">
-  <p><em>Figura 24 - Biblioteca de componentes do View Show. Fonte: Autoria própria (2026).</em></p>
+  <img src="../assets/componentes.png" alt="Biblioteca de componentes do View Show" style="max-width:900px;height:auto;">
+  <p><em>Figura 24 - Componentes reutilizáveis criados. Fonte: Autoria própria (2026).</em></p>
 </div>
 
-A biblioteca registra selos de status, filtros, botões, itens da barra lateral, abas, alternância entre dado normalizado e bruto, cartão de hipótese e cartões de KPI. A reutilização reduz ambiguidades e reforça consistência entre telas, em consonância com as regras de consistência de Nielsen e Shneiderman (NIELSEN, 2024; SHNEIDERMAN et al., 2016).
+
 
 ## 8. Usabilidade e acessibilidade
 
