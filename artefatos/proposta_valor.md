@@ -72,62 +72,144 @@ Em termos emocionais, há várias pressões importantes:
 
 ## Dores do Cliente
 
-&nbsp;&nbsp;&nbsp;&nbsp;As dores a seguir são delimitadas em relação ao projeto e descrevem problemas concretos que a solução se propõe a solucionar. 
+&nbsp;&nbsp;&nbsp;&nbsp;As dores a seguir são delimitadas em relação ao projeto e descrevem problemas concretos que a solução se propõe a solucionar. Os relatos foram levantados junto ao parceiro Globoplay, com base em entrevistas e reuniões de levantamento de requisitos com as equipes de Engenharia, SRE e Produto (Globoplay, 2026), e cada dor é classificada quanto à sua **severidade** (Extrema ou Moderada), conforme o nível de impacto na operação e na experiência do usuário.
 
 ### Pontos cegos em dispositivos legados
-&nbsp;&nbsp;&nbsp;&nbsp;Parte relevante da audiência usa TVs e dispositivos legados que não suportam padrões modernos de telemetria. Hoje, esses clientes praticamente “somem” dos dashboards, o que significa que incidentes concentrados nessa base só são percebidos quando chegam em suporte, redes sociais ou indicadores indiretos. Essa falta de visibilidade compromete o controle operacional e aumenta o risco de crises em segmentos específicos.
 
-### Métricas agregadas que escondem problemas locais
-&nbsp;&nbsp;&nbsp;&nbsp;Os sistemas atuais tendem a apresentar métricas agregadas por aplicação ou região ampla. Problemas que atingem um conjunto específico de devices, versões de app ou combinações de OS e CDNs podem passar despercebidos, pois se diluem na média global. Isso leva a uma detecção tardia de incidentes e dificulta justificar que “o problema está em X e não no serviço inteiro”.
+**Severidade:** Extrema
+
+&nbsp;&nbsp;&nbsp;&nbsp;Parte relevante da audiência usa TVs e dispositivos legados que não suportam padrões modernos de telemetria. Hoje, esses clientes praticamente “somem” dos dashboards (relato do parceiro Globoplay, 2026), o que significa que incidentes concentrados nessa base só são percebidos quando chegam em suporte, redes sociais ou indicadores indiretos. Essa falta de visibilidade compromete o controle operacional e aumenta o risco de crises em segmentos específicos.
+
+### Métricas agregadas e baixa segmentação escondem problemas locais
+
+**Severidade:** Extrema
+
+&nbsp;&nbsp;&nbsp;&nbsp;Os sistemas atuais tendem a apresentar métricas agregadas por aplicação ou região ampla, e a falta de filtros por device family, device model, OS version, app version, CDN e tipo de playback limita a investigação. Problemas que atingem um conjunto específico de devices, versões de app ou combinações de OS e CDNs podem passar despercebidos, pois se diluem na média global, o que dificulta responder perguntas operacionais como “acontece só na versão X?”, “só em tal marca de TV?” ou “só em live?”. Isso leva a uma detecção tardia de incidentes e dificulta justificar que “o problema está em X e não no serviço inteiro”.
 
 ### Diagnóstico lento e fragmentado de incidentes
+
+**Severidade:** Extrema
+
 &nbsp;&nbsp;&nbsp;&nbsp;Quando um problema é detectado, o caminho até a causa raiz é longo. Muitas vezes é necessário cruzar manualmente dados de diferentes ferramentas (RUM, logs, APM, ferramentas de player), sem uma visão contínua da sessão do usuário. Isso resulta em MTTR elevado, maior duração dos incidentes e maior impacto na experiência do usuário.
 
 ### Custo elevado com ferramentas externas de observabilidade
+
+**Severidade:** Moderada
+
 &nbsp;&nbsp;&nbsp;&nbsp;Como as ferramentas de mercado cobram por volume de eventos/sessões, a combinação de alta audiência com necessidade de detalhamento gera custos anuais muito altos. Em alguns casos, a solução é reduzir o nível de detalhe ou o volume coletado, o que volta a piorar a visibilidade. Essa dor é tanto técnica (limitação de uso) quanto financeira.
 
 ### Dependência estratégica de fornecedores (vendor lock-in)
+
+**Severidade:** Moderada
+
 &nbsp;&nbsp;&nbsp;&nbsp;A empresa depende de ferramentas externas para uma capacidade crítica: enxergar o que está acontecendo na ponta. Mudanças de preço, de contrato, de roadmap de produto ou até a descontinuação de integrações podem impactar diretamente a operação. Isso gera risco estratégico e reduz a capacidade de planejar a longo prazo.
 
 ### Dificuldade de lidar com protocolos heterogêneos e legados
+
+**Severidade:** Moderada
+
 &nbsp;&nbsp;&nbsp;&nbsp;A diversidade de dispositivos implica múltiplos padrões e limitações de comunicação. Protocolos antigos, payloads limitados, falta de suporte a bibliotecas modernas de observabilidade: tudo isso torna difícil usar soluções “one size fits all”. Parte dos devices simplesmente não consegue falar com os sistemas atuais de telemetria.
 
-### Baixa segmentação para análise investigativa
-&nbsp;&nbsp;&nbsp;&nbsp;Mesmo quando há dados, a falta de filtros por device family, device model, OS version, app version, CDN e tipo de playback limita a investigação. Muitas perguntas operacionais (“acontece só na versão X?”, “só em tal marca de TV?”, “só em live?”) não podem ser respondidas de forma ágil com os dashboards disponíveis hoje.
+### Correlação limitada entre frontend, player e backend
 
-&nbsp;&nbsp;&nbsp;&nbsp;Correlação limitada entre frontend, player e backend. Em diversas situações, é difícil saber se uma reclamação do usuário está ligada a um problema no app, na API, na CDN ou na infraestrutura local. Falta um identificador consistente de sessão e uma telemetria que conecte os vários pontos da jornada, o que leva a discussões subjetivas entre times em vez de decisões guiadas por dados.
+**Severidade:** Extrema
+
+&nbsp;&nbsp;&nbsp;&nbsp;Em diversas situações, é difícil saber se uma reclamação do usuário está ligada a um problema no app, na API, na CDN ou na infraestrutura local. Falta um identificador consistente de sessão e uma telemetria que conecte os vários pontos da jornada, o que leva a discussões subjetivas entre times em vez de decisões guiadas por dados.
 
 ---
 
 ## Ganhos do Cliente 
 
-&nbsp;&nbsp;&nbsp;&nbsp;Os ganhos abaixo descrevem vantagens internas e externas que o cliente terá com a implementação da plataforma de telemetria proposta.
+&nbsp;&nbsp;&nbsp;&nbsp;Os ganhos abaixo descrevem vantagens internas e externas que o cliente terá com a implementação da plataforma de telemetria proposta. Cada ganho é classificado quanto à sua **relevância** para o cliente (Essencial ou Bom ter), conforme o quanto impacta diretamente a operação e as metas do parceiro.
 
 ### Visibilidade completa da base de dispositivos
+
+**Relevância:** Essencial
+
 &nbsp;&nbsp;&nbsp;&nbsp;Com a criação de uma plataforma capaz de receber, normalizar e processar dados de dispositivos modernos e legados, o cliente passa a enxergar o comportamento de praticamente toda a audiência. Isso elimina pontos cegos em segmentos importantes e permite que decisões sejam tomadas com uma visão mais fiel da realidade.
 
 ### Detecção precoce de degradações e incidentes
+
+**Relevância:** Essencial
+
 &nbsp;&nbsp;&nbsp;&nbsp;A combinação de coleta em tempo quase real, segmentação rica e métricas específicas de QoE permite identificar degradações ainda em estágio inicial, muitas vezes antes de gerarem picos em suporte ou repercussão externa. Internamente, isso se traduz em uma operação mais proativa; externamente, em menos impacto percebido pelo usuário final.
 
 ### Redução do tempo de diagnóstico e resolução (MTTD/MTTR)
+
+**Relevância:** Essencial
+
 &nbsp;&nbsp;&nbsp;&nbsp;Ao fornecer dashboards com filtros cumulativos, correlação por sessão e visões segmentadas, a plataforma encurta o caminho entre “algo está errado” e “o problema está exatamente aqui”. Isso reduz MTTD (tempo para detectar) e MTTR (tempo para resolver), o que é crítico tanto para operação quanto para percepção do usuário.
 
 ### Redução de custos com ferramentas de observabilidade
-&nbsp;&nbsp;&nbsp;&nbsp;Ao internalizar parte importante da telemetria e usar a plataforma própria como fonte principal, a empresa pode reduzir o uso intensivo de ferramentas externas caras. Isso diminui o custo total de observabilidade, libera orçamento para outras iniciativas e reduz a pressão para fazer trade-offs entre custo e nível de detalhamento.
+
+**Relevância:** Essencial
+
+&nbsp;&nbsp;&nbsp;&nbsp;Ao internalizar parte importante da telemetria e usar a plataforma própria como fonte principal, a empresa pode reduzir o uso intensivo de ferramentas externas caras. Isso diminui o custo total de observabilidade, libera orçamento para outras iniciativas e reduz a pressão para fazer trade-offs entre custo e nível de detalhamento. Com base na pontuação comparativa da Matriz do Oceano Azul (nota 3, contra 8-9 de New Relic e Datadog RUM), estima-se uma redução de até **60% a 70% no custo total de telemetria** em relação às ferramentas de mercado, valor a ser validado com dados reais de consumo após a implementação.
 
 ### Autonomia e flexibilidade técnica
+
+**Relevância:** Bom ter
+
 &nbsp;&nbsp;&nbsp;&nbsp;Com schema próprio, adaptadores por protocolo e APIs unificadas, a empresa ganha autonomia para evoluir a plataforma conforme surgem novas necessidades, novos tipos de dispositivos ou novas métricas de interesse. Isso diminui a dependência de roadmaps de terceiros e permite que a telemetria acompanhe mais de perto a evolução do produto.
 
 ### Métricas de QoE mais relevantes e acionáveis
+
+**Relevância:** Essencial
+
 &nbsp;&nbsp;&nbsp;&nbsp;A nova plataforma permite definir métricas alinhadas ao negócio de streaming, como tempo até início do vídeo, taxa de falha de playback, rebuffer ratio e impacto de certos dispositivos ou rotas de entrega. Essas métricas são mais diretamente relacionadas à experiência do usuário e às metas de produto, aumentando a qualidade das decisões internas.
 
 ### Melhor cumprimento de SLAs e metas internas
+
+**Relevância:** Essencial
+
 &nbsp;&nbsp;&nbsp;&nbsp;Com monitoramento mais preciso por segmento, alertas configuráveis e análises históricas, fica mais fácil acompanhar e garantir o cumprimento de SLAs de qualidade e disponibilidade. Internamente, isso reduz risco de multas e de conflitos entre áreas; externamente, reforça a imagem de confiabilidade para parceiros comerciais e para o público.
 
 ### Melhoria da experiência do usuário final e vantagem competitiva
+
+**Relevância:** Bom ter
+
 &nbsp;&nbsp;&nbsp;&nbsp;No fim da cadeia, uma telemetria mais rica e uma operação mais eficiente se traduzem em menos travamentos, início de vídeo mais rápido e menos frustração para o usuário. Em um mercado competitivo de streaming, essa melhoria consistente de experiência é um ganho externo importante, que contribui para retenção e diferencial competitivo.
 
 &nbsp;&nbsp;&nbsp;&nbsp;Esses benefícios estão claramente alinhados às expectativas dos clientes internos (engenharia, SRE, produto, gestão) e também refletem efeitos externos desejáveis (melhor percepção do usuário, vantagem competitiva), atendendo ao nível máximo esperado pelo grupo Globo. 
+
+---
+
+## Mapa de Valor
+
+&nbsp;&nbsp;&nbsp;&nbsp;Enquanto o Perfil do Cliente descreve o lado direito da Figura 1 (tarefas, dores e ganhos), o **Mapa de Valor** representa o lado esquerdo do Canvas de Proposta de Valor: o conjunto de produtos e serviços que a plataforma proposta entrega, e como cada um deles alivia as dores e amplifica os ganhos mapeados anteriormente.
+
+### Produtos e Serviços
+
+- Plataforma proprietária de telemetria multiplataforma, cobrindo mobile, web, Smart TVs e dispositivos legados.
+- APIs unificadas e adaptadores de protocolo para coleta de eventos em dispositivos com padrões antigos de comunicação.
+- Schema canônico de eventos (`screen_view`, `video_view`, `request`, `session`, `error`), com campos customizáveis de contexto e QoE.
+- Dashboards com filtros cumulativos e segmentação por device family, modelo, OS, versão de app, CDN e tipo de playback.
+- Identificador de sessão único, que permite correlacionar eventos entre frontend, player e backend.
+- Integrações nativas com data lakes, sistemas de alerta, ferramentas de ticket e dashboards já usados internamente pelo Globoplay.
+
+### Analgésicos (Pain Relievers)
+
+&nbsp;&nbsp;&nbsp;&nbsp;Os analgésicos descrevem como os produtos e serviços acima aliviam, especificamente, as dores mapeadas no Perfil do Cliente:
+
+- Os adaptadores de protocolo e as APIs unificadas eliminam os **pontos cegos em dispositivos legados**.
+- A segmentação rica por device, OS, versão de app e CDN resolve o problema de **métricas agregadas e baixa segmentação**.
+- O identificador de sessão único elimina a **correlação limitada entre frontend, player e backend**, substituindo discussões subjetivas por dados.
+- Os dashboards com correlação por sessão e filtros cumulativos atacam diretamente o **diagnóstico lento e fragmentado de incidentes**.
+- A arquitetura proprietária, com custo marginal decrescente, reduz o **custo elevado com ferramentas externas de observabilidade**.
+- O schema próprio e as APIs unificadas eliminam a **dependência estratégica de fornecedores (vendor lock-in)** e a **dificuldade de lidar com protocolos heterogêneos e legados**.
+
+### Criadores de Ganho (Gain Creators)
+
+&nbsp;&nbsp;&nbsp;&nbsp;Os criadores de ganho descrevem como os produtos e serviços amplificam os ganhos mapeados no Perfil do Cliente:
+
+- A normalização de dados de toda a base de dispositivos gera a **visibilidade completa da base de dispositivos**.
+- A coleta em tempo quase real, combinada a métricas específicas de QoE, viabiliza a **detecção precoce de degradações e incidentes**.
+- Os dashboards com correlação por sessão reduzem diretamente o **MTTD/MTTR**.
+- O modelo de custo marginal decrescente da plataforma proprietária sustenta a **redução de custos com ferramentas de observabilidade**.
+- O schema customizável e as APIs unificadas garantem **autonomia e flexibilidade técnica**.
+- As métricas de QoE alinhadas ao negócio de streaming entregam **métricas mais relevantes e acionáveis**.
+
+---
 
 ## Conclusão
 

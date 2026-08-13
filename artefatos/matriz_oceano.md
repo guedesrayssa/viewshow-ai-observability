@@ -2,7 +2,7 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;A Matriz de Avaliação de Valor do Oceano Azul é uma ferramenta estratégica que permite comparar, de forma estruturada, a proposta de valor de um projeto em relação às soluções existentes no mercado. A partir da identificação de atributos relevantes para o cliente, a matriz orienta decisões sobre quais fatores devem ser **Reduzidos**, **Eliminados**, **Aumentados** ou **Criados** (framework ERRC), com o objetivo de reduzir custos e elevar o valor percebido pelo cliente.  
 
-&nbsp;&nbsp;&nbsp;&nbsp;No contexto deste projeto, a matriz foi construída considerando a realidade operacional do Globoplay e o cenário competitivo de ferramentas de monitoramento/telemetria de frontend disponíveis no mercado (por exemplo, soluções de RUM/APM voltadas a aplicações web e mobile). A análise toma como referência um conjunto de oito atributos considerados críticos para os times de engenharia, SRE e produto, permitindo visualizar como a plataforma proprietária proposta se diferencia das alternativas tradicionais.
+&nbsp;&nbsp;&nbsp;&nbsp;No contexto deste projeto, a matriz foi construída considerando a realidade operacional do Globoplay — serviço de streaming que atende à totalidade do território brasileiro, um país de dimensões continentais — e o cenário competitivo de ferramentas de monitoramento/telemetria de frontend disponíveis no mercado (por exemplo, soluções de RUM/APM voltadas a aplicações web e mobile). A análise toma como referência um conjunto de oito atributos considerados críticos para os times de engenharia, SRE e produto, permitindo visualizar como a plataforma proprietária proposta se diferencia das alternativas tradicionais.
 
 <figure>
   <img src="../assets/negocios/Matriz_oceano.png" alt="Matriz Do Oceano Azul" width="500">
@@ -21,13 +21,21 @@
 1. **Custo total de telemetria** – gastos anuais com coleta, processamento e visualização de dados, incluindo licenças de ferramentas externas.
 2. **Cobertura de dispositivos legados** – capacidade de coletar telemetria de TVs e dispositivos antigos, com protocolos ou limitações não atendidos por soluções modernas.
 3. **Granularidade de segmentação** – nível de detalhe disponível para análise por device family, modelo, versão de app, OS, região, CDN, tipo de playback, entre outros.
-4. **Tempo médio de diagnóstico (MTTD/MTTR)** – rapidez para identificar e resolver a causa raiz de incidentes.
+4. **Velocidade de diagnóstico e resolução de incidentes (MTTD/MTTR)** – rapidez para identificar e resolver a causa raiz de incidentes.
 5. **Customização de schema e eventos** – flexibilidade para definir modelos de dados e eventos alinhados às necessidades específicas de streaming.
 6. **Integração com ecossistema interno** – facilidade de integração com data lakes, sistemas de alerta, ferramentas de ticket e dashboards já utilizados pelo Globoplay.
 7. **Qualidade de métricas de QoE** – adequação e precisão das métricas de qualidade de experiência do usuário (TTFF, falha de playback, rebuffer, etc.).
 8. **Dependência de fornecedor externo** – grau de exposição estratégica a ferramentas de terceiros para capacidade crítica de observabilidade.
 
 &nbsp;&nbsp;&nbsp;&nbsp;Com base nesses atributos, a estratégia do projeto foi desenhada utilizando as quatro ações do Oceano Azul: Reduzir, Eliminar, Aumentar e Criar. A seguir, é detalhado, com exemplos de pontuação comparativa e justificativas.
+
+---
+
+## Sobre a pontuação comparativa e as ferramentas de referência
+
+&nbsp;&nbsp;&nbsp;&nbsp;Em cada atributo analisado a seguir, é apresentado um **exemplo de pontuação comparativa**: uma nota de 0 a 10, atribuída de forma qualitativa pelo grupo, que estima o desempenho relativo de cada solução naquele atributo específico. O objetivo dessa pontuação não é fornecer uma medição técnica precisa, e sim ilustrar de forma visual e comparativa como a plataforma proposta se posiciona frente às alternativas de mercado, servindo de base para a construção da curva de valor do Oceano Azul.
+
+&nbsp;&nbsp;&nbsp;&nbsp;As ferramentas usadas como referência de mercado são o **New Relic** e o **Datadog RUM (Real User Monitoring)**, duas plataformas comerciais amplamente adotadas para observabilidade de aplicações web e mobile. Ambas oferecem monitoramento de performance de aplicações (APM) e de experiência real do usuário (RUM), com coleta de métricas como tempo de carregamento, erros e disponibilidade. Foram escolhidas como termo de comparação por representarem o padrão de mercado ao qual a solução proprietária proposta se contrapõe.
 
 ---
 
@@ -94,10 +102,10 @@
 
 ---
 
-### Tempo médio de diagnóstico (MTTD/MTTR)
+### Velocidade de diagnóstico e resolução de incidentes (MTTD/MTTR)
 
-**Ação:** Aumentar (no sentido de performance: reduzir tempo)  
-**Atributo:** Tempo médio de diagnóstico  
+**Ação:** Aumentar  
+**Atributo:** Velocidade de diagnóstico e resolução de incidentes (MTTD/MTTR)  
 
 **Motivação**  
 &nbsp;&nbsp;&nbsp;&nbsp;A velocidade com que um incidente é detectado e diagnosticado é crucial para a qualidade de experiência percebida pelo usuário. Ao criar uma plataforma integrada, com correlação por sessão e filtros cumulativos, o objetivo é **aumentar a capacidade de diagnóstico rápido**, reduzindo tanto o tempo para detectar (MTTD) quanto o tempo para resolver (MTTR).
