@@ -6,9 +6,9 @@ Este documento apresenta o entendimento de experiência do usuário da solução
 
 - [1. Introdução](#1-introdução)
 - [2. Personas](#2-personas)
-  - [2.1 Persona 1 — Matheus Souza](#21-persona-1--matheus-souza)
-  - [2.2 Persona 2 — Giovanna Matsu](#22-persona-2--giovanna-matsu)
-  - [2.3 Persona 3 — Fernanda Oliveira](#23-persona-3--fernanda-oliveira)
+  - [2.1 Persona 1 - Matheus Souza](#21-persona-1--matheus-souza)
+  - [2.2 Persona 2 - Giovanna Matsu](#22-persona-2--giovanna-matsu)
+  - [2.3 Persona 3 - Fernanda Oliveira](#23-persona-3--fernanda-oliveira)
 - [3. User Stories](#3-user-stories)
   - [3.1 Critérios INVEST](#31-critérios-invest)
   - [3.2 User Stories da Persona 1](#32-user-stories-da-persona-1)
@@ -165,7 +165,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 ### 3.2 User Stories da Persona 1
 
-#### US-N1-01 — Visualizar incidentes priorizados
+#### US-N1-01 - Visualizar incidentes priorizados
 
 **User Story:** Como analista de atendimento técnico N1, eu quero visualizar os incidentes e as degradações detectados, ordenados por severidade e quantidade de usuários afetados, para identificar rapidamente quais ocorrências exigem atendimento prioritário.
 
@@ -174,12 +174,13 @@ As User Stories foram revisadas conforme os princípios INVEST:
 - O sistema deve apresentar uma lista de incidentes ativos.
 - Cada incidente deve exibir severidade, horário de início, status, quantidade estimada de usuários ou sessões afetadas e plataforma ou componente provavelmente envolvido.
 - A lista deve permitir ordenação por severidade, impacto e horário.
-- O sistema deve distinguir incidentes ativos, reconhecidos e encerrados.
+- O sistema deve apresentar um gráfico com a evolução do número de sessões afetadas ao longo do tempo.
+- O gráfico deve permitir alterar o período de visualização.
 - Incidentes sem estimativa confiável devem ser identificados como “impacto ainda não determinado”.
 
 **Fundamentação:** Matheus precisa transformar ocorrências vindas de diferentes canais em uma decisão de encaminhamento. O impacto estimado é um dos elementos centrais para definir a prioridade.
 
-#### US-N1-02 — Consultar hipótese de causa provável
+#### US-N1-02 - Consultar hipótese de causa provável
 
 **User Story:** Como analista de atendimento técnico N1, eu quero visualizar a causa provável de um incidente e o nível de confiança dessa hipótese, para direcionar o chamado sem depender exclusivamente de tentativa e erro entre diferentes filas.
 
@@ -193,7 +194,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** Um incidente pode circular entre equipes de player, CDN, TV, web, identidade e backend. A hipótese reduz encaminhamentos por tentativa e erro sem eliminar a validação humana.
 
-#### US-N1-03 — Consultar evidências do diagnóstico
+#### US-N1-03 - Consultar evidências do diagnóstico
 
 **User Story:** Como analista de atendimento técnico N1, eu quero consultar as evidências que sustentam a hipótese apresentada, para justificar o encaminhamento do incidente à equipe responsável.
 
@@ -207,7 +208,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** O encaminhamento precisa ser justificável mesmo quando a telemetria apresenta perda, atraso, duplicidade ou baixa qualidade.
 
-#### US-N1-04 — Segmentar o incidente
+#### US-N1-04 - Segmentar o incidente
 
 **User Story:** Como analista de atendimento técnico N1, eu quero filtrar um incidente por dispositivo, versão do sistema, versão do aplicativo, região, conteúdo, CDN e componente, para identificar o recorte específico em que a falha está concentrada.
 
@@ -221,7 +222,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** Médias gerais podem ocultar falhas que atingem uma combinação específica de modelo de TV, versão, região, ISP, conteúdo ou CDN.
 
-#### US-N1-05 — Reunir insumos para o direcionamento
+#### US-N1-05 - Reunir insumos para o direcionamento
 
 **User Story:** Como analista de atendimento técnico N1, eu quero ter dados e insumos suficientes para identificar a equipe ou fila mais provável para tratar o incidente, para reduzir encaminhamentos incorretos e o tempo gasto nas correções.
 
@@ -239,7 +240,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 ### 3.3 User Stories da Persona 2
 
-#### US-ENG-01 — Validar tecnicamente uma hipótese
+#### US-ENG-01 - Validar tecnicamente uma hipótese
 
 **User Story:** Como engenheira de software especialista de componente, eu quero analisar a hipótese de causa provável e as evidências técnicas associadas, para confirmar ou refutar se o meu componente originou a degradação.
 
@@ -253,7 +254,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** Especialistas precisam confirmar ou contestar hipóteses sem que o motor de diagnóstico dependa integralmente de revisão humana para funcionar.
 
-#### US-ENG-02 — Navegar entre dado normalizado e fonte original
+#### US-ENG-02 - Navegar entre dado normalizado e fonte original
 
 **User Story:** Como engenheira de software especialista de componente, eu quero alternar entre o evento normalizado e o dado bruto da fonte original, para verificar se a transformação preservou as informações necessárias ao diagnóstico.
 
@@ -268,7 +269,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** A camada normalizada unifica os dados, mas a investigação técnica pode exigir a consulta às fontes detalhadas.
 
-#### US-ENG-03 — Inspecionar a linha do tempo de uma sessão
+#### US-ENG-03 - Inspecionar a linha do tempo de uma sessão
 
 **User Story:** Como engenheira de software especialista de componente, eu quero visualizar os eventos anteriores e posteriores a uma falha em uma única linha do tempo de sessão, para reconstruir a sequência técnica que levou ao problema.
 
@@ -283,7 +284,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** A reconstrução cronológica ajuda a compreender o contexto anterior à falha e seus efeitos posteriores.
 
-#### US-ENG-04 — Comparar versões, releases e períodos
+#### US-ENG-04 - Comparar versões, releases e períodos
 
 **User Story:** Como engenheira de software especialista de componente, eu quero comparar métricas entre versões, releases e períodos diferentes, para identificar se uma alteração recente está associada ao início da degradação.
 
@@ -297,7 +298,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** Alterações de player ou aplicação podem provocar degradações concentradas em um modelo ou uma versão específica e desaparecer nos indicadores gerais.
 
-#### US-ENG-05 — Verificar a recuperação após uma correção
+#### US-ENG-05 - Verificar a recuperação após uma correção
 
 **User Story:** Como engenheira de software especialista de componente, eu quero acompanhar os indicadores antes e depois da aplicação de uma correção, para verificar se a experiência retornou ao comportamento esperado.
 
@@ -316,7 +317,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 As histórias da Persona 3 representam uma evolução posterior ao núcleo técnico. Elas utilizam informações agregadas e não pressupõem correlação comprovada com retenção, conversão, NPS ou satisfação enquanto essas fontes não estiverem integradas.
 
-#### US-PM-01 — Priorizar problemas por impacto técnico
+#### US-PM-01 - Priorizar problemas por impacto técnico
 
 **User Story:** Como Product Manager de Experiência do Globoplay, eu quero visualizar os problemas recorrentes ordenados pelo número de sessões afetadas e pela intensidade da degradação, para priorizar as melhorias com maior impacto técnico sobre a experiência.
 
@@ -330,7 +331,7 @@ As histórias da Persona 3 representam uma evolução posterior ao núcleo técn
 
 **Fundamentação:** Fernanda precisa decidir qual problema deve ser priorizado sem depender da engenharia para traduzir cada falha técnica.
 
-#### US-PM-02 — Comparar a experiência entre segmentos
+#### US-PM-02 - Comparar a experiência entre segmentos
 
 **User Story:** Como Product Manager de Experiência do Globoplay, eu quero comparar indicadores de experiência entre plataformas, versões, dispositivos e regiões, para identificar segmentos prejudicados mesmo quando os indicadores gerais parecem normais.
 
@@ -344,7 +345,7 @@ As histórias da Persona 3 representam uma evolução posterior ao núcleo técn
 
 **Fundamentação:** Indicadores nacionais podem ocultar falhas graves em segmentos que representam uma parcela menor da audiência.
 
-#### US-PM-03 — Acompanhar indicadores de qualidade de experiência
+#### US-PM-03 - Acompanhar indicadores de qualidade de experiência
 
 **User Story:** Como Product Manager de Experiência do Globoplay, eu quero acompanhar buffering, tempo de início do vídeo, falhas de inicialização, latência e erros, para avaliar a evolução técnica da experiência de streaming.
 
@@ -359,7 +360,7 @@ As histórias da Persona 3 representam uma evolução posterior ao núcleo técn
 
 **Fundamentação:** As fontes de telemetria permitem acompanhar a qualidade técnica percebida sem inferir resultados de negócio ainda não integrados.
 
-#### US-PM-04 — Avaliar a evolução após uma correção
+#### US-PM-04 - Avaliar a evolução após uma correção
 
 **User Story:** Como Product Manager de Experiência do Globoplay, eu quero comparar os indicadores de experiência antes e depois de uma correção, para verificar se a mudança produziu uma melhoria técnica mensurável no segmento afetado.
 
@@ -375,7 +376,7 @@ As histórias da Persona 3 representam uma evolução posterior ao núcleo técn
 
 **Fundamentação:** O escopo atual permite demonstrar a evolução técnica da experiência, mas não comprovar efeitos em indicadores externos de produto.
 
-#### US-PM-05 — Consultar o histórico de degradações
+#### US-PM-05 - Consultar o histórico de degradações
 
 **User Story:** Como Product Manager de Experiência do Globoplay, eu quero consultar o histórico de degradações e correções por período, plataforma e segmento, para identificar problemas recorrentes e orientar o planejamento do produto.
 
@@ -396,9 +397,9 @@ A prioridade considera o núcleo de diagnóstico do incidente, a continuidade da
 
 | Prioridade | User Stories | Justificativa |
 |---|---|---|
-| **P0 — Essencial** | US-N1-01, US-N1-02, US-N1-03, US-N1-04, US-N1-05, US-ENG-01, US-ENG-02, US-ENG-03 | Forma o fluxo ponta a ponta de identificar, contextualizar, encaminhar e validar tecnicamente um incidente. |
-| **P1 — Importante** | US-ENG-04, US-ENG-05 | Aprofunda a investigação e permite verificar a recuperação após uma mudança. |
-| **P2 — Evolução** | US-PM-01, US-PM-02, US-PM-03, US-PM-04, US-PM-05 | Amplia o uso para acompanhamento agregado, priorização de produto e análise histórica. |
+| **P0 - Essencial** | US-N1-01, US-N1-02, US-N1-03, US-N1-04, US-N1-05, US-ENG-01, US-ENG-02, US-ENG-03 | Forma o fluxo ponta a ponta de identificar, contextualizar, encaminhar e validar tecnicamente um incidente. |
+| **P1 - Importante** | US-ENG-04, US-ENG-05 | Aprofunda a investigação e permite verificar a recuperação após uma mudança. |
+| **P2 - Evolução** | US-PM-01, US-PM-02, US-PM-03, US-PM-04, US-PM-05 | Amplia o uso para acompanhamento agregado, priorização de produto e análise histórica. |
 
 ## 4. Correlação entre personas, necessidades e User Stories
 
