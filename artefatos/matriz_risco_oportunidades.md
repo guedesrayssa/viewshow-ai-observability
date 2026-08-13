@@ -17,9 +17,8 @@
    - 2.3. [Estratégias de Resposta](#23-estratégias-de-resposta)
 3. [Riscos (Ameaças)](#3-riscos-ameaças)
 4. [Oportunidades](#4-oportunidades)
-5. [Matriz de Probabilidade × Impacto (template para o Figma)](#5-matriz-de-probabilidade-impacto-template-para-o-figma)
-6. [Processo de revisão e atualização](#6-processo-de-revisão-e-atualização)
-7. [Referências](#7-referências)
+5. [Processo de revisão e atualização](#5-processo-de-revisão-e-atualização)
+6. [Referências](#6-referências)
 
 ---
 
@@ -27,9 +26,9 @@
 
 &emsp; Este documento identifica, avalia e prioriza os riscos (eventos que podem prejudicar o projeto) e as oportunidades (eventos que podem beneficiá-lo além do planejado) do projeto de monitoramento de frontend do Globoplay. A abordagem segue a lógica de gestão de riscos do PMBOK (PROJECT MANAGEMENT INSTITUTE, 2021) e da ISO 31000 (INTERNATIONAL ORGANIZATION FOR STANDARDIZATION, 2018): cada item é avaliado em duas dimensões independentes, probabilidade e impacto (Seção 2), classificado em um nível objetivo e associado a uma estratégia de resposta (Seção 2.3), em vez de depender apenas de percepção qualitativa.
 
-&emsp; Cada risco recebe o código **RXX** e cada oportunidade o código **OXX**, numerados sequencialmente nas Tabelas 6 e 7. Esse código é a unidade de transporte entre este documento e a matriz visual a ser construída no Figma (Seção 5): a descrição completa, a categoria e a estratégia de resposta permanecem neste documento como fonte da verdade, enquanto o Figma recebe apenas o código posicionado na célula de probabilidade × impacto correspondente.
+&emsp; Cada risco recebe o código **RXX** e cada oportunidade o código **OXX**, numerados sequencialmente nas Tabelas 6 e 7. Esse código é a unidade de transporte entre este documento e a matriz visual a ser construída no Figma (reproduzida também como imagem mais adiante neste documento): a descrição completa, a categoria e a estratégia de resposta permanecem neste documento como fonte da verdade, enquanto o Figma recebe apenas o código posicionado na célula de probabilidade × impacto correspondente.
 
-&emsp; A maior parte dos itens abaixo não é uma suposição genérica de projeto de software: é extraída diretamente da documentação técnica que o parceiro entregou junto com o dataset (o correlator **Argus** e seu anexo de fontes de dados), que já documenta explicitamente armadilhas conhecidas do problema (Seção 7 daquele documento) e aponta, em uma seção própria, onde está "a oportunidade real" (Seção 8.3 daquele documento) — ambas citadas nas Tabelas 6 e 7 abaixo. Este é um documento vivo: novos riscos e oportunidades identificados ao longo do módulo devem ser adicionados seguindo o processo descrito na Seção 6.
+&emsp; A maior parte dos itens abaixo não é uma suposição genérica de projeto de software: é extraída diretamente da documentação técnica que o parceiro entregou junto com o dataset (o correlator **Argus** e seu anexo de fontes de dados), que já documenta explicitamente armadilhas conhecidas do problema (Seção 7 daquele documento) e aponta, em uma seção própria, onde está "a oportunidade real" (Seção 8.3 daquele documento) — ambas citadas nas Tabelas 6 e 7 abaixo. Este é um documento vivo: novos riscos e oportunidades identificados ao longo do módulo devem ser adicionados seguindo o processo descrito na Seção 5.
 
 ---
 
@@ -188,29 +187,19 @@
 
 ---
 
-## 5. Matriz de Probabilidade × Impacto (template para o Figma)
-
-&emsp; A Tabela 8 posiciona cada código das Tabelas 6 e 7 na célula correspondente ao cruzamento entre sua Probabilidade (linha) e seu Impacto (coluna), reproduzindo a estrutura a ser recriada no Figma. Ao migrar para o Figma, mantenha a cor de fundo de cada célula conforme a Tabela 3 (verde/Baixo, amarelo/Médio, laranja/Alto, vermelho/Crítico) e represente cada código como um chip ou post-it dentro da célula correspondente — use uma cor de borda/ícone distinta para riscos (R) e oportunidades (O), já que uma mesma célula pode conter os dois tipos. Células vazias (–) permanecem no template para receber itens futuros (Seção 6).
-
 <div align="center">
 
-<sup>Tabela 8: Matriz de Probabilidade × Impacto — posicionamento dos códigos</sup>
+<sup>Figura 1: Matriz de Probabilidade × Impacto — Riscos e Oportunidades</sup>
 
-| Probabilidade (linha) × Impacto (coluna) | 1 – Insignificante | 2 – Menor | 3 – Moderado | 4 – Maior | 5 – Catastrófico |
-|:---|:---|:---|:---|:---|:---|
-| **5 – Quase certa** | – | – | – | – | – |
-| **4 – Provável** | – | **Médio**<br>R11, O12 | **Alto**<br>R03, R08, O10, O11 | **Crítico**<br>R02, O02 | **Crítico**<br>R01, O01 |
-| **3 – Possível** | – | **Médio**<br>O06 | **Médio**<br>R12, O04, O08, O09 | **Alto**<br>R04, R10, O07 | **Crítico**<br>R07 |
-| **2 – Improvável** | – | – | **Médio**<br>O14 | **Médio**<br>R09, O03, O05, O13 | **Alto**<br>R05, R06 |
-| **1 – Rara** | – | – | – | – | – |
+![Matriz de risco e oportunidades](../assets/matriz_risco_oportunidades.png)
 
-<sup>Fonte: Material produzido pelos autores (2026), a partir do posicionamento das Tabelas 6 e 7.</sup>
+<sup>Fonte: elaborado pelo grupo G05 (2026), a partir dos riscos e oportunidades detalhados nas Tabelas 6 e 7.</sup>
 
 </div>
 
 ---
 
-## 6. Processo de revisão e atualização
+## 5. Processo de revisão e atualização
 
 &emsp; Esta matriz deve ser revisada a cada entrega do módulo, ou sempre que um novo risco ou oportunidade relevante for identificado, seguindo os passos abaixo:
 
@@ -218,13 +207,13 @@
 2. Atribuir o próximo código sequencial disponível (RXX ou OXX) e a categoria mais próxima das já usadas nas Tabelas 6 e 7.
 3. Classificar Probabilidade (Tabela 1) e Impacto (Tabela 2) e calcular o Nível pela Tabela 3.
 4. Definir a estratégia de resposta (Tabela 4 ou 5) e o responsável.
-5. Adicionar o código à célula correspondente da Tabela 8 e replicar a alteração no Figma.
+5. Posicionar o código na célula correspondente da matriz visual e manter a imagem deste documento e o quadro no Figma atualizados.
 
 &emsp; Riscos e oportunidades classificados como Alto ou Crítico — em particular a insuficiência do golden set para o RNF08 (R01/O01) e a latência estrutural do NPAW frente ao RNF02 (R02) — devem ter sua reavaliação compartilhada com os pontos focais da Globo (Igor Thurow — líder técnico; Carlos Papani — líder do projeto; Thiago Frensch — ponto focal backup), na mesma lógica de validação já adotada para as premissas financeiras (ver análise financeira, Seção 1). R01 e R02 em particular indicam que o plano de testes do RNF08 e do RNF02 pode precisar de ajuste fino de escopo — uma conversa a ter com o professor orientador (Tomaz Mikio Sasaki) e com a Globo antes de travar os critérios de aceite finais.
 
 ---
 
-## 7. Referências
+## 6. Referências
 
 GRUPO GLOBO; INTELI. **Argus — Documentação do Dataset**: correlator de incidentes, Globoplay. Versão 1.3. [S.l.]: parceria acadêmica Globo × Inteli, 2026. Documento interno de distribuição restrita.
 
