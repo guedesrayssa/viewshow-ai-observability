@@ -128,6 +128,7 @@ instância na sessão seguinte.
 
 ## Documentação adicional
 
+- [Relatório de testes do MVP inicial](artefatos/mvp-inicial.md)
 - [Arquitetura e endpoints do backend](artefatos/backend.md)
 - [Especificação de requisitos](artefatos/requisitos.md)
 - [Roteiro de implantação na AWS](artefatos/deploy-aws.md)
