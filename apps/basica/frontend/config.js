@@ -10,12 +10,17 @@
 /**
  * Endereço base da API de analytics, sem barra no final.
  *
- * - Desenvolvimento local: `http://localhost:5000`
- * - Publicação na AWS: `http://<IP-PUBLICO-DA-EC2>`
+ * O valor versionado é o de desenvolvimento, para que clonar o repositório e
+ * subir a API já deixe o painel funcionando sem edição nenhuma.
+ *
+ * Na publicação para a AWS este valor **não** deve ser trocado à mão: o script
+ * `apps/basica/deploy/deploy-frontend.sh` recebe o endereço da EC2 e o injeta
+ * em uma cópia temporária na hora do envio ao S3. Assim o IP da instância nunca
+ * entra no histórico do repositório e a execução local continua funcionando.
  *
  * @type {string}
  */
-const API_BASE_URL = "COLOCAAR O IP PUBLICO DA EC2 DO BACK";
+const API_BASE_URL = "http://localhost:5000";
 
 /**
  * Intervalo, em milissegundos, entre atualizações automáticas dos dados.
