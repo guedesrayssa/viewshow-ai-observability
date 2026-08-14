@@ -1,11 +1,6 @@
 # Matriz de Risco e Oportunidades
 
-> Este documento identifica, avalia e prioriza os riscos (ameaças) e as oportunidades do projeto de monitoramento de frontend do Globoplay (codinome interno do parceiro: **Argus**). Além dos artefatos de [requisitos](requisitos.md) e de [análise financeira](analise_financeira.md), este levantamento usa como fonte primária o Termo de Abertura de Projeto (TAPI), o anexo de fontes de dados e a documentação técnica do dataset entregues pelo parceiro — os dois últimos contêm um capítulo de "armadilhas conhecidas" e uma seção chamada literalmente "a oportunidade real", que fundamentam boa parte dos itens abaixo. Cada item recebe um código único (**R0X** para riscos, **O0X** para oportunidades) que serve de ponte entre este documento e a matriz visual de probabilidade × impacto a ser recriada no Figma.
-
-**Grupo:** G05
-**Parceiro:** Grupo Globo (Globoplay) — Projeto (CCMD7)
-**Versão:** 13/08/2026 · v1.2
-
+> Este documento identifica, avalia e prioriza os riscos (ameaças) e as oportunidades do projeto de monitoramento de frontend do Globoplay (codinome interno do parceiro: **Argus**). Além dos artefatos de [requisitos](requisitos.md) e de [análise financeira](analise_financeira.md), este levantamento usa como fonte primária o Termo de Abertura de Projeto (TAPI), o anexo de fontes de dados e a documentação técnica do dataset entregues pelo parceiro — os dois últimos contêm um capítulo de "armadilhas conhecidas" e uma seção chamada literalmente "a oportunidade real", que fundamentam boa parte dos itens abaixo. Cada item recebe um código único (**R0X** para riscos, **O0X** para oportunidades) que serve de ponte entre este documento e a matriz visual de probabilidade × impacto.
 ---
 
 ## Sumário
@@ -191,7 +186,7 @@
 
 <sup>Figura 1: Matriz de Probabilidade × Impacto — Riscos e Oportunidades</sup>
 
-![Matriz de risco e oportunidades](../assets/matriz_risco_oportunidades.png)
+![Matriz de risco e oportunidades](../assets/matriz-risco-oportunidade.png)
 
 <sup>Fonte: elaborado pelo grupo G05 (2026), a partir dos riscos e oportunidades detalhados nas Tabelas 6 e 7.</sup>
 
