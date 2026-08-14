@@ -1,0 +1,100 @@
+<!doctype html>
+<!--
+  index.html
+  Página estática do painel de telemetria do Globoplay — MVP da Sprint 1.
+
+  Consome cinco endpoints GET da API de analytics hospedada em EC2 e é
+  publicada como site estático em um bucket S3. Não há etapa de build:
+  os arquivos são servidos exatamente como estão no repositório.
+
+  Ordem de carregamento dos scripts (obrigatória):
+    1. config.js  — define API_BASE_URL e REFRESH_INTERVAL_MS
+    2. api.js     — camada de acesso HTTP, depende de config.js
+    3. app.js     — renderização e eventos, depende de api.js
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Telemetria Globoplay — Painel</title>
+    <meta
+      name="description"
+      content="Painel de monitoramento de telemetria de frontend do Globoplay. MVP da Sprint 1."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <main class="page">
+      <header class="page__header">
+        <div>
+          <h1 class="page__title">Telemetria Globoplay</h1>
+          <p class="page__subtitle">
+            Monitoramento de qualidade e falhas do frontend, em tempo quase real
+          </p>
+        </div>
+
+        <div class="page__actions">
+          <!-- Preenchido por app.js: indica se a API respondeu na última carga -->
+          <span id="api-status" class="pill pill--loading">Conectando…</span>
+          <button id="refresh" class="button" type="button">Atualizar</button>
+        </div>
+      </header>
+
+      <!-- Visível apenas quando nenhum endpoint respondeu (API fora do ar ou CORS) -->
+      <div id="global-error" class="banner" hidden>
+        <strong class="banner__title">Não foi possível carregar os dados</strong>
+        <span id="global-error-message" class="banner__message"></span>
+      </div>
+
+      <!-- ============================ Visão geral ============================ -->
+      <section class="section">
+        <div class="headline">
+          <h2 id="headline-text" class="headline__text">Carregando…</h2>
+          <p id="headline-caption" class="headline__caption"></p>
+        </div>
+        <div id="summary-cards" class="cards" aria-live="polite"></div>
+      </section>
+
+      <!-- ============================= Qualidade ============================= -->
+      <section class="section">
+        <h2 class="section__title">Qualidade de experiência</h2>
+        <div id="qoe-cards" class="cards" aria-live="polite"></div>
+
+        <div class="panel">
+          <h3 class="panel__title">Evolução no tempo</h3>
+          <div id="qoe-timeseries" class="panel__body"></div>
+        </div>
+      </section>
+
+      <!-- =============================== Erros =============================== -->
+      <section class="section">
+        <h2 class="section__title">Erros mais frequentes</h2>
+        <p class="section__hint">
+          Selecione um erro da lista para ver as ocorrências registradas.
+        </p>
+
+        <div class="split">
+          <div class="panel">
+            <h3 class="panel__title">Ranking</h3>
+            <div id="errors-list" class="panel__body" aria-live="polite"></div>
+          </div>
+
+          <div class="panel">
+            <h3 class="panel__title">Detalhe</h3>
+            <div id="error-details" class="panel__body"></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page__footer">
+        <span id="last-update">—</span>
+        <span id="endpoint-latency" class="page__latency"></span>
+      </footer>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
