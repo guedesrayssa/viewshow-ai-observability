@@ -22,6 +22,10 @@
 
 &emsp; Dois conceitos aparecem no fluxo abaixo e merecem definição antes do diagrama. Armazenamento hot e cold são dois níveis de armazenamento com custo e velocidade de acesso diferentes: o hot guarda os dados mais recentes em um meio rápido (e mais caro), usado nas consultas do dia a dia; o cold guarda o histórico mais antigo em um meio mais barato (e mais lento), usado apenas quando é preciso investigar um evento passado. Já o modelo de ML (Machine Learning, ou aprendizado de máquina) é o componente que analisa os registros recentes de um dispositivo com falha e sugere automaticamente a causa raiz mais provável, reduzindo o trabalho manual de investigação.
 
+<div align="center">
+
+<sup>Diagrama 1: Fluxo de dados da plataforma de telemetria</sup>
+
 ```text
 ┌────────────────────────────┐
 │ Frontends multiplataforma  │  Emitem eventos (request, vitals, screen_view,
@@ -54,6 +58,10 @@
       │ de consulta             │  operacionais, exportação (CSV/XLSX/PDF)
       └────────────────────────┘
 ```
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
 
 &emsp; O fluxo começa nos frontends, que emitem eventos brutos para uma API única de ingestão, capaz de aceitar tanto protocolos modernos quanto legados. Cada evento é publicado em uma fila, garantindo que picos de tráfego (ex: estreias, jogos ao vivo) não gerem perda de dados mesmo com o consumo acontecendo de forma assíncrona. Um worker consome a fila e normaliza o payload, independente da plataforma de origem, para um esquema interno padronizado (signal_point), que alimenta tanto o armazenamento (hot para os últimos 30 dias, cold para o restante do histórico de 1 ano) quanto o modelo de ML responsável por inferir a causa raiz de falhas a partir da janela recente de logs do dispositivo afetado. O resultado fica disponível no dashboard e nas APIs de consulta, usados pelas equipes de engenharia, observabilidade e produto para diagnóstico e acompanhamento de qualidade. O desenho segue as práticas de arquitetura cloud native descritas por Hassan (2024): fila assíncrona entre ingestão e processamento, workers stateless e serviços empacotados em contêineres independentes, o que sustenta diretamente os requisitos de escala do RNF01 e de portabilidade do RNF06.
 
