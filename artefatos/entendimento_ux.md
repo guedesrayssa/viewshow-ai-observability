@@ -399,15 +399,21 @@ As histórias da Persona 3 representam uma evolução posterior ao núcleo técn
 
 **Fundamentação:** O histórico possibilita reconhecer recorrências e comparar eventos sazonais, considerando a política de retenção da solução.
 
-## 4. Wireframes
+### 3.5 Priorização
 
-Os wireframes de baixa fidelidade foram utilizados para validar a arquitetura da informação antes da aplicação da identidade visual. Eles definem a distribuição dos elementos, a hierarquia dos dados e as transições essenciais da investigação, sem antecipar decisões de cor ou acabamento. A prancha anexada ao projeto foi documentada abaixo por meio das seis telas que a compõem.
+Criamos uma matriz de priorização para organizar as User Stories em três níveis: essencial, importante e evolução. A priorização considera o valor para a persona, a dependência entre histórias e o esforço estimado.
 
 | Prioridade | User Stories | Justificativa |
 |---|---|---|
 | **P0 - Essencial** | US-N1-01, US-N1-02, US-N1-03, US-N1-04, US-N1-05, US-ENG-01, US-ENG-02, US-ENG-03 | Forma o fluxo ponta a ponta de identificar, contextualizar, encaminhar e validar tecnicamente um incidente. |
 | **P1 - Importante** | US-ENG-04, US-ENG-05 | Aprofunda a investigação e permite verificar a recuperação após uma mudança. |
 | **P2 - Evolução** | US-PM-01, US-PM-02, US-PM-03, US-PM-04, US-PM-05 | Amplia o uso para acompanhamento agregado, priorização de produto e análise histórica. |
+
+Essa priorização orienta o desenvolvimento incremental, garantindo que as funcionalidades essenciais sejam entregues primeiro, enquanto as melhorias e análises estratégicas são planejadas para fases posteriores.
+
+## 4. Wireframes
+
+Os wireframes de baixa fidelidade foram utilizados para validar a arquitetura da informação antes da aplicação da identidade visual. Eles definem a distribuição dos elementos, a hierarquia dos dados e as transições essenciais da investigação, sem antecipar decisões de cor ou acabamento. A prancha anexada ao projeto foi documentada abaixo por meio das seis telas que a compõem.
 
 ### 4.1 Login
 
