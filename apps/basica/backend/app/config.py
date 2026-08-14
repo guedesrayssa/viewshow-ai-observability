@@ -8,10 +8,16 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta
+from typing import ClassVar
 
 
 class Config:
     """Valores padrão da API de telemetria."""
+
+    # Origens autorizadas a consumir a API pelo navegador, separadas por
+    # vírgula. `*` libera todas, o que serve para o desenvolvimento local; em
+    # produção, aponte para a URL do site estático no S3.
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
 
     # Ingestão
     MAX_BATCH_SIZE = 500
@@ -45,7 +51,13 @@ class Config:
     HEARTBEAT_TTL = timedelta(minutes=2)
 
     # Limiares usados por /v1/analytics/realtime/alerts.
-    ALERT_THRESHOLDS = {
+    #
+    # `ClassVar` marca o dicionário como atributo da classe, e não como campo de
+    # instância. `app.config.from_object` copia a referência, não o conteúdo:
+    # sem a marcação, qualquer escrita em `app.config["ALERT_THRESHOLDS"]`
+    # alteraria este dicionário e vazaria para todas as aplicações criadas
+    # depois, inclusive entre um teste e o seguinte.
+    ALERT_THRESHOLDS: ClassVar[dict[str, float]] = {
         "error_rate_warning": 0.02,
         "error_rate_critical": 0.05,
         "rebuffer_rate_warning": 0.01,

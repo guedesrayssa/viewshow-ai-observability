@@ -130,7 +130,9 @@ class ErrorAnalyticsService:
         buckets = window.buckets(interval)
         timeline = [
             {"start": to_iso(bucket.start), "occurrences": len(bucket_errors)}
-            for bucket, bucket_errors in zip(buckets, group_by_bucket(occurrences, buckets))
+            for bucket, bucket_errors in zip(
+                buckets, group_by_bucket(occurrences, buckets), strict=True
+            )
         ]
 
         return {

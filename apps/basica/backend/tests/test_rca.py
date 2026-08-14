@@ -49,9 +49,7 @@ class FingerprintTests(unittest.TestCase):
     def test_fingerprint_is_derived_once_when_the_error_is_created(self):
         occurrence = error(error_code="CDN_5XX", module="cdn", message="upstream 503")
 
-        self.assertEqual(
-            occurrence.fingerprint, fingerprint_for("CDN_5XX", "cdn", "upstream 503")
-        )
+        self.assertEqual(occurrence.fingerprint, fingerprint_for("CDN_5XX", "cdn", "upstream 503"))
 
 
 class ModulesBreakdownTests(unittest.TestCase):
@@ -229,8 +227,7 @@ class CorrelationTests(unittest.TestCase):
 
         result = self._correlations(errors)
         codes = [
-            {item["source"]["value"], item["target"]["value"]}
-            for item in result["correlations"]
+            {item["source"]["value"], item["target"]["value"]} for item in result["correlations"]
         ]
 
         self.assertNotIn({"CDN_5XX", "DRM_LICENSE"}, codes)

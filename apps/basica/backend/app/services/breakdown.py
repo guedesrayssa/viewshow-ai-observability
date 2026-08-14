@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from app.domain.models import ErrorEvent, PlaybackEvent
 from app.domain.aggregation import sessions_of
+from app.domain.models import ErrorEvent, PlaybackEvent
 from app.domain.statistics import rate, ratio, rounded
 from app.domain.time_window import TimeWindow
 from app.errors import ValidationError

@@ -32,6 +32,7 @@ _HEALTH_ORDER = (HEALTH_HEALTHY, HEALTH_DEGRADED, HEALTH_CRITICAL)
 DEGRADED_ERROR_RATE = 0.02
 CRITICAL_ERROR_RATE = 0.10
 
+
 class RcaService:
     """Consultas de causa raiz sobre erros, spans e traces."""
 
@@ -163,9 +164,7 @@ class RcaService:
                         label="cdn",
                     ),
                 },
-                "sample_traces": [
-                    error.trace_id for error in occurrences if error.trace_id
-                ][:5],
+                "sample_traces": [error.trace_id for error in occurrences if error.trace_id][:5],
             }
         )
         return details
@@ -207,9 +206,7 @@ class RcaService:
                     "service": span.service,
                     "operation": span.operation,
                     "depth": depths[span.span_id],
-                    "offset_ms": rounded(
-                        (span.started_at - started_at).total_seconds() * 1000, 3
-                    ),
+                    "offset_ms": rounded((span.started_at - started_at).total_seconds() * 1000, 3),
                     "duration_ms": rounded(span.duration_ms, 3),
                     "status": span.status,
                 }

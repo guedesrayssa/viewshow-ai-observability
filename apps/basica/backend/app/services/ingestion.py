@@ -81,9 +81,7 @@ class TelemetryIngestionService:
 
     def ingest_heartbeats(self, payload: Any) -> IngestionResult:
         """Ingere sinais de presença das sessões ativas."""
-        return self._ingest(
-            "heartbeats", payload, parse_heartbeat, self._repository.add_heartbeats
-        )
+        return self._ingest("heartbeats", payload, parse_heartbeat, self._repository.add_heartbeats)
 
     def _ingest(
         self,
@@ -127,8 +125,7 @@ class TelemetryIngestionService:
                 raise ValidationError(
                     "Todos os itens do lote devem ser objetos JSON.",
                     details=[
-                        {"index": index, "reason": "item não é um objeto JSON"}
-                        for index in invalid
+                        {"index": index, "reason": "item não é um objeto JSON"} for index in invalid
                     ],
                 )
             items = list(payload)
