@@ -71,7 +71,7 @@ O objetivo é oferecer aos times de engenharia e observabilidade uma visão pont
 │   ├── scripts/
 │   └── tests/
 ├── apps/basica/frontend/{fonts, index.html, app.js, api.js, config.js, styles.css}
-├── artefatos/{analise_financeira.md, backend.md, entendimento_ux.md, requisitos.md}
+├── artefatos/{backend.md, entendimento_negocio.md, entendimento_ux.md, requisitos.md, testes-api.md}
 └── assets/{imagens, logos}
 ```
 ---
