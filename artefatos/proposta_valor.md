@@ -144,7 +144,7 @@ Em termos emocionais, há várias pressões importantes:
 
 **Relevância:** Essencial
 
-&nbsp;&nbsp;&nbsp;&nbsp;Ao internalizar parte importante da telemetria e usar a plataforma própria como fonte principal, a empresa pode reduzir o uso intensivo de ferramentas externas caras. Isso diminui o custo total de observabilidade, libera orçamento para outras iniciativas e reduz a pressão para fazer trade-offs entre custo e nível de detalhamento. Com base na pontuação comparativa da Matriz do Oceano Azul (nota 3, contra 8-9 de New Relic e Datadog RUM), estima-se uma redução de até **60% a 70% no custo total de telemetria** em relação às ferramentas de mercado, valor a ser validado com dados reais de consumo após a implementação.
+&nbsp;&nbsp;&nbsp;&nbsp;Ao internalizar parte importante da telemetria e usar a plataforma própria como fonte principal, a empresa pode reduzir o uso intensivo de ferramentas externas caras. Isso diminui o custo total de observabilidade, libera orçamento para outras iniciativas e reduz a pressão para fazer trade-offs entre custo e nível de detalhamento. 
 
 ### Autonomia e flexibilidade técnica
 
