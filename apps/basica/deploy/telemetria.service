@@ -1,0 +1,61 @@
+# Unit do systemd que mantém a API de telemetria no ar na instância EC2.
+#
+# Instalação:
+#
+#     sudo cp telemetria.service /etc/systemd/system/
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable --now telemetria
+#
+# `enable` é a parte que importa no laboratório da AWS Academy: a sessão termina
+# depois de quatro horas e a instância é *parada*, não destruída. Com a unit
+# habilitada, ligar a instância na sessão seguinte já sobe a API sozinha, sem
+# ninguém precisar entrar por SSH.
+#
+# Ajuste `CORS_ORIGINS` para a URL do bucket antes de instalar.
+
+[Unit]
+Description=API de telemetria do Globoplay (Grupo 05)
+Documentation=https://git.inteli.edu.br/graduacao/2026-2a/t15/g05
+# `network-online` e não apenas `network`: a API fala com o DynamoDB assim que
+# sobe, então precisa de rota válida, não só da interface levantada.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/g05/apps/basica/backend
+
+# As credenciais da AWS **não** entram aqui. A instância usa a role anexada
+# (LabInstanceProfile), e o boto3 as obtém sozinho pelo metadata service — o que
+# também evita o problema das chaves do laboratório, que expiram a cada sessão.
+Environment="TELEMETRY_BACKEND=dynamodb"
+Environment="AWS_REGION=us-east-1"
+Environment="DYNAMODB_TABLE=telemetry"
+Environment="CORS_ORIGINS=http://SUBSTITUA-PELO-BUCKET.s3-website-us-east-1.amazonaws.com"
+
+# Escuta direto na 80 sem rodar como root: a capability abaixo é o que permite
+# a um serviço não privilegiado abrir uma porta menor que 1024. Dispensa o proxy
+# reverso, ou seja, um componente a menos para falhar durante a demonstração.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStart=/home/ec2-user/g05/apps/basica/backend/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind 0.0.0.0:80 \
+    --access-logfile - \
+    --error-logfile - \
+    wsgi:app
+
+# Três workers exigem armazenamento compartilhado, e é por isso que
+# `TELEMETRY_BACKEND` está em `dynamodb`: com o backend em memória, cada worker
+# teria a própria base e a mesma consulta devolveria respostas diferentes.
+Restart=always
+RestartSec=5
+
+# Endurecimento básico. A aplicação não escreve em disco.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
