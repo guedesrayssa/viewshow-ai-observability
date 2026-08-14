@@ -10,21 +10,6 @@
     <img src="./assets/logo-globo.png" alt="Globo Logo" width="200px">
     </a>
 </p>
-
-## Estrutura atual do Repositório
-
-```text
-/
-├── README.md
-├── .gitignore
-├── apps/basica/backend/
-│   ├── app/{controllers,domain,repositories,services}/
-│   ├── scripts/
-│   └── tests/
-├── apps/basica/frontend/{fonts, index.html, app.js, api.js, config.js, styles.css}
-├── artefatos/{analise_financeira.md, backend.md, entendimento_ux.md, requisitos.md}
-└── assets/{logos, endpoints-telemetria.png, personas}
-```
 </div>
 
 
@@ -126,4 +111,3 @@ O objetivo é oferecer aos times de engenharia e observabilidade uma visão pont
     <img style="height:22px!important;margin-left:3px;vertical-align:text-bottom;" src="https://mirrors.creativecommons.org/presskit/icons/by.svg?ref=chooser-v1">
   </a>
 </p>
-
