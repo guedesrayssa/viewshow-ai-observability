@@ -2,12 +2,6 @@
 
 > Avaliação de como o projeto se relaciona com os 17 Objetivos de Desenvolvimento Sustentável da ONU, identificando impactos diretos, indiretos e oportunidades de contribuição.
 
-**Grupo:** G05
-**Parceiro:** `Grupo Globo`
-**Versão:** `[10/08/2026 / v1.0]`
-
----
-
 > **Contexto do projeto:** o projeto é uma plataforma distribuída, desenvolvida para o Grupo Globo (Globoplay), para coleta, normalização e correlação de telemetria (QoS técnico + QoE percebida) de aplicações frontend rodando em dispositivos extremamente heterogêneos (TVs antigas, celulares de baixo custo, redes instáveis) em todo o território nacional — incluindo suporte a protocolos legados não atendidos por ferramentas de monitoração de mercado. As classificações abaixo seguem o checklist de impacto ODS já validado no termo de parceria com o Inteli (`TAPI - Turma 15 - Ciência da Computação - Módulo 7.pdf`), detalhado com base no escopo técnico do projeto e nas fontes de dados apresentadas pelo parceiro.
 
 ## 1. Mapeamento geral
