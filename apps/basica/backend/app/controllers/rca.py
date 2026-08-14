@@ -14,9 +14,7 @@ rca_bp = Blueprint("rca", __name__, url_prefix="/v1/analytics/rca")
 @rca_bp.get("/modules-breakdown")
 def modules_breakdown():
     """Aponta os módulos internos relacionados às falhas."""
-    breakdown = container.rca_service().modules_breakdown(
-        request_window(), limit=request_limit()
-    )
+    breakdown = container.rca_service().modules_breakdown(request_window(), limit=request_limit())
     return jsonify(breakdown)
 
 

@@ -211,9 +211,7 @@ def parse_spans(
                 trace_id=trace_id,
                 service=optional_text(raw, "service"),
                 operation=optional_text(raw, "operation"),
-                started_at=read_timestamp(
-                    raw, "started_at", now=now, fallback=default_started_at
-                ),
+                started_at=read_timestamp(raw, "started_at", now=now, fallback=default_started_at),
                 duration_ms=optional_number(raw, "duration_ms", default=0.0) or 0.0,
                 status=status,
                 parent_span_id=optional_identifier(raw, "parent_span_id"),
@@ -240,9 +238,7 @@ def parse_playback_event(payload: dict[str, Any], *, now: datetime) -> PlaybackE
         rebuffer_count=optional_count(payload, "rebuffer_count"),
         playback_duration_ms=optional_number(payload, "playback_duration_ms", default=0.0) or 0.0,
         bitrate_kbps=optional_number(payload, "bitrate_kbps"),
-        spans=parse_spans(
-            payload, trace_id=trace_id, now=now, default_started_at=occurred_at
-        ),
+        spans=parse_spans(payload, trace_id=trace_id, now=now, default_started_at=occurred_at),
     )
 
 
@@ -263,9 +259,7 @@ def parse_error_event(payload: dict[str, Any], *, now: datetime) -> ErrorEvent:
         network=parse_network(payload),
         content_id=optional_identifier(payload, "content_id"),
         trace_id=trace_id,
-        spans=parse_spans(
-            payload, trace_id=trace_id, now=now, default_started_at=occurred_at
-        ),
+        spans=parse_spans(payload, trace_id=trace_id, now=now, default_started_at=occurred_at),
     )
 
 

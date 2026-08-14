@@ -16,10 +16,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import boto3  # noqa: E402
+import boto3
 
-from app.config import Config  # noqa: E402
-from app.repositories.dynamodb import create_table  # noqa: E402
+from app.config import Config
+from app.repositories.dynamodb import create_table
 
 
 def main() -> int:

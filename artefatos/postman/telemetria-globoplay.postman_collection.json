@@ -1,0 +1,828 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-5d6e-4f70-8a91-0c2d3e4f5a6b",
+    "name": "Telemetria Globoplay — API v1",
+    "description": "Testes das requisições GET e POST da API de telemetria do Grupo 05.\n\nA coleção cobre quatro frentes:\n\n1. **Ingestão (POST)** — envio de eventos, erros e heartbeats, incluindo lote parcialmente inválido, lote totalmente inválido e corpo malformado.\n2. **Consultas (GET)** — os cinco endpoints consumidos pelo painel.\n3. **Erros de consulta** — parâmetros fora do contrato e recurso inexistente.\n4. **Ponta a ponta** — um erro enviado por POST reaparece na consulta GET.\n\nO endereço da API vem da variável `baseUrl`. Use o ambiente `local` para rodar contra a máquina do desenvolvedor e o ambiente `aws` para rodar contra a instância EC2, sem alterar nenhuma requisição.\n\nTodas as requisições trazem asserções automáticas: rodar a coleção inteira pelo Collection Runner produz o relatório de aprovação usado no artefato.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "description": "Endereço da API, sem barra no final."
+    },
+    {
+      "key": "window",
+      "value": "24h",
+      "description": "Janela consultada. Sem esse parâmetro a API assume 15 minutos."
+    },
+    {
+      "key": "codigoE2E",
+      "value": "",
+      "description": "Preenchido em tempo de execução pelo teste de ponta a ponta."
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Asserções aplicadas a todas as requisições da coleção.",
+          "",
+          "pm.test('Responde em menos de 5 segundos', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "pm.test('Responde em JSON', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Ingestão (POST)",
+      "description": "Os três endpoints de escrita da API. É por aqui que os dados entram; as consultas da pasta seguinte leem exatamente o que foi gravado aqui.",
+      "item": [
+        {
+          "name": "1.1 Enviar lote de eventos de reprodução",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202 Accepted', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Aceitou os dois eventos do lote', function () {",
+                  "    pm.expect(corpo.accepted).to.eql(2);",
+                  "    pm.expect(corpo.received).to.eql(2);",
+                  "});",
+                  "",
+                  "pm.test('Nenhum item foi rejeitado', function () {",
+                  "    pm.expect(corpo.rejected).to.be.an('array').that.is.empty;",
+                  "});",
+                  "",
+                  "pm.test('Identifica o recurso gravado', function () {",
+                  "    pm.expect(corpo.resource).to.eql('events');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"session_id\": \"sess-postman-01\",\n    \"event_type\": \"playback_start\",\n    \"content_id\": \"globoplay-ep-4821\",\n    \"startup_time_ms\": 1450,\n    \"rebuffer_duration_ms\": 0,\n    \"rebuffer_count\": 0,\n    \"playback_duration_ms\": 1800000,\n    \"bitrate_kbps\": 3400,\n    \"device\": {\n      \"model\": \"OLED55C7P\",\n      \"os\": \"webos\",\n      \"os_version\": \"3.5\",\n      \"app_version\": \"5.12.0\"\n    },\n    \"network\": {\n      \"isp\": \"isp-alpha\",\n      \"cdn\": \"akamai\",\n      \"connection_type\": \"wifi\"\n    }\n  },\n  {\n    \"session_id\": \"sess-postman-02\",\n    \"event_type\": \"playback_start\",\n    \"content_id\": \"globoplay-ep-4822\",\n    \"startup_time_ms\": 2200,\n    \"rebuffer_duration_ms\": 1500,\n    \"rebuffer_count\": 2,\n    \"playback_duration_ms\": 900000,\n    \"bitrate_kbps\": 2600,\n    \"device\": {\n      \"model\": \"UN55MU6100\",\n      \"os\": \"tizen\",\n      \"os_version\": \"3.0\",\n      \"app_version\": \"5.12.0\"\n    },\n    \"network\": {\n      \"isp\": \"isp-beta\",\n      \"cdn\": \"cloudfront\",\n      \"connection_type\": \"ethernet\"\n    }\n  }\n]",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/telemetry/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "telemetry", "events"]
+            },
+            "description": "Envia dois eventos de reprodução em lote. A API aceita tanto um objeto único quanto uma lista."
+          }
+        },
+        {
+          "name": "1.2 Registrar um erro de reprodução",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202 Accepted', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Aceitou o erro enviado', function () {",
+                  "    pm.expect(corpo.accepted).to.eql(1);",
+                  "    pm.expect(corpo.rejected).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"sess-postman-01\",\n  \"error_code\": \"DNS_RESOLVE_FAIL\",\n  \"message\": \"getaddrinfo ENOTFOUND cdn.globo.com\",\n  \"module\": \"player\",\n  \"service\": \"playback-api\",\n  \"fatal\": true,\n  \"trace_id\": \"trace-postman-0001\",\n  \"device\": {\n    \"model\": \"OLED55C7P\",\n    \"os\": \"webos\",\n    \"os_version\": \"3.5\",\n    \"app_version\": \"5.12.0\"\n  },\n  \"network\": {\n    \"isp\": \"isp-alpha\",\n    \"cdn\": \"akamai\",\n    \"connection_type\": \"wifi\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/telemetry/errors",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "telemetry", "errors"]
+            },
+            "description": "Registra uma falha fatal. Erros fatais são os que derrubam a sessão e entram no cálculo da taxa de sessões sem falha."
+          }
+        },
+        {
+          "name": "1.3 Registrar presença de sessão (heartbeat)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202 Accepted', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test('Aceitou as duas sessões', function () {",
+                  "    pm.expect(pm.response.json().accepted).to.eql(2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  { \"session_id\": \"sess-postman-01\" },\n  { \"session_id\": \"sess-postman-02\" }\n]",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/telemetry/heartbeat",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "telemetry", "heartbeat"]
+            },
+            "description": "Sinaliza que as sessões continuam ativas. O total de sessões é o denominador das taxas de erro exibidas no painel."
+          }
+        },
+        {
+          "name": "1.4 Lote parcialmente inválido — aceita o que dá",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202: um item ruim não derruba o lote', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Gravou o item válido e recusou o inválido', function () {",
+                  "    pm.expect(corpo.received).to.eql(2);",
+                  "    pm.expect(corpo.accepted).to.eql(1);",
+                  "    pm.expect(corpo.rejected).to.have.lengthOf(1);",
+                  "});",
+                  "",
+                  "pm.test('Aponta qual item falhou e por quê', function () {",
+                  "    pm.expect(corpo.rejected[0].index).to.eql(1);",
+                  "    pm.expect(corpo.rejected[0].reason).to.include('session_id');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"session_id\": \"sess-postman-03\",\n    \"error_code\": \"PLAYER_TIMEOUT\",\n    \"message\": \"manifest request timed out after 30s\",\n    \"module\": \"player\"\n  },\n  {\n    \"error_code\": \"ITEM_SEM_SESSAO\",\n    \"message\": \"este item não tem session_id e deve ser recusado\"\n  }\n]",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/telemetry/errors",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "telemetry", "errors"]
+            },
+            "description": "Um item malformado não invalida o lote inteiro: a API grava o que consegue e devolve em `rejected` a posição e o motivo de cada recusa. É o comportamento que evita perder telemetria boa por causa de um registro ruim."
+          }
+        },
+        {
+          "name": "1.5 Lote totalmente inválido — 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422 Unprocessable Content', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Usa o envelope padrão de erro', function () {",
+                  "    pm.expect(corpo.error).to.have.property('code');",
+                  "    pm.expect(corpo.error).to.have.property('message');",
+                  "    pm.expect(corpo.error).to.have.property('details');",
+                  "});",
+                  "",
+                  "pm.test('Código estável do erro', function () {",
+                  "    pm.expect(corpo.error.code).to.eql('unprocessable_payload');",
+                  "});",
+                  "",
+                  "pm.test('Detalha o item recusado', function () {",
+                  "    pm.expect(corpo.error.details).to.have.lengthOf(1);",
+                  "    pm.expect(corpo.error.details[0].index).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"error_code\": \"SEM_SESSAO\",\n    \"message\": \"nenhum item deste lote é aproveitável\"\n  }\n]",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/telemetry/errors",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "telemetry", "errors"]
+            },
+            "description": "Quando nada do lote é aproveitável, a API responde 422 em vez de 202, e lista em `details` o motivo de cada recusa."
+          }
+        },
+        {
+          "name": "1.6 Corpo malformado — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Código estável do erro', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('validation_error');",
+                  "});",
+                  "",
+                  "pm.test('A mensagem explica o formato esperado', function () {",
+                  "    pm.expect(pm.response.json().error.message).to.include('objeto JSON');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "\"isto não é um objeto nem uma lista\"",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/telemetry/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "telemetry", "events"]
+            },
+            "description": "O corpo precisa ser um objeto JSON ou uma lista de objetos. Qualquer outra coisa é recusada antes de chegar ao domínio."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Consultas (GET)",
+      "description": "Os cinco endpoints que o painel estático consome. Todos aceitam o parâmetro `window`; sem ele, a API assume 15 minutos.",
+      "item": [
+        {
+          "name": "2.1 Resumo de erros da janela",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Descreve a janela consultada', function () {",
+                  "    pm.expect(corpo.window).to.have.property('start');",
+                  "    pm.expect(corpo.window).to.have.property('end');",
+                  "    pm.expect(corpo.window.duration_seconds).to.eql(86400);",
+                  "});",
+                  "",
+                  "pm.test('Traz os indicadores do resumo', function () {",
+                  "    ['total_errors', 'fatal_errors', 'unique_error_codes',",
+                  "     'affected_sessions', 'total_sessions', 'error_rate',",
+                  "     'crash_free_rate'].forEach(function (campo) {",
+                  "        pm.expect(corpo.summary).to.have.property(campo);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('Contabilizou os erros enviados por POST', function () {",
+                  "    pm.expect(corpo.summary.total_errors).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('Erros fatais não excedem o total', function () {",
+                  "    pm.expect(corpo.summary.fatal_errors).to.be.at.most(corpo.summary.total_errors);",
+                  "});",
+                  "",
+                  "pm.test('As taxas ficam entre 0 e 1, ou nulas sem base de cálculo', function () {",
+                  "    [corpo.summary.error_rate, corpo.summary.crash_free_rate].forEach(function (taxa) {",
+                  "        if (taxa !== null) {",
+                  "            pm.expect(taxa).to.be.within(0, 1);",
+                  "        }",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/summary?window={{window}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "summary"],
+              "query": [{ "key": "window", "value": "{{window}}" }]
+            },
+            "description": "Indicadores agregados da janela. As taxas vêm como `null`, e não como zero, quando não houve base de cálculo — a interface distingue 'nenhuma amostra' de 'valor zero'."
+          }
+        },
+        {
+          "name": "2.2 Ranking dos erros mais frequentes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Devolve uma lista de erros', function () {",
+                  "    pm.expect(corpo.errors).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Respeita o limite pedido', function () {",
+                  "    pm.expect(corpo.errors.length).to.be.at.most(5);",
+                  "});",
+                  "",
+                  "pm.test('Está ordenado por ocorrências, da maior para a menor', function () {",
+                  "    for (let i = 1; i < corpo.errors.length; i++) {",
+                  "        pm.expect(corpo.errors[i - 1].occurrences)",
+                  "          .to.be.at.least(corpo.errors[i].occurrences);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('Cada item traz os campos usados pelo painel', function () {",
+                  "    ['error_code', 'occurrences', 'share', 'affected_sessions',",
+                  "     'fatal_occurrences', 'top_module', 'first_seen',",
+                  "     'last_seen'].forEach(function (campo) {",
+                  "        pm.expect(corpo.errors[0]).to.have.property(campo);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('A primeira ocorrência não é posterior à última', function () {",
+                  "    const item = corpo.errors[0];",
+                  "    pm.expect(new Date(item.first_seen).getTime())",
+                  "      .to.be.at.most(new Date(item.last_seen).getTime());",
+                  "});",
+                  "",
+                  "// Guardado para a requisição seguinte, que abre o detalhe deste erro.",
+                  "pm.collectionVariables.set('codigoTopo', corpo.errors[0].error_code);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/top?window={{window}}&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "top"],
+              "query": [
+                { "key": "window", "value": "{{window}}" },
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Códigos de erro ordenados por número de ocorrências. O teste guarda o primeiro código para a requisição seguinte, encadeando as duas."
+          }
+        },
+        {
+          "name": "2.3 Detalhe de um código de erro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Detalha o código pedido', function () {",
+                  "    pm.expect(corpo.error_code).to.eql(pm.collectionVariables.get('codigoTopo'));",
+                  "});",
+                  "",
+                  "pm.test('Traz impacto, segmentação e linha do tempo', function () {",
+                  "    pm.expect(corpo.occurrences).to.be.above(0);",
+                  "    pm.expect(corpo).to.have.property('affected_sessions');",
+                  "    pm.expect(corpo).to.have.property('fatal_occurrences');",
+                  "    pm.expect(corpo.breakdown).to.be.an('object');",
+                  "    pm.expect(corpo.timeline).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('A linha do tempo soma o total de ocorrências', function () {",
+                  "    const soma = corpo.timeline.reduce(function (total, ponto) {",
+                  "        return total + ponto.occurrences;",
+                  "    }, 0);",
+                  "    pm.expect(soma).to.eql(corpo.occurrences);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/{{codigoTopo}}/details?window={{window}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "{{codigoTopo}}", "details"],
+              "query": [{ "key": "window", "value": "{{window}}" }]
+            },
+            "description": "Abre o erro mais frequente do ranking, usando o código capturado na requisição anterior. A soma da linha do tempo é conferida contra o total de ocorrências — uma checagem de consistência interna da resposta."
+          }
+        },
+        {
+          "name": "2.4 Métricas de qualidade de experiência",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const m = pm.response.json().metrics;",
+                  "",
+                  "pm.test('Traz volume, tempo de início, rebuffer e bitrate', function () {",
+                  "    pm.expect(m).to.have.property('events');",
+                  "    pm.expect(m).to.have.property('sessions');",
+                  "    pm.expect(m).to.have.property('playback_hours');",
+                  "    pm.expect(m).to.have.property('startup_time_ms');",
+                  "    pm.expect(m).to.have.property('rebuffer');",
+                  "    pm.expect(m).to.have.property('average_bitrate_kbps');",
+                  "});",
+                  "",
+                  "pm.test('O tempo de início vem em percentis', function () {",
+                  "    pm.expect(m.startup_time_ms).to.have.property('p50');",
+                  "    pm.expect(m.startup_time_ms).to.have.property('p95');",
+                  "    pm.expect(m.startup_time_ms).to.have.property('samples');",
+                  "});",
+                  "",
+                  "pm.test('O p95 não é menor que a mediana', function () {",
+                  "    if (m.startup_time_ms.p50 !== null && m.startup_time_ms.p95 !== null) {",
+                  "        pm.expect(m.startup_time_ms.p95).to.be.at.least(m.startup_time_ms.p50);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('Contabilizou os eventos enviados por POST', function () {",
+                  "    pm.expect(m.events).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/qoe/metrics?window={{window}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "qoe", "metrics"],
+              "query": [{ "key": "window", "value": "{{window}}" }]
+            },
+            "description": "Indicadores de qualidade da reprodução. O tempo de início do vídeo vem em percentis, e não em valor único, porque a média esconde a cauda que incomoda o usuário."
+          }
+        },
+        {
+          "name": "2.5 Série temporal de qualidade",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('Declara a granularidade dos pontos', function () {",
+                  "    pm.expect(corpo.interval_seconds).to.be.a('number').and.to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('Devolve pontos cobrindo a janela', function () {",
+                  "    pm.expect(corpo.points).to.be.an('array').that.is.not.empty;",
+                  "    const esperado = corpo.window.duration_seconds / corpo.interval_seconds;",
+                  "    pm.expect(corpo.points.length).to.be.closeTo(esperado, 1);",
+                  "});",
+                  "",
+                  "pm.test('Cada ponto traz início, fim e métricas', function () {",
+                  "    corpo.points.slice(0, 5).forEach(function (ponto) {",
+                  "        pm.expect(ponto).to.have.property('start');",
+                  "        pm.expect(ponto).to.have.property('end');",
+                  "        pm.expect(ponto.metrics).to.have.property('startup_time_ms');",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('Os pontos estão em ordem cronológica', function () {",
+                  "    for (let i = 1; i < corpo.points.length; i++) {",
+                  "        pm.expect(new Date(corpo.points[i].start).getTime())",
+                  "          .to.be.above(new Date(corpo.points[i - 1].start).getTime());",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/qoe/timeseries?window={{window}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "qoe", "timeseries"],
+              "query": [{ "key": "window", "value": "{{window}}" }]
+            },
+            "description": "As mesmas métricas de QoE agregadas por intervalo. Intervalos sem nenhuma amostra vêm com métricas nulas, o que o painel desenha como base e não como valor zero."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Erros de consulta",
+      "description": "Confirma que parâmetros fora do contrato são recusados com status e mensagem úteis, em vez de devolverem resultado silenciosamente errado.",
+      "item": [
+        {
+          "name": "3.1 Código de erro inexistente — 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Código estável do erro', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('not_found');",
+                  "});",
+                  "",
+                  "pm.test('A mensagem cita o código consultado', function () {",
+                  "    pm.expect(pm.response.json().error.message).to.include('CODIGO_INEXISTENTE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/CODIGO_INEXISTENTE/details?window={{window}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "CODIGO_INEXISTENTE", "details"],
+              "query": [{ "key": "window", "value": "{{window}}" }]
+            },
+            "description": "Um código sem ocorrências na janela devolve 404, e não uma resposta vazia — a diferença entre 'não existe' e 'existe e está zerado' importa para quem investiga."
+          }
+        },
+        {
+          "name": "3.2 Janela em formato inválido — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Código estável do erro', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('validation_error');",
+                  "});",
+                  "",
+                  "pm.test('A mensagem ensina o formato correto', function () {",
+                  "    pm.expect(pm.response.json().error.message).to.include('15m');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/summary?window=ontem",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "summary"],
+              "query": [{ "key": "window", "value": "ontem" }]
+            },
+            "description": "A janela segue o formato `<número><s|m|h|d>`. Qualquer outra coisa é recusada com uma mensagem que mostra um exemplo válido."
+          }
+        },
+        {
+          "name": "3.3 Limite fora do intervalo permitido — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('A mensagem informa o intervalo aceito', function () {",
+                  "    pm.expect(pm.response.json().error.message).to.include('entre 1 e 200');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/top?window={{window}}&limit=999",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "top"],
+              "query": [
+                { "key": "window", "value": "{{window}}" },
+                { "key": "limit", "value": "999" }
+              ]
+            },
+            "description": "O limite é travado em 200 para que nenhuma consulta consiga arrastar a base inteira em uma resposta."
+          }
+        },
+        {
+          "name": "3.4 Janela acima do máximo — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('A mensagem informa o teto da janela', function () {",
+                  "    pm.expect(pm.response.json().error.message).to.include('2592000');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/summary?window=60d",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "summary"],
+              "query": [{ "key": "window", "value": "60d" }]
+            },
+            "description": "A janela é limitada a 30 dias. O teto protege o banco: cada janela vira uma consulta por bucket de tempo."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Ponta a ponta",
+      "description": "A prova de que POST e GET conversam: um erro com código gerado na hora é enviado e, em seguida, localizado na consulta.",
+      "item": [
+        {
+          "name": "4.1 Enviar erro com código único",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Código novo a cada execução, para que a verificação seguinte não",
+                  "// possa ser satisfeita por dados de uma rodada anterior.",
+                  "pm.collectionVariables.set('codigoE2E', 'TESTE_E2E_' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202 Accepted', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test('O erro foi aceito', function () {",
+                  "    pm.expect(pm.response.json().accepted).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"sess-e2e-postman\",\n  \"error_code\": \"{{codigoE2E}}\",\n  \"message\": \"verificação de ponta a ponta do relatório de testes\",\n  \"module\": \"player\",\n  \"service\": \"playback-api\",\n  \"fatal\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/telemetry/errors",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "telemetry", "errors"]
+            },
+            "description": "Gera um código inédito antes de enviar. Sem isso, o teste seguinte poderia passar por causa de dados deixados por uma execução anterior."
+          }
+        },
+        {
+          "name": "4.2 Localizar o erro no ranking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const esperado = pm.collectionVariables.get('codigoE2E');",
+                  "const codigos = pm.response.json().errors.map(function (item) {",
+                  "    return item.error_code;",
+                  "});",
+                  "",
+                  "pm.test('O erro enviado por POST aparece na consulta GET', function () {",
+                  "    pm.expect(codigos).to.include(esperado);",
+                  "});",
+                  "",
+                  "pm.test('Com exatamente uma ocorrência', function () {",
+                  "    const item = pm.response.json().errors.find(function (e) {",
+                  "        return e.error_code === esperado;",
+                  "    });",
+                  "    pm.expect(item.occurrences).to.eql(1);",
+                  "    pm.expect(item.fatal_occurrences).to.eql(1);",
+                  "    pm.expect(item.top_module).to.eql('player');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/analytics/errors/top?window={{window}}&limit=200",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "analytics", "errors", "top"],
+              "query": [
+                { "key": "window", "value": "{{window}}" },
+                { "key": "limit", "value": "200" }
+              ]
+            },
+            "description": "Consulta o ranking completo e confirma que o código enviado na requisição anterior está lá, com a contagem, a marcação de fatal e o módulo corretos."
+          }
+        }
+      ]
+    }
+  ]
+}

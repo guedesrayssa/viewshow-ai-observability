@@ -6,12 +6,14 @@ A aplicação (Flask) é organizada em camadas, de fora para dentro:
 
 ```
 apps/basica/backend/
-├── app.py                     # ponto de entrada do servidor
-├── scripts/                   # provisionamento da tabela do DynamoDB
+├── wsgi.py                    # ponto de entrada do servidor (instância WSGI `app`)
+├── .env.example               # variáveis de ambiente, comentadas
+├── scripts/                   # provisionamento da tabela e massa de demonstração
 └── app/
     ├── __init__.py            # fábrica da aplicação (create_app)
     ├── config.py              # limites, janelas padrão e limiares de alerta
     ├── container.py           # composição das dependências (repositório + serviços)
+    ├── cors.py                # origens autorizadas a consumir a API pelo navegador
     ├── errors.py              # erros de API e envelope JSON de falhas
     ├── controllers/           # rotas HTTP: leem parâmetros e delegam
     ├── services/              # regra de negócio (ingestão, QoE, erros, RCA…)
@@ -39,19 +41,61 @@ cd apps/basica/backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt          # inclui requirements.txt
 
-python app.py                                # sobe a API em http://127.0.0.1:5000
-FLASK_DEBUG=1 python app.py                  # com recarga automática (apenas local)
+python wsgi.py                               # sobe a API em http://127.0.0.1:5000
+FLASK_DEBUG=1 python wsgi.py                 # com recarga automática (apenas local)
 python -m unittest discover -s tests -t .    # executa a suíte de testes
 ruff check . && ruff format --check .        # estilo, configurado em pyproject.toml
 ```
+
+Com a API no ar, `python scripts/seed_demo.py` popula a base com telemetria
+sintética pelos próprios endpoints de ingestão, para que as consultas tenham o
+que devolver.
 
 Sem configuração, a API sobe com o armazenamento **em memória** — prático para
 desenvolver e testar, mas os dados somem ao reiniciar. Para usar o DynamoDB,
 veja a seção adiante.
 
 O modo debug fica **desligado por padrão** porque expõe um console interativo.
-Em produção, sirva a aplicação com um servidor WSGI (`gunicorn "app:app"`), nunca
-com o servidor embutido do Flask.
+Em produção, sirva a aplicação com um servidor WSGI, nunca com o servidor
+embutido do Flask:
+
+```bash
+gunicorn -w 3 -b 127.0.0.1:8000 wsgi:app
+```
+
+O ponto de entrada se chama `wsgi.py`, e não `app.py`, porque o pacote da
+aplicação já ocupa o nome `app`. Um módulo homônimo ao lado do pacote fica
+ofuscado por ele, e `gunicorn app:app` carregaria o pacote em vez do arquivo,
+falhando com `Failed to find attribute 'app' in 'app'`.
+
+> **Vários workers exigem armazenamento compartilhado.** O backend `memory` vive
+> dentro de cada processo: com `-w 3`, um `POST` cai em um worker e o `GET`
+> seguinte pode cair em outro, devolvendo resultados diferentes a cada chamada.
+> Use `dynamodb` quando houver mais de um worker, ou fixe `-w 1`.
+
+## CORS
+
+O painel é servido por um bucket S3 e a API roda em uma EC2: são origens
+diferentes, então o navegador só entrega a resposta ao JavaScript da página se a
+API autorizar aquela origem. Sem isso a requisição sai, o servidor responde, e
+mesmo assim o `fetch` falha no cliente — o sintoma clássico de "a API está no ar
+e a tela continua vazia".
+
+| Variável | Padrão | Papel |
+| --- | --- | --- |
+| `CORS_ORIGINS` | `*` | Origens autorizadas, separadas por vírgula. |
+
+```bash
+# desenvolvimento: qualquer origem
+CORS_ORIGINS=*
+
+# produção: exatamente a URL do site estático, sem barra no final
+CORS_ORIGINS=http://g05-telemetria-front.s3-website-us-east-1.amazonaws.com
+```
+
+A liberação cobre apenas as rotas `/v1/*` e os métodos que a aplicação usa
+(`GET`, `POST` e a verificação prévia `OPTIONS`). Postman, curl e a suíte de
+testes não passam por essa checagem e não são afetados pela configuração.
 
 ## Endpoints de telemetria
 
@@ -268,7 +312,7 @@ Provisionamento (idempotente — cria tabela, índice e TTL):
 
 ```bash
 python scripts/create_dynamodb_table.py
-TELEMETRY_BACKEND=dynamodb AWS_REGION=us-east-1 python app.py
+TELEMETRY_BACKEND=dynamodb AWS_REGION=us-east-1 python wsgi.py
 ```
 
 ### Modelagem
