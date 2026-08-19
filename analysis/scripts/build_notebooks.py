@@ -531,9 +531,10 @@ engine = create_db_engine(settings)""",
             ),
             (
                 "code",
-                """heatmap_start_ms = 0  # substitua por início UTC em epoch ms
-heatmap_end_ms = 86_400_000  # substitua por fim UTC em epoch ms
+                """heatmap_start_ms = 1767225600000  # 2026-01-01T00:00:00Z; ajuste a janela
+heatmap_end_ms = 1767312000000  # 2026-01-02T00:00:00Z; fim exclusivo
 source_day = load_source_daily_coverage(engine, heatmap_start_ms, heatmap_end_ms)
+display(source_day)
 coverage_heatmap(source_day, x="day", y="source", value="rows").show()""",
             ),
             (
@@ -543,14 +544,15 @@ coverage_heatmap(source_day, x="day", y="source", value="rows").show()""",
             ),
             (
                 "code",
-                """series_source = "newrelic"
-series_entity = "service-name"
+                """series_source = "fixture_collector"  # ajuste para uma identidade vista acima
+series_entity = "fixture-service"
 series_metric = "error_rate_pct"
-series_start_ms = 0  # substitua por início UTC em epoch ms
-series_end_ms = 86_400_000  # substitua por fim UTC em epoch ms
+series_start_ms = 1767225600000  # 2026-01-01T00:00:00Z; ajuste conforme necessário
+series_end_ms = 1767312000000  # 2026-01-02T00:00:00Z; fim exclusivo
 cadence = load_series_cadence(
     engine, series_source, series_entity, series_metric, series_start_ms, series_end_ms
 )
+display(cadence)
 cadence_histogram(cadence).show()""",
             ),
             (

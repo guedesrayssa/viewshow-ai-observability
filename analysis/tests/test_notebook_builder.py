@@ -59,6 +59,20 @@ def test_build_notebook_01_includes_quality_sections_and_limits(tmp_path):
     assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
 
 
+def test_build_notebook_01_uses_fixture_aligned_bounded_defaults(tmp_path):
+    path = tmp_path / "01_cobertura_qualidade.ipynb"
+
+    build_notebook("01", path)
+
+    source = "\n".join(cell.source for cell in nbformat.read(path, as_version=4).cells)
+
+    assert "1767225600000" in source
+    assert "fixture_collector" in source
+    assert "fixture-service" in source
+    assert "display(source_day)" in source
+    assert "display(cadence)" in source
+
+
 def test_build_notebook_02_includes_normalized_series_and_explicit_correlation(tmp_path):
     """Catches omitting natural identity, selector, or the no-zero-fill correlation warning."""
     path = tmp_path / "02_sinais_normalizados.ipynb"

@@ -1,6 +1,7 @@
 """Load the sanitized notebook fixture into the isolated ``argus_test`` schema."""
 
 import os
+from ipaddress import ip_address
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -22,6 +23,18 @@ FIXTURE_TABLES = (
 TEST_DATABASE = "argus_test"
 
 
+def _is_local_tcp_host(host: str | None) -> bool:
+    """Accept localhost and literal loopback IPs, never resolver-dependent hostnames."""
+    if host is None:
+        return False
+    if host.casefold() == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 def _parse_test_url(database_url: str) -> URL:
     """Accept only a root URL pointed at the dedicated local test database."""
     url = make_url(database_url)
@@ -29,7 +42,21 @@ def _parse_test_url(database_url: str) -> URL:
         raise ValueError("o fixture só pode usar o banco argus_test")
     if url.get_backend_name() != "mysql" or url.username != "root":
         raise ValueError("o fixture exige uma URL MySQL local com a credencial root de teste")
+    if not _is_local_tcp_host(url.host) or any("socket" in key.casefold() for key in url.query):
+        raise ValueError("o fixture exige uma URL TCP local sem socket Unix")
     return url
+
+
+def _server_url(test_url: URL) -> URL:
+    """Copy the approved TCP connection details without selecting a schema."""
+    return URL.create(
+        drivername=test_url.drivername,
+        username=test_url.username,
+        password=test_url.password,
+        host=test_url.host,
+        port=test_url.port,
+        query=test_url.query,
+    )
 
 
 def _fixture_statements() -> list[str]:
@@ -46,7 +73,7 @@ def load_test_fixture(database_url: str) -> None:
     aborts before this function connects to or clears any schema tables.
     """
     test_url = _parse_test_url(database_url)
-    server_url = test_url.set(database=None)
+    server_url = _server_url(test_url)
 
     server_engine = create_engine(server_url, pool_pre_ping=True)
     try:

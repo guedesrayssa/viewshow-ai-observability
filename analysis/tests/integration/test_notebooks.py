@@ -38,3 +38,12 @@ def test_catalog_and_quality_notebooks_execute(mysql_fixture_url, monkeypatch):
         notebook = nbformat.read(NOTEBOOKS / name, as_version=4)
         client = NotebookClient(notebook, timeout=120, kernel_name="python3")
         client.execute()
+        if name == "01_cobertura_qualidade.ipynb":
+            output = "\n".join(
+                str(value)
+                for cell in notebook.cells
+                for item in cell.get("outputs", [])
+                for value in item.get("data", {}).values()
+            )
+            assert "fixture_collector" in output
+            assert "1800" in output

@@ -144,7 +144,7 @@ def load_source_coverage(engine) -> pd.DataFrame:
         engine,
         text(
             """
-            SELECT source, COUNT(*) AS rows, MIN(bts) AS first_ts, MAX(bts) AS last_ts
+            SELECT source, COUNT(*) AS `rows`, MIN(bts) AS first_ts, MAX(bts) AS last_ts
             FROM `signal_bucket`
             GROUP BY source
             ORDER BY source
@@ -172,10 +172,10 @@ def load_source_daily_coverage(engine, start, end) -> pd.DataFrame:
             SELECT
                 source,
                 FLOOR(bts / 86400000) * 86400000 AS day_epoch_ms,
-                COUNT(*) AS rows
+                COUNT(*) AS `rows`
             FROM `signal_bucket`
             WHERE bts >= :start AND bts < :end
-            GROUP BY source, FLOOR(bts / 86400000)
+            GROUP BY source, FLOOR(bts / 86400000) * 86400000
             ORDER BY source, day_epoch_ms
             """
         ),
