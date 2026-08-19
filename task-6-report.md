@@ -32,3 +32,12 @@
   tests/test_qoe.py tests/test_charts.py -v` — 29 passed.
 - Geração: `.venv/bin/python scripts/build_notebooks.py 04` — notebook criado
   sem outputs.
+
+## Ajuste de revisão — Round 1
+
+- `qoe_timeline` e `category_stack` agora recusam mais de 20 grupos antes de
+  construir traces Plotly, preservando a renderização normal dentro desse limite.
+- O resultado vazio de `load_live_active` agora contém as mesmas colunas semânticas
+  e de unidade (`ratio`, `s`, `ms`) de um resultado observado.
+- RED: três novos testes falharam para schema vazio incompleto e fanout sem limite.
+- GREEN: os testes focados de QoE e gráficos passaram após a correção.

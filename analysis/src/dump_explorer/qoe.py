@@ -218,8 +218,12 @@ def load_live_active(engine, signals: Iterable[str], start, end) -> pd.DataFrame
                 "bufferratio_avg",
                 "jointime_s_avg",
                 "dropped_frames_avg",
+                "dimension_missing",
                 "active_sessions_semantic",
                 "joins_in_bucket_semantic",
+                "bufferratio_unit",
+                "jointime_unit",
+                "latency_unit",
             ]
         )
     return annotate_unknown_dimensions(result).assign(

@@ -23,6 +23,7 @@ METRIC_DIRECTION = {
     "rebuffer_duration_ms": "higher_is_worse",
 }
 MAX_QOS_SMALL_MULTIPLES = 20
+MAX_QOE_TRACE_GROUPS = 20
 
 
 def _assert_frame_cap(frame: pd.DataFrame) -> None:
@@ -294,8 +295,14 @@ def category_stack(frame: pd.DataFrame) -> go.Figure:
     _assert_frame_cap(frame)
     if frame.empty:
         return empty_figure("Sem categorias de erro no período selecionado")
+    groups = list(frame.groupby(["kind", "category"], sort=True))
+    if len(groups) > MAX_QOE_TRACE_GROUPS:
+        raise ResultLimitError(
+            f"stack de categorias excede o limite de {MAX_QOE_TRACE_GROUPS} grupos; "
+            "refine a seleção"
+        )
     figure = go.Figure()
-    for (kind, category), series in frame.groupby(["kind", "category"], sort=True):
+    for (kind, category), series in groups:
         figure.add_trace(
             go.Bar(
                 x=series["timestamp"],
@@ -340,12 +347,17 @@ def qoe_timeline(frame: pd.DataFrame, *, metric: str = "active_sessions") -> go.
         return empty_figure("Sem dados de QoE no período selecionado")
     if metric not in frame:
         raise ValueError(f"métrica de QoE ausente: {metric}")
-    figure = go.Figure()
     grouping = "sinal" if "sinal" in frame else None
+    groups = [] if grouping is None else list(frame.groupby(grouping, sort=True))
+    if len(groups) > MAX_QOE_TRACE_GROUPS:
+        raise ResultLimitError(
+            f"timeline de QoE excede o limite de {MAX_QOE_TRACE_GROUPS} grupos; refine a seleção"
+        )
+    figure = go.Figure()
     if grouping is None:
         figure.add_trace(go.Scatter(x=frame["timestamp"], y=frame[metric], mode="lines+markers"))
     else:
-        for signal, series in frame.groupby(grouping, sort=True):
+        for signal, series in groups:
             figure.add_trace(
                 go.Scatter(
                     x=series["timestamp"], y=series[metric], mode="lines+markers", name=signal

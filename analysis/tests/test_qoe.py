@@ -5,6 +5,7 @@ import pytest
 
 import dump_explorer.qoe as qoe
 from dump_explorer.charts import category_stack, geo_heatmap, impact_scatter, qoe_timeline
+from dump_explorer.database import ResultLimitError
 from dump_explorer.qoe import (
     add_error_rate,
     annotate_unknown_dimensions,
@@ -162,6 +163,49 @@ def test_live_active_labels_sessions_as_concurrent_not_cumulative(monkeypatch, w
     assert frame.loc[0, "joins_in_bucket_semantic"] == "new_entries"
 
 
+def test_empty_live_active_keeps_the_unit_schema_of_observed_rows(monkeypatch, window):
+    """Catches a no-data result that drops units needed by a shared QoE renderer."""
+    monkeypatch.setattr(
+        qoe,
+        "read_frame",
+        lambda *args, **kwargs: pd.DataFrame(
+            columns=[
+                "timestamp_ms",
+                "sinal",
+                "active_sessions",
+                "active_with_error",
+                "joins_in_bucket",
+                "latency_ms_p50",
+                "latency_ms_p95",
+                "bufferratio_avg",
+                "jointime_s_avg",
+                "dropped_frames_avg",
+            ]
+        ),
+    )
+
+    frame = load_live_active(object(), ["pfc1"], *window)
+
+    assert list(frame.columns) == [
+        "timestamp",
+        "sinal",
+        "active_sessions",
+        "active_with_error",
+        "joins_in_bucket",
+        "latency_ms_p50",
+        "latency_ms_p95",
+        "bufferratio_avg",
+        "jointime_s_avg",
+        "dropped_frames_avg",
+        "dimension_missing",
+        "active_sessions_semantic",
+        "joins_in_bucket_semantic",
+        "bufferratio_unit",
+        "jointime_unit",
+        "latency_unit",
+    ]
+
+
 def test_error_categories_keep_live_and_vod_separate_and_preserve_invalid_json(monkeypatch, window):
     """Catches combining live/VOD categories or throwing away malformed top_names evidence."""
     captured = {}
@@ -215,3 +259,32 @@ def test_qoe_figures_keep_impact_axes_category_kind_and_empty_states_explicit():
     assert list(impact.data[0].marker.size) == [2]
     assert categories.data[0].name == "live | entrega"
     assert "Sem dados" in timeline.layout.annotations[0].text
+
+
+def test_qoe_timeline_rejects_signal_fanout_before_constructing_many_traces():
+    """Catches allocating an unbounded Plotly trace for every selected live channel."""
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(range(21), unit="ms", utc=True),
+            "sinal": [f"channel-{index}" for index in range(21)],
+            "active_sessions": list(range(21)),
+        }
+    )
+
+    with pytest.raises(ResultLimitError, match="20 grupos"):
+        qoe_timeline(frame)
+
+
+def test_category_stack_rejects_category_fanout_before_constructing_many_traces():
+    """Catches allocating an unbounded Plotly trace for each content-kind/category pair."""
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(range(21), unit="ms", utc=True),
+            "kind": ["live"] * 21,
+            "category": [f"category-{index}" for index in range(21)],
+            "errors": list(range(21)),
+        }
+    )
+
+    with pytest.raises(ResultLimitError, match="20 grupos"):
+        category_stack(frame)
