@@ -20,3 +20,10 @@ ruff check src/dump_explorer/live.py src/dump_explorer/charts.py scripts/build_n
 python scripts/build_notebooks.py 06  # notebook generated without outputs
 git diff --check  # passed
 ```
+
+## Correção round 1
+
+Os KPIs de comparação agora usam somente buckets dentro de `[start_ts, end_ts)`.
+Os buckets de padding antes/depois continuam disponíveis exclusivamente na timeline
+de contexto. Um teste de regressão cobre valores extremos no padding para impedir
+que eles elevem audiência, erros, buffering ou join time do evento.

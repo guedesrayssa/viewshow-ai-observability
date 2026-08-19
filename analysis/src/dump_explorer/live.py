@@ -218,8 +218,11 @@ def build_event_comparison(engine, event_keys: Iterable[str]) -> pd.DataFrame:
             ["event_key", "tid", "slug", "start_ts", "end_ts"], dropna=False
         ):
             first = feed.iloc[0]
-            available = bool(feed["telemetry_available"].any())
-            observed = feed.loc[feed["telemetry_available"]]
+            in_event_window = (feed["timestamp_ms"] >= first["start_ts"]) & (
+                feed["timestamp_ms"] < first["end_ts"]
+            )
+            observed = feed.loc[feed["telemetry_available"] & in_event_window.fillna(False)]
+            available = not observed.empty
             audience = pd.to_numeric(observed["active_sessions"], errors="coerce")
             errors = pd.to_numeric(observed["active_with_error"], errors="coerce")
             records.append(

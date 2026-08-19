@@ -133,6 +133,35 @@ def test_event_audience_keeps_epg_rows_without_telemetry(monkeypatch):
     assert timeline.loc[0, "mapping_scope"] == "exact_signal"
 
 
+def test_event_comparison_excludes_padded_buckets_from_event_kpis(monkeypatch):
+    """Catches pre/post-event context inflating an event's audience or QoE KPIs."""
+    timeline = pd.DataFrame(
+        {
+            "event_key": ["final", "final", "final"],
+            "tid": [994, 994, 994],
+            "slug": ["sportv", "sportv", "sportv"],
+            "start_ts": [1_000, 1_000, 1_000],
+            "end_ts": [2_000, 2_000, 2_000],
+            "timestamp_ms": [900, 1_500, 2_100],
+            "active_sessions": [900, 120, 900],
+            "active_with_error": [450, 12, 450],
+            "bufferratio_avg": [0.9, 0.15, 0.9],
+            "jointime_s_avg": [9.0, 3.0, 9.0],
+            "telemetry_available": [True, True, True],
+            "mapping_scope": ["exact_signal", "exact_signal", "exact_signal"],
+        }
+    )
+    monkeypatch.setattr(live, "load_event_audience", lambda engine, key: timeline)
+
+    comparison = build_event_comparison(object(), ["final"])
+
+    assert comparison.loc[0, "peak_audience"] == 120
+    assert comparison.loc[0, "peak_active_with_error"] == 12
+    assert comparison.loc[0, "error_rate_pct"] == 10.0
+    assert comparison.loc[0, "bufferratio_avg"] == 0.15
+    assert comparison.loc[0, "jointime_s_avg"] == 3.0
+
+
 def test_event_comparison_and_charts_preserve_missing_telemetry_as_unavailable(monkeypatch):
     """Catches excluding an EPG confrontation from comparison or graphing invented QoE values."""
     timelines = {
