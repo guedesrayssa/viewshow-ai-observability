@@ -154,7 +154,9 @@ def test_correlation_outer_joins_independent_series_without_zero_fill(monkeypatc
     monkeypatch.setattr(
         signals,
         "load_metric_series",
-        lambda engine, source, entity, metric, start, end: frames[(source, entity, metric)],
+        lambda engine, source, entity, metric, start, end, *, max_rows: frames[
+            (source, entity, metric)
+        ],
     )
     start, end = window
 
@@ -174,3 +176,51 @@ def test_correlation_rejects_more_than_twenty_explicit_series(window):
 
     with pytest.raises(ValueError, match="20"):
         load_correlation_frame(object(), keys, start, end)
+
+
+def test_correlation_stops_consuming_a_long_generator_at_the_series_cap(window):
+    """Catches exhausting an unbounded key iterator before enforcing the 20-series cap."""
+    start, end = window
+    consumed = []
+
+    def keys():
+        for index in range(100):
+            consumed.append(index)
+            yield "source", f"entity-{index}", "metric"
+
+    with pytest.raises(ValueError, match="20"):
+        load_correlation_frame(object(), keys(), start, end)
+
+    assert consumed == list(range(21))
+
+
+def test_correlation_caps_the_next_series_to_remaining_row_budget(monkeypatch, window):
+    """Catches materializing a full second series after the first uses most row budget."""
+    start, end = window
+    calls = []
+
+    def fake_load_metric_series(engine, source, entity, metric, start, end, *, max_rows):
+        calls.append((metric, max_rows))
+        if metric == "first":
+            return pd.DataFrame(
+                {
+                    "timestamp": pd.to_datetime(range(99_999), unit="ms", utc=True),
+                    "value": range(99_999),
+                }
+            )
+        if metric == "second":
+            assert max_rows == 1
+            raise signals.ResultLimitError("consulta excede o limite de 1 linhas")
+        pytest.fail("série inesperada")
+
+    monkeypatch.setattr(signals, "load_metric_series", fake_load_metric_series)
+
+    with pytest.raises(signals.ResultLimitError, match="1 linhas"):
+        load_correlation_frame(
+            object(),
+            [("source", "entity", "first"), ("source", "entity", "second")],
+            start,
+            end,
+        )
+
+    assert calls == [("first", 100_000), ("second", 1)]

@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Iterable
+from itertools import islice
 
 import pandas as pd
 from sqlalchemy import text
@@ -96,7 +97,15 @@ def list_series(engine, source, start, end, limit: int = _MAX_SERIES) -> pd.Data
 
 
 def load_metric_series(
-    engine, source, entity, metric, start, end, table: str = "signal_bucket"
+    engine,
+    source,
+    entity,
+    metric,
+    start,
+    end,
+    table: str = "signal_bucket",
+    *,
+    max_rows: int = HARD_MAX_ROWS,
 ) -> pd.DataFrame:
     """Carrega valores sem reamostragem para uma única identidade natural."""
     if table not in _SIGNAL_TABLES:
@@ -125,6 +134,7 @@ def load_metric_series(
             "start": start,
             "end": end,
         },
+        max_rows=max_rows,
     )
     if frame.empty:
         return _empty_metric_frame(spec["has_tags"])
@@ -147,7 +157,7 @@ def load_correlation_frame(
 ) -> pd.DataFrame:
     """Alinha séries solicitadas explicitamente, preservando lacunas como valores ausentes."""
     _require_window(start, end)
-    keys = tuple(series_keys)
+    keys = tuple(islice(series_keys, _MAX_CORRELATION_SERIES + 1))
     if len(keys) > _MAX_CORRELATION_SERIES:
         raise ValueError("correlação aceita no máximo 20 séries")
     if not keys:
@@ -166,7 +176,12 @@ def load_correlation_frame(
             raise ValueError("séries de correlação não podem ser repetidas")
         labels.add(label)
 
-        frame = load_metric_series(engine, source, entity, metric, start, end)
+        remaining_rows = HARD_MAX_ROWS - rows_read
+        if remaining_rows < 1:
+            raise ResultLimitError(f"correlação excede o limite de {HARD_MAX_ROWS} linhas")
+        frame = load_metric_series(
+            engine, source, entity, metric, start, end, max_rows=remaining_rows
+        )
         if frame["timestamp"].duplicated().any():
             raise ValueError("timestamps duplicados exigem agregação explícita antes da correlação")
         rows_read += len(frame)
