@@ -36,3 +36,12 @@
   alterados — sem erros.
 - Geração: `.venv/bin/python scripts/build_notebooks.py 05` — notebook criado
   sem outputs nem execução persistida.
+
+## Ajuste de revisão — Round 1
+
+- `incident_timeline` agora renderiza uma barra de erro horizontal Plotly de
+  ±40 minutos no trace de tickets. O ponto `opened_at` permanece sem alteração;
+  a banda torna a incerteza metodológica visível no gráfico, não apenas no hover.
+- RED: o novo teste falhou porque `ticket_trace.error_x.visible` era `None`.
+- GREEN: o teste inspeciona o trace real, verificando o timestamp original e
+  `error_x.array`/`arrayminus` de 2.400.000 ms.

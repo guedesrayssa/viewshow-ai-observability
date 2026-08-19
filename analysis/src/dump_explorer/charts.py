@@ -25,6 +25,7 @@ METRIC_DIRECTION = {
 MAX_QOS_SMALL_MULTIPLES = 20
 MAX_QOE_TRACE_GROUPS = 20
 MAX_RCA_TRACE_GROUPS = 20
+TICKET_OPEN_UNCERTAINTY_MS = 40 * 60 * 1_000
 
 
 def _assert_frame_cap(frame: pd.DataFrame) -> None:
@@ -393,6 +394,13 @@ def incident_timeline(
                 y=["ticket aberto"] * len(incidents),
                 mode="markers",
                 marker={"symbol": "diamond", "size": 11, "color": "#e76f51"},
+                error_x={
+                    "type": "data",
+                    "array": [TICKET_OPEN_UNCERTAINTY_MS] * len(incidents),
+                    "arrayminus": [TICKET_OPEN_UNCERTAINTY_MS] * len(incidents),
+                    "visible": True,
+                    "color": "#e76f51",
+                },
                 customdata=safe_incidents.to_numpy(),
                 hovertemplate=(
                     "prioridade: %{customdata[0]}<br>estado: %{customdata[1]}"

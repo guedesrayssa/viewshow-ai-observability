@@ -175,6 +175,32 @@ def test_rca_charts_only_use_structured_safe_hover_fields():
     assert provenance.data[0].name == "circular"
 
 
+def test_incident_timeline_renders_a_symmetric_40_minute_ticket_open_uncertainty_error_bar():
+    """Catches reducing the mandatory ticket-open uncertainty band to hover-only metadata."""
+    opened_at = pd.Timestamp("2026-01-01T00:00:00Z")
+    incidents = pd.DataFrame(
+        {
+            "opened_at": [opened_at],
+            "priority": ["P2"],
+            "state": ["resolved"],
+            "duration_ms": [60_000],
+        }
+    )
+
+    figure = incident_timeline(
+        incidents,
+        pd.DataFrame(columns=["timestamp", "entity", "event_label"]),
+        pd.DataFrame(columns=["timestamp", "tier", "errors"]),
+    )
+    ticket_trace = next(trace for trace in figure.data if trace.name == "Tickets")
+
+    assert pd.Timestamp(ticket_trace.x[0]).tz_localize("UTC") == opened_at
+    assert ticket_trace.error_x.visible is True
+    assert ticket_trace.error_x.type == "data"
+    assert list(ticket_trace.error_x.array) == [40 * 60 * 1_000]
+    assert list(ticket_trace.error_x.arrayminus) == [40 * 60 * 1_000]
+
+
 def test_attribution_is_bounded_by_window_and_optional_signal_allowlist(monkeypatch, window):
     """Catches an unbounded error-attribution read or a raw identifier drill-down."""
     captured = {}
