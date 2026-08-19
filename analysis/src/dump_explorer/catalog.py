@@ -5,7 +5,8 @@ from collections.abc import Iterable
 import pandas as pd
 from sqlalchemy import text
 
-from dump_explorer.database import read_frame
+from dump_explorer.config import HARD_MAX_ROWS
+from dump_explorer.database import ResultLimitError, read_frame
 
 EXPECTED_TABLES = (
     "signal_point",
@@ -95,6 +96,13 @@ def compare_expected_tables(actual: Iterable[str], expected: Iterable[str]) -> p
     """Classifica tabelas documentadas, ausentes e encontradas sem documentação."""
     actual_names = set(actual)
     expected_names = set(expected)
+    if len(actual_names) > HARD_MAX_ROWS or len(expected_names) > HARD_MAX_ROWS:
+        raise ResultLimitError(f"catálogo excede o limite de {HARD_MAX_ROWS} linhas")
+
+    table_names = actual_names | expected_names
+    if len(table_names) > HARD_MAX_ROWS:
+        raise ResultLimitError(f"catálogo excede o limite de {HARD_MAX_ROWS} linhas")
+
     records = [
         {
             "table_name": table_name,
@@ -106,6 +114,6 @@ def compare_expected_tables(actual: Iterable[str], expected: Iterable[str]) -> p
                 else "undocumented"
             ),
         }
-        for table_name in sorted(actual_names | expected_names)
+        for table_name in sorted(table_names)
     ]
     return pd.DataFrame(records, columns=["table_name", "status"])
