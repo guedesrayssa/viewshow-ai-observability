@@ -200,6 +200,26 @@ def test_missingness_accepts_a_small_table_only_when_the_catalog_allows_it(monke
     assert frame.loc[0, "null_pct"] == 50.0
 
 
+@pytest.mark.parametrize("table_name", ["signal_point", "prom_point"])
+def test_missingness_rejects_heavy_tables_before_any_count_query(monkeypatch, table_name):
+    """Catches a full-table null COUNT against either heavy point table."""
+    monkeypatch.setattr(
+        quality,
+        "load_column_catalog",
+        lambda engine: pd.DataFrame(
+            {"table_name": [table_name], "column_name": ["value"]}
+        ),
+    )
+    monkeypatch.setattr(
+        quality,
+        "read_frame",
+        lambda *args, **kwargs: pytest.fail("a tabela pesada não deve ser consultada"),
+    )
+
+    with pytest.raises(ValueError, match="pesada"):
+        load_missingness(object(), table_name, ["value"])
+
+
 def test_collector_health_normalizes_real_write_columns_and_legacy_iso_utc(monkeypatch):
     """Catches treating ISO collector times as epochs or losing a zero write count."""
     write_columns = {
@@ -250,3 +270,60 @@ def test_collector_health_normalizes_real_write_columns_and_legacy_iso_utc(monke
     incomplete = frame.loc[frame["collector"] == "nr", :].iloc[0]
     assert incomplete["status"] == "incomplete"
     assert pd.isna(incomplete["duration_s"])
+
+
+def test_collector_health_uses_the_explicit_write_count_for_each_table(monkeypatch):
+    """Catches choosing a generic catalog field before a collector's real write count."""
+    write_columns = {
+        "apollo_run": "events_written",
+        "nr_run": "metrics_written",
+        "prom_run": "samples_written",
+        "rpaas_run": "buckets_written",
+        "ca_run": "checks_written",
+    }
+    monkeypatch.setattr(
+        quality,
+        "load_column_catalog",
+        lambda engine: pd.DataFrame(
+            [
+                {"table_name": table, "column_name": column}
+                for table, write_column in write_columns.items()
+                for column in ("started_at", "finished_at", "rows_written", write_column)
+            ]
+        ),
+    )
+    queries = []
+
+    def fake_read_frame(engine, statement, **kwargs):
+        queries.append(str(statement))
+        return pd.DataFrame(columns=["started_at", "finished_at", "rows_written"])
+
+    monkeypatch.setattr(quality, "read_frame", fake_read_frame)
+
+    load_collector_health(object())
+
+    for table, write_column in write_columns.items():
+        query = next(query for query in queries if f"`{table}`" in query)
+        assert f"`{write_column}` AS rows_written" in query
+
+
+def test_collector_health_rejects_a_collector_missing_its_mapped_write_count(monkeypatch):
+    """Catches silently falling back to another write-like column when the real one is absent."""
+    monkeypatch.setattr(
+        quality,
+        "load_column_catalog",
+        lambda engine: pd.DataFrame(
+            {
+                "table_name": ["apollo_run", "apollo_run", "apollo_run"],
+                "column_name": ["started_at", "finished_at", "rows_written"],
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        quality,
+        "read_frame",
+        lambda *args, **kwargs: pytest.fail("não deve consultar sem o campo mapeado"),
+    )
+
+    with pytest.raises(ValueError, match="events_written"):
+        load_collector_health(object())

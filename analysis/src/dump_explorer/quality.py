@@ -46,18 +46,15 @@ _COLLECTOR_TABLES = {
     "rpaas_run": "rpaas",
     "ca_run": "ca",
 }
+_COLLECTOR_WRITE_COLUMNS = {
+    "apollo_run": "events_written",
+    "nr_run": "metrics_written",
+    "prom_run": "samples_written",
+    "rpaas_run": "buckets_written",
+    "ca_run": "checks_written",
+}
 _START_COLUMNS = ("started_at", "start_time", "started", "created_at")
 _FINISH_COLUMNS = ("finished_at", "finish_time", "ended_at", "completed_at")
-_WRITE_COLUMNS = (
-    "rows_written",
-    "events_written",
-    "metrics_written",
-    "samples_written",
-    "buckets_written",
-    "checks_written",
-    "points_written",
-    "records_written",
-)
 
 
 def _selected_tables(tables: Iterable[str] | None) -> tuple[str, ...]:
@@ -225,6 +222,8 @@ def load_series_cadence(engine, source, entity, metric, start, end) -> pd.DataFr
 
 def load_missingness(engine, table_name: str, columns: Iterable[str]) -> pd.DataFrame:
     """Resume nulos de colunas de catálogo, sem retornar nenhum valor bruto."""
+    if table_name in HEAVY_TABLES:
+        raise ValueError("tabela pesada não permitida para missingness")
     catalog = load_column_catalog(engine)
     catalog_tables = set(catalog["table_name"].tolist())
     if table_name not in catalog_tables:
@@ -279,9 +278,15 @@ def load_collector_health(engine) -> pd.DataFrame:
         available = set(
             catalog.loc[catalog["table_name"] == table_name, "column_name"].tolist()
         )
+        if not available:
+            continue
         started_column = _first_catalog_column(available, _START_COLUMNS)
         finished_column = _first_catalog_column(available, _FINISH_COLUMNS)
-        written_column = _first_catalog_column(available, _WRITE_COLUMNS)
+        written_column = _COLLECTOR_WRITE_COLUMNS[table_name]
+        if written_column not in available:
+            raise ValueError(
+                f"campo de escrita esperado ausente em {table_name}: {written_column}"
+            )
         if started_column is None:
             continue
 
