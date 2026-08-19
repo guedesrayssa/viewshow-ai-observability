@@ -8,6 +8,8 @@ from dump_explorer.notebook_builder import write_notebook
 
 def build_notebook(identifier: str, path: Path | None = None) -> Path:
     """Gera o notebook identificado sem executar suas células."""
+    if identifier == "07":
+        return _build_ingestion_contract_notebook(path)
     if identifier == "06":
         return _build_live_events_notebook(path)
     if identifier == "05":
@@ -83,6 +85,128 @@ O gráfico está marcado como **estimativa do MySQL**. Contagens exatas não sã
 para tabelas grandes, para preservar o dump e evitar consultas caras.""",
             ),
             ("code", "volume_bar(table_catalog).show()"),
+        ],
+    )
+
+
+def _build_ingestion_contract_notebook(path: Path | None = None) -> Path:
+    """Gera o notebook que documenta o contrato lógico antes do schema físico."""
+    target = path or Path(__file__).parents[1] / "notebooks" / "07_contrato_ingestao.ipynb"
+    return write_notebook(
+        target,
+        "Contrato lógico de ingestão BigQuery",
+        [
+            (
+                "markdown",
+                """## Escopo e limite de evidência
+
+Este catálogo documenta os campos lógicos que uma futura ingestão precisa
+receber. Ele **não** consulta BigQuery e não supõe projeto, dataset, tabela,
+coluna, partição, watermark ou regra de atualização. Tudo que depende do schema
+físico permanece como `não fornecido` até validação da Globo.
+
+As fontes ServiceNow e NPAW/Youbora são domínios documentados via BigQuery. Os
+seis campos de `frontend_events_sample` usam
+`source_system="amostra frontend; origem BigQuery não comprovada"`: vêm de
+exemplos de frontend e ficam separados do contrato confirmado.""",
+            ),
+            (
+                "code",
+                """from dump_explorer.contract import (
+    FRONTEND_SAMPLE_SOURCE,
+    OUTPUTS_DIR,
+    UNKNOWN_PHYSICAL_MAPPING,
+    build_logical_contract,
+    export_contract_csv,
+    validate_physical_mapping,
+)
+
+contract = build_logical_contract()
+physical_columns = [
+    "bigquery_table",
+    "bigquery_column",
+    "bigquery_partition_column",
+    "bigquery_write_watermark",
+    "update_semantics",
+]""",
+            ),
+            (
+                "markdown",
+                "## 1. Campos lógicos de domínios documentados via BigQuery\n\n"
+                "NPAW tem atraso estrutural de aproximadamente 28 horas. Em ServiceNow, "
+                "`opened_at` é ticket-open time, não o início do incidente.",
+            ),
+            (
+                "code",
+                """confirmed_domains = contract.loc[
+    contract["source_system"] != FRONTEND_SAMPLE_SOURCE
+]
+display(confirmed_domains)
+
+domain_summary = confirmed_domains.groupby(
+    ["source_system", "logical_table", "grain", "known_delay"], as_index=False
+).size()
+display(domain_summary)""",
+            ),
+            (
+                "markdown",
+                "## 2. Amostras de eventos de frontend\n\n"
+                "A seção abaixo não é um mapeamento BigQuery e não autoriza ingestão de "
+                "identificadores individuais. Ela registra apenas os campos lógicos "
+                "selecionados dos seis exemplos fornecidos.",
+            ),
+            (
+                "code",
+                """frontend_samples = contract.loc[
+    contract["source_system"] == FRONTEND_SAMPLE_SOURCE
+]
+display(frontend_samples)""",
+            ),
+            (
+                "markdown",
+                "## 3. Lacunas do mapeamento físico\n\n"
+                "A validação não converte nomes do dump MySQL em nomes físicos BigQuery. "
+                "Ela torna explícitas as lacunas que bloqueiam uma ingestão incremental "
+                "segura e idempotente.",
+            ),
+            (
+                "code",
+                """unresolved_physical_fields = contract.loc[
+    contract[physical_columns].eq(UNKNOWN_PHYSICAL_MAPPING).any(axis=1)
+]
+issues = validate_physical_mapping(contract)
+display(unresolved_physical_fields)
+display([issue.__dict__ for issue in issues])""",
+            ),
+            (
+                "markdown",
+                "## 4. Exportação explícita\n\n"
+                "Nenhum CSV é criado ao abrir ou executar este notebook. Para exportar, "
+                "altere conscientemente a flag abaixo; o destino é restringido a "
+                "`analysis/outputs`.",
+            ),
+            (
+                "code",
+                """export_csv = False
+if export_csv:
+    output_path = OUTPUTS_DIR / "contrato_logico_ingestao.csv"
+    exported_path = export_contract_csv(contract, output_path)
+    print(f"Contrato exportado para {exported_path}")""",
+            ),
+            (
+                "markdown",
+                """## Perguntas exatas para enviar à Globo
+
+1. Qual é o **project/dataset/table** físico para cada domínio?
+2. Qual é a **partition column** de cada tabela?
+3. Qual é o **write watermark** confiável?
+4. Qual é a **natural key** de idempotência?
+5. Como são tratados **late arrivals**?
+6. Como são tratados **corrections/deletes**?
+7. Como a **schema evolution** é comunicada e compatibilizada?
+8. Quais campos têm **PII** e quais regras de sanitização se aplicam?
+9. Quais são as **query quotas** e limites de custo/leitura?""",
+            ),
         ],
     )
 
@@ -805,7 +929,7 @@ else:
 def main() -> None:
     """Lê o identificador solicitado e grava o notebook correspondente."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04", "05", "06"])
+    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04", "05", "06", "07"])
     args = parser.parse_args()
     build_notebook(args.identifier)
 
