@@ -6,8 +6,10 @@ from dump_explorer.charts import (
     correlation_heatmap,
     coverage_heatmap,
     empty_figure,
+    event_overlay_timeline,
     metric_timeline,
     missingness_bar,
+    qos_small_multiples,
     source_metric_heatmap,
     volume_bar,
 )
@@ -134,3 +136,46 @@ def test_correlation_heatmap_keeps_missing_observations_out_of_the_matrix():
 
     assert figure.data[0].type == "heatmap"
     assert pd.isna(figure.data[0].z[0][1])
+
+
+def test_qos_small_multiples_keeps_each_metric_in_its_own_trace():
+    """Catches combining rates and milliseconds onto an indistinguishable single trace."""
+    figure = qos_small_multiples(
+        pd.DataFrame(
+            {
+                "timestamp": pd.to_datetime([1_000, 1_000], unit="ms", utc=True),
+                "entity": ["api", "api"],
+                "metric": ["requests_5xx_rate", "p99_ms"],
+                "value": [0.02, 50.0],
+                "unit": ["ratio", "ms"],
+            }
+        )
+    )
+
+    assert len(figure.data) == 2
+    assert {trace.name for trace in figure.data} == {"api | requests_5xx_rate", "api | p99_ms"}
+
+
+def test_event_overlay_timeline_marks_tsuru_rule_reapplications_over_technical_series():
+    """Catches dropping Tsuru context from an infrastructure timeline."""
+    technical = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime([1_000], unit="ms", utc=True),
+            "entity": ["api"],
+            "metric": ["error_rate"],
+            "value": [0.1],
+        }
+    )
+    events = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime([1_500], unit="ms", utc=True),
+            "entity": ["api"],
+            "event_label": ["rule_reapplication"],
+        }
+    )
+
+    figure = event_overlay_timeline(technical, events)
+
+    assert len(figure.data) == 2
+    assert figure.data[1].name == "Eventos Tsuru"
+    assert list(figure.data[1].text) == ["api | rule_reapplication"]

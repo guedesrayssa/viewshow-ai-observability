@@ -8,6 +8,8 @@ from dump_explorer.notebook_builder import write_notebook
 
 def build_notebook(identifier: str, path: Path | None = None) -> Path:
     """Gera o notebook identificado sem executar suas células."""
+    if identifier == "03":
+        return _build_infrastructure_qos_notebook(path)
     if identifier == "02":
         return _build_normalized_signals_notebook(path)
     if identifier == "01":
@@ -75,6 +77,121 @@ O gráfico está marcado como **estimativa do MySQL**. Contagens exatas não sã
 para tabelas grandes, para preservar o dump e evitar consultas caras.""",
             ),
             ("code", "volume_bar(table_catalog).show()"),
+        ],
+    )
+
+
+def _build_infrastructure_qos_notebook(path: Path | None = None) -> Path:
+    """Gera o notebook de exploração de QoS das fontes de infraestrutura."""
+    target = path or Path(__file__).parents[1] / "notebooks" / "03_infraestrutura_qos.ipynb"
+    return write_notebook(
+        target,
+        "Infraestrutura e QoS do dump Argus",
+        [
+            (
+                "markdown",
+                """## Escopo, janela e limites
+
+Cada leitura usa a janela UTC explícita `[start, end)` e parâmetros vinculados.
+Os loaders limitam cada DataFrame a no máximo 100.000 linhas; `prom_point` nunca
+é lida sem antes selecionar uma seção e no máximo 20 séries.""",
+            ),
+            (
+                "code",
+                """from dump_explorer.charts import event_overlay_timeline, qos_small_multiples
+from dump_explorer.config import load_settings
+from dump_explorer.database import create_db_engine
+from dump_explorer.qos import (
+    load_apollo,
+    load_cloudarmor,
+    load_newrelic,
+    load_prometheus,
+    load_rpaas,
+    load_tsuru_events,
+)
+
+settings = load_settings()
+engine = create_db_engine(settings)
+start_ms = 0  # substitua por início UTC em epoch ms
+end_ms = 86_400_000  # substitua por fim UTC em epoch ms""",
+            ),
+            (
+                "markdown",
+                """## 1. New Relic e Apollo
+
+Apdex tem direção `lower_is_worse`. Em Apollo, `request_count` é contagem por
+linha: `rpm` usa a duração real de cada janela, que não é fixa.""",
+            ),
+            (
+                "code",
+                """newrelic_apps = []  # opcional: nomes de aplicações
+apollo_operations = []  # opcional: operações GraphQL
+
+newrelic = load_newrelic(engine, newrelic_apps, start_ms, end_ms)
+apollo = load_apollo(engine, apollo_operations, start_ms, end_ms)
+qos_small_multiples(newrelic).show()
+qos_small_multiples(apollo).show()""",
+            ),
+            (
+                "markdown",
+                """## 2. RPaaS e Cloud Armor
+
+RPaaS é amostrado a **1%**: as contagens são amostras, não tráfego absoluto, e
+as taxas (`5xx/total`) são mais comparáveis. A taxa 4xx é contextual; somente
+os vhosts de playback recebem `playback_signal=True`. Um aparente pico de
+memória em Prometheus pode ser o limite do **cgroup** (por exemplo,
+`gg-gateway-rpaas-be`), e não uso real de memória.""",
+            ),
+            (
+                "code",
+                """rpaas_regions = []  # opcional: ["br1"]
+rpaas_vhosts = []  # opcional: ["playback.video.globo.com"]
+cloudarmor_apps = []  # opcional: aplicações protegidas
+
+rpaas = load_rpaas(engine, rpaas_regions, rpaas_vhosts, start_ms, end_ms)
+cloudarmor = load_cloudarmor(engine, cloudarmor_apps, start_ms, end_ms)
+qos_small_multiples(rpaas).show()
+qos_small_multiples(cloudarmor).show()""",
+            ),
+            (
+                "markdown",
+                """## 3. Seções selecionadas do Prometheus
+
+Escolha explicitamente as seções e, se necessário, serviços. O limite de 20
+séries é aplicado antes do join com `prom_point`; não use a seção para inferir
+semântica sem verificar o painel e os labels.""",
+            ),
+            (
+                "code",
+                """prometheus_sections = ["RPAASV2 CPU"]  # selecione seções de interesse
+prometheus_services = []  # opcional: services
+technical_for_events = None
+
+for section in prometheus_sections:
+    prom_section = load_prometheus(
+        engine, section, prometheus_services, start_ms, end_ms, limit_series=20
+    )
+    qos_small_multiples(prom_section).show()
+    if technical_for_events is None:
+        technical_for_events = prom_section""",
+            ),
+            (
+                "markdown",
+                """## 4. Eventos Tsuru sobrepostos
+
+`autoscale.run` significa reaplicação de regra (`rule_reapplication`), não
+prova de escala por demanda. A sobreposição temporal é contexto para
+investigação, não evidência de causalidade. Campos sanitizados como owner e
+error permanecem nulos.""",
+            ),
+            (
+                "code",
+                """tsuru_targets = []  # opcional: nomes de apps/pools
+tsuru_events = load_tsuru_events(engine, tsuru_targets, start_ms, end_ms)
+if technical_for_events is not None:
+    event_overlay_timeline(technical_for_events, tsuru_events).show()
+display(tsuru_events.head())""",
+            ),
         ],
     )
 
@@ -341,7 +458,7 @@ correlation_heatmap(correlation_frame).show()""",
 def main() -> None:
     """Lê o identificador solicitado e grava o notebook correspondente."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("identifier", choices=["00", "01", "02"])
+    parser.add_argument("identifier", choices=["00", "01", "02", "03"])
     args = parser.parse_args()
     build_notebook(args.identifier)
 

@@ -75,3 +75,25 @@ def test_build_notebook_02_includes_normalized_series_and_explicit_correlation(t
     assert "correlation" in source
     assert "zero" in source
     assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
+
+
+def test_build_notebook_03_includes_qos_sources_and_semantic_warnings(tmp_path):
+    """Catches omitting a QoS source or treating cgroup/sampled RPaaS data as literal facts."""
+    path = tmp_path / "03_infraestrutura_qos.ipynb"
+
+    build_notebook("03", path)
+
+    notebook = nbformat.read(path, as_version=4)
+    source = "\n".join(cell.source for cell in notebook.cells)
+
+    assert "load_newrelic" in source
+    assert "load_apollo" in source
+    assert "load_rpaas" in source
+    assert "load_cloudarmor" in source
+    assert "load_prometheus" in source
+    assert "load_tsuru_events" in source
+    assert "cgroup" in source
+    assert "1%" in source
+    assert "autoscale.run" in source
+    assert "event_overlay_timeline" in source
+    assert all(cell.get("outputs", []) == [] for cell in notebook.cells)

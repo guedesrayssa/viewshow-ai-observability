@@ -2,6 +2,7 @@
 
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from dump_explorer.config import HARD_MAX_ROWS
 from dump_explorer.database import ResultLimitError
@@ -176,5 +177,72 @@ def correlation_heatmap(frame: pd.DataFrame) -> go.Figure:
     figure.update_layout(
         title="Correlação de Pearson (somente pares de observações presentes)",
         plot_bgcolor="#d9d9d9",
+    )
+    return figure
+
+
+def qos_small_multiples(frame: pd.DataFrame) -> go.Figure:
+    """Mostra cada entidade/métrica de QoS em painel próprio, sem misturar unidades."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem sinais de QoS no período selecionado")
+    grouped = list(frame.groupby(["entity", "metric"], sort=True))
+    figure = make_subplots(
+        rows=len(grouped),
+        cols=1,
+        shared_xaxes=True,
+        subplot_titles=[f"{entity} | {metric}" for (entity, metric), _ in grouped],
+    )
+    for row, ((entity, metric), series) in enumerate(grouped, start=1):
+        unit = series["unit"].iloc[0] if "unit" in series else "valor"
+        figure.add_trace(
+            go.Scatter(
+                x=series["timestamp"],
+                y=series["value"],
+                mode="lines+markers",
+                name=f"{entity} | {metric}",
+            ),
+            row=row,
+            col=1,
+        )
+        figure.update_yaxes(title_text=unit, row=row, col=1)
+    figure.update_layout(height=max(300, 240 * len(grouped)), title="QoS por série")
+    figure.update_xaxes(title_text="Timestamp (UTC)", row=len(grouped), col=1)
+    return figure
+
+
+def event_overlay_timeline(technical: pd.DataFrame, events: pd.DataFrame) -> go.Figure:
+    """Sobrepõe eventos Tsuru à série técnica sem inferir causalidade a partir da coincidência."""
+    _assert_frame_cap(technical)
+    _assert_frame_cap(events)
+    if technical.empty and events.empty:
+        return empty_figure("Sem sinais técnicos ou eventos Tsuru no período selecionado")
+    figure = go.Figure()
+    for (entity, metric), series in technical.groupby(["entity", "metric"], sort=True):
+        figure.add_trace(
+            go.Scatter(
+                x=series["timestamp"],
+                y=series["value"],
+                mode="lines+markers",
+                name=f"{entity} | {metric}",
+            )
+        )
+    if not events.empty:
+        anchor = technical["value"].max() if not technical.empty else 1
+        figure.add_trace(
+            go.Scatter(
+                x=events["timestamp"],
+                y=[anchor] * len(events),
+                mode="markers",
+                marker={"symbol": "x", "size": 11, "color": "#e76f51"},
+                text=(events["entity"] + " | " + events["event_label"]),
+                hovertemplate="%{text}<extra>Evento Tsuru</extra>",
+                name="Eventos Tsuru",
+            )
+        )
+    figure.update_layout(
+        title="Série técnica com eventos Tsuru (sobreposição temporal, não causalidade)",
+        xaxis_title="Timestamp (UTC)",
+        yaxis_title="Valor observado",
     )
     return figure
