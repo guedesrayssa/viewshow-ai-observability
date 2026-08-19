@@ -37,3 +37,23 @@ def test_build_notebook_00_includes_catalog_and_safety_context(tmp_path):
     assert "estimativa do MySQL" in source
     assert "não são computadas" in source
     assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
+
+
+def test_build_notebook_01_includes_quality_sections_and_limits(tmp_path):
+    path = tmp_path / "01_cobertura_qualidade.ipynb"
+
+    build_notebook("01", path)
+
+    notebook = nbformat.read(path, as_version=4)
+    source = "\n".join(cell.source for cell in notebook.cells)
+
+    assert "coverage by table" in source
+    assert "signal_bucket.source" in source
+    assert "source x day" in source
+    assert "Cadência" in source
+    assert "nulos" in source
+    assert "incomplete" in source
+    assert "28 horas" in source
+    assert "ausência de tickets" in source
+    assert "watermark" in source
+    assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
