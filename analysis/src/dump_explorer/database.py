@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
-from dump_explorer.config import Settings
+from dump_explorer.config import HARD_MAX_ROWS, Settings
 
 
 class ResultLimitError(RuntimeError):
@@ -16,6 +16,9 @@ def create_db_engine(settings: Settings) -> Engine:
 
 
 def read_frame(engine, statement, params=None, max_rows=100_000) -> pd.DataFrame:
+    if not 1 <= max_rows <= HARD_MAX_ROWS:
+        raise ResultLimitError(f"max_rows deve estar entre 1 e {HARD_MAX_ROWS}")
+
     chunks = pd.read_sql_query(
         statement,
         engine,

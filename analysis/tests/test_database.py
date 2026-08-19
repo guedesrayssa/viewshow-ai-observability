@@ -14,3 +14,14 @@ def test_read_frame_rejects_result_above_limit(monkeypatch):
 
     with pytest.raises(ResultLimitError, match="3 linhas"):
         read_frame(object(), text("SELECT id FROM x"), max_rows=3)
+
+
+def test_read_frame_rejects_limit_above_hard_cap(monkeypatch):
+    monkeypatch.setattr(
+        pd,
+        "read_sql_query",
+        lambda *args, **kwargs: iter([pd.DataFrame({"id": [1]})]),
+    )
+
+    with pytest.raises(ResultLimitError, match="100000"):
+        read_frame(object(), text("SELECT id FROM x"), max_rows=100_001)
