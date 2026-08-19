@@ -24,6 +24,7 @@ METRIC_DIRECTION = {
 }
 MAX_QOS_SMALL_MULTIPLES = 20
 MAX_QOE_TRACE_GROUPS = 20
+MAX_RCA_TRACE_GROUPS = 20
 
 
 def _assert_frame_cap(frame: pd.DataFrame) -> None:
@@ -367,5 +368,125 @@ def qoe_timeline(frame: pd.DataFrame, *, metric: str = "active_sessions") -> go.
         title=f"Timeline de QoE: {metric}",
         xaxis_title="Timestamp (UTC)",
         yaxis_title=metric,
+    )
+    return figure
+
+
+def incident_timeline(
+    incidents: pd.DataFrame, deploys: pd.DataFrame, attribution: pd.DataFrame
+) -> go.Figure:
+    """Sobrepõe evidência temporal sem expor texto sanitizado ou alegar causalidade."""
+    _assert_frame_cap(incidents)
+    _assert_frame_cap(deploys)
+    _assert_frame_cap(attribution)
+    if incidents.empty and deploys.empty and attribution.empty:
+        return empty_figure("Sem incidentes, deploys ou atribuição no período selecionado")
+
+    figure = go.Figure()
+    if not incidents.empty:
+        safe_incidents = incidents.loc[:, ["priority", "state", "duration_ms"]].copy()
+        safe_incidents["priority"] = safe_incidents["priority"].fillna("não informado")
+        safe_incidents["state"] = safe_incidents["state"].fillna("não informado")
+        figure.add_trace(
+            go.Scatter(
+                x=incidents["opened_at"],
+                y=["ticket aberto"] * len(incidents),
+                mode="markers",
+                marker={"symbol": "diamond", "size": 11, "color": "#e76f51"},
+                customdata=safe_incidents.to_numpy(),
+                hovertemplate=(
+                    "prioridade: %{customdata[0]}<br>estado: %{customdata[1]}"
+                    "<br>duração registrada (ms): %{customdata[2]}"
+                    "<br>abertura do ticket; início do incidente não é conhecido"
+                    "<extra>Ticket (banda visual ±40 min)</extra>"
+                ),
+                name="Tickets",
+            )
+        )
+    if not deploys.empty:
+        safe_deploys = deploys.loc[:, ["entity", "event_label"]].fillna("não informado")
+        figure.add_trace(
+            go.Scatter(
+                x=deploys["timestamp"],
+                y=["deploy"] * len(deploys),
+                mode="markers",
+                marker={"symbol": "x", "size": 10, "color": "#457b9d"},
+                customdata=safe_deploys.to_numpy(),
+                hovertemplate=(
+                    "alvo: %{customdata[0]}<br>evento: %{customdata[1]}<extra>Deploy</extra>"
+                ),
+                name="Deploys",
+            )
+        )
+    if not attribution.empty:
+        safe_attribution = attribution.loc[:, ["tier", "errors"]].fillna("não informado")
+        figure.add_trace(
+            go.Scatter(
+                x=attribution["timestamp"],
+                y=["erro atribuído"] * len(attribution),
+                mode="markers",
+                marker={"symbol": "circle", "size": 8, "color": "#2a9d8f"},
+                customdata=safe_attribution.to_numpy(),
+                hovertemplate=(
+                    "camada: %{customdata[0]}<br>erros: %{customdata[1]}<extra>Atribuição</extra>"
+                ),
+                name="Erros atribuídos",
+            )
+        )
+    figure.update_layout(
+        title="Ticket, deploy e telemetria no tempo (sobreposição não prova causalidade)",
+        xaxis_title="Timestamp (UTC)",
+        yaxis_title="Tipo de evidência",
+    )
+    return figure
+
+
+def provenance_bar(labels: pd.DataFrame) -> go.Figure:
+    """Mostra a proveniência do golden set, distinguindo explicitamente rótulos circulares."""
+    _assert_frame_cap(labels)
+    if labels.empty:
+        return empty_figure("Sem rótulos de proveniência no período selecionado")
+    grouped = (
+        labels.groupby(["provenance", "circular"], dropna=False).size().reset_index(name="rows")
+    )
+    figure = go.Figure()
+    for circular, subset in grouped.groupby("circular", sort=True, dropna=False):
+        is_circular = bool(circular) if pd.notna(circular) else False
+        figure.add_trace(
+            go.Bar(
+                x=subset["provenance"],
+                y=subset["rows"],
+                name="circular" if is_circular else "confirmado / não circular",
+                marker_color="#e76f51" if is_circular else "#2a9d8f",
+            )
+        )
+    figure.update_layout(
+        title="Proveniência dos rótulos (detector-derived é circular)",
+        barmode="stack",
+        xaxis_title="Proveniência",
+        yaxis_title="Rótulos",
+    )
+    return figure
+
+
+def attribution_stack(frame: pd.DataFrame) -> go.Figure:
+    """Empilha erros por camada sem expor nomes de erro livres ou identificadores individuais."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem atribuição de erro no período selecionado")
+    groups = list(frame.groupby("tier", sort=True))
+    if len(groups) > MAX_RCA_TRACE_GROUPS:
+        raise ResultLimitError(
+            "stack de atribuição excede o limite de "
+            f"{MAX_RCA_TRACE_GROUPS} camadas; refine a seleção"
+        )
+    figure = go.Figure()
+    for tier, series in groups:
+        figure.add_trace(go.Bar(x=series["timestamp"], y=series["errors"], name=tier))
+    figure.update_layout(
+        title="Erros live por camada de atribuição",
+        barmode="stack",
+        xaxis_title="Timestamp (UTC)",
+        yaxis_title="Erros",
     )
     return figure

@@ -8,6 +8,8 @@ from dump_explorer.notebook_builder import write_notebook
 
 def build_notebook(identifier: str, path: Path | None = None) -> Path:
     """Gera o notebook identificado sem executar suas células."""
+    if identifier == "05":
+        return _build_incidents_rca_notebook(path)
     if identifier == "04":
         return _build_qoe_notebook(path)
     if identifier == "03":
@@ -79,6 +81,129 @@ O gráfico está marcado como **estimativa do MySQL**. Contagens exatas não sã
 para tabelas grandes, para preservar o dump e evitar consultas caras.""",
             ),
             ("code", "volume_bar(table_catalog).show()"),
+        ],
+    )
+
+
+def _build_incidents_rca_notebook(path: Path | None = None) -> Path:
+    """Gera o notebook de contexto de incidentes e evidências de RCA."""
+    target = path or Path(__file__).parents[1] / "notebooks" / "05_incidentes_rca.ipynb"
+    return write_notebook(
+        target,
+        "Incidentes e evidências de RCA do dump Argus",
+        [
+            (
+                "markdown",
+                """## Escopo, tempo e limites metodológicos
+
+`opened_at` é a hora **ticket-open**, não o início do incidente. A linha do
+tempo usa uma banda visual de **40 minutos** de incerteza sem alterar o
+timestamp armazenado. A ausência de ticket não é rótulo negativo de ausência
+de problema: incidentes podem não ser registrados ou ser registrados tarde.
+
+O escopo padrão `video` usa somente `incidents`. `platform` é um universo de
+times vizinhos e só deve ser consultado explicitamente, sem misturar ambos na
+avaliação.""",
+            ),
+            (
+                "code",
+                """from dump_explorer.charts import (
+    attribution_stack,
+    incident_timeline,
+    provenance_bar,
+)
+from dump_explorer.config import load_settings
+from dump_explorer.database import create_db_engine
+from dump_explorer.rca import (
+    build_incident_window,
+    load_dashboard_artifact,
+    load_error_attribution,
+    load_incidents,
+    load_labels,
+)
+
+settings = load_settings()
+engine = create_db_engine(settings)
+start_ms = 0  # substitua por início UTC em epoch ms
+end_ms = 86_400_000  # substitua por fim UTC em epoch ms""",
+            ),
+            (
+                "markdown",
+                """## 1. Tickets estruturados e cobertura de telemetria
+
+O leitor só expõe prioridade, estado, duração registrada e componentes
+estruturados; texto livre sanitizado não é exibido. Compare a cobertura de
+ticket-open com a cobertura de telemetria para investigar lacunas, não para
+inferir que uma das fontes causou a outra.""",
+            ),
+            (
+                "code",
+                """incidents = load_incidents(engine, start_ms, end_ms, scope="video")
+attribution = load_error_attribution(engine, start_ms, end_ms)
+
+display(incidents[["opened_at", "priority", "state", "duration_ms"]])
+display(
+    {
+        "ticket_open_rows": len(incidents),
+        "telemetry_rows": len(attribution),
+        "ticket_open_min": incidents["opened_at"].min() if not incidents.empty else None,
+        "telemetry_min": attribution["timestamp"].min() if not attribution.empty else None,
+    }
+)""",
+            ),
+            (
+                "markdown",
+                """## 2. Janela de evidência
+
+Os offsets permitidos são 15m, 30m, 1h, 2h e 6h. O contexto reúne ticket,
+deploy e atribuição de erros no tempo; a sobreposição é evidência para
+investigação, não prova de causalidade.""",
+            ),
+            (
+                "code",
+                """if not incidents.empty:
+    context = build_incident_window(engine, incidents.iloc[0], before="1h", after="1h")
+    incident_timeline(context.incident.to_frame().T, context.deploys, context.signals).show()
+    attribution_stack(context.attribution).show()
+    display(context.labels)
+else:
+    print("Sem ticket na janela: isso não é uma evidência negativa de incidente.")""",
+            ),
+            (
+                "markdown",
+                """## 3. Golden set e proveniência
+
+Por padrão, a avaliação usa apenas `rca-confirmed` e `team-confirmed`.
+`detector-derived` pode aparecer na visualização, mas é marcado como circular:
+ele mede concordância com o detector que o criou, não acurácia independente.""",
+            ),
+            (
+                "code",
+                """confirmed_labels = load_labels(engine)
+display(confirmed_labels)
+provenance_bar(confirmed_labels).show()
+
+# Somente para inspeção visual; não use este conjunto como ground truth.
+detector_display = load_labels(engine, provenances=["detector-derived"])
+provenance_bar(detector_display).show()""",
+            ),
+            (
+                "markdown",
+                """## 4. Comparação opcional com artefatos Argus
+
+Um artefato só é lido por nome exato e seu JSON precisa ser um objeto. Esta
+comparação é **opcional**: associe-o a um rótulo humano apenas se ambos trouxerem
+um identificador compartilhado explícito. Não faça associação por título,
+texto parecido ou proximidade temporal.""",
+            ),
+            (
+                "code",
+                """artifact_name = "incidents"  # nome exato, altere conscientemente
+artifact = load_dashboard_artifact(engine, artifact_name)
+display(artifact)
+
+# Sem identificador compartilhado explícito, mantenha artefato e rótulos separados.""",
+            ),
         ],
     )
 
@@ -571,7 +696,7 @@ category_stack(vod_categories).show()""",
 def main() -> None:
     """Lê o identificador solicitado e grava o notebook correspondente."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04"])
+    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04", "05"])
     args = parser.parse_args()
     build_notebook(args.identifier)
 
