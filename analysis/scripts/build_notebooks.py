@@ -8,6 +8,8 @@ from dump_explorer.notebook_builder import write_notebook
 
 def build_notebook(identifier: str, path: Path | None = None) -> Path:
     """Gera o notebook identificado sem executar suas células."""
+    if identifier == "04":
+        return _build_qoe_notebook(path)
     if identifier == "03":
         return _build_infrastructure_qos_notebook(path)
     if identifier == "02":
@@ -455,10 +457,121 @@ correlation_heatmap(correlation_frame).show()""",
     )
 
 
+def _build_qoe_notebook(path: Path | None = None) -> Path:
+    """Gera o notebook de experiência agregada do usuário, sem identificadores individuais."""
+    target = path or Path(__file__).parents[1] / "notebooks" / "04_experiencia_qoe.ipynb"
+    return write_notebook(
+        target,
+        "Experiência do usuário e QoE do dump Argus",
+        [
+            (
+                "markdown",
+                """## Escopo e atraso conhecido
+
+Estas tabelas NPAW/Youbora são agregadas por hora x dimensão e não expõem IDs
+individuais. Cada consulta usa uma janela UTC explícita `[start, end)`. Há um
+atraso estrutural de aproximadamente **28 horas**: a cobertura mais recente pode
+estar vazia ou parcial por desenho do pipeline, e não é evidência de ausência de
+incidente em tempo real.""",
+            ),
+            (
+                "code",
+                """from dump_explorer.charts import (
+    category_stack,
+    geo_heatmap,
+    impact_scatter,
+    qoe_timeline,
+)
+from dump_explorer.config import load_settings
+from dump_explorer.database import create_db_engine
+from dump_explorer.qoe import (
+    NPAW_DELAY_HOURS,
+    load_device_qoe,
+    load_error_categories,
+    load_geo_qoe,
+    load_live_active,
+    load_live_qoe,
+    load_player_qoe,
+)
+
+settings = load_settings()
+engine = create_db_engine(settings)
+start_ms = 0  # substitua por início UTC em epoch ms
+end_ms = 86_400_000  # substitua por fim UTC em epoch ms""",
+            ),
+            (
+                "markdown",
+                """## 1. Players, dispositivos e geografia
+
+`(desconhecido)` é uma dimensão ausente explicitamente marcada, não removida do
+ranking. A taxa de erro é `NULL` quando sessões é zero. Dispositivos usam pelo
+menos 30 sessões **na consulta SQL**; o ranking não representa a cardinalidade
+bruta. O heatmap UF x ISP usa somente agregados locais, sem mapa ou ativos externos.""",
+            ),
+            (
+                "code",
+                """player_qoe = load_player_qoe(engine, start_ms, end_ms)
+device_qoe = load_device_qoe(engine, start_ms, end_ms, min_sessions=30)
+geo_qoe = load_geo_qoe(engine, start_ms, end_ms)
+display(player_qoe)
+display(device_qoe)
+display(geo_qoe)
+impact_scatter(player_qoe, dimension="player").show()
+impact_scatter(device_qoe, dimension="device").show()
+geo_heatmap(geo_qoe).show()""",
+            ),
+            (
+                "markdown",
+                """## 2. QoE ao vivo e audiência
+
+Selecione sinais explicitamente. `bufferratio` é **ratio**, `jointime` é em
+**segundos** e latência é em **milissegundos**; as unidades não compartilham eixo.
+`startup_errors` fica separado de erros durante a reprodução. `active_sessions`
+é uma contagem de sessões **concorrentes**, não acumulada; `joins_in_bucket`
+significa novas entradas no bucket de 15 minutos.""",
+            ),
+            (
+                "code",
+                """signals = ["pfc1"]  # selecione explicitamente um ou mais sinais
+live_qoe = load_live_qoe(engine, signals, start_ms, end_ms)
+live_active = load_live_active(engine, signals, start_ms, end_ms)
+latest_qoe_timestamp = live_active["timestamp"].max() if not live_active.empty else None
+print(
+    f"Timestamp NPAW mais recente: {latest_qoe_timestamp}; "
+    f"cobertura pode atrasar cerca de {NPAW_DELAY_HOURS} horas."
+)
+display(live_qoe)
+display(live_active)
+qoe_timeline(live_qoe, metric="startup_errors").show()
+qoe_timeline(live_qoe, metric="bufferratio_avg").show()
+qoe_timeline(live_qoe, metric="jointime_s_avg").show()
+qoe_timeline(live_active, metric="active_sessions").show()""",
+            ),
+            (
+                "markdown",
+                """## 3. Categorias semânticas de erro
+
+Live e VOD são carregados e visualizados separadamente; não existe taxa única
+misturando os dois. `top_names` preserva o texto bruto e recebe uma flag quando
+o JSON está inválido.""",
+            ),
+            (
+                "code",
+                """live_categories = load_error_categories(engine, "live", start_ms, end_ms)
+vod_categories = load_error_categories(engine, "vod", start_ms, end_ms)
+display(live_categories)
+display(vod_categories)
+category_stack(live_categories).show()
+category_stack(vod_categories).show()""",
+            ),
+        ],
+    )
+
+
 def main() -> None:
     """Lê o identificador solicitado e grava o notebook correspondente."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("identifier", choices=["00", "01", "02", "03"])
+    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04"])
     args = parser.parse_args()
     build_notebook(args.identifier)
 

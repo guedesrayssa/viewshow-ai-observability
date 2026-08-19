@@ -52,9 +52,7 @@ def volume_bar(frame: pd.DataFrame) -> go.Figure:
     if frame.empty:
         return empty_figure("Sem dados de volume")
 
-    figure = go.Figure(
-        go.Bar(x=frame["table_name"], y=frame["estimated_rows"], name="estimativa")
-    )
+    figure = go.Figure(go.Bar(x=frame["table_name"], y=frame["estimated_rows"], name="estimativa"))
     figure.update_layout(
         title="Volume por tabela (estimativa do MySQL)",
         xaxis_title="Tabela",
@@ -260,5 +258,102 @@ def event_overlay_timeline(technical: pd.DataFrame, events: pd.DataFrame) -> go.
         title="Série técnica com eventos Tsuru (sobreposição temporal, não causalidade)",
         xaxis_title="Timestamp (UTC)",
         yaxis_title="Valor observado",
+    )
+    return figure
+
+
+def impact_scatter(frame: pd.DataFrame, *, dimension: str = "player") -> go.Figure:
+    """Mostra impacto agregado: volume, taxa de erro e erros absolutos em eixos distintos."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem dados de impacto de QoE")
+    figure = go.Figure(
+        go.Scatter(
+            x=frame["sessions"],
+            y=frame["error_rate_pct"],
+            mode="markers",
+            marker={"size": frame["errors"], "sizemode": "area", "sizemin": 5},
+            text=frame.get(dimension, None),
+            hovertemplate=(
+                f"{dimension}: %{{text}}<br>sessões: %{{x}}<br>taxa de erro: %{{y:.2f}}%"
+                "<extra></extra>"
+            ),
+            name="dimensão de QoE",
+        )
+    )
+    figure.update_layout(
+        title="Impacto de QoE por dimensão agregada",
+        xaxis_title="Sessões",
+        yaxis_title="Taxa de erro (%)",
+    )
+    return figure
+
+
+def category_stack(frame: pd.DataFrame) -> go.Figure:
+    """Empilha categorias sem misturar o significado de erros live e VOD."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem categorias de erro no período selecionado")
+    figure = go.Figure()
+    for (kind, category), series in frame.groupby(["kind", "category"], sort=True):
+        figure.add_trace(
+            go.Bar(
+                x=series["timestamp"],
+                y=series["errors"],
+                name=f"{kind} | {category}",
+            )
+        )
+    figure.update_layout(
+        title="Categorias semânticas de erro por tipo de conteúdo",
+        barmode="stack",
+        xaxis_title="Timestamp (UTC)",
+        yaxis_title="Erros",
+    )
+    return figure
+
+
+def geo_heatmap(frame: pd.DataFrame) -> go.Figure:
+    """Exibe UF x ISP localmente, sem carregar mapas, tiles ou outros ativos externos."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem dados geográficos de QoE")
+    grouped = frame.groupby(["state_province", "isp"], as_index=False).agg(
+        sessions=("sessions", "sum"), errors=("errors", "sum")
+    )
+    grouped["error_rate_pct"] = (
+        grouped["errors"].div(grouped["sessions"].where(grouped["sessions"] > 0)).mul(100)
+    )
+    figure = coverage_heatmap(grouped, x="isp", y="state_province", value="error_rate_pct")
+    figure.update_layout(
+        title="Taxa de erro por UF x ISP (heatmap local)",
+        xaxis_title="ISP",
+        yaxis_title="UF",
+    )
+    figure.data[0].colorbar.title.text = "taxa de erro (%)"
+    return figure
+
+
+def qoe_timeline(frame: pd.DataFrame, *, metric: str = "active_sessions") -> go.Figure:
+    """Traça uma métrica QoE por sinal sem fundir unidades ou canais distintos."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem dados de QoE no período selecionado")
+    if metric not in frame:
+        raise ValueError(f"métrica de QoE ausente: {metric}")
+    figure = go.Figure()
+    grouping = "sinal" if "sinal" in frame else None
+    if grouping is None:
+        figure.add_trace(go.Scatter(x=frame["timestamp"], y=frame[metric], mode="lines+markers"))
+    else:
+        for signal, series in frame.groupby(grouping, sort=True):
+            figure.add_trace(
+                go.Scatter(
+                    x=series["timestamp"], y=series[metric], mode="lines+markers", name=signal
+                )
+            )
+    figure.update_layout(
+        title=f"Timeline de QoE: {metric}",
+        xaxis_title="Timestamp (UTC)",
+        yaxis_title=metric,
     )
     return figure

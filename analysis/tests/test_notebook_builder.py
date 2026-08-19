@@ -97,3 +97,27 @@ def test_build_notebook_03_includes_qos_sources_and_semantic_warnings(tmp_path):
     assert "autoscale.run" in source
     assert "event_overlay_timeline" in source
     assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
+
+
+def test_build_notebook_04_includes_qoe_aggregates_and_npaw_delay(tmp_path):
+    """Catches omitting QoE dimensions, live semantics, or the known 28-hour delayed coverage."""
+    path = tmp_path / "04_experiencia_qoe.ipynb"
+
+    build_notebook("04", path)
+
+    notebook = nbformat.read(path, as_version=4)
+    source = "\n".join(cell.source for cell in notebook.cells)
+
+    assert "load_player_qoe" in source
+    assert "load_device_qoe" in source
+    assert "load_geo_qoe" in source
+    assert "load_live_qoe" in source
+    assert "load_live_active" in source
+    assert "load_error_categories" in source
+    assert "28 horas" in source
+    assert "concorrentes" in source
+    assert "ratio" in source
+    assert "segundos" in source
+    assert "milissegundos" in source
+    assert "Sem dados" not in source
+    assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
