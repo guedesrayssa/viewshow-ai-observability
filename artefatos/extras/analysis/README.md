@@ -3,12 +3,12 @@
 Este laboratório explora uma cópia local do dump MySQL do Argus. Os notebooks
 são somente de leitura, preservam a distinção entre UTC e BRT e limitam cada
 DataFrame a 100.000 linhas. Execute todos os comandos abaixo a partir de
-`analysis/`.
+`artefatos/extras/analysis/`.
 
 ## Ambiente local
 
 ```bash
-rtk python -m venv .venv
+rtk python3 -m venv .venv
 rtk .venv/bin/pip install -e '.[dev]'
 rtk cp .env.example .env
 rtk docker compose up -d mysql
@@ -26,7 +26,7 @@ A importação completa é manual e observável. Antes dela, confira os recursos
 
 ```bash
 rtk free -h
-rtk gzip -dc ../../dados/argus_dump.sql.gz \
+rtk gzip -dc ../../../../dados/argus_dump.sql.gz \
   | rtk mysql --host=127.0.0.1 --port=3307 --user=argus --password argus
 ```
 
@@ -42,9 +42,9 @@ nunca aceita `argus` como alvo. Depois de configurar apenas as senhas locais em
 
 ```bash
 rtk docker compose up -d mysql
-rtk python scripts/load_test_fixture.py
+rtk .venv/bin/python scripts/load_test_fixture.py
 ARGUS_TEST_DATABASE_URL=mysql+pymysql://root:change-root-me@127.0.0.1:3307/argus_test?charset=utf8mb4 \
-  rtk python -m pytest tests/integration/test_notebooks.py -v
+  rtk .venv/bin/python -m pytest tests/integration/test_notebooks.py -v
 ```
 
 A URL é estritamente local e deve corresponder ao `.env` não versionado do

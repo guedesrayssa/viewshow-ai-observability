@@ -71,7 +71,8 @@ painéis.
 ## Análise do dump Argus
 
 O laboratório reprodutível de exploração do dump MySQL, incluindo setup local,
-fixture sanitizado e notebooks, está em [analysis/README.md](analysis/README.md).
+fixture sanitizado e notebooks, está em
+[artefatos/extras/analysis/README.md](artefatos/extras/analysis/README.md).
 
 ## Estrutura de pastas
 

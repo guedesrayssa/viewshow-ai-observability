@@ -33,7 +33,8 @@ Thumbs.db
 *.pem
 
 # ---------- Laboratório Argus ----------
-analysis/.ipynb_checkpoints/
-analysis/**/.ipynb_checkpoints/
-analysis/outputs/*
-!analysis/outputs/.gitkeep
+.worktrees/
+artefatos/extras/analysis/.ipynb_checkpoints/
+artefatos/extras/analysis/**/.ipynb_checkpoints/
+artefatos/extras/analysis/outputs/*
+!artefatos/extras/analysis/outputs/.gitkeep
