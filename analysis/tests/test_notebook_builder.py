@@ -121,3 +121,25 @@ def test_build_notebook_04_includes_qoe_aggregates_and_npaw_delay(tmp_path):
     assert "milissegundos" in source
     assert "Sem dados" not in source
     assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
+
+
+def test_build_notebook_06_includes_epg_audience_qoe_and_missing_telemetry_context(tmp_path):
+    """Catches a notebook that hides feed identity, Globo approximation, or absent QoE."""
+    path = tmp_path / "06_eventos_ao_vivo.ipynb"
+
+    build_notebook("06", path)
+
+    notebook = nbformat.read(path, as_version=4)
+    source = "\n".join(cell.source for cell in notebook.cells)
+
+    assert "load_live_events" in source
+    assert "load_event_audience" in source
+    assert "build_event_comparison" in source
+    assert "event_audience_timeline" in source
+    assert "event_impact_scatter" in source
+    assert "event_key" in source
+    assert "tid" in source
+    assert "15 minutos" in source
+    assert "national_family_approximation" in source
+    assert "telemetry_available" in source
+    assert all(cell.get("outputs", []) == [] for cell in notebook.cells)

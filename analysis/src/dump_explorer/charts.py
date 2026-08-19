@@ -25,6 +25,7 @@ METRIC_DIRECTION = {
 MAX_QOS_SMALL_MULTIPLES = 20
 MAX_QOE_TRACE_GROUPS = 20
 MAX_RCA_TRACE_GROUPS = 20
+MAX_EVENT_TRACE_GROUPS = 20
 TICKET_OPEN_UNCERTAINTY_MS = 40 * 60 * 1_000
 
 
@@ -288,6 +289,97 @@ def impact_scatter(frame: pd.DataFrame, *, dimension: str = "player") -> go.Figu
         title="Impacto de QoE por dimensão agregada",
         xaxis_title="Sessões",
         yaxis_title="Taxa de erro (%)",
+    )
+    return figure
+
+
+def event_audience_timeline(frame: pd.DataFrame) -> go.Figure:
+    """Exibe audiência concorrente por feed sem inventar pontos sem telemetria."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem confrontos EPG ou telemetria de audiência")
+    observed = frame.loc[frame["telemetry_available"] & frame["timestamp"].notna()]
+    if observed.empty:
+        return empty_figure("Confrontos EPG sem telemetria de audiência disponível")
+    groups = list(observed.groupby(["event_key", "tid"], sort=True))
+    if len(groups) > MAX_EVENT_TRACE_GROUPS:
+        raise ResultLimitError(
+            f"timeline de eventos excede o limite de {MAX_EVENT_TRACE_GROUPS} feeds; "
+            "refine a seleção"
+        )
+    figure = go.Figure()
+    for (event_key, tid), series in groups:
+        figure.add_trace(
+            go.Scatter(
+                x=series["timestamp"],
+                y=series["active_sessions"],
+                mode="lines+markers",
+                name=f"{event_key} | tid {tid}",
+            )
+        )
+    approximate = int((observed["mapping_scope"] == "national_family_approximation").sum())
+    if approximate:
+        figure.add_annotation(
+            text="Globo usa correspondência aproximada da família nacional (globo%).",
+            showarrow=False,
+            x=0,
+            y=1.12,
+            xref="paper",
+            yref="paper",
+            align="left",
+        )
+    figure.update_layout(
+        title="Audiência concorrente em janelas de 15 minutos por confronto/feed",
+        xaxis_title="Timestamp (UTC)",
+        yaxis_title="Sessões ativas concorrentes",
+    )
+    return figure
+
+
+def event_impact_scatter(frame: pd.DataFrame) -> go.Figure:
+    """Compara audiência de pico e QoE, mantendo slots sem telemetria explícitos."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem confrontos para comparar")
+    observed = frame.loc[frame["telemetry_available"]].copy()
+    if observed.empty:
+        return empty_figure("Confrontos EPG sem telemetria de QoE disponível")
+    figure = go.Figure(
+        go.Scatter(
+            x=observed["peak_audience"],
+            y=observed["error_rate_pct"],
+            mode="markers",
+            marker={
+                "size": observed["bufferratio_avg"].fillna(0).mul(100).add(8),
+                "sizemode": "diameter",
+                "sizemin": 6,
+            },
+            text=observed.apply(lambda row: f"{row['event_key']} | tid {row['tid']}", axis=1),
+            hovertemplate=(
+                "%{text}<br>audiência de pico: %{x}<br>sessões ativas com erro: %{y:.2f}%"
+                "<extra></extra>"
+            ),
+            name="confronto com telemetria",
+        )
+    )
+    unavailable = int((~frame["telemetry_available"]).sum())
+    if unavailable:
+        figure.add_annotation(
+            text=(
+                f"{unavailable} confronto(s) EPG sem telemetria disponível; "
+                "não é incidente de QoE."
+            ),
+            showarrow=False,
+            x=0,
+            y=-0.2,
+            xref="paper",
+            yref="paper",
+            align="left",
+        )
+    figure.update_layout(
+        title="Impacto de audiência e QoE por confronto/feed",
+        xaxis_title="Audiência concorrente de pico",
+        yaxis_title="Sessões ativas com erro (%)",
     )
     return figure
 

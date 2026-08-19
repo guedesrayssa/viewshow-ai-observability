@@ -8,6 +8,8 @@ from dump_explorer.notebook_builder import write_notebook
 
 def build_notebook(identifier: str, path: Path | None = None) -> Path:
     """Gera o notebook identificado sem executar suas células."""
+    if identifier == "06":
+        return _build_live_events_notebook(path)
     if identifier == "05":
         return _build_incidents_rca_notebook(path)
     if identifier == "04":
@@ -693,10 +695,117 @@ category_stack(vod_categories).show()""",
     )
 
 
+def _build_live_events_notebook(path: Path | None = None) -> Path:
+    """Gera o notebook que compara confrontos EPG com audiência e QoE agregada."""
+    target = path or Path(__file__).parents[1] / "notebooks" / "06_eventos_ao_vivo.ipynb"
+    return write_notebook(
+        target,
+        "Eventos ao vivo, audiência e QoE do dump Argus",
+        [
+            (
+                "markdown",
+                """## Escopo, identidade e limites de comparação
+
+O EPG identifica um confronto por `event_key`; `tid` permanece visível como a
+identidade do feed. Slots simultâneos não são fundidos pelo horário de início.
+Cada leitura usa o intervalo EPG completo e uma janela de audiência/QoE de **15 minutos**,
+com 60 minutos antes e depois apenas para contexto.
+
+O slug `globo` é associado à família `globo%`, uma aproximação nacional marcada
+como `national_family_approximation`. Outros slugs usam correspondência exata.
+A ausência de telemetria para uma linha do EPG é exibida como
+`telemetry_available=False`; especialmente para slots futuros ou cobertura QoE
+atrasada, isso não é um incidente.""",
+            ),
+            (
+                "code",
+                """import pandas as pd
+
+from dump_explorer.charts import event_audience_timeline, event_impact_scatter, qoe_timeline
+from dump_explorer.config import load_settings
+from dump_explorer.database import create_db_engine
+from dump_explorer.live import (
+    build_event_comparison,
+    distinct_event_count,
+    load_event_audience,
+    load_live_events,
+)
+
+settings = load_settings()
+engine = create_db_engine(settings)
+start_ms = 0  # substitua por início UTC em epoch ms
+end_ms = 86_400_000  # substitua por fim UTC em epoch ms""",
+            ),
+            (
+                "markdown",
+                "## 1. Catálogo EPG e confrontos distintos\n\n"
+                "A contagem usa `event_key`; `tid` mantém a identidade do feed.",
+            ),
+            (
+                "code",
+                """epg_events = load_live_events(engine, start_ms, end_ms)
+display(epg_events)
+display({"distinct_confrontations": distinct_event_count(epg_events)})""",
+            ),
+            (
+                "markdown",
+                """## 2. Audiência antes, durante e depois do evento
+
+Escolha confrontos explicitamente. Os pontos são sessões ativas concorrentes,
+não entradas acumuladas. O slot EPG recebe 60 minutos de contexto de cada lado.""",
+            ),
+            (
+                "code",
+                """event_keys = []  # selecione event_key(s) vistos no catálogo EPG
+timelines = [load_event_audience(engine, key, padding_minutes=60) for key in event_keys]
+event_timeline = pd.concat(timelines, ignore_index=True) if timelines else pd.DataFrame()
+display(event_timeline)
+if not event_timeline.empty:
+    event_audience_timeline(event_timeline).show()""",
+            ),
+            (
+                "markdown",
+                """## 3. Erros, buffering e join time
+
+`active_with_error` representa sessões ativas com erro; buffering é ratio e
+`jointime_s_avg` é em segundos. Só trace pontos com `telemetry_available=True`;
+não preencha lacunas com zero.""",
+            ),
+            (
+                "code",
+                """if not event_timeline.empty:
+    observed = event_timeline.loc[event_timeline["telemetry_available"]]
+    if not observed.empty:
+        qoe_timeline(observed, metric="active_with_error").show()
+        qoe_timeline(observed, metric="bufferratio_avg").show()
+        qoe_timeline(observed, metric="jointime_s_avg").show()
+    else:
+        print("O EPG foi encontrado, mas não há telemetria disponível nesta janela.")""",
+            ),
+            (
+                "markdown",
+                """## 4. Comparação entre confrontos
+
+A comparação conserva feeds com EPG sem telemetria. O gráfico posiciona somente
+confrontos observados e anota os demais; sobreposição temporal não prova causalidade.""",
+            ),
+            (
+                "code",
+                """if event_keys:
+    comparison = build_event_comparison(engine, event_keys)
+    display(comparison)
+    event_impact_scatter(comparison).show()
+else:
+    print("Selecione event_key(s) para comparar audiência e QoE.")""",
+            ),
+        ],
+    )
+
+
 def main() -> None:
     """Lê o identificador solicitado e grava o notebook correspondente."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04", "05"])
+    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04", "05", "06"])
     args = parser.parse_args()
     build_notebook(args.identifier)
 
