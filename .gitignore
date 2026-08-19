@@ -31,3 +31,9 @@ Thumbs.db
 # ---------- AWS ----------
 .aws-sam/
 *.pem
+
+# ---------- Laboratório Argus ----------
+analysis/.ipynb_checkpoints/
+analysis/**/.ipynb_checkpoints/
+analysis/outputs/*
+!analysis/outputs/.gitkeep
