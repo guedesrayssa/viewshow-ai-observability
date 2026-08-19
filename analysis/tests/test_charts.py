@@ -30,9 +30,7 @@ def test_volume_bar_returns_empty_state_for_empty_catalog():
 
 
 def test_volume_bar_renders_one_trace_for_catalog_volume():
-    figure = volume_bar(
-        pd.DataFrame({"table_name": ["signal_bucket"], "estimated_rows": [1200]})
-    )
+    figure = volume_bar(pd.DataFrame({"table_name": ["signal_bucket"], "estimated_rows": [1200]}))
 
     assert len(figure.data) == 1
     assert figure.data[0].type == "bar"
@@ -114,9 +112,7 @@ def test_metric_timeline_surfaces_lower_is_worse_without_inverting_values():
 def test_source_metric_heatmap_renders_source_and_metric_distribution():
     """Catches replacing the source-by-metric distribution with a non-matrix chart."""
     figure = source_metric_heatmap(
-        pd.DataFrame(
-            {"source": ["nr", "prom"], "metric": ["errors", "errors"], "rows": [2, 3]}
-        )
+        pd.DataFrame({"source": ["nr", "prom"], "metric": ["errors", "errors"], "rows": [2, 3]})
     )
 
     assert figure.data[0].type == "heatmap"

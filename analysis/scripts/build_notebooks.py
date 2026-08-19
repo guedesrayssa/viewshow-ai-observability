@@ -5,6 +5,8 @@ from pathlib import Path
 
 from dump_explorer.notebook_builder import write_notebook
 
+NOTEBOOK_IDENTIFIERS = ("00", "01", "02", "03", "04", "05", "06", "07")
+
 
 def build_notebook(identifier: str, path: Path | None = None) -> Path:
     """Gera o notebook identificado sem executar suas células."""
@@ -87,6 +89,24 @@ para tabelas grandes, para preservar o dump e evitar consultas caras.""",
             ("code", "volume_bar(table_catalog).show()"),
         ],
     )
+
+
+def build_all_notebooks(output_dir: Path | None = None) -> list[Path]:
+    """Generate every versioned notebook in stable numeric order."""
+    directory = output_dir or Path(__file__).parents[1] / "notebooks"
+    return [
+        build_notebook(identifier, directory / f"{identifier}_{name}.ipynb")
+        for identifier, name in (
+            ("00", "catalogo_dataset"),
+            ("01", "cobertura_qualidade"),
+            ("02", "sinais_normalizados"),
+            ("03", "infraestrutura_qos"),
+            ("04", "experiencia_qoe"),
+            ("05", "incidentes_rca"),
+            ("06", "eventos_ao_vivo"),
+            ("07", "contrato_ingestao"),
+        )
+    ]
 
 
 def _build_ingestion_contract_notebook(path: Path | None = None) -> Path:
@@ -929,9 +949,12 @@ else:
 def main() -> None:
     """Lê o identificador solicitado e grava o notebook correspondente."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("identifier", choices=["00", "01", "02", "03", "04", "05", "06", "07"])
+    parser.add_argument("identifier", choices=[*NOTEBOOK_IDENTIFIERS, "all"])
     args = parser.parse_args()
-    build_notebook(args.identifier)
+    if args.identifier == "all":
+        build_all_notebooks()
+    else:
+        build_notebook(args.identifier)
 
 
 if __name__ == "__main__":

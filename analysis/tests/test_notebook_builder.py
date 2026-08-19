@@ -1,7 +1,7 @@
 import nbformat
 
 from dump_explorer.notebook_builder import write_notebook
-from scripts.build_notebooks import build_notebook
+from scripts.build_notebooks import build_all_notebooks, build_notebook
 
 
 def test_write_notebook_is_deterministic_and_clears_execution_state(tmp_path):
@@ -143,3 +143,19 @@ def test_build_notebook_06_includes_epg_audience_qoe_and_missing_telemetry_conte
     assert "national_family_approximation" in source
     assert "telemetry_available" in source
     assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
+
+
+def test_build_all_notebooks_writes_each_expected_notebook(tmp_path):
+    written = build_all_notebooks(tmp_path)
+
+    assert [path.name for path in written] == [
+        "00_catalogo_dataset.ipynb",
+        "01_cobertura_qualidade.ipynb",
+        "02_sinais_normalizados.ipynb",
+        "03_infraestrutura_qos.ipynb",
+        "04_experiencia_qoe.ipynb",
+        "05_incidentes_rca.ipynb",
+        "06_eventos_ao_vivo.ipynb",
+        "07_contrato_ingestao.ipynb",
+    ]
+    assert all(path.is_file() for path in written)

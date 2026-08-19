@@ -15,9 +15,7 @@ from dump_explorer.live import (
 
 def test_distinct_feeds_are_not_collapsed_by_start_time():
     """Catches treating simultaneous feed rows as one event before the confrontation key is used."""
-    events = pd.DataFrame(
-        {"tid": [994, 995], "start_ts": [1, 1], "event_key": ["a", "b"]}
-    )
+    events = pd.DataFrame({"tid": [994, 995], "start_ts": [1, 1], "event_key": ["a", "b"]})
 
     assert distinct_event_count(events) == 2
 

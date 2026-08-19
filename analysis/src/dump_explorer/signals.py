@@ -117,14 +117,14 @@ def load_metric_series(
         engine,
         text(
             f"""
-            SELECT {spec['timestamp_column']} AS timestamp_ms, value{tags_sql}
+            SELECT {spec["timestamp_column"]} AS timestamp_ms, value{tags_sql}
             FROM `{table}`
             WHERE source = :source
               AND entity = :entity
               AND metric = :metric
-              AND {spec['timestamp_column']} >= :start
-              AND {spec['timestamp_column']} < :end
-            ORDER BY {spec['timestamp_column']}
+              AND {spec["timestamp_column"]} >= :start
+              AND {spec["timestamp_column"]} < :end
+            ORDER BY {spec["timestamp_column"]}
             """
         ),
         params={

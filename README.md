@@ -68,6 +68,11 @@ painéis.
 
 ---
 
+## Análise do dump Argus
+
+O laboratório reprodutível de exploração do dump MySQL, incluindo setup local,
+fixture sanitizado e notebooks, está em [analysis/README.md](analysis/README.md).
+
 ## Estrutura de pastas
 
 | Pasta | Conteúdo |
@@ -228,4 +233,3 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
     <img style="height:22px!important;margin-left:3px;vertical-align:text-bottom;" src="https://mirrors.creativecommons.org/presskit/icons/by.svg?ref=chooser-v1">
   </a>
 </p>
-

@@ -75,8 +75,16 @@ def _quote_known_identifier(identifier: str, allowed: Iterable[str]) -> str:
 
 def load_table_coverage(engine, tables: Iterable[str] | None = None) -> pd.DataFrame:
     """Resume cobertura temporal sem contar exatamente tabelas pesadas."""
+    selected_tables = _selected_tables(tables)
+    available_tables = (
+        set(load_column_catalog(engine)["table_name"].tolist())
+        if tables is None
+        else set(selected_tables)
+    )
     records = []
-    for table_name in _selected_tables(tables):
+    for table_name in selected_tables:
+        if table_name not in available_tables:
+            continue
         time_column = TABLE_TIME_COLUMNS[table_name]
         table_sql = _quote_known_identifier(table_name, TABLE_TIME_COLUMNS)
         column_sql = _quote_known_identifier(time_column, TABLE_TIME_COLUMNS.values())
@@ -175,9 +183,7 @@ def load_source_daily_coverage(engine, start, end) -> pd.DataFrame:
     )
     if frame.empty:
         return pd.DataFrame(columns=["source", "day", "rows"])
-    return frame.assign(day=epoch_ms_to_utc(frame["day_epoch_ms"])).drop(
-        columns="day_epoch_ms"
-    )
+    return frame.assign(day=epoch_ms_to_utc(frame["day_epoch_ms"])).drop(columns="day_epoch_ms")
 
 
 def load_series_cadence(engine, source, entity, metric, start, end) -> pd.DataFrame:
@@ -275,18 +281,14 @@ def load_collector_health(engine) -> pd.DataFrame:
     frames = []
     per_collector_limit = HARD_MAX_ROWS // len(_COLLECTOR_TABLES)
     for table_name, collector in _COLLECTOR_TABLES.items():
-        available = set(
-            catalog.loc[catalog["table_name"] == table_name, "column_name"].tolist()
-        )
+        available = set(catalog.loc[catalog["table_name"] == table_name, "column_name"].tolist())
         if not available:
             continue
         started_column = _first_catalog_column(available, _START_COLUMNS)
         finished_column = _first_catalog_column(available, _FINISH_COLUMNS)
         written_column = _COLLECTOR_WRITE_COLUMNS[table_name]
         if written_column not in available:
-            raise ValueError(
-                f"campo de escrita esperado ausente em {table_name}: {written_column}"
-            )
+            raise ValueError(f"campo de escrita esperado ausente em {table_name}: {written_column}")
         if started_column is None:
             continue
 
@@ -298,9 +300,7 @@ def load_collector_health(engine) -> pd.DataFrame:
             else _quote_known_identifier(finished_column, available)
         )
         written_sql = (
-            "NULL"
-            if written_column is None
-            else _quote_known_identifier(written_column, available)
+            "NULL" if written_column is None else _quote_known_identifier(written_column, available)
         )
         frame = read_frame(
             engine,

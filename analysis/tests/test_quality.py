@@ -35,15 +35,11 @@ def test_table_coverage_uses_exact_counts_only_for_non_heavy_allowlisted_tables(
         queries.append(sql)
         if "information_schema.tables" in sql:
             return pd.DataFrame({"estimated_rows": [700]})
-        return pd.DataFrame(
-            {"rows_count": [4], "first_ts": [1000], "last_ts": [2000]}
-        )
+        return pd.DataFrame({"rows_count": [4], "first_ts": [1000], "last_ts": [2000]})
 
     monkeypatch.setattr(quality, "read_frame", fake_read_frame)
 
-    frame = load_table_coverage(
-        object(), tables=["signal_bucket", "prom_point", "not_a_table"]
-    )
+    frame = load_table_coverage(object(), tables=["signal_bucket", "prom_point", "not_a_table"])
 
     assert frame.to_dict("records") == [
         {
@@ -118,9 +114,7 @@ def test_cadence_filters_full_identity_with_bound_parameters(monkeypatch):
 
     monkeypatch.setattr(quality, "read_frame", fake_read_frame)
 
-    frame = load_series_cadence(
-        object(), "newrelic", "svc", "error_rate_pct", 1000, 2000
-    )
+    frame = load_series_cadence(object(), "newrelic", "svc", "error_rate_pct", 1000, 2000)
 
     assert captured["params"] == {
         "source": "newrelic",
@@ -206,9 +200,7 @@ def test_missingness_rejects_heavy_tables_before_any_count_query(monkeypatch, ta
     monkeypatch.setattr(
         quality,
         "load_column_catalog",
-        lambda engine: pd.DataFrame(
-            {"table_name": [table_name], "column_name": ["value"]}
-        ),
+        lambda engine: pd.DataFrame({"table_name": [table_name], "column_name": ["value"]}),
     )
     monkeypatch.setattr(
         quality,

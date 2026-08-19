@@ -366,8 +366,7 @@ def event_impact_scatter(frame: pd.DataFrame) -> go.Figure:
     if unavailable:
         figure.add_annotation(
             text=(
-                f"{unavailable} confronto(s) EPG sem telemetria disponível; "
-                "não é incidente de QoE."
+                f"{unavailable} confronto(s) EPG sem telemetria disponível; não é incidente de QoE."
             ),
             showarrow=False,
             x=0,

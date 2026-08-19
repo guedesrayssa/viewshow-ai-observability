@@ -88,9 +88,9 @@ def _tidy_records(frame: pd.DataFrame, source: str, entity_column: str, metrics)
         return _empty_tidy("direction")
     tidy = pd.DataFrame.from_records(records)
     return _assert_frame_cap(
-        tidy.assign(timestamp=epoch_ms_to_utc(tidy["timestamp_ms"])).drop(columns="timestamp_ms").loc[
-            :, [*_TIDY_COLUMNS, "direction"]
-        ]
+        tidy.assign(timestamp=epoch_ms_to_utc(tidy["timestamp_ms"]))
+        .drop(columns="timestamp_ms")
+        .loc[:, [*_TIDY_COLUMNS, "direction"]]
     )
 
 
@@ -239,9 +239,9 @@ def load_rpaas(engine, regions, vhosts, start, end) -> pd.DataFrame:
         return _empty_tidy("direction", "sampled_count", "sampling_rate", "playback_signal")
     tidy = pd.DataFrame.from_records(records)
     return _assert_frame_cap(
-        tidy.assign(timestamp=epoch_ms_to_utc(tidy["timestamp_ms"])).drop(columns="timestamp_ms").loc[
-            :, [*_TIDY_COLUMNS, "direction", "sampled_count", "sampling_rate", "playback_signal"]
-        ]
+        tidy.assign(timestamp=epoch_ms_to_utc(tidy["timestamp_ms"]))
+        .drop(columns="timestamp_ms")
+        .loc[:, [*_TIDY_COLUMNS, "direction", "sampled_count", "sampling_rate", "playback_signal"]]
     )
 
 
@@ -274,9 +274,9 @@ def load_cloudarmor(engine, apps, start, end) -> pd.DataFrame:
         metric=frame["blocked"].map({1: "blocked_rps", 0: "passed_rps"}).fillna("rps"),
         value=frame["rps"],
         unit="req/s",
-        direction=frame["blocked"].map({1: "higher_is_worse", 0: "context_dependent"}).fillna(
-            "context_dependent"
-        ),
+        direction=frame["blocked"]
+        .map({1: "higher_is_worse", 0: "context_dependent"})
+        .fillna("context_dependent"),
     )
     return _assert_frame_cap(tidy.loc[:, [*_TIDY_COLUMNS, "direction"]])
 
