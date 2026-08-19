@@ -3,9 +3,12 @@ import pandas as pd
 from dump_explorer.charts import (
     cadence_histogram,
     collector_timeline,
+    correlation_heatmap,
     coverage_heatmap,
     empty_figure,
+    metric_timeline,
     missingness_bar,
+    source_metric_heatmap,
     volume_bar,
 )
 
@@ -88,3 +91,46 @@ def test_collector_timeline_has_scatter_trace_and_utc_start_axis():
     assert figure.data[0].type == "scatter"
     assert figure.layout.xaxis.title.text == "Início da execução (UTC)"
     assert figure.layout.yaxis.title.text == "Coletor"
+
+
+def test_metric_timeline_surfaces_lower_is_worse_without_inverting_values():
+    """Catches hiding Apdex degradation direction or inverting its stored values."""
+    figure = metric_timeline(
+        pd.DataFrame(
+            {"timestamp": pd.to_datetime([1_000, 2_000], unit="ms", utc=True), "value": [0.8, 0.6]}
+        ),
+        metric="apdex_score",
+    )
+
+    assert figure.data[0].type == "scatter"
+    assert list(figure.data[0].y) == [0.8, 0.6]
+    assert "lower_is_worse" in figure.layout.title.text
+
+
+def test_source_metric_heatmap_renders_source_and_metric_distribution():
+    """Catches replacing the source-by-metric distribution with a non-matrix chart."""
+    figure = source_metric_heatmap(
+        pd.DataFrame(
+            {"source": ["nr", "prom"], "metric": ["errors", "errors"], "rows": [2, 3]}
+        )
+    )
+
+    assert figure.data[0].type == "heatmap"
+    assert list(figure.data[0].x) == ["errors"]
+    assert list(figure.data[0].y) == ["nr", "prom"]
+
+
+def test_correlation_heatmap_keeps_missing_observations_out_of_the_matrix():
+    """Catches zero-filling before calculating correlations."""
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime([1_000, 2_000, 3_000], unit="ms", utc=True),
+            "nr|api|p95": [10.0, 20.0, None],
+            "prom|api|errors": [None, 1.0, 3.0],
+        }
+    )
+
+    figure = correlation_heatmap(frame)
+
+    assert figure.data[0].type == "heatmap"
+    assert pd.isna(figure.data[0].z[0][1])

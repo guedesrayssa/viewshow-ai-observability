@@ -8,6 +8,8 @@ from dump_explorer.notebook_builder import write_notebook
 
 def build_notebook(identifier: str, path: Path | None = None) -> Path:
     """Gera o notebook identificado sem executar suas células."""
+    if identifier == "02":
+        return _build_normalized_signals_notebook(path)
     if identifier == "01":
         return _build_quality_notebook(path)
     if identifier != "00":
@@ -198,10 +200,148 @@ abertura, coleta ou cobertura, e não ausência do incidente.""",
     )
 
 
+def _build_normalized_signals_notebook(path: Path | None = None) -> Path:
+    """Gera o notebook de exploração das identidades normalizadas de sinais."""
+    target = path or Path(__file__).parents[1] / "notebooks" / "02_sinais_normalizados.ipynb"
+    return write_notebook(
+        target,
+        "Sinais normalizados do dump Argus",
+        [
+            (
+                "markdown",
+                """## Identidade natural e escopo
+
+Uma métrica isolada não identifica uma série: `error_rate`, por exemplo, pode
+existir em várias origens e entidades. Toda leitura usa a identidade completa
+**source, entity, metric** e uma janela explícita `[start, end)` em UTC.""",
+            ),
+            (
+                "code",
+                """import plotly.graph_objects as go
+from IPython.display import display
+from ipywidgets import Dropdown, Output
+
+from dump_explorer.charts import (
+    METRIC_DIRECTION,
+    correlation_heatmap,
+    metric_timeline,
+    source_metric_heatmap,
+)
+from dump_explorer.config import load_settings
+from dump_explorer.database import create_db_engine
+from dump_explorer.signals import (
+    list_series,
+    load_correlation_frame,
+    load_metric_series,
+    load_source_distribution,
+)
+
+settings = load_settings()
+engine = create_db_engine(settings)
+start_ms = 0  # substitua por início UTC em epoch ms
+end_ms = 86_400_000  # substitua por fim UTC em epoch ms""",
+            ),
+            (
+                "markdown",
+                "## 1. Distribuição por source, entity e metric\n\n"
+                "A janela é obrigatória e limitada; o notebook não faz varredura temporal "
+                "implícita.",
+            ),
+            (
+                "code",
+                """source_distribution = load_source_distribution(engine, start_ms, end_ms)
+display(source_distribution)
+
+selected_source = source_distribution.iloc[0]["source"] if not source_distribution.empty else None
+series_catalog = (
+    list_series(engine, selected_source, start_ms, end_ms) if selected_source is not None else None
+)
+if series_catalog is not None:
+    display(series_catalog)
+    source_metric_heatmap(series_catalog).show()""",
+            ),
+            (
+                "markdown",
+                "## 2. Seletor interativo de série\n\n"
+                "A seleção sempre preserva source, entity e metric; ela não escolhe apenas a "
+                "métrica.",
+            ),
+            (
+                "code",
+                """series_options = [] if series_catalog is None else [
+    (f"{row.source} | {row.entity} | {row.metric}", (row.source, row.entity, row.metric))
+    for row in series_catalog.itertuples(index=False)
+]
+series_selector = Dropdown(options=series_options, description="Série:")
+series_output = Output()
+display(series_selector, series_output)
+
+def render_selected_series(change=None):
+    if series_selector.value is None:
+        return
+    source, entity, metric = series_selector.value
+    selected_series = load_metric_series(engine, source, entity, metric, start_ms, end_ms)
+    with series_output:
+        series_output.clear_output(wait=True)
+        metric_timeline(selected_series, metric=metric).show()
+        display(selected_series.head())
+    return selected_series
+
+series_selector.observe(render_selected_series, names="value")
+selected_series = render_selected_series()""",
+            ),
+            (
+                "markdown",
+                "## 3. Volume em 15 minutos e distribuição de valores\n\n"
+                "O agrupamento abaixo conta observações por 15 minutos explicitamente; "
+                "os valores da série não são reamostrados.",
+            ),
+            (
+                "code",
+                """if selected_series is not None:
+    volume_15min = (
+        selected_series.assign(bucket_15min=selected_series["timestamp"].dt.floor("15min"))
+        .groupby("bucket_15min", as_index=False)
+        .size()
+    )
+    go.Figure(go.Bar(x=volume_15min["bucket_15min"], y=volume_15min["size"])).update_layout(
+        title="Volume de observações por 15 minutos", xaxis_title="UTC", yaxis_title="Observações"
+    ).show()
+    go.Figure(go.Histogram(x=selected_series["value"])).update_layout(
+        title="Distribuição dos valores observados", xaxis_title="Valor", yaxis_title="Frequência"
+    ).show()""",
+            ),
+            (
+                "markdown",
+                "## 4. Direção de degradação\n\n`METRIC_DIRECTION` apenas explica a direction "
+                "da degradação: os valores armazenados nunca são invertidos. Métricas "
+                "desconhecidas são `context_dependent`.",
+            ),
+            ("code", "display(METRIC_DIRECTION)"),
+            (
+                "markdown",
+                "## 5. Correlação de séries selecionadas explicitamente\n\nEscolha até 20 "
+                "identidades completas. Lacunas permanecem ausentes: a correlação não "
+                "preenche valores faltantes com zero.",
+            ),
+            (
+                "code",
+                """correlation_keys = [
+    # ("newrelic", "service-name", "error_rate_pct"),
+    # ("prometheus", "service-name", "latency_p95"),
+]
+correlation_frame = load_correlation_frame(engine, correlation_keys, start_ms, end_ms)
+display(correlation_frame)
+correlation_heatmap(correlation_frame).show()""",
+            ),
+        ],
+    )
+
+
 def main() -> None:
     """Lê o identificador solicitado e grava o notebook correspondente."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("identifier", choices=["00", "01"])
+    parser.add_argument("identifier", choices=["00", "01", "02"])
     args = parser.parse_args()
     build_notebook(args.identifier)
 

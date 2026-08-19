@@ -6,6 +6,22 @@ import plotly.graph_objects as go
 from dump_explorer.config import HARD_MAX_ROWS
 from dump_explorer.database import ResultLimitError
 
+METRIC_DIRECTION = {
+    "apdex_score": "lower_is_worse",
+    "sessions": "lower_is_worse",
+    "error_rate": "higher_is_worse",
+    "error_rate_pct": "higher_is_worse",
+    "errors": "higher_is_worse",
+    "latency": "higher_is_worse",
+    "latency_p50": "higher_is_worse",
+    "latency_p95": "higher_is_worse",
+    "latency_p99": "higher_is_worse",
+    "buffering": "higher_is_worse",
+    "buffering_rate": "higher_is_worse",
+    "rebuffer_rate": "higher_is_worse",
+    "rebuffer_duration_ms": "higher_is_worse",
+}
+
 
 def _assert_frame_cap(frame: pd.DataFrame) -> None:
     if len(frame) > HARD_MAX_ROWS:
@@ -108,4 +124,57 @@ def collector_timeline(frame: pd.DataFrame) -> go.Figure:
         )
     )
     figure.update_layout(xaxis_title="Início da execução (UTC)", yaxis_title="Coletor")
+    return figure
+
+
+def metric_timeline(frame: pd.DataFrame, *, metric: str) -> go.Figure:
+    """Exibe valores observados sem alterar a escala da métrica."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem observações para a série selecionada")
+    direction = METRIC_DIRECTION.get(metric, "context_dependent")
+    figure = go.Figure(
+        go.Scatter(x=frame["timestamp"], y=frame["value"], mode="lines+markers", name=metric)
+    )
+    figure.update_layout(
+        title=f"Timeline: {metric}<br><sup>Direção de degradação: {direction}</sup>",
+        xaxis_title="Timestamp (UTC)",
+        yaxis_title="Valor observado",
+    )
+    return figure
+
+
+def source_metric_heatmap(frame: pd.DataFrame) -> go.Figure:
+    """Mostra a distribuição de observações por origem e métrica."""
+    _assert_frame_cap(frame)
+    if frame.empty:
+        return empty_figure("Sem distribuição de source e metric")
+    figure = coverage_heatmap(frame, x="metric", y="source", value="rows")
+    figure.update_layout(title="Distribuição de observações por source e metric")
+    return figure
+
+
+def correlation_heatmap(frame: pd.DataFrame) -> go.Figure:
+    """Calcula Pearson em pares observados, sem preencher lacunas com zero."""
+    _assert_frame_cap(frame)
+    value_frame = frame.drop(columns="timestamp", errors="ignore")
+    matrix = value_frame.corr(numeric_only=True)
+    if matrix.empty:
+        return empty_figure("Sem séries numéricas para correlação")
+    figure = go.Figure(
+        go.Heatmap(
+            x=matrix.columns.tolist(),
+            y=matrix.index.tolist(),
+            z=matrix.to_numpy(),
+            zmin=-1,
+            zmax=1,
+            colorscale="RdBu",
+            reversescale=True,
+            hoverongaps=False,
+        )
+    )
+    figure.update_layout(
+        title="Correlação de Pearson (somente pares de observações presentes)",
+        plot_bgcolor="#d9d9d9",
+    )
     return figure

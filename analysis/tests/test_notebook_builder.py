@@ -57,3 +57,21 @@ def test_build_notebook_01_includes_quality_sections_and_limits(tmp_path):
     assert "ausência de tickets" in source
     assert "watermark" in source
     assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
+
+
+def test_build_notebook_02_includes_normalized_series_and_explicit_correlation(tmp_path):
+    """Catches omitting natural identity, selector, or the no-zero-fill correlation warning."""
+    path = tmp_path / "02_sinais_normalizados.ipynb"
+
+    build_notebook("02", path)
+
+    notebook = nbformat.read(path, as_version=4)
+    source = "\n".join(cell.source for cell in notebook.cells)
+
+    assert "source, entity, metric" in source
+    assert "Dropdown" in source
+    assert "15 minutos" in source
+    assert "direction" in source
+    assert "correlation" in source
+    assert "zero" in source
+    assert all(cell.get("outputs", []) == [] for cell in notebook.cells)
