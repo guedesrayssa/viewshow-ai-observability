@@ -22,6 +22,7 @@ METRIC_DIRECTION = {
     "rebuffer_rate": "higher_is_worse",
     "rebuffer_duration_ms": "higher_is_worse",
 }
+MAX_QOS_SMALL_MULTIPLES = 20
 
 
 def _assert_frame_cap(frame: pd.DataFrame) -> None:
@@ -181,11 +182,26 @@ def correlation_heatmap(frame: pd.DataFrame) -> go.Figure:
     return figure
 
 
-def qos_small_multiples(frame: pd.DataFrame) -> go.Figure:
+def qos_small_multiples(
+    frame: pd.DataFrame, *, max_groups: int = MAX_QOS_SMALL_MULTIPLES
+) -> go.Figure:
     """Mostra cada entidade/métrica de QoS em painel próprio, sem misturar unidades."""
     _assert_frame_cap(frame)
+    if (
+        isinstance(max_groups, bool)
+        or not isinstance(max_groups, int)
+        or not 1 <= max_groups <= MAX_QOS_SMALL_MULTIPLES
+    ):
+        raise ValueError(f"max_groups deve estar entre 1 e {MAX_QOS_SMALL_MULTIPLES}")
     if frame.empty:
         return empty_figure("Sem sinais de QoS no período selecionado")
+    selected_groups = set()
+    for entity, metric in frame.loc[:, ["entity", "metric"]].itertuples(index=False, name=None):
+        selected_groups.add((entity, metric))
+        if len(selected_groups) > max_groups:
+            raise ResultLimitError(
+                f"small multiples excede o limite de {max_groups} grupos; refine a seleção"
+            )
     grouped = list(frame.groupby(["entity", "metric"], sort=True))
     figure = make_subplots(
         rows=len(grouped),

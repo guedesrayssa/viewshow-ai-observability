@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from dump_explorer.charts import (
     cadence_histogram,
@@ -13,6 +14,7 @@ from dump_explorer.charts import (
     source_metric_heatmap,
     volume_bar,
 )
+from dump_explorer.database import ResultLimitError
 
 
 def test_empty_figure_explains_absent_data():
@@ -154,6 +156,22 @@ def test_qos_small_multiples_keeps_each_metric_in_its_own_trace():
 
     assert len(figure.data) == 2
     assert {trace.name for trace in figure.data} == {"api | requests_5xx_rate", "api | p99_ms"}
+
+
+def test_qos_small_multiples_rejects_group_fanout_above_the_selectable_cap():
+    """Catches allocating one Plotly subplot per group from a row-valid QoS frame."""
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(range(3), unit="ms", utc=True),
+            "entity": ["api"] * 3,
+            "metric": ["p50_ms", "p90_ms", "p99_ms"],
+            "value": [10.0, 20.0, 30.0],
+            "unit": ["ms"] * 3,
+        }
+    )
+
+    with pytest.raises(ResultLimitError, match="2 grupos"):
+        qos_small_multiples(frame, max_groups=2)
 
 
 def test_event_overlay_timeline_marks_tsuru_rule_reapplications_over_technical_series():
