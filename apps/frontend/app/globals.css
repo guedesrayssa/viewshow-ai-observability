@@ -1,0 +1,238 @@
+/**
+ * globals.css
+ * Fundamentos do design system do View Show.
+ *
+ * Este arquivo é a única fonte de verdade dos tokens visuais da aplicação.
+ * Os valores reproduzem a prancha "Foundations" do Figma do projeto
+ * (ver `artefatos/entendimento_ux.md`, seção 7.1) e são expostos como
+ * utilitários do Tailwind v4 por meio do bloco `@theme`.
+ *
+ * Regra de uso: componentes e telas consomem os tokens semânticos
+ * (`bg-canvas`, `text-ink-muted`, `border-line`, `rounded-card`...). Cores
+ * literais (`#fff`, `bg-[#101B46]`) não devem aparecer fora deste arquivo.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ============================== Tipografia ============================== */
+
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+
+  /* Escala tipográfica semântica. O peso e o espaçamento fazem parte do token:
+     usar `text-h1` já entrega tamanho, entrelinha, peso e tracking corretos. */
+  --text-display: 2.5rem;
+  --text-display--line-height: 3rem;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.02em;
+
+  --text-h1: 2rem;
+  --text-h1--line-height: 2.5rem;
+  --text-h1--font-weight: 700;
+  --text-h1--letter-spacing: -0.02em;
+
+  --text-h2: 1.5rem;
+  --text-h2--line-height: 2rem;
+  --text-h2--font-weight: 600;
+  --text-h2--letter-spacing: -0.01em;
+
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.75rem;
+  --text-h3--font-weight: 600;
+
+  --text-title: 1rem;
+  --text-title--line-height: 1.5rem;
+  --text-title--font-weight: 600;
+
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5rem;
+
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.375rem;
+
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.25rem;
+  --text-label--font-weight: 500;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.125rem;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
+
+  /* ============================ Cores de marca ============================ */
+
+  --color-brand-blue: #0d47d9;
+  --color-brand-blue-light: #146ef5;
+  --color-brand-blue-dark: #0a37a8;
+  --color-brand-blue-soft: #e8effd;
+
+  --color-brand-navy: #101b46;
+  --color-brand-navy-deep: #010b35;
+  --color-brand-navy-raised: #172553;
+  --color-brand-navy-top: #1e3273;
+  --color-brand-navy-line: #2e385d;
+
+  --color-brand-orange: #ff6a32;
+  --color-brand-red: #f43f4e;
+  --color-brand-red-deep: #ec0101;
+  --color-brand-purple: #941594;
+
+  /* ================================ Neutros =============================== */
+
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f5f7fb;
+  --color-gray-200: #e6eaf0;
+  --color-gray-300: #d0d5dd;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #4b5566;
+  --color-gray-700: #344054;
+  --color-gray-800: #232a36;
+  --color-gray-900: #171a22;
+
+  /* ============================ Cores de estado =========================== */
+
+  /* A cor cheia identifica o estado em pontos, faixas e bordas. Para texto,
+     use a variante `-strong`: as cores de marca não alcançam a relação de
+     contraste de 4,5:1 exigida pelas WCAG 2.2 em textos pequenos. */
+  --color-critical: #f43f4e;
+  --color-critical-strong: #c4232f;
+  --color-critical-soft: #fee9ea;
+  --color-warning: #ffb020;
+  --color-warning-strong: #8a5200;
+  --color-warning-soft: #fff3dc;
+  --color-success: #22a06b;
+  --color-success-strong: #187a52;
+  --color-success-soft: #e2f4ec;
+  --color-info: #146ef5;
+  --color-info-soft: #e8effd;
+
+  /* ============================== Superfícies ============================= */
+
+  --color-canvas: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-surface-inverse: #101b46;
+
+  /* ================================= Texto ================================ */
+
+  --color-ink: #171a22;
+  --color-ink-muted: #667085;
+  --color-ink-subtle: #98a2b3;
+  --color-ink-inverse: #ffffff;
+  --color-ink-brand: #0d47d9;
+
+  /* ================================ Bordas ================================ */
+
+  --color-line-subtle: #f5f7fb;
+  --color-line: #e6eaf0;
+  --color-line-strong: #d0d5dd;
+  --color-line-brand: #146ef5;
+  --color-line-inverse: #2e385d;
+
+  /* ================================= Raios ================================ */
+
+  --radius-field: 0.75rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.5rem;
+  --radius-pill: 9999px;
+
+  /* ================================ Sombras =============================== */
+
+  --shadow-card: 0 1px 2px rgba(16, 27, 70, 0.04),
+    0 8px 24px rgba(16, 27, 70, 0.06);
+  --shadow-raised: 0 2px 4px rgba(16, 27, 70, 0.06),
+    0 16px 32px rgba(16, 27, 70, 0.1);
+  --shadow-brand: 0 6px 16px rgba(244, 63, 78, 0.28);
+
+  /* =============================== Gradientes ============================= */
+
+  /* Gradiente de destaque (laranja para vermelho). Marca ações primárias e
+     estados de atenção. Não deve ser usado como fundo de leitura longa. */
+  --gradient-brand: linear-gradient(
+    90deg,
+    #ff6a32 0%,
+    #f43f4e 58%,
+    #ec0101 100%
+  );
+
+  /* Painéis institucionais escuros, como o lado ilustrado do login. */
+  --gradient-navy: linear-gradient(160deg, #1e3273 0%, #101b46 45%, #010b35 100%);
+
+  /* Esferas decorativas do painel de login. */
+  --gradient-orb: linear-gradient(200deg, #ff6a32 0%, #f43f4e 50%, #941594 100%);
+}
+
+/* =============================== Utilitários ============================== */
+
+/** Fundo com o gradiente de marca. */
+@utility bg-gradient-brand {
+  background-image: var(--gradient-brand);
+}
+
+/** Fundo institucional escuro. */
+@utility bg-gradient-navy {
+  background-image: var(--gradient-navy);
+}
+
+/** Esferas decorativas do painel de login. */
+@utility bg-gradient-orb {
+  background-image: var(--gradient-orb);
+}
+
+/** Texto preenchido pelo gradiente de marca. */
+@utility text-gradient-brand {
+  background-image: var(--gradient-brand);
+  background-clip: text;
+  color: transparent;
+}
+
+/**
+ * Anel de foco padrão. Aplicado em todo elemento interativo para atender ao
+ * critério 2.4.11 (Focus Appearance) das WCAG 2.2.
+ */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--color-brand-blue-light);
+    outline-offset: 2px;
+  }
+}
+
+/* ================================== Base ================================== */
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+
+  /* O anel de foco nativo é substituído pelo token de marca em todo o app. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-blue-light);
+    outline-offset: 2px;
+  }
+
+  /* Respeita quem pediu menos animação no sistema operacional. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
