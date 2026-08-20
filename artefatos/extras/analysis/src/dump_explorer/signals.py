@@ -59,11 +59,11 @@ def load_source_distribution(engine, start, end) -> pd.DataFrame:
         engine,
         text(
             """
-            SELECT source, COUNT(*) AS rows
+            SELECT source, COUNT(*) AS `rows`
             FROM `signal_bucket`
             WHERE bts >= :start AND bts < :end
             GROUP BY source
-            ORDER BY rows DESC, source
+            ORDER BY `rows` DESC, source
             """
         ),
         params={"start": start, "end": end},
@@ -80,16 +80,16 @@ def list_series(engine, source, start, end, limit: int = _MAX_SERIES) -> pd.Data
     return read_frame(
         engine,
         text(
-            """
-            SELECT source, entity, metric, COUNT(*) AS rows
-            FROM `signal_bucket`
-            WHERE source = :source
-              AND bts >= :start
-              AND bts < :end
-            GROUP BY source, entity, metric
-            ORDER BY rows DESC, source, entity, metric
-            LIMIT :limit
-            """
+                        """
+                        SELECT source, entity, metric, COUNT(*) AS `rows`
+                        FROM `signal_bucket`
+                        WHERE source = :source
+                            AND bts >= :start
+                            AND bts < :end
+                        GROUP BY source, entity, metric
+                        ORDER BY `rows` DESC, source, entity, metric
+                        LIMIT :limit
+                        """
         ),
         params={"source": source, "start": start, "end": end, "limit": limit},
         max_rows=limit,

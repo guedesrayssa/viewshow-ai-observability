@@ -55,13 +55,20 @@ def volume_bar(frame: pd.DataFrame) -> go.Figure:
     _assert_frame_cap(frame)
     if frame.empty:
         return empty_figure("Sem dados de volume")
+    # Accept either the catalog form (estimated_rows) or a coverage form (rows).
+    if "estimated_rows" in frame.columns:
+        y = frame["estimated_rows"]
+        y_title = "Linhas (estimativa do MySQL)"
+        title = "Volume por tabela (estimativa do MySQL)"
+    elif "rows" in frame.columns:
+        y = frame["rows"]
+        y_title = "Linhas"
+        title = "Volume por tabela"
+    else:
+        raise KeyError("expected column 'estimated_rows' or 'rows' not found in frame")
 
-    figure = go.Figure(go.Bar(x=frame["table_name"], y=frame["estimated_rows"], name="estimativa"))
-    figure.update_layout(
-        title="Volume por tabela (estimativa do MySQL)",
-        xaxis_title="Tabela",
-        yaxis_title="Linhas (estimativa do MySQL)",
-    )
+    figure = go.Figure(go.Bar(x=frame["table_name"], y=y, name="volume"))
+    figure.update_layout(title=title, xaxis_title="Tabela", yaxis_title=y_title)
     return figure
 
 

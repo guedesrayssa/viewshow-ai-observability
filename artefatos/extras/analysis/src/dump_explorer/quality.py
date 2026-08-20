@@ -286,9 +286,16 @@ def load_collector_health(engine) -> pd.DataFrame:
             continue
         started_column = _first_catalog_column(available, _START_COLUMNS)
         finished_column = _first_catalog_column(available, _FINISH_COLUMNS)
-        written_column = _COLLECTOR_WRITE_COLUMNS[table_name]
-        if written_column not in available:
-            raise ValueError(f"campo de escrita esperado ausente em {table_name}: {written_column}")
+        # Prefer the configured expected column, but tolerate alternate
+        # names produced by different dump/schema versions (e.g. rows_inserted,
+        # points_inserted, queries_ok, etc.). If none found, fall back to NULL
+        # rather than failing the whole notebook.
+        expected = _COLLECTOR_WRITE_COLUMNS.get(table_name)
+        written_column = expected if expected in available else None
+        if written_column is None:
+            # heuristics: prefer columns containing these keywords
+            candidates = [c for c in available if any(k in c for k in ("insert", "written", "rows", "points", "buckets", "samples"))]
+            written_column = candidates[0] if candidates else None
         if started_column is None:
             continue
 
