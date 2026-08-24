@@ -64,6 +64,35 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 /**
+ * Classes visuais de um botão, para reaproveitar a aparência em um elemento
+ * que não pode ser um `<button>` — como um `Link` de navegação.
+ *
+ * @example
+ * <Link href="/incidentes/1" className={buttonClasses({ variant: "outline", size: "sm" })}>
+ */
+export function buttonClasses({
+  variant = "gradient",
+  size = "md",
+  fullWidth = false,
+  className,
+}: {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  className?: string;
+} = {}): string {
+  return cn(
+    "inline-flex items-center justify-center rounded-field font-semibold",
+    "transition-[filter,background-color,color,border-color] duration-150",
+    "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
+    VARIANT_CLASSES[variant],
+    SIZE_CLASSES[size],
+    fullWidth && "w-full",
+    className,
+  );
+}
+
+/**
  * Botão de ação.
  *
  * @example
@@ -89,15 +118,7 @@ export function Button({
       // `disabled` impede o envio duplicado enquanto ela não termina.
       aria-busy={loading || undefined}
       disabled={disabled || loading}
-      className={cn(
-        "inline-flex items-center justify-center rounded-field font-semibold",
-        "transition-[filter,background-color,color,border-color] duration-150",
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        fullWidth && "w-full",
-        className,
-      )}
+      className={buttonClasses({ variant, size, fullWidth, className })}
       {...props}
     >
       {loading ? (
