@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { PasswordField, TextField } from "@/components/ui/input";
 import { Logo, LogoMark } from "@/components/ui/logo";
+import { Select } from "@/components/ui/select";
 
 export const metadata: Metadata = {
   title: "Design system",
@@ -263,6 +264,17 @@ export default function DesignSystemPage() {
               placeholder="Filtro compacto"
               hint="Altura sm: filtros e barras de busca."
             />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-6">
+            <Select aria-label="Período" defaultValue="30min">
+              <option value="30min">Últimos 30 min</option>
+              <option value="1h">Última hora</option>
+            </Select>
+            <Select aria-label="Urgência" defaultValue="all">
+              <option value="all">Todas as urgências</option>
+              <option value="p1">P1 Crítico</option>
+            </Select>
           </div>
         </Section>
 

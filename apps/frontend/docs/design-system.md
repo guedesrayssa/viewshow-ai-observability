@@ -140,6 +140,7 @@ Todos ficam em `components/ui` e são documentados com exemplo no próprio arqui
 | `Button` | `button.tsx` | `gradient`, `solid`, `outline`, `ghost`, `quiet`; tamanhos `sm`, `md`, `lg`; estados `loading` e `disabled` |
 | `TextField`, `PasswordField` | `input.tsx` | Alturas `sm`, `md`, `lg`; rótulo, apoio e erro já conectados |
 | `Input`, `Label`, `FieldHint`, `FieldError` | `input.tsx` | Primitivos, para composições fora do padrão |
+| `Select` | `select.tsx` | Alturas `sm`, `md`, `lg`; ícone à esquerda opcional. Para barras de filtro, onde o valor escolhido já é o rótulo visível do campo |
 | `Card`, `CardTitle`, `CardDescription` | `card.tsx` | Faixa de destaque `critical`, `warning`, `info`, `brand`, à esquerda ou no topo |
 | `Badge` | `badge.tsx` | `critical`, `warning`, `success`, `info`, `neutral`, `brand`, com ou sem ponto |
 | `Alert` | `alert.tsx` | `critical`, `warning`, `success`, `info` |
