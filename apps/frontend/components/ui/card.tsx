@@ -22,10 +22,20 @@ const ACCENT_CLASSES: Record<CardAccent, string> = {
   brand: "before:bg-gradient-brand",
 };
 
+/** Cor da borda do cartão. `critical` marca uma zona de risco, como excluir a conta. */
+export type CardBorderTone = "line" | "critical";
+
+const BORDER_CLASSES: Record<CardBorderTone, string> = {
+  line: "border-line",
+  critical: "border-critical",
+};
+
 export type CardProps = HTMLAttributes<HTMLDivElement> & {
   accent?: CardAccent;
   /** Posição da faixa de destaque. */
   accentPosition?: "left" | "top";
+  /** Cor da borda do cartão. */
+  borderTone?: CardBorderTone;
   /** Espaçamento interno. `none` deixa o preenchimento por conta do conteúdo. */
   padding?: "none" | "sm" | "md" | "lg";
 };
@@ -46,6 +56,7 @@ const PADDING_CLASSES = {
 export function Card({
   accent = "none",
   accentPosition = "left",
+  borderTone = "line",
   padding = "md",
   className,
   ...props
@@ -53,7 +64,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-card border border-line bg-surface shadow-card",
+        "relative overflow-hidden rounded-card border bg-surface shadow-card",
+        BORDER_CLASSES[borderTone],
         accent !== "none" && "before:absolute before:content-['']",
         accent !== "none" &&
           (accentPosition === "left"

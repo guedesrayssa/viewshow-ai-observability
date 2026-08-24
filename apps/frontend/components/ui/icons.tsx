@@ -143,6 +143,15 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+/** Volta à tela anterior. */
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m15 4.5-7 7.5 7 7.5" />
+    </Icon>
+  );
+}
+
 /** Fecha um filtro ou aviso. */
 export function XIcon(props: IconProps) {
   return (

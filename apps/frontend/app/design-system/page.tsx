@@ -11,12 +11,14 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { Alert } from "@/components/ui/alert";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { PasswordField, SearchInput, TextField } from "@/components/ui/input";
 import { Logo, LogoMark } from "@/components/ui/logo";
 import { Select } from "@/components/ui/select";
+import { SwitchPreview } from "@/app/design-system/switch-preview";
 
 export const metadata: Metadata = {
   title: "Design system",
@@ -317,6 +319,29 @@ export default function DesignSystemPage() {
               O acesso é restrito a contas corporativas.
             </Alert>
           </div>
+
+          <Card borderTone="critical" className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Zona de risco</CardTitle>
+              <p className="mt-1 text-body-sm text-ink-muted">
+                Borda `critical`, sem faixa de destaque: reserva para ações
+                irreversíveis, como excluir a conta.
+              </p>
+            </div>
+            <Button variant="gradient">Excluir conta</Button>
+          </Card>
+        </Section>
+
+        <Section
+          title="Retrato e alternância"
+          description="Avatar é o espaço reservado até haver uma foto. Switch troca de estado imediatamente, sem depender de um botão de salvar."
+        >
+          <div className="flex items-center gap-4 rounded-card border border-line bg-surface p-6">
+            <Avatar size="md" />
+            <Avatar size="lg" />
+          </div>
+
+          <SwitchPreview />
         </Section>
 
         <Section

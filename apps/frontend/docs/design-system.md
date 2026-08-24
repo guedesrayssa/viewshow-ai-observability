@@ -142,9 +142,11 @@ Todos ficam em `components/ui` e são documentados com exemplo no próprio arqui
 | `SearchInput` | `input.tsx` | Campo de busca das barras de filtro, com lupa embutida |
 | `Select` | `select.tsx` | `<select>` nativo estilizado, com ícone opcional à esquerda |
 | `Input`, `Label`, `FieldHint`, `FieldError` | `input.tsx` | Primitivos, para composições fora do padrão |
-| `Card`, `CardTitle`, `CardDescription` | `card.tsx` | Faixa de destaque `critical`, `warning`, `info`, `brand`, à esquerda ou no topo |
+| `Card`, `CardTitle`, `CardDescription` | `card.tsx` | Faixa de destaque `critical`, `warning`, `info`, `brand`, à esquerda ou no topo; borda `critical` para zona de risco |
 | `Badge` | `badge.tsx` | `critical`, `warning`, `success`, `info`, `neutral`, `brand`, com ou sem ponto |
 | `Alert` | `alert.tsx` | `critical`, `warning`, `success`, `info` |
+| `Switch` | `switch.tsx` | Alternância ligado/desligado, para preferências de efeito imediato |
+| `Avatar` | `avatar.tsx` | Retrato de espaço reservado, tamanhos `md` e `lg` |
 | `Logo`, `LogoMark` | `logo.tsx` | Aplicações `brand`, `gradient` e `mono` do manual |
 | Ícones | `icons.tsx` | Conjunto mínimo em SVG inline, sem dependência externa |
 
