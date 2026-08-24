@@ -20,6 +20,7 @@ Rotas disponíveis hoje:
 | `/` | Redireciona para `/login` |
 | `/login` | Tela de acesso por conta corporativa |
 | `/recuperar-senha` | Orientação de recuperação de acesso |
+| `/incidentes` | Incidentes e degradações que exigem atenção, com busca, filtros e ordenação |
 | `/design-system` | Guia vivo dos tokens e componentes |
 
 ## Variáveis de ambiente
@@ -40,6 +41,9 @@ apps/frontend/
 │   │   ├── layout.tsx
 │   │   ├── login/
 │   │   └── recuperar-senha/
+│   ├── (painel)/            # telas autenticadas, com a navegação lateral
+│   │   ├── layout.tsx
+│   │   └── incidentes/
 │   └── design-system/       # guia vivo dos componentes
 ├── components/ui/           # biblioteca de componentes
 └── lib/                     # regras de acesso e utilitários
