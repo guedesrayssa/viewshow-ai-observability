@@ -143,6 +143,15 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+/** Volta à tela anterior. */
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m15 4.5-7 7.5 7 7.5" />
+    </Icon>
+  );
+}
+
 /** Fecha um filtro ou aviso. */
 export function XIcon(props: IconProps) {
   return (
@@ -229,6 +238,17 @@ export function SettingsIcon(props: IconProps) {
       <path d="m16.6 16.6 1.8 1.8" />
       <path d="m18.4 5.6-1.8 1.8" />
       <path d="m7.4 16.6-1.8 1.8" />
+    </Icon>
+  );
+}
+
+/** Exportação de dados, no cabeçalho das telas de painel. */
+export function ExportIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 15V4" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
     </Icon>
   );
 }

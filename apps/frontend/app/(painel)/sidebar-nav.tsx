@@ -16,11 +16,11 @@ import type { ReactNode } from "react";
 
 import {
   ActivityIcon,
+  AlertIcon,
   HomeIcon,
   ListIcon,
   MonitorIcon,
 } from "@/components/ui/icons";
-import { AlertIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 type NavItem = {

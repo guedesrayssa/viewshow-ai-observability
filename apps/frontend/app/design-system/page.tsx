@@ -11,12 +11,14 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { Alert } from "@/components/ui/alert";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { PasswordField, TextField } from "@/components/ui/input";
+import { PasswordField, SearchInput, TextField } from "@/components/ui/input";
 import { Logo, LogoMark } from "@/components/ui/logo";
 import { Select } from "@/components/ui/select";
+import { SwitchPreview } from "@/app/design-system/switch-preview";
 
 export const metadata: Metadata = {
   title: "Design system",
@@ -279,6 +281,20 @@ export default function DesignSystemPage() {
         </Section>
 
         <Section
+          title="Barra de filtros"
+          description="Busca e seletores nativos, compactos (fieldSize sm), para filtrar listas e painéis sem ocupar a altura de um formulário."
+        >
+          <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-6">
+            <SearchInput aria-label="Buscar" placeholder="Buscar" />
+            <Select aria-label="Período" defaultValue="30min">
+              <option value="30min">Últimos 30 min</option>
+              <option value="1h">Última 1 h</option>
+              <option value="24h">Últimas 24 h</option>
+            </Select>
+          </div>
+        </Section>
+
+        <Section
           title="Cartões e avisos"
           description="Cartão é a superfície de agrupamento. A faixa lateral colorida indica a severidade do indicador que ele apresenta."
         >
@@ -314,6 +330,29 @@ export default function DesignSystemPage() {
               O acesso é restrito a contas corporativas.
             </Alert>
           </div>
+
+          <Card borderTone="critical" className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Zona de risco</CardTitle>
+              <p className="mt-1 text-body-sm text-ink-muted">
+                Borda `critical`, sem faixa de destaque: reserva para ações
+                irreversíveis, como excluir a conta.
+              </p>
+            </div>
+            <Button variant="gradient">Excluir conta</Button>
+          </Card>
+        </Section>
+
+        <Section
+          title="Retrato e alternância"
+          description="Avatar é o espaço reservado até haver uma foto. Switch troca de estado imediatamente, sem depender de um botão de salvar."
+        >
+          <div className="flex items-center gap-4 rounded-card border border-line bg-surface p-6">
+            <Avatar size="md" />
+            <Avatar size="lg" />
+          </div>
+
+          <SwitchPreview />
         </Section>
 
         <Section
