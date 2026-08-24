@@ -123,3 +123,123 @@ export function InfoIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** Busca. */
+export function SearchIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="10.5" cy="10.5" r="7" />
+      <path d="m20.5 20.5-4.4-4.4" />
+    </Icon>
+  );
+}
+
+/** Abertura de seletor e menus. */
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m5 8.5 7 7 7-7" />
+    </Icon>
+  );
+}
+
+/** Fecha um filtro ou aviso. */
+export function XIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m6 6 12 12" />
+      <path d="M18 6 6 18" />
+    </Icon>
+  );
+}
+
+/** Visão Geral, na navegação lateral. */
+export function HomeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h3.5v-6h3v6H17a1 1 0 0 0 1-1v-9" />
+    </Icon>
+  );
+}
+
+/** Evidências, na navegação lateral. */
+export function ListIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6h11" />
+      <path d="M9 12h11" />
+      <path d="M9 18h11" />
+      <path d="M4 6h.01" />
+      <path d="M4 12h.01" />
+      <path d="M4 18h.01" />
+    </Icon>
+  );
+}
+
+/** Eventos, na navegação lateral. */
+export function ActivityIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3 12h4l2-7 4 14 2-7h6" />
+    </Icon>
+  );
+}
+
+/** Monitoramento, na navegação lateral. */
+export function MonitorIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4.5" width="18" height="12" rx="2" />
+      <path d="M8 20h8" />
+      <path d="M12 16.5V20" />
+    </Icon>
+  );
+}
+
+/** Conta da pessoa usuária, no rodapé da navegação lateral. */
+export function UserIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M4.5 20c0-4 3.5-6.5 7.5-6.5s7.5 2.5 7.5 6.5" />
+    </Icon>
+  );
+}
+
+/** Alternância de tema escuro, no topo das telas autenticadas. */
+export function MoonIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 14.3A8.5 8.5 0 1 1 9.7 4a7 7 0 0 0 10.3 10.3Z" />
+    </Icon>
+  );
+}
+
+/** Acesso às configurações, no topo das telas autenticadas. */
+export function SettingsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="3.25" />
+      <path d="M12 3v2.5" />
+      <path d="M12 18.5V21" />
+      <path d="M3 12h2.5" />
+      <path d="M18.5 12H21" />
+      <path d="m5.6 5.6 1.8 1.8" />
+      <path d="m16.6 16.6 1.8 1.8" />
+      <path d="m18.4 5.6-1.8 1.8" />
+      <path d="m7.4 16.6-1.8 1.8" />
+    </Icon>
+  );
+}
+
+/** Exportação de dados, no cabeçalho das telas de painel. */
+export function ExportIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 15V4" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+    </Icon>
+  );
+}

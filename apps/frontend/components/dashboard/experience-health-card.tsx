@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { SelectField } from "@/components/ui/select-field";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { getPointXPercent, LineChart } from "@/components/dashboard/line-chart";
 import {
   EXPERIENCE_HEALTH_ANOMALY_RANGE,
@@ -21,27 +21,29 @@ export function ExperienceHealthCard() {
   );
 
   return (
-    <Card topAccent className="flex-1">
+    <Card accent="brand" accentPosition="top" className="flex-1">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-ink">
-            Saúde da experiência
-          </h2>
-          <p className="text-sm text-accent">
+          <CardTitle>Saúde da experiência</CardTitle>
+          <CardDescription>
             Série principal comparada à linha de base
-          </p>
+          </CardDescription>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-danger">
+          <span className="text-body-sm font-medium text-critical-strong">
             {peakValue} erros/min · +18%
           </span>
-          <SelectField
+          <Select
             aria-label="Período do gráfico"
-            options={TIME_RANGE_OPTIONS}
             value={timeRange}
             onChange={(event) => setTimeRange(event.target.value)}
-            className="w-44"
-          />
+          >
+            {TIME_RANGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
 
@@ -58,7 +60,7 @@ export function ExperienceHealthCard() {
           xTickEvery={2}
         />
         <span
-          className="absolute bottom-1 -translate-x-1/2 text-[11px] font-medium whitespace-nowrap text-danger"
+          className="absolute bottom-1 -translate-x-1/2 text-[11px] font-medium whitespace-nowrap text-critical-strong"
           style={{ left: `${anomalyCaptionLeft}%` }}
         >
           janela anômala

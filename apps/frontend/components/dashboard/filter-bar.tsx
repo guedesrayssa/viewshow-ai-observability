@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { SearchInput } from "@/components/ui/search-input";
-import { SelectField } from "@/components/ui/select-field";
+import { SearchInput } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   APP_VERSION_OPTIONS,
   DEVICE_OPTIONS,
@@ -25,34 +25,50 @@ export function FilterBar() {
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />
-      <SelectField
+      <Select
         aria-label="Período"
-        options={TIME_RANGE_OPTIONS}
         value={timeRange}
         onChange={(event) => setTimeRange(event.target.value)}
-        className="sm:w-44"
-      />
-      <SelectField
+      >
+        {TIME_RANGE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+      <Select
         aria-label="Dispositivo"
-        options={DEVICE_OPTIONS}
         value={device}
         onChange={(event) => setDevice(event.target.value)}
-        className="sm:w-40"
-      />
-      <SelectField
+      >
+        {DEVICE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+      <Select
         aria-label="Região"
-        options={REGION_OPTIONS}
         value={region}
         onChange={(event) => setRegion(event.target.value)}
-        className="sm:w-40"
-      />
-      <SelectField
+      >
+        {REGION_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+      <Select
         aria-label="Versão do app"
-        options={APP_VERSION_OPTIONS}
         value={appVersion}
         onChange={(event) => setAppVersion(event.target.value)}
-        className="sm:w-36"
-      />
+      >
+        {APP_VERSION_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
     </div>
   );
 }

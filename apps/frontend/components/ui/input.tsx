@@ -19,13 +19,14 @@ import {
   type ReactNode,
 } from "react";
 
-import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
+import { EyeIcon, EyeOffIcon, SearchIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 /** Altura do campo. `lg` é o padrão das telas de acesso; `sm`, o dos filtros. */
 export type FieldSize = "sm" | "md" | "lg";
 
-const FIELD_SIZE_CLASSES: Record<FieldSize, string> = {
+/** Compartilhada com `Select`, para que campos e seletores fiquem à mesma altura. */
+export const FIELD_SIZE_CLASSES: Record<FieldSize, string> = {
   sm: "h-10 px-3 text-body-sm",
   md: "h-12 px-4 text-body",
   lg: "h-16 px-5 text-body",
@@ -104,6 +105,35 @@ export function Input({
       )}
       {...props}
     />
+  );
+}
+
+/**
+ * Campo de busca das barras de filtro, com a lupa embutida à esquerda.
+ *
+ * @example
+ * <SearchInput aria-label="Buscar" placeholder="Buscar" fieldSize="sm" />
+ */
+export function SearchInput({
+  fieldSize = "sm",
+  className,
+  ...props
+}: InputProps) {
+  return (
+    <div className="relative flex-1">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle"
+      >
+        <SearchIcon size={18} />
+      </span>
+      <Input
+        type="search"
+        fieldSize={fieldSize}
+        className={cn("pl-10", className)}
+        {...props}
+      />
+    </div>
   );
 }
 

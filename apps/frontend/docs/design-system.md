@@ -139,6 +139,8 @@ Todos ficam em `components/ui` e são documentados com exemplo no próprio arqui
 | --- | --- | --- |
 | `Button` | `button.tsx` | `gradient`, `solid`, `outline`, `ghost`, `quiet`; tamanhos `sm`, `md`, `lg`; estados `loading` e `disabled` |
 | `TextField`, `PasswordField` | `input.tsx` | Alturas `sm`, `md`, `lg`; rótulo, apoio e erro já conectados |
+| `SearchInput` | `input.tsx` | Campo de busca das barras de filtro, com lupa embutida |
+| `Select` | `select.tsx` | `<select>` nativo estilizado, com ícone opcional à esquerda |
 | `Input`, `Label`, `FieldHint`, `FieldError` | `input.tsx` | Primitivos, para composições fora do padrão |
 | `Card`, `CardTitle`, `CardDescription` | `card.tsx` | Faixa de destaque `critical`, `warning`, `info`, `brand`, à esquerda ou no topo |
 | `Badge` | `badge.tsx` | `critical`, `warning`, `success`, `info`, `neutral`, `brand`, com ou sem ponto |

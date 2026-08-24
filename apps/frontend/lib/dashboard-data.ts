@@ -1,4 +1,7 @@
-export type StatAccent = "danger" | "warning" | "info";
+import type { BadgeTone } from "@/components/ui/badge";
+import type { CardAccent } from "@/components/ui/card";
+
+export type StatAccent = Exclude<CardAccent, "none" | "brand">;
 export type DeltaTone = "accent" | "neutral";
 
 export type StatCardData = {
@@ -16,7 +19,7 @@ export const STATS: StatCardData[] = [
     label: "Taxa de erros",
     value: "342/min",
     delta: "+18% vs. base",
-    accent: "danger",
+    accent: "critical",
     deltaTone: "accent",
   },
   {
@@ -60,7 +63,7 @@ export const EXPERIENCE_HEALTH_BASELINE = 100;
 export const EXPERIENCE_HEALTH_ANOMALY_RANGE: [number, number] = [6, 8];
 export const EXPERIENCE_HEALTH_PEAK_INDEX = 7;
 
-export type IncidentStatus = "critical" | "attention" | "active" | "stable";
+export type IncidentStatus = Exclude<BadgeTone, "neutral" | "brand">;
 
 export type IncidentData = {
   id: string;
@@ -85,7 +88,7 @@ export const INCIDENTS: IncidentData[] = [
     title: "Timeout de CDN",
     sessions: "2,1 mil sessões",
     timeAgo: "há 31 min",
-    status: "attention",
+    status: "warning",
     statusLabel: "Atenção",
   },
   {
@@ -93,7 +96,7 @@ export const INCIDENTS: IncidentData[] = [
     title: "DRM expirado",
     sessions: "824 sessões",
     timeAgo: "há 42 min",
-    status: "active",
+    status: "info",
     statusLabel: "Ativo",
   },
   {
@@ -101,7 +104,7 @@ export const INCIDENTS: IncidentData[] = [
     title: "Token inválido",
     sessions: "430 sessões",
     timeAgo: "há 1 h",
-    status: "stable",
+    status: "success",
     statusLabel: "Estável",
   },
 ];

@@ -68,8 +68,8 @@ export function LineChart({
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.25} />
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+          <stop offset="0%" stopColor="var(--color-info)" stopOpacity={0.25} />
+          <stop offset="100%" stopColor="var(--color-info)" stopOpacity={0} />
         </linearGradient>
       </defs>
 
@@ -79,7 +79,7 @@ export function LineChart({
           y={PLOT_Y0}
           width={xForIndex(highlightRange[1]) - xForIndex(highlightRange[0])}
           height={PLOT_Y1 - PLOT_Y0}
-          fill="var(--warning)"
+          fill="var(--color-warning)"
           fillOpacity={0.12}
         />
       )}
@@ -92,7 +92,7 @@ export function LineChart({
               x2={PLOT_X1}
               y1={yForValue(tick)}
               y2={yForValue(tick)}
-              stroke="var(--ink-muted)"
+              stroke="var(--color-ink-muted)"
               strokeDasharray="4 4"
               strokeWidth={1}
             />
@@ -113,7 +113,7 @@ export function LineChart({
       <path
         d={linePath}
         fill="none"
-        stroke="var(--accent)"
+        stroke="var(--color-info)"
         strokeWidth={3}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -140,8 +140,8 @@ export function LineChart({
             cx={xForIndex(peakIndex)}
             cy={yForValue(data[peakIndex].value)}
             r={5}
-            fill="var(--status-critical)"
-            stroke="white"
+            fill="var(--color-critical)"
+            stroke="var(--color-surface)"
             strokeWidth={2}
           />
           {peakLabel && (
@@ -154,14 +154,14 @@ export function LineChart({
                 width={68}
                 height={22}
                 rx={11}
-                fill="var(--status-critical)"
+                fill="var(--color-critical)"
               />
               <text
                 x={0}
                 y={0}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="fill-white text-[11px] font-semibold"
+                className="fill-ink-inverse text-[11px] font-semibold"
               >
                 {peakLabel}
               </text>

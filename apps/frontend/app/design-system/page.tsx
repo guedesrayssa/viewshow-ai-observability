@@ -14,8 +14,9 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { PasswordField, TextField } from "@/components/ui/input";
+import { PasswordField, SearchInput, TextField } from "@/components/ui/input";
 import { Logo, LogoMark } from "@/components/ui/logo";
+import { Select } from "@/components/ui/select";
 
 export const metadata: Metadata = {
   title: "Design system",
@@ -263,6 +264,20 @@ export default function DesignSystemPage() {
               placeholder="Filtro compacto"
               hint="Altura sm: filtros e barras de busca."
             />
+          </div>
+        </Section>
+
+        <Section
+          title="Barra de filtros"
+          description="Busca e seletores nativos, compactos (fieldSize sm), para filtrar listas e painéis sem ocupar a altura de um formulário."
+        >
+          <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-6">
+            <SearchInput aria-label="Buscar" placeholder="Buscar" />
+            <Select aria-label="Período" defaultValue="30min">
+              <option value="30min">Últimos 30 min</option>
+              <option value="1h">Última 1 h</option>
+              <option value="24h">Últimas 24 h</option>
+            </Select>
           </div>
         </Section>
 
