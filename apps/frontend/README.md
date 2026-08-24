@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend do View Show
 
-## Getting Started
+Aplicação web do View Show, construída com **Next.js 16 (App Router)**, **React 19**,
+**TypeScript** e **Tailwind CSS v4**. Esta pasta concentra o design system do produto
+e as telas do painel.
 
-First, run the development server:
+## Como rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # ambiente de desenvolvimento em http://localhost:3000
+npm run build    # build de produção
+npm run lint     # ESLint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Rotas disponíveis hoje:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Rota | Conteúdo |
+| --- | --- |
+| `/` | Redireciona para `/login` |
+| `/login` | Tela de acesso por conta corporativa |
+| `/recuperar-senha` | Orientação de recuperação de acesso |
+| `/design-system` | Guia vivo dos tokens e componentes |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Variáveis de ambiente
 
-## Learn More
+| Variável | Uso |
+| --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | Endereço da API que intermedia a autenticação e as consultas. Sem ela, o login informa que a integração não está disponível em vez de falhar em silêncio. |
 
-To learn more about Next.js, take a look at the following resources:
+## Estrutura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```text
+apps/frontend/
+├── app/
+│   ├── globals.css          # tokens do design system (fonte única de verdade)
+│   ├── layout.tsx           # idioma, tipografia da marca e metadados
+│   ├── page.tsx             # raiz, redireciona para o login
+│   ├── (auth)/              # telas de acesso, com o painel ilustrado
+│   │   ├── layout.tsx
+│   │   ├── login/
+│   │   └── recuperar-senha/
+│   └── design-system/       # guia vivo dos componentes
+├── components/ui/           # biblioteca de componentes
+└── lib/                     # regras de acesso e utilitários
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Design system
 
-## Deploy on Vercel
+O guia completo está em [`docs/design-system.md`](./docs/design-system.md) e a versão
+navegável, renderizada com o mesmo código das telas, em `/design-system`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Três regras valem para qualquer tela nova:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Nada de cor literal fora de `app/globals.css`.** Use os tokens semânticos
+   (`bg-surface`, `text-ink-muted`, `border-line`, `rounded-card`).
+2. **Nada de elemento nativo estilizado à mão.** Botões, campos, cartões, selos e
+   avisos vêm de `components/ui`. Se falta uma variante, ela é acrescentada ao
+   componente, não improvisada na tela.
+3. **Cor nunca comunica sozinha.** Todo estado tem rótulo textual, conforme as
+   WCAG 2.2 adotadas no projeto.
+
+## Referências do projeto
+
+- [Entendimento da experiência do usuário](../../artefatos/entendimento_ux.md), com personas, fluxos e a prancha de fundamentos visuais
+- [Especificação de requisitos](../../artefatos/requisitos.md), com RF04, RNF04, RIE01 e RESTR01, que definem as regras de acesso
+- [Protótipo no Figma](https://www.figma.com/design/kbq8niIkBCHz7oVr1t0Ogp/G05---View-Show?node-id=219-1437)
