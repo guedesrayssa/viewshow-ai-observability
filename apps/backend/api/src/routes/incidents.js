@@ -1,6 +1,8 @@
 const { Router } = require("express");
 const evidenceService = require("../services/evidenceService");
+const goldenSetService = require("../services/goldenSetService");
 const orchestrator = require("../orchestrator");
+const requireAuth = require("../middleware/requireAuth");
 
 const router = Router();
 
@@ -33,6 +35,51 @@ router.get("/:id/evidence", async (req, res) => {
   } catch (error) {
     console.error("Falha ao buscar evidências:", error);
     res.status(500).json({ error: { message: "Falha ao buscar evidências" } });
+  }
+});
+
+router.get("/:id/hypothesis", async (req, res) => {
+  try {
+    const hypothesis = await evidenceService.getLatestHypothesis(req.params.id);
+    if (!hypothesis) {
+      return res.status(404).json({ error: { message: "Nenhuma hipótese registrada para este incidente" } });
+    }
+    res.json(hypothesis);
+  } catch (error) {
+    console.error("Falha ao buscar hipótese:", error);
+    res.status(500).json({ error: { message: "Falha ao buscar hipótese" } });
+  }
+});
+
+/**
+ * Revisão humana da hipótese (US-ENG-01) — exige sessão autenticada porque,
+ * quando confirmada, promove o caso à golden set (ADR-005). É o único
+ * gatilho de escrita nessa tabela em todo o código da API.
+ */
+router.patch("/:id/hypothesis/review", requireAuth, async (req, res) => {
+  try {
+    const { status } = req.body || {};
+    if (!["confirmed", "refuted"].includes(status)) {
+      return res.status(400).json({ error: { message: "status deve ser 'confirmed' ou 'refuted'" } });
+    }
+
+    const hypothesis = await evidenceService.reviewHypothesis(req.params.id, {
+      status,
+      reviewedBy: req.userEmail,
+    });
+    if (!hypothesis) {
+      return res.status(404).json({ error: { message: "Nenhuma hipótese registrada para este incidente" } });
+    }
+
+    if (status === "confirmed") {
+      const incident = await evidenceService.getIncidentById(req.params.id);
+      await goldenSetService.promoteCase(incident, hypothesis, req.userEmail);
+    }
+
+    res.json(hypothesis);
+  } catch (error) {
+    console.error("Falha ao revisar hipótese:", error);
+    res.status(500).json({ error: { message: "Falha ao revisar hipótese" } });
   }
 });
 

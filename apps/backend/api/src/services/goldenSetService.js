@@ -16,4 +16,22 @@ async function findMatchingCase(incidentOrSignature) {
   return goldenSetTable.get({ case_id: signature });
 }
 
-module.exports = { buildSignature, findMatchingCase };
+/**
+ * Promove um caso confirmado por um humano à golden set (ADR-005). Só deve
+ * ser chamado a partir da revisão de hipótese, nunca do orquestrador/agente
+ * — ver comentário em db/goldenSetTable.js.
+ */
+async function promoteCase(incident, hypothesis, curatedBy) {
+  const signature = buildSignature(incident);
+  return goldenSetTable.putCurated({
+    case_id: signature,
+    incident_signature: signature,
+    expected_hypothesis: hypothesis.text,
+    expected_score: hypothesis.score,
+    curated_by: curatedBy,
+    curated_at: new Date().toISOString(),
+    source_incident_id: incident.id,
+  });
+}
+
+module.exports = { buildSignature, findMatchingCase, promoteCase };

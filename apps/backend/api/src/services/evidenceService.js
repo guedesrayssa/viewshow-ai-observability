@@ -107,11 +107,37 @@ async function saveHypothesis(incidentId, hypothesis) {
   return operationalTable.put(item);
 }
 
+/** sk da hipótese tem epoch com largura fixa, então ordem lexicográfica == cronológica. */
+async function getLatestHypothesis(incidentId) {
+  const bundle = await getIncidentBundle(incidentId);
+  if (!bundle.hypotheses.length) return null;
+  return bundle.hypotheses.reduce((latest, item) => (item.sk > latest.sk ? item : latest));
+}
+
+/** Marca a hipótese mais recente como confirmada/refutada por um humano (US-ENG-01). */
+async function reviewHypothesis(incidentId, { status, reviewedBy }) {
+  const hypothesis = await getLatestHypothesis(incidentId);
+  if (!hypothesis) return null;
+
+  return operationalTable.update({
+    Key: { pk: hypothesis.pk, sk: hypothesis.sk },
+    UpdateExpression: "SET reviewStatus = :status, reviewedBy = :reviewedBy, reviewedAt = :reviewedAt",
+    ExpressionAttributeValues: {
+      ":status": status,
+      ":reviewedBy": reviewedBy,
+      ":reviewedAt": new Date().toISOString(),
+    },
+    ReturnValues: "ALL_NEW",
+  });
+}
+
 module.exports = {
   listIncidents,
   getIncidentById,
   getEvidenceByIncidentId,
   getIncidentBundle,
   saveHypothesis,
+  getLatestHypothesis,
+  reviewHypothesis,
   incidentSk,
 };

@@ -131,3 +131,71 @@ quebrou e precisa ser investigada antes de qualquer outra coisa.
 
 2026-08-25 — 16/16 testes passaram, contagens finais exatas (13 na
 operacional, 3 na golden set, inalterada).
+
+## Tela de Evidências (`apps/frontend/app/(painel)/evidencias`) — rotas adicionadas
+
+A tela mergeada em `feat/frontend-evidencias` precisa de resumo do
+incidente, hipótese com confiança, evidências por fonte e — novidade em
+relação às telas anteriores — **confirmar/refutar a hipótese** (US-ENG-01).
+Isso é exatamente o laço de feedback humano do ADR-005, então virou rota
+de verdade, não só leitura:
+
+- `GET /api/v1/incidents/:id/hypothesis` — hipótese mais recente do
+  incidente (a mesma que `saveHypothesis` grava a cada `/diagnose`).
+- `PATCH /api/v1/incidents/:id/hypothesis/review` (body `{status:
+  "confirmed"|"refuted"}`) — **atrás de `requireAuth`**, porque confirmar
+  promove o caso à golden set.
+- Evidências ganharam o campo `strength` (`forte`/`neutra`/`contra`), que a
+  tela usa pra badge de força da evidência.
+
+**Ficou de fora de propósito**: o gráfico de buffering, "concentração
+afetada" por recorte e a linha do tempo de mudanças correlacionadas. São
+telemetria bruta / rastreio de deploy que não existe na tabela operacional
+— viriam do job de ingestão, fora de escopo desta fase (mesmo raciocínio
+já aplicado ao `/monitoramento` e às métricas que faltam no
+`/dashboard/summary`).
+
+### A exceção de escrita na golden set (e por que ela é diferente do risco do ADR-002)
+
+`db/goldenSetTable.js` ganhou `putCurated` — a primeira função de escrita
+nessa tabela em todo o código. Isso não enfraquece a proteção documentada
+acima; é o outro lado dela:
+
+- O risco que o ADR-002 endereça é o **job de ingestão** sobrescrever a
+  golden set automaticamente. O job roda num deploy inteiramente separado
+  e nunca importa nada de `apps/backend/api` — continua fisicamente sem
+  como escrever ali.
+- Dentro da API, só `goldenSetService.promoteCase` chama `putCurated`, e
+  só a rota `PATCH /hypothesis/review` chama `promoteCase` — nunca o
+  orquestrador, nunca o agente. É uma ação explícita de uma pessoa
+  autenticada, exatamente o "curada por pessoas" do ADR-002/005.
+- `requireAuth` (novo, `src/middleware/requireAuth.js` + `src/auth/session.js`)
+  verifica o cookie assinado no login (mesmo HMAC de `routes/auth.js`,
+  agora compartilhado) antes de deixar a revisão passar. `reviewedBy` vem
+  do e-mail da sessão verificada, nunca do corpo da requisição.
+
+### Testes desse fluxo (2026-08-25, 13/13 passaram)
+
+| # | Teste | Resultado esperado | Confirmado |
+|---|---|---|---|
+| 1 | Evidência inclui `strength` | `"forte"`/`"neutra"`/`"contra"` presentes | ✅ |
+| 2 | `GET /hypothesis` antes de diagnosticar | `404` | ✅ |
+| 3 | `POST /diagnose` cria hipótese (agente) | `source: "agent"` | ✅ |
+| 4 | `GET /hypothesis` depois | hipótese retornada, `reviewStatus` ainda ausente | ✅ |
+| 5 | `GET /golden-set?signature=...` antes de confirmar | `404` (caso novo, sem curadoria) | ✅ |
+| 6 | `PATCH /hypothesis/review` sem cookie | `401` | ✅ |
+| 7 | `POST /auth/login` | `200` + cookie | ✅ |
+| 8 | `PATCH /hypothesis/review` com cookie, `confirmed` | `reviewStatus: "confirmed"`, `reviewedBy` = email da sessão | ✅ |
+| 9 | `GET /golden-set?signature=...` depois de confirmar | caso promovido aparece, `curated_by` = email da sessão | ✅ |
+| 10 | `PATCH /hypothesis/review` com `refuted` num incidente já presente na golden set | `reviewStatus: "refuted"` | ✅ |
+| 11 | Golden set do caso refutado | **inalterada** (mesmo score do seed) — refutar nunca escreve na golden set | ✅ |
+| 12 | `status` inválido no review | `400` | ✅ |
+| 13 | Contagem final da golden set | 3 (seed) + 1 (promovido no teste 9) = **4** | ✅ |
+
+O teste 11 é o par do teste 16 do plano anterior: confirma que só
+`confirmed` aciona `promoteCase` — `refuted` passa pela mesma rota
+autenticada e não toca a golden set.
+
+**Pendente**: a API já publicada no ECS (Dia 9) ainda roda a imagem `:v1`,
+sem essas rotas novas. Precisa de novo build + push + nova revisão da task
+definition antes de valer no ambiente publicado.

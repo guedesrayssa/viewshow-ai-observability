@@ -47,8 +47,18 @@ const INCIDENTS = [
     status: "critical",
     statusLabel: "Crítico",
     evidence: [
-      { type: "log", description: "Erro MEDIA_ERR_DECODE em 68% das sessões webOS 6.0", source: "Player" },
-      { type: "metric", description: "Taxa de erro de reprodução subiu de 2% para 41% em 12 min", source: "Youbora" },
+      {
+        type: "log",
+        description: "Erro MEDIA_ERR_DECODE em 68% das sessões webOS 6.0",
+        source: "Player",
+        strength: "forte",
+      },
+      {
+        type: "metric",
+        description: "Taxa de erro de reprodução subiu de 2% para 41% em 12 min",
+        source: "Youbora",
+        strength: "forte",
+      },
     ],
     hypothesis: {
       text: "Regressão no decoder de vídeo da versão 4.2.1 para webOS 6.0",
@@ -72,7 +82,12 @@ const INCIDENTS = [
     status: "warning",
     statusLabel: "Atenção",
     evidence: [
-      { type: "metric", description: "Latência p95 do POP Recife subiu de 80ms para 1.4s", source: "Fastly" },
+      {
+        type: "metric",
+        description: "Latência p95 do POP Recife subiu de 80ms para 1.4s",
+        source: "Fastly",
+        strength: "forte",
+      },
     ],
     hypothesis: null,
   },
@@ -93,7 +108,12 @@ const INCIDENTS = [
     status: "info",
     statusLabel: "Ativo",
     evidence: [
-      { type: "log", description: "Renovação de licença Widevine falhando com HTTP 403", source: "DRM" },
+      {
+        type: "log",
+        description: "Renovação de licença Widevine falhando com HTTP 403",
+        source: "DRM",
+        strength: "forte",
+      },
     ],
     hypothesis: {
       text: "Certificado de licenciamento Widevine expirado para Tizen 7",
@@ -117,7 +137,12 @@ const INCIDENTS = [
     status: "success",
     statusLabel: "Estável",
     evidence: [
-      { type: "log", description: "Pico isolado de HTTP 401 em app 4.0.5, sem recorrência", source: "Identidade" },
+      {
+        type: "log",
+        description: "Pico isolado de HTTP 401 em app 4.0.5, sem recorrência",
+        source: "Identidade",
+        strength: "neutra",
+      },
     ],
     hypothesis: null,
   },
@@ -184,6 +209,7 @@ async function seedIncident(incident) {
       type: evidence.type,
       description: evidence.description,
       source: evidence.source,
+      strength: evidence.strength,
       capturedAt: new Date().toISOString(),
     };
     await client.send(new PutCommand({ TableName: OPERATIONAL_TABLE, Item: evidenceItem }));
