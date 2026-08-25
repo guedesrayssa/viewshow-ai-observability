@@ -22,6 +22,7 @@ Rotas disponíveis hoje:
 | `/recuperar-senha` | Orientação de recuperação de acesso |
 | `/incidentes` | Incidentes e degradações que exigem atenção, com busca, filtros e ordenação |
 | `/evidencias` | Hipótese de causa provável e evidências que sustentam o diagnóstico de um incidente |
+| `/eventos` | Eventos e sessões correlacionados, com o dado normalizado ligado à fonte original |
 | `/monitoramento` | Saúde do pipeline de telemetria, qualidade das fontes e concentração geográfica |
 | `/design-system` | Guia vivo dos tokens e componentes |
 
@@ -47,6 +48,7 @@ apps/frontend/
 │   │   ├── layout.tsx
 │   │   ├── incidentes/
 │   │   ├── evidencias/
+│   │   ├── eventos/
 │   │   └── monitoramento/
 │   └── design-system/       # guia vivo dos componentes
 ├── components/ui/           # biblioteca de componentes
