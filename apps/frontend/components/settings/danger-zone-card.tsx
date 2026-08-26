@@ -11,7 +11,7 @@ export function DangerZoneCard() {
           A ação exige confirmação administrativa.
         </p>
       </div>
-      <Button variant="gradient">Excluir conta</Button>
+      <Button variant="danger">Excluir conta</Button>
     </Card>
   );
 }

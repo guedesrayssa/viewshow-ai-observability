@@ -1,15 +1,20 @@
 /**
  * page.tsx
- * Tela de Configurações: conta, preferências operacionais, notificações e
- * acesso corporativo (reprodução da prancha "06 Protótipo - Configurações").
+ * Tela de Configurações: conta, aparência, preferências operacionais,
+ * notificações e acesso corporativo (reprodução da prancha
+ * "06 Protótipo - Configurações").
+ *
+ * Abre com o mesmo cabeçalho das demais telas do painel e revela os cartões em
+ * cascata, na ordem em que eles seriam percorridos: quem é a pessoa, como ela
+ * quer ver o painel, o que quer ser avisada e o que pode encerrar.
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
-
-import { ChevronLeftIcon } from "@/components/ui/icons";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Reveal } from "@/components/motion/reveal";
 import { AccessSecurityCard } from "@/components/settings/access-security-card";
 import { AccountDetailsCard } from "@/components/settings/account-details-card";
+import { AppearanceCard } from "@/components/settings/appearance-card";
 import { DangerZoneCard } from "@/components/settings/danger-zone-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { OperationalPreferencesCard } from "@/components/settings/operational-preferences-card";
@@ -17,40 +22,47 @@ import { ProfileCard } from "@/components/settings/profile-card";
 
 export const metadata: Metadata = {
   title: "Configurações",
+  description:
+    "Conta corporativa, aparência do painel, preferências operacionais, notificações e acesso.",
 };
 
 export default function ConfiguracoesPage() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start gap-4 pr-28">
-        <Link
-          href="/visao-geral"
-          aria-label="Voltar"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-brand-navy text-ink-inverse transition-colors hover:bg-brand-navy-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue-light"
-        >
-          <ChevronLeftIcon size={18} />
-        </Link>
-        <div>
-          <h1 className="text-h1 text-ink">Configurações</h1>
-          <p className="mt-1 text-body-sm text-brand-blue">
-            Conta, aparência, notificações e acesso corporativo
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Configurações"
+        subtitle="Conta, aparência, notificações e acesso corporativo"
+      />
 
-      <ProfileCard />
+      <Reveal delay={80}>
+        <ProfileCard />
+      </Reveal>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-        <AccountDetailsCard />
-        <OperationalPreferencesCard />
+        <Reveal delay={140} className="flex flex-1">
+          <AccountDetailsCard />
+        </Reveal>
+        <Reveal delay={200} className="flex flex-1">
+          <AppearanceCard />
+        </Reveal>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-        <NotificationsCard />
+        <Reveal delay={260} className="flex flex-1">
+          <OperationalPreferencesCard />
+        </Reveal>
+        <Reveal delay={320} className="flex flex-1">
+          <NotificationsCard />
+        </Reveal>
+      </div>
+
+      <Reveal delay={380}>
         <AccessSecurityCard />
-      </div>
+      </Reveal>
 
-      <DangerZoneCard />
+      <Reveal delay={440}>
+        <DangerZoneCard />
+      </Reveal>
     </div>
   );
 }
