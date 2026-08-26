@@ -8,6 +8,7 @@
  * fundo próprio apenas como reforço: nenhuma informação depende da cor.
  */
 
+import { Reveal } from "@/components/motion/reveal";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 
@@ -42,7 +43,7 @@ export function SourcesTable({ sources }: { sources: TelemetrySource[] }) {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[32rem] border-separate border-spacing-y-2">
             <thead>
-              <tr className="text-left text-caption font-medium uppercase text-brand-blue">
+              <tr className="text-left text-caption font-medium uppercase text-ink-brand">
                 <th scope="col" className="px-4 pb-1">
                   Fonte
                 </th>
@@ -58,11 +59,17 @@ export function SourcesTable({ sources }: { sources: TelemetrySource[] }) {
               </tr>
             </thead>
             <tbody>
-              {sources.map((source) => {
+              {sources.map((source, index) => {
                 const meta = STATE_META[source.state];
 
                 return (
-                  <tr key={source.id} className={cn("text-body-sm", meta.rowClass)}>
+                  <Reveal
+                    as="tr"
+                    key={source.id}
+                    index={index}
+                    variant="rise-sm"
+                    className={cn("text-body-sm", meta.rowClass)}
+                  >
                     <th
                       scope="row"
                       className="rounded-l-field px-4 py-3 text-left font-medium text-ink"
@@ -76,7 +83,7 @@ export function SourcesTable({ sources }: { sources: TelemetrySource[] }) {
                     <td className="rounded-r-field px-4 py-3">
                       <Badge tone={meta.tone}>{meta.label}</Badge>
                     </td>
-                  </tr>
+                  </Reveal>
                 );
               })}
             </tbody>
@@ -84,7 +91,7 @@ export function SourcesTable({ sources }: { sources: TelemetrySource[] }) {
         </div>
       )}
 
-      <p className="mt-4 text-caption text-brand-blue">
+      <p className="mt-4 text-caption text-ink-brand">
         Falhas e atrasos reduzem a confiança do diagnóstico e permanecem visíveis nas
         evidências.
       </p>

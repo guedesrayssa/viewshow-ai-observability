@@ -12,6 +12,10 @@
  * diretamente a sua porcentagem. A espessura das linhas é preservada por
  * `vector-effect="non-scaling-stroke"`, e os textos ficam em uma camada HTML
  * sobre o desenho para não esticarem junto com ele.
+ *
+ * As duas séries são escritas da esquerda para a direita a cada leitura, na
+ * ordem do pipeline: primeiro a ingestão, que é a entrada, e depois o
+ * processamento, que é onde a degradação aparece.
  */
 
 "use client";
@@ -33,6 +37,9 @@ import {
 
 /** Faixa reservada no topo do desenho para a anotação do pico, em `%`. */
 const TOP_INSET = 12;
+
+/** Duração do traço, casada com `--animate-draw`. */
+const DRAW_MS = 1150;
 
 const LEGEND = [
   { label: "Processamento", dotClass: "bg-critical" },
@@ -112,14 +119,12 @@ export function ProcessingFlowChart({ sources, metric }: ProcessingFlowChartProp
         <Select
           aria-label="Janela do gráfico"
           value={window}
-          onChange={(event) => setWindow(event.target.value as FlowWindow)}
-        >
-          {(Object.keys(FLOW_WINDOW_LABELS) as FlowWindow[]).map((key) => (
-            <option key={key} value={key}>
-              {FLOW_WINDOW_LABELS[key]}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(value) => setWindow(value as FlowWindow)}
+          options={(Object.keys(FLOW_WINDOW_LABELS) as FlowWindow[]).map((key) => ({
+            value: key,
+            label: FLOW_WINDOW_LABELS[key],
+          }))}
+        />
       </div>
 
       <div className="mt-8 flex gap-3">
@@ -139,6 +144,7 @@ export function ProcessingFlowChart({ sources, metric }: ProcessingFlowChartProp
         <div className="min-w-0 flex-1">
           <div className="relative h-56">
             <svg
+              key={data.processing.join(",")}
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
               className="h-full w-full"
@@ -179,24 +185,36 @@ export function ProcessingFlowChart({ sources, metric }: ProcessingFlowChartProp
                 strokeDasharray="4 4"
               />
 
-              <path d={toAreaPath(data.processing, axisMax)} className="fill-critical/10" />
+              <path
+                d={toAreaPath(data.processing, axisMax)}
+                className="animate-fade-in fill-critical/10"
+                style={{ animationDelay: `${DRAW_MS * 0.35}ms` }}
+              />
 
               <polyline
                 points={toPoints(data.ingestion, axisMax)}
                 fill="none"
                 vectorEffect="non-scaling-stroke"
-                className="stroke-brand-blue-light"
+                className="animate-draw stroke-brand-blue-light"
                 strokeWidth={2}
                 strokeLinejoin="round"
+                pathLength={1}
+                style={{ strokeDasharray: 1, strokeDashoffset: 1 }}
               />
 
               <polyline
                 points={toPoints(data.processing, axisMax)}
                 fill="none"
                 vectorEffect="non-scaling-stroke"
-                className="stroke-critical"
+                className="animate-draw stroke-critical"
                 strokeWidth={2}
                 strokeLinejoin="round"
+                pathLength={1}
+                style={{
+                  strokeDasharray: 1,
+                  strokeDashoffset: 1,
+                  animationDelay: "160ms",
+                }}
               />
             </svg>
 
@@ -211,11 +229,12 @@ export function ProcessingFlowChart({ sources, metric }: ProcessingFlowChartProp
 
               <span
                 aria-hidden="true"
-                className="absolute h-2.5 w-2.5 rounded-pill bg-critical ring-2 ring-surface"
+                className="absolute h-2.5 w-2.5 animate-pop rounded-pill bg-critical ring-2 ring-surface"
                 style={{
                   left: `${peakX}%`,
                   top: `${peakY}%`,
                   transform: "translate(-50%, -50%)",
+                  animationDelay: `${DRAW_MS * 0.85}ms`,
                 }}
               />
 
@@ -237,7 +256,7 @@ export function ProcessingFlowChart({ sources, metric }: ProcessingFlowChartProp
               index % labelStep === 0 || index === lastIndex ? (
                 <span
                   key={time}
-                  className="absolute text-caption text-brand-blue"
+                  className="absolute text-caption text-ink-brand"
                   style={{
                     left: `${toX(index, data.times.length)}%`,
                     transform: labelShift(index, data.times.length),
@@ -257,7 +276,10 @@ export function ProcessingFlowChart({ sources, metric }: ProcessingFlowChartProp
             key={item.label}
             className="flex items-center gap-1.5 text-caption text-ink-muted"
           >
-            <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-pill", item.dotClass)} />
+            <span
+              aria-hidden="true"
+              className={cn("h-2.5 w-2.5 rounded-pill", item.dotClass)}
+            />
             {item.label}
           </li>
         ))}
