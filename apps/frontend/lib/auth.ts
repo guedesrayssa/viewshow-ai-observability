@@ -2,14 +2,18 @@
  * @file auth.ts
  * Regras de acesso do View Show.
  *
- * O acesso é restrito ao domínio corporativo da Globo (RF04) e a autenticação
- * é delegada ao serviço corporativo de identidade (RIE01, RESTR01): a
+ * A autenticação é delegada ao serviço de identidade (RIE01, RESTR01): a
  * aplicação não guarda senha nem implementa validação própria de credencial.
  * As funções abaixo cobrem a validação de formulário no navegador e o envio
  * das credenciais ao provedor.
+ *
+ * A entrada aceita qualquer e-mail válido. A conta corporativa continua sendo
+ * o caminho recomendado, e tem botão próprio no formulário, mas equipes
+ * parceiras e ambientes de demonstração precisam entrar sem depender do SSO
+ * da Globo.
  */
 
-/** Domínios aceitos no acesso à plataforma. */
+/** Domínios corporativos, usados no exemplo de preenchimento e no SSO. */
 export const CORPORATE_DOMAINS = ["globo.com"] as const;
 
 /** Endereço da API que intermedia a conversa com o provedor de identidade. */
@@ -24,15 +28,19 @@ export type Credentials = {
 };
 
 export type SignInResult =
-  | { ok: true }
+  /** `demo` indica sessão sem provedor de identidade por trás. */
+  | { ok: true; demo?: boolean }
   | { ok: false; message: string };
 
-/** Aviso exibido enquanto o provedor de identidade não está configurado. */
+/** Aviso exibido quando o SSO corporativo não está configurado no ambiente. */
 export const AUTH_UNAVAILABLE_MESSAGE =
-  "A integração com o serviço de autenticação da Globo ainda não está disponível neste ambiente.";
+  "A entrada por SSO Globo ainda não está disponível neste ambiente. Use e-mail e senha.";
 
 /**
- * Verifica se o e-mail pertence a um domínio corporativo aceito.
+ * Verifica se o e-mail pertence a um domínio corporativo da Globo.
+ *
+ * Não restringe a entrada: serve para a interface reconhecer a conta
+ * corporativa e sugerir o caminho do SSO, que é mais rápido e não pede senha.
  *
  * @param email - Endereço informado no formulário.
  * @returns `true` quando o domínio está na lista de domínios corporativos.
@@ -57,10 +65,6 @@ export function validateEmail(email: string): string | undefined {
 
   if (!value) return "Informe o seu e-mail corporativo.";
   if (!EMAIL_PATTERN.test(value)) return "Digite um e-mail válido.";
-  if (!isCorporateEmail(value)) {
-    return `O acesso é restrito a contas @${CORPORATE_DOMAINS[0]}.`;
-  }
-
   return undefined;
 }
 
@@ -79,10 +83,12 @@ export function validatePassword(password: string): string | undefined {
 }
 
 /**
- * Envia as credenciais ao provedor corporativo de identidade.
+ * Envia as credenciais ao provedor de identidade.
  *
- * Enquanto o endpoint de autenticação não estiver publicado, a função devolve
- * um resultado explicando a indisponibilidade em vez de falhar em silêncio.
+ * Sem endpoint de autenticação publicado, a entrada abre uma sessão de
+ * demonstração: o painel inteiro funciona com o conjunto de exemplo, e travar
+ * o acesso deixaria a plataforma inalcançável em um ambiente que ainda não tem
+ * backend. A sessão é marcada como `demo` para que a interface possa dizê-lo.
  * Nada é persistido no navegador por esta camada.
  *
  * @param credentials - E-mail e senha informados.
@@ -93,7 +99,7 @@ export async function signIn({
   password,
 }: Credentials): Promise<SignInResult> {
   if (!API_BASE_URL) {
-    return { ok: false, message: AUTH_UNAVAILABLE_MESSAGE };
+    return { ok: true, demo: true };
   }
 
   try {
