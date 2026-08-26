@@ -8,6 +8,16 @@
  */
 
 import { cn } from "@/lib/cn";
+import { Wordmark } from "@/components/ui/wordmark";
+
+/**
+ * Cores fixas do símbolo.
+ *
+ * A marca não acompanha o tema: o branco do brilho central e o navy da elipse
+ * são os mesmos do manual em qualquer superfície.
+ */
+const BRAND_WHITE = "#ffffff";
+const BRAND_NAVY = "#101b46";
 
 /** Aplicações da marca previstas no manual. */
 export type LogoTone = "brand" | "gradient" | "mono";
@@ -38,12 +48,13 @@ export function LogoMark({
     tone === "gradient"
       ? `url(#${gradientId})`
       : tone === "mono"
-        ? "var(--color-brand-navy)"
+        ? BRAND_NAVY
         : "var(--color-brand-red)";
-  const lozengeFill =
-    tone === "mono" ? "var(--color-surface)" : "var(--color-brand-navy)";
-  const starFill =
-    tone === "mono" ? "var(--color-brand-navy)" : "var(--color-surface)";
+  // A elipse e a estrela usam as cores fixas da marca, e não os tokens de
+  // superfície: no tema escuro, `surface` é navy e a estrela desaparecia dentro
+  // da elipse — justamente o brilho que dá nome ao símbolo.
+  const lozengeFill = tone === "mono" ? BRAND_WHITE : BRAND_NAVY;
+  const starFill = tone === "mono" ? BRAND_NAVY : BRAND_WHITE;
 
   return (
     <svg
@@ -66,8 +77,11 @@ export function LogoMark({
 
       <circle cx="32" cy="32" r="25.9" fill={circleFill} />
       <ellipse cx="32" cy="32" rx="17.6" ry="9.6" fill={lozengeFill} />
+
+      {/* O brilho de quatro pontas ultrapassa a elipse no eixo vertical, como
+          na aplicação do manual. */}
       <path
-        d="M32 17.9Q32 32 46.1 32Q32 32 32 46.1Q32 32 17.9 32Q32 32 32 17.9Z"
+        d="M32 12Q33.4 30.6 52 32Q33.4 33.4 32 52Q30.6 33.4 12 32Q30.6 30.6 32 12Z"
         fill={starFill}
       />
     </svg>
@@ -79,10 +93,15 @@ type LogoProps = LogoMarkProps & {
   orientation?: "horizontal" | "vertical";
   /** Exibe o logotipo textual ao lado do símbolo. */
   withWordmark?: boolean;
+  /** Revela o letreiro em cascata na montagem. Use na abertura de uma tela. */
+  animated?: boolean;
 };
 
 /**
- * Marca completa: símbolo e logotipo textual.
+ * Marca completa: símbolo e letreiro.
+ *
+ * O letreiro é o SVG entregue pelo design (`Wordmark`), e não mais a palavra
+ * "View Show" composta na tipografia do sistema.
  *
  * @example
  * <Logo tone="gradient" size={32} />
@@ -92,6 +111,7 @@ export function Logo({
   size = 32,
   orientation = "horizontal",
   withWordmark = true,
+  animated = false,
   className,
 }: LogoProps) {
   if (!withWordmark) {
@@ -103,19 +123,14 @@ export function Logo({
       className={cn(
         "inline-flex items-center",
         orientation === "vertical" ? "flex-col gap-3" : "flex-row gap-3",
+        tone === "mono" ? "text-brand-navy" : "text-current",
         className,
       )}
     >
       <LogoMark tone={tone} size={size} />
-      <span
-        className={cn(
-          "font-semibold tracking-tight",
-          tone === "mono" ? "text-brand-navy" : "text-current",
-        )}
-        style={{ fontSize: Math.round(size * 0.44) }}
-      >
-        View Show
-      </span>
+      {/* 0,58 do símbolo mantém o letreiro alinhado à altura do desenho da
+          estrela, como na aplicação horizontal do manual. */}
+      <Wordmark height={Math.round(size * 0.58)} animated={animated} />
     </span>
   );
 }
