@@ -18,11 +18,7 @@ import type { IncidentData } from "@/lib/dashboard-data";
 
 export function IncidentsCard({ incidents }: { incidents: IncidentData[] }) {
   return (
-    <Card
-      accent="brand"
-      accentPosition="top"
-      className="flex w-full flex-col lg:w-96"
-    >
+    <Card className="flex w-full flex-col lg:w-88">
       <CardTitle>Incidentes</CardTitle>
       <CardDescription>Priorizados por impacto</CardDescription>
 
@@ -51,11 +47,7 @@ export function IncidentsCard({ incidents }: { incidents: IncidentData[] }) {
 /** Espaço reservado da lista, enquanto a leitura não termina. */
 export function IncidentsCardSkeleton() {
   return (
-    <Card
-      accent="brand"
-      accentPosition="top"
-      className="flex w-full flex-col lg:w-96"
-    >
+    <Card className="flex w-full flex-col lg:w-88">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="mt-2 h-3 w-36" />
 

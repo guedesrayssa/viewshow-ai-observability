@@ -59,11 +59,7 @@ export function KpiCard({
   const meta = TONE_CLASSES[tone];
 
   return (
-    <Card
-      accent={meta.accent}
-      padding="md"
-      className="transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-raised"
-    >
+    <Card accent={meta.accent} padding="md">
       <p className={cn("text-caption font-medium", meta.labelClass)}>{label}</p>
 
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">

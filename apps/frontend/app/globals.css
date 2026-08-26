@@ -156,8 +156,10 @@
 
   /* ================================ Sombras =============================== */
 
-  --shadow-card: 0 1px 2px rgba(16, 27, 70, 0.04),
-    0 8px 24px rgba(16, 27, 70, 0.06);
+  /* O cartão se separa do fundo pela borda; a sombra só assenta a peça. Um
+     halo largo faz cada bloco parecer flutuar, o que descola o painel do que
+     ele é — uma ferramenta de leitura densa, não uma página de apresentação. */
+  --shadow-card: 0 1px 2px rgba(16, 27, 70, 0.05);
   --shadow-raised: 0 2px 4px rgba(16, 27, 70, 0.06),
     0 16px 32px rgba(16, 27, 70, 0.1);
   --shadow-brand: 0 6px 16px rgba(244, 63, 78, 0.28);
@@ -391,7 +393,7 @@
   --color-info: #4e8dff;
   --color-info-soft: #12224b;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.45), 0 18px 36px rgba(0, 0, 0, 0.45);
   --shadow-brand: 0 6px 16px rgba(244, 63, 78, 0.35);
 
@@ -479,6 +481,15 @@
   html {
     -webkit-text-size-adjust: 100%;
     color-scheme: light;
+  }
+
+  /* Números que mudam sozinhos precisam ocupar a mesma largura a cada
+     leitura: sem isso, um indicador que sobe de 99 para 100 empurra o texto ao
+     lado, e uma coluna de tabela dança a cada atualização. */
+  th,
+  td,
+  time {
+    font-variant-numeric: tabular-nums;
   }
 
   body {

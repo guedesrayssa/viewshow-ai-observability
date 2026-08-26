@@ -285,12 +285,7 @@ export function MonitoringView() {
 
           <div className="grid gap-6 xl:grid-cols-2">
             <Reveal delay={220} className="flex">
-              <Card
-                accent="brand"
-                accentPosition="top"
-                padding="lg"
-                className="flex-1"
-              >
+              <Card padding="lg" className="flex-1">
                 <div className="flex flex-col gap-8">
                   <ProcessingFlowChart sources={selectedSources} metric={metric} />
                   <SourcesTable sources={selectedSources} />

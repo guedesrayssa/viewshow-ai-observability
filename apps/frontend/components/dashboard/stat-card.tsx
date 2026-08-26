@@ -33,13 +33,7 @@ export function StatCard({
   deltaTone,
 }: StatCardData) {
   return (
-    <Card
-      accent={accent}
-      className={cn(
-        "flex-1 transition-[transform,box-shadow] duration-300",
-        "hover:-translate-y-0.5 hover:shadow-raised",
-      )}
-    >
+    <Card accent={accent} className="flex-1">
       <CardDescription>{label}</CardDescription>
 
       <div className="mt-1 flex items-baseline justify-between gap-2">

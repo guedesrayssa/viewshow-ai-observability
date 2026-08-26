@@ -190,10 +190,10 @@ export function GeographicMap({ states }: GeographicMapProps) {
                 <span className="w-24 shrink-0 text-ink-muted">
                   {region.region}
                 </span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-pill bg-canvas">
+                <span className="h-1.5 flex-1 overflow-hidden rounded-pill bg-line-subtle">
                   <span
                     key={region.value}
-                    className="track-grow block h-full rounded-pill bg-gradient-brand"
+                    className="track-grow block h-full rounded-pill bg-brand-orange"
                     style={{
                       width: `${max === 0 ? 0 : (region.value / max) * 100}%`,
                     }}

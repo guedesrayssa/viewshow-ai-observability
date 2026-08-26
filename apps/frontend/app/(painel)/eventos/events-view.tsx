@@ -249,12 +249,11 @@ export function EventsView() {
                     aria-pressed={active}
                     onClick={() => setCategory(stat.key)}
                     className={cn(
-                      "focus-ring rounded-pill px-3.5 py-2 text-body-sm font-medium",
-                      "transition-[background-color,color,transform] duration-200",
+                      "focus-ring rounded-pill border px-3 py-1.5 text-caption font-medium",
+                      "transition-colors duration-200 tabular-nums",
                       active
-                        ? "bg-brand-blue text-ink-inverse"
-                        : "text-ink-muted hover:bg-surface-muted hover:text-ink",
-                      "hover:-translate-y-px",
+                        ? "border-brand-blue bg-brand-blue text-ink-inverse"
+                        : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
                     )}
                   >
                     {stat.label} · {stat.total}

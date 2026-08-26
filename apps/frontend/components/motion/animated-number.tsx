@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { cn } from "@/lib/cn";
 
 /** Duração da contagem, em milissegundos. */
 const DURATION = 900;
@@ -84,7 +85,10 @@ export function AnimatedNumber({
   return (
     // O valor final fica no atributo para que o leitor de tela anuncie o número
     // pronto, sem acompanhar cada quadro da contagem.
-    <span className={className} aria-label={`${prefix ?? ""}${format(value)}${suffix ?? ""}`}>
+    <span
+      className={cn("tabular-nums", className)}
+      aria-label={`${prefix ?? ""}${format(value)}${suffix ?? ""}`}
+    >
       <span aria-hidden="true">
         {prefix}
         {format(display)}

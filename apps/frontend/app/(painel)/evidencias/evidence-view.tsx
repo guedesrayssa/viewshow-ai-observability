@@ -182,10 +182,10 @@ export function EvidenceView() {
                   {/* A barra de confiança preenche até o grau lido: o número e
                       a barra dizem a mesma coisa, uma para leitura e outra
                       para comparação rápida entre hipóteses. */}
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-canvas">
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
                     <div
                       key={data.hypothesis.confidence}
-                      className="track-grow h-full rounded-pill bg-gradient-brand"
+                      className="track-grow h-full rounded-pill bg-success"
                       style={{ width: `${data.hypothesis.confidence}%` }}
                     />
                   </div>
@@ -218,8 +218,7 @@ export function EvidenceView() {
 
                   {reviewStatus !== "pending" ? (
                     <span className="animate-fade-in text-caption text-ink-muted">
-                      {REVIEW_META[reviewStatus].label} por {profile.name} ·
-                      agora
+                      {REVIEW_META[reviewStatus].label} por {profile.name} · agora
                     </span>
                   ) : null}
                 </div>
@@ -249,7 +248,7 @@ export function EvidenceView() {
         </Reveal>
 
         <Reveal delay={210} className="flex">
-          <Card accent="brand" accentPosition="top" padding="lg" className="flex-1">
+          <Card padding="lg" className="flex-1">
             <CardTitle>Concentração afetada</CardTitle>
             <CardDescription className="mt-1">
               Sessões com falha por recorte
@@ -265,10 +264,10 @@ export function EvidenceView() {
                           {item.percentage}%
                         </span>
                       </div>
-                      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-pill bg-canvas">
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
                         <div
                           key={item.percentage}
-                          className="track-grow h-full rounded-pill bg-gradient-brand"
+                          className="track-grow h-full rounded-pill bg-critical"
                           style={{
                             width: `${item.percentage}%`,
                             animationDelay: `${index * 90}ms`,
@@ -294,7 +293,7 @@ export function EvidenceView() {
         </Reveal>
 
         <Reveal delay={270} className="flex">
-          <Card accent="brand" accentPosition="top" padding="lg" className="flex-1">
+          <Card padding="lg" className="flex-1">
             <CardTitle>Evidências por fonte</CardTitle>
             <CardDescription className="mt-1">
               Relação com a hipótese principal
@@ -358,7 +357,7 @@ export function EvidenceView() {
       </div>
 
       <Reveal delay={330}>
-        <Card accent="brand" accentPosition="top" padding="lg">
+        <Card padding="lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <CardTitle>
