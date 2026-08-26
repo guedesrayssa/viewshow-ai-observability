@@ -228,13 +228,52 @@ export const ADVANCED_FILTERS = [
 
 /* ========================= Volume temporal dos eventos ========================= */
 
-export const VOLUME_TIMES = ["09:02", "09:07", "09:12", "09:17", "09:22", "09:27", "09:32"];
-export const VOLUME_VALUES = [5200, 6400, 6000, 15200, 24800, 19000, 13400];
-export const VOLUME_PEAK_INDEX = 4;
-/** Índices de início e fim da janela anômala destacada no gráfico. */
-export const VOLUME_ANOMALY_RANGE: [number, number] = [3, 5];
-export const VOLUME_AXIS_MAX = 30000;
-export const VOLUME_AXIS_TICKS = [0, 15000, 30000];
+/** Janelas oferecidas no gráfico de volume. */
+export type VolumePeriodKey = "30" | "60" | "180";
+
+export const VOLUME_PERIOD_LABELS: Record<VolumePeriodKey, string> = {
+  "30": "Período: últimos 30 min",
+  "60": "Período: última hora",
+  "180": "Período: últimas 3 horas",
+};
+
+export type VolumeSeries = {
+  times: string[];
+  values: number[];
+  peakIndex: number;
+  /** Índices de início e fim da janela anômala destacada no gráfico. */
+  anomalyRange: [number, number];
+  axisMax: number;
+  axisTicks: number[];
+};
+
+/** Séries de exemplo por janela, com o mesmo pico do protótipo. */
+export const VOLUME_DATASETS: Record<VolumePeriodKey, VolumeSeries> = {
+  "30": {
+    times: ["09:02", "09:07", "09:12", "09:17", "09:22", "09:27", "09:32"],
+    values: [5200, 6400, 6000, 15200, 24800, 19000, 13400],
+    peakIndex: 4,
+    anomalyRange: [3, 5],
+    axisMax: 30000,
+    axisTicks: [0, 15000, 30000],
+  },
+  "60": {
+    times: ["08:35", "08:45", "08:55", "09:05", "09:15", "09:25", "09:35"],
+    values: [4100, 4800, 5600, 6200, 18400, 24800, 12600],
+    peakIndex: 5,
+    anomalyRange: [4, 6],
+    axisMax: 30000,
+    axisTicks: [0, 15000, 30000],
+  },
+  "180": {
+    times: ["06:40", "07:10", "07:40", "08:10", "08:40", "09:10", "09:40"],
+    values: [3200, 3800, 4400, 4900, 6100, 24800, 11800],
+    peakIndex: 5,
+    anomalyRange: [4, 6],
+    axisMax: 30000,
+    axisTicks: [0, 15000, 30000],
+  },
+};
 
 /** Formata `24800` como `24,8 mil`. */
 export function formatVolume(value: number): string {

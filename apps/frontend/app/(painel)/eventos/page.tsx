@@ -18,16 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function EventosPage() {
-  return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-h1 text-ink">Eventos</h1>
-        <p className="mt-1 text-body-sm text-brand-blue">
-          Eventos e sessões sem perder o dado original
-        </p>
-      </header>
-
-      <EventsView />
-    </div>
-  );
+  return <EventsView />;
 }

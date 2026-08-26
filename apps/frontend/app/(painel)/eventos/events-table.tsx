@@ -13,6 +13,7 @@
 
 import { Fragment } from "react";
 
+import { Reveal } from "@/components/motion/reveal";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
     <div className="mt-6 overflow-x-auto">
       <table className="w-full min-w-[56rem] border-collapse">
         <thead>
-          <tr className="text-left text-caption font-medium uppercase text-brand-blue">
+          <tr className="text-left text-caption font-medium uppercase text-ink-brand">
             <th scope="col" className="pb-3 pr-4">
               Horário
             </th>
@@ -78,17 +79,22 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
           </tr>
         </thead>
         <tbody>
-          {events.map((event) => {
+          {events.map((event, index) => {
             const expanded = event.id === expandedId;
             const detailId = `evento-detalhe-${event.id}`;
 
             return (
               <Fragment key={event.id}>
-                <tr
+                <Reveal
+                  as="tr"
+                  index={index}
+                  variant="rise-sm"
                   className={cn(
                     "border-t border-line-subtle align-top",
-                    "border-l-4",
-                    expanded ? ROW_ACCENT_CLASSES[event.category] : "border-l-transparent",
+                    "border-l-4 transition-colors duration-200",
+                    expanded
+                      ? ROW_ACCENT_CLASSES[event.category]
+                      : "border-l-transparent hover:bg-surface-muted",
                   )}
                 >
                   <td className="py-4 pr-4 pl-3 text-body-sm text-ink-muted whitespace-nowrap">
@@ -121,10 +127,16 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
                       {expanded ? "Recolher" : "Expandir"}
                     </Button>
                   </td>
-                </tr>
+                </Reveal>
 
                 {expanded ? (
-                  <tr id={detailId} className={cn("border-l-4", ROW_ACCENT_CLASSES[event.category])}>
+                  <tr
+                    id={detailId}
+                    className={cn(
+                      "animate-rise-sm border-l-4",
+                      ROW_ACCENT_CLASSES[event.category],
+                    )}
+                  >
                     <td colSpan={7} className="bg-surface-muted px-4 py-5">
                       <div className="grid gap-6 sm:grid-cols-2">
                         <div>
