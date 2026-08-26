@@ -1,6 +1,14 @@
+/**
+ * @file filter-bar.tsx
+ * Barra de recorte da Visão Geral.
+ *
+ * Não guarda estado próprio: quem decide o recorte é a tela, porque é ela que
+ * refaz a leitura da telemetria quando um filtro muda. Manter o valor aqui
+ * dentro faria a barra e os dados discordarem entre si.
+ */
+
 "use client";
 
-import { useState } from "react";
 import { SearchInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -10,65 +18,61 @@ import {
   TIME_RANGE_OPTIONS,
 } from "@/lib/dashboard-data";
 
-export function FilterBar() {
-  const [search, setSearch] = useState("");
-  const [timeRange, setTimeRange] = useState(TIME_RANGE_OPTIONS[1].value);
-  const [device, setDevice] = useState(DEVICE_OPTIONS[0].value);
-  const [region, setRegion] = useState(REGION_OPTIONS[1].value);
-  const [appVersion, setAppVersion] = useState(APP_VERSION_OPTIONS[0].value);
+export type DashboardFilters = {
+  search: string;
+  timeRange: string;
+  device: string;
+  region: string;
+  appVersion: string;
+};
 
+/** Recorte inicial: o mesmo do protótipo de alta fidelidade. */
+export const DEFAULT_DASHBOARD_FILTERS: DashboardFilters = {
+  search: "",
+  timeRange: TIME_RANGE_OPTIONS[1].value,
+  device: DEVICE_OPTIONS[0].value,
+  region: REGION_OPTIONS[1].value,
+  appVersion: APP_VERSION_OPTIONS[0].value,
+};
+
+export type FilterBarProps = {
+  value: DashboardFilters;
+  onChange: (patch: Partial<DashboardFilters>) => void;
+};
+
+export function FilterBar({ value, onChange }: FilterBarProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:flex-nowrap">
       <SearchInput
         placeholder="Buscar"
         aria-label="Buscar"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        value={value.search}
+        onChange={(event) => onChange({ search: event.target.value })}
       />
       <Select
         aria-label="Período"
-        value={timeRange}
-        onChange={(event) => setTimeRange(event.target.value)}
-      >
-        {TIME_RANGE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
+        value={value.timeRange}
+        onValueChange={(value) => onChange({ timeRange: value })}
+        options={TIME_RANGE_OPTIONS}
+      />
       <Select
         aria-label="Dispositivo"
-        value={device}
-        onChange={(event) => setDevice(event.target.value)}
-      >
-        {DEVICE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
+        value={value.device}
+        onValueChange={(value) => onChange({ device: value })}
+        options={DEVICE_OPTIONS}
+      />
       <Select
         aria-label="Região"
-        value={region}
-        onChange={(event) => setRegion(event.target.value)}
-      >
-        {REGION_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
+        value={value.region}
+        onValueChange={(value) => onChange({ region: value })}
+        options={REGION_OPTIONS}
+      />
       <Select
         aria-label="Versão do app"
-        value={appVersion}
-        onChange={(event) => setAppVersion(event.target.value)}
-      >
-        {APP_VERSION_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
+        value={value.appVersion}
+        onValueChange={(value) => onChange({ appVersion: value })}
+        options={APP_VERSION_OPTIONS}
+      />
     </div>
   );
 }

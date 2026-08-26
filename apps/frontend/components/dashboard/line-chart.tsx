@@ -1,3 +1,18 @@
+/**
+ * @file line-chart.tsx
+ * Série temporal do painel.
+ *
+ * A linha é desenhada da esquerda para a direita quando o gráfico aparece, e
+ * de novo a cada leitura: o traço acompanha a passagem do tempo que o eixo
+ * representa, então ver a série ser escrita ajuda a ler onde ela virou. O
+ * marcador do pico entra depois do traço, quando já existe contexto para ele.
+ *
+ * O desenho é SVG puro. O projeto não tem biblioteca de gráficos, e a série é
+ * simples o bastante para não justificar uma.
+ */
+
+"use client";
+
 import type { ExperiencePoint } from "@/lib/dashboard-data";
 
 type LineChartProps = {
@@ -10,6 +25,8 @@ type LineChartProps = {
   peakIndex?: number;
   peakLabel?: string;
   xTickEvery?: number;
+  /** Rótulo do gráfico para leitores de tela. */
+  ariaLabel?: string;
 };
 
 const VIEW_WIDTH = 1000;
@@ -23,6 +40,9 @@ const PLOT_X0 = PADDING_LEFT;
 const PLOT_X1 = VIEW_WIDTH - PADDING_RIGHT;
 const PLOT_Y0 = PADDING_TOP;
 const PLOT_Y1 = VIEW_HEIGHT - PADDING_BOTTOM;
+
+/** Duração do traço, casada com `--animate-draw`. */
+const DRAW_MS = 1150;
 
 export function getPointXPercent(index: number, totalPoints: number) {
   const x = PLOT_X0 + (index / (totalPoints - 1)) * (PLOT_X1 - PLOT_X0);
@@ -39,6 +59,7 @@ export function LineChart({
   peakIndex,
   peakLabel,
   xTickEvery = 1,
+  ariaLabel = "Gráfico de série temporal da saúde da experiência",
 }: LineChartProps) {
   const xForIndex = (index: number) =>
     PLOT_X0 + (index / (data.length - 1)) * (PLOT_X1 - PLOT_X0);
@@ -64,7 +85,7 @@ export function LineChart({
       preserveAspectRatio="none"
       className="h-full w-full"
       role="img"
-      aria-label="Gráfico de série temporal da saúde da experiência"
+      aria-label={ariaLabel}
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -81,6 +102,8 @@ export function LineChart({
           height={PLOT_Y1 - PLOT_Y0}
           fill="var(--color-warning)"
           fillOpacity={0.12}
+          className="animate-fade-in"
+          style={{ animationDelay: `${DRAW_MS * 0.4}ms` }}
         />
       )}
 
@@ -109,7 +132,15 @@ export function LineChart({
         </g>
       ))}
 
-      <path d={areaPath} fill={`url(#${gradientId})`} />
+      <path
+        d={areaPath}
+        fill={`url(#${gradientId})`}
+        className="animate-fade-in"
+        style={{ animationDelay: `${DRAW_MS * 0.35}ms`, animationDuration: "700ms" }}
+      />
+
+      {/* `pathLength={1}` normaliza o comprimento do traço: o mesmo par
+          dasharray/dashoffset serve a qualquer série, sem medir o path. */}
       <path
         d={linePath}
         fill="none"
@@ -117,6 +148,9 @@ export function LineChart({
         strokeWidth={3}
         strokeLinecap="round"
         strokeLinejoin="round"
+        pathLength={1}
+        className="animate-draw"
+        style={{ strokeDasharray: 1, strokeDashoffset: 1 }}
       />
 
       {data.map((point, index) => {
@@ -134,8 +168,14 @@ export function LineChart({
         );
       })}
 
-      {typeof peakIndex === "number" && (
-        <g>
+      {typeof peakIndex === "number" && data[peakIndex] && (
+        <g
+          className="animate-pop"
+          style={{
+            animationDelay: `${DRAW_MS * 0.85}ms`,
+            transformOrigin: `${xForIndex(peakIndex)}px ${yForValue(data[peakIndex].value)}px`,
+          }}
+        >
           <circle
             cx={xForIndex(peakIndex)}
             cy={yForValue(data[peakIndex].value)}
