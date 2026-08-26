@@ -1,6 +1,6 @@
 # Contrato da API operacional do dashboard
 
-Status: proposta para revisão  
+Status: draft para revisão  
 Versão do contrato: 1.0  
 Base HTTP: /api/v1  
 Formato: JSON  
