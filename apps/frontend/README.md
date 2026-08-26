@@ -18,8 +18,10 @@ Rotas disponíveis hoje:
 | Rota | Conteúdo |
 | --- | --- |
 | `/` | Redireciona para `/login` |
-| `/login` | Tela de acesso por conta corporativa |
+| `/login` | Tela de acesso por e-mail e senha ou SSO Globo |
 | `/recuperar-senha` | Orientação de recuperação de acesso |
+| `/visao-geral` | Hub do painel: estado do ecossistema em tempo quase real |
+| `/configuracoes` | Conta, aparência, preferências operacionais e notificações |
 | `/incidentes` | Incidentes e degradações que exigem atenção, com busca, filtros e ordenação |
 | `/evidencias` | Hipótese de causa provável e evidências que sustentam o diagnóstico de um incidente |
 | `/eventos` | Eventos e sessões correlacionados, com o dado normalizado ligado à fonte original |
@@ -30,7 +32,12 @@ Rotas disponíveis hoje:
 
 | Variável | Uso |
 | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | Endereço da API que intermedia a autenticação e as consultas. Sem ela, o login informa que a integração não está disponível em vez de falhar em silêncio. |
+| `NEXT_PUBLIC_API_BASE_URL` | Endereço da API de telemetria e autenticação. Sem ela, as telas leem o conjunto de exemplo e dizem isso em texto, e a entrada abre uma sessão de demonstração. |
+
+Os caminhos consumidos ficam em [`lib/data/endpoints.ts`](./lib/data/endpoints.ts) e
+espelham as rotas do backend em `apps/basica/backend`. Cada tela declara, no seu
+`*-resource.ts`, o endpoint que vai servi-la, como converter a resposta e o que mostrar
+enquanto a API não responde — ligar o backend não muda nenhum componente.
 
 ## Estrutura
 
@@ -38,7 +45,7 @@ Rotas disponíveis hoje:
 apps/frontend/
 ├── app/
 │   ├── globals.css          # tokens do design system (fonte única de verdade)
-│   ├── layout.tsx           # idioma, tipografia da marca e metadados
+│   ├── layout.tsx           # idioma, tipografia, tema e perfil da conta
 │   ├── page.tsx             # raiz, redireciona para o login
 │   ├── (auth)/              # telas de acesso, com o painel ilustrado
 │   │   ├── layout.tsx
@@ -46,13 +53,25 @@ apps/frontend/
 │   │   └── recuperar-senha/
 │   ├── (painel)/            # telas autenticadas, com a navegação lateral
 │   │   ├── layout.tsx
+│   │   ├── visao-geral/     # cada tela traz `*-view`, `*-data` e `*-resource`
 │   │   ├── incidentes/
 │   │   ├── evidencias/
 │   │   ├── eventos/
-│   │   └── monitoramento/
+│   │   ├── monitoramento/
+│   │   └── configuracoes/
 │   └── design-system/       # guia vivo dos componentes
-├── components/ui/           # biblioteca de componentes
-└── lib/                     # regras de acesso e utilitários
+├── components/
+│   ├── account/             # perfil em sessão: nome e foto
+│   ├── dashboard/           # cabeçalho, filtros, cartões e gráficos do painel
+│   ├── motion/              # entrada de conteúdo e números animados
+│   ├── settings/            # cartões da tela de Configurações
+│   ├── shell/               # navegação lateral, barra superior e moldura
+│   ├── theme/               # tema claro e escuro
+│   └── ui/                  # biblioteca de componentes
+├── hooks/                   # leitura de recursos, media queries e movimento
+└── lib/
+    ├── data/                # ponte com a API de telemetria
+    └── ...                  # acesso, tema, formatação e utilitários
 ```
 
 ## Design system
@@ -69,6 +88,9 @@ Três regras valem para qualquer tela nova:
    componente, não improvisada na tela.
 3. **Cor nunca comunica sozinha.** Todo estado tem rótulo textual, conforme as
    WCAG 2.2 adotadas no projeto.
+4. **Tela não importa medição de módulo de exemplo.** Todo número passa pela camada de
+   dados e chega pelo `useResource`, com os quatro estados desenhados: esperando, com
+   dado, atualizando e sem leitura.
 
 ## Referências do projeto
 
