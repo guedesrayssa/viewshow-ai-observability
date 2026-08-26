@@ -243,16 +243,19 @@ export function SunIcon(props: IconProps) {
 }
 
 /**
- * Acesso às configurações, no topo das telas autenticadas.
+ * Configurações, na navegação lateral.
  *
- * É uma engrenagem: o desenho anterior tinha raios retos e era lido como um
- * sol, o mesmo símbolo que o seletor de aparência usa para o tema claro.
+ * Engrenagem de seis dentes em traço único, no mesmo peso e na mesma
+ * simplicidade geométrica dos demais itens da navegação. O desenho anterior
+ * empilhava curvas e arcos e destoava ao lado deles; antes disso, tinha raios
+ * retos e era lido como um sol — o símbolo que o seletor de aparência usa para
+ * o tema claro.
  */
 export function SettingsIcon(props: IconProps) {
   return (
     <Icon {...props}>
+      <path d="M10.35 2.85L13.65 2.85L14.51 5.46L16.41 6.56L19.1 6L20.75 8.85L18.91 10.9L18.91 13.1L20.75 15.15L19.1 18L16.41 17.44L14.51 18.54L13.65 21.15L10.35 21.15L9.49 18.54L7.59 17.44L4.9 18L3.25 15.15L5.09 13.1L5.09 10.9L3.25 8.85L4.9 6L7.59 6.56L9.49 5.46Z" />
       <circle cx="12" cy="12" r="3.1" />
-      <path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.55V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1.03H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1.03Z" />
     </Icon>
   );
 }
