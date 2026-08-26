@@ -2,64 +2,25 @@
  * @file buffering-chart.tsx
  * Gráfico "Buffering após a versão 4.2.1".
  *
- * Evidência quantitativa da hipótese: mostra o salto do buffer ratio logo
- * após o deploy destacado, sem depender de biblioteca externa de gráficos
- * (o projeto não tem uma instalada), no mesmo espírito do gráfico de
- * incidentes por horário.
+ * É a evidência quantitativa da hipótese: mostra o salto do buffer ratio logo
+ * depois do deploy destacado. O traço é escrito da esquerda para a direita, e o
+ * marcador do pico só aparece quando a linha chega nele — a ordem do movimento
+ * é a ordem do argumento: primeiro o deploy, depois a subida.
  */
 
 "use client";
 
-import { useState } from "react";
-
+import {
+  BUFFERING_PERIOD_LABELS,
+  DEPLOY_INDEX,
+  DEPLOY_LABEL,
+  type BufferingPeriodKey,
+  type BufferingPoint,
+} from "@/app/(painel)/evidencias/evidence-data";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-
-type BufferingPoint = {
-  time: string;
-  value: number;
-};
-
-type PeriodKey = "60" | "120" | "360";
-
-const PERIOD_LABELS: Record<PeriodKey, string> = {
-  "60": "Última hora",
-  "120": "Últimas 2 horas",
-  "360": "Últimas 6 horas",
-};
-
-/** Série de exemplo, com o mesmo salto do protótipo de alta fidelidade. */
-const PERIOD_DATASETS: Record<PeriodKey, BufferingPoint[]> = {
-  "60": [
-    { time: "09:10", value: 1.6 },
-    { time: "09:20", value: 1.9 },
-    { time: "09:30", value: 2.6 },
-    { time: "09:40", value: 3.9 },
-    { time: "09:50", value: 4.9 },
-    { time: "10:00", value: 4.2 },
-  ],
-  "120": [
-    { time: "08:30", value: 0.8 },
-    { time: "08:50", value: 1.0 },
-    { time: "09:10", value: 1.6 },
-    { time: "09:30", value: 2.6 },
-    { time: "09:50", value: 4.9 },
-    { time: "10:10", value: 3.8 },
-  ],
-  "360": [
-    { time: "05:10", value: 0.6 },
-    { time: "06:10", value: 0.7 },
-    { time: "07:10", value: 0.9 },
-    { time: "08:10", value: 1.1 },
-    { time: "09:10", value: 1.6 },
-    { time: "09:50", value: 4.9 },
-    { time: "10:50", value: 3.1 },
-  ],
-};
-
-/** Índice do ponto de deploy em cada janela, para a linha tracejada e o rótulo. */
-const DEPLOY_INDEX: Record<PeriodKey, number> = { "60": 2, "120": 3, "360": 5 };
-const DEPLOY_LABEL = "Deploy 4.2.1";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatDecimal } from "@/lib/format";
 
 const VIEW_WIDTH = 640;
 const VIEW_HEIGHT = 200;
@@ -76,31 +37,20 @@ const PLOT_Y1 = VIEW_HEIGHT - PADDING_BOTTOM;
 const Y_MAX = 6;
 const Y_TICKS = [0, 3, 6];
 
-export function BufferingChart() {
-  const [period, setPeriod] = useState<PeriodKey>("120");
-  const points = PERIOD_DATASETS[period];
-  const deployIndex = DEPLOY_INDEX[period];
+/** Duração do traço, casada com `--animate-draw`. */
+const DRAW_MS = 1150;
 
-  const peakIndex = points.reduce(
-    (best, point, index) => (point.value > points[best].value ? index : best),
-    0,
-  );
-  const peak = points[peakIndex];
-  const baseline = points[0].value;
-  const multiplier = (peak.value / baseline).toLocaleString("pt-BR", {
-    maximumFractionDigits: 1,
-  });
+export type BufferingChartProps = {
+  points?: BufferingPoint[];
+  period: BufferingPeriodKey;
+  onPeriodChange: (period: BufferingPeriodKey) => void;
+};
 
-  const xForIndex = (index: number) =>
-    PLOT_X0 + (index / (points.length - 1)) * (PLOT_X1 - PLOT_X0);
-  const yForValue = (value: number) =>
-    PLOT_Y1 - (value / Y_MAX) * (PLOT_Y1 - PLOT_Y0);
-
-  const linePath = points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${xForIndex(index)},${yForValue(point.value)}`)
-    .join(" ");
-  const areaPath = `${linePath} L${xForIndex(points.length - 1)},${PLOT_Y1} L${PLOT_X0},${PLOT_Y1} Z`;
-
+export function BufferingChart({
+  points,
+  period,
+  onPeriodChange,
+}: BufferingChartProps) {
   return (
     <Card accent="brand" accentPosition="top" padding="lg" className="flex-1">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -113,30 +63,80 @@ export function BufferingChart() {
 
         <Select
           aria-label="Período do gráfico de buffering"
-          fieldSize="sm"
           value={period}
-          onChange={(event) => setPeriod(event.target.value as PeriodKey)}
-        >
-          {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => (
-            <option key={key} value={key}>
-              {PERIOD_LABELS[key]}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(value) => onPeriodChange(value as BufferingPeriodKey)}
+          options={(
+            Object.keys(BUFFERING_PERIOD_LABELS) as BufferingPeriodKey[]
+          ).map((key) => ({ value: key, label: BUFFERING_PERIOD_LABELS[key] }))}
+        />
       </div>
 
+      {!points || points.length === 0 ? (
+        <>
+          <Skeleton className="mt-4 h-44 w-full" />
+          <Skeleton className="mt-2 h-3 w-56" />
+        </>
+      ) : (
+        <BufferingPlot points={points} period={period} />
+      )}
+    </Card>
+  );
+}
+
+function BufferingPlot({
+  points,
+  period,
+}: {
+  points: BufferingPoint[];
+  period: BufferingPeriodKey;
+}) {
+  const deployIndex = Math.min(DEPLOY_INDEX[period], points.length - 1);
+
+  const peakIndex = points.reduce(
+    (best, point, index) => (point.value > points[best].value ? index : best),
+    0,
+  );
+  const peak = points[peakIndex];
+  const baseline = points[0].value;
+  const multiplier = formatDecimal(peak.value / baseline, 1);
+
+  const xForIndex = (index: number) =>
+    PLOT_X0 + (index / (points.length - 1)) * (PLOT_X1 - PLOT_X0);
+  const yForValue = (value: number) =>
+    PLOT_Y1 - (value / Y_MAX) * (PLOT_Y1 - PLOT_Y0);
+
+  const linePath = points
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"}${xForIndex(index)},${yForValue(point.value)}`,
+    )
+    .join(" ");
+  const areaPath = `${linePath} L${xForIndex(points.length - 1)},${PLOT_Y1} L${PLOT_X0},${PLOT_Y1} Z`;
+
+  return (
+    <>
       <div className="relative mt-4 h-44">
         <svg
+          // A chave amarrada à série redesenha o traço a cada nova leitura.
+          key={points.map((point) => point.value).join(",")}
           viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
           preserveAspectRatio="none"
           className="h-full w-full"
           role="img"
-          aria-label={`Buffer ratio ao longo do tempo, com pico de ${peak.value}% às ${peak.time}`}
+          aria-label={`Buffer ratio ao longo do tempo, com pico de ${formatDecimal(peak.value, 1)}% às ${peak.time}`}
         >
           <defs>
             <linearGradient id="buffering-area" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-brand-orange)" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="var(--color-brand-orange)" stopOpacity={0} />
+              <stop
+                offset="0%"
+                stopColor="var(--color-brand-orange)"
+                stopOpacity={0.22}
+              />
+              <stop
+                offset="100%"
+                stopColor="var(--color-brand-orange)"
+                stopOpacity={0}
+              />
             </linearGradient>
           </defs>
 
@@ -162,25 +162,35 @@ export function BufferingChart() {
             </g>
           ))}
 
-          <line
-            x1={xForIndex(deployIndex)}
-            x2={xForIndex(deployIndex)}
-            y1={PLOT_Y0}
-            y2={PLOT_Y1}
-            stroke="var(--color-brand-blue)"
-            strokeDasharray="4 4"
-            strokeWidth={1.5}
-          />
-          <text
-            x={xForIndex(deployIndex)}
-            y={PLOT_Y0 - 10}
-            textAnchor="middle"
-            className="fill-brand-blue text-[10px] font-medium"
-          >
-            {DEPLOY_LABEL}
-          </text>
+          {/* O marco do deploy entra antes da linha: é ele que o gráfico está
+              tentando relacionar com a subida. */}
+          <g className="animate-fade-in">
+            <line
+              x1={xForIndex(deployIndex)}
+              x2={xForIndex(deployIndex)}
+              y1={PLOT_Y0}
+              y2={PLOT_Y1}
+              stroke="var(--color-ink-brand)"
+              strokeDasharray="4 4"
+              strokeWidth={1.5}
+            />
+            <text
+              x={xForIndex(deployIndex)}
+              y={PLOT_Y0 - 10}
+              textAnchor="middle"
+              className="fill-ink-brand text-[10px] font-medium"
+            >
+              {DEPLOY_LABEL}
+            </text>
+          </g>
 
-          <path d={areaPath} fill="url(#buffering-area)" />
+          <path
+            d={areaPath}
+            fill="url(#buffering-area)"
+            className="animate-fade-in"
+            style={{ animationDelay: `${DRAW_MS * 0.35}ms` }}
+          />
+
           <path
             d={linePath}
             fill="none"
@@ -188,24 +198,35 @@ export function BufferingChart() {
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
+            pathLength={1}
+            className="animate-draw"
+            style={{ strokeDasharray: 1, strokeDashoffset: 1 }}
           />
 
-          <circle
-            cx={xForIndex(peakIndex)}
-            cy={yForValue(peak.value)}
-            r={4.5}
-            fill="var(--color-critical)"
-            stroke="var(--color-surface)"
-            strokeWidth={2}
-          />
-          <text
-            x={xForIndex(peakIndex)}
-            y={yForValue(peak.value) - 12}
-            textAnchor="middle"
-            className="fill-critical-strong text-[11px] font-semibold"
+          <g
+            className="animate-pop"
+            style={{
+              animationDelay: `${DRAW_MS * 0.85}ms`,
+              transformOrigin: `${xForIndex(peakIndex)}px ${yForValue(peak.value)}px`,
+            }}
           >
-            {peak.value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
-          </text>
+            <circle
+              cx={xForIndex(peakIndex)}
+              cy={yForValue(peak.value)}
+              r={4.5}
+              fill="var(--color-critical)"
+              stroke="var(--color-surface)"
+              strokeWidth={2}
+            />
+            <text
+              x={xForIndex(peakIndex)}
+              y={yForValue(peak.value) - 12}
+              textAnchor="middle"
+              className="fill-critical-strong text-[11px] font-semibold"
+            >
+              {formatDecimal(peak.value, 1)}%
+            </text>
+          </g>
 
           {points.map((point, index) => (
             <text
@@ -224,6 +245,6 @@ export function BufferingChart() {
       <p className="mt-2 text-caption font-medium text-critical-strong">
         +{multiplier}x vs. linha de base · forte evidência
       </p>
-    </Card>
+    </>
   );
 }
