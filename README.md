@@ -190,6 +190,7 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
 - [Arquitetura e endpoints do backend](artefatos/backend.md)
 - [Especificação de requisitos](artefatos/requisitos.md)
 - [Roteiro de implantação na AWS](artefatos/deploy-aws.md)
+- [CI/CD do painel no AWS Amplify](artefatos/ci-cd-amplify.md)
 - [Análise financeira](artefatos/analise_financeira.md)
 
 ---
