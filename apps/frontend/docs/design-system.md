@@ -22,9 +22,10 @@ A versão navegável, renderizada com o mesmo código das telas, fica em **`/des
 - [5. Moldura das telas](#5-moldura-das-telas)
 - [6. Conta](#6-conta)
 - [7. Dados na tela](#7-dados-na-tela)
-- [8. Componentes](#8-componentes)
-- [9. Acessibilidade](#9-acessibilidade)
-- [10. Como estender](#10-como-estender)
+- [8. Gráficos](#8-gráficos)
+- [9. Componentes](#9-componentes)
+- [10. Acessibilidade](#10-acessibilidade)
+- [11. Como estender](#11-como-estender)
 
 ## 1. Como usar
 
@@ -307,7 +308,41 @@ Os quatro estados são obrigatórios na tela:
 telemetria ("Telemetria ao vivo") ou do conjunto de exemplo ("Dados de exemplo"), e há
 quanto tempo foi lido. Um número na tela nunca se apresenta como medição quando não é.
 
-## 8. Componentes
+## 8. Gráficos
+
+Os cinco gráficos do painel saem de dois componentes, em `components/charts`:
+`TimeSeriesChart` para séries no tempo e `BarChart` para faixas discretas. Antes,
+cada tela desenhava o seu, e o mesmo dado mudava de aparência conforme a tela em que
+era lido.
+
+| Decisão | Por quê |
+| --- | --- |
+| Desenho em pixels reais, medindo o contêiner | Um `viewBox` esticado por `preserveAspectRatio="none"` serve a qualquer largura, mas distorce junto os rótulos e a espessura do traço |
+| Teto do eixo em marca redonda (`niceMax`) | Um eixo que termina em 24.837 obriga a ler o número; terminando em 25 mil, a altura já diz |
+| Grade só na horizontal | A vertical competiria com o traço da série |
+| Rótulos do eixo espaçados pela largura (`labelStep`) | Rótulos que se tocam viram uma faixa cinza ilegível |
+| Valor exato no cursor, não sobre o desenho | Espalhar números por cima da curva transforma o gráfico em uma tabela mal formatada, e a comparação de alturas se perde |
+| Números tabulares em eixos, balões e indicadores | Um valor que sobe de 99 para 100 não pode empurrar o que está ao lado |
+| Anotação em vez de enfeite | O pico ganha ponto e rótulo discretos; marcos como um deploy entram como linha tracejada com nome |
+
+Cores de série vêm dos tokens de estado, nunca de uma paleta própria do gráfico:
+`critical` para o que degrada, `info` para a etapa de entrada, `warning` para
+comparação e meta. A legenda repete o significado em texto, porque a cor sozinha não
+diz qual série é qual.
+
+### Contenção visual
+
+O gradiente da marca marca **ação**, não decoração. Ele fica na ação primária, no item
+ativo da navegação e no retrato da conta; saiu das faixas de topo dos cartões e das
+barras de proporção, que passaram a usar a cor do estado que representam. Um painel em
+que todo cartão tem uma faixa colorida no topo não destaca nada.
+
+Na mesma linha: o cartão se separa do fundo pela borda, e a sombra apenas assenta a
+peça — um halo largo faz cada bloco flutuar e descola o painel do que ele é. Cartão
+não levanta quando o ponteiro passa: o movimento existe para mostrar dado chegando,
+não para responder ao mouse.
+
+## 9. Componentes
 
 Todos ficam em `components/ui` e são documentados com exemplo no próprio arquivo.
 
@@ -330,6 +365,7 @@ Todos ficam em `components/ui` e são documentados com exemplo no próprio arqui
 | `AnimatedNumber` | `motion/animated-number.tsx` | Número que conta do valor anterior até o atual |
 | `ThemeToggle`, `ThemeChoice` | `theme/theme-toggle.tsx` | Troca rápida de tema e escolha completa |
 | `DataStatus` | `dashboard/data-status.tsx` | Procedência, frescor e ação de atualizar |
+| `TimeSeriesChart`, `BarChart` | `charts/` | Séries no tempo e faixas discretas, com leitura por cursor |
 | Ícones | `icons.tsx` | Conjunto mínimo em SVG inline, sem dependência externa |
 
 Regras de composição:
@@ -350,7 +386,7 @@ End, Enter, Espaço, Esc e digitação para pular até a opção) e os papéis
 `combobox`/`listbox` da WAI-ARIA, que estão no componente. A lista abre em um portal no
 fim do documento, porque dentro do cartão ela seria cortada pelo `overflow`.
 
-## 9. Acessibilidade
+## 10. Acessibilidade
 
 - Contraste: `ink` sobre `surface` alcança 17,4:1 e `ink-muted` sobre `surface`, 5,0:1,
   ambos acima do mínimo AA para texto (4,5:1). Sobre `canvas`, `ink-muted` fica em 4,6:1.
@@ -375,6 +411,9 @@ fim do documento, porque dentro do cartão ela seria cortada pelo `overflow`.
 - No mapa de concentração, cada estado é alcançável por teclado e anuncia nome, valor e
   intensidade; o resumo por região aparece em texto abaixo, para que a cor nunca seja a
   única leitura.
+- Cada gráfico traz a série inteira descrita em `aria-label`: quem não enxerga o desenho
+  recebe o começo, o pico e o fim em texto. O balão do cursor é decorativo para leitores
+  de tela, porque repetiria a série a cada movimento do ponteiro.
 
 ### Limitações conhecidas
 
@@ -386,7 +425,7 @@ aqui para decisão consciente de quem usar o design system:
 | Texto branco sobre `gradient-brand` | 2,9:1 a 3,7:1 | Restrito a rótulo de botão em negrito. A ação nunca é a única forma de entender a tela, e o mesmo comando aparece em texto no restante da interface. Uma variante mais escura do gradiente resolveria o ponto, ao custo de fidelidade à marca. |
 | `ink-subtle` sobre `surface` | 2,6:1 | Uso limitado a placeholder e a texto decorativo. Informação que precisa ser lida usa `ink-muted` ou mais escuro. |
 
-## 10. Como estender
+## 11. Como estender
 
 1. Precisa de uma cor, tamanho ou raio novo? Acrescente o token em `app/globals.css`,
    com nome semântico, e use o token na tela.
