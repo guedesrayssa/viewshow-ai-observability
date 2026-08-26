@@ -216,7 +216,7 @@ export function UserIcon(props: IconProps) {
   );
 }
 
-/** Alternância de tema escuro, no topo das telas autenticadas. */
+/** Tema escuro, no seletor de aparência. */
 export function MoonIcon(props: IconProps) {
   return (
     <Icon {...props}>
@@ -225,19 +225,100 @@ export function MoonIcon(props: IconProps) {
   );
 }
 
-/** Acesso às configurações, no topo das telas autenticadas. */
+/** Tema claro, no seletor de aparência. */
+export function SunIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2" />
+      <path d="M12 19.5v2" />
+      <path d="M2.5 12h2" />
+      <path d="M19.5 12h2" />
+      <path d="m5.1 5.1 1.4 1.4" />
+      <path d="m17.5 17.5 1.4 1.4" />
+      <path d="m18.9 5.1-1.4 1.4" />
+      <path d="m6.5 17.5-1.4 1.4" />
+    </Icon>
+  );
+}
+
+/**
+ * Acesso às configurações, no topo das telas autenticadas.
+ *
+ * É uma engrenagem: o desenho anterior tinha raios retos e era lido como um
+ * sol, o mesmo símbolo que o seletor de aparência usa para o tema claro.
+ */
 export function SettingsIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <circle cx="12" cy="12" r="3.25" />
-      <path d="M12 3v2.5" />
-      <path d="M12 18.5V21" />
-      <path d="M3 12h2.5" />
-      <path d="M18.5 12H21" />
-      <path d="m5.6 5.6 1.8 1.8" />
-      <path d="m16.6 16.6 1.8 1.8" />
-      <path d="m18.4 5.6-1.8 1.8" />
-      <path d="m7.4 16.6-1.8 1.8" />
+      <circle cx="12" cy="12" r="3.1" />
+      <path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.55V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1.03H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1.03Z" />
+    </Icon>
+  );
+}
+
+/** Aparência do sistema, no seletor de tema. */
+export function DisplayIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M8 20.5h8" />
+      <path d="M12 17v3.5" />
+      <path d="M12 4v13" />
+    </Icon>
+  );
+}
+
+/** Recolhe a navegação lateral para a faixa de ícones. */
+export function PanelCollapseIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M10 4v16" />
+      <path d="m6.8 9.6-2 2.4 2 2.4" />
+    </Icon>
+  );
+}
+
+/** Reabre a navegação lateral. */
+export function PanelExpandIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M10 4v16" />
+      <path d="m5 9.6 2 2.4-2 2.4" />
+    </Icon>
+  );
+}
+
+/** Abre a navegação em telas estreitas. */
+export function MenuIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </Icon>
+  );
+}
+
+/** Recarrega os dados do painel. */
+export function RefreshIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 11.5A8 8 0 0 0 6.3 6.3L3.5 9" />
+      <path d="M4 12.5a8 8 0 0 0 13.7 5.2l2.8-2.7" />
+      <path d="M3.5 4.5V9H8" />
+      <path d="M20.5 19.5V15H16" />
+    </Icon>
+  );
+}
+
+/** Avança para a tela seguinte. */
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m9 4.5 7 7.5-7 7.5" />
     </Icon>
   );
 }

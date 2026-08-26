@@ -10,6 +10,10 @@
  * Regra de uso: componentes e telas consomem os tokens semânticos
  * (`bg-canvas`, `text-ink-muted`, `border-line`, `rounded-card`...). Cores
  * literais (`#fff`, `bg-[#101B46]`) não devem aparecer fora deste arquivo.
+ *
+ * O tema escuro reescreve apenas os tokens semânticos, no bloco
+ * `[data-theme="dark"]` mais abaixo. Nenhum componente precisa da variante
+ * `dark:` do Tailwind: quem usa `bg-surface` já acompanha o tema.
  */
 
 @import "tailwindcss";
@@ -20,46 +24,55 @@
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
 
+  /* Unidade de espaçamento do Tailwind. Todo `p-4`, `gap-6` e `h-11` sai
+     daqui, então mudá-la reescala a interface inteira de uma vez.
+     0,2rem contra os 0,25rem padrão coloca o painel na densidade de quem
+     trabalha com o navegador em 80%: cabe mais dado por tela sem apertar o
+     alvo de clique. */
+  --spacing: 0.2rem;
+
   /* Escala tipográfica semântica. O peso e o espaçamento fazem parte do token:
-     usar `text-h1` já entrega tamanho, entrelinha, peso e tracking corretos. */
-  --text-display: 2.5rem;
-  --text-display--line-height: 3rem;
+     usar `text-h1` já entrega tamanho, entrelinha, peso e tracking corretos.
+     Os títulos encolhem mais do que o texto corrido: em um painel, é o título
+     que ocupa espaço sem carregar dado. */
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
   --text-display--font-weight: 700;
   --text-display--letter-spacing: -0.02em;
 
-  --text-h1: 2rem;
-  --text-h1--line-height: 2.5rem;
+  --text-h1: 1.625rem;
+  --text-h1--line-height: 2.125rem;
   --text-h1--font-weight: 700;
   --text-h1--letter-spacing: -0.02em;
 
-  --text-h2: 1.5rem;
-  --text-h2--line-height: 2rem;
+  --text-h2: 1.25rem;
+  --text-h2--line-height: 1.75rem;
   --text-h2--font-weight: 600;
   --text-h2--letter-spacing: -0.01em;
 
-  --text-h3: 1.25rem;
-  --text-h3--line-height: 1.75rem;
+  --text-h3: 1.0625rem;
+  --text-h3--line-height: 1.5rem;
   --text-h3--font-weight: 600;
 
-  --text-title: 1rem;
-  --text-title--line-height: 1.5rem;
+  --text-title: 0.9375rem;
+  --text-title--line-height: 1.375rem;
   --text-title--font-weight: 600;
 
-  --text-body: 0.9375rem;
-  --text-body--line-height: 1.5rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
 
-  --text-body-sm: 0.875rem;
-  --text-body-sm--line-height: 1.375rem;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.25rem;
 
-  --text-label: 0.8125rem;
-  --text-label--line-height: 1.25rem;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.125rem;
   --text-label--font-weight: 500;
 
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1.125rem;
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1rem;
 
-  --text-micro: 0.6875rem;
-  --text-micro--line-height: 1rem;
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 0.875rem;
 
   /* ============================ Cores de marca ============================ */
 
@@ -122,6 +135,8 @@
   --color-ink-muted: #667085;
   --color-ink-subtle: #98a2b3;
   --color-ink-inverse: #ffffff;
+  /* Tinta de apoio da marca. É este o token dos textos secundários azuis das
+     telas — `brand-blue` continua reservado a preenchimentos. */
   --color-ink-brand: #0d47d9;
 
   /* ================================ Bordas ================================ */
@@ -134,9 +149,9 @@
 
   /* ================================= Raios ================================ */
 
-  --radius-field: 0.75rem;
-  --radius-card: 1rem;
-  --radius-panel: 1.5rem;
+  --radius-field: 0.625rem;
+  --radius-card: 0.875rem;
+  --radius-panel: 1.25rem;
   --radius-pill: 9999px;
 
   /* ================================ Sombras =============================== */
@@ -158,11 +173,236 @@
     #ec0101 100%
   );
 
-  /* Painéis institucionais escuros, como o lado ilustrado do login. */
-  --gradient-navy: linear-gradient(160deg, #1e3273 0%, #101b46 45%, #010b35 100%);
+  /* Painéis institucionais escuros, como a navegação e o lado ilustrado do
+     login. */
+  --gradient-navy: linear-gradient(
+    160deg,
+    #1e3273 0%,
+    #101b46 45%,
+    #010b35 100%
+  );
 
   /* Esferas decorativas do painel de login. */
   --gradient-orb: linear-gradient(200deg, #ff6a32 0%, #f43f4e 50%, #941594 100%);
+
+  /* ================================ Motion ================================ */
+
+  /* Um vocabulário curto de movimento, usado em toda a interface: entrada de
+     conteúdo, revelação em cascata, crescimento de barra e desenho de série.
+     Cada token traz duração e curva, para que duas telas diferentes não
+     inventem tempos próprios. */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  --animate-fade-in: fade-in 0.4s ease both;
+  --animate-rise: rise 0.55s var(--ease-out-quint) both;
+  --animate-rise-sm: rise-sm 0.4s var(--ease-out-quint) both;
+  --animate-scale-in: scale-in 0.45s var(--ease-out-quint) both;
+  --animate-slide-in-left: slide-in-left 0.45s var(--ease-out-quint) both;
+  --animate-grow-bar: grow-bar 0.8s var(--ease-out-quint) both;
+  --animate-grow-track: grow-track 0.9s var(--ease-out-quint) both;
+  --animate-draw: draw 1.15s var(--ease-in-out-quart) both;
+  --animate-pop: pop 0.5s var(--ease-out-quint) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-orb-drift: orb-drift 18s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes rise-sm {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 6px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translate3d(-12px, 0, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Barra vertical que cresce da base. A altura final vem do próprio
+     elemento, por isso a animação mexe apenas na escala. */
+  @keyframes grow-bar {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  /* Trilha horizontal de proporção, como as barras de concentração. */
+  @keyframes grow-track {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  /* Desenho progressivo de uma linha de série temporal. O elemento precisa de
+     `stroke-dasharray` e `stroke-dashoffset` iguais ao comprimento do traço. */
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    70% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Deriva lenta das esferas do painel de acesso. É atmosfera, não
+     informação: o percurso é curto e o ciclo, longo o bastante para não
+     disputar atenção com o formulário ao lado. */
+  @keyframes orb-drift {
+    0%,
+    100% {
+      transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(calc(-50% + 14px), calc(-50% - 22px), 0) scale(1.05);
+    }
+  }
+
+  /* Brilho que atravessa o letreiro da marca uma única vez, na abertura. */
+  @keyframes sheen {
+    from {
+      background-position: -140% 0;
+    }
+    to {
+      background-position: 240% 0;
+    }
+  }
+}
+
+/* ============================== Tema escuro =============================== */
+
+/**
+ * Tema escuro em azul, derivado do navy da marca.
+ *
+ * Só os tokens semânticos mudam: superfícies, tinta, bordas, tons de estado e
+ * sombras. Os tokens de marca (gradiente laranja, símbolo) permanecem, porque
+ * a identidade não muda com o tema.
+ *
+ * O atributo é resolvido antes da primeira pintura pelo script de
+ * `app/layout.tsx`, então não existe piscada de tema claro ao recarregar.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #060c22;
+  --color-surface: #0d1633;
+  --color-surface-muted: #131e42;
+  --color-surface-inverse: #e8effd;
+
+  --color-ink: #eef3ff;
+  --color-ink-muted: #a3b4db;
+  --color-ink-subtle: #7c8fbe;
+  --color-ink-inverse: #ffffff;
+  --color-ink-brand: #8fb3ff;
+
+  --color-line-subtle: #16224a;
+  --color-line: #223059;
+  --color-line-strong: #33447a;
+  --color-line-brand: #5a8cff;
+  --color-line-inverse: #33447a;
+
+  --color-brand-blue: #2a63e8;
+  --color-brand-blue-light: #5a8cff;
+  --color-brand-blue-dark: #1c4bbd;
+  --color-brand-blue-soft: #16264f;
+
+  --color-brand-navy: #0b1533;
+  --color-brand-navy-deep: #050b22;
+  --color-brand-navy-raised: #16224c;
+  --color-brand-navy-top: #16265c;
+  --color-brand-navy-line: #33447a;
+
+  --color-critical: #ff5a67;
+  --color-critical-strong: #ff9aa2;
+  --color-critical-soft: #38141b;
+  --color-warning: #ffb020;
+  --color-warning-strong: #ffc55c;
+  --color-warning-soft: #3a2a0c;
+  --color-success: #2ecb88;
+  --color-success-strong: #5fd8a4;
+  --color-success-soft: #0e2e22;
+  --color-info: #4e8dff;
+  --color-info-soft: #12224b;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.45), 0 18px 36px rgba(0, 0, 0, 0.45);
+  --shadow-brand: 0 6px 16px rgba(244, 63, 78, 0.35);
+
+  /* No escuro a navegação precisa se separar do fundo por luz, não por
+     profundidade: o gradiente clareia em vez de escurecer. */
+  --gradient-navy: linear-gradient(
+    160deg,
+    #16265c 0%,
+    #0d1839 48%,
+    #070e28 100%
+  );
 }
 
 /* =============================== Utilitários ============================== */
@@ -200,6 +440,35 @@
   }
 }
 
+/**
+ * Superfície de espera. Ocupa exatamente o espaço do conteúdo que está por
+ * vir, para que a chegada do dado não empurre a página (CLS).
+ */
+@utility skeleton {
+  background-color: var(--color-line-subtle);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--color-line-strong) 55%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: var(--radius-field);
+}
+
+/** Barra de gráfico que cresce da base ao entrar na tela. */
+@utility bar-grow {
+  transform-origin: bottom;
+  animation: var(--animate-grow-bar);
+}
+
+/** Trilha horizontal que preenche da esquerda para a direita. */
+@utility track-grow {
+  transform-origin: left;
+  animation: var(--animate-grow-track);
+}
+
 /* ================================== Base ================================== */
 
 @layer base {
@@ -209,6 +478,7 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    color-scheme: light;
   }
 
   body {
@@ -217,6 +487,21 @@
     font-family: var(--font-sans);
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
+    /* A troca de tema atravessa a interface inteira, então precisa de tempo
+       suficiente para ser lida como uma transição, e não como um corte. */
+    transition:
+      background-color 0.3s var(--ease-out-quint),
+      color 0.3s var(--ease-out-quint);
+  }
+
+  /**
+   * Conteúdo que ainda vai entrar por animação.
+   *
+   * A regra depende da classe `js`, escrita pelo script do `<head>`: sem
+   * JavaScript nada fica escondido, e a página continua inteira e legível.
+   */
+  html.js [data-reveal="hidden"] {
+    opacity: 0;
   }
 
   /* O anel de foco nativo é substituído pelo token de marca em todo o app. */
@@ -233,6 +518,7 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }
