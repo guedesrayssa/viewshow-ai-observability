@@ -31,26 +31,19 @@ Alterações somente em frontend ou documentação não implantam o backend.
 
 ### Branch e variáveis
 
-1. Proteja a branch `develop` no GitLab.
+1. Mantenha a branch `develop` protegida sempre que possível.
 2. Crie as variáveis abaixo no ambiente `aws-lab`:
    - `AWS_ACCESS_KEY_ID`
    - `AWS_SECRET_ACCESS_KEY`
    - `AWS_SESSION_TOKEN`
-3. Marque as três variáveis como protegidas, mascaradas, ocultas e raw.
+3. Por padrão, marque as três como protegidas, mascaradas, ocultas e raw.
 
 Nunca coloque credenciais AWS ou tokens do GitLab no repositório.
 
 ### Runners
 
-São necessários dois runners do projeto:
-
-- `backend-docker-ephemeral`: runner temporário e privilegiado usado para construir
-  e testar imagens Docker. Ele precisa suportar Docker-in-Docker com TLS.
-- `backend-deploy-protected`: runner protegido e não privilegiado usado somente
-  pelo job `deploy_backend_ecs`.
-
-Os runners devem pertencer ao projeto e não devem aceitar jobs sem tag. Enquanto
-o runner `backend-deploy-protected` não existir, o job de deploy ficará pendente.
+O pipeline usa runners compartilhados, sem tags de runner. Eles precisam aceitar
+jobs sem tag e suportar Docker-in-Docker com TLS para os jobs de imagem.
 
 ## Renovação das credenciais do AWS Academy Lab
 
@@ -71,19 +64,22 @@ As credenciais expiram sempre que o Lab é encerrado. Depois de iniciar um novo 
    glab auth status --hostname git.inteli.edu.br
    ```
 
-4. Valide sem alterar o GitLab:
+4. Se a `develop` estiver temporariamente sem proteção, valide o modo temporário
+   sem alterar o GitLab:
 
    ```bash
-   scripts/sync-aws-gitlab-credentials.sh --dry-run
+   scripts/sync-aws-gitlab-credentials.sh --dry-run --allow-unprotected-develop
    ```
 
-5. Se a validação passar, atualize as variáveis:
+5. Se a validação passar, atualize as variáveis no mesmo modo temporário:
 
    ```bash
-   scripts/sync-aws-gitlab-credentials.sh
+   scripts/sync-aws-gitlab-credentials.sh --allow-unprotected-develop
    ```
 
-O script atualiza somente as três variáveis AWS e não mostra seus valores.
+O script atualiza somente as três variáveis AWS e não mostra seus valores. Quando
+a `develop` voltar a ser protegida, execute o script sem a opção temporária para
+restaurar a proteção das variáveis.
 
 ## Deploy normal
 
@@ -127,8 +123,8 @@ sincronização. Depois, execute novamente somente o pipeline mais recente.
 
 ### Job de deploy pendente
 
-Confirme que existe um runner online com a tag `backend-deploy-protected`. Não
-remova a tag para usar um runner compartilhado.
+Confirme que há um runner compartilhado online que aceita jobs sem tag. Para os
+jobs de imagem, confirme também o suporte a Docker-in-Docker com TLS.
 
 ### Rollback não confirmado
 

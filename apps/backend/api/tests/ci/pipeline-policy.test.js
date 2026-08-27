@@ -11,6 +11,10 @@ const gitignore = fs.readFileSync(
   path.resolve(__dirname, "../../../../../.gitignore"),
   "utf8",
 );
+const deployReadme = fs.readFileSync(
+  path.resolve(__dirname, "../../deploy/README.md"),
+  "utf8",
+);
 
 function topLevelBlock(name, source = pipeline) {
   const match = new RegExp(`^${name}:\\n`, "m").exec(source);
@@ -150,6 +154,20 @@ test("deploy requires the publication dotenv artifact and keeps aws-lab scope", 
 test("portable ignore policy excludes all Superpowers workflow artifacts", () => {
   assert.match(gitignore, /^\/docs\/superpowers\/$/m);
   assert.match(gitignore, /^\/\.superpowers\/$/m);
+});
+
+test("deployment guide documents shared runners and the temporary unprotected-develop renewal", () => {
+  assert.match(deployReadme, /runners compartilhados/i);
+  assert.doesNotMatch(deployReadme, /backend-(docker-ephemeral|deploy-protected)/);
+  assert.match(
+    deployReadme,
+    /scripts\/sync-aws-gitlab-credentials\.sh --dry-run --allow-unprotected-develop/,
+  );
+  assert.match(
+    deployReadme,
+    /scripts\/sync-aws-gitlab-credentials\.sh --allow-unprotected-develop/,
+  );
+  assert.doesNotMatch(deployReadme, /aws configure export-credentials|printenv/i);
 });
 
 test("every CI executor and Docker service uses a tag plus immutable digest", () => {
