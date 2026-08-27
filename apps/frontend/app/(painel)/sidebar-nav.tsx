@@ -18,7 +18,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import {
   ActivityIcon,
@@ -75,52 +75,73 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
         const active = pathname === item.href;
 
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            onClick={onNavigate}
-            title={collapsed ? item.label : undefined}
-            style={{ animationDelay: `${index * 45}ms` }}
-            className={cn(
-              "group relative flex animate-slide-in-left items-center gap-3 rounded-field py-3",
-              "text-body-sm font-medium transition-colors duration-200",
-              collapsed ? "justify-center px-0" : "px-3",
-              // A divisória separa a investigação do ajuste de conta sem
-              // precisar de um título de grupo.
-              item.startsGroup && "mt-4 border-t border-brand-navy-line pt-5",
-              active
-                ? "bg-gradient-brand text-ink-inverse shadow-brand"
-                : "text-gray-300 hover:bg-brand-navy-raised hover:text-ink-inverse",
-            )}
-          >
-            <span className="shrink-0">{item.icon}</span>
-
-            {/* O rótulo some da vista, nunca do DOM: a navegação recolhida
-                continua legível para quem usa leitor de tela. */}
-            <span
-              className={cn(
-                "whitespace-nowrap transition-[opacity,transform] duration-200",
-                collapsed ? "sr-only" : "translate-x-0 opacity-100",
-              )}
-            >
-              {item.label}
-            </span>
-
-            {collapsed ? (
+          <Fragment key={item.href}>
+            {/* A divisória separa a investigação do ajuste de conta sem
+                precisar de um título de grupo. Ela é um elemento à parte, e
+                não uma borda no próprio item: como borda, o espaço acima
+                entrava na caixa do link e o realce do item ativo ficava mais
+                alto que o dos demais. */}
+            {item.startsGroup ? (
               <span
                 aria-hidden="true"
                 className={cn(
-                  "pointer-events-none absolute left-full z-30 ml-3 origin-left scale-95 rounded-field",
-                  "bg-brand-navy-raised px-2.5 py-1.5 text-caption font-medium text-ink-inverse opacity-0 shadow-raised",
-                  "transition-[opacity,transform] duration-150",
-                  "group-hover:scale-100 group-hover:opacity-100",
+                  "my-2 h-px bg-brand-navy-line",
+                  collapsed ? "mx-auto w-8" : "mx-3",
+                )}
+              />
+            ) : null}
+
+            <Link
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              onClick={onNavigate}
+              title={collapsed ? item.label : undefined}
+              style={{ animationDelay: `${index * 45}ms` }}
+              className={cn(
+                "group relative flex animate-slide-in-left items-center gap-3 rounded-field py-2.5",
+                "text-body-sm font-medium transition-colors duration-200",
+                // Recolhida, a caixa vira um quadrado do tamanho da altura da
+                // linha: o ícone fica no centro do realce, e não à esquerda de
+                // uma faixa larga.
+                collapsed ? "mx-auto w-[2.375rem] justify-center px-0" : "px-3",
+                active
+                  ? "bg-gradient-brand text-ink-inverse shadow-brand"
+                  : "text-gray-300 hover:bg-brand-navy-raised hover:text-ink-inverse",
+              )}
+            >
+              {/* O ícone entra em uma caixa de tamanho fixo, centrado nos dois
+                  eixos. Solto, o SVG é um elemento em linha e senta sobre a
+                  base do texto, o que o deslocava para cima dentro do realce. */}
+              <span className="flex h-[1.375rem] w-[1.375rem] shrink-0 items-center justify-center">
+                {item.icon}
+              </span>
+
+              {/* O rótulo some da vista, nunca do DOM: a navegação recolhida
+                  continua legível para quem usa leitor de tela. */}
+              <span
+                className={cn(
+                  "whitespace-nowrap transition-[opacity,transform] duration-200",
+                  collapsed ? "sr-only" : "translate-x-0 opacity-100",
                 )}
               >
                 {item.label}
               </span>
-            ) : null}
-          </Link>
+
+              {collapsed ? (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none absolute left-full z-30 ml-3 origin-left scale-95 rounded-field",
+                    "bg-brand-navy-raised px-2.5 py-1.5 text-caption font-medium text-ink-inverse opacity-0 shadow-raised",
+                    "transition-[opacity,transform] duration-150",
+                    "group-hover:scale-100 group-hover:opacity-100",
+                  )}
+                >
+                  {item.label}
+                </span>
+              ) : null}
+            </Link>
+          </Fragment>
         );
       })}
     </nav>

@@ -245,17 +245,22 @@ export function SunIcon(props: IconProps) {
 /**
  * Configurações, na navegação lateral.
  *
- * Engrenagem de seis dentes em traço único, no mesmo peso e na mesma
- * simplicidade geométrica dos demais itens da navegação. O desenho anterior
- * empilhava curvas e arcos e destoava ao lado deles; antes disso, tinha raios
- * retos e era lido como um sol — o símbolo que o seletor de aparência usa para
- * o tema claro.
+ * Dois controles deslizantes, e não uma engrenagem. Toda engrenagem legível a
+ * 19 px precisa de doze vértices e um furo no meio, o que a torna o desenho
+ * mais denso do conjunto — ao lado da casa, da lista e do monitor, todos de
+ * dois ou três traços, ela sempre pesa mais, por melhor que seja desenhada.
+ * Duas tentativas de engrenagem esbarraram nisso. O deslizante diz "ajuste"
+ * com quatro elementos, no mesmo peso dos vizinhos.
  */
 export function SettingsIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M10.35 2.85L13.65 2.85L14.51 5.46L16.41 6.56L19.1 6L20.75 8.85L18.91 10.9L18.91 13.1L20.75 15.15L19.1 18L16.41 17.44L14.51 18.54L13.65 21.15L10.35 21.15L9.49 18.54L7.59 17.44L4.9 18L3.25 15.15L5.09 13.1L5.09 10.9L3.25 8.85L4.9 6L7.59 6.56L9.49 5.46Z" />
-      <circle cx="12" cy="12" r="3.1" />
+      <path d="M10.5 7h9.5" />
+      <path d="M4 7h2.5" />
+      <circle cx="8.5" cy="7" r="2.25" />
+      <path d="M4 17h9.5" />
+      <path d="M17.5 17H20" />
+      <circle cx="15.5" cy="17" r="2.25" />
     </Icon>
   );
 }

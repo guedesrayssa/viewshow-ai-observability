@@ -94,9 +94,11 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) 
             onClick={onCloseMobile}
             title={collapsed ? profile.name : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-field py-2.5 text-body-sm font-medium",
+              "flex items-center gap-3 rounded-field py-2 text-body-sm font-medium",
               "text-gray-300 transition-colors duration-200 hover:bg-brand-navy-raised hover:text-ink-inverse",
-              collapsed ? "justify-center px-0" : "px-3",
+              // Mesma caixa quadrada dos itens de navegação recolhidos, para
+              // que o retrato caia no mesmo eixo dos ícones acima.
+              collapsed ? "mx-auto w-[2.375rem] justify-center px-0" : "px-3",
             )}
           >
             <Avatar size="sm" />
