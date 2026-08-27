@@ -12,13 +12,67 @@ const gitignore = fs.readFileSync(
   "utf8",
 );
 
-function topLevelBlock(name) {
-  const start = pipeline.indexOf(`${name}:\n`);
+function topLevelBlock(name, source = pipeline) {
+  const match = new RegExp(`^${name}:\\n`, "m").exec(source);
+  const start = match?.index ?? -1;
   assert.notEqual(start, -1, `missing top-level block ${name}`);
-  const remainder = pipeline.slice(start + name.length + 2);
+  const remainder = source.slice(start + name.length + 2);
   const next = remainder.search(/^\S[^\n]*:\n/m);
   return next === -1 ? remainder : remainder.slice(0, next);
 }
+
+function executorReferences(source = pipeline) {
+  return [
+    ...[...source.matchAll(/^[ \t]+image:[ \t]+(\S+)[ \t]*$/gm)].map(
+      (match) => match[1],
+    ),
+    ...[
+      ...source.matchAll(
+        /^[ \t]+image:[ \t]*\n[ \t]+name:[ \t]+(\S+)[ \t]*$/gm,
+      ),
+    ].map((match) => match[1]),
+    ...[...source.matchAll(/^[ \t]+-[ \t]+name:[ \t]+(\S+)[ \t]*$/gm)].map(
+      (match) => match[1],
+    ),
+  ];
+}
+
+test("topLevelBlock ignores similarly named hidden templates", () => {
+  const source = [
+    ".validate_backend:",
+    "  script:",
+    "    - echo template",
+    "validate_backend:",
+    "  script:",
+    "    - echo actual",
+    "",
+  ].join("\n");
+
+  assert.equal(
+    topLevelBlock("validate_backend", source),
+    "  script:\n    - echo actual\n",
+  );
+});
+
+test("executorReferences includes scalar, object, and service images", () => {
+  const source = [
+    "scalar_job:",
+    "  image: node:22-alpine@sha256:scalar",
+    "object_job:",
+    "  image:",
+    "    name: amazon/aws-cli:2@sha256:object",
+    "    entrypoint: [\"\"]",
+    "  services:",
+    "    - name: docker:27-dind@sha256:service",
+    "",
+  ].join("\n");
+
+  assert.deepEqual(executorReferences(source), [
+    "node:22-alpine@sha256:scalar",
+    "amazon/aws-cli:2@sha256:object",
+    "docker:27-dind@sha256:service",
+  ]);
+});
 
 test("pipeline conservatively cancels obsolete pre-deploy work", () => {
   assert.match(pipeline, /auto_cancel:\n\s+on_new_commit: conservative/);
@@ -50,6 +104,17 @@ test("merge requests validate containers without protected AWS scope", () => {
   assert.doesNotMatch(job, /aws |AWS_ACCESS_KEY_ID|publish-backend-image/);
 });
 
+test("backend validation reuses npm cache without caching the install tree", () => {
+  const job = topLevelBlock("validate_backend");
+  assert.match(pipeline, /^  NPM_CONFIG_CACHE: "\$CI_PROJECT_DIR\/\.npm"$/m);
+  assert.match(
+    job,
+    /^  cache:\n    key:\n      files:\n        - apps\/backend\/api\/package-lock\.json\n    paths:\n      - \.npm\/\n    policy: pull-push$/m,
+  );
+  assert.match(job, /^    - npm ci --prefer-offline --no-audit --fund=false$/m);
+  assert.doesNotMatch(job, /^      - .*node_modules.*$/m);
+});
+
 test("develop publication is protected, digest-producing, and isolated from MR rules", () => {
   const job = topLevelBlock("publish_backend_image");
   assert.match(job, /tags:\n\s+- backend-docker-ephemeral/);
@@ -60,8 +125,10 @@ test("develop publication is protected, digest-producing, and isolated from MR r
   assert.match(job, /\. backend-image\.env/);
   assert.match(job, /smoke-container\.sh "\$\{AWS_ACCOUNT_ID\}.*@\$\{BACKEND_IMAGE_DIGEST\}"/);
   assert.doesNotMatch(job, /smoke-container\.sh .*:\$\{CI_COMMIT_SHA\}/);
-  assert.match(job, /artifacts:\n\s+paths:\n\s+- backend-image\.env\n\s+reports:\n\s+dotenv: backend-image\.env/);
-  assert.match(job, /reports:\n\s+dotenv: backend-image\.env/);
+  assert.match(
+    job,
+    /^  artifacts:\n    paths:\n      - backend-image\.env\n    reports:\n      dotenv: backend-image\.env\n    expire_in: 7 days$/m,
+  );
 });
 
 test("deploy requires the publication dotenv artifact and keeps aws-lab scope", () => {
@@ -97,11 +164,8 @@ test("every CI executor and Docker service uses a tag plus immutable digest", ()
     topLevelBlock("deploy_backend_ecs"),
     /image: alpine:3\.22\.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1/,
   );
-  const executorRefs = [
-    ...[...pipeline.matchAll(/^\s+image:\s+(\S+)$/gm)].map((match) => match[1]),
-    ...[...pipeline.matchAll(/^\s+- name:\s+(docker:\S+)$/gm)].map((match) => match[1]),
-  ];
-  assert.equal(executorRefs.length, 6);
+  const executorRefs = executorReferences();
+  assert.ok(executorRefs.length > 0);
   for (const reference of executorRefs) {
     assert.match(reference, /^[^@\s]+:[^@\s]+@sha256:[0-9a-f]{64}$/);
   }

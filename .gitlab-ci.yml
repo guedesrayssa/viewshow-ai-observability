@@ -50,12 +50,13 @@ validate_backend:
         - apps/backend/api/package-lock.json
     paths:
       - .npm/
+    policy: pull-push
   before_script:
     - cd apps/backend/api
   script:
     - node --version
     - npm --version
-    - npm ci
+    - npm ci --prefer-offline --no-audit --fund=false
     - npm test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
@@ -119,6 +120,7 @@ publish_backend_image:
       - backend-image.env
     reports:
       dotenv: backend-image.env
+    expire_in: 7 days
   environment:
     name: aws-lab
     action: prepare
