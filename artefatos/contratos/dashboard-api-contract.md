@@ -54,11 +54,11 @@ warnings informam o que pode ser preenchido em cada momento.
 |---|---|---|
 | Visão Geral, incidentes e diagnóstico | Prevista | Prevista |
 | Eventos agregados e técnicos | Disponíveis quando representados no Argus | Disponíveis |
-| Seis categorias de eventos individuais | partial ou unavailable | Disponíveis |
-| Payload individual sanitizado | Condicional à existência do evento | Disponível |
-| Qualidade, cobertura, QoE e geografia | Disponíveis pelo Argus | Disponíveis |
-| Taxa e latência interna do pipeline | unavailable até instrumentação | Disponíveis |
-| Fila, DLQ e estado dos workers | unavailable até instrumentação | Disponíveis |
+| Seis categorias de eventos individuais | unavailable | Disponíveis quando houver fonte individual |
+| Payload individual sanitizado | unavailable | Disponível quando houver fonte individual |
+| Qualidade, cobertura, QoE e geografia | Disponíveis ou parciais conforme o agregado | Disponíveis |
+| Taxa e latência interna do pipeline batch | Parciais, quando registradas pela execução | Disponíveis |
+| Fila e DLQ | unavailable por não existirem no pipeline batch inicial | Condicionadas a uma arquitetura com filas |
 
 Na fase inicial, ausência de uma capability não impede a adoção dos endpoints
 de Visão Geral, Incidentes e Diagnóstico. A API não fabrica eventos ou
@@ -97,6 +97,42 @@ métricas para completar uma tela.
 - Quantidades não medidas ou indisponíveis usam null.
 - O frontend é responsável por localização, casas decimais e abreviações.
 
+Toda métrica quantitativa ou valor de impacto exposto pela API possui
+measurement:
+
+~~~json
+{
+  "status": "measured",
+  "source": "argus",
+  "coverageRatio": 0.97,
+  "observedThrough": "2026-08-26T18:00:00.000Z",
+  "scope": {
+    "kind": "filtered",
+    "dimensions": {
+      "deviceType": "smart-tv"
+    },
+    "observedCount": 59200
+  }
+}
+~~~
+
+- measurement.status é measured, estimated ou unknown.
+- source identifica a origem lógica da medição, sem expor tabela física.
+- coverageRatio e observedThrough podem ser null quando desconhecidos.
+- scope é opcional e explicita população, recorte e quantidade observada.
+- scope.kind é global, filtered ou segment.
+- Quando measurement está no objeto de uma série ou grupo, ela se aplica aos
+  valores quantitativos filhos, salvo quando um filho possui measurement
+  próprio.
+- Quando measurement.status for unknown, o campo da grandeza é
+  obrigatoriamente null: value ou, em objetos agregados, campos equivalentes
+  como count e ratePerMinute. Isso não impede informar cobertura conhecida.
+- Zero significa que a grandeza foi medida e nenhuma ocorrência foi observada.
+- Percentis só podem ser calculados sobre a população indicada em scope.
+- Um percentil global nunca é produzido pela média de percentis segmentados.
+  Sem distribuição ou agregado global confiável, value é null e status é
+  unknown.
+
 ### 4.3 Identificadores
 
 - IDs são opacos e estáveis.
@@ -132,7 +168,7 @@ métricas para completar uma tela.
       "to": "2026-08-26T18:11:30.000Z"
     },
     "partial": false,
-    "refreshAfterSeconds": 30,
+    "refreshAfterSeconds": 900,
     "freshness": [
       {
         "source": "argus",
@@ -161,19 +197,33 @@ Estados de freshness:
 partial igual a true significa que a resposta ainda pode ser utilizada, mas
 o frontend deve exibir os avisos associados.
 
-### 4.6 Avisos
+### 4.6 Granularidade e atualização
+
+- bucketSeconds descreve a resolução real da série e nunca é inferido pelo
+  frontend.
+- Na fase Argus inicial, os agregados principais usam normalmente 900
+  segundos e as fontes horárias usam 3600 segundos.
+- Uma resposta pode conter poucos pontos quando a janela solicitada for menor
+  ou próxima da granularidade disponível.
+- O frontend não preenche lacunas nem reamostra séries sem uma regra de
+  apresentação explícita.
+- refreshAfterSeconds é inicialmente 900 nas consultas operacionais. Um valor
+  menor só pode ser devolvido quando a fonte efetivamente atualizar nessa
+  frequência.
+
+### 4.7 Avisos
 
 ~~~json
 {
-  "code": "INDIVIDUAL_EVENTS_PARTIALLY_UNAVAILABLE",
-  "message": "Nem todas as categorias possuem uma fonte de eventos individuais configurada."
+  "code": "INDIVIDUAL_EVENTS_UNAVAILABLE",
+  "message": "Eventos individuais não possuem uma fonte configurada nesta fase."
 }
 ~~~
 
 O frontend usa code para comportamento e message como fallback. A API pode
 adicionar avisos sem transformar a resposta em erro.
 
-### 4.7 Envelope de erro
+### 4.8 Envelope de erro
 
 ~~~json
 {
@@ -206,13 +256,62 @@ sensíveis.
 | 409 | DIAGNOSIS_NOT_READY | Diagnóstico ainda não revisável |
 | 409 | HYPOTHESIS_SUPERSEDED | Hipótese substituída |
 | 422 | VALIDATION_ERROR | Body semanticamente inválido |
+| 422 | UNSUPPORTED_FILTER_COMBINATION | A origem não sustenta a combinação de filtros |
 | 429 | RATE_LIMITED | Limite de requisições |
 | 500 | INTERNAL_ERROR | Falha inesperada |
 | 503 | DATA_UNAVAILABLE | Nenhuma versão válida do dado |
 
 Uma fonte parcial não causa 503 quando existe uma versão utilizável.
 
-### 4.8 Paginação
+### 4.9 Capacidades de filtragem
+
+Endpoints com filtros dimensionais retornam capabilities.filtering:
+
+~~~json
+{
+  "filtering": {
+    "status": "partial",
+    "supportedDimensions": [
+      "deviceType",
+      "region",
+      "appVersion"
+    ],
+    "supportedFilterSets": [
+      [],
+      ["deviceType"],
+      ["region"],
+      ["appVersion"]
+    ]
+  }
+}
+~~~
+
+Cada item de supportedFilterSets é um conjunto completo aceito; a ordem das
+dimensões não é significativa. O conjunto vazio representa a consulta sem
+filtro dimensional. supportedDimensions não implica que qualquer combinação
+entre seus valores seja válida. Filtros intrínsecos ao recurso, como status e
+priority de incidentes, não entram nessa lista; a capability governa as
+dimensões provenientes dos agregados operacionais.
+
+Uma combinação não listada retorna HTTP 422:
+
+~~~json
+{
+  "error": {
+    "code": "UNSUPPORTED_FILTER_COMBINATION",
+    "message": "A origem atual não permite combinar estes filtros.",
+    "requestId": "req_01K2F8BAYX"
+  }
+}
+~~~
+
+Facetas e contagens são retornadas somente para dimensões e combinações
+suportadas pela origem atual. Combinações indisponíveis são declaradas em
+capabilities.filtering e nunca são simuladas por joins entre agregados
+incompatíveis. Quando um item de faceta possuir count, ele também possui
+measurement.
+
+### 4.10 Paginação
 
 - Incidentes e eventos usam cursor opaco.
 - O cursor é vinculado aos filtros e à ordenação usados para produzi-lo.
@@ -234,7 +333,7 @@ Uma fonte parcial não causa 503 quando existe uma versão utilizável.
 ### 5.1 Request
 
 ~~~http
-GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&appVersion=4.2.1&incidentLimit=5
+GET /api/v1/dashboard/overview?window=30m&incidentLimit=5
 ~~~
 
 | Parâmetro | Tipo | Obrigatório | Regra |
@@ -251,6 +350,22 @@ GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&ap
 ~~~json
 {
   "data": {
+    "capabilities": {
+      "filtering": {
+        "status": "partial",
+        "supportedDimensions": [
+          "deviceType",
+          "region",
+          "appVersion"
+        ],
+        "supportedFilterSets": [
+          [],
+          ["deviceType"],
+          ["region"],
+          ["appVersion"]
+        ]
+      }
+    },
     "kpis": [
       {
         "key": "errors_per_minute",
@@ -262,18 +377,30 @@ GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&ap
           "absoluteChange": 268,
           "changeRatio": 3.6216,
           "direction": "up"
+        },
+        "measurement": {
+          "status": "measured",
+          "source": "argus",
+          "coverageRatio": 0.97,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
         }
       },
       {
         "key": "latency_p95",
-        "value": 310,
+        "value": null,
         "unit": "milliseconds",
-        "status": "warning",
-        "comparison": {
-          "baselineValue": 180,
-          "absoluteChange": 130,
-          "changeRatio": 0.7222,
-          "direction": "up"
+        "status": "unknown",
+        "comparison": null,
+        "measurement": {
+          "status": "unknown",
+          "source": "argus",
+          "coverageRatio": 0.97,
+          "observedThrough": "2026-08-26T18:00:00.000Z",
+          "scope": {
+            "kind": "global",
+            "dimensions": {},
+            "observedCount": null
+          }
         }
       },
       {
@@ -281,29 +408,42 @@ GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&ap
         "value": 10920,
         "unit": "sessions",
         "status": "critical",
-        "shareOfObservedSessions": 0.184
+        "shareOfObservedSessions": 0.184,
+        "measurement": {
+          "status": "measured",
+          "source": "argus",
+          "coverageRatio": 0.97,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
+        }
       }
     ],
     "experienceHealth": {
-      "metric": "experience_health_score",
-      "unit": "score",
-      "baselineValue": 92,
+      "metric": "errors_per_minute",
+      "unit": "errors_per_minute",
+      "bucketSeconds": 900,
+      "baselineValue": 74,
+      "measurement": {
+        "status": "measured",
+        "source": "argus",
+        "coverageRatio": 0.97,
+        "observedThrough": "2026-08-26T18:00:00.000Z"
+      },
       "points": [
         {
-          "timestamp": "2026-08-26T17:40:00.000Z",
-          "value": 91
+          "timestamp": "2026-08-26T17:45:00.000Z",
+          "value": 310
         },
         {
-          "timestamp": "2026-08-26T17:45:00.000Z",
-          "value": 68
+          "timestamp": "2026-08-26T18:00:00.000Z",
+          "value": 342
         }
       ],
       "anomalyWindows": [
         {
-          "from": "2026-08-26T17:42:00.000Z",
-          "to": "2026-08-26T17:50:00.000Z",
-          "peakTimestamp": "2026-08-26T17:45:00.000Z",
-          "peakValue": 68
+          "from": "2026-08-26T17:45:00.000Z",
+          "to": "2026-08-26T18:00:00.000Z",
+          "peakTimestamp": "2026-08-26T18:00:00.000Z",
+          "peakValue": 342
         }
       ]
     },
@@ -315,8 +455,16 @@ GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&ap
         "priority": "P1",
         "status": "investigating",
         "startedAt": "2026-08-26T17:41:00.000Z",
-        "affectedSessions": 10920,
-        "impactStatus": "measured",
+        "affectedSessions": {
+          "value": 10920,
+          "unit": "sessions",
+          "measurement": {
+            "status": "measured",
+            "source": "argus",
+            "coverageRatio": 0.97,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
+        },
         "primaryComponent": {
           "id": "video-player",
           "name": "Player de vídeo"
@@ -328,7 +476,13 @@ GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&ap
         {
           "value": "smart-tv",
           "name": "Smart TV",
-          "count": 12
+          "count": 12,
+          "measurement": {
+            "status": "measured",
+            "source": "argus",
+            "coverageRatio": 0.97,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
         }
       ],
       "regions": [],
@@ -345,7 +499,7 @@ GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&ap
       "to": "2026-08-26T18:11:30.000Z"
     },
     "partial": false,
-    "refreshAfterSeconds": 30,
+    "refreshAfterSeconds": 900,
     "freshness": [],
     "warnings": []
   }
@@ -355,12 +509,17 @@ GET /api/v1/dashboard/overview?window=30m&deviceType=smart-tv&region=nordeste&ap
 KPI status: healthy, warning, critical ou unknown.  
 direction: up, down ou stable.
 
+experienceHealth é o nome estável da área visual, não um score composto. Na
+fase inicial, ela usa errors_per_minute medido pelo Argus. Um futuro
+experience_health_score só pode ser adicionado após aprovação e documentação
+de fórmula, entradas, pesos e tratamento de dados ausentes.
+
 ## 6. Incidentes
 
 ### 6.1 Request
 
 ~~~http
-GET /api/v1/incidents?window=1h&search=buffering&priority=P1,P2&status=detected,investigating&deviceType=smart-tv&region=nordeste&sort=impact&chartMetric=affected_devices&limit=20
+GET /api/v1/incidents?window=1h&deviceType=smart-tv&sort=impact&chartMetric=affected_devices&limit=20
 ~~~
 
 | Parâmetro | Regra |
@@ -390,6 +549,22 @@ GET /api/v1/incidents?window=1h&search=buffering&priority=P1,P2&status=detected,
 ~~~json
 {
   "data": {
+    "capabilities": {
+      "filtering": {
+        "status": "partial",
+        "supportedDimensions": [
+          "deviceType",
+          "region",
+          "appVersion"
+        ],
+        "supportedFilterSets": [
+          [],
+          ["deviceType"],
+          ["region"],
+          ["appVersion"]
+        ]
+      }
+    },
     "items": [
       {
         "id": "inc_01K2F6YQ9G",
@@ -401,10 +576,36 @@ GET /api/v1/incidents?window=1h&search=buffering&priority=P1,P2&status=detected,
         "detectedAt": "2026-08-26T17:43:30.000Z",
         "endedAt": null,
         "impact": {
-          "status": "measured",
-          "affectedDevices": 12480,
-          "affectedSessions": 10920,
-          "shareOfObservedSessions": 0.184
+          "affectedDevices": {
+            "value": 12480,
+            "unit": "devices",
+            "measurement": {
+              "status": "estimated",
+              "source": "argus",
+              "coverageRatio": 0.91,
+              "observedThrough": "2026-08-26T18:00:00.000Z"
+            }
+          },
+          "affectedSessions": {
+            "value": 10920,
+            "unit": "sessions",
+            "measurement": {
+              "status": "measured",
+              "source": "argus",
+              "coverageRatio": 0.97,
+              "observedThrough": "2026-08-26T18:00:00.000Z"
+            }
+          },
+          "shareOfObservedSessions": {
+            "value": 0.184,
+            "unit": "ratio",
+            "measurement": {
+              "status": "measured",
+              "source": "argus",
+              "coverageRatio": 0.97,
+              "observedThrough": "2026-08-26T18:00:00.000Z"
+            }
+          }
         },
         "primaryComponent": {
           "id": "video-player",
@@ -433,10 +634,16 @@ GET /api/v1/incidents?window=1h&search=buffering&priority=P1,P2&status=detected,
     "impactSeries": {
       "metric": "affected_devices",
       "unit": "devices",
-      "bucketSeconds": 300,
+      "bucketSeconds": 900,
+      "measurement": {
+        "status": "estimated",
+        "source": "argus",
+        "coverageRatio": 0.91,
+        "observedThrough": "2026-08-26T18:00:00.000Z"
+      },
       "points": [
         {
-          "timestamp": "2026-08-26T17:40:00.000Z",
+          "timestamp": "2026-08-26T17:45:00.000Z",
           "total": 2180,
           "byPriority": {
             "P1": 1200,
@@ -451,15 +658,8 @@ GET /api/v1/incidents?window=1h&search=buffering&priority=P1,P2&status=detected,
       "priorities": [],
       "statuses": [],
       "deviceTypes": [],
-      "operatingSystems": [],
       "appVersions": [],
-      "regions": [],
-      "states": [],
-      "isps": [],
-      "cdns": [],
-      "contents": [],
-      "components": [],
-      "eventTypes": []
+      "regions": []
     },
     "page": {
       "limit": 20,
@@ -477,20 +677,22 @@ GET /api/v1/incidents?window=1h&search=buffering&priority=P1,P2&status=detected,
       "to": "2026-08-26T18:11:30.000Z"
     },
     "partial": false,
-    "refreshAfterSeconds": 30,
+    "refreshAfterSeconds": 900,
     "freshness": [],
     "warnings": []
   }
 }
 ~~~
 
-impact.status: measured, estimated ou unknown. Quando unknown, os valores de
-impacto são null.
+Cada valor dentro de impact possui measurement próprio. Quando sua qualidade
+for unknown, somente o value correspondente é null; os demais impactos podem
+continuar medidos ou estimados.
 
 diagnosis.status: not_started, processing, ready, inconclusive ou failed.
 
-As contagens de uma faceta respeitam todos os filtros ativos, exceto o filtro
-da própria dimensão.
+As contagens de uma faceta respeitam os filtros ativos somente quando esse
+conjunto estiver declarado em capabilities.filtering.supportedFilterSets. A
+API não cruza agregados incompatíveis para preencher facetas.
 
 ## 7. Diagnóstico e evidências
 
@@ -517,10 +719,36 @@ A janela analítica é determinada pelo incidente e informada em meta.window.
       "detectedAt": "2026-08-26T17:43:30.000Z",
       "endedAt": null,
       "impact": {
-        "status": "measured",
-        "affectedDevices": 12480,
-        "affectedSessions": 10920,
-        "shareOfObservedSessions": 0.184
+        "affectedDevices": {
+          "value": 12480,
+          "unit": "devices",
+          "measurement": {
+            "status": "estimated",
+            "source": "argus",
+            "coverageRatio": 0.91,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
+        },
+        "affectedSessions": {
+          "value": 10920,
+          "unit": "sessions",
+          "measurement": {
+            "status": "measured",
+            "source": "argus",
+            "coverageRatio": 0.97,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
+        },
+        "shareOfObservedSessions": {
+          "value": 0.184,
+          "unit": "ratio",
+          "measurement": {
+            "status": "measured",
+            "source": "argus",
+            "coverageRatio": 0.97,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
+        }
       }
     },
     "diagnosis": {
@@ -569,7 +797,13 @@ A janela analítica é determinada pelo incidente e informada em meta.window.
           "metric": "buffering_ratio",
           "value": 0.084,
           "baselineValue": 0.021,
-          "unit": "ratio"
+          "unit": "ratio",
+          "measurement": {
+            "status": "measured",
+            "source": "argus",
+            "coverageRatio": 0.97,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
         },
         "quality": {
           "status": "verified",
@@ -582,19 +816,25 @@ A janela analítica é determinada pelo incidente e informada em meta.window.
       "buffering": {
         "metric": "buffering_ratio",
         "unit": "ratio",
-        "bucketSeconds": 60,
+        "bucketSeconds": 900,
+        "measurement": {
+          "status": "measured",
+          "source": "argus",
+          "coverageRatio": 0.97,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
+        },
         "points": [
           {
-            "timestamp": "2026-08-26T17:44:00.000Z",
+            "timestamp": "2026-08-26T17:45:00.000Z",
             "value": 0.084,
             "baselineValue": 0.021
           }
         ],
         "anomalyWindows": [
           {
-            "from": "2026-08-26T17:42:00.000Z",
-            "to": "2026-08-26T17:48:00.000Z",
-            "peakTimestamp": "2026-08-26T17:44:00.000Z",
+            "from": "2026-08-26T17:45:00.000Z",
+            "to": "2026-08-26T18:00:00.000Z",
+            "peakTimestamp": "2026-08-26T17:45:00.000Z",
             "peakValue": 0.084
           }
         ]
@@ -607,7 +847,16 @@ A janela analítica é determinada pelo incidente e informada em meta.window.
             {
               "value": "smart-tv",
               "name": "Smart TV",
-              "affectedSessions": 8230,
+              "affectedSessions": {
+                "value": 8230,
+                "unit": "sessions",
+                "measurement": {
+                  "status": "measured",
+                  "source": "argus",
+                  "coverageRatio": 0.97,
+                  "observedThrough": "2026-08-26T18:00:00.000Z"
+                }
+              },
               "share": 0.754,
               "baselineShare": 0.412
             }
@@ -643,7 +892,7 @@ A janela analítica é determinada pelo incidente e informada em meta.window.
       "to": "2026-08-26T18:11:00.000Z"
     },
     "partial": false,
-    "refreshAfterSeconds": 30,
+    "refreshAfterSeconds": 900,
     "freshness": [],
     "warnings": []
   }
@@ -733,7 +982,7 @@ resposta HTTP.
 ### 9.1 Listagem
 
 ~~~http
-GET /api/v1/incidents/{incidentId}/events?window=30m&category=error,video_view&deviceType=smart-tv&region=nordeste&appVersion=4.2.1&sort=recent&limit=50
+GET /api/v1/incidents/{incidentId}/events?window=30m&deviceType=smart-tv&sort=recent&limit=50
 ~~~
 
 Filtros:
@@ -762,116 +1011,94 @@ Filtros:
       "aggregateMetrics": {
         "status": "available"
       },
-      "individualEvents": {
+      "filtering": {
         "status": "partial",
-        "availableCategories": [
-          "error"
+        "supportedDimensions": [
+          "category",
+          "deviceType",
+          "region",
+          "appVersion"
         ],
+        "supportedFilterSets": [
+          [],
+          ["category"],
+          ["deviceType"],
+          ["region"],
+          ["appVersion"]
+        ]
+      },
+      "individualEvents": {
+        "status": "unavailable",
+        "availableCategories": [],
         "unavailableCategories": [
           "request",
           "vitals",
           "screen_view",
           "video_view",
-          "session"
+          "session",
+          "error"
         ],
         "reason": "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED"
       },
       "rawPayload": {
-        "status": "partial"
+        "status": "unavailable",
+        "reason": "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED"
       }
     },
     "categoryStats": [
       {
-        "category": "all",
+        "category": "error",
         "count": 10260,
         "ratePerMinute": 342,
-        "status": "partial"
+        "status": "measured",
+        "measurement": {
+          "status": "measured",
+          "source": "argus",
+          "coverageRatio": 0.97,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
+        }
       },
       {
         "category": "request",
         "count": null,
         "ratePerMinute": null,
-        "status": "unavailable"
+        "status": "unavailable",
+        "measurement": {
+          "status": "unknown",
+          "source": "argus",
+          "coverageRatio": null,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
+        }
       }
     ],
     "volumeSeries": {
-      "metric": "events_per_minute",
-      "unit": "events_per_minute",
-      "bucketSeconds": 300,
+      "metric": "errors_per_minute",
+      "unit": "errors_per_minute",
+      "bucketSeconds": 900,
+      "measurement": {
+        "status": "measured",
+        "source": "argus",
+        "coverageRatio": 0.97,
+        "observedThrough": "2026-08-26T18:00:00.000Z"
+      },
       "points": [
         {
-          "timestamp": "2026-08-26T17:30:00.000Z",
-          "total": 410,
-          "byCategory": {
-            "request": null,
-            "vitals": null,
-            "screen_view": null,
-            "video_view": null,
-            "session": null,
-            "error": 410
-          }
+          "timestamp": "2026-08-26T17:45:00.000Z",
+          "value": 310
+        },
+        {
+          "timestamp": "2026-08-26T18:00:00.000Z",
+          "value": 374
         }
       ],
       "anomalyWindows": []
     },
-    "items": [
-      {
-        "id": "evt_01K2F70F6J",
-        "occurredAt": "2026-08-26T17:44:12.412Z",
-        "ingestedAt": "2026-08-26T17:44:30.000Z",
-        "category": "error",
-        "eventName": "PLAYER_DECODER_FALLBACK",
-        "summary": "Falha de fallback do decoder",
-        "source": {
-          "id": "argus-signal-point",
-          "name": "Argus",
-          "type": "operational_telemetry"
-        },
-        "entity": {
-          "type": "playback_session",
-          "id": "psn_7f4a2c91"
-        },
-        "dimensions": {
-          "deviceType": "smart-tv",
-          "operatingSystem": "webos",
-          "appVersion": "4.2.1",
-          "region": "nordeste",
-          "state": "PE",
-          "component": "player-decoder",
-          "environment": "production"
-        },
-        "quality": {
-          "status": "possible_duplicate",
-          "lagSeconds": 18,
-          "flags": [
-            "AGGREGATED_SOURCE",
-            "POSSIBLE_DUPLICATE"
-          ]
-        },
-        "normalized": {
-          "schema": "error.v1",
-          "severity": "fatal",
-          "errorName": "PLAYER_DECODER_FALLBACK",
-          "message": "Falha ao selecionar decoder compatível",
-          "stackFingerprint": "stk_d57c9e12"
-        },
-        "rawAvailable": false
-      }
-    ],
+    "items": [],
     "facets": {
       "categories": [],
       "deviceTypes": [],
-      "operatingSystems": [],
       "appVersions": [],
-      "regions": [],
-      "states": [],
-      "pops": [],
-      "isps": [],
-      "cdns": [],
-      "contents": [],
-      "components": [],
-      "environments": [],
-      "sources": []
+      "regions": []
     },
     "page": {
       "limit": 50,
@@ -889,12 +1116,12 @@ Filtros:
       "to": "2026-08-26T18:22:00.000Z"
     },
     "partial": true,
-    "refreshAfterSeconds": 30,
+    "refreshAfterSeconds": 900,
     "freshness": [],
     "warnings": [
       {
-        "code": "INDIVIDUAL_EVENTS_PARTIALLY_UNAVAILABLE",
-        "message": "Nem todas as categorias possuem uma fonte de eventos individuais configurada."
+        "code": "INDIVIDUAL_EVENTS_UNAVAILABLE",
+        "message": "Eventos individuais não possuem uma fonte configurada nesta fase."
       }
     ]
   }
@@ -907,15 +1134,20 @@ Status de categoryStats: measured, estimated, partial ou unavailable.
 
 Status das capabilities: available, partial ou unavailable.
 
-Na fase Argus inicial, categoryStats e volumeSeries podem ser preenchidos com
-agregados disponíveis, enquanto individualEvents permanece partial ou
-unavailable. Apenas eventos efetivamente listados podem ser consultados no
-endpoint de detalhe.
+Na fase Argus inicial, categoryStats e volumeSeries são preenchidos somente
+com agregados reais. signal_point e signal_bucket são observações de métricas,
+não eventos individuais; por isso items permanece vazio e a API não cria IDs
+de evento, sessão ou playback. Apenas eventos efetivamente listados por uma
+futura fonte individual podem ser consultados no endpoint de detalhe.
 
 Status de quality: linked, normalized, delayed, possible_duplicate ou
 partial.
 
 ### 9.3 Detalhe do evento
+
+Disponibilidade inicial: future. Enquanto individualEvents estiver
+unavailable, nenhum eventId é emitido pela listagem e este endpoint não é
+chamado pelo frontend.
 
 ~~~http
 GET /api/v1/incidents/{incidentId}/events/{eventId}
@@ -1000,7 +1232,7 @@ retornados. Payload bruto é sanitizado por allowlist.
 ### 10.1 Request
 
 ~~~http
-GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&flowMetric=processing_latency
+GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion
 ~~~
 
 | Parâmetro | Regra |
@@ -1008,7 +1240,7 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
 | window | 15m, 30m, 1h ou 6h; padrão 15m |
 | source | Uma ou mais fontes disponíveis |
 | worker | Um ou mais workers disponíveis |
-| flowMetric | ingestion_rate, processing_latency ou queue_depth |
+| flowMetric | ingestion_rate ou processing_latency; padrão processing_latency; queue_depth somente se uma capability futura o habilitar |
 
 ### 10.2 Response
 
@@ -1020,22 +1252,50 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
         "status": "available"
       },
       "pipelineRuntime": {
-        "status": "available"
+        "status": "partial",
+        "metrics": {
+          "ingestionRate": "available",
+          "processingLatencyP95": "available",
+          "queueDepth": "unavailable",
+          "deadLetterQueue": "unavailable"
+        },
+        "reason": "QUEUELESS_BATCH_PIPELINE"
       },
       "geographicMetrics": {
-        "status": "available",
+        "status": "partial",
         "granularity": "state"
+      },
+      "filtering": {
+        "status": "partial",
+        "supportedDimensions": [
+          "source",
+          "worker",
+          "flowMetric"
+        ],
+        "supportedFilterSets": [
+          [],
+          ["source"],
+          ["worker"],
+          ["flowMetric"],
+          ["source", "worker"]
+        ]
       }
     },
     "kpis": {
       "ingestionRate": {
-        "value": 2800000,
-        "unit": "events_per_minute",
+        "value": 1860,
+        "unit": "records_per_minute",
         "status": "healthy",
         "comparison": {
-          "previousValue": 2692308,
+          "previousValue": 1788,
           "changeRatio": 0.04,
           "direction": "up"
+        },
+        "measurement": {
+          "status": "measured",
+          "source": "argus-ingestion",
+          "coverageRatio": 1,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
         }
       },
       "processingLatencyP95": {
@@ -1045,37 +1305,64 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
         "target": {
           "operator": "less_than_or_equal",
           "value": 120
+        },
+        "measurement": {
+          "status": "measured",
+          "source": "argus-ingestion",
+          "coverageRatio": 1,
+          "observedThrough": "2026-08-26T18:00:00.000Z",
+          "scope": {
+            "kind": "filtered",
+            "dimensions": {
+              "recordState": "written"
+            },
+            "observedCount": 27872
+          }
         }
       },
       "queueDepth": {
-        "value": 18400,
+        "value": null,
         "unit": "messages",
-        "status": "warning",
-        "comparison": {
-          "previousValue": 15931,
-          "changeRatio": 0.155,
-          "direction": "up"
+        "status": "unknown",
+        "comparison": null,
+        "measurement": {
+          "status": "unknown",
+          "source": "argus-ingestion",
+          "coverageRatio": null,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
         }
       },
       "deadLetterQueue": {
-        "value": 23,
+        "value": null,
         "unit": "messages",
-        "status": "critical",
-        "newInWindow": 7
+        "status": "unknown",
+        "newInWindow": null,
+        "measurement": {
+          "status": "unknown",
+          "source": "argus-ingestion",
+          "coverageRatio": null,
+          "observedThrough": "2026-08-26T18:00:00.000Z"
+        }
       }
     },
     "flow": {
       "metric": "processing_latency",
       "unit": "seconds",
-      "bucketSeconds": 120,
+      "bucketSeconds": 900,
+      "measurement": {
+        "status": "measured",
+        "source": "argus-ingestion",
+        "coverageRatio": 1,
+        "observedThrough": "2026-08-26T18:00:00.000Z"
+      },
       "target": {
         "operator": "less_than_or_equal",
         "value": 120
       },
       "series": [
         {
-          "stage": "ingestion",
-          "name": "Ingestão",
+          "stage": "read",
+          "name": "Leitura",
           "points": [
             {
               "timestamp": "2026-08-26T18:00:00.000Z",
@@ -1084,20 +1371,30 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
           ]
         },
         {
-          "stage": "processing",
-          "name": "Processamento",
+          "stage": "normalize",
+          "name": "Normalização",
           "points": [
             {
               "timestamp": "2026-08-26T18:00:00.000Z",
-              "value": 44
+              "value": 26
+            }
+          ]
+        },
+        {
+          "stage": "write",
+          "name": "Escrita",
+          "points": [
+            {
+              "timestamp": "2026-08-26T18:00:00.000Z",
+              "value": 10
             }
           ]
         }
       ],
       "peak": {
-        "timestamp": "2026-08-26T18:02:00.000Z",
-        "stage": "processing",
-        "value": 61
+        "timestamp": "2026-08-26T18:00:00.000Z",
+        "stage": "normalize",
+        "value": 26
       }
     },
     "sources": [
@@ -1108,15 +1405,31 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
         "workers": [
           "argus-ingestion"
         ],
-        "lastObservedAt": "2026-08-26T18:14:42.000Z",
-        "lagSeconds": 18,
-        "coverageRatio": 0.97,
+        "lastRunAt": "2026-08-26T18:00:48.000Z",
+        "lastSuccessfulRunAt": "2026-08-26T18:00:48.000Z",
+        "observedThrough": "2026-08-26T18:00:00.000Z",
+        "lagSeconds": 900,
         "state": "stable",
-        "metrics": {
-          "ingestionRate": 2800000,
-          "processingLatencyP95": 48,
-          "queueDepth": 18400,
-          "deadLetterCount": 23
+        "records": {
+          "read": 27900,
+          "written": 27872,
+          "rejected": 28,
+          "measurement": {
+            "status": "measured",
+            "source": "argus-ingestion",
+            "coverageRatio": 1,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
+        },
+        "coverage": {
+          "value": 0.97,
+          "unit": "ratio",
+          "measurement": {
+            "status": "measured",
+            "source": "argus-ingestion",
+            "coverageRatio": 1,
+            "observedThrough": "2026-08-26T18:00:00.000Z"
+          }
         }
       }
     ],
@@ -1125,15 +1438,18 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
       "metrics": [
         {
           "key": "instability_ratio",
-          "unit": "ratio"
+          "unit": "ratio",
+          "status": "available"
         },
         {
           "key": "latency_p95",
-          "unit": "seconds"
+          "unit": "seconds",
+          "status": "unavailable"
         },
         {
           "key": "event_loss_ratio",
-          "unit": "ratio"
+          "unit": "ratio",
+          "status": "unavailable"
         }
       ],
       "areas": [
@@ -1141,12 +1457,71 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
           "code": "PE",
           "name": "Pernambuco",
           "region": "nordeste",
-          "observedSessions": 184200,
-          "coverageRatio": 0.96,
+          "observedSessions": {
+            "value": 184200,
+            "unit": "sessions",
+            "measurement": {
+              "status": "measured",
+              "source": "argus",
+              "coverageRatio": 0.96,
+              "observedThrough": "2026-08-26T18:00:00.000Z",
+              "scope": {
+                "kind": "segment",
+                "dimensions": {
+                  "state": "PE"
+                },
+                "observedCount": 184200
+              }
+            }
+          },
+          "coverageRatio": {
+            "value": 0.96,
+            "unit": "ratio",
+            "measurement": {
+              "status": "measured",
+              "source": "argus",
+              "coverageRatio": 1,
+              "observedThrough": "2026-08-26T18:00:00.000Z"
+            }
+          },
           "values": {
-            "instabilityRatio": 0.068,
-            "latencyP95": 6.4,
-            "eventLossRatio": 0.048
+            "instabilityRatio": {
+              "value": 0.068,
+              "unit": "ratio",
+              "measurement": {
+                "status": "measured",
+                "source": "argus",
+                "coverageRatio": 0.96,
+                "observedThrough": "2026-08-26T18:00:00.000Z"
+              }
+            },
+            "latencyP95": {
+              "value": null,
+              "unit": "seconds",
+              "measurement": {
+                "status": "unknown",
+                "source": "argus",
+                "coverageRatio": null,
+                "observedThrough": "2026-08-26T18:00:00.000Z",
+                "scope": {
+                  "kind": "segment",
+                  "dimensions": {
+                    "state": "PE"
+                  },
+                  "observedCount": null
+                }
+              }
+            },
+            "eventLossRatio": {
+              "value": null,
+              "unit": "ratio",
+              "measurement": {
+                "status": "unknown",
+                "source": "argus",
+                "coverageRatio": null,
+                "observedThrough": "2026-08-26T18:00:00.000Z"
+              }
+            }
           }
         }
       ]
@@ -1162,10 +1537,6 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
         {
           "value": "processing_latency",
           "name": "Latência de processamento"
-        },
-        {
-          "value": "queue_depth",
-          "name": "Profundidade da fila"
         }
       ]
     }
@@ -1179,10 +1550,15 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
       "from": "2026-08-26T18:00:00.000Z",
       "to": "2026-08-26T18:15:00.000Z"
     },
-    "partial": false,
-    "refreshAfterSeconds": 15,
+    "partial": true,
+    "refreshAfterSeconds": 900,
     "freshness": [],
-    "warnings": []
+    "warnings": [
+      {
+        "code": "QUEUELESS_BATCH_PIPELINE",
+        "message": "Fila e DLQ não se aplicam ao pipeline batch atual."
+      }
+    ]
   }
 }
 ~~~
@@ -1190,28 +1566,40 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion&f
 Estados de fonte: stable, delayed, partial, unavailable.  
 Estados de KPI: healthy, warning, critical, unknown.
 
-Se métricas da infraestrutura não estiverem configuradas, seus valores são
-null, o status é unknown e capabilities.pipelineRuntime informa unavailable.
+Na arquitetura inicial, o lote lê o Argus, normaliza os registros e escreve
+diretamente no DynamoDB. Não existem SQS ou DLQ nesse fluxo. Por isso os
+cartões queueDepth e deadLetterQueue permanecem no DTO com value null e status
+unknown, enquanto capabilities.pipelineRuntime explica
+QUEUELESS_BATCH_PIPELINE. O frontend apresenta “N/D — pipeline sem filas”.
 
 As áreas geográficas são UFs. A API não retorna SVG, paths ou coordenadas; o
 frontend é responsável pela representação do mapa.
 
-Mesmo com pipelineRuntime unavailable, sourceQuality e geographicMetrics
-podem permanecer available a partir de cobertura, QoE e geografia do Argus.
+sourceQuality e geographicMetrics podem permanecer available ou partial a
+partir de cobertura, QoE e geografia do Argus, independentemente da
+disponibilidade das métricas do runtime.
 
 ## 11. Responsabilidades do frontend
 
 - Formatar números, datas relativas, percentuais e unidades.
 - Traduzir enums.
 - Respeitar refreshAfterSeconds.
-- Exibir avisos quando partial for true.
+- Exibir partial, warnings e freshness ao usuário, inclusive atrasos e
+  cobertura limitada.
 - Distinguir null de zero.
+- Desabilitar filtros e combinações ausentes em
+  capabilities.filtering.supportedFilterSets.
+- Não enviar combinações de filtros não suportadas e explicar brevemente a
+  indisponibilidade quando ela afetar a interação.
 - Reiniciar paginação quando filtros ou ordenação mudarem.
 - Não interpretar cursores e IDs.
 - Não selecionar silenciosamente um incidente padrão na tela de Eventos.
 - Abrir Eventos com incidentId explícito.
 - Exibir estados vazios para capabilities indisponíveis.
 - Tratar enums desconhecidos com rótulo neutro.
+- Usar mocks somente em desenvolvimento, Storybook ou demonstração. Em
+  produção, indisponibilidade produz estado vazio, partial, delayed ou
+  unavailable; nunca fallback para dados de exemplo.
 
 ## 12. Responsabilidades do backend
 
@@ -1224,7 +1612,10 @@ podem permanecer available a partir de cobertura, QoE e geografia do Argus.
 - Sanitizar detalhes de eventos.
 - Obter a identidade do revisor da sessão.
 - Manter cursores opacos e vinculados aos filtros.
-- Fornecer facetas baseadas nos dados disponíveis.
+- Fornecer facetas somente para dimensões e combinações declaradas em
+  capabilities.filtering, sem joins entre agregados incompatíveis.
+- Incluir measurement em toda métrica e impacto e preservar a distinção entre
+  measured, estimated e unknown.
 - Retornar respostas parciais utilizáveis sempre que houver uma versão válida.
 
 ## 13. Evolução compatível
@@ -1251,7 +1642,9 @@ Alterações incompatíveis exigem nova versão:
 - Todos os exemplos são representáveis em OpenAPI 3.1.
 - Request e response usam schemas fechados para campos conhecidos.
 - Eventos usam união discriminada por category e normalized.schema.
-- O frontend consegue renderizar todas as telas operacionais sem mocks.
+- O frontend consegue renderizar todas as telas com dados reais disponíveis
+  ou estados explícitos de parcialidade, atraso, vazio e indisponibilidade,
+  sem utilizar mocks em produção.
 - Dados ausentes, atrasados e parciais têm representação explícita.
 - Nenhum campo exige conhecimento de DynamoDB ou Argus pelo frontend.
 - O contrato não depende do backend Flask ou de BigQuery.

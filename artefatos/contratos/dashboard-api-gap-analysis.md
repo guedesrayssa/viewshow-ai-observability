@@ -1,8 +1,8 @@
 # Auditoria: contrato do dashboard versus implementação atual
 
-Data da auditoria: 2026-08-26  
+Data da auditoria: 2026-08-27  
 Contrato de referência: dashboard-api-contract.md  
-Backend auditado: origin/feat/backend-2, commit 0d31802  
+Backend auditado: origin/feat/backend-2, commit bce4903  
 Frontend auditado: origin/develop, commit fbf28c2
 
 ## 1. Objetivo
@@ -29,6 +29,7 @@ Backend Node:
 - apps/backend/api/scripts/seed.js
 - apps/backend/api/deploy/task-definition.json
 - artefatos/decisoes.md
+- artefatos/backend-sprint-2.md
 
 Frontend:
 
@@ -61,12 +62,15 @@ Na última atualização do remoto:
 | Branch | Commit | Situação |
 |---|---|---|
 | origin/develop | fbf28c2 | Frontend mais completo; inclui Eventos |
-| origin/feat/backend-2 | 0d31802 | Backend Node e frontend sem os arquivos novos de Eventos |
+| origin/feat/backend-2 | bce4903 | Backend Node; o commit mais recente adiciona documentação, sem alterar o código da API |
 | origin/feat/frontend-evidencias | db0e038 | Já incorporada ao frontend mais recente |
 | origin/feat/frontend-incidentes | 435ff9d | Já incorporada ao frontend mais recente |
 
 Não existe branch remota adicional com uma página dinâmica de detalhe de
 incidente. As branches de frontend auditadas já estão contidas em develop.
+
+O código da API em bce4903 é o mesmo auditado em 0d31802; a diferença entre
+esses commits é a inclusão de artefatos/backend-sprint-2.md.
 
 ## 4. Rotas existentes em feat/backend-2
 
@@ -134,6 +138,24 @@ público novo e não devem receber novas integrações do frontend:
 A remoção exige confirmar que não existem consumidores. Este documento não
 autoriza excluir rotas nem alterar o backend atual.
 
+### 5.3 Restrições confirmadas pelo levantamento de ingestão
+
+O mapeamento de leitura do Argus e escrita em monitoracao-operacional trouxe
+restrições que afetam todos os endpoints:
+
+| Restrição confirmada | Efeito no contrato |
+|---|---|
+| signal_bucket, rpaas_bucket e live_active_15min usam 15 minutos | Séries iniciais usam normalmente bucketSeconds 900 |
+| Tabelas *_hourly usam 1 hora | Séries derivadas dessas fontes usam bucketSeconds 3600 |
+| Dimensões vivem em agregados diferentes | A API declara supportedFilterSets e rejeita combinações impossíveis com 422 |
+| signal_point é observação de métrica | Não pode ser convertido em evento individual nem receber ID de sessão/playback inventado |
+| Pipeline inicial é batch direto ao DynamoDB | Taxa e latência podem ser medidas por execução; fila e DLQ são indisponíveis por desenho |
+| Cobertura varia por fonte e recorte | KPIs e impactos precisam de measurement e não podem transformar desconhecido em zero |
+
+O frontend não pode assumir cadência fixa. Janelas pequenas podem produzir
+poucos pontos, e um refresh menor que 900 segundos só é válido quando uma
+origem futura realmente atualizar nessa frequência.
+
 ## 6. Visão Geral
 
 ### Implementação atual
@@ -160,6 +182,11 @@ afetadas.
 - Não existem erros por minuto ou latência p95 reais.
 - Não existe linha de base.
 - Não existem séries temporais.
+- Não existe fórmula aprovada para experience_health_score; a fase inicial
+  deve usar uma métrica observada, como errors_per_minute.
+- Um latency_p95 global não pode ser obtido pela média dos p95 segmentados. Na
+  ausência de distribuição ou agregado global, o contrato retorna null com
+  measurement.status unknown.
 - A resposta retorna strings prontas para exibição em alguns fluxos.
 - Não existe envelope data/meta.
 
@@ -201,6 +228,9 @@ do DynamoDB.
   snapshot estável; o fluxo atual lê todos os buckets da janela.
 - Facetas condicionadas aos demais filtros não devem ser calculadas com Scan.
   A implementação deve usar agregados ou contadores pré-computados.
+- Facetas não podem ser simuladas por joins entre agregados incompatíveis.
+  Cada resposta precisa declarar as dimensões e combinações aceitas em
+  capabilities.filtering.
 
 ## 8. Diagnóstico e evidências
 
@@ -282,13 +312,13 @@ eventos individuais completos a partir de agregados.
 - As amostras contêm IDs e campos semelhantes a authorization; não podem ser
   expostas diretamente.
 - A página precisa receber incidentId explicitamente, sem incidente padrão.
-- Até existir a fonte, capabilities deve declarar individualEvents como
-  partial ou unavailable.
+- Na fase inicial, capabilities deve declarar individualEvents e rawPayload
+  como unavailable para todas as seis categorias.
 
 ### Disponibilidade recomendada
 
-- Fase Argus: agregados e eventos técnicos quando existirem; eventos
-  individuais e raw declarados como partial ou unavailable.
+- Fase Argus: métricas agregadas reais; items vazio, eventos individuais e raw
+  declarados como unavailable.
 - Fase instrumentada: seis categorias individuais, payload sanitizado e
   linha do tempo de sessão.
 
@@ -322,18 +352,20 @@ O Argus pode fornecer:
 - Concentração geográfica.
 - Artefatos coverage, coverage_alert, geo_map, geo_hourly e collector_run.
 
-O Argus não fornece diretamente:
+O Argus não fornece diretamente os metadados de execução do novo processo de
+transferência, como duração por etapa e rejeições do lote. SQS, DLQ e workers
+ECS não fazem parte da arquitetura batch escolhida para esta sprint.
 
-- Profundidade da fila SQS.
-- DLQ.
-- Estado de ECS workers.
-- Latência interna de cada etapa do pipeline.
+O levantamento de ingestão definiu, para esta sprint, um pipeline batch que lê
+o Argus, normaliza os registros e escreve diretamente no DynamoDB. A execução
+deve materializar lastRunAt, lastSuccessfulRunAt, observedThrough, lagSeconds,
+registros lidos/escritos/rejeitados e cobertura. Duração por etapa permite
+calcular taxa de registros e latência p95 das execuções.
 
-Essas métricas precisam ser materializadas pela infraestrutura do pipeline a
-partir de SQS, ECS, CloudWatch ou mecanismo equivalente.
-
-Qualidade, cobertura, QoE e geografia podem compor a fase Argus. Taxa e
-latência internas, fila, DLQ e workers pertencem à fase instrumentada.
+Não há SQS ou DLQ nessa arquitetura inicial. queueDepth e deadLetterQueue não
+são métricas pendentes: são indisponíveis por desenho e devem aparecer como
+null/unknown com reason QUEUELESS_BATCH_PIPELINE. O fluxo visual representa
+read, normalize e write.
 
 ### Lacunas
 
@@ -342,6 +374,8 @@ latência internas, fila, DLQ e workers pertencem à fase instrumentada.
 - O frontend atual simplifica o mapa em cinco regiões.
 - O protótipo e os dados Argus permitem e indicam granularidade por UF.
 - Os limites de saúde estão fixados no mock do frontend.
+- O backend ainda não registra os metadados de execução necessários para taxa,
+  latência, cobertura e rejeições do lote.
 
 ## 11. Frontend: situação de integração
 
@@ -358,6 +392,11 @@ operacionais usam dados hardcoded.
 
 Também foi identificada uma navegação para /incidentes/{id}, mas não existe
 uma rota dinâmica correspondente no App Router.
+
+Mocks podem continuar em desenvolvimento, Storybook e demonstrações. Na
+integração de produção, indisponibilidade deve renderizar estados explícitos
+de vazio, partial, delayed ou unavailable; nenhum componente pode retornar
+silenciosamente aos dados hardcoded.
 
 ## 12. Persistência DynamoDB observada
 
@@ -416,27 +455,45 @@ Além dos read models, a futura implementação precisa:
 
 O acesso ao Figma não é bloqueador para escrever o contrato.
 
+### Divergência documental na branch-alvo
+
+artefatos/backend-sprint-2.md ainda descreve a etapa anterior como
+ARGUS → BigQuery → job → DynamoDB. Essa descrição não corresponde à decisão
+vigente informada pela equipe para o dashboard: a origem inicial é o Argus e
+BigQuery não possui os registros da Globo usados nesta versão. O contrato
+público e esta auditoria seguem a decisão vigente; o documento técnico da
+ingestão precisa ser corrigido separadamente pelo responsável por esse fluxo.
+
 ### Faltantes
 
 - Fonte produtiva confirmada dos eventos individuais.
 - Mapeamento físico dessa fonte para as seis categorias.
-- Métricas produtivas de SQS/ECS/CloudWatch do pipeline.
+- Instrumentação da execução batch para taxa, duração por etapa, rejeições e
+  watermarks.
 - Confirmação de SLA por fonte para classificar fresh e delayed.
 
-### Dependência em levantamento
+### Resultado do levantamento de ingestão
 
-Outro levantamento da equipe está mapeando a leitura das informações dos
-bancos da Globo e a transferência para monitoracao-operacional. Quando esse
-material estiver disponível, esta auditoria e o contrato devem ser
-revalidados nos seguintes pontos:
+O levantamento da leitura do Argus e transferência para
+monitoracao-operacional foi incorporado nesta revisão. Ele confirmou:
+
+- Granularidade inicial de 15 minutos, com fontes horárias preservadas como
+  3600 segundos.
+- Atualização e polling iniciais de 900 segundos.
+- Agregados dimensionais separados, sem suporte implícito a filtros cruzados.
+- Ausência de eventos individuais reconstruíveis a partir de signal_point.
+- Pipeline batch sem SQS ou DLQ.
+- Necessidade de transportar qualidade, cobertura e watermark junto às
+  métricas materializadas.
+
+Continuam precisando de confirmação durante a implementação física:
 
 - Origem e estabilidade de id e number.
 - Campos realmente disponíveis por incidente e evidência.
-- Granularidade temporal e geográfica.
 - Correlação entre incidente, hipótese, evidência e evento.
 - Watermark, atraso e significado de observedThrough.
 - Volume, retenção, buckets e paginação.
-- Dimensões que permitem facetas sem inferência.
+- Lista exata de supportedFilterSets por endpoint e read model.
 - Dados pessoais ou sensíveis que exigem exclusão ou pseudonimização.
 
 O levantamento pode mudar a classificação de disponibilidade e o desenho
@@ -468,8 +525,16 @@ respostas sejam integralmente preenchidas no primeiro momento.
 - Eventos individuais das seis categorias.
 - Payload bruto sanitizado.
 - Linha do tempo completa de uma sessão.
-- Taxa e latência internas do pipeline.
-- Profundidade da fila, DLQ e estado dos workers.
+
+### Dependente da instrumentação do batch desta sprint
+
+- Taxa de registros por minuto.
+- Latência p95 das execuções e duração de read, normalize e write.
+- Contagens lidas, escritas e rejeitadas.
+- Watermarks, cobertura e SLA de frescor.
+
+Fila e DLQ não são dependências desta sprint. Permanecem indisponíveis no
+contrato enquanto a arquitetura continuar sem filas.
 
 ## 15. Conclusão da auditoria
 
