@@ -87,6 +87,26 @@ if [[ "$repository_head" != "$CI_COMMIT_SHA" ]]; then
 fi
 unset repository_head
 
+require_current_develop_head() {
+  local remote_line=""
+  local remote_sha=""
+  if ! remote_line="$(git ls-remote --exit-code origin refs/heads/develop 2>/dev/null)"; then
+    echo "could not verify current develop head" >&2
+    return 78
+  fi
+  if ! [[ "$remote_line" =~ ^([0-9a-f]{40})[[:space:]]refs/heads/develop$ ]]; then
+    echo "could not verify current develop head" >&2
+    return 78
+  fi
+  remote_sha="${BASH_REMATCH[1]}"
+  if [[ "$remote_sha" != "$CI_COMMIT_SHA" ]]; then
+    echo "develop head does not match CI_COMMIT_SHA" >&2
+    return 78
+  fi
+}
+
+require_current_develop_head
+
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 if [[ ! -x "$script_directory/render-task-definition.sh" ]]; then
   echo "task definition renderer is unavailable or not executable" >&2
@@ -165,6 +185,29 @@ wait_for_service_stability() {
   return "$waiter_status"
 }
 
+describe_strictly_stable_service() {
+  local expected_task_definition="$1"
+  local output_file="$2"
+  aws ecs describe-services \
+    --region "$region" \
+    --cluster "$cluster" \
+    --services "$service" \
+    --query 'services[0]' \
+    --output json >"$output_file" \
+    && jq -e --arg expected "$expected_task_definition" '
+      .status == "ACTIVE"
+      and .taskDefinition == $expected
+      and (.desiredCount | type) == "number"
+      and .desiredCount > 0
+      and .pendingCount == 0
+      and .runningCount == .desiredCount
+      and (.deployments | length) == 1
+      and .deployments[0].status == "PRIMARY"
+      and .deployments[0].rolloutState == "COMPLETED"
+      and .deployments[0].taskDefinition == $expected
+    ' "$output_file" >/dev/null
+}
+
 handle_termination() {
   local exit_status="$1"
   trap - INT TERM
@@ -174,7 +217,7 @@ handle_termination() {
 
 cleanup_and_rollback() {
   local exit_status=$?
-  local restored_task_definition=""
+  local rollback_service_json="$temporary_directory/rollback-service.json"
   local rollback_confirmed=true
   trap - EXIT
   set +e
@@ -189,14 +232,7 @@ cleanup_and_rollback() {
       rollback_confirmed=false
     elif ! wait_for_service_stability; then
       rollback_confirmed=false
-    elif ! restored_task_definition="$(aws ecs describe-services \
-      --region "$region" \
-      --cluster "$cluster" \
-      --services "$service" \
-      --query 'services[0].taskDefinition' \
-      --output text)"; then
-      rollback_confirmed=false
-    elif [[ "$restored_task_definition" != "$previous_task_definition" ]]; then
+    elif ! describe_strictly_stable_service "$previous_task_definition" "$rollback_service_json"; then
       rollback_confirmed=false
     fi
     if [[ "$rollback_confirmed" != true ]]; then
@@ -297,6 +333,14 @@ aws ecs describe-task-definition \
   --query taskDefinition \
   --output json >"$live_json"
 
+if ! jq -e --arg expected "$previous_task_definition" '
+  .taskDefinitionArn == $expected
+  and .status == "ACTIVE"
+  and (.deleteRequestedAt // null) == null
+' "$live_json" >/dev/null; then
+  echo "rollback task definition must be ACTIVE and not deletion-requested" >&2
+  exit 78
+fi
 live_family="$(jq -r '.family' "$live_json")"
 if [[ "$live_family" != "$task_family" ]]; then
   echo "unexpected task definition family: $live_family" >&2
@@ -378,6 +422,19 @@ rules_json="$(aws elbv2 describe-rules \
   --listener-arn "$listener_arn" \
   --query Rules \
   --output json)"
+if jq -e '
+  any(.[]?.Conditions[]?;
+    (.Field == "path-pattern" or .Field == "host-header")
+    and (
+      ((.RegexValues // []) | length) > 0
+      or ((.PathPatternConfig.RegexValues // []) | length) > 0
+      or ((.HostHeaderConfig.RegexValues // []) | length) > 0
+    )
+  )
+' <<<"$rules_json" >/dev/null; then
+  echo "regex-based ALB rule condition is not allowed on the HTTP port 80 listener" >&2
+  exit 78
+fi
 if ! jq -e --arg target "$target_group_arn" '
   def path_value_is_accepted_health:
     . == "/health" or . == "/health*" or . == "/*";
@@ -490,6 +547,23 @@ if ! jq -e \
   exit 78
 fi
 
+revalidated_task_json="$temporary_directory/revalidated-task.json"
+aws ecs describe-task-definition \
+  --region "$region" \
+  --task-definition "$previous_task_definition" \
+  --query taskDefinition \
+  --output json >"$revalidated_task_json"
+if ! jq -e --arg expected "$previous_task_definition" '
+  .taskDefinitionArn == $expected
+  and .status == "ACTIVE"
+  and (.deleteRequestedAt // null) == null
+' "$revalidated_task_json" >/dev/null; then
+  echo "rollback task definition changed before deployment mutation" >&2
+  exit 78
+fi
+
+require_current_develop_head
+
 new_task_definition="$(aws ecs register-task-definition \
   --region "$region" \
   --cli-input-json "file://$register_json" \
@@ -511,14 +585,9 @@ if ((waiter_status != 0)); then
   exit "$waiter_status"
 fi
 
-deployed_task_definition="$(aws ecs describe-services \
-  --region "$region" \
-  --cluster "$cluster" \
-  --services "$service" \
-  --query 'services[0].taskDefinition' \
-  --output text)"
-if [[ "$deployed_task_definition" != "$new_task_definition" ]]; then
-  echo "ECS stabilized on $deployed_task_definition instead of $new_task_definition" >&2
+forward_service_json="$temporary_directory/forward-service.json"
+if ! describe_strictly_stable_service "$new_task_definition" "$forward_service_json"; then
+  echo "ECS service is not strictly stable after forward waiter" >&2
   false
 fi
 

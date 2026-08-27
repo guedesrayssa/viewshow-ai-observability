@@ -9,6 +9,7 @@
 - ALB/health route: `data-ingestion-alb` / `/health`
 - Protected GitLab environment: `aws-lab`
 - Docker runner tag: `backend-docker-ephemeral`
+- Deployment runner tag: `backend-deploy-protected`
 
 The tagged runner must be ephemeral and restricted to this trusted project. It
 must run privileged Docker-in-Docker and share `/certs/client` between the job
@@ -23,6 +24,15 @@ jobs also pin the inner `docker-container` driver to
 Protect `develop` and configure the three AWS variables as protected, masked,
 hidden, raw `env_var` values scoped exactly to `aws-lab`. Never commit a GitLab
 token, AWS access key, secret key, or session token.
+
+The deploy tag is a separate activation prerequisite. Provision a
+project-locked, protected, non-privileged runner with
+`backend-deploy-protected` and `run_untagged = false`; do not attach that tag to
+the privileged Docker runner or any shared runner. At the time of this review,
+the project has no project runner and only shared instance runner `100`, so
+`deploy_backend` is intentionally expected to remain pending until this runner
+is provisioned. Never remove the tag or add an untagged/shared fallback to make
+the job start.
 
 The `voclabs` role must allow the deployment reads and mutations described by
 the pipeline. It must also allow `iam:SimulatePrincipalPolicy`; deploy preflight
@@ -76,6 +86,13 @@ the digest media type to be a single Docker v2 or OCI image manifest, never a
 Docker manifest list or OCI index. The digest-pulled image must inspect as exact
 `linux/amd64` before publication metadata is emitted.
 
+Deploy additionally resolves `refs/heads/develop` from the checkout's existing
+`origin` with `git ls-remote --exit-code` before making any AWS request and
+again immediately before the first mutation. A network/authentication error,
+missing ref, malformed response, or remote SHA different from `CI_COMMIT_SHA`
+fails closed. The command's diagnostic output is suppressed so a credential in
+the configured origin URL cannot be echoed to the job log.
+
 The publish job marks `aws-lab` with environment action `prepare`, so scoped
 variables are available without recording a false deployment. It publishes
 `backend-image.env` as both a normal artifact and a dotenv report. Deploy reads
@@ -92,21 +109,35 @@ an active public application ALB. The effective priority-ordered rule on its exa
 HTTP port 80 listener must route `/health` exclusively to that target group;
 only literal `/health`, `/health*`, `/*`, or the default rule are accepted as
 provable matches, while ambiguous patterns, shadowing rules, and weighted
-multi-target forwarding fail closed. Immediately before registration, deploy
-re-reads the service and requires the same stable task definition, 100/200
-configuration, and exact `(targetGroupArn, containerName, containerPort)`
-load-balancer tuple. The live task definition must also resolve to Linux/X86_64;
+multi-target forwarding fail closed. Any host-header or path-pattern condition
+using `RegexValues` also fails closed, including a higher-priority regex rule
+that could shadow an otherwise valid default. Immediately before registration,
+deploy re-reads the service and requires the same stable task definition,
+100/200 configuration, and exact
+`(targetGroupArn, containerName, containerPort)` load-balancer tuple. The
+rollback task definition is read both during initial
+preflight and immediately before mutation; both reads must identify the same
+revision with status `ACTIVE` and no `deleteRequestedAt` value. `INACTIVE`,
+`DELETE_IN_PROGRESS`, deletion-requested, or changed revisions are rejected.
+The live task definition must also resolve to Linux/X86_64;
 an absent `operatingSystemFamily` or `cpuArchitecture` is accepted only because
 ECS documents `LINUX` and `X86_64` as their respective defaults. Explicit ARM64
 or Windows runtime settings fail before registration. Deploy then registers a
 preserved live task definition, updates the service, waits with bounded signal
-handling, and verifies the public health contract.
+handling, and re-proves the same strict single-deployment stable-service
+predicate after the forward waiter. Rollback uses the same predicate after its
+waiter; failure to prove it is reported without replacing the original deploy
+exit status. The in-container smoke bounds both the initial request and final
+response-body read, so a server that sends headers but never completes the body
+cannot hang the job. Public `/health` is then verified separately.
 
 Merge requests run only tests and a local amd64 container build/smoke. Runtime
 source, package manifests, Docker inputs, backend tests, CI helpers, the
 credential synchronizer, and `.gitlab-ci.yml` select backend CI. Runbook,
 deployment snapshot, and other documentation-only changes do not publish or
-deploy an image.
+deploy an image. Portable root-anchored `.gitignore` rules exclude
+`/.superpowers/` and `/docs/superpowers/` review artifacts without ignoring
+similarly named directories elsewhere.
 
 ## Failure recovery
 
@@ -132,10 +163,14 @@ wait for stability and verify `/health` before retrying CI.
 
 `conservative` auto-cancel removes obsolete pipelines while only interruptible
 pre-deploy work is active. A running deploy is non-interruptible and protected
-by resource group `monitoracao-api-service`; let it finish or roll back. Cancel
-queued stale deploy jobs only after confirming no deploy is running, then retain
-the newest eligible pipeline. Never bypass the resource group with a manual
-`update-service` merely to unblock the queue.
+by resource group `monitoracao-api-service`; let it finish or roll back.
+Configure that resource group with process mode `newest_ready_first`, enable
+GitLab's **Prevent outdated deployment jobs** setting, keep `aws-lab` protected,
+and disable retries for rollback deployment jobs. These project settings are
+defense in depth around the script's two remote-head checks; they do not replace
+them. Cancel queued stale deploy jobs only after confirming no deploy is
+running, then retain the newest eligible pipeline. Never bypass the resource
+group with a manual `update-service` merely to unblock the queue.
 
 ### Digest mismatch
 

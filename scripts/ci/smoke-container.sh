@@ -28,7 +28,7 @@ for ((attempt = 1; attempt <= attempts; attempt += 1)); do
       exit 1
     fi
     body="$(docker exec "$container_name" node -e \
-      "fetch('http://127.0.0.1:3000/health').then(async response=>{if(response.status !== 200)process.exit(1);process.stdout.write(await response.text())}).catch(()=>process.exit(1))")"
+      "fetch('http://127.0.0.1:3000/health',{signal:AbortSignal.timeout(5000)}).then(async response=>{if(response.status !== 200)process.exit(1);process.stdout.write(await response.text())}).catch(()=>process.exit(1))")"
     if ! jq -e -s 'length == 1 and .[0] == {"status":"ok"}' >/dev/null <<<"$body"; then
       echo "container returned an unexpected health payload" >&2
       exit 1

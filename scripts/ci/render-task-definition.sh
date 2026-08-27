@@ -42,7 +42,8 @@ jq -e \
         .compatibilities,
         .registeredAt,
         .registeredBy,
-        .deregisteredAt
+        .deregisteredAt,
+        .deleteRequestedAt
       )
     | .containerDefinitions |= map(
         if .name == $container

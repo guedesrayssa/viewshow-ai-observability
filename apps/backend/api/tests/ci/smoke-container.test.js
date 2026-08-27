@@ -13,7 +13,12 @@ function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
 }
 
-function runSmoke({ healthBody = '{"status":"ok"}', architecture = "amd64", user = "node" } = {}) {
+function runSmoke({
+  healthBody = '{"status":"ok"}',
+  architecture = "amd64",
+  user = "node",
+  hangHealthBody = false,
+} = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "container-smoke-"));
   const bin = path.join(directory, "bin");
   const calls = path.join(directory, "calls.log");
@@ -35,7 +40,16 @@ elif [[ "$1" == "inspect" && "$2" == "--format" && "$3" == "{{.State.Health.Stat
 elif [[ "$1" == "inspect" && "$2" == "--format" && "$3" == "{{.Config.User}}" && "$4" == "$(cat "$NAME_FILE")" ]]; then
   printf '%s\n' "$CONFIGURED_USER"
 elif [[ "$1" == "exec" && "$2" == "$(cat "$NAME_FILE")" && "$3" == "node" && "$4" == "-e" && "$#" == "5" ]]; then
-  printf '%s' "$HEALTH_BODY"
+  if [[ "$5" == *"signal:AbortSignal.timeout(5000)"* ]]; then
+    if [[ "$HANG_HEALTH_BODY" == "true" ]]; then exit 28; fi
+    printf '%s' "$HEALTH_BODY"
+  elif [[ "$HANG_HEALTH_BODY" == "true" ]]; then
+    sleep 1
+    printf '%s' "$HEALTH_BODY"
+  else
+    echo "docker exec health probe has no abort deadline" >&2
+    exit 2
+  fi
 elif [[ "$1" == "rm" && "$2" == "-f" && "$3" == "$(cat "$NAME_FILE")" && "$#" == "3" ]]; then
   :
 else
@@ -57,6 +71,7 @@ fi
       ARCHITECTURE: architecture,
       CONFIGURED_USER: user,
       HEALTH_BODY: healthBody,
+      HANG_HEALTH_BODY: String(hangHealthBody),
       SMOKE_ATTEMPTS: "1",
       SMOKE_DELAY_SECONDS: "0",
     },
@@ -70,6 +85,15 @@ test("container smoke accepts exactly one expected health JSON document", () => 
   const { result, calls } = runSmoke();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /container health check passed/);
+  assert.match(calls, /docker:rm -f/);
+});
+
+test("container smoke aborts a hanging response body", () => {
+  const startedAt = Date.now();
+  const { result, calls } = runSmoke({ hangHealthBody: true });
+  const elapsedMilliseconds = Date.now() - startedAt;
+  assert.notEqual(result.status, 0);
+  assert.ok(elapsedMilliseconds < 500, `hanging body took ${elapsedMilliseconds}ms`);
   assert.match(calls, /docker:rm -f/);
 });
 

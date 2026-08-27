@@ -46,6 +46,9 @@ function runDeploy({
   serviceStatus = "ACTIVE",
   controllerType = "ECS",
   taskFamily = "monitoracao-api-task",
+  taskStatus = "ACTIVE",
+  taskDeleteRequestedAt = null,
+  lateTaskOverrides = {},
   runtimePlatform = null,
   containerMode = "correct",
   resolveTargetGroup = true,
@@ -53,8 +56,12 @@ function runDeploy({
   actualAccount = "248880318395",
   callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
   repositoryHead = commitSha,
+  initialRemoteHead = commitSha,
+  lateRemoteHead = commitSha,
   serviceOverrides = {},
   lateServiceOverrides = {},
+  forwardStableOverrides = {},
+  rollbackStableOverrides = {},
   albOverrides = {},
   listenerPort = 80,
   routeHealthToTargetGroup = true,
@@ -64,20 +71,27 @@ function runDeploy({
   const bin = path.join(directory, "bin");
   const calls = path.join(directory, "calls.log");
   const task = path.join(directory, "task.json");
+  const lateTask = path.join(directory, "late-task.json");
   const service = path.join(directory, "service.json");
   const lateService = path.join(directory, "late-service.json");
+  const forwardService = path.join(directory, "forward-service.json");
+  const rollbackService = path.join(directory, "rollback-service.json");
   const alb = path.join(directory, "alb.json");
   const listeners = path.join(directory, "listeners.json");
   const rules = path.join(directory, "rules.json");
   const state = path.join(directory, "current-task.txt");
   const waiterCount = path.join(directory, "waiter-count.txt");
   const serviceReadCount = path.join(directory, "service-read-count.txt");
+  const taskReadCount = path.join(directory, "task-read-count.txt");
+  const remoteReadCount = path.join(directory, "remote-read-count.txt");
   const artifact = path.join(directory, "backend-image.env");
   fs.mkdirSync(bin);
   fs.writeFileSync(calls, "");
   fs.writeFileSync(state, oldArn);
   fs.writeFileSync(waiterCount, "0");
   fs.writeFileSync(serviceReadCount, "0");
+  fs.writeFileSync(taskReadCount, "0");
+  fs.writeFileSync(remoteReadCount, "0");
   if (artifactSymlink) {
     const artifactTarget = path.join(directory, "artifact-target.env");
     fs.writeFileSync(artifactTarget, artifactContent ?? `BACKEND_IMAGE_DIGEST=${expectedImageDigest}\n`);
@@ -95,7 +109,7 @@ function runDeploy({
   const taskFixture = {
     taskDefinitionArn: oldArn,
     revision: 1,
-    status: "ACTIVE",
+    status: taskStatus,
     family: taskFamily,
     taskRoleArn: "arn:aws:iam::248880318395:role/TaskRole",
     executionRoleArn: "arn:aws:iam::248880318395:role/ExecutionRole",
@@ -105,8 +119,10 @@ function runDeploy({
     memory: "512",
     containerDefinitions,
   };
+  if (taskDeleteRequestedAt !== null) taskFixture.deleteRequestedAt = taskDeleteRequestedAt;
   if (runtimePlatform !== null) taskFixture.runtimePlatform = runtimePlatform;
   fs.writeFileSync(task, JSON.stringify(taskFixture));
+  fs.writeFileSync(lateTask, JSON.stringify({ ...taskFixture, ...lateTaskOverrides }));
   const serviceFixture = {
     status: serviceStatus,
     taskDefinition: oldArn,
@@ -125,6 +141,18 @@ function runDeploy({
   };
   fs.writeFileSync(service, JSON.stringify(serviceFixture));
   fs.writeFileSync(lateService, JSON.stringify({ ...serviceFixture, ...lateServiceOverrides }));
+  fs.writeFileSync(forwardService, JSON.stringify({
+    ...serviceFixture,
+    taskDefinition: newArn,
+    deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: newArn }],
+    ...forwardStableOverrides,
+  }));
+  fs.writeFileSync(rollbackService, JSON.stringify({
+    ...serviceFixture,
+    taskDefinition: oldArn,
+    deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: oldArn }],
+    ...rollbackStableOverrides,
+  }));
   fs.writeFileSync(
     alb,
     JSON.stringify(resolveAlb ? {
@@ -168,6 +196,19 @@ set -euo pipefail
 printf 'git:%s\n' "$*" >>"$CALL_LOG"
 if [[ "$*" == "rev-parse --verify HEAD" ]]; then
   printf '%s\n' "$REPOSITORY_HEAD"
+elif [[ "$*" == "ls-remote --exit-code origin refs/heads/develop" ]]; then
+  remote_read_count=$(( $(cat "$REMOTE_READ_COUNT_FILE") + 1 ))
+  printf '%s' "$remote_read_count" >"$REMOTE_READ_COUNT_FILE"
+  if [[ "$remote_read_count" == "1" ]]; then
+    remote_head="$INITIAL_REMOTE_HEAD"
+  else
+    remote_head="$LATE_REMOTE_HEAD"
+  fi
+  if [[ "$remote_head" == "__FAIL__" ]]; then
+    echo "fixture network/auth failure for secret-bearing origin" >&2
+    exit 128
+  fi
+  printf '%s\trefs/heads/develop\n' "$remote_head"
 else
   echo "unexpected git call: $*" >&2
   exit 2
@@ -192,13 +233,24 @@ elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-inge
   printf '%s' "$service_read_count" >"$SERVICE_READ_COUNT_FILE"
   if [[ "$service_read_count" == "1" ]]; then
     cat "$SERVICE_FIXTURE"
-  else
+  elif [[ "$service_read_count" == "2" ]]; then
     cat "$LATE_SERVICE_FIXTURE"
+  elif [[ "$(cat "$STATE_FILE")" == "$NEW_ARN" ]]; then
+    if [[ "$FAIL_CONFIRMATION" == "true" ]]; then exit 3; fi
+    cat "$FORWARD_SERVICE_FIXTURE"
+  else
+    cat "$ROLLBACK_SERVICE_FIXTURE"
   fi
 elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
   printf '{"digest":"%s","mediaType":"%s"}\n' "$LIVE_IMAGE_DIGEST" "$LIVE_IMAGE_MEDIA_TYPE"
 elif [[ "$call" == "ecs describe-task-definition --region us-east-1 --task-definition $OLD_ARN --query taskDefinition --output json" ]]; then
-  cat "$TASK_FIXTURE"
+  task_read_count=$(( $(cat "$TASK_READ_COUNT_FILE") + 1 ))
+  printf '%s' "$task_read_count" >"$TASK_READ_COUNT_FILE"
+  if [[ "$task_read_count" == "1" ]]; then
+    cat "$TASK_FIXTURE"
+  else
+    cat "$LATE_TASK_FIXTURE"
+  fi
 elif [[ "$call" == "elbv2 describe-target-groups --region us-east-1 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123 --query TargetGroups[0] --output json" ]]; then
   if [[ "$RESOLVE_TARGET_GROUP" == "true" ]]; then
     printf '{"TargetGroupArn":"arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123","LoadBalancerArns":["%s"]}\\n' "$TARGET_GROUP_ALB_ARN"
@@ -214,9 +266,6 @@ elif [[ "$call" == "elbv2 describe-rules --region us-east-1 --listener-arn $LIST
 elif [[ "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/TaskRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" \
   || "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/ExecutionRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" ]]; then
   echo "$PASS_ROLE_DECISION"
-elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query services[0].taskDefinition --output text" ]]; then
-    if [[ "$FAIL_CONFIRMATION" == "true" && "$(cat "$STATE_FILE")" == "$NEW_ARN" ]]; then exit 3; fi
-    cat "$STATE_FILE"
 elif [[ "$1" == "ecs" && "$2" == "register-task-definition" ]]; then
     [[ "$#" -eq 10 && "$3" == "--region" && "$4" == "us-east-1" \
       && "$5" == "--cli-input-json" && "$6" == file://* \
@@ -300,14 +349,19 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       PATH: deployPath,
       CALL_LOG: calls,
       TASK_FIXTURE: task,
+      LATE_TASK_FIXTURE: lateTask,
       SERVICE_FIXTURE: service,
       LATE_SERVICE_FIXTURE: lateService,
+      FORWARD_SERVICE_FIXTURE: forwardService,
+      ROLLBACK_SERVICE_FIXTURE: rollbackService,
       ALB_FIXTURE: alb,
       LISTENERS_FIXTURE: listeners,
       RULES_FIXTURE: rules,
       STATE_FILE: state,
       WAITER_COUNT_FILE: waiterCount,
       SERVICE_READ_COUNT_FILE: serviceReadCount,
+      TASK_READ_COUNT_FILE: taskReadCount,
+      REMOTE_READ_COUNT_FILE: remoteReadCount,
       OLD_ARN: oldArn,
       NEW_ARN: newArn,
       PASS_ROLE_DECISION: passRoleDecision,
@@ -335,6 +389,8 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       ACTUAL_ACCOUNT: actualAccount,
       CALLER_ARN: callerArn,
       REPOSITORY_HEAD: repositoryHead,
+      INITIAL_REMOTE_HEAD: initialRemoteHead,
+      LATE_REMOTE_HEAD: lateRemoteHead,
       AWS_ACCOUNT_ID: "248880318395",
       AWS_DEFAULT_REGION: "us-east-1",
       ECR_REPOSITORY: "monitoracao-api",
@@ -405,10 +461,10 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
       if (line.includes("ecs register-task-definition")) return "register";
       if (line.includes("ecs update-service")) return "update";
       if (line.includes("ecs wait services-stable")) return "wait";
-      if (line.includes("ecs describe-services") && line.includes("--output text")) return "confirm";
       return "unexpected";
     });
   assert.deepEqual(operations, [
+    "git",
     "git",
     "identity",
     "wait",
@@ -422,10 +478,12 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
     "pass-role",
     "pass-role",
     "service",
+    "task",
+    "git",
     "register",
     "update",
     "wait",
-    "confirm",
+    "service",
     "curl",
   ]);
   assert.match(result.stdout, /deployment healthy/);
@@ -436,11 +494,11 @@ test("failed public smoke restores and confirms the previous task definition", (
   const { result, calls, state } = runDeploy({ failSmoke: true });
   assert.notEqual(result.status, 0);
   const updates = calls.split("\n").filter((line) => line.includes("ecs update-service"));
-  const confirmations = calls
+  const serviceReads = calls
     .split("\n")
-    .filter((line) => line.includes("ecs describe-services") && line.includes("taskDefinition"));
+    .filter((line) => line.includes("ecs describe-services") && line.includes("--output json"));
   assert.equal(updates.length, 2);
-  assert.equal(confirmations.length, 2);
+  assert.equal(serviceReads.length, 4);
   assert.match(updates[0], new RegExp(newArn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(updates[1], new RegExp(oldArn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(state, oldArn);
@@ -614,6 +672,31 @@ for (const runtimePlatform of [
   });
 }
 
+for (const [name, options] of [
+  ["INACTIVE", { taskStatus: "INACTIVE" }],
+  ["DELETE_IN_PROGRESS", { taskStatus: "DELETE_IN_PROGRESS" }],
+  ["delete-requested", { taskDeleteRequestedAt: "2026-08-27T12:00:00Z" }],
+]) {
+  test(`${name} rollback task definition fails before mutation`, () => {
+    const { result, calls } = runDeploy(options);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /rollback task definition must be ACTIVE and not deletion-requested/);
+    assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+  });
+}
+
+test("late deletion request for rollback task definition fails before mutation", () => {
+  const { result, calls } = runDeploy({
+    lateTaskOverrides: {
+      status: "DELETE_IN_PROGRESS",
+      deleteRequestedAt: "2026-08-27T12:00:00Z",
+    },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /rollback task definition changed before deployment mutation/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
 test("AWS endpoint overrides fail before any AWS call", () => {
   const { result, calls } = runDeploy({
     envOverrides: { AWS_ENDPOINT_URL_ECS: "https://example.invalid" },
@@ -631,6 +714,7 @@ test("caller must be the exact voclabs assumed role", () => {
   assert.match(result.stderr, /unexpected AWS caller/);
   assert.deepEqual(calls.trim().split("\n"), [
     "git:rev-parse --verify HEAD",
+    "git:ls-remote --exit-code origin refs/heads/develop",
     "aws:sts get-caller-identity --output json",
   ]);
 });
@@ -756,6 +840,29 @@ test("higher-priority health route to another target shadows a good default", ()
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
 });
 
+test("higher-priority regex health route cannot be skipped in favor of a good default", () => {
+  const otherTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999";
+  const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123";
+  const { result, calls } = runDeploy({
+    rulesOverride: [{
+      RuleArn: `${listenerArn}/regex-shadow`,
+      Priority: "1",
+      IsDefault: false,
+      Conditions: [{ Field: "path-pattern", RegexValues: ["^/health$"] }],
+      Actions: [{ Type: "forward", TargetGroupArn: otherTarget }],
+    }, {
+      RuleArn: `${listenerArn}/default`,
+      Priority: "default",
+      IsDefault: true,
+      Conditions: [],
+      Actions: [{ Type: "forward", TargetGroupArn: serviceTarget }],
+    }],
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /regex-based ALB rule condition is not allowed/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
 test("weighted multi-target health forwarding fails before mutation", () => {
   const { result, calls } = runDeploy({
     rulesOverride: [{
@@ -813,6 +920,30 @@ test("repository HEAD mismatch fails before any AWS call", () => {
   assert.deepEqual(calls.trim().split("\n"), ["git:rev-parse --verify HEAD"]);
 });
 
+test("stale develop commit fails before any AWS call", () => {
+  const { result, calls } = runDeploy({ initialRemoteHead: "f".repeat(40) });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /develop head does not match CI_COMMIT_SHA/);
+  assert.doesNotMatch(calls, /aws:/);
+  assert.match(calls, /git:ls-remote --exit-code origin refs\/heads\/develop/);
+});
+
+test("develop head network or auth failure is generic and fails before AWS", () => {
+  const { result, calls } = runDeploy({ initialRemoteHead: "__FAIL__" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /could not verify current develop head/);
+  assert.doesNotMatch(result.stderr, /secret-bearing origin/);
+  assert.doesNotMatch(calls, /aws:/);
+});
+
+test("develop advancing during preflight aborts immediately before mutation", () => {
+  const { result, calls } = runDeploy({ lateRemoteHead: "f".repeat(40) });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /develop head does not match CI_COMMIT_SHA/);
+  assert.equal(calls.split("\n").filter((line) => line.includes("git:ls-remote")).length, 2);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
 test("external deployment changing the rollback baseline aborts before registration", () => {
   const externalArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/monitoracao-api-task:99";
   const { result, calls } = runDeploy({
@@ -835,6 +966,29 @@ test("external deployment configuration change aborts before registration", () =
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /rollback baseline changed before deployment mutation/);
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("forward waiter success still requires one strict completed stable deployment", () => {
+  const { result, calls, state } = runDeploy({
+    forwardStableOverrides: {
+      deployments: [{ status: "PRIMARY", rolloutState: "IN_PROGRESS", taskDefinition: newArn }],
+    },
+  });
+  assert.notEqual(result.status, 0);
+  assert.equal(state, oldArn);
+  assert.match(result.stderr, /ECS service is not strictly stable after forward waiter/);
+  assert.equal(calls.split("\n").filter((line) => line.includes("ecs update-service")).length, 2);
+});
+
+test("rollback stable-predicate failure preserves the original waiter status", () => {
+  const { result, calls, state } = runDeploy({
+    failForwardWaiter: true,
+    rollbackStableOverrides: { pendingCount: 1 },
+  });
+  assert.equal(result.status, 42);
+  assert.equal(state, oldArn);
+  assert.match(result.stderr, /rollback could not be confirmed/);
+  assert.equal(calls.split("\n").filter((line) => line.includes("ecs update-service")).length, 2);
 });
 
 for (const [name, loadBalancer] of [
@@ -884,6 +1038,7 @@ test("wrong STS account stops after identity lookup without ECS mutation", () =>
   assert.match(result.stderr, /unexpected AWS account: 000000000000/);
   assert.deepEqual(calls.trim().split("\n"), [
     "git:rev-parse --verify HEAD",
+    "git:ls-remote --exit-code origin refs/heads/develop",
     "aws:sts get-caller-identity --output json",
   ]);
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);

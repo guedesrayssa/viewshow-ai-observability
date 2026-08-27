@@ -7,6 +7,10 @@ const pipeline = fs.readFileSync(
   path.resolve(__dirname, "../../../../../.gitlab-ci.yml"),
   "utf8",
 );
+const gitignore = fs.readFileSync(
+  path.resolve(__dirname, "../../../../../.gitignore"),
+  "utf8",
+);
 
 function topLevelBlock(name) {
   const start = pipeline.indexOf(`${name}:\n`);
@@ -63,8 +67,14 @@ test("develop publication is protected, digest-producing, and isolated from MR r
 test("deploy requires the publication dotenv artifact and keeps aws-lab scope", () => {
   const job = topLevelBlock("deploy_backend_ecs");
   assert.match(job, /needs:\n\s+- job: publish_backend_image\n\s+artifacts: true/);
+  assert.match(job, /tags:\n\s+- backend-deploy-protected/);
   assert.match(job, /environment:\n\s+name: aws-lab/);
   assert.doesNotMatch(job, /validate_backend_container/);
+});
+
+test("portable ignore policy excludes all Superpowers workflow artifacts", () => {
+  assert.match(gitignore, /^\/docs\/superpowers\/$/m);
+  assert.match(gitignore, /^\/\.superpowers\/$/m);
 });
 
 test("every CI executor and Docker service uses a tag plus immutable digest", () => {

@@ -17,6 +17,7 @@ function taskDefinition(containers) {
     compatibilities: ["EC2", "FARGATE"],
     registeredAt: "2026-08-25T00:00:00Z",
     registeredBy: "arn:registrar",
+    deleteRequestedAt: "2026-08-27T12:00:00Z",
     family: "monitoracao-api-task",
     networkMode: "awsvpc",
     requiresCompatibilities: ["FARGATE"],
@@ -63,6 +64,7 @@ test("renderer changes only the target image and removes response fields", () =>
   assert.equal(rendered.revision, undefined);
   assert.equal(rendered.status, undefined);
   assert.equal(rendered.registeredAt, undefined);
+  assert.equal(rendered.deleteRequestedAt, undefined);
   assert.equal(rendered.containerDefinitions[0].image, "example.invalid/monitoracao-api:abc123");
   assert.deepEqual(rendered.containerDefinitions[0].environment, [{ name: "KEEP", value: "yes" }]);
   assert.equal(rendered.containerDefinitions[0].healthCheck.command[0], "CMD-SHELL");
@@ -104,6 +106,7 @@ test("renderer deep-preserves a realistic registration payload except target run
     "registeredAt",
     "registeredBy",
     "deregisteredAt",
+    "deleteRequestedAt",
   ]) delete expected[key];
   expected.containerDefinitions[0].image = "example.invalid/monitoracao-api:abc123";
   expected.containerDefinitions[0].healthCheck = {

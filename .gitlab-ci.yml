@@ -129,6 +129,8 @@ publish_backend_image:
 deploy_backend_ecs:
   stage: deploy
   image: alpine:3.22.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
+  tags:
+    - backend-deploy-protected
   interruptible: false
   resource_group: monitoracao-api-service
   needs:
