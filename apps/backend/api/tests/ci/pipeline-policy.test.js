@@ -97,7 +97,7 @@ test("backend changes exclude deploy documentation and snapshots", () => {
 
 test("merge requests validate containers without protected AWS scope", () => {
   const job = topLevelBlock("validate_backend_container");
-  assert.match(job, /tags:\n\s+- backend-docker-ephemeral/);
+  assert.doesNotMatch(job, /^[ \t]+tags:/m);
   assert.match(job, /CI_PIPELINE_SOURCE == "merge_request_event"/);
   assert.doesNotMatch(job, /CI_PIPELINE_SOURCE == "push"/);
   assert.doesNotMatch(job, /environment:/);
@@ -125,7 +125,7 @@ test("backend validation installs the exact jq test dependency", () => {
 
 test("develop publication is protected, digest-producing, and isolated from MR rules", () => {
   const job = topLevelBlock("publish_backend_image");
-  assert.match(job, /tags:\n\s+- backend-docker-ephemeral/);
+  assert.doesNotMatch(job, /^[ \t]+tags:/m);
   assert.match(job, /CI_PIPELINE_SOURCE == "push"/);
   assert.doesNotMatch(job, /merge_request_event/);
   assert.match(job, /environment:\n\s+name: aws-lab\n\s+action: prepare/);
@@ -142,7 +142,7 @@ test("develop publication is protected, digest-producing, and isolated from MR r
 test("deploy requires the publication dotenv artifact and keeps aws-lab scope", () => {
   const job = topLevelBlock("deploy_backend_ecs");
   assert.match(job, /needs:\n\s+- job: publish_backend_image\n\s+artifacts: true/);
-  assert.match(job, /tags:\n\s+- backend-deploy-protected/);
+  assert.doesNotMatch(job, /^[ \t]+tags:/m);
   assert.match(job, /environment:\n\s+name: aws-lab/);
   assert.doesNotMatch(job, /validate_backend_container/);
 });
