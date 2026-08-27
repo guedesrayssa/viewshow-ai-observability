@@ -10,7 +10,16 @@ const smokeHelper = fs.readFileSync(
 );
 
 test("Dockerfile defines a reproducible non-root Node 22 runtime", () => {
-  assert.match(dockerfile, /^FROM node:22\.22\.0-bookworm-slim AS runtime$/m);
+  assert.match(
+    dockerfile,
+    /^# syntax=docker\/dockerfile:1\.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e$/m,
+  );
+  assert.match(
+    dockerfile,
+    /^FROM node:22\.22\.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94 AS runtime$/m,
+  );
+  assert.match(dockerfile, /apt-get install -y --no-install-recommends dumb-init=1\.2\.5-2/);
+  assert.doesNotMatch(dockerfile, /apt-get install -y --no-install-recommends dumb-init(?:\s|\\)/);
   assert.match(dockerfile, /RUN npm ci --omit=dev/);
   assert.match(dockerfile, /^USER node$/m);
   assert.match(dockerfile, /^HEALTHCHECK /m);

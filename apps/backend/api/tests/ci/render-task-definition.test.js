@@ -22,6 +22,18 @@ function taskDefinition(containers) {
     requiresCompatibilities: ["FARGATE"],
     cpu: "256",
     memory: "512",
+    taskRoleArn: "arn:aws:iam::248880318395:role/TaskRole",
+    executionRoleArn: "arn:aws:iam::248880318395:role/ExecutionRole",
+    volumes: [{ name: "shared", host: {} }],
+    placementConstraints: [],
+    proxyConfiguration: {
+      type: "APPMESH",
+      containerName: "envoy",
+      properties: [{ name: "IgnoredUID", value: "1337" }],
+    },
+    runtimePlatform: { cpuArchitecture: "X86_64", operatingSystemFamily: "LINUX" },
+    ephemeralStorage: { sizeInGiB: 30 },
+    enableFaultInjection: false,
     containerDefinitions: containers,
   };
 }
@@ -55,6 +67,59 @@ test("renderer changes only the target image and removes response fields", () =>
   assert.deepEqual(rendered.containerDefinitions[0].environment, [{ name: "KEEP", value: "yes" }]);
   assert.equal(rendered.containerDefinitions[0].healthCheck.command[0], "CMD-SHELL");
   assert.equal(rendered.containerDefinitions[1].image, "sidecar:v1");
+});
+
+test("renderer deep-preserves a realistic registration payload except target runtime fields", () => {
+  const target = {
+    name: "monitoracao-api-container",
+    image: "old:v1",
+    essential: true,
+    cpu: 128,
+    memoryReservation: 384,
+    portMappings: [{ containerPort: 3000, hostPort: 3000, protocol: "tcp", name: "http" }],
+    environment: [{ name: "KEEP", value: "yes" }],
+    secrets: [{ name: "SECRET", valueFrom: "arn:secret" }],
+    mountPoints: [{ sourceVolume: "shared", containerPath: "/shared", readOnly: false }],
+    logConfiguration: {
+      logDriver: "awslogs",
+      options: { "awslogs-group": "/ecs/monitoracao-api", "awslogs-region": "us-east-1" },
+    },
+    linuxParameters: { initProcessEnabled: true },
+    healthCheck: { command: ["CMD-SHELL", "old"], interval: 5, timeout: 2, retries: 1 },
+  };
+  const sidecar = {
+    name: "envoy",
+    image: "public.ecr.aws/example/envoy@sha256:deadbeef",
+    essential: false,
+    environment: [{ name: "UNCHANGED", value: "true" }],
+  };
+  const input = taskDefinition([target, sidecar]);
+  const expected = structuredClone(input);
+  for (const key of [
+    "taskDefinitionArn",
+    "revision",
+    "status",
+    "requiresAttributes",
+    "compatibilities",
+    "registeredAt",
+    "registeredBy",
+    "deregisteredAt",
+  ]) delete expected[key];
+  expected.containerDefinitions[0].image = "example.invalid/monitoracao-api:abc123";
+  expected.containerDefinitions[0].healthCheck = {
+    command: [
+      "CMD-SHELL",
+      "node -e \"const http=require('node:http');const request=http.get('http://127.0.0.1:3000/health',response=>{response.resume();process.exit(response.statusCode===200?0:1)});request.on('error',()=>process.exit(1));request.setTimeout(4000,()=>{request.destroy();process.exit(1)})\"",
+    ],
+    interval: 30,
+    timeout: 5,
+    retries: 3,
+    startPeriod: 10,
+  };
+
+  const { result, output } = render([target, sidecar]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(fs.readFileSync(output, "utf8")), expected);
 });
 
 test("renderer rejects a missing target container", () => {

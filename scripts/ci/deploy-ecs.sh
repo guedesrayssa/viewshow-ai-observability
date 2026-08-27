@@ -2,9 +2,18 @@
 set -Eeuo pipefail
 set +x
 
+readonly account_id="248880318395"
+readonly region="us-east-1"
+readonly repository="monitoracao-api"
+readonly cluster="data-ingestion-cluster"
+readonly service="monitoracao-api-service"
+readonly task_family="monitoracao-api-task"
+readonly container_name="monitoracao-api-container"
+readonly alb_name="data-ingestion-alb"
+
 required_variables=(
   AWS_ACCOUNT_ID AWS_DEFAULT_REGION ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE
-  ECS_TASK_FAMILY ECS_CONTAINER_NAME ALB_NAME CI_COMMIT_SHA
+  ECS_TASK_FAMILY ECS_CONTAINER_NAME ALB_NAME CI_COMMIT_SHA BACKEND_IMAGE_DIGEST
 )
 for variable_name in "${required_variables[@]}"; do
   if [[ -z "${!variable_name:-}" ]]; then
@@ -18,8 +27,8 @@ binding_names=(
   ECS_TASK_FAMILY ECS_CONTAINER_NAME ALB_NAME
 )
 binding_values=(
-  248880318395 us-east-1 monitoracao-api data-ingestion-cluster monitoracao-api-service
-  monitoracao-api-task monitoracao-api-container data-ingestion-alb
+  "$account_id" "$region" "$repository" "$cluster" "$service"
+  "$task_family" "$container_name" "$alb_name"
 )
 for ((binding_index = 0; binding_index < ${#binding_names[@]}; binding_index += 1)); do
   variable_name="${binding_names[$binding_index]}"
@@ -33,8 +42,24 @@ if ! [[ "$CI_COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
   echo "CI_COMMIT_SHA must be exactly 40 hexadecimal characters" >&2
   exit 64
 fi
+if ! [[ "$BACKEND_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+  echo "BACKEND_IMAGE_DIGEST must be sha256 followed by 64 lowercase hexadecimal characters" >&2
+  exit 64
+fi
 
-for command_name in aws jq curl mktemp rm sleep dirname mv bash; do
+endpoint_override_names=()
+while IFS= read -r variable_name; do
+  endpoint_override_names+=("$variable_name")
+done < <(compgen -A variable AWS_ENDPOINT_URL || true)
+if ((${#endpoint_override_names[@]} != 0)); then
+  echo "AWS endpoint overrides are not allowed: ${endpoint_override_names[*]}" >&2
+  exit 64
+fi
+unset endpoint_override_names
+export AWS_PAGER=""
+export AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=true
+
+for command_name in aws jq curl mktemp rm sleep dirname mv bash cat; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "required command is unavailable: $command_name" >&2
     exit 69
@@ -46,15 +71,26 @@ if [[ ! -x "$script_directory/render-task-definition.sh" ]]; then
   echo "task definition renderer is unavailable or not executable" >&2
   exit 69
 fi
-image_uri="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY}:${CI_COMMIT_SHA}"
+readonly registry="${account_id}.dkr.ecr.${region}.amazonaws.com"
+readonly image_uri="${registry}/${repository}@${BACKEND_IMAGE_DIGEST}"
 smoke_attempts="${SMOKE_ATTEMPTS:-12}"
 smoke_delay_seconds="${SMOKE_DELAY_SECONDS:-5}"
+waiter_grace_attempts="${WAITER_TERM_GRACE_ATTEMPTS:-5}"
+waiter_grace_delay_seconds="${WAITER_TERM_GRACE_DELAY_SECONDS:-1}"
 if ! [[ "$smoke_attempts" =~ ^[1-9][0-9]*$ ]]; then
   echo "SMOKE_ATTEMPTS must be a positive integer" >&2
   exit 64
 fi
 if ! [[ "$smoke_delay_seconds" =~ ^[0-9]+$ ]]; then
   echo "SMOKE_DELAY_SECONDS must be a non-negative integer" >&2
+  exit 64
+fi
+if ! [[ "$waiter_grace_attempts" =~ ^[1-9][0-9]*$ ]]; then
+  echo "WAITER_TERM_GRACE_ATTEMPTS must be a positive integer" >&2
+  exit 64
+fi
+if ! [[ "$waiter_grace_delay_seconds" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+  echo "WAITER_TERM_GRACE_DELAY_SECONDS must be a non-negative number" >&2
   exit 64
 fi
 
@@ -64,37 +100,78 @@ cleanup_temporary_directory() {
     rm -rf "$temporary_directory"
   fi
 }
+umask 077
 temporary_directory="$(mktemp -d)"
 trap cleanup_temporary_directory EXIT
-umask 077
 previous_task_definition=""
 new_task_definition=""
 rollback_required=false
-forward_waiter_pid=""
+managed_waiter_pid=""
+
+terminate_managed_waiter() {
+  local waiter_pid="${managed_waiter_pid:-}"
+  local attempt
+  if [[ -z "$waiter_pid" ]]; then
+    return 0
+  fi
+  kill -TERM "$waiter_pid" 2>/dev/null || true
+  for ((attempt = 1; attempt <= waiter_grace_attempts; attempt += 1)); do
+    if ! kill -0 "$waiter_pid" 2>/dev/null; then
+      wait "$waiter_pid" 2>/dev/null || true
+      managed_waiter_pid=""
+      return 0
+    fi
+    sleep "$waiter_grace_delay_seconds"
+  done
+  kill -KILL "$waiter_pid" 2>/dev/null || true
+  wait "$waiter_pid" 2>/dev/null || true
+  managed_waiter_pid=""
+}
+
+wait_for_service_stability() {
+  local waiter_status=0
+  aws ecs wait services-stable \
+    --region "$region" \
+    --cluster "$cluster" \
+    --services "$service" &
+  managed_waiter_pid=$!
+  if wait "$managed_waiter_pid"; then
+    waiter_status=0
+  else
+    waiter_status=$?
+  fi
+  managed_waiter_pid=""
+  return "$waiter_status"
+}
+
+handle_termination() {
+  local exit_status="$1"
+  trap - INT TERM
+  terminate_managed_waiter
+  exit "$exit_status"
+}
 
 cleanup_and_rollback() {
   local exit_status=$?
   local restored_task_definition=""
   local rollback_confirmed=true
-  trap - EXIT INT TERM
+  trap - EXIT
   set +e
+  trap 'terminate_managed_waiter' INT TERM
   if ((exit_status != 0)) && [[ "$rollback_required" == true && -n "$previous_task_definition" ]]; then
     echo "deployment failed; restoring previous task definition $previous_task_definition" >&2
     if ! aws ecs update-service \
-      --region "$AWS_DEFAULT_REGION" \
-      --cluster "$ECS_CLUSTER" \
-      --service "$ECS_SERVICE" \
+      --region "$region" \
+      --cluster "$cluster" \
+      --service "$service" \
       --task-definition "$previous_task_definition" >/dev/null; then
       rollback_confirmed=false
-    elif ! aws ecs wait services-stable \
-      --region "$AWS_DEFAULT_REGION" \
-      --cluster "$ECS_CLUSTER" \
-      --services "$ECS_SERVICE"; then
+    elif ! wait_for_service_stability; then
       rollback_confirmed=false
     elif ! restored_task_definition="$(aws ecs describe-services \
-      --region "$AWS_DEFAULT_REGION" \
-      --cluster "$ECS_CLUSTER" \
-      --services "$ECS_SERVICE" \
+      --region "$region" \
+      --cluster "$cluster" \
+      --services "$service" \
       --query 'services[0].taskDefinition' \
       --output text)"; then
       rollback_confirmed=false
@@ -108,87 +185,96 @@ cleanup_and_rollback() {
   rm -rf "$temporary_directory"
   exit "$exit_status"
 }
-terminate_forward_waiter() {
-  local exit_status="$1"
-  trap - INT TERM
-  if [[ -n "$forward_waiter_pid" ]]; then
-    kill -TERM "$forward_waiter_pid" 2>/dev/null || true
-    wait "$forward_waiter_pid" 2>/dev/null || true
-    forward_waiter_pid=""
-  fi
-  exit "$exit_status"
-}
 trap cleanup_and_rollback EXIT
-trap 'terminate_forward_waiter 130' INT
-trap 'terminate_forward_waiter 143' TERM
+trap 'handle_termination 130' INT
+trap 'handle_termination 143' TERM
 
 identity_json="$(aws sts get-caller-identity --output json)"
 actual_account="$(jq -r '.Account' <<<"$identity_json")"
 caller_arn="$(jq -r '.Arn' <<<"$identity_json")"
-if [[ "$actual_account" != "248880318395" ]]; then
-  echo "unexpected AWS account: $actual_account (expected 248880318395)" >&2
+if [[ "$actual_account" != "$account_id" ]]; then
+  echo "unexpected AWS account: $actual_account (expected $account_id)" >&2
   exit 77
 fi
-
-if [[ "$caller_arn" =~ ^arn:aws:sts::([0-9]{12}):assumed-role/(.+)/[^/]+$ ]]; then
-  principal_policy_arn="arn:aws:iam::${BASH_REMATCH[1]}:role/${BASH_REMATCH[2]}"
-elif [[ "$caller_arn" == arn:aws:iam::*:role/* || "$caller_arn" == arn:aws:iam::*:user/* ]]; then
-  principal_policy_arn="$caller_arn"
-else
-  echo "unsupported AWS caller ARN for policy simulation: $caller_arn" >&2
+if ! [[ "$caller_arn" =~ ^arn:aws:sts::248880318395:assumed-role/voclabs/[^/]+$ ]]; then
+  echo "unexpected AWS caller; expected the voclabs assumed role" >&2
   exit 77
+fi
+readonly principal_policy_arn="arn:aws:iam::${account_id}:role/voclabs"
+
+if ! wait_for_service_stability; then
+  echo "ECS service did not stabilize before rollback-base inspection" >&2
+  exit 78
 fi
 
 service_json="$temporary_directory/service.json"
 aws ecs describe-services \
-  --region "$AWS_DEFAULT_REGION" \
-  --cluster "$ECS_CLUSTER" \
-  --services "$ECS_SERVICE" \
+  --region "$region" \
+  --cluster "$cluster" \
+  --services "$service" \
   --query 'services[0]' \
   --output json >"$service_json"
 
-service_status="$(jq -r '.status' "$service_json")"
-controller="$(jq -r '.deploymentController.type' "$service_json")"
+if ! jq -e '
+  .status == "ACTIVE"
+  and .deploymentController.type == "ECS"
+  and (.desiredCount | type) == "number"
+  and .desiredCount > 0
+  and .pendingCount == 0
+  and .runningCount == .desiredCount
+  and .deploymentConfiguration.minimumHealthyPercent == 100
+  and .deploymentConfiguration.maximumPercent == 200
+  and (.deployments | length) == 1
+  and .deployments[0].status == "PRIMARY"
+  and .deployments[0].rolloutState == "COMPLETED"
+  and .deployments[0].taskDefinition == .taskDefinition
+' "$service_json" >/dev/null; then
+  echo "ECS service is not a safe rollback base" >&2
+  exit 78
+fi
 previous_task_definition="$(jq -r '.taskDefinition' "$service_json")"
-
-if [[ "$service_status" != "ACTIVE" || "$controller" != "ECS" || "$previous_task_definition" == "None" ]]; then
-  echo "ECS service is not an active rolling-deployment service" >&2
+if [[ -z "$previous_task_definition" || "$previous_task_definition" == "null" || "$previous_task_definition" == "None" ]]; then
+  echo "ECS service is not a safe rollback base" >&2
   exit 78
 fi
 
-image_digest="$(aws ecr describe-images \
-  --region "$AWS_DEFAULT_REGION" \
-  --repository-name "$ECR_REPOSITORY" \
+live_image_digest="$(aws ecr describe-images \
+  --region "$region" \
+  --repository-name "$repository" \
   --image-ids "imageTag=$CI_COMMIT_SHA" \
   --query 'imageDetails[0].imageDigest' \
   --output text)"
-if [[ -z "$image_digest" || "$image_digest" == "None" ]]; then
-  echo "ECR image could not be resolved for CI_COMMIT_SHA" >&2
+if ! [[ "$live_image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+  echo "ECR image digest is missing or invalid for CI_COMMIT_SHA" >&2
+  exit 78
+fi
+if [[ "$live_image_digest" != "$BACKEND_IMAGE_DIGEST" ]]; then
+  echo "ECR digest does not match publication artifact" >&2
   exit 78
 fi
 
 live_json="$temporary_directory/live.json"
 register_json="$temporary_directory/register.json"
 aws ecs describe-task-definition \
-  --region "$AWS_DEFAULT_REGION" \
+  --region "$region" \
   --task-definition "$previous_task_definition" \
   --query taskDefinition \
   --output json >"$live_json"
 
 live_family="$(jq -r '.family' "$live_json")"
-if [[ "$live_family" != "$ECS_TASK_FAMILY" ]]; then
+if [[ "$live_family" != "$task_family" ]]; then
   echo "unexpected task definition family: $live_family" >&2
   exit 78
 fi
 
-target_group_count="$(jq --arg container "$ECS_CONTAINER_NAME" '[.loadBalancers[]? | select(.containerName == $container)] | length' "$service_json")"
+target_group_count="$(jq --arg container "$container_name" '[.loadBalancers[]? | select(.containerName == $container)] | length' "$service_json")"
 if [[ "$target_group_count" != "1" ]]; then
-  echo "expected exactly one target group for container $ECS_CONTAINER_NAME" >&2
+  echo "expected exactly one target group for container $container_name" >&2
   exit 78
 fi
-target_group_arn="$(jq -r --arg container "$ECS_CONTAINER_NAME" '.loadBalancers[] | select(.containerName == $container) | .targetGroupArn' "$service_json")"
+target_group_arn="$(jq -r --arg container "$container_name" '.loadBalancers[] | select(.containerName == $container) | .targetGroupArn' "$service_json")"
 target_group_json="$(aws elbv2 describe-target-groups \
-  --region "$AWS_DEFAULT_REGION" \
+  --region "$region" \
   --target-group-arns "$target_group_arn" \
   --query 'TargetGroups[0]' \
   --output json)"
@@ -199,19 +285,74 @@ if [[ "$resolved_target_group_arn" != "$target_group_arn" ]]; then
 fi
 
 alb_json="$(aws elbv2 describe-load-balancers \
-  --region "$AWS_DEFAULT_REGION" \
-  --names "$ALB_NAME" \
+  --region "$region" \
+  --names "$alb_name" \
   --query 'LoadBalancers[0]' \
   --output json)"
 alb_arn="$(jq -r '.LoadBalancerArn' <<<"$alb_json")"
 alb_dns="$(jq -r '.DNSName' <<<"$alb_json")"
 if [[ -z "$alb_arn" || "$alb_arn" == "null" || -z "$alb_dns" || "$alb_dns" == "null" ]]; then
-  echo "ALB could not be resolved: $ALB_NAME" >&2
+  echo "ALB could not be resolved: $alb_name" >&2
+  exit 78
+fi
+if ! jq -e '.State.Code == "active" and .Type == "application" and .Scheme == "internet-facing"' <<<"$alb_json" >/dev/null; then
+  echo "ALB must be active, application, and internet-facing" >&2
   exit 78
 fi
 target_group_alb_count="$(jq --arg alb "$alb_arn" '[.LoadBalancerArns[]? | select(. == $alb)] | length' <<<"$target_group_json")"
 if [[ "$target_group_alb_count" != "1" ]]; then
-  echo "target group is not attached to ALB $ALB_NAME" >&2
+  echo "target group is not attached to ALB $alb_name" >&2
+  exit 78
+fi
+
+listeners_json="$temporary_directory/listeners.json"
+aws elbv2 describe-listeners \
+  --region "$region" \
+  --load-balancer-arn "$alb_arn" \
+  --query Listeners \
+  --output json >"$listeners_json"
+mapfile -t http_listener_arns < <(jq -r '.[] | select(.Protocol == "HTTP") | .ListenerArn' "$listeners_json")
+if ((${#http_listener_arns[@]} == 0)); then
+  echo "ALB HTTP listener does not route /health to the service target group" >&2
+  exit 78
+fi
+health_route_found=false
+for listener_arn in "${http_listener_arns[@]}"; do
+  rules_json="$(aws elbv2 describe-rules \
+    --region "$region" \
+    --listener-arn "$listener_arn" \
+    --query Rules \
+    --output json)"
+  if jq -e --arg target "$target_group_arn" '
+    def forwards_to_target:
+      any(.Actions[]?;
+        .Type == "forward"
+        and (
+          .TargetGroupArn == $target
+          or any(.ForwardConfig.TargetGroups[]?;
+            .TargetGroupArn == $target and ((.Weight // 1) > 0)
+          )
+        )
+      );
+    def covers_health:
+      .IsDefault == true
+      or (
+        ([.Conditions[]? | select(.Field != "path-pattern")] | length) == 0
+        and any(.Conditions[]?;
+          .Field == "path-pattern"
+          and any((.Values // .PathPatternConfig.Values // [])[]?;
+            . == "/health" or . == "/health*" or . == "/*"
+          )
+        )
+      );
+    any(.[]; forwards_to_target and covers_health)
+  ' <<<"$rules_json" >/dev/null; then
+    health_route_found=true
+    break
+  fi
+done
+if [[ "$health_route_found" != true ]]; then
+  echo "ALB HTTP listener does not route /health to the service target group" >&2
   exit 78
 fi
 
@@ -221,6 +362,7 @@ for role_arn in "${pass_role_arns[@]}"; do
     --policy-source-arn "$principal_policy_arn" \
     --action-names iam:PassRole \
     --resource-arns "$role_arn" \
+    --context-entries 'ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string' \
     --query 'EvaluationResults[0].EvalDecision' \
     --output text)"
   if [[ "$decision" != "allowed" ]]; then
@@ -233,10 +375,10 @@ done
   "$live_json" \
   "$register_json" \
   "$image_uri" \
-  "$ECS_CONTAINER_NAME"
+  "$container_name"
 
 new_task_definition="$(aws ecs register-task-definition \
-  --region "$AWS_DEFAULT_REGION" \
+  --region "$region" \
   --cli-input-json "file://$register_json" \
   --query 'taskDefinition.taskDefinitionArn' \
   --output text)"
@@ -244,26 +386,24 @@ new_task_definition="$(aws ecs register-task-definition \
 rollback_required=true
 
 aws ecs update-service \
-  --region "$AWS_DEFAULT_REGION" \
-  --cluster "$ECS_CLUSTER" \
-  --service "$ECS_SERVICE" \
+  --region "$region" \
+  --cluster "$cluster" \
+  --service "$service" \
   --task-definition "$new_task_definition" \
   --deployment-configuration 'deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100' >/dev/null
 
-aws ecs wait services-stable \
-  --region "$AWS_DEFAULT_REGION" \
-  --cluster "$ECS_CLUSTER" \
-  --services "$ECS_SERVICE" &
-forward_waiter_pid=$!
-if wait "$forward_waiter_pid"; then
-  forward_waiter_pid=""
-else
-  waiter_status=$?
-  forward_waiter_pid=""
+waiter_status=0
+wait_for_service_stability || waiter_status=$?
+if ((waiter_status != 0)); then
   exit "$waiter_status"
 fi
 
-deployed_task_definition="$(aws ecs describe-services --region "$AWS_DEFAULT_REGION" --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" --query 'services[0].taskDefinition' --output text)"
+deployed_task_definition="$(aws ecs describe-services \
+  --region "$region" \
+  --cluster "$cluster" \
+  --services "$service" \
+  --query 'services[0].taskDefinition' \
+  --output text)"
 if [[ "$deployed_task_definition" != "$new_task_definition" ]]; then
   echo "ECS stabilized on $deployed_task_definition instead of $new_task_definition" >&2
   false
@@ -274,7 +414,7 @@ for ((attempt = 1; attempt <= smoke_attempts; attempt += 1)); do
     http_status="${response##*$'\n'}"
     body="${response%$'\n'*}"
     if [[ "$http_status" == "200" ]] && jq -e -s 'length == 1 and .[0] == {"status":"ok"}' >/dev/null <<<"$body"; then
-      echo "deployment healthy: $new_task_definition ($image_uri)"
+      echo "deployment healthy: $new_task_definition (commit $CI_COMMIT_SHA, image $image_uri)"
       exit 0
     fi
   fi

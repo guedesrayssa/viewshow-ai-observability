@@ -10,7 +10,9 @@ const script = path.join(repoRoot, "scripts/ci/deploy-ecs.sh");
 const oldArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/monitoracao-api-task:1";
 const newArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/monitoracao-api-task:2";
 const albArn = "arn:aws:elasticloadbalancing:us-east-1:248880318395:loadbalancer/app/data-ingestion-alb/456";
+const listenerArn = `${albArn.replace("loadbalancer", "listener")}/listener-1`;
 const commitSha = "abc123def456abc123def456abc123def456abcd";
+const imageDigest = `sha256:${"b".repeat(64)}`;
 
 function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
@@ -22,7 +24,9 @@ function runDeploy({
   failConfirmation = false,
   failUpdateAfterMutation = false,
   failRollbackUpdate = false,
+  failForwardWaiter = false,
   longRunningWaiter = false,
+  longRunningRollbackWaiter = false,
   smokeAttempts = "1",
   smokeDelaySeconds = "0",
   httpStatus = "200",
@@ -31,7 +35,8 @@ function runDeploy({
   stdoutToDevFull = false,
   envOverrides = {},
   missingCommand = null,
-  imageDigest = "sha256:testdigest",
+  liveImageDigest = imageDigest,
+  expectedImageDigest = imageDigest,
   serviceStatus = "ACTIVE",
   controllerType = "ECS",
   taskFamily = "monitoracao-api-task",
@@ -39,15 +44,26 @@ function runDeploy({
   resolveTargetGroup = true,
   resolveAlb = true,
   actualAccount = "248880318395",
+  callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
+  serviceOverrides = {},
+  albOverrides = {},
+  routeHealthToTargetGroup = true,
+  rulesOverride = null,
 } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "ecs-deploy-"));
   const bin = path.join(directory, "bin");
   const calls = path.join(directory, "calls.log");
   const task = path.join(directory, "task.json");
+  const service = path.join(directory, "service.json");
+  const alb = path.join(directory, "alb.json");
+  const listeners = path.join(directory, "listeners.json");
+  const rules = path.join(directory, "rules.json");
   const state = path.join(directory, "current-task.txt");
+  const waiterCount = path.join(directory, "waiter-count.txt");
   fs.mkdirSync(bin);
   fs.writeFileSync(calls, "");
   fs.writeFileSync(state, oldArn);
+  fs.writeFileSync(waiterCount, "0");
   const targetContainer = { name: "monitoracao-api-container", image: "old:v1" };
   const containerDefinitions = {
     correct: [targetContainer],
@@ -71,21 +87,72 @@ function runDeploy({
       containerDefinitions,
     }),
   );
+  fs.writeFileSync(
+    service,
+    JSON.stringify({
+      status: serviceStatus,
+      taskDefinition: oldArn,
+      deploymentController: { type: controllerType },
+      desiredCount: 1,
+      runningCount: 1,
+      pendingCount: 0,
+      deploymentConfiguration: { minimumHealthyPercent: 100, maximumPercent: 200 },
+      deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: oldArn }],
+      loadBalancers: [{
+        targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+        containerName: "monitoracao-api-container",
+      }],
+      ...serviceOverrides,
+    }),
+  );
+  fs.writeFileSync(
+    alb,
+    JSON.stringify(resolveAlb ? {
+      LoadBalancerArn: albArn,
+      DNSName: "alb.example.test",
+      State: { Code: "active" },
+      Type: "application",
+      Scheme: "internet-facing",
+      ...albOverrides,
+    } : { LoadBalancerArn: null, DNSName: null }),
+  );
+  fs.writeFileSync(listeners, JSON.stringify([{ ListenerArn: listenerArn, Protocol: "HTTP", Port: 80 }]));
+  fs.writeFileSync(
+    rules,
+    JSON.stringify(rulesOverride ?? (routeHealthToTargetGroup ? [{
+      RuleArn: `${listenerArn}/rule-1`,
+      IsDefault: false,
+      Conditions: [{ Field: "path-pattern", Values: ["/health"] }],
+      Actions: [{
+        Type: "forward",
+        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+      }],
+    }] : [{
+      RuleArn: `${listenerArn}/default`,
+      IsDefault: true,
+      Conditions: [],
+      Actions: [{
+        Type: "forward",
+        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999",
+      }],
+    }])),
+  );
 
   if (missingCommand !== "aws") {
     writeExecutable(
       path.join(bin, "aws"),
       `#!/usr/bin/env bash
 set -euo pipefail
+[[ "\${AWS_PAGER+x}:\${AWS_PAGER:-}" == "x:" ]] || { echo "pager-not-disabled" >&2; exit 91; }
+[[ "\${AWS_IGNORE_CONFIGURED_ENDPOINT_URLS:-}" == "true" ]] || { echo "endpoints-not-disabled" >&2; exit 92; }
 call="$*"
 printf 'aws:%s\\n' "$call" >>"$CALL_LOG"
 if [[ "$call" == "sts get-caller-identity --output json" ]]; then
-  printf '{"Account":"%s","Arn":"arn:aws:sts::%s:assumed-role/voclabs/test-session"}\\n' "$ACTUAL_ACCOUNT" "$ACTUAL_ACCOUNT"
+  printf '{"Account":"%s","Arn":"%s"}\\n' "$ACTUAL_ACCOUNT" "$CALLER_ARN"
 elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query services[0] --output json" ]]; then
-  current_task="$(cat "$STATE_FILE")"
-  printf '{"status":"%s","taskDefinition":"%s","deploymentController":{"type":"%s"},"loadBalancers":[{"targetGroupArn":"arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123","containerName":"monitoracao-api-container"}]}\\n' "$SERVICE_STATUS" "$current_task" "$CONTROLLER_TYPE"
+  cat "$SERVICE_FIXTURE"
 elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].imageDigest --output text" ]]; then
-  echo "$IMAGE_DIGEST"
+  echo "$LIVE_IMAGE_DIGEST"
 elif [[ "$call" == "ecs describe-task-definition --region us-east-1 --task-definition $OLD_ARN --query taskDefinition --output json" ]]; then
   cat "$TASK_FIXTURE"
 elif [[ "$call" == "elbv2 describe-target-groups --region us-east-1 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123 --query TargetGroups[0] --output json" ]]; then
@@ -95,13 +162,13 @@ elif [[ "$call" == "elbv2 describe-target-groups --region us-east-1 --target-gro
     echo '{"TargetGroupArn":null,"LoadBalancerArns":[]}'
   fi
 elif [[ "$call" == "elbv2 describe-load-balancers --region us-east-1 --names data-ingestion-alb --query LoadBalancers[0] --output json" ]]; then
-  if [[ "$RESOLVE_ALB" == "true" ]]; then
-    printf '{"LoadBalancerArn":"%s","DNSName":"alb.example.test"}\\n' "$ALB_ARN"
-  else
-    echo '{"LoadBalancerArn":null,"DNSName":null}'
-  fi
-elif [[ "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/TaskRole --query EvaluationResults[0].EvalDecision --output text" \
-  || "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/ExecutionRole --query EvaluationResults[0].EvalDecision --output text" ]]; then
+  cat "$ALB_FIXTURE"
+elif [[ "$call" == "elbv2 describe-listeners --region us-east-1 --load-balancer-arn $ALB_ARN --query Listeners --output json" ]]; then
+  cat "$LISTENERS_FIXTURE"
+elif [[ "$call" == "elbv2 describe-rules --region us-east-1 --listener-arn $LISTENER_ARN --query Rules --output json" ]]; then
+  cat "$RULES_FIXTURE"
+elif [[ "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/TaskRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" \
+  || "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/ExecutionRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" ]]; then
   echo "$PASS_ROLE_DECISION"
 elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query services[0].taskDefinition --output text" ]]; then
     if [[ "$FAIL_CONFIRMATION" == "true" && "$(cat "$STATE_FILE")" == "$NEW_ARN" ]]; then exit 3; fi
@@ -129,14 +196,14 @@ elif [[ "$call" == "ecs update-service --region us-east-1 --cluster data-ingesti
     printf '%s' "$task_definition" >"$STATE_FILE"
     echo '{}'
 elif [[ "$call" == "ecs wait services-stable --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service" ]]; then
-    if [[ "$LONG_RUNNING_WAITER" == "true" && "$(cat "$STATE_FILE")" == "$NEW_ARN" ]]; then
-      (
-        watchdog_deadline=$((SECONDS + 2))
-        while ((SECONDS < watchdog_deadline)); do :; done
-        kill -TERM "$$"
-      ) &
-      watchdog_pid="$!"
-      trap 'kill "$watchdog_pid" 2>/dev/null || true; exit 0' TERM
+    waiter_count=$(( $(cat "$WAITER_COUNT_FILE") + 1 ))
+    printf '%s' "$waiter_count" >"$WAITER_COUNT_FILE"
+    if [[ "$FAIL_FORWARD_WAITER" == "true" && "$waiter_count" == "2" ]]; then
+      exit 42
+    fi
+    if [[ ("$LONG_RUNNING_WAITER" == "true" && "$waiter_count" == "2") \
+      || ("$LONG_RUNNING_ROLLBACK_WAITER" == "true" && "$waiter_count" == "3") ]]; then
+      trap '' TERM
       kill -TERM "$PPID"
       while true; do sleep 0.1; done
     fi
@@ -188,7 +255,12 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       PATH: deployPath,
       CALL_LOG: calls,
       TASK_FIXTURE: task,
+      SERVICE_FIXTURE: service,
+      ALB_FIXTURE: alb,
+      LISTENERS_FIXTURE: listeners,
+      RULES_FIXTURE: rules,
       STATE_FILE: state,
+      WAITER_COUNT_FILE: waiterCount,
       OLD_ARN: oldArn,
       NEW_ARN: newArn,
       PASS_ROLE_DECISION: passRoleDecision,
@@ -196,22 +268,24 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       FAIL_CONFIRMATION: String(failConfirmation),
       FAIL_UPDATE_AFTER_MUTATION: String(failUpdateAfterMutation),
       FAIL_ROLLBACK_UPDATE: String(failRollbackUpdate),
+      FAIL_FORWARD_WAITER: String(failForwardWaiter),
       LONG_RUNNING_WAITER: String(longRunningWaiter),
+      LONG_RUNNING_ROLLBACK_WAITER: String(longRunningRollbackWaiter),
       SMOKE_ATTEMPTS: smokeAttempts,
       SMOKE_DELAY_SECONDS: smokeDelaySeconds,
       HTTP_STATUS: httpStatus,
       HEALTH_BODY: healthBody,
       ALB_ARN: albArn,
+      LISTENER_ARN: listenerArn,
       TARGET_GROUP_ALB_ARN: targetGroupAlbArn,
-      EXPECTED_IMAGE: `248880318395.dkr.ecr.us-east-1.amazonaws.com/monitoracao-api:${commitSha}`,
+      EXPECTED_IMAGE: `248880318395.dkr.ecr.us-east-1.amazonaws.com/monitoracao-api@${expectedImageDigest}`,
       EXPECTED_CONTAINER: "monitoracao-api-container",
       EXPECTED_SHA: commitSha,
-      IMAGE_DIGEST: imageDigest,
-      SERVICE_STATUS: serviceStatus,
-      CONTROLLER_TYPE: controllerType,
+      LIVE_IMAGE_DIGEST: liveImageDigest,
       RESOLVE_TARGET_GROUP: String(resolveTargetGroup),
       RESOLVE_ALB: String(resolveAlb),
       ACTUAL_ACCOUNT: actualAccount,
+      CALLER_ARN: callerArn,
       AWS_ACCOUNT_ID: "248880318395",
       AWS_DEFAULT_REGION: "us-east-1",
       ECR_REPOSITORY: "monitoracao-api",
@@ -221,6 +295,9 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       ECS_CONTAINER_NAME: "monitoracao-api-container",
       ALB_NAME: "data-ingestion-alb",
       CI_COMMIT_SHA: commitSha,
+      BACKEND_IMAGE_DIGEST: expectedImageDigest,
+      WAITER_TERM_GRACE_ATTEMPTS: "2",
+      WAITER_TERM_GRACE_DELAY_SECONDS: "0.05",
       ...envOverrides,
     },
   };
@@ -252,6 +329,10 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
   assert.equal(passRoleCalls.length, 2);
   assert.match(passRoleCalls.join("\n"), /role\/TaskRole/);
   assert.match(passRoleCalls.join("\n"), /role\/ExecutionRole/);
+  assert.match(
+    passRoleCalls.join("\n"),
+    /ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks\.amazonaws\.com,ContextKeyType=string/,
+  );
   const operations = calls
     .trim()
     .split("\n")
@@ -263,6 +344,8 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
       if (line.includes("ecs describe-task-definition")) return "task";
       if (line.includes("elbv2 describe-target-groups")) return "target-group";
       if (line.includes("elbv2 describe-load-balancers")) return "alb";
+      if (line.includes("elbv2 describe-listeners")) return "listeners";
+      if (line.includes("elbv2 describe-rules")) return "rules";
       if (line.includes("iam simulate-principal-policy")) return "pass-role";
       if (line.includes("ecs register-task-definition")) return "register";
       if (line.includes("ecs update-service")) return "update";
@@ -272,11 +355,14 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
     });
   assert.deepEqual(operations, [
     "identity",
+    "wait",
     "service",
     "image",
     "task",
     "target-group",
     "alb",
+    "listeners",
+    "rules",
     "pass-role",
     "pass-role",
     "register",
@@ -357,6 +443,14 @@ test("ambiguous update failure restores the previous task definition", () => {
   assert.match(result.stderr, /restoring previous task definition/);
 });
 
+test("forward waiter failure restores the previous task definition and preserves status", () => {
+  const { result, calls, state } = runDeploy({ failForwardWaiter: true });
+  assert.equal(result.status, 42);
+  assert.equal(state, oldArn);
+  assert.equal(calls.split("\n").filter((line) => line.includes("ecs update-service")).length, 2);
+  assert.match(result.stderr, /restoring previous task definition/);
+});
+
 test("rollback failure is reported without hiding the original failure", () => {
   const { result, calls, state } = runDeploy({ failSmoke: true, failRollbackUpdate: true });
   assert.equal(result.status, 1);
@@ -383,6 +477,137 @@ test("termination during a long stabilization wait promptly restores the previou
   assert.equal(updates.length, 2);
   assert.equal(state, oldArn);
   assert.ok(elapsedMilliseconds < 1000, `rollback took ${elapsedMilliseconds}ms`);
+});
+
+test("termination during rollback waiter is bounded and preserves the original failure", () => {
+  const startedAt = Date.now();
+  const { result, calls } = runDeploy({ failSmoke: true, longRunningRollbackWaiter: true });
+  const elapsedMilliseconds = Date.now() - startedAt;
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /rollback could not be confirmed/);
+  assert.equal(calls.split("\n").filter((line) => line.includes("ecs update-service")).length, 2);
+  assert.ok(elapsedMilliseconds < 1000, `rollback waiter termination took ${elapsedMilliseconds}ms`);
+});
+
+test("invalid expected digest fails before any AWS call", () => {
+  const { result, calls } = runDeploy({ expectedImageDigest: "sha256:not-a-digest" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /BACKEND_IMAGE_DIGEST must be sha256/);
+  assert.equal(calls, "");
+});
+
+test("live ECR digest mismatch fails before registering or updating ECS", () => {
+  const { result, calls } = runDeploy({ liveImageDigest: `sha256:${"c".repeat(64)}` });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ECR digest does not match publication artifact/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("AWS endpoint overrides fail before any AWS call", () => {
+  const { result, calls } = runDeploy({
+    envOverrides: { AWS_ENDPOINT_URL_ECS: "https://example.invalid" },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /AWS endpoint overrides are not allowed/);
+  assert.equal(calls, "");
+});
+
+test("caller must be the exact voclabs assumed role", () => {
+  const { result, calls } = runDeploy({
+    callerArn: "arn:aws:sts::248880318395:assumed-role/other-role/test-session",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unexpected AWS caller/);
+  assert.deepEqual(calls.trim().split("\n"), ["aws:sts get-caller-identity --output json"]);
+});
+
+for (const [name, serviceOverrides] of [
+  ["multiple deployments", {
+    deployments: [
+      { status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: oldArn },
+      { status: "ACTIVE", rolloutState: "COMPLETED", taskDefinition: oldArn },
+    ],
+  }],
+  ["incomplete primary deployment", {
+    deployments: [{ status: "PRIMARY", rolloutState: "IN_PROGRESS", taskDefinition: oldArn }],
+  }],
+  ["pending tasks", { pendingCount: 1 }],
+  ["running count mismatch", { runningCount: 0 }],
+  ["operator minimum percent", {
+    deploymentConfiguration: { minimumHealthyPercent: 50, maximumPercent: 200 },
+  }],
+  ["operator maximum percent", {
+    deploymentConfiguration: { minimumHealthyPercent: 100, maximumPercent: 150 },
+  }],
+]) {
+  test(`${name} is rejected as a rollback base before ECS mutation`, () => {
+    const { result, calls } = runDeploy({ serviceOverrides });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /safe rollback base/);
+    assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+  });
+}
+
+for (const [name, albOverrides] of [
+  ["non-active ALB", { State: { Code: "provisioning" } }],
+  ["non-application ALB", { Type: "network" }],
+  ["non-public ALB", { Scheme: "internal" }],
+]) {
+  test(`${name} fails before ECS mutation`, () => {
+    const { result, calls } = runDeploy({ albOverrides });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ALB must be active, application, and internet-facing/);
+    assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+  });
+}
+
+test("ALB without an HTTP health route to the service target group fails before mutation", () => {
+  const { result, calls } = runDeploy({ routeHealthToTargetGroup: false });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ALB HTTP listener does not route \/health/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("ALB health rule with an additional host condition fails before mutation", () => {
+  const { result, calls } = runDeploy({
+    rulesOverride: [{
+      RuleArn: `${listenerArn}/host-constrained`,
+      IsDefault: false,
+      Conditions: [
+        { Field: "path-pattern", Values: ["/health"] },
+        { Field: "host-header", Values: ["api.example.test"] },
+      ],
+      Actions: [{
+        Type: "forward",
+        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+      }],
+    }],
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ALB HTTP listener does not route \/health/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("ALB health rule with zero target weight fails before mutation", () => {
+  const { result, calls } = runDeploy({
+    rulesOverride: [{
+      RuleArn: `${listenerArn}/zero-weight`,
+      IsDefault: false,
+      Conditions: [{ Field: "path-pattern", Values: ["/health"] }],
+      Actions: [{
+        Type: "forward",
+        ForwardConfig: {
+          TargetGroups: [{
+            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+            Weight: 0,
+          }],
+        },
+      }],
+    }],
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ALB HTTP listener does not route \/health/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
 });
 
 test("invalid smoke configuration fails before registering or updating ECS", () => {
@@ -451,7 +676,7 @@ test("cleanup trap is installed immediately after temporary directory creation",
 });
 
 for (const [name, options] of [
-  ["missing image", { imageDigest: "None" }],
+  ["missing image", { liveImageDigest: "None" }],
   ["inactive service", { serviceStatus: "INACTIVE" }],
   ["non-ECS deployment controller", { controllerType: "CODE_DEPLOY" }],
   ["wrong live family", { taskFamily: "other-family" }],

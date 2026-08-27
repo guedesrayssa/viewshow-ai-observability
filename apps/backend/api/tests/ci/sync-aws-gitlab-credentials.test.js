@@ -15,17 +15,23 @@ function writeExecutable(file, body) {
 }
 
 function metadata(entries, ndjson = false) {
-  const records = entries.map(([key, environment_scope = "*", hidden = true]) => ({
+  const records = entries.map(([key, environment_scope = "*", hidden = true, overrides = {}]) => ({
       key,
       environment_scope,
       hidden,
+      protected: true,
+      masked: true,
+      raw: true,
+      variable_type: "env_var",
       value: "metadata-value-must-not-leak",
+      ...overrides,
     }));
   return ndjson ? records.map(JSON.stringify).join("\n") : JSON.stringify(records);
 }
 
 function runSynchronizer({
   account = "248880318395",
+  callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
   ecrResult = "monitoracao-api",
   ecsResult = "ACTIVE\t0",
   variableMetadata = "[]",
@@ -37,6 +43,10 @@ function runSynchronizer({
     path_with_namespace: "group/project",
   }),
   dryRun = false,
+  configuredEndpoint = "",
+  configuredServices = "",
+  postWriteMetadata = metadata(keys.map((key) => [key, "aws-lab"])),
+  envOverrides = {},
 } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "credential-sync-"));
   const bin = path.join(directory, "bin");
@@ -49,9 +59,15 @@ function runSynchronizer({
     path.join(bin, "aws"),
     `#!/usr/bin/env bash
 set -euo pipefail
+[[ "\${AWS_PAGER+x}:\${AWS_PAGER:-}" == "x:" ]] || { echo "pager-not-disabled" >&2; exit 91; }
+[[ "\${AWS_IGNORE_CONFIGURED_ENDPOINT_URLS:-}" == "true" ]] || { echo "endpoints-not-disabled" >&2; exit 92; }
 printf 'aws:%s\\n' "$*" >>"$CALL_LOG"
-if [[ "$*" == "--profile default sts get-caller-identity --query Account --output text" ]]; then
-  printf '%s\\n' "$FAKE_ACCOUNT"
+if [[ "$*" == "configure get endpoint_url --profile default" ]]; then
+  printf '%s\\n' "$CONFIGURED_ENDPOINT"
+elif [[ "$*" == "configure get services --profile default" ]]; then
+  printf '%s\\n' "$CONFIGURED_SERVICES"
+elif [[ "$*" == "--profile default sts get-caller-identity --output json" ]]; then
+  printf '{"Account":"%s","Arn":"%s"}\\n' "$FAKE_ACCOUNT" "$CALLER_ARN"
 elif [[ "$*" == "--profile default ecr describe-repositories --region us-east-1 --repository-names monitoracao-api --query repositories[0].repositoryName --output text" ]]; then
   printf '%s\\n' "$FAKE_ECR_RESULT"
 elif [[ "$*" == "--profile default ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query [services[0].status, length(failures)] --output text" ]]; then
@@ -84,6 +100,20 @@ set -euo pipefail
 debug_ok() {
   [[ "\${GLAB_DEBUG:-}" == false && "\${GLAB_DEBUG_HTTP:-}" == false ]]
 }
+record_write() {
+  local action="$1"
+  local key="$2"
+  local count_file="$STATE_DIR/write-count"
+  local count=0
+  [[ -f "$count_file" ]] && count="$(cat "$count_file")"
+  count=$((count + 1))
+  printf '%s' "$count" >"$count_file"
+  if [[ "$count" == "$FAIL_WRITE_ATTEMPT" ]]; then
+    printf 'glab:write-failed:%s:%s\\n' "$action" "$key" >>"$CALL_LOG"
+    return 88
+  fi
+  printf 'glab:write:%s:%s:value-ok\\n' "$action" "$key" >>"$CALL_LOG"
+}
 debug_ok || { printf 'glab:debug-not-disabled\\n' >>"$CALL_LOG"; exit 97; }
 if [[ "$1 $2" == "auth status" ]]; then
   [[ "$#" == 4 && "$3" == "--hostname" && "$4" == "git.inteli.edu.br" ]] || exit 2
@@ -97,10 +127,45 @@ if [[ "$1 $2" == "repo view" ]]; then
   exit 0
 fi
 if [[ "$1" == "api" ]]; then
-  [[ "$#" == 7 && "$2" == "--hostname" && "$3" == "git.inteli.edu.br" && "$4" == "--paginate" && "$5" == "--output" && "$6" == "ndjson" && "$7" == "projects/42/variables?per_page=100" ]] || exit 2
-  printf 'glab:api:metadata:debug-disabled\\n' >>"$CALL_LOG"
-  printf '%s\\n' "$VARIABLE_METADATA"
-  exit 0
+  if [[ "$#" == 7 && "$2" == "--hostname" && "$3" == "git.inteli.edu.br" && "$4" == "--paginate" && "$5" == "--output" && "$6" == "ndjson" && "$7" == "projects/42/variables?per_page=100" ]]; then
+    read_count_file="$STATE_DIR/metadata-read-count"
+    read_count=0
+    [[ -f "$read_count_file" ]] && read_count="$(cat "$read_count_file")"
+    read_count=$((read_count + 1))
+    printf '%s' "$read_count" >"$read_count_file"
+    printf 'glab:api:metadata:%s:debug-disabled\\n' "$read_count" >>"$CALL_LOG"
+    if [[ "$read_count" == "1" ]]; then
+      printf '%s\\n' "$VARIABLE_METADATA"
+    else
+      printf '%s\\n' "$POST_WRITE_METADATA"
+    fi
+    exit 0
+  fi
+  if [[ "$#" == 9 && "$2" == "--hostname" && "$3" == "git.inteli.edu.br" && "$4" == "--method" && "$5" == "PUT" && "$6" == "--input" && "$7" == "-" && "$8" == "--silent" ]]; then
+    endpoint="$9"
+    key="\${endpoint#projects/42/variables/}"
+    key="\${key%%\\?*}"
+    [[ "$endpoint" == "projects/42/variables/$key?filter%5Benvironment_scope%5D=%2A" ]] || exit 2
+    case "$key" in
+      AWS_ACCESS_KEY_ID) expected="$FAKE_ACCESS" ;;
+      AWS_SECRET_ACCESS_KEY) expected="$FAKE_SECRET" ;;
+      AWS_SESSION_TOKEN) expected="$FAKE_SESSION" ;;
+      *) exit 2 ;;
+    esac
+    body="$(cat)"
+    jq -e --arg expected "$expected" '
+      .value == $expected
+      and .environment_scope == "aws-lab"
+      and .protected == true
+      and .masked == true
+      and .hidden == true
+      and .raw == true
+      and .variable_type == "env_var"
+    ' <<<"$body" >/dev/null || exit 3
+    record_write migrate "$key"
+    exit $?
+  fi
+  exit 2
 fi
 if [[ "$1 $2" == "variable set" || "$1 $2" == "variable update" ]]; then
   action="$2"
@@ -115,21 +180,12 @@ if [[ "$1 $2" == "variable set" || "$1 $2" == "variable update" ]]; then
   value="$(cat)"
   [[ "$value" == "$expected" ]] || { printf 'glab:value-check-failed:%s\\n' "$key" >>"$CALL_LOG"; exit 3; }
   if [[ "$action" == set ]]; then
-    [[ "$*" == "variable set $key --repo $CANONICAL_REPOSITORY --protected --masked --hidden --raw" ]] || exit 2
+    [[ "$*" == "variable set $key --repo $CANONICAL_REPOSITORY --protected --masked --hidden --raw --scope aws-lab --type env_var" ]] || exit 2
   else
-    [[ "$*" == "variable update $key --repo $CANONICAL_REPOSITORY --protected --masked --raw" ]] || exit 2
+    [[ "$*" == "variable update $key --repo $CANONICAL_REPOSITORY --protected --masked --hidden --raw --scope aws-lab --type env_var" ]] || exit 2
   fi
-  count_file="$STATE_DIR/write-count"
-  count=0
-  [[ -f "$count_file" ]] && count="$(cat "$count_file")"
-  count=$((count + 1))
-  printf '%s' "$count" >"$count_file"
-  if [[ "$count" == "$FAIL_WRITE_ATTEMPT" ]]; then
-    printf 'glab:write-failed:%s:%s\\n' "$action" "$key" >>"$CALL_LOG"
-    exit 88
-  fi
-  printf 'glab:write:%s:%s:value-ok\\n' "$action" "$key" >>"$CALL_LOG"
-  exit 0
+  record_write "$action" "$key"
+  exit $?
 fi
 exit 2
 `,
@@ -145,9 +201,13 @@ exit 2
       STATE_DIR: state,
       CANONICAL_REPOSITORY: canonicalRepository,
       FAKE_ACCOUNT: account,
+      CALLER_ARN: callerArn,
       FAKE_ECR_RESULT: ecrResult,
       FAKE_ECS_RESULT: ecsResult,
+      CONFIGURED_ENDPOINT: configuredEndpoint,
+      CONFIGURED_SERVICES: configuredServices,
       VARIABLE_METADATA: variableMetadata,
+      POST_WRITE_METADATA: postWriteMetadata,
       REPOSITORY_VIEW: repositoryView,
       FAIL_WRITE_ATTEMPT: String(failWriteAttempt),
       FAKE_ACCESS: "fixture-access",
@@ -157,6 +217,7 @@ exit 2
       GLAB_DEBUG_HTTP: "true",
       FAKE_ORIGIN: origin,
       CANONICAL_ORIGIN: origin,
+      ...envOverrides,
     },
   });
 
@@ -178,7 +239,7 @@ test("dry-run completes every preflight without writing variables or leaking cre
   assert.match(result.stdout, /dry-run validated/);
   assert.match(calls, /glab:auth:debug-disabled/);
   assert.match(calls, /glab:repo-view:debug-disabled/);
-  assert.match(calls, /glab:api:metadata:debug-disabled/);
+  assert.match(calls, /glab:api:metadata:1:debug-disabled/);
   assert.match(calls, /aws:.*ecr describe-repositories/);
   assert.match(calls, /aws:.*ecs describe-services/);
   assert.doesNotMatch(calls, /glab:write:/);
@@ -191,12 +252,24 @@ test("missing target variables are created with their corresponding values", () 
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(writes, keys.map((key) => `glab:write:set:${key}:value-ok`));
+  assert.equal(calls.split("\n").filter((line) => line.includes("glab:api:metadata:")).length, 2);
   assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
 });
 
-test("existing hidden target variables are updated without changing hidden mode", () => {
+test("existing wildcard variables are migrated to aws-lab", () => {
   const { result, calls } = runSynchronizer({
     variableMetadata: metadata(keys.map((key) => [key])),
+  });
+  const writes = calls.split("\n").filter((line) => line.startsWith("glab:write:"));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(writes, keys.map((key) => `glab:write:migrate:${key}:value-ok`));
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("existing aws-lab variables are updated in place with full metadata flags", () => {
+  const { result, calls } = runSynchronizer({
+    variableMetadata: metadata(keys.map((key) => [key, "aws-lab"])),
   });
   const writes = calls.split("\n").filter((line) => line.startsWith("glab:write:"));
 
@@ -216,11 +289,54 @@ test("metadata from a later NDJSON page is classified as an existing variable", 
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(writes, [
-    `glab:write:update:${keys[0]}:value-ok`,
+    `glab:write:migrate:${keys[0]}:value-ok`,
     `glab:write:set:${keys[1]}:value-ok`,
     `glab:write:set:${keys[2]}:value-ok`,
   ]);
   assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("post-write metadata mismatch fails without leaking values", () => {
+  const { result, calls } = runSynchronizer({
+    postWriteMetadata: metadata([
+      [keys[0], "aws-lab"],
+      [keys[1], "aws-lab", true, { masked: false }],
+      [keys[2], "aws-lab"],
+    ]),
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /post-write GitLab variable metadata verification failed/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("AWS endpoint environment overrides fail before external calls", () => {
+  const { result, calls } = runSynchronizer({
+    envOverrides: { AWS_ENDPOINT_URL_STS: "https://example.invalid" },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /AWS endpoint overrides are not allowed/);
+  assert.equal(calls, "");
+});
+
+for (const [name, options] of [
+  ["profile endpoint", { configuredEndpoint: "https://example.invalid" }],
+  ["profile services section", { configuredServices: "local-services" }],
+]) {
+  test(`${name} is rejected before GitLab or credential access`, () => {
+    const { result, calls } = runSynchronizer(options);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /configured AWS endpoints are not allowed/);
+    assert.doesNotMatch(calls, /glab:|export-credentials/);
+  });
+}
+
+test("AWS caller must be the exact voclabs assumed role", () => {
+  const { result, calls } = runSynchronizer({
+    callerArn: "arn:aws:sts::248880318395:assumed-role/other-role/session",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unexpected AWS caller/);
+  assert.doesNotMatch(calls, /export-credentials|glab:write:/);
 });
 
 test("preflight rejects existing non-hidden variables before credential export or mutation", () => {
@@ -270,7 +386,7 @@ test("mismatched repository-view metadata is rejected before AWS credential expo
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /GitLab repository URL does not match/);
-  assert.doesNotMatch(calls, /aws:|export-credentials|glab:write:/);
+  assert.doesNotMatch(calls, /sts get-caller|ecr describe|ecs describe|export-credentials|glab:write:/);
   assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
 });
 
@@ -325,3 +441,9 @@ for (const [failedAttempt, completedKeys, failedKey] of [
     assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
   });
 }
+
+test("wildcard migration never places a credential in a process argument", () => {
+  const source = fs.readFileSync(script, "utf8");
+  assert.doesNotMatch(source, /--arg\s+value\s+"\$value"/);
+  assert.match(source, /printf '%s' "\$value" \| jq -Rsc/);
+});

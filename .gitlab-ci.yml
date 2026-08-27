@@ -5,11 +5,16 @@ stages:
 
 workflow:
   auto_cancel:
-    on_new_commit: interruptible
+    on_new_commit: conservative
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: &backend_changes
-        - apps/backend/api/**/*
+        - apps/backend/api/src/**/*
+        - apps/backend/api/tests/**/*
+        - apps/backend/api/package.json
+        - apps/backend/api/package-lock.json
+        - apps/backend/api/Dockerfile
+        - apps/backend/api/.dockerignore
         - scripts/ci/**/*
         - scripts/sync-aws-gitlab-credentials.sh
         - .gitlab-ci.yml
@@ -58,79 +63,62 @@ validate_backend:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
       changes: *backend_changes
 
-build_backend_image:
+validate_backend_container:
   stage: container
   image: docker:27.4.1-cli
+  tags:
+    - backend-docker-ephemeral
   services:
     - name: docker:27.4.1-dind
       alias: docker
   needs:
     - validate_backend
   before_script:
-    - apk add --no-cache aws-cli bash curl jq
+    - apk add --no-cache bash jq
     - docker version
-    - aws --version
     - docker buildx create --name ci-builder --driver docker-container --use
     - docker buildx inspect --bootstrap
   script:
     - |
       set -eu
       set -o pipefail
-
-      registry="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
-      image_uri="${registry}/${ECR_REPOSITORY}:${CI_COMMIT_SHA}"
-      cache_uri="${registry}/${ECR_REPOSITORY}:buildcache"
-
-      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
-        docker buildx build \
-          --platform linux/amd64 \
-          --load \
-          --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
-          --tag "$image_uri" \
-          apps/backend/api
-      else
-        actual_account="$(aws sts get-caller-identity --query Account --output text)"
-        test "$actual_account" = "$AWS_ACCOUNT_ID"
-        aws ecr get-login-password --region "$AWS_DEFAULT_REGION" \
-          | docker login --username AWS --password-stdin "$registry"
-
-        describe_error="$(mktemp)"
-        if aws ecr describe-images \
-          --region "$AWS_DEFAULT_REGION" \
-          --repository-name "$ECR_REPOSITORY" \
-          --image-ids "imageTag=$CI_COMMIT_SHA" >/dev/null 2>"$describe_error"; then
-          rm -f "$describe_error"
-          docker pull "$image_uri"
-          image_revision="$(docker image inspect "$image_uri" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
-          if [ "$image_revision" != "$CI_COMMIT_SHA" ]; then
-            echo "existing ECR tag has unexpected source revision: $image_revision" >&2
-            exit 1
-          fi
-        else
-          describe_status=$?
-          if grep -Fq 'ImageNotFoundException' "$describe_error"; then
-            rm -f "$describe_error"
-            docker buildx build \
-              --platform linux/amd64 \
-              --load \
-              --cache-from "type=registry,ref=$cache_uri" \
-              --cache-to "type=registry,ref=$cache_uri,mode=max,image-manifest=true,oci-mediatypes=true" \
-              --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
-              --tag "$image_uri" \
-              apps/backend/api
-            docker push "$image_uri"
-          else
-            cat "$describe_error" >&2 || :
-            rm -f "$describe_error"
-            exit "$describe_status"
-          fi
-        fi
-      fi
-
+      image_uri="monitoracao-api-ci:${CI_COMMIT_SHA}"
+      docker buildx build \
+        --platform linux/amd64 \
+        --load \
+        --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+        --tag "$image_uri" \
+        apps/backend/api
       bash scripts/ci/smoke-container.sh "$image_uri"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *backend_changes
+
+publish_backend_image:
+  stage: container
+  image: docker:27.4.1-cli
+  tags:
+    - backend-docker-ephemeral
+  services:
+    - name: docker:27.4.1-dind
+      alias: docker
+  needs:
+    - validate_backend
+  before_script:
+    - apk add --no-cache aws-cli bash jq
+    - docker version
+    - aws --version
+    - docker buildx create --name ci-builder --driver docker-container --use
+    - docker buildx inspect --bootstrap
+  script:
+    - bash scripts/ci/publish-backend-image.sh
+    - bash scripts/ci/smoke-container.sh "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY}:${CI_COMMIT_SHA}"
+  artifacts:
+    reports:
+      dotenv: backend-image.env
+  environment:
+    name: aws-lab
+  rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
       changes: *backend_changes
 
@@ -140,7 +128,8 @@ deploy_backend_ecs:
   interruptible: false
   resource_group: monitoracao-api-service
   needs:
-    - build_backend_image
+    - job: publish_backend_image
+      artifacts: true
   before_script:
     - apk add --no-cache aws-cli bash curl jq
     - aws --version

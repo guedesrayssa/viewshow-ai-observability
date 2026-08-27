@@ -42,6 +42,24 @@ for command_name in aws jq glab git awk; do
   fi
 done
 
+endpoint_override_names=()
+while IFS= read -r variable_name; do
+  endpoint_override_names+=("$variable_name")
+done < <(compgen -A variable AWS_ENDPOINT_URL || true)
+if ((${#endpoint_override_names[@]} != 0)); then
+  fail "AWS endpoint overrides are not allowed: ${endpoint_override_names[*]}" 64
+fi
+unset endpoint_override_names variable_name
+export AWS_PAGER=""
+export AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=true
+
+configured_endpoint="$(aws configure get endpoint_url --profile "$profile" 2>/dev/null || true)"
+configured_services="$(aws configure get services --profile "$profile" 2>/dev/null || true)"
+if [[ -n "$configured_endpoint" || -n "$configured_services" ]]; then
+  fail "configured AWS endpoints are not allowed for the synchronization profile" 64
+fi
+unset configured_endpoint configured_services
+
 origin_url="$(git remote get-url origin)"
 if [[ "$origin_url" != "https://$gitlab_host/"* || "$origin_url" == *"@"* || "$origin_url" == *"?"* || "$origin_url" == *"#"* ]]; then
   fail "unsafe Git origin URL; use a credential-free HTTPS origin for $gitlab_host"
@@ -62,12 +80,15 @@ if [[ -z "$repository_path" || "$repository_path" == /* || "$repository_path" ==
   fail "invalid GitLab repository path"
 fi
 repository_url="https://$gitlab_host/$repository_path"
-if [[ "$repository_web_url" != "$repository_url" || "$repository_web_url" != "$origin_canonical_url" ]]; then
+if [[ "$repository_web_url" != "$repository_url" ]]; then
+  fail "GitLab repository URL does not match the required host"
+fi
+if [[ "$repository_web_url" != "$origin_canonical_url" ]]; then
   fail "GitLab repository URL does not match the required host"
 fi
 unset repository_web_url repository_path origin_canonical_url
 
-variable_metadata="$(
+read_target_variable_metadata() {
   glab_safe api --hostname "$gitlab_host" --paginate --output ndjson "projects/$project_id/variables?per_page=100" |
     jq -rsc '
       [
@@ -76,13 +97,30 @@ variable_metadata="$(
       ]
       | .[]
         | select(.key == "AWS_ACCESS_KEY_ID" or .key == "AWS_SECRET_ACCESS_KEY" or .key == "AWS_SESSION_TOKEN")
-        | if ((.environment_scope | type) != "string" or (.hidden | type) != "boolean") then
+        | if (
+            (.environment_scope | type) != "string"
+            or (.hidden | type) != "boolean"
+            or (.protected | type) != "boolean"
+            or (.masked | type) != "boolean"
+            or (.raw | type) != "boolean"
+            or (.variable_type | type) != "string"
+          ) then
             error("GitLab variable metadata is incomplete")
           else
-            [.key, .environment_scope, (.hidden | tostring)] | @tsv
+            [
+              .key,
+              .environment_scope,
+              (.hidden | tostring),
+              (.protected | tostring),
+              (.masked | tostring),
+              (.raw | tostring),
+              .variable_type
+            ] | @tsv
           end
     '
-)"
+}
+
+variable_metadata="$(read_target_variable_metadata)"
 
 declare -A variable_modes
 for key in "${target_keys[@]}"; do
@@ -95,22 +133,31 @@ for key in "${target_keys[@]}"; do
     fail "ambiguous GitLab variable metadata for $key"
   fi
 
-  IFS=$'\t' read -r metadata_key metadata_scope metadata_hidden <<<"${matching_metadata[0]}"
-  if [[ "$metadata_key" != "$key" || "$metadata_scope" != "*" ]]; then
+  IFS=$'\t' read -r metadata_key metadata_scope metadata_hidden _ <<<"${matching_metadata[0]}"
+  if [[ "$metadata_key" != "$key" || ("$metadata_scope" != "*" && "$metadata_scope" != "aws-lab") ]]; then
     fail "ambiguous GitLab variable metadata for $key"
   fi
   if [[ "$metadata_hidden" != "true" ]]; then
     fail "$key must already be hidden before it can be updated"
   fi
-  variable_modes["$key"]="update"
+  if [[ "$metadata_scope" == "*" ]]; then
+    variable_modes["$key"]="migrate"
+  else
+    variable_modes["$key"]="update"
+  fi
 done
 unset variable_metadata matching_metadata metadata_key metadata_scope metadata_hidden
 
-account="$(aws --profile "$profile" sts get-caller-identity --query Account --output text)"
+identity_json="$(aws --profile "$profile" sts get-caller-identity --output json)"
+account="$(jq -r '.Account' <<<"$identity_json")"
+caller_arn="$(jq -r '.Arn' <<<"$identity_json")"
 if [[ "$account" != "$expected_account" ]]; then
   fail "unexpected AWS account: $account (expected $expected_account)" 77
 fi
-unset account
+if ! [[ "$caller_arn" =~ ^arn:aws:sts::248880318395:assumed-role/voclabs/[^/]+$ ]]; then
+  fail "unexpected AWS caller; expected the voclabs assumed role" 77
+fi
+unset identity_json account caller_arn
 
 ecr_repository="$(aws --profile "$profile" ecr describe-repositories \
   --region "$region" \
@@ -149,20 +196,47 @@ set_variable() {
   local key="$1"
   local value="$2"
 
-  if [[ "${variable_modes[$key]}" == "set" ]]; then
-    printf '%s' "$value" | glab_safe variable set "$key" \
-      --repo "$repository_url" \
-      --protected \
-      --masked \
-      --hidden \
-      --raw
-  else
-    printf '%s' "$value" | glab_safe variable update "$key" \
-      --repo "$repository_url" \
-      --protected \
-      --masked \
-      --raw
-  fi
+  case "${variable_modes[$key]}" in
+    set)
+      printf '%s' "$value" | glab_safe variable set "$key" \
+        --repo "$repository_url" \
+        --protected \
+        --masked \
+        --hidden \
+        --raw \
+        --scope aws-lab \
+        --type env_var
+      ;;
+    update)
+      printf '%s' "$value" | glab_safe variable update "$key" \
+        --repo "$repository_url" \
+        --protected \
+        --masked \
+        --hidden \
+        --raw \
+        --scope aws-lab \
+        --type env_var
+      ;;
+    migrate)
+      printf '%s' "$value" | jq -Rsc '
+        {
+          value: .,
+          environment_scope: "aws-lab",
+          protected: true,
+          masked: true,
+          hidden: true,
+          raw: true,
+          variable_type: "env_var"
+        }
+      ' |
+        glab_safe api \
+          --hostname "$gitlab_host" \
+          --method PUT \
+          --input - \
+          --silent \
+          "projects/$project_id/variables/$key?filter%5Benvironment_scope%5D=%2A"
+      ;;
+  esac
 }
 
 completed_keys=()
@@ -187,4 +261,32 @@ for key in "${target_keys[@]}"; do
 done
 unset value completed_list completed_keys
 
-echo "updated protected AWS variables"
+post_write_metadata="$(read_target_variable_metadata)"
+metadata_verified=true
+for key in "${target_keys[@]}"; do
+  mapfile -t matching_metadata < <(awk -F '\t' -v key="$key" '$1 == key { print }' <<<"$post_write_metadata")
+  if [[ "${#matching_metadata[@]}" -ne 1 ]]; then
+    metadata_verified=false
+    continue
+  fi
+  IFS=$'\t' read -r \
+    metadata_key metadata_scope metadata_hidden metadata_protected metadata_masked metadata_raw metadata_type \
+    <<<"${matching_metadata[0]}"
+  if [[ "$metadata_key" != "$key" \
+    || "$metadata_scope" != "aws-lab" \
+    || "$metadata_hidden" != "true" \
+    || "$metadata_protected" != "true" \
+    || "$metadata_masked" != "true" \
+    || "$metadata_raw" != "true" \
+    || "$metadata_type" != "env_var" ]]; then
+    metadata_verified=false
+  fi
+done
+unset post_write_metadata matching_metadata metadata_key metadata_scope metadata_hidden
+unset metadata_protected metadata_masked metadata_raw metadata_type
+if [[ "$metadata_verified" != true ]]; then
+  fail "post-write GitLab variable metadata verification failed; resolve the mismatch before using deployment jobs"
+fi
+unset metadata_verified
+
+echo "updated protected AWS variables scoped to aws-lab"

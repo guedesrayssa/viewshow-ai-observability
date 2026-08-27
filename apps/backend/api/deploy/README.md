@@ -1,50 +1,135 @@
 # Backend ECS CI/CD runbook
 
-## Resources
+## Resources and trust boundary
 
-- Region: `us-east-1`
+- Region/account: `us-east-1` / `248880318395`
 - ECR: `monitoracao-api`
 - ECS cluster/service: `data-ingestion-cluster` / `monitoracao-api-service`
 - Task/container: `monitoracao-api-task` / `monitoracao-api-container`
-- ALB: `data-ingestion-alb`
+- ALB/health route: `data-ingestion-alb` / `/health`
+- Protected GitLab environment: `aws-lab`
+- Docker runner tag: `backend-docker-ephemeral`
 
-## One-time GitLab setup
+The tagged runner must be ephemeral and restricted to this trusted project. It
+must run privileged Docker-in-Docker and share `/certs/client` between the job
+and DinD service so Docker 27 uses mutual TLS. Do not attach the tag to a shared
+or untrusted runner. Merge-request jobs have no `aws-lab` environment and must
+never receive AWS credentials.
 
-1. Protect the `develop` branch.
-2. Ensure a project runner supports privileged Docker-in-Docker.
-3. Authenticate the GitLab CLI:
-   `glab auth login --hostname git.inteli.edu.br`.
-4. Never commit a GitLab token, AWS access key, secret key, or session token.
+Protect `develop` and configure the three AWS variables as protected, masked,
+hidden, raw `env_var` values scoped exactly to `aws-lab`. Never commit a GitLab
+token, AWS access key, secret key, or session token.
+
+The `voclabs` role must allow the deployment reads and mutations described by
+the pipeline. It must also allow `iam:SimulatePrincipalPolicy`; deploy preflight
+simulates `iam:PassRole` with
+`iam:PassedToService=ecs-tasks.amazonaws.com` for every live task/execution role.
 
 ## After every AWS Academy lab renewal
 
 1. Copy the renewed lab credentials into AWS CLI profile `default`.
-2. Verify `aws sts get-caller-identity` returns account `248880318395`.
-3. Run `scripts/sync-aws-gitlab-credentials.sh --dry-run`.
-4. Run `scripts/sync-aws-gitlab-credentials.sh`.
+2. Ensure the profile has no configured endpoint URL or custom `services`
+   section and no `AWS_ENDPOINT_URL*` environment variables are set.
+3. Verify `aws sts get-caller-identity` returns account `248880318395` and an
+   assumed-role ARN matching `assumed-role/voclabs/<session>`.
+4. Authenticate once with
+   `glab auth login --hostname git.inteli.edu.br` using variable-management
+   access.
+5. Run `scripts/sync-aws-gitlab-credentials.sh --dry-run`.
+6. After checking the dry-run, run
+   `scripts/sync-aws-gitlab-credentials.sh` from a trusted local checkout.
 
-The script updates only `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
-`AWS_SESSION_TOKEN` as protected GitLab variables. When these credentials expire,
-CI validation can still run, but ECR publication stops before any ECS change.
+The synchronizer is the safe migration procedure for older variables scoped
+`*`: it selects that exact old scope, moves it to `aws-lab`, writes the renewed
+value over standard input, then re-reads metadata without printing values. It
+requires exactly one absent, `*`, or `aws-lab` entry per key and rejects
+ambiguous entries. After all writes it verifies all three keys are protected,
+masked, hidden, raw, type `env_var`, and scoped `aws-lab`.
+
+Only an authorized operator should run the non-dry command. Never run it from CI
+or from this implementation/review workflow. A partial-update error names the
+completed keys without revealing values; resolve the failure and rerun the
+whole synchronizer.
 
 ## Normal deployment
 
-A backend or backend-CI change pushed to protected `develop` runs tests, builds
-the image, publishes `monitoracao-api:$CI_COMMIT_SHA`, registers a new task
-definition, updates the service, waits for stability, and checks the public
-`/health` route. Frontend-only and documentation-only changes do not deploy this
-backend.
+A covered change pushed to protected `develop` runs tests, publishes only
+`monitoracao-api:$CI_COMMIT_SHA`, resolves its `sha256:<64 hex>` digest into a
+non-secret dotenv artifact, and passes that artifact to deploy. Deploy compares
+the tag's live digest with the artifact and renders
+`repository@sha256:<digest>` into the task definition. ECS never receives a
+mutable tag reference.
+
+Before snapshot or mutation, deploy waits for the existing service to stabilize
+and requires one PRIMARY/COMPLETED deployment, no pending tasks, running equal
+to desired, the 100/200 rolling configuration, the expected target group, and
+an active public application ALB whose HTTP rules route `/health` to that target
+group. It then registers a preserved live task definition, updates the service,
+waits with bounded signal handling, and verifies the public health contract.
+
+Merge requests run only tests and a local amd64 container build/smoke. Runtime
+source, package manifests, Docker inputs, backend tests, CI helpers, the
+credential synchronizer, and `.gitlab-ci.yml` select backend CI. Runbook,
+deployment snapshot, and other documentation-only changes do not publish or
+deploy an image.
 
 ## Failure recovery
 
-The deploy job records the previous task definition. If ECS stabilization or the
-ALB smoke test fails, it restores that revision and leaves the pipeline failed.
-Check the failed job, ECS service events, target health, and `/ecs/monitoracao-api`
-logs before retrying. Do not force a new deployment with `v1` or `latest`.
+### Credentials expire after variables were updated
+
+If the lab expires after synchronization, do not reuse or manually copy the old
+values. Start the lab, refresh profile `default`, rerun dry-run and the complete
+synchronizer, then retry only the failed/newest pipeline. If expiration happened
+after `update-service`, first inspect the service and follow the unconfirmed
+rollback procedure below.
+
+### Rollback cannot be confirmed
+
+The job retains its original failure and reports that rollback was not
+confirmed. Do not start another deployment. With renewed credentials, wait for
+the resource group job to finish and inspect `describe-services`, its
+deployments/events, desired/running/pending counts, the attached task definition,
+target health, and `/ecs/monitoracao-api` logs. Explicitly restore the recorded
+old task definition only after confirming it is the intended stable revision;
+wait for stability and verify `/health` before retrying CI.
+
+### Stale or resource-group jobs
+
+`conservative` auto-cancel removes obsolete pipelines while only interruptible
+pre-deploy work is active. A running deploy is non-interruptible and protected
+by resource group `monitoracao-api-service`; let it finish or roll back. Cancel
+queued stale deploy jobs only after confirming no deploy is running, then retain
+the newest eligible pipeline. Never bypass the resource group with a manual
+`update-service` merely to unblock the queue.
+
+### Digest mismatch
+
+A mismatch means the publication artifact and live SHA tag do not identify the
+same manifest. Do not retag, overwrite the commit tag, edit the dotenv artifact,
+or deploy by tag. Compare ECR `describe-images` output with the publish job,
+confirm the full commit SHA and account/region/repository bindings, then rebuild
+from the intended commit through a fresh pipeline. Escalate unexplained tag
+replacement as a supply-chain incident.
+
+### Build cache failure
+
+The mutable `buildcache` reference is never a deployment identity. First retry
+to rule out a transient registry error. If the cache manifest is confirmed
+corrupt, an authorized operator may delete only the `buildcache` ECR image (not
+any full-SHA image), then retry so Buildx performs a clean amd64 build and
+recreates cache metadata. Verify the resulting container smoke and digest before
+deploying.
+
+### Termination during a waiter
+
+INT/TERM sends TERM to the managed AWS waiter, waits a short bounded grace,
+then KILLs and reaps it if necessary. A forward interruption reaches rollback;
+a rollback interruption reports unconfirmed rollback. The pipeline's original
+exit status is retained in both cases.
 
 ## Future OIDC migration
 
 If an administrator creates the GitLab OIDC provider and a least-privilege AWS
 role, replace the three stored AWS variables with a GitLab ID token and
-`sts:AssumeRoleWithWebIdentity`. Build, push, deploy, health, and rollback steps
-remain unchanged.
+`sts:AssumeRoleWithWebIdentity`. Build, digest publication, deploy, health, and
+rollback contracts remain unchanged.
