@@ -59,8 +59,16 @@ export type BarChartProps = {
 
 const MARGIN = { left: 44, right: 12, top: 16, bottom: 26 };
 
-/** Largura máxima da barra. Acima disso, o bloco vira um retângulo sem forma. */
-const MAX_BAR_WIDTH = 34;
+/**
+ * Largura máxima da barra e fatia da faixa que ela ocupa.
+ *
+ * Com poucas faixas — seis ou oito horários —, uma barra estreita em uma faixa
+ * larga vira um risco vertical: sobra vão entre as barras e falta massa para
+ * comparar alturas, que é a leitura que o gráfico existe para dar. A barra
+ * ocupa dois terços da faixa, e o terço restante mantém a separação clara.
+ */
+const MAX_BAR_WIDTH = 56;
+const BAR_FILL = 0.66;
 
 /** Passo da cascata entre barras vizinhas, em milissegundos. */
 const BAR_STEP = 55;
@@ -87,7 +95,7 @@ export function BarChart({
   const step = labelStep(bars.length, plot.width, 44);
 
   const slot = bars.length > 0 ? plot.width / bars.length : 0;
-  const barWidth = Math.min(MAX_BAR_WIDTH, Math.max(6, slot * 0.55));
+  const barWidth = Math.min(MAX_BAR_WIDTH, Math.max(6, slot * BAR_FILL));
 
   const centerOf = (index: number) => plot.left + slot * (index + 0.5);
   const heightOf = (value: number) =>
