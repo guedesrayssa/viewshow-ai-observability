@@ -74,6 +74,9 @@ build_backend_image:
     - docker buildx inspect --bootstrap
   script:
     - |
+      set -eu
+      set -o pipefail
+
       registry="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
       image_uri="${registry}/${ECR_REPOSITORY}:${CI_COMMIT_SHA}"
       cache_uri="${registry}/${ECR_REPOSITORY}:buildcache"
@@ -91,10 +94,12 @@ build_backend_image:
         aws ecr get-login-password --region "$AWS_DEFAULT_REGION" \
           | docker login --username AWS --password-stdin "$registry"
 
+        describe_error="$(mktemp)"
         if aws ecr describe-images \
           --region "$AWS_DEFAULT_REGION" \
           --repository-name "$ECR_REPOSITORY" \
-          --image-ids "imageTag=$CI_COMMIT_SHA" >/dev/null 2>&1; then
+          --image-ids "imageTag=$CI_COMMIT_SHA" >/dev/null 2>"$describe_error"; then
+          rm -f "$describe_error"
           docker pull "$image_uri"
           image_revision="$(docker image inspect "$image_uri" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
           if [ "$image_revision" != "$CI_COMMIT_SHA" ]; then
@@ -102,15 +107,23 @@ build_backend_image:
             exit 1
           fi
         else
-          docker buildx build \
-            --platform linux/amd64 \
-            --load \
-            --cache-from "type=registry,ref=$cache_uri" \
-            --cache-to "type=registry,ref=$cache_uri,mode=max,image-manifest=true,oci-mediatypes=true" \
-            --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
-            --tag "$image_uri" \
-            apps/backend/api
-          docker push "$image_uri"
+          describe_status=$?
+          if grep -Fq 'ImageNotFoundException' "$describe_error"; then
+            rm -f "$describe_error"
+            docker buildx build \
+              --platform linux/amd64 \
+              --load \
+              --cache-from "type=registry,ref=$cache_uri" \
+              --cache-to "type=registry,ref=$cache_uri,mode=max,image-manifest=true,oci-mediatypes=true" \
+              --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+              --tag "$image_uri" \
+              apps/backend/api
+            docker push "$image_uri"
+          else
+            cat "$describe_error" >&2 || :
+            rm -f "$describe_error"
+            exit "$describe_status"
+          fi
         fi
       fi
 
