@@ -9,14 +9,18 @@ const repoRoot = path.resolve(__dirname, "../../../../..");
 const script = path.join(repoRoot, "scripts/ci/publish-backend-image.sh");
 const commitSha = "abc123def456abc123def456abc123def456abcd";
 const digest = `sha256:${"a".repeat(64)}`;
+const localImageId = `sha256:${"c".repeat(64)}`;
+const imageIdentity = `${localImageId} ["sha256:${"d".repeat(64)}"]`;
 
 function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
 }
 
 function runPublisher({
+  describeResults = [null, null, digest],
   pushDigest = digest,
-  ecrDigest = digest,
+  localIdentity = imageIdentity,
+  remoteIdentity = imageIdentity,
   actualAccount = "248880318395",
   callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
   imageRevision = commitSha,
@@ -27,9 +31,11 @@ function runPublisher({
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "image-publish-"));
   const bin = path.join(directory, "bin");
   const calls = path.join(directory, "calls.log");
+  const describeCount = path.join(directory, "describe-count");
   const dotenv = path.join(directory, "backend-image.env");
   fs.mkdirSync(bin);
   fs.writeFileSync(calls, "");
+  fs.writeFileSync(describeCount, "0");
 
   writeExecutable(
     path.join(bin, "git"),
@@ -57,7 +63,20 @@ if [[ "$*" == "sts get-caller-identity --output json" ]]; then
 elif [[ "$*" == "ecr get-login-password --region us-east-1" ]]; then
   printf 'fixture-password'
 elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].imageDigest --output text" ]]; then
-  printf '%s\n' "$ECR_DIGEST"
+  count="$(<"$DESCRIBE_COUNT_FILE")"
+  count=$((count + 1))
+  printf '%s' "$count" >"$DESCRIBE_COUNT_FILE"
+  if ((count > DESCRIBE_RESULT_COUNT)); then
+    echo "unexpected ECR describe-images call $count" >&2
+    exit 2
+  fi
+  result_name="DESCRIBE_RESULT_$count"
+  result="\${!result_name}"
+  if [[ "$result" == "__ABSENT__" ]]; then
+    echo "An error occurred (ImageNotFoundException) when calling the DescribeImages operation" >&2
+    exit 254
+  fi
+  printf '%s\n' "$result"
 else
   echo "unexpected aws call: $*" >&2
   exit 2
@@ -72,17 +91,32 @@ set -euo pipefail
 printf 'docker:%s\n' "$*" >>"$CALL_LOG"
 registry="248880318395.dkr.ecr.us-east-1.amazonaws.com"
 tagged_image="$registry/monitoracao-api:$EXPECTED_SHA"
-digest_image="$registry/monitoracao-api@$PUSH_DIGEST"
 cache="$registry/monitoracao-api:buildcache"
+identity_format='{{.Id}} {{json .RootFS.Layers}}'
+revision_format='{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 if [[ "$*" == "login --username AWS --password-stdin $registry" ]]; then
   [[ "$(cat)" == "fixture-password" ]] || exit 3
-elif [[ "$*" == "buildx build --platform linux/amd64 --load --cache-from type=registry,ref=$cache --cache-to type=registry,ref=$cache,mode=max,image-manifest=true,oci-mediatypes=true --label org.opencontainers.image.revision=$EXPECTED_SHA --tag $tagged_image apps/backend/api" ]]; then
-  :
+elif [[ "$1" == "buildx" && "$2" == "build" ]]; then
+  args=("$@")
+  iid_file=""
+  for ((index = 0; index < \${#args[@]}; index += 1)); do
+    if [[ "\${args[$index]}" == "--iidfile" ]]; then
+      iid_file="\${args[$((index + 1))]}"
+      args[$((index + 1))]="IIDFILE"
+    fi
+  done
+  expected="buildx build --platform linux/amd64 --load --iidfile IIDFILE --cache-from type=registry,ref=$cache --cache-to type=registry,ref=$cache,mode=max,image-manifest=true,oci-mediatypes=true --label org.opencontainers.image.revision=$EXPECTED_SHA --tag $tagged_image apps/backend/api"
+  [[ "\${args[*]}" == "$expected" && -n "$iid_file" ]] || { echo "unexpected docker build: $*" >&2; exit 2; }
+  printf '%s\n' "$LOCAL_IMAGE_ID" >"$iid_file"
 elif [[ "$*" == "push $tagged_image" ]]; then
   printf 'layer: pushed\n%s: digest: %s size: 1234\n' "$EXPECTED_SHA" "$PUSH_DIGEST"
-elif [[ "$*" == "pull $digest_image" ]]; then
+elif [[ "$1" == "pull" && "$2" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ ]]; then
   :
-elif [[ "$*" == "image inspect $digest_image --format {{ index .Config.Labels \\"org.opencontainers.image.revision\\" }}" ]]; then
+elif [[ "$1" == "image" && "$2" == "inspect" && "$3" == "$LOCAL_IMAGE_ID" && "$4" == "--format" && "$5" == "$identity_format" ]]; then
+  printf '%s\n' "$LOCAL_IDENTITY"
+elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$identity_format" ]]; then
+  printf '%s\n' "$REMOTE_IDENTITY"
+elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$revision_format" ]]; then
   printf '%s\n' "$IMAGE_REVISION"
 else
   echo "unexpected docker call: $*" >&2
@@ -91,6 +125,9 @@ fi
 `,
   );
 
+  const describeEnvironment = Object.fromEntries(
+    describeResults.map((value, index) => [`DESCRIBE_RESULT_${index + 1}`, value ?? "__ABSENT__"]),
+  );
   const result = spawnSync(script, [], {
     cwd: repoRoot,
     encoding: "utf8",
@@ -98,10 +135,15 @@ fi
       ...process.env,
       PATH: `${bin}:${process.env.PATH}`,
       CALL_LOG: calls,
+      DESCRIBE_COUNT_FILE: describeCount,
+      DESCRIBE_RESULT_COUNT: String(describeResults.length),
+      ...describeEnvironment,
       ACTUAL_ACCOUNT: actualAccount,
       CALLER_ARN: callerArn,
       PUSH_DIGEST: pushDigest,
-      ECR_DIGEST: ecrDigest,
+      LOCAL_IMAGE_ID: localImageId,
+      LOCAL_IDENTITY: localIdentity,
+      REMOTE_IDENTITY: remoteIdentity,
       IMAGE_REVISION: imageRevision,
       REPOSITORY_HEAD: repositoryHead,
       EXPECTED_SHA: commitSha,
@@ -123,32 +165,74 @@ fi
   return execution;
 }
 
-test("publisher builds and pushes this checkout then inspects only its digest", () => {
+test("absent SHA tag builds, checks again, pushes once, and validates only the digest", () => {
   const { result, calls, dotenv } = runPublisher();
   assert.equal(result.status, 0, result.stderr);
   assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
   assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:buildx build")).length, 1);
   assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:push")).length, 1);
+  assert.equal(calls.split("\n").filter((line) => line.includes("ecr describe-images")).length, 3);
   assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
   assert.match(calls, new RegExp(`docker:image inspect .*monitoracao-api@${digest}`));
-  assert.doesNotMatch(calls, /docker:(pull|image inspect) .*monitoracao-api:/);
-  assert.ok(calls.indexOf("docker:push") < calls.indexOf("ecr describe-images"));
+  assert.doesNotMatch(calls, new RegExp(`docker:(pull|image inspect) .*monitoracao-api:${commitSha}`));
 });
 
-test("ECR tag overwrite after push prevents artifact creation", () => {
+test("identical existing SHA tag is reused without a push", () => {
+  const { result, calls, dotenv } = runPublisher({ describeResults: [digest, digest] });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
+  assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:buildx build")).length, 1);
+  assert.doesNotMatch(calls, /docker:push/);
+  assert.ok(calls.indexOf("docker:buildx build") < calls.indexOf("ecr describe-images"));
+  assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
+});
+
+test("different existing SHA tag identity fails without a push or artifact", () => {
+  const differentIdentity = `sha256:${"e".repeat(64)} ["sha256:${"f".repeat(64)}"]`;
+  const { result, calls, dotenv } = runPublisher({
+    describeResults: [digest],
+    remoteIdentity: differentIdentity,
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /existing SHA tag does not identify the local build/);
+  assert.doesNotMatch(calls, /docker:push/);
+  assert.equal(dotenv, "");
+});
+
+test("existing SHA tag changing during identity verification fails closed", () => {
   const otherDigest = `sha256:${"b".repeat(64)}`;
-  const { result, calls, dotenv } = runPublisher({ ecrDigest: otherDigest });
+  const { result, calls, dotenv } = runPublisher({ describeResults: [digest, otherDigest] });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /SHA tag changed during verification/);
+  assert.doesNotMatch(calls, /docker:push/);
+  assert.equal(dotenv, "");
+});
+
+test("SHA tag appearing before push is reused only after exact identity verification", () => {
+  const { result, calls, dotenv } = runPublisher({ describeResults: [null, digest, digest] });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
+  assert.doesNotMatch(calls, /docker:push/);
+  assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
+});
+
+test("ECR tag race after push prevents artifact creation", () => {
+  const otherDigest = `sha256:${"b".repeat(64)}`;
+  const { result, calls, dotenv } = runPublisher({ describeResults: [null, null, otherDigest] });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /ECR digest does not match docker push digest/);
   assert.doesNotMatch(calls, /docker:pull|docker:image inspect/);
   assert.equal(dotenv, "");
 });
 
-test("invalid docker push digest fails before ECR resolution", () => {
-  const { result, calls, dotenv } = runPublisher({ pushDigest: "sha256:invalid" });
+test("invalid docker push digest fails before post-push validation", () => {
+  const { result, calls, dotenv } = runPublisher({
+    describeResults: [null, null],
+    pushDigest: "sha256:invalid",
+  });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /docker push did not report exactly one valid digest/);
-  assert.doesNotMatch(calls, /ecr describe-images/);
+  assert.equal(calls.split("\n").filter((line) => line.includes("ecr describe-images")).length, 2);
   assert.equal(dotenv, "");
 });
 

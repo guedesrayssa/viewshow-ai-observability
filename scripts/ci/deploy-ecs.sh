@@ -13,7 +13,7 @@ readonly alb_name="data-ingestion-alb"
 
 required_variables=(
   AWS_ACCOUNT_ID AWS_DEFAULT_REGION ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE
-  ECS_TASK_FAMILY ECS_CONTAINER_NAME ALB_NAME CI_COMMIT_SHA BACKEND_IMAGE_DIGEST
+  ECS_TASK_FAMILY ECS_CONTAINER_NAME ALB_NAME CI_COMMIT_SHA
 )
 for variable_name in "${required_variables[@]}"; do
   if [[ -z "${!variable_name:-}" ]]; then
@@ -42,10 +42,24 @@ if ! [[ "$CI_COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
   echo "CI_COMMIT_SHA must be exactly 40 hexadecimal characters" >&2
   exit 64
 fi
-if ! [[ "$BACKEND_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-  echo "BACKEND_IMAGE_DIGEST must be sha256 followed by 64 lowercase hexadecimal characters" >&2
+readonly image_metadata_file="backend-image.env"
+if [[ ! -f "$image_metadata_file" || -L "$image_metadata_file" ]]; then
+  echo "backend-image.env must be a regular non-symlink file" >&2
   exit 64
 fi
+mapfile -t image_metadata_lines <"$image_metadata_file"
+if ((${#image_metadata_lines[@]} != 1)) \
+  || ! [[ "${image_metadata_lines[0]}" =~ ^BACKEND_IMAGE_DIGEST=(sha256:[0-9a-f]{64})$ ]]; then
+  echo "backend-image.env must contain exactly one valid digest line" >&2
+  exit 64
+fi
+readonly backend_image_digest="${BASH_REMATCH[1]}"
+unset image_metadata_lines
+if [[ -n "${BACKEND_IMAGE_DIGEST+x}" && "$BACKEND_IMAGE_DIGEST" != "$backend_image_digest" ]]; then
+  echo "BACKEND_IMAGE_DIGEST conflicts with backend-image.env" >&2
+  exit 64
+fi
+unset BACKEND_IMAGE_DIGEST
 
 endpoint_override_names=()
 while IFS= read -r variable_name; do
@@ -79,7 +93,7 @@ if [[ ! -x "$script_directory/render-task-definition.sh" ]]; then
   exit 69
 fi
 readonly registry="${account_id}.dkr.ecr.${region}.amazonaws.com"
-readonly image_uri="${registry}/${repository}@${BACKEND_IMAGE_DIGEST}"
+readonly image_uri="${registry}/${repository}@${backend_image_digest}"
 smoke_attempts="${SMOKE_ATTEMPTS:-12}"
 smoke_delay_seconds="${SMOKE_DELAY_SECONDS:-5}"
 waiter_grace_attempts="${WAITER_TERM_GRACE_ATTEMPTS:-5}"
@@ -255,7 +269,7 @@ if ! [[ "$live_image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
   echo "ECR image digest is missing or invalid for CI_COMMIT_SHA" >&2
   exit 78
 fi
-if [[ "$live_image_digest" != "$BACKEND_IMAGE_DIGEST" ]]; then
+if [[ "$live_image_digest" != "$backend_image_digest" ]]; then
   echo "ECR digest does not match publication artifact" >&2
   exit 78
 fi
@@ -279,6 +293,19 @@ if [[ "$target_group_count" != "1" ]]; then
   echo "expected exactly one target group for container $container_name" >&2
   exit 78
 fi
+if ! jq -e --arg container "$container_name" '
+  [.loadBalancers[]? | select(.containerName == $container)] as $matches
+  | ($matches | length) == 1
+    and ($matches[0].targetGroupArn | type) == "string"
+    and ($matches[0].targetGroupArn | length) > 0
+    and ($matches[0].containerPort | type) == "number"
+    and $matches[0].containerPort > 0
+' "$service_json" >/dev/null; then
+  echo "service load-balancer tuple is incomplete or invalid" >&2
+  exit 78
+fi
+baseline_load_balancers="$(jq -c '[.loadBalancers[]? | {targetGroupArn, containerName, containerPort}]' "$service_json")"
+readonly baseline_load_balancers
 target_group_arn="$(jq -r --arg container "$container_name" '.loadBalancers[] | select(.containerName == $container) | .targetGroupArn' "$service_json")"
 target_group_json="$(aws elbv2 describe-target-groups \
   --region "$region" \
@@ -330,13 +357,19 @@ rules_json="$(aws elbv2 describe-rules \
   --query Rules \
   --output json)"
 if ! jq -e --arg target "$target_group_arn" '
-  def path_value_may_match_health:
-    if (contains("*") or contains("?")) then
+  def path_value_is_accepted_health:
+    . == "/health" or . == "/health*" or . == "/*";
+  def path_value_is_provably_not_health:
+    if path_value_is_accepted_health then
+      false
+    elif (contains("*") or contains("?")) then
       (split("*")[0] | split("?")[0]) as $prefix
-      | "/health" | startswith($prefix)
+      | ("/health" | startswith($prefix) | not)
     else
-      . == "/health"
+      . != "/health"
     end;
+  def path_value_may_match_health:
+    path_value_is_provably_not_health | not;
   def may_intercept_health:
     .IsDefault == true
     or (
@@ -346,9 +379,20 @@ if ! jq -e --arg target "$target_group_arn" '
         any((.Values // .PathPatternConfig.Values // [])[]?; path_value_may_match_health)
       )
     );
-  def is_unambiguous:
+  def provably_matches_health:
     .IsDefault == true
-    or all(.Conditions[]?; .Field == "path-pattern");
+    or (
+      [.Conditions[]? | select(.Field == "path-pattern")] as $path_conditions
+      | ($path_conditions | length) > 0
+        and all(.Conditions[]?; .Field == "path-pattern")
+        and all($path_conditions[];
+          (.Values // .PathPatternConfig.Values // []) as $values
+          | any($values[]?; path_value_is_accepted_health)
+            and all($values[]?;
+              path_value_is_accepted_health or path_value_is_provably_not_health
+            )
+        )
+    );
   def forwards_exclusively_to_target:
     (.Actions | type) == "array"
     and (.Actions | length) == 1
@@ -368,7 +412,7 @@ if ! jq -e --arg target "$target_group_arn" '
   (sort_by(if .IsDefault == true then 2147483647 else (.Priority | tonumber) end)
     | map(select(may_intercept_health))) as $effective_candidates
   | ($effective_candidates | length) > 0
-    and ($effective_candidates[0] | is_unambiguous and forwards_exclusively_to_target)
+    and ($effective_candidates[0] | provably_matches_health and forwards_exclusively_to_target)
 ' <<<"$rules_json" >/dev/null; then
   echo "effective ALB HTTP port 80 route is unsafe; ALB HTTP listener does not route /health exclusively to the service target group" >&2
   exit 78
@@ -402,7 +446,9 @@ aws ecs describe-services \
   --services "$service" \
   --query 'services[0]' \
   --output json >"$revalidated_service_json"
-if ! jq -e --arg baseline "$previous_task_definition" '
+if ! jq -e \
+  --arg baseline "$previous_task_definition" \
+  --argjson baseline_load_balancers "$baseline_load_balancers" '
   .status == "ACTIVE"
   and .deploymentController.type == "ECS"
   and (.desiredCount | type) == "number"
@@ -412,6 +458,7 @@ if ! jq -e --arg baseline "$previous_task_definition" '
   and .deploymentConfiguration.minimumHealthyPercent == 100
   and .deploymentConfiguration.maximumPercent == 200
   and .taskDefinition == $baseline
+  and ([.loadBalancers[]? | {targetGroupArn, containerName, containerPort}] == $baseline_load_balancers)
   and (.deployments | length) == 1
   and .deployments[0].status == "PRIMARY"
   and .deployments[0].rolloutState == "COMPLETED"

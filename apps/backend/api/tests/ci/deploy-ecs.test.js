@@ -37,6 +37,8 @@ function runDeploy({
   missingCommand = null,
   liveImageDigest = imageDigest,
   expectedImageDigest = imageDigest,
+  artifactContent = null,
+  artifactSymlink = false,
   serviceStatus = "ACTIVE",
   controllerType = "ECS",
   taskFamily = "monitoracao-api-task",
@@ -65,11 +67,19 @@ function runDeploy({
   const state = path.join(directory, "current-task.txt");
   const waiterCount = path.join(directory, "waiter-count.txt");
   const serviceReadCount = path.join(directory, "service-read-count.txt");
+  const artifact = path.join(directory, "backend-image.env");
   fs.mkdirSync(bin);
   fs.writeFileSync(calls, "");
   fs.writeFileSync(state, oldArn);
   fs.writeFileSync(waiterCount, "0");
   fs.writeFileSync(serviceReadCount, "0");
+  if (artifactSymlink) {
+    const artifactTarget = path.join(directory, "artifact-target.env");
+    fs.writeFileSync(artifactTarget, artifactContent ?? `BACKEND_IMAGE_DIGEST=${expectedImageDigest}\n`);
+    fs.symlinkSync(artifactTarget, artifact);
+  } else {
+    fs.writeFileSync(artifact, artifactContent ?? `BACKEND_IMAGE_DIGEST=${expectedImageDigest}\n`);
+  }
   const targetContainer = { name: "monitoracao-api-container", image: "old:v1" };
   const containerDefinitions = {
     correct: [targetContainer],
@@ -105,6 +115,7 @@ function runDeploy({
     loadBalancers: [{
       targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
       containerName: "monitoracao-api-container",
+      containerPort: 3000,
     }],
     ...serviceOverrides,
   };
@@ -278,7 +289,7 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
   }
 
   const spawnOptions = {
-    cwd: repoRoot,
+    cwd: directory,
     encoding: "utf8",
     env: {
       ...process.env,
@@ -530,10 +541,40 @@ test("termination during rollback waiter is bounded and preserves the original f
   assert.ok(elapsedMilliseconds < 1000, `rollback waiter termination took ${elapsedMilliseconds}ms`);
 });
 
+test("conflicting dotenv environment value cannot override the downloaded artifact", () => {
+  const conflictingDigest = `sha256:${"c".repeat(64)}`;
+  const { result, calls } = runDeploy({
+    envOverrides: { BACKEND_IMAGE_DIGEST: conflictingDigest },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /conflicts with backend-image.env/);
+  assert.equal(calls, "");
+});
+
+for (const [name, artifactContent] of [
+  ["wrong key", `OTHER_IMAGE_DIGEST=${imageDigest}\n`],
+  ["extra line", `BACKEND_IMAGE_DIGEST=${imageDigest}\nUNTRUSTED=value\n`],
+  ["invalid digest", "BACKEND_IMAGE_DIGEST=sha256:invalid\n"],
+]) {
+  test(`${name} in backend-image.env fails before external calls`, () => {
+    const { result, calls } = runDeploy({ artifactContent });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /backend-image.env must contain exactly one valid digest line/);
+    assert.equal(calls, "");
+  });
+}
+
+test("symlinked backend-image.env fails before external calls", () => {
+  const { result, calls } = runDeploy({ artifactSymlink: true });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /backend-image.env must be a regular non-symlink file/);
+  assert.equal(calls, "");
+});
+
 test("invalid expected digest fails before any AWS call", () => {
   const { result, calls } = runDeploy({ expectedImageDigest: "sha256:not-a-digest" });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /BACKEND_IMAGE_DIGEST must be sha256/);
+  assert.match(result.stderr, /backend-image.env must contain exactly one valid digest line/);
   assert.equal(calls, "");
 });
 
@@ -712,6 +753,30 @@ test("weighted multi-target health forwarding fails before mutation", () => {
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
 });
 
+for (const pathPattern of ["/health?", "/*/health"]) {
+  test(`ambiguous ALB path pattern ${pathPattern} cannot authorize the health route`, () => {
+    const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123";
+    const { result, calls } = runDeploy({
+      rulesOverride: [{
+        RuleArn: `${listenerArn}/ambiguous`,
+        Priority: "1",
+        IsDefault: false,
+        Conditions: [{ Field: "path-pattern", Values: [pathPattern] }],
+        Actions: [{ Type: "forward", TargetGroupArn: serviceTarget }],
+      }, {
+        RuleArn: `${listenerArn}/default`,
+        Priority: "default",
+        IsDefault: true,
+        Conditions: [],
+        Actions: [{ Type: "forward", TargetGroupArn: serviceTarget }],
+      }],
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /effective ALB HTTP port 80 route/);
+    assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+  });
+}
+
 test("repository HEAD mismatch fails before any AWS call", () => {
   const { result, calls } = runDeploy({ repositoryHead: "f".repeat(40) });
   assert.notEqual(result.status, 0);
@@ -742,6 +807,33 @@ test("external deployment configuration change aborts before registration", () =
   assert.match(result.stderr, /rollback baseline changed before deployment mutation/);
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
 });
+
+for (const [name, loadBalancer] of [
+  ["target group", {
+    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999",
+    containerName: "monitoracao-api-container",
+    containerPort: 3000,
+  }],
+  ["container name", {
+    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+    containerName: "other-container",
+    containerPort: 3000,
+  }],
+  ["container port", {
+    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+    containerName: "monitoracao-api-container",
+    containerPort: 3001,
+  }],
+]) {
+  test(`late service ${name} drift aborts before registration`, () => {
+    const { result, calls } = runDeploy({
+      lateServiceOverrides: { loadBalancers: [loadBalancer] },
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /rollback baseline changed before deployment mutation/);
+    assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+  });
+}
 
 test("invalid smoke configuration fails before registering or updating ECS", () => {
   const { result, calls } = runDeploy({ smokeAttempts: "bogus" });

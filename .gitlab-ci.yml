@@ -76,7 +76,7 @@ validate_backend_container:
   before_script:
     - apk add --no-cache bash=5.2.37-r0 jq=1.7.1-r0
     - docker version
-    - docker buildx create --name ci-builder --driver docker-container --use
+    - docker buildx create --name ci-builder --driver docker-container --driver-opt image=moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552 --use
     - docker buildx inspect --bootstrap
   script:
     - |
@@ -108,13 +108,15 @@ publish_backend_image:
     - apk add --no-cache aws-cli=2.22.10-r0 bash=5.2.37-r0 git=2.47.3-r0 jq=1.7.1-r0
     - docker version
     - aws --version
-    - docker buildx create --name ci-builder --driver docker-container --use
+    - docker buildx create --name ci-builder --driver docker-container --driver-opt image=moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552 --use
     - docker buildx inspect --bootstrap
   script:
     - bash scripts/ci/publish-backend-image.sh
     - . backend-image.env
     - bash scripts/ci/smoke-container.sh "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY}@${BACKEND_IMAGE_DIGEST}"
   artifacts:
+    paths:
+      - backend-image.env
     reports:
       dotenv: backend-image.env
   environment:

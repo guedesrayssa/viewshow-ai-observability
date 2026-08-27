@@ -75,12 +75,19 @@ readonly image_uri="${registry}/${expected_repository}:${CI_COMMIT_SHA}"
 readonly cache_uri="${registry}/${expected_repository}:buildcache"
 dotenv_file="${BACKEND_IMAGE_ENV_FILE:-backend-image.env}"
 dotenv_temp=""
+work_directory=""
 cleanup() {
   if [[ -n "$dotenv_temp" ]]; then
     rm -f "$dotenv_temp"
   fi
+  if [[ -n "$work_directory" ]]; then
+    rm -rf "$work_directory"
+  fi
 }
 trap cleanup EXIT
+umask 077
+work_directory="$(mktemp -d)"
+readonly build_iid_file="$work_directory/build.iid"
 
 aws ecr get-login-password --region "$expected_region" |
   docker login --username AWS --password-stdin "$registry"
@@ -88,51 +95,141 @@ aws ecr get-login-password --region "$expected_region" |
 docker buildx build \
   --platform linux/amd64 \
   --load \
+  --iidfile "$build_iid_file" \
   --cache-from "type=registry,ref=$cache_uri" \
   --cache-to "type=registry,ref=$cache_uri,mode=max,image-manifest=true,oci-mediatypes=true" \
   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
   --tag "$image_uri" \
   apps/backend/api
 
-push_output="$(docker push "$image_uri")"
-pushed_digests=()
-while IFS= read -r push_line; do
-  if [[ "$push_line" =~ ^${CI_COMMIT_SHA}:\ digest:\ (sha256:[0-9a-f]{64})\ size:\ [0-9]+$ ]]; then
-    pushed_digests+=("${BASH_REMATCH[1]}")
+if ! IFS= read -r local_image_id <"$build_iid_file" \
+  || ! [[ "$local_image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+  echo "docker build did not report exactly one valid local image ID" >&2
+  exit 78
+fi
+readonly local_image_id
+
+describe_sha_tag_digest() {
+  local describe_error_file="$work_directory/ecr-describe.stderr"
+  local describe_error=""
+  local describe_output=""
+  local describe_status=0
+  if describe_output="$(aws ecr describe-images \
+    --region "$expected_region" \
+    --repository-name "$expected_repository" \
+    --image-ids "imageTag=$CI_COMMIT_SHA" \
+    --query 'imageDetails[0].imageDigest' \
+    --output text 2>"$describe_error_file")"; then
+    if ! [[ "$describe_output" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+      echo "invalid ECR image digest for CI_COMMIT_SHA" >&2
+      return 78
+    fi
+    printf '%s\n' "$describe_output"
+    return 0
+  else
+    describe_status=$?
   fi
-done <<<"$push_output"
-unset push_output push_line
-if ((${#pushed_digests[@]} != 1)); then
-  echo "docker push did not report exactly one valid digest" >&2
-  exit 78
-fi
-readonly image_digest="${pushed_digests[0]}"
-unset pushed_digests
+  if [[ -f "$describe_error_file" ]]; then
+    describe_error="$(<"$describe_error_file")"
+  fi
+  if [[ "$describe_error" == *ImageNotFoundException* ]]; then
+    return 3
+  fi
+  printf '%s\n' "$describe_error" >&2
+  return "$describe_status"
+}
 
-live_image_digest="$(aws ecr describe-images \
-  --region "$expected_region" \
-  --repository-name "$expected_repository" \
-  --image-ids "imageTag=$CI_COMMIT_SHA" \
-  --query 'imageDetails[0].imageDigest' \
-  --output text)"
-if ! [[ "$live_image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-  echo "invalid ECR image digest for CI_COMMIT_SHA" >&2
-  exit 78
-fi
-if [[ "$live_image_digest" != "$image_digest" ]]; then
-  echo "ECR digest does not match docker push digest" >&2
-  exit 78
-fi
-unset live_image_digest
+verify_digest_matches_local_build() {
+  local candidate_digest="$1"
+  local candidate_description="$2"
+  local digest_image_uri="${registry}/${expected_repository}@${candidate_digest}"
+  local local_identity=""
+  local remote_identity=""
+  local image_revision=""
+  docker pull "$digest_image_uri" >/dev/null
+  local_identity="$(docker image inspect "$local_image_id" --format '{{.Id}} {{json .RootFS.Layers}}')"
+  remote_identity="$(docker image inspect "$digest_image_uri" --format '{{.Id}} {{json .RootFS.Layers}}')"
+  if [[ -z "$local_identity" || "$remote_identity" != "$local_identity" ]]; then
+    echo "$candidate_description does not identify the local build" >&2
+    return 78
+  fi
+  image_revision="$(docker image inspect "$digest_image_uri" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
+  if [[ "$image_revision" != "$CI_COMMIT_SHA" ]]; then
+    echo "immutable image has unexpected source revision: $image_revision" >&2
+    return 1
+  fi
+}
 
-readonly digest_image_uri="${registry}/${expected_repository}@${image_digest}"
-docker pull "$digest_image_uri"
-image_revision="$(docker image inspect "$digest_image_uri" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
-if [[ "$image_revision" != "$CI_COMMIT_SHA" ]]; then
-  echo "immutable image has unexpected source revision: $image_revision" >&2
-  exit 1
+verified_image_digest=""
+verify_existing_sha_tag() {
+  local candidate_digest="$1"
+  local current_digest=""
+  local describe_status=0
+  verify_digest_matches_local_build "$candidate_digest" "existing SHA tag"
+  if current_digest="$(describe_sha_tag_digest)"; then
+    :
+  else
+    describe_status=$?
+    echo "SHA tag changed during verification" >&2
+    return "$describe_status"
+  fi
+  if [[ "$current_digest" != "$candidate_digest" ]]; then
+    echo "SHA tag changed during verification" >&2
+    return 78
+  fi
+  verified_image_digest="$candidate_digest"
+}
+
+existing_digest=""
+describe_status=0
+if existing_digest="$(describe_sha_tag_digest)"; then
+  verify_existing_sha_tag "$existing_digest"
+else
+  describe_status=$?
+  if ((describe_status != 3)); then
+    exit "$describe_status"
+  fi
 fi
-unset image_revision
+
+if [[ -z "$verified_image_digest" ]]; then
+  if existing_digest="$(describe_sha_tag_digest)"; then
+    verify_existing_sha_tag "$existing_digest"
+  else
+    describe_status=$?
+    if ((describe_status != 3)); then
+      exit "$describe_status"
+    fi
+  fi
+fi
+
+if [[ -z "$verified_image_digest" ]]; then
+  push_output="$(docker push "$image_uri")"
+  pushed_digests=()
+  while IFS= read -r push_line; do
+    if [[ "$push_line" =~ ^${CI_COMMIT_SHA}:\ digest:\ (sha256:[0-9a-f]{64})\ size:\ [0-9]+$ ]]; then
+      pushed_digests+=("${BASH_REMATCH[1]}")
+    fi
+  done <<<"$push_output"
+  unset push_output push_line
+  if ((${#pushed_digests[@]} != 1)); then
+    echo "docker push did not report exactly one valid digest" >&2
+    exit 78
+  fi
+  pushed_digest="${pushed_digests[0]}"
+  unset pushed_digests
+
+  if ! live_image_digest="$(describe_sha_tag_digest)"; then
+    echo "ECR did not resolve the SHA tag after docker push" >&2
+    exit 78
+  fi
+  if [[ "$live_image_digest" != "$pushed_digest" ]]; then
+    echo "ECR digest does not match docker push digest" >&2
+    exit 78
+  fi
+  verify_digest_matches_local_build "$pushed_digest" "pushed digest"
+  verified_image_digest="$pushed_digest"
+fi
+readonly image_digest="$verified_image_digest"
 
 dotenv_directory="$(dirname "$dotenv_file")"
 dotenv_temp="$(mktemp "$dotenv_directory/.backend-image.env.tmp.XXXXXX")"

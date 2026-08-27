@@ -16,7 +16,9 @@ and DinD service so Docker 27 uses mutual TLS. Do not attach the tag to a shared
 or untrusted runner. Merge-request jobs have no `aws-lab` environment and must
 never receive AWS credentials. CI executor and DinD references use immutable
 tag-plus-digest identities, and Alpine packages installed at runtime use exact
-versions whose installation is verified alongside pipeline policy.
+versions whose installation is verified alongside pipeline policy. Both Docker
+jobs also pin the inner `docker-container` driver to
+`moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552`.
 
 Protect `develop` and configure the three AWS variables as protected, masked,
 hidden, raw `env_var` values scoped exactly to `aws-lab`. Never commit a GitLab
@@ -61,27 +63,38 @@ whole synchronizer.
 ## Normal deployment
 
 A covered change pushed to protected `develop` runs tests, checks that
-`CI_COMMIT_SHA` equals the checkout HEAD, rebuilds and pushes only
-`monitoracao-api:$CI_COMMIT_SHA`, captures the digest from that successful push,
-and requires the tag's immediate ECR resolution to match. Publisher pull,
-revision-label inspection, and container smoke all use the resulting immutable
-`repository@sha256:<digest>` reference. The publish job marks `aws-lab` with
-environment action `prepare`, so scoped variables are available without recording
-a false deployment. Its non-secret digest artifact is passed to deploy. Deploy
-checks its checkout HEAD, compares the tag's live digest with the artifact, and renders
-`repository@sha256:<digest>` into the task definition. ECS never receives a
-mutable tag reference.
+`CI_COMMIT_SHA` equals the checkout HEAD, and always rebuilds the amd64 image
+locally with registry cache. If `monitoracao-api:$CI_COMMIT_SHA` already exists,
+the publisher pulls its immutable digest and compares its exact image ID/rootfs
+identity with the local build; an identical retry reuses the digest, while any
+difference fails without pushing. If the SHA tag is absent on both the initial
+and immediate pre-push reads, the publisher pushes once, captures the digest from
+that push, and requires the tag's immediate ECR resolution to match. Revision
+inspection and container smoke use only the resulting immutable
+`repository@sha256:<digest>` reference.
+
+The publish job marks `aws-lab` with environment action `prepare`, so scoped
+variables are available without recording a false deployment. It publishes
+`backend-image.env` as both a normal artifact and a dotenv report. Deploy reads
+the downloaded regular, non-symlink artifact directly, requires exactly one
+canonical digest line, and rejects a conflicting `BACKEND_IMAGE_DIGEST`
+environment value. It then checks its checkout HEAD, compares the tag's live
+digest with the artifact, and renders `repository@sha256:<digest>` into the task
+definition. ECS never receives a mutable tag reference.
 
 Before snapshot or mutation, deploy waits for the existing service to stabilize
 and requires one PRIMARY/COMPLETED deployment, no pending tasks, running equal
 to desired, the 100/200 rolling configuration, the expected target group, and
 an active public application ALB. The effective priority-ordered rule on its exact
 HTTP port 80 listener must route `/health` exclusively to that target group;
-shadowing rules and weighted multi-target forwarding fail closed. Immediately
-before registration, deploy re-reads the service and requires the same stable task
-definition and 100/200 baseline. It then registers a preserved live task definition,
-updates the service, waits with bounded signal handling, and verifies the public
-health contract.
+only literal `/health`, `/health*`, `/*`, or the default rule are accepted as
+provable matches, while ambiguous patterns, shadowing rules, and weighted
+multi-target forwarding fail closed. Immediately before registration, deploy
+re-reads the service and requires the same stable task definition, 100/200
+configuration, and exact `(targetGroupArn, containerName, containerPort)`
+load-balancer tuple. It then registers a preserved live task definition, updates
+the service, waits with bounded signal handling, and verifies the public health
+contract.
 
 Merge requests run only tests and a local amd64 container build/smoke. Runtime
 source, package manifests, Docker inputs, backend tests, CI helpers, the
@@ -124,8 +137,9 @@ A mismatch means the publication artifact and live SHA tag do not identify the
 same manifest. Do not retag, overwrite the commit tag, edit the dotenv artifact,
 or deploy by tag. Compare ECR `describe-images` output with the publish job,
 confirm the full commit SHA and account/region/repository bindings, then rebuild
-from the intended commit through a fresh pipeline. Escalate unexplained tag
-replacement as a supply-chain incident.
+from the intended commit through a fresh pipeline. A pre-existing SHA tag whose
+digest-pulled image identity differs from the local rebuild is rejected before
+push and must be escalated as a supply-chain incident.
 
 ### Build cache failure
 

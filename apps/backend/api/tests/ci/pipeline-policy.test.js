@@ -56,6 +56,7 @@ test("develop publication is protected, digest-producing, and isolated from MR r
   assert.match(job, /\. backend-image\.env/);
   assert.match(job, /smoke-container\.sh "\$\{AWS_ACCOUNT_ID\}.*@\$\{BACKEND_IMAGE_DIGEST\}"/);
   assert.doesNotMatch(job, /smoke-container\.sh .*:\$\{CI_COMMIT_SHA\}/);
+  assert.match(job, /artifacts:\n\s+paths:\n\s+- backend-image\.env\n\s+reports:\n\s+dotenv: backend-image\.env/);
   assert.match(job, /reports:\n\s+dotenv: backend-image\.env/);
 });
 
@@ -93,6 +94,16 @@ test("every CI executor and Docker service uses a tag plus immutable digest", ()
   assert.equal(executorRefs.length, 6);
   for (const reference of executorRefs) {
     assert.match(reference, /^[^@\s]+:[^@\s]+@sha256:[0-9a-f]{64}$/);
+  }
+});
+
+test("both Docker jobs pin the inner BuildKit driver image", () => {
+  const pinnedBuildKit = "moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552";
+  for (const jobName of ["validate_backend_container", "publish_backend_image"]) {
+    assert.match(
+      topLevelBlock(jobName),
+      new RegExp(`docker buildx create --name ci-builder --driver docker-container --driver-opt image=${pinnedBuildKit} --use`),
+    );
   }
 });
 
