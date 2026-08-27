@@ -13,6 +13,9 @@ const albArn = "arn:aws:elasticloadbalancing:us-east-1:248880318395:loadbalancer
 const listenerArn = `${albArn.replace("loadbalancer", "listener")}/listener-1`;
 const commitSha = "abc123def456abc123def456abc123def456abcd";
 const imageDigest = `sha256:${"b".repeat(64)}`;
+const dockerImageMediaType = "application/vnd.docker.distribution.manifest.v2+json";
+const ociImageMediaType = "application/vnd.oci.image.manifest.v1+json";
+const ociIndexMediaType = "application/vnd.oci.image.index.v1+json";
 
 function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
@@ -36,12 +39,14 @@ function runDeploy({
   envOverrides = {},
   missingCommand = null,
   liveImageDigest = imageDigest,
+  liveImageMediaType = dockerImageMediaType,
   expectedImageDigest = imageDigest,
   artifactContent = null,
   artifactSymlink = false,
   serviceStatus = "ACTIVE",
   controllerType = "ECS",
   taskFamily = "monitoracao-api-task",
+  runtimePlatform = null,
   containerMode = "correct",
   resolveTargetGroup = true,
   resolveAlb = true,
@@ -87,22 +92,21 @@ function runDeploy({
     duplicate: [targetContainer, targetContainer],
   }[containerMode];
   assert.ok(containerDefinitions, `unknown container mode ${containerMode}`);
-  fs.writeFileSync(
-    task,
-    JSON.stringify({
-      taskDefinitionArn: oldArn,
-      revision: 1,
-      status: "ACTIVE",
-      family: taskFamily,
-      taskRoleArn: "arn:aws:iam::248880318395:role/TaskRole",
-      executionRoleArn: "arn:aws:iam::248880318395:role/ExecutionRole",
-      networkMode: "awsvpc",
-      requiresCompatibilities: ["FARGATE"],
-      cpu: "256",
-      memory: "512",
-      containerDefinitions,
-    }),
-  );
+  const taskFixture = {
+    taskDefinitionArn: oldArn,
+    revision: 1,
+    status: "ACTIVE",
+    family: taskFamily,
+    taskRoleArn: "arn:aws:iam::248880318395:role/TaskRole",
+    executionRoleArn: "arn:aws:iam::248880318395:role/ExecutionRole",
+    networkMode: "awsvpc",
+    requiresCompatibilities: ["FARGATE"],
+    cpu: "256",
+    memory: "512",
+    containerDefinitions,
+  };
+  if (runtimePlatform !== null) taskFixture.runtimePlatform = runtimePlatform;
+  fs.writeFileSync(task, JSON.stringify(taskFixture));
   const serviceFixture = {
     status: serviceStatus,
     taskDefinition: oldArn,
@@ -191,8 +195,8 @@ elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-inge
   else
     cat "$LATE_SERVICE_FIXTURE"
   fi
-elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].imageDigest --output text" ]]; then
-  echo "$LIVE_IMAGE_DIGEST"
+elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
+  printf '{"digest":"%s","mediaType":"%s"}\n' "$LIVE_IMAGE_DIGEST" "$LIVE_IMAGE_MEDIA_TYPE"
 elif [[ "$call" == "ecs describe-task-definition --region us-east-1 --task-definition $OLD_ARN --query taskDefinition --output json" ]]; then
   cat "$TASK_FIXTURE"
 elif [[ "$call" == "elbv2 describe-target-groups --region us-east-1 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123 --query TargetGroups[0] --output json" ]]; then
@@ -325,6 +329,7 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       EXPECTED_CONTAINER: "monitoracao-api-container",
       EXPECTED_SHA: commitSha,
       LIVE_IMAGE_DIGEST: liveImageDigest,
+      LIVE_IMAGE_MEDIA_TYPE: liveImageMediaType,
       RESOLVE_TARGET_GROUP: String(resolveTargetGroup),
       RESOLVE_ALB: String(resolveAlb),
       ACTUAL_ACCOUNT: actualAccount,
@@ -584,6 +589,30 @@ test("live ECR digest mismatch fails before registering or updating ECS", () => 
   assert.match(result.stderr, /ECR digest does not match publication artifact/);
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
 });
+
+test("live ECR single-platform OCI image manifest is accepted", () => {
+  const { result } = runDeploy({ liveImageMediaType: ociImageMediaType });
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("live ECR multi-platform index fails before registering or updating ECS", () => {
+  const { result, calls } = runDeploy({ liveImageMediaType: ociIndexMediaType });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /single-platform image manifest/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+for (const runtimePlatform of [
+  { operatingSystemFamily: "LINUX", cpuArchitecture: "ARM64" },
+  { operatingSystemFamily: "WINDOWS_SERVER_2022_CORE", cpuArchitecture: "X86_64" },
+]) {
+  test(`live task runtime ${runtimePlatform.operatingSystemFamily}/${runtimePlatform.cpuArchitecture} fails before mutation`, () => {
+    const { result, calls } = runDeploy({ runtimePlatform });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /runtime platform must be Linux\/X86_64/);
+    assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+  });
+}
 
 test("AWS endpoint overrides fail before any AWS call", () => {
   const { result, calls } = runDeploy({

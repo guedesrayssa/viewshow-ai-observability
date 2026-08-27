@@ -259,16 +259,31 @@ if [[ -z "$previous_task_definition" || "$previous_task_definition" == "null" ||
   exit 78
 fi
 
-live_image_digest="$(aws ecr describe-images \
+live_image_metadata="$(aws ecr describe-images \
   --region "$region" \
   --repository-name "$repository" \
   --image-ids "imageTag=$CI_COMMIT_SHA" \
-  --query 'imageDetails[0].imageDigest' \
-  --output text)"
-if ! [[ "$live_image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+  --query 'imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType}' \
+  --output json)"
+live_image_digest=""
+if ! live_image_digest="$(jq -er '.digest | select(type == "string")' <<<"$live_image_metadata")" \
+  || ! [[ "$live_image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
   echo "ECR image digest is missing or invalid for CI_COMMIT_SHA" >&2
   exit 78
 fi
+live_image_media_type=""
+if ! live_image_media_type="$(jq -er '.mediaType | select(type == "string")' <<<"$live_image_metadata")"; then
+  echo "ECR digest is not a supported single-platform image manifest" >&2
+  exit 78
+fi
+case "$live_image_media_type" in
+  application/vnd.docker.distribution.manifest.v2+json | application/vnd.oci.image.manifest.v1+json)
+    ;;
+  *)
+    echo "ECR digest is not a supported single-platform image manifest: $live_image_media_type" >&2
+    exit 78
+    ;;
+esac
 if [[ "$live_image_digest" != "$backend_image_digest" ]]; then
   echo "ECR digest does not match publication artifact" >&2
   exit 78
@@ -285,6 +300,13 @@ aws ecs describe-task-definition \
 live_family="$(jq -r '.family' "$live_json")"
 if [[ "$live_family" != "$task_family" ]]; then
   echo "unexpected task definition family: $live_family" >&2
+  exit 78
+fi
+if ! jq -e '
+  (.runtimePlatform.operatingSystemFamily // "LINUX") == "LINUX"
+  and (.runtimePlatform.cpuArchitecture // "X86_64") == "X86_64"
+' "$live_json" >/dev/null; then
+  echo "live task definition runtime platform must be Linux/X86_64" >&2
   exit 78
 fi
 

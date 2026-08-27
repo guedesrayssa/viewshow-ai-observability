@@ -114,17 +114,32 @@ describe_sha_tag_digest() {
   local describe_error=""
   local describe_output=""
   local describe_status=0
+  local image_digest=""
+  local image_media_type=""
   if describe_output="$(aws ecr describe-images \
     --region "$expected_region" \
     --repository-name "$expected_repository" \
     --image-ids "imageTag=$CI_COMMIT_SHA" \
-    --query 'imageDetails[0].imageDigest' \
-    --output text 2>"$describe_error_file")"; then
-    if ! [[ "$describe_output" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    --query 'imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType}' \
+    --output json 2>"$describe_error_file")"; then
+    if ! image_digest="$(jq -er '.digest | select(type == "string")' <<<"$describe_output")" \
+      || ! [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
       echo "invalid ECR image digest for CI_COMMIT_SHA" >&2
       return 78
     fi
-    printf '%s\n' "$describe_output"
+    if ! image_media_type="$(jq -er '.mediaType | select(type == "string")' <<<"$describe_output")"; then
+      echo "ECR digest is not a supported single-platform image manifest" >&2
+      return 78
+    fi
+    case "$image_media_type" in
+      application/vnd.docker.distribution.manifest.v2+json | application/vnd.oci.image.manifest.v1+json)
+        ;;
+      *)
+        echo "ECR digest is not a supported single-platform image manifest: $image_media_type" >&2
+        return 78
+        ;;
+    esac
+    printf '%s\n' "$image_digest"
     return 0
   else
     describe_status=$?
@@ -145,8 +160,14 @@ verify_digest_matches_local_build() {
   local digest_image_uri="${registry}/${expected_repository}@${candidate_digest}"
   local local_identity=""
   local remote_identity=""
+  local remote_platform=""
   local image_revision=""
   docker pull "$digest_image_uri" >/dev/null
+  remote_platform="$(docker image inspect "$digest_image_uri" --format '{{.Os}}/{{.Architecture}}')"
+  if [[ "$remote_platform" != "linux/amd64" ]]; then
+    echo "immutable image platform is $remote_platform; expected linux/amd64" >&2
+    return 78
+  fi
   local_identity="$(docker image inspect "$local_image_id" --format '{{.Id}} {{json .RootFS.Layers}}')"
   remote_identity="$(docker image inspect "$digest_image_uri" --format '{{.Id}} {{json .RootFS.Layers}}')"
   if [[ -z "$local_identity" || "$remote_identity" != "$local_identity" ]]; then

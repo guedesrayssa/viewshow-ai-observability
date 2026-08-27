@@ -71,7 +71,10 @@ difference fails without pushing. If the SHA tag is absent on both the initial
 and immediate pre-push reads, the publisher pushes once, captures the digest from
 that push, and requires the tag's immediate ECR resolution to match. Revision
 inspection and container smoke use only the resulting immutable
-`repository@sha256:<digest>` reference.
+`repository@sha256:<digest>` reference. Every ECR reconciliation also requires
+the digest media type to be a single Docker v2 or OCI image manifest, never a
+Docker manifest list or OCI index. The digest-pulled image must inspect as exact
+`linux/amd64` before publication metadata is emitted.
 
 The publish job marks `aws-lab` with environment action `prepare`, so scoped
 variables are available without recording a false deployment. It publishes
@@ -92,9 +95,12 @@ provable matches, while ambiguous patterns, shadowing rules, and weighted
 multi-target forwarding fail closed. Immediately before registration, deploy
 re-reads the service and requires the same stable task definition, 100/200
 configuration, and exact `(targetGroupArn, containerName, containerPort)`
-load-balancer tuple. It then registers a preserved live task definition, updates
-the service, waits with bounded signal handling, and verifies the public health
-contract.
+load-balancer tuple. The live task definition must also resolve to Linux/X86_64;
+an absent `operatingSystemFamily` or `cpuArchitecture` is accepted only because
+ECS documents `LINUX` and `X86_64` as their respective defaults. Explicit ARM64
+or Windows runtime settings fail before registration. Deploy then registers a
+preserved live task definition, updates the service, waits with bounded signal
+handling, and verifies the public health contract.
 
 Merge requests run only tests and a local amd64 container build/smoke. Runtime
 source, package manifests, Docker inputs, backend tests, CI helpers, the
@@ -139,7 +145,9 @@ or deploy by tag. Compare ECR `describe-images` output with the publish job,
 confirm the full commit SHA and account/region/repository bindings, then rebuild
 from the intended commit through a fresh pipeline. A pre-existing SHA tag whose
 digest-pulled image identity differs from the local rebuild is rejected before
-push and must be escalated as a supply-chain incident.
+push and must be escalated as a supply-chain incident. Treat a manifest list,
+OCI index, non-linux/amd64 pulled image, or non-Linux/X86_64 ECS runtime as the
+same fail-closed provenance condition.
 
 ### Build cache failure
 

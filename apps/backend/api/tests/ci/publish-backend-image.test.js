@@ -11,6 +11,10 @@ const commitSha = "abc123def456abc123def456abc123def456abcd";
 const digest = `sha256:${"a".repeat(64)}`;
 const localImageId = `sha256:${"c".repeat(64)}`;
 const imageIdentity = `${localImageId} ["sha256:${"d".repeat(64)}"]`;
+const dockerImageMediaType = "application/vnd.docker.distribution.manifest.v2+json";
+const ociImageMediaType = "application/vnd.oci.image.manifest.v1+json";
+const ociIndexMediaType = "application/vnd.oci.image.index.v1+json";
+const dockerManifestListMediaType = "application/vnd.docker.distribution.manifest.list.v2+json";
 
 function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
@@ -18,9 +22,11 @@ function writeExecutable(file, body) {
 
 function runPublisher({
   describeResults = [null, null, digest],
+  describeMediaTypes = [],
   pushDigest = digest,
   localIdentity = imageIdentity,
   remoteIdentity = imageIdentity,
+  remotePlatform = "linux/amd64",
   actualAccount = "248880318395",
   callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
   imageRevision = commitSha,
@@ -62,7 +68,7 @@ if [[ "$*" == "sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\n' "$ACTUAL_ACCOUNT" "$CALLER_ARN"
 elif [[ "$*" == "ecr get-login-password --region us-east-1" ]]; then
   printf 'fixture-password'
-elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].imageDigest --output text" ]]; then
+elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
   count="$(<"$DESCRIBE_COUNT_FILE")"
   count=$((count + 1))
   printf '%s' "$count" >"$DESCRIBE_COUNT_FILE"
@@ -76,7 +82,8 @@ elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name monito
     echo "An error occurred (ImageNotFoundException) when calling the DescribeImages operation" >&2
     exit 254
   fi
-  printf '%s\n' "$result"
+  media_name="DESCRIBE_MEDIA_TYPE_$count"
+  printf '{"digest":"%s","mediaType":"%s"}\n' "$result" "\${!media_name}"
 else
   echo "unexpected aws call: $*" >&2
   exit 2
@@ -94,6 +101,7 @@ tagged_image="$registry/monitoracao-api:$EXPECTED_SHA"
 cache="$registry/monitoracao-api:buildcache"
 identity_format='{{.Id}} {{json .RootFS.Layers}}'
 revision_format='{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+platform_format='{{.Os}}/{{.Architecture}}'
 if [[ "$*" == "login --username AWS --password-stdin $registry" ]]; then
   [[ "$(cat)" == "fixture-password" ]] || exit 3
 elif [[ "$1" == "buildx" && "$2" == "build" ]]; then
@@ -118,6 +126,8 @@ elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-a
   printf '%s\n' "$REMOTE_IDENTITY"
 elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$revision_format" ]]; then
   printf '%s\n' "$IMAGE_REVISION"
+elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$platform_format" ]]; then
+  printf '%s\n' "$REMOTE_PLATFORM"
 else
   echo "unexpected docker call: $*" >&2
   exit 2
@@ -127,6 +137,12 @@ fi
 
   const describeEnvironment = Object.fromEntries(
     describeResults.map((value, index) => [`DESCRIBE_RESULT_${index + 1}`, value ?? "__ABSENT__"]),
+  );
+  const mediaTypeEnvironment = Object.fromEntries(
+    describeResults.map((_, index) => [
+      `DESCRIBE_MEDIA_TYPE_${index + 1}`,
+      describeMediaTypes[index] ?? dockerImageMediaType,
+    ]),
   );
   const result = spawnSync(script, [], {
     cwd: repoRoot,
@@ -138,12 +154,14 @@ fi
       DESCRIBE_COUNT_FILE: describeCount,
       DESCRIBE_RESULT_COUNT: String(describeResults.length),
       ...describeEnvironment,
+      ...mediaTypeEnvironment,
       ACTUAL_ACCOUNT: actualAccount,
       CALLER_ARN: callerArn,
       PUSH_DIGEST: pushDigest,
       LOCAL_IMAGE_ID: localImageId,
       LOCAL_IDENTITY: localIdentity,
       REMOTE_IDENTITY: remoteIdentity,
+      REMOTE_PLATFORM: remotePlatform,
       IMAGE_REVISION: imageRevision,
       REPOSITORY_HEAD: repositoryHead,
       EXPECTED_SHA: commitSha,
@@ -187,6 +205,16 @@ test("identical existing SHA tag is reused without a push", () => {
   assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
 });
 
+test("single-platform OCI image manifest is accepted", () => {
+  const { result, calls, dotenv } = runPublisher({
+    describeResults: [digest, digest],
+    describeMediaTypes: [ociImageMediaType, ociImageMediaType],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
+  assert.doesNotMatch(calls, /docker:push/);
+});
+
 test("different existing SHA tag identity fails without a push or artifact", () => {
   const differentIdentity = `sha256:${"e".repeat(64)} ["sha256:${"f".repeat(64)}"]`;
   const { result, calls, dotenv } = runPublisher({
@@ -195,6 +223,30 @@ test("different existing SHA tag identity fails without a push or artifact", () 
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /existing SHA tag does not identify the local build/);
+  assert.doesNotMatch(calls, /docker:push/);
+  assert.equal(dotenv, "");
+});
+
+for (const mediaType of [ociIndexMediaType, dockerManifestListMediaType]) {
+  test(`multi-platform ECR media type ${mediaType} is rejected before pull or push`, () => {
+    const { result, calls, dotenv } = runPublisher({
+      describeResults: [digest, digest],
+      describeMediaTypes: [mediaType, mediaType],
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /single-platform image manifest/);
+    assert.doesNotMatch(calls, /docker:pull|docker:image inspect|docker:push/);
+    assert.equal(dotenv, "");
+  });
+}
+
+test("digest-pulled ARM image is rejected before artifact creation", () => {
+  const { result, calls, dotenv } = runPublisher({
+    describeResults: [digest, digest],
+    remotePlatform: "linux/arm64",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /expected linux\/amd64/);
   assert.doesNotMatch(calls, /docker:push/);
   assert.equal(dotenv, "");
 });
