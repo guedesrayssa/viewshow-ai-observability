@@ -189,7 +189,8 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 | Método | Rota | Autenticação | Descrição |
 |:---|:---|:---|:---|
 | GET | `/health` | — | Health check |
-| POST | `/auth/login` | — | Login com usuário/senha fixos; define cookie de sessão |
+| POST | `/auth/login` | — | Login com o usuário fixo ou com conta registrada; define cookie de sessão |
+| POST | `/auth/register` | — | Cria conta (nome, e-mail, senha com hash scrypt) e já abre a sessão; 409 para e-mail repetido |
 | GET | `/auth/sso` | — | Stub (`501`) |
 | GET | `/api/v1/incidents` | — | Lista incidentes (filtros: `window`, `deviceType`, `region`, `appVersion`) |
 | GET | `/api/v1/incidents/:id` | — | Detalhe de um incidente |
@@ -274,9 +275,31 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 
 ## 10. Conexão com o frontend
 
-> **A preencher.** Esta seção vai documentar como `apps/frontend` passa a consumir as rotas da Seção 6 — troca dos dados mockados (`lib/dashboard-data.ts`, `incidents-view.tsx`, `evidence-view.tsx` etc.) pelas chamadas reais, a criação da camada de cliente HTTP (`lib/api.ts`), a variável `NEXT_PUBLIC_API_BASE_URL` apontando para o ALB, e a página de detalhe de incidente (`app/(painel)/incidentes/[id]`) que ainda não existe. Ainda não implementado neste sprint.
+&emsp; O frontend consome as duas APIs do repositório, cada uma no seu domínio: esta API (Seção 6) responde por incidentes, evidências, hipótese e revisão; a API Flask (`apps/basica/backend`) responde pela telemetria bruta — QoE, erros, segmentações e séries no tempo. Toda leitura passa por `apps/frontend/lib/data/client.ts`, que conhece as duas bases de URL e entrega às telas um `Resource<T>` com a procedência (`api`, `exemplo` ou `indisponivel`), a completude (`measured`, `partial`, `unavailable`) e os avisos do que não pôde ser preenchido.
 
-<!-- TODO: preencher após a integração do frontend com as rotas da Seção 6 -->
+<div align="center">
+
+<sup>Tabela 9: Fontes de dados por tela</sup>
+
+| Tela | Fonte real | Sem fonte nesta fase |
+|:---|:---|:---|
+| Visão Geral | Flask (`realtime/overview`, `qoe/metrics`, `errors/summary`, `qoe/timeseries`) + esta API (`GET /incidents`) | Linha de base e detecção de anomalia |
+| Incidentes | Esta API (`GET /incidents`); o gráfico por horário agrega a própria listagem | Série contínua de dispositivos afetados |
+| Evidências | Esta API (`GET /incidents/:id`, `/evidence`, `/hypothesis`; `PATCH /hypothesis/review`) + Flask (`qoe/timeseries`) | Concentração por recorte, linha do tempo de mudanças |
+| Eventos | Flask (`qoe/timeseries`, contagem de eventos por intervalo) | As seis categorias de evento individual |
+| Monitoramento | — | Taxa, latência, cobertura, fila e DLQ (sem instrumentação de execução; fila inexistente por desenho), mapa por UF |
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
+&emsp; **Configuração.** `NEXT_PUBLIC_API_BASE_URL` aponta para esta API e `NEXT_PUBLIC_TELEMETRY_API_BASE_URL` para a Flask (ver `apps/frontend/.env.example`). Sem as variáveis, ou quando uma leitura falha, o painel cai para o conjunto de exemplo **apenas fora de produção** e declara isso na interface; em produção, cada bloco sem fonte mostra um estado explícito de indisponibilidade com o motivo — nenhum componente volta silenciosamente ao mock, conforme o contrato do dashboard. Localmente, esta API ocupa a porta 3000, então o Next sobe em outra (`next dev -p 3001`, que é o valor de `FRONTEND_ORIGIN` no `.env.example` da API).
+
+&emsp; **Sessão.** As leituras desta API vão com `credentials: "include"`; o cookie assinado do `POST /auth/login` acompanha a revisão de hipótese, que é a única escrita do painel. Um `401` na revisão aparece na tela como sessão expirada, com o caminho de volta ao login.
+
+&emsp; **O que o `map` corrige.** As rotas desta API devolvem o item como está no DynamoDB; a projeção campo a campo no frontend (`incidents-resource.ts`, `evidence-resource.ts`) é o que impede `pk`, `sk`, `trace_id` e `ttl` de chegarem à tela. Dois rótulos foram corrigidos na integração para não afirmarem medição que não existe: o cartão "Latência p95" virou "Tempo de início (p95)" (a grandeza medida é VST) e o detalhe do incidente fala em dispositivos, não sessões (é o que o campo `devices` conta).
+
+&emsp; A página de detalhe de incidente (`app/(painel)/incidentes/[id]`) segue inexistente; o caminho de investigação é `/evidencias?incidente=<id>`, que a lista de incidentes aponta.
 
 ---
 

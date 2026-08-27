@@ -8,10 +8,16 @@ e as telas do painel.
 
 ```bash
 npm install
-npm run dev      # ambiente de desenvolvimento em http://localhost:3000
+npm run dev      # desenvolvimento; use `next dev -p 3001` com a API Node no ar
 npm run build    # build de produção
 npm run lint     # ESLint
 ```
+
+Para ler dados reais, copie `.env.example` para `.env.local` e aponte as duas
+APIs do repositório — a operacional (`apps/backend/api`, porta 3000) e a de
+telemetria (`apps/basica/backend`, porta 5000). Sem elas, o painel roda com o
+conjunto de exemplo em desenvolvimento e declara isso na interface; em
+produção, blocos sem fonte mostram estados explícitos de indisponibilidade.
 
 Rotas disponíveis hoje:
 
@@ -19,6 +25,7 @@ Rotas disponíveis hoje:
 | --- | --- |
 | `/` | Redireciona para `/login` |
 | `/login` | Tela de acesso por e-mail e senha ou SSO Globo |
+| `/criar-conta` | Criação de conta com sessão aberta na hora |
 | `/recuperar-senha` | Orientação de recuperação de acesso |
 | `/visao-geral` | Hub do painel: estado do ecossistema em tempo quase real |
 | `/configuracoes` | Conta, notificações e acesso corporativo |
