@@ -14,7 +14,9 @@ The tagged runner must be ephemeral and restricted to this trusted project. It
 must run privileged Docker-in-Docker and share `/certs/client` between the job
 and DinD service so Docker 27 uses mutual TLS. Do not attach the tag to a shared
 or untrusted runner. Merge-request jobs have no `aws-lab` environment and must
-never receive AWS credentials.
+never receive AWS credentials. CI executor and DinD references use immutable
+tag-plus-digest identities, and Alpine packages installed at runtime use exact
+versions whose installation is verified alongside pipeline policy.
 
 Protect `develop` and configure the three AWS variables as protected, masked,
 hidden, raw `env_var` values scoped exactly to `aws-lab`. Never commit a GitLab
@@ -46,6 +48,11 @@ requires exactly one absent, `*`, or `aws-lab` entry per key and rejects
 ambiguous entries. After all writes it verifies all three keys are protected,
 masked, hidden, raw, type `env_var`, and scoped `aws-lab`.
 
+GitLab does not support setting `hidden` through variable update or API PUT.
+Existing variables must already be hidden; update/migration omits that field and
+the post-write metadata read proves GitLab preserved `hidden=true`. Only creation
+uses the supported `--hidden` flag. Dry-run stops before exporting credentials.
+
 Only an authorized operator should run the non-dry command. Never run it from CI
 or from this implementation/review workflow. A partial-update error names the
 completed keys without revealing values; resolve the failure and rerun the
@@ -53,19 +60,28 @@ whole synchronizer.
 
 ## Normal deployment
 
-A covered change pushed to protected `develop` runs tests, publishes only
-`monitoracao-api:$CI_COMMIT_SHA`, resolves its `sha256:<64 hex>` digest into a
-non-secret dotenv artifact, and passes that artifact to deploy. Deploy compares
-the tag's live digest with the artifact and renders
+A covered change pushed to protected `develop` runs tests, checks that
+`CI_COMMIT_SHA` equals the checkout HEAD, rebuilds and pushes only
+`monitoracao-api:$CI_COMMIT_SHA`, captures the digest from that successful push,
+and requires the tag's immediate ECR resolution to match. Publisher pull,
+revision-label inspection, and container smoke all use the resulting immutable
+`repository@sha256:<digest>` reference. The publish job marks `aws-lab` with
+environment action `prepare`, so scoped variables are available without recording
+a false deployment. Its non-secret digest artifact is passed to deploy. Deploy
+checks its checkout HEAD, compares the tag's live digest with the artifact, and renders
 `repository@sha256:<digest>` into the task definition. ECS never receives a
 mutable tag reference.
 
 Before snapshot or mutation, deploy waits for the existing service to stabilize
 and requires one PRIMARY/COMPLETED deployment, no pending tasks, running equal
 to desired, the 100/200 rolling configuration, the expected target group, and
-an active public application ALB whose HTTP rules route `/health` to that target
-group. It then registers a preserved live task definition, updates the service,
-waits with bounded signal handling, and verifies the public health contract.
+an active public application ALB. The effective priority-ordered rule on its exact
+HTTP port 80 listener must route `/health` exclusively to that target group;
+shadowing rules and weighted multi-target forwarding fail closed. Immediately
+before registration, deploy re-reads the service and requires the same stable task
+definition and 100/200 baseline. It then registers a preserved live task definition,
+updates the service, waits with bounded signal handling, and verifies the public
+health contract.
 
 Merge requests run only tests and a local amd64 container build/smoke. Runtime
 source, package manifests, Docker inputs, backend tests, CI helpers, the

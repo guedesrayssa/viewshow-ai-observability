@@ -59,12 +59,19 @@ unset endpoint_override_names
 export AWS_PAGER=""
 export AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=true
 
-for command_name in aws jq curl mktemp rm sleep dirname mv bash cat; do
+for command_name in aws jq curl git mktemp rm sleep dirname mv bash cat; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "required command is unavailable: $command_name" >&2
     exit 69
   fi
 done
+
+repository_head="$(git rev-parse --verify HEAD)"
+if [[ "$repository_head" != "$CI_COMMIT_SHA" ]]; then
+  echo "CI_COMMIT_SHA does not match checked-out HEAD" >&2
+  exit 64
+fi
+unset repository_head
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 if [[ ! -x "$script_directory/render-task-definition.sh" ]]; then
@@ -311,48 +318,59 @@ aws elbv2 describe-listeners \
   --load-balancer-arn "$alb_arn" \
   --query Listeners \
   --output json >"$listeners_json"
-mapfile -t http_listener_arns < <(jq -r '.[] | select(.Protocol == "HTTP") | .ListenerArn' "$listeners_json")
-if ((${#http_listener_arns[@]} == 0)); then
-  echo "ALB HTTP listener does not route /health to the service target group" >&2
+mapfile -t http_listener_arns < <(jq -r '.[] | select(.Protocol == "HTTP" and .Port == 80) | .ListenerArn' "$listeners_json")
+if ((${#http_listener_arns[@]} != 1)); then
+  echo "ALB HTTP port 80 listener does not route /health to the service target group" >&2
   exit 78
 fi
-health_route_found=false
-for listener_arn in "${http_listener_arns[@]}"; do
-  rules_json="$(aws elbv2 describe-rules \
-    --region "$region" \
-    --listener-arn "$listener_arn" \
-    --query Rules \
-    --output json)"
-  if jq -e --arg target "$target_group_arn" '
-    def forwards_to_target:
-      any(.Actions[]?;
-        .Type == "forward"
-        and (
-          .TargetGroupArn == $target
-          or any(.ForwardConfig.TargetGroups[]?;
-            .TargetGroupArn == $target and ((.Weight // 1) > 0)
-          )
-        )
-      );
-    def covers_health:
-      .IsDefault == true
+listener_arn="${http_listener_arns[0]}"
+rules_json="$(aws elbv2 describe-rules \
+  --region "$region" \
+  --listener-arn "$listener_arn" \
+  --query Rules \
+  --output json)"
+if ! jq -e --arg target "$target_group_arn" '
+  def path_value_may_match_health:
+    if (contains("*") or contains("?")) then
+      (split("*")[0] | split("?")[0]) as $prefix
+      | "/health" | startswith($prefix)
+    else
+      . == "/health"
+    end;
+  def may_intercept_health:
+    .IsDefault == true
+    or (
+      [.Conditions[]? | select(.Field == "path-pattern")] as $path_conditions
+      | ($path_conditions | length) == 0
+      or all($path_conditions[];
+        any((.Values // .PathPatternConfig.Values // [])[]?; path_value_may_match_health)
+      )
+    );
+  def is_unambiguous:
+    .IsDefault == true
+    or all(.Conditions[]?; .Field == "path-pattern");
+  def forwards_exclusively_to_target:
+    (.Actions | type) == "array"
+    and (.Actions | length) == 1
+    and .Actions[0].Type == "forward"
+    and (
+      (
+        .Actions[0].TargetGroupArn == $target
+        and ((.Actions[0].ForwardConfig.TargetGroups // []) | length) == 0
+      )
       or (
-        ([.Conditions[]? | select(.Field != "path-pattern")] | length) == 0
-        and any(.Conditions[]?;
-          .Field == "path-pattern"
-          and any((.Values // .PathPatternConfig.Values // [])[]?;
-            . == "/health" or . == "/health*" or . == "/*"
-          )
-        )
-      );
-    any(.[]; forwards_to_target and covers_health)
-  ' <<<"$rules_json" >/dev/null; then
-    health_route_found=true
-    break
-  fi
-done
-if [[ "$health_route_found" != true ]]; then
-  echo "ALB HTTP listener does not route /health to the service target group" >&2
+        (.Actions[0].TargetGroupArn // "") == ""
+        and (.Actions[0].ForwardConfig.TargetGroups | length) == 1
+        and .Actions[0].ForwardConfig.TargetGroups[0].TargetGroupArn == $target
+        and ((.Actions[0].ForwardConfig.TargetGroups[0].Weight // 1) > 0)
+      )
+    );
+  (sort_by(if .IsDefault == true then 2147483647 else (.Priority | tonumber) end)
+    | map(select(may_intercept_health))) as $effective_candidates
+  | ($effective_candidates | length) > 0
+    and ($effective_candidates[0] | is_unambiguous and forwards_exclusively_to_target)
+' <<<"$rules_json" >/dev/null; then
+  echo "effective ALB HTTP port 80 route is unsafe; ALB HTTP listener does not route /health exclusively to the service target group" >&2
   exit 78
 fi
 
@@ -376,6 +394,32 @@ done
   "$register_json" \
   "$image_uri" \
   "$container_name"
+
+revalidated_service_json="$temporary_directory/revalidated-service.json"
+aws ecs describe-services \
+  --region "$region" \
+  --cluster "$cluster" \
+  --services "$service" \
+  --query 'services[0]' \
+  --output json >"$revalidated_service_json"
+if ! jq -e --arg baseline "$previous_task_definition" '
+  .status == "ACTIVE"
+  and .deploymentController.type == "ECS"
+  and (.desiredCount | type) == "number"
+  and .desiredCount > 0
+  and .pendingCount == 0
+  and .runningCount == .desiredCount
+  and .deploymentConfiguration.minimumHealthyPercent == 100
+  and .deploymentConfiguration.maximumPercent == 200
+  and .taskDefinition == $baseline
+  and (.deployments | length) == 1
+  and .deployments[0].status == "PRIMARY"
+  and .deployments[0].rolloutState == "COMPLETED"
+  and .deployments[0].taskDefinition == $baseline
+' "$revalidated_service_json" >/dev/null; then
+  echo "rollback baseline changed before deployment mutation" >&2
+  exit 78
+fi
 
 new_task_definition="$(aws ecs register-task-definition \
   --region "$region" \

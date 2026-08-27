@@ -158,7 +158,7 @@ if [[ "$1" == "api" ]]; then
       and .environment_scope == "aws-lab"
       and .protected == true
       and .masked == true
-      and .hidden == true
+      and (has("hidden") | not)
       and .raw == true
       and .variable_type == "env_var"
     ' <<<"$body" >/dev/null || exit 3
@@ -182,7 +182,7 @@ if [[ "$1 $2" == "variable set" || "$1 $2" == "variable update" ]]; then
   if [[ "$action" == set ]]; then
     [[ "$*" == "variable set $key --repo $CANONICAL_REPOSITORY --protected --masked --hidden --raw --scope aws-lab --type env_var" ]] || exit 2
   else
-    [[ "$*" == "variable update $key --repo $CANONICAL_REPOSITORY --protected --masked --hidden --raw --scope aws-lab --type env_var" ]] || exit 2
+    [[ "$*" == "variable update $key --repo $CANONICAL_REPOSITORY --protected --masked --raw --scope aws-lab --type env_var" ]] || exit 2
   fi
   record_write "$action" "$key"
   exit $?
@@ -242,6 +242,7 @@ test("dry-run completes every preflight without writing variables or leaking cre
   assert.match(calls, /glab:api:metadata:1:debug-disabled/);
   assert.match(calls, /aws:.*ecr describe-repositories/);
   assert.match(calls, /aws:.*ecs describe-services/);
+  assert.doesNotMatch(calls, /export-credentials/);
   assert.doesNotMatch(calls, /glab:write:/);
   assertNoCredentialFixtureLeaks(output);
 });

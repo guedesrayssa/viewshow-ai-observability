@@ -43,12 +43,19 @@ unset endpoint_override_names
 export AWS_PAGER=""
 export AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=true
 
-for command_name in aws docker jq mktemp mv rm grep dirname cat; do
+for command_name in aws docker jq mktemp mv rm dirname git; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "required command is unavailable: $command_name" >&2
     exit 69
   fi
 done
+
+repository_head="$(git rev-parse --verify HEAD)"
+if [[ "$repository_head" != "$CI_COMMIT_SHA" ]]; then
+  echo "CI_COMMIT_SHA does not match checked-out HEAD" >&2
+  exit 64
+fi
+unset repository_head
 
 identity_json="$(aws sts get-caller-identity --output json)"
 actual_account="$(jq -r '.Account' <<<"$identity_json")"
@@ -67,67 +74,65 @@ readonly registry="${expected_account}.dkr.ecr.${expected_region}.amazonaws.com"
 readonly image_uri="${registry}/${expected_repository}:${CI_COMMIT_SHA}"
 readonly cache_uri="${registry}/${expected_repository}:buildcache"
 dotenv_file="${BACKEND_IMAGE_ENV_FILE:-backend-image.env}"
-describe_error="$(mktemp)"
 dotenv_temp=""
 cleanup() {
-  rm -f "$describe_error"
   if [[ -n "$dotenv_temp" ]]; then
     rm -f "$dotenv_temp"
   fi
 }
 trap cleanup EXIT
 
-image_exists=false
-image_digest=""
-if image_digest="$(aws ecr describe-images \
+aws ecr get-login-password --region "$expected_region" |
+  docker login --username AWS --password-stdin "$registry"
+
+docker buildx build \
+  --platform linux/amd64 \
+  --load \
+  --cache-from "type=registry,ref=$cache_uri" \
+  --cache-to "type=registry,ref=$cache_uri,mode=max,image-manifest=true,oci-mediatypes=true" \
+  --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+  --tag "$image_uri" \
+  apps/backend/api
+
+push_output="$(docker push "$image_uri")"
+pushed_digests=()
+while IFS= read -r push_line; do
+  if [[ "$push_line" =~ ^${CI_COMMIT_SHA}:\ digest:\ (sha256:[0-9a-f]{64})\ size:\ [0-9]+$ ]]; then
+    pushed_digests+=("${BASH_REMATCH[1]}")
+  fi
+done <<<"$push_output"
+unset push_output push_line
+if ((${#pushed_digests[@]} != 1)); then
+  echo "docker push did not report exactly one valid digest" >&2
+  exit 78
+fi
+readonly image_digest="${pushed_digests[0]}"
+unset pushed_digests
+
+live_image_digest="$(aws ecr describe-images \
   --region "$expected_region" \
   --repository-name "$expected_repository" \
   --image-ids "imageTag=$CI_COMMIT_SHA" \
   --query 'imageDetails[0].imageDigest' \
-  --output text 2>"$describe_error")"; then
-  image_exists=true
-else
-  describe_status=$?
-  if ! grep -Fq 'ImageNotFoundException' "$describe_error"; then
-    cat "$describe_error" >&2 || :
-    exit "$describe_status"
-  fi
-fi
-rm -f "$describe_error"
-describe_error=""
-
-aws ecr get-login-password --region "$expected_region" |
-  docker login --username AWS --password-stdin "$registry"
-
-if [[ "$image_exists" == true ]]; then
-  docker pull "$image_uri"
-  image_revision="$(docker image inspect "$image_uri" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
-  if [[ "$image_revision" != "$CI_COMMIT_SHA" ]]; then
-    echo "existing ECR tag has unexpected source revision: $image_revision" >&2
-    exit 1
-  fi
-else
-  docker buildx build \
-    --platform linux/amd64 \
-    --load \
-    --cache-from "type=registry,ref=$cache_uri" \
-    --cache-to "type=registry,ref=$cache_uri,mode=max,image-manifest=true,oci-mediatypes=true" \
-    --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
-    --tag "$image_uri" \
-    apps/backend/api
-  docker push "$image_uri"
-  image_digest="$(aws ecr describe-images \
-    --region "$expected_region" \
-    --repository-name "$expected_repository" \
-    --image-ids "imageTag=$CI_COMMIT_SHA" \
-    --query 'imageDetails[0].imageDigest' \
-    --output text)"
-fi
-
-if ! [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+  --output text)"
+if ! [[ "$live_image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
   echo "invalid ECR image digest for CI_COMMIT_SHA" >&2
   exit 78
 fi
+if [[ "$live_image_digest" != "$image_digest" ]]; then
+  echo "ECR digest does not match docker push digest" >&2
+  exit 78
+fi
+unset live_image_digest
+
+readonly digest_image_uri="${registry}/${expected_repository}@${image_digest}"
+docker pull "$digest_image_uri"
+image_revision="$(docker image inspect "$digest_image_uri" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
+if [[ "$image_revision" != "$CI_COMMIT_SHA" ]]; then
+  echo "immutable image has unexpected source revision: $image_revision" >&2
+  exit 1
+fi
+unset image_revision
 
 dotenv_directory="$(dirname "$dotenv_file")"
 dotenv_temp="$(mktemp "$dotenv_directory/.backend-image.env.tmp.XXXXXX")"

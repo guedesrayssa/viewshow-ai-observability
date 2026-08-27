@@ -45,8 +45,11 @@ function runDeploy({
   resolveAlb = true,
   actualAccount = "248880318395",
   callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
+  repositoryHead = commitSha,
   serviceOverrides = {},
+  lateServiceOverrides = {},
   albOverrides = {},
+  listenerPort = 80,
   routeHealthToTargetGroup = true,
   rulesOverride = null,
 } = {}) {
@@ -55,15 +58,18 @@ function runDeploy({
   const calls = path.join(directory, "calls.log");
   const task = path.join(directory, "task.json");
   const service = path.join(directory, "service.json");
+  const lateService = path.join(directory, "late-service.json");
   const alb = path.join(directory, "alb.json");
   const listeners = path.join(directory, "listeners.json");
   const rules = path.join(directory, "rules.json");
   const state = path.join(directory, "current-task.txt");
   const waiterCount = path.join(directory, "waiter-count.txt");
+  const serviceReadCount = path.join(directory, "service-read-count.txt");
   fs.mkdirSync(bin);
   fs.writeFileSync(calls, "");
   fs.writeFileSync(state, oldArn);
   fs.writeFileSync(waiterCount, "0");
+  fs.writeFileSync(serviceReadCount, "0");
   const targetContainer = { name: "monitoracao-api-container", image: "old:v1" };
   const containerDefinitions = {
     correct: [targetContainer],
@@ -87,24 +93,23 @@ function runDeploy({
       containerDefinitions,
     }),
   );
-  fs.writeFileSync(
-    service,
-    JSON.stringify({
-      status: serviceStatus,
-      taskDefinition: oldArn,
-      deploymentController: { type: controllerType },
-      desiredCount: 1,
-      runningCount: 1,
-      pendingCount: 0,
-      deploymentConfiguration: { minimumHealthyPercent: 100, maximumPercent: 200 },
-      deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: oldArn }],
-      loadBalancers: [{
-        targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
-        containerName: "monitoracao-api-container",
-      }],
-      ...serviceOverrides,
-    }),
-  );
+  const serviceFixture = {
+    status: serviceStatus,
+    taskDefinition: oldArn,
+    deploymentController: { type: controllerType },
+    desiredCount: 1,
+    runningCount: 1,
+    pendingCount: 0,
+    deploymentConfiguration: { minimumHealthyPercent: 100, maximumPercent: 200 },
+    deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: oldArn }],
+    loadBalancers: [{
+      targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+      containerName: "monitoracao-api-container",
+    }],
+    ...serviceOverrides,
+  };
+  fs.writeFileSync(service, JSON.stringify(serviceFixture));
+  fs.writeFileSync(lateService, JSON.stringify({ ...serviceFixture, ...lateServiceOverrides }));
   fs.writeFileSync(
     alb,
     JSON.stringify(resolveAlb ? {
@@ -116,11 +121,12 @@ function runDeploy({
       ...albOverrides,
     } : { LoadBalancerArn: null, DNSName: null }),
   );
-  fs.writeFileSync(listeners, JSON.stringify([{ ListenerArn: listenerArn, Protocol: "HTTP", Port: 80 }]));
+  fs.writeFileSync(listeners, JSON.stringify([{ ListenerArn: listenerArn, Protocol: "HTTP", Port: listenerPort }]));
   fs.writeFileSync(
     rules,
     JSON.stringify(rulesOverride ?? (routeHealthToTargetGroup ? [{
       RuleArn: `${listenerArn}/rule-1`,
+      Priority: "1",
       IsDefault: false,
       Conditions: [{ Field: "path-pattern", Values: ["/health"] }],
       Actions: [{
@@ -129,6 +135,7 @@ function runDeploy({
       }],
     }] : [{
       RuleArn: `${listenerArn}/default`,
+      Priority: "default",
       IsDefault: true,
       Conditions: [],
       Actions: [{
@@ -137,6 +144,22 @@ function runDeploy({
       }],
     }])),
   );
+
+  if (missingCommand !== "git") {
+    writeExecutable(
+      path.join(bin, "git"),
+      `#!/usr/bin/env bash
+set -euo pipefail
+printf 'git:%s\n' "$*" >>"$CALL_LOG"
+if [[ "$*" == "rev-parse --verify HEAD" ]]; then
+  printf '%s\n' "$REPOSITORY_HEAD"
+else
+  echo "unexpected git call: $*" >&2
+  exit 2
+fi
+`,
+    );
+  }
 
   if (missingCommand !== "aws") {
     writeExecutable(
@@ -150,7 +173,13 @@ printf 'aws:%s\\n' "$call" >>"$CALL_LOG"
 if [[ "$call" == "sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\\n' "$ACTUAL_ACCOUNT" "$CALLER_ARN"
 elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query services[0] --output json" ]]; then
-  cat "$SERVICE_FIXTURE"
+  service_read_count=$(( $(cat "$SERVICE_READ_COUNT_FILE") + 1 ))
+  printf '%s' "$service_read_count" >"$SERVICE_READ_COUNT_FILE"
+  if [[ "$service_read_count" == "1" ]]; then
+    cat "$SERVICE_FIXTURE"
+  else
+    cat "$LATE_SERVICE_FIXTURE"
+  fi
 elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].imageDigest --output text" ]]; then
   echo "$LIVE_IMAGE_DIGEST"
 elif [[ "$call" == "ecs describe-task-definition --region us-east-1 --task-definition $OLD_ARN --query taskDefinition --output json" ]]; then
@@ -236,9 +265,10 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
 
   let deployPath = `${bin}:${process.env.PATH}`;
   if (missingCommand) {
-    const systemCommands = ["bash", "cat", "dirname", "jq", "mktemp", "mv", "rm", "sleep"];
+    const systemCommands = ["bash", "cat", "dirname", "git", "jq", "mktemp", "mv", "rm", "sleep"];
     for (const command of systemCommands) {
       if (command === missingCommand) continue;
+      if (fs.existsSync(path.join(bin, command))) continue;
       const candidates = [`/usr/bin/${command}`, `/bin/${command}`];
       const target = candidates.find((candidate) => fs.existsSync(candidate));
       assert.ok(target, `test host is missing ${command}`);
@@ -256,11 +286,13 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       CALL_LOG: calls,
       TASK_FIXTURE: task,
       SERVICE_FIXTURE: service,
+      LATE_SERVICE_FIXTURE: lateService,
       ALB_FIXTURE: alb,
       LISTENERS_FIXTURE: listeners,
       RULES_FIXTURE: rules,
       STATE_FILE: state,
       WAITER_COUNT_FILE: waiterCount,
+      SERVICE_READ_COUNT_FILE: serviceReadCount,
       OLD_ARN: oldArn,
       NEW_ARN: newArn,
       PASS_ROLE_DECISION: passRoleDecision,
@@ -286,6 +318,7 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       RESOLVE_ALB: String(resolveAlb),
       ACTUAL_ACCOUNT: actualAccount,
       CALLER_ARN: callerArn,
+      REPOSITORY_HEAD: repositoryHead,
       AWS_ACCOUNT_ID: "248880318395",
       AWS_DEFAULT_REGION: "us-east-1",
       ECR_REPOSITORY: "monitoracao-api",
@@ -308,6 +341,11 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
   }
   const result = spawnSync(script, [], spawnOptions);
   if (stdoutDescriptor !== undefined) fs.closeSync(stdoutDescriptor);
+  assert.doesNotMatch(
+    result.stderr,
+    /unexpected aws call:/,
+    `strict fake AWS rejected an undeclared interaction:\n${result.stderr}`,
+  );
 
   const deployment = {
     result,
@@ -338,6 +376,7 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
     .split("\n")
     .map((line) => {
       if (line.startsWith("curl:")) return "curl";
+      if (line.startsWith("git:")) return "git";
       if (line.includes("sts get-caller-identity")) return "identity";
       if (line.includes("ecs describe-services") && line.includes("--output json")) return "service";
       if (line.includes("ecr describe-images")) return "image";
@@ -354,6 +393,7 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
       return "unexpected";
     });
   assert.deepEqual(operations, [
+    "git",
     "identity",
     "wait",
     "service",
@@ -365,6 +405,7 @@ test("successful deploy updates ECS once and keeps the new revision", () => {
     "rules",
     "pass-role",
     "pass-role",
+    "service",
     "register",
     "update",
     "wait",
@@ -518,7 +559,10 @@ test("caller must be the exact voclabs assumed role", () => {
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unexpected AWS caller/);
-  assert.deepEqual(calls.trim().split("\n"), ["aws:sts get-caller-identity --output json"]);
+  assert.deepEqual(calls.trim().split("\n"), [
+    "git:rev-parse --verify HEAD",
+    "aws:sts get-caller-identity --output json",
+  ]);
 });
 
 for (const [name, serviceOverrides] of [
@@ -572,6 +616,7 @@ test("ALB health rule with an additional host condition fails before mutation", 
   const { result, calls } = runDeploy({
     rulesOverride: [{
       RuleArn: `${listenerArn}/host-constrained`,
+      Priority: "1",
       IsDefault: false,
       Conditions: [
         { Field: "path-pattern", Values: ["/health"] },
@@ -592,6 +637,7 @@ test("ALB health rule with zero target weight fails before mutation", () => {
   const { result, calls } = runDeploy({
     rulesOverride: [{
       RuleArn: `${listenerArn}/zero-weight`,
+      Priority: "1",
       IsDefault: false,
       Conditions: [{ Field: "path-pattern", Values: ["/health"] }],
       Actions: [{
@@ -607,6 +653,93 @@ test("ALB health rule with zero target weight fails before mutation", () => {
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /ALB HTTP listener does not route \/health/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("only the exact HTTP port 80 listener can authorize public smoke", () => {
+  const { result, calls } = runDeploy({ listenerPort: 8080 });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ALB HTTP port 80 listener does not route \/health/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("higher-priority health route to another target shadows a good default", () => {
+  const otherTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999";
+  const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123";
+  const { result, calls } = runDeploy({
+    rulesOverride: [{
+      RuleArn: `${listenerArn}/shadow`,
+      Priority: "1",
+      IsDefault: false,
+      Conditions: [{ Field: "path-pattern", Values: ["/health"] }],
+      Actions: [{ Type: "forward", TargetGroupArn: otherTarget }],
+    }, {
+      RuleArn: `${listenerArn}/default`,
+      Priority: "default",
+      IsDefault: true,
+      Conditions: [],
+      Actions: [{ Type: "forward", TargetGroupArn: serviceTarget }],
+    }],
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /effective ALB HTTP port 80 route/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("weighted multi-target health forwarding fails before mutation", () => {
+  const { result, calls } = runDeploy({
+    rulesOverride: [{
+      RuleArn: `${listenerArn}/weighted`,
+      Priority: "1",
+      IsDefault: false,
+      Conditions: [{ Field: "path-pattern", Values: ["/health"] }],
+      Actions: [{
+        Type: "forward",
+        ForwardConfig: {
+          TargetGroups: [{
+            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+            Weight: 50,
+          }, {
+            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999",
+            Weight: 50,
+          }],
+        },
+      }],
+    }],
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /effective ALB HTTP port 80 route/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("repository HEAD mismatch fails before any AWS call", () => {
+  const { result, calls } = runDeploy({ repositoryHead: "f".repeat(40) });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CI_COMMIT_SHA does not match checked-out HEAD/);
+  assert.deepEqual(calls.trim().split("\n"), ["git:rev-parse --verify HEAD"]);
+});
+
+test("external deployment changing the rollback baseline aborts before registration", () => {
+  const externalArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/monitoracao-api-task:99";
+  const { result, calls } = runDeploy({
+    lateServiceOverrides: {
+      taskDefinition: externalArn,
+      deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: externalArn }],
+    },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /rollback baseline changed before deployment mutation/);
+  assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
+});
+
+test("external deployment configuration change aborts before registration", () => {
+  const { result, calls } = runDeploy({
+    lateServiceOverrides: {
+      deploymentConfiguration: { minimumHealthyPercent: 50, maximumPercent: 200 },
+    },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /rollback baseline changed before deployment mutation/);
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
 });
 
@@ -628,7 +761,10 @@ test("wrong STS account stops after identity lookup without ECS mutation", () =>
   const { result, calls } = runDeploy({ actualAccount: "000000000000" });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unexpected AWS account: 000000000000/);
-  assert.deepEqual(calls.trim().split("\n"), ["aws:sts get-caller-identity --output json"]);
+  assert.deepEqual(calls.trim().split("\n"), [
+    "git:rev-parse --verify HEAD",
+    "aws:sts get-caller-identity --output json",
+  ]);
   assert.doesNotMatch(calls, /ecs register-task-definition|ecs update-service/);
 });
 
@@ -651,7 +787,7 @@ for (const [variable, value] of Object.entries({
   });
 }
 
-for (const command of ["aws", "jq", "curl", "mktemp", "rm", "sleep", "dirname", "mv"]) {
+for (const command of ["aws", "jq", "curl", "git", "mktemp", "rm", "sleep", "dirname", "mv"]) {
   test(`missing ${command} fails before any AWS call`, () => {
     const { result, calls } = runDeploy({ missingCommand: command });
     assert.notEqual(result.status, 0);

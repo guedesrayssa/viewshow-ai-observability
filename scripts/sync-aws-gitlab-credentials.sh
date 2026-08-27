@@ -180,17 +180,16 @@ if [[ "$ecs_result" != $'ACTIVE\t0' ]]; then
 fi
 unset ecs_result
 
+if [[ "$dry_run" == true ]]; then
+  echo "dry-run validated AWS account, ECR, ECS, GitLab authentication, and variable targets"
+  exit 0
+fi
+
 credentials_json="$(aws configure export-credentials --profile "$profile" --format process)"
 access_key="$(jq -er '.AccessKeyId' <<<"$credentials_json")"
 secret_key="$(jq -er '.SecretAccessKey' <<<"$credentials_json")"
 session_token="$(jq -er '.SessionToken' <<<"$credentials_json")"
 unset credentials_json
-
-if [[ "$dry_run" == true ]]; then
-  cleanup_credentials
-  echo "dry-run validated AWS account, ECR, ECS, GitLab authentication, and variable targets"
-  exit 0
-fi
 
 set_variable() {
   local key="$1"
@@ -212,7 +211,6 @@ set_variable() {
         --repo "$repository_url" \
         --protected \
         --masked \
-        --hidden \
         --raw \
         --scope aws-lab \
         --type env_var
@@ -224,7 +222,6 @@ set_variable() {
           environment_scope: "aws-lab",
           protected: true,
           masked: true,
-          hidden: true,
           raw: true,
           variable_type: "env_var"
         }

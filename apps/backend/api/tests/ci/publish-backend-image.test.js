@@ -15,22 +15,35 @@ function writeExecutable(file, body) {
 }
 
 function runPublisher({
-  imageExists = true,
-  imageDigest = digest,
+  pushDigest = digest,
+  ecrDigest = digest,
   actualAccount = "248880318395",
   callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
   imageRevision = commitSha,
+  repositoryHead = commitSha,
   envOverrides = {},
 } = {}) {
   assert.ok(fs.existsSync(script), "publication helper must exist");
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "image-publish-"));
   const bin = path.join(directory, "bin");
   const calls = path.join(directory, "calls.log");
-  const state = path.join(directory, "state");
   const dotenv = path.join(directory, "backend-image.env");
   fs.mkdirSync(bin);
   fs.writeFileSync(calls, "");
-  fs.writeFileSync(state, imageExists ? "existing" : "missing");
+
+  writeExecutable(
+    path.join(bin, "git"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf 'git:%s\n' "$*" >>"$CALL_LOG"
+if [[ "$*" == "rev-parse --verify HEAD" ]]; then
+  printf '%s\n' "$REPOSITORY_HEAD"
+else
+  echo "unexpected git call: $*" >&2
+  exit 2
+fi
+`,
+  );
 
   writeExecutable(
     path.join(bin, "aws"),
@@ -41,14 +54,10 @@ set -euo pipefail
 printf 'aws:%s\n' "$*" >>"$CALL_LOG"
 if [[ "$*" == "sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\n' "$ACTUAL_ACCOUNT" "$CALLER_ARN"
-elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].imageDigest --output text" ]]; then
-  if [[ "$(cat "$STATE_FILE")" == "missing" ]]; then
-    echo 'ImageNotFoundException' >&2
-    exit 254
-  fi
-  printf '%s\n' "$IMAGE_DIGEST"
 elif [[ "$*" == "ecr get-login-password --region us-east-1" ]]; then
   printf 'fixture-password'
+elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].imageDigest --output text" ]]; then
+  printf '%s\n' "$ECR_DIGEST"
 else
   echo "unexpected aws call: $*" >&2
   exit 2
@@ -62,18 +71,19 @@ fi
 set -euo pipefail
 printf 'docker:%s\n' "$*" >>"$CALL_LOG"
 registry="248880318395.dkr.ecr.us-east-1.amazonaws.com"
-image="$registry/monitoracao-api:$EXPECTED_SHA"
+tagged_image="$registry/monitoracao-api:$EXPECTED_SHA"
+digest_image="$registry/monitoracao-api@$PUSH_DIGEST"
 cache="$registry/monitoracao-api:buildcache"
 if [[ "$*" == "login --username AWS --password-stdin $registry" ]]; then
   [[ "$(cat)" == "fixture-password" ]] || exit 3
-elif [[ "$*" == "pull $image" ]]; then
+elif [[ "$*" == "buildx build --platform linux/amd64 --load --cache-from type=registry,ref=$cache --cache-to type=registry,ref=$cache,mode=max,image-manifest=true,oci-mediatypes=true --label org.opencontainers.image.revision=$EXPECTED_SHA --tag $tagged_image apps/backend/api" ]]; then
   :
-elif [[ "$*" == "image inspect $image --format {{ index .Config.Labels \\\"org.opencontainers.image.revision\\\" }}" ]]; then
+elif [[ "$*" == "push $tagged_image" ]]; then
+  printf 'layer: pushed\n%s: digest: %s size: 1234\n' "$EXPECTED_SHA" "$PUSH_DIGEST"
+elif [[ "$*" == "pull $digest_image" ]]; then
+  :
+elif [[ "$*" == "image inspect $digest_image --format {{ index .Config.Labels \\"org.opencontainers.image.revision\\" }}" ]]; then
   printf '%s\n' "$IMAGE_REVISION"
-elif [[ "$*" == "buildx build --platform linux/amd64 --load --cache-from type=registry,ref=$cache --cache-to type=registry,ref=$cache,mode=max,image-manifest=true,oci-mediatypes=true --label org.opencontainers.image.revision=$EXPECTED_SHA --tag $image apps/backend/api" ]]; then
-  :
-elif [[ "$*" == "push $image" ]]; then
-  printf 'existing' >"$STATE_FILE"
 else
   echo "unexpected docker call: $*" >&2
   exit 2
@@ -88,11 +98,12 @@ fi
       ...process.env,
       PATH: `${bin}:${process.env.PATH}`,
       CALL_LOG: calls,
-      STATE_FILE: state,
       ACTUAL_ACCOUNT: actualAccount,
       CALLER_ARN: callerArn,
-      IMAGE_DIGEST: imageDigest,
+      PUSH_DIGEST: pushDigest,
+      ECR_DIGEST: ecrDigest,
       IMAGE_REVISION: imageRevision,
+      REPOSITORY_HEAD: repositoryHead,
       EXPECTED_SHA: commitSha,
       AWS_ACCOUNT_ID: "248880318395",
       AWS_DEFAULT_REGION: "us-east-1",
@@ -112,22 +123,41 @@ fi
   return execution;
 }
 
-test("existing SHA image is reused and exports its exact digest", () => {
+test("publisher builds and pushes this checkout then inspects only its digest", () => {
   const { result, calls, dotenv } = runPublisher();
   assert.equal(result.status, 0, result.stderr);
   assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
-  assert.match(calls, /docker:pull .*monitoracao-api:/);
-  assert.match(calls, /docker:image inspect/);
-  assert.doesNotMatch(calls, /docker:push|docker:buildx build/);
+  assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:buildx build")).length, 1);
+  assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:push")).length, 1);
+  assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
+  assert.match(calls, new RegExp(`docker:image inspect .*monitoracao-api@${digest}`));
+  assert.doesNotMatch(calls, /docker:(pull|image inspect) .*monitoracao-api:/);
+  assert.ok(calls.indexOf("docker:push") < calls.indexOf("ecr describe-images"));
 });
 
-test("missing SHA image is built once, pushed once, and resolved by digest", () => {
-  const { result, calls, dotenv } = runPublisher({ imageExists: false });
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
-  assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:push")).length, 1);
-  assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:buildx build")).length, 1);
-  assert.equal(calls.split("\n").filter((line) => line.includes("ecr describe-images")).length, 2);
+test("ECR tag overwrite after push prevents artifact creation", () => {
+  const otherDigest = `sha256:${"b".repeat(64)}`;
+  const { result, calls, dotenv } = runPublisher({ ecrDigest: otherDigest });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ECR digest does not match docker push digest/);
+  assert.doesNotMatch(calls, /docker:pull|docker:image inspect/);
+  assert.equal(dotenv, "");
+});
+
+test("invalid docker push digest fails before ECR resolution", () => {
+  const { result, calls, dotenv } = runPublisher({ pushDigest: "sha256:invalid" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docker push did not report exactly one valid digest/);
+  assert.doesNotMatch(calls, /ecr describe-images/);
+  assert.equal(dotenv, "");
+});
+
+test("repository HEAD mismatch fails before AWS or Docker calls", () => {
+  const { result, calls, dotenv } = runPublisher({ repositoryHead: "f".repeat(40) });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CI_COMMIT_SHA does not match checked-out HEAD/);
+  assert.deepEqual(calls.trim().split("\n"), ["git:rev-parse --verify HEAD"]);
+  assert.equal(dotenv, "");
 });
 
 for (const [variable, value] of Object.entries({
@@ -145,9 +175,7 @@ for (const [variable, value] of Object.entries({
 }
 
 test("AWS endpoint overrides fail before external calls", () => {
-  const { result, calls } = runPublisher({
-    envOverrides: { AWS_ENDPOINT_URL_ECR: "https://example.invalid" },
-  });
+  const { result, calls } = runPublisher({ envOverrides: { AWS_ENDPOINT_URL_ECR: "https://example.invalid" } });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /AWS endpoint overrides are not allowed/);
   assert.equal(calls, "");
@@ -162,22 +190,14 @@ test("caller must be the expected voclabs assumed role", () => {
   assert.doesNotMatch(calls, /ecr |docker:/);
 });
 
-test("invalid ECR digest never creates a dotenv artifact", () => {
-  const { result, calls, dotenv } = runPublisher({ imageDigest: "sha256:testdigest" });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /invalid ECR image digest/);
-  assert.match(calls, /ecr describe-images/);
-  assert.equal(dotenv, "");
-});
-
-test("existing SHA image must retain the commit revision label", () => {
+test("immutable image must retain the commit revision label", () => {
   const { result, dotenv } = runPublisher({ imageRevision: "wrong-revision" });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unexpected source revision/);
   assert.equal(dotenv, "");
 });
 
-test("publisher declares the command used to replay an ECR error", () => {
+test("publisher declares git as a fail-fast dependency", () => {
   const source = fs.readFileSync(script, "utf8");
-  assert.match(source, /for command_name in [^\n]*\bcat\b/);
+  assert.match(source, /for command_name in [^\n]*\bgit\b/);
 });
