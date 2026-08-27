@@ -57,9 +57,11 @@ apps/frontend/
 
 ## Documentação
 
-A documentação completa do frontend — arquitetura, estrutura de pastas, camada de
-dados, telas, componentes, gráficos, tema e autenticação — está em
-[`documentacao-frontend.md`](./documentacao-frontend.md).
+O ponto de entrada é [`documentacao-frontend.md`](./documentacao-frontend.md):
+visão geral, arquitetura, estrutura de pastas e telas. Os domínios mais
+autocontidos ficam em `docs/` — [camada de dados](./docs/camada-de-dados.md),
+[componentes e gráficos](./docs/componentes.md), [tema](./docs/tema.md),
+[autenticação](./docs/autenticacao.md) e o [design system](./docs/design-system.md).
 
 ## Design system
 

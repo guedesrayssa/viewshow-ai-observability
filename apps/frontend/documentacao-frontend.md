@@ -4,30 +4,36 @@ Aplicação web do View Show — a plataforma de telemetria de frontend do Globo
 que diagnostica falhas de reprodução em minutos. Construída com **Next.js 16
 (App Router)**, **React 19**, **TypeScript** e **Tailwind CSS v4**.
 
-Este documento reúne toda a documentação do frontend. O guia visual detalhado
-(tokens, componentes, contraste) continua em
-[`docs/design-system.md`](./docs/design-system.md), e a versão navegável dele, em
-`/design-system`.
+Este é o **ponto de entrada** da documentação: reúne a visão geral e as seções
+transversais. Os domínios mais autocontidos moram em arquivos próprios dentro de
+`docs/`, no mesmo padrão já usado para o guia visual:
+
+| Documento | Cobre |
+| --- | --- |
+| [`docs/camada-de-dados.md`](./docs/camada-de-dados.md) | `client.ts`, `endpoints.ts`, `useResource`, os quatro estados, `*-resource`/`*-data`, `DataStatus` |
+| [`docs/componentes.md`](./docs/componentes.md) | Catálogo de `components/` e os dois componentes de gráfico |
+| [`docs/tema.md`](./docs/tema.md) | As três preferências, o script de bootstrap, `persisted-preference`, tema escuro no CSS |
+| [`docs/autenticacao.md`](./docs/autenticacao.md) | `auth.ts`, login, SSO, sessão de demonstração, `AccountProvider`, foto de perfil |
+| [`docs/design-system.md`](./docs/design-system.md) | Tokens, componentes e regras de uso, com valores e contraste. Versão navegável em `/design-system` |
 
 ## Sumário
 
-1. [Início rápido](#1-início-rápido)
+1. [Início](#1-início)
 2. [Arquitetura](#2-arquitetura)
 3. [Estrutura de pastas](#3-estrutura-de-pastas)
-4. [Camada de dados](#4-camada-de-dados)
-5. [Telas](#5-telas)
-6. [Catálogo de componentes](#6-catálogo-de-componentes)
-7. [Gráficos](#7-gráficos)
-8. [Tema e preferências persistidas](#8-tema-e-preferências-persistidas)
-9. [Autenticação e conta](#9-autenticação-e-conta)
-10. [Design system e movimento](#10-design-system-e-movimento)
-11. [Acessibilidade](#11-acessibilidade)
-12. [Desenvolvimento e convenções](#12-desenvolvimento-e-convenções)
-13. [Referências do projeto](#13-referências-do-projeto)
+4. [Telas](#4-telas)
+5. [Camada de dados](#5-camada-de-dados)
+6. [Catálogo de componentes e gráficos](#6-catálogo-de-componentes-e-gráficos)
+7. [Tema e preferências persistidas](#7-tema-e-preferências-persistidas)
+8. [Autenticação e conta](#8-autenticação-e-conta)
+9. [Design system e movimento](#9-design-system-e-movimento)
+10. [Acessibilidade](#10-acessibilidade)
+11. [Desenvolvimento e convenções](#11-desenvolvimento-e-convenções)
+12. [Referências do projeto](#12-referências-do-projeto)
 
 ---
 
-## 1. Início rápido
+## 1. Início
 
 ```bash
 cd apps/frontend
@@ -57,15 +63,9 @@ cp .env.example .env.local
 Pré-requisitos: **Node.js 20+** e **npm** (há `package-lock.json`). Não há suíte
 de testes configurada no pacote hoje.
 
-### Três regras que valem para qualquer tela nova
-
-1. **Nada de cor literal fora de `app/globals.css`.** Use os tokens semânticos
-   (`bg-surface`, `text-ink-muted`, `border-line`, `rounded-card`).
-2. **Nada de elemento nativo estilizado à mão.** Botões, campos, cartões, selos e
-   avisos vêm de `components/ui`. Se falta uma variante, ela é acrescentada ao
-   componente, não improvisada na tela.
-3. **Todo número passa pela camada de dados** e chega pelo `useResource`, com os
-   quatro estados desenhados (esperando, com dado, atualizando, sem leitura).
+As convenções que valem para qualquer tela nova — cor via token semântico,
+elementos interativos de `components/ui`, dados pelo `useResource` — estão
+reunidas na [seção 2.7](#27-princípios).
 
 ---
 
@@ -143,7 +143,8 @@ nomes previsíveis:
 
 **Dados** (`lib/data/` + `hooks/use-resource.ts`) — toda leitura de telemetria
 passa por `lib/data/client.ts`, que decide entre a API e o conjunto de exemplo, e
-chega ao componente pelo hook `useResource`. Detalhado na seção 4.
+chega ao componente pelo hook `useResource`. Detalhado em
+[`docs/camada-de-dados.md`](./docs/camada-de-dados.md).
 
 ### 2.4 Servidor e cliente
 
@@ -161,7 +162,7 @@ quando precisa de estado, efeito, contexto ou APIs do navegador.
 `button-classes.ts` existe separado de `button.tsx` justamente para que uma tela
 de servidor possa dar aparência de botão a um `<Link>` (`buttonClasses({...})`)
 sem arrastar o componente cliente. O tema é resolvido **antes da primeira
-pintura** por um script inline no `<head>` (seção 8).
+pintura** por um script inline no `<head>` (ver [`docs/tema.md`](./docs/tema.md)).
 
 ### 2.5 Fluxo de uma tela do painel
 
@@ -196,18 +197,29 @@ Não há store global. O estado mora onde faz sentido:
 Preferências são **estado externo ao React**: existem antes da app montar e
 sobrevivem a ela. Por isso são lidas com `useSyncExternalStore` a partir de uma
 pequena loja com assinatura (`lib/persisted-preference.ts`), sem efeito de
-correção depois da primeira pintura.
+correção depois da primeira pintura. Contrato da loja em
+[`docs/tema.md`](./docs/tema.md).
 
 ### 2.7 Princípios
 
-1. **Cor literal só em `app/globals.css`.** Nas telas, o token semântico.
-2. **Elemento interativo vem de `components/ui`.** Falta variante? Acrescente no
-   componente, não na tela.
-3. **Cor nunca comunica sozinha.** Todo estado tem rótulo textual (WCAG 2.2).
-4. **Todo número passa pela camada de dados** e chega pelo `useResource`.
-5. **O movimento tem que dizer algo.** A barra cresce porque a altura é o dado; a
-   linha é escrita porque o eixo é o tempo. Enfeite não entra.
-6. **Toda adição entra também em `/design-system`.**
+- **Cor** vive em `app/globals.css` como token semântico (`bg-surface`,
+  `text-ink-muted`, `border-line`, `rounded-card`); as telas consomem o token, e
+  não o valor literal. É o que permite o tema escuro reescrever apenas os tokens,
+  sem tocar em nenhum componente.
+- **Elementos interativos** — botões, campos, cartões, selos, avisos — vêm de
+  `components/ui`, que já carrega altura, raio, foco e estados corretos. Quando
+  falta uma variante, ela é acrescentada ao componente, e chega às telas por lá.
+- **O estado é comunicado por texto além da cor:** todo `Badge`, `Alert` e
+  legenda de gráfico leva rótulo textual, seguindo as WCAG 2.2.
+- **Os números da tela vêm da camada de dados**, pelo `useResource`, com os
+  quatro estados desenhados (esperando, com dado, atualizando, sem leitura). O
+  conjunto de exemplo entra como `fallback` de um recurso, nunca importado direto
+  na tela.
+- **O movimento carrega informação:** a barra cresce porque a altura é o dado, a
+  linha é escrita porque o eixo é o tempo, o número conta porque acabou de ser
+  lido. Movimento que não diz nada fica de fora.
+- **Cada token ou componente novo aparece também em `/design-system`**, que
+  renderiza o guia com o mesmo código das telas.
 
 ---
 
@@ -224,8 +236,10 @@ apps/frontend/
 ├── components/             # componentes de UI, agrupados por domínio
 ├── hooks/                  # leitura de recurso, media query e movimento
 ├── lib/                    # acesso, tema, formatação, camada de dados, utilitários
-├── docs/design-system.md    # guia visual detalhado
-├── documentacao-frontend.md # este documento
+├── docs/                   # documentação por domínio
+│   ├── camada-de-dados.md  componentes.md  tema.md  autenticacao.md
+│   └── design-system.md    # guia visual detalhado
+├── documentacao-frontend.md # ponto de entrada da documentação
 ├── public/                 # assets estáticos do template do Next (não usados nas telas)
 ├── .env.example            # variáveis de ambiente do frontend
 ├── eslint.config.mjs       # ESLint (core-web-vitals + typescript do Next)
@@ -293,7 +307,7 @@ app/
 components/
 ├── account/account-provider.tsx  # perfil (nome, foto) em sessão; useAccount()
 │
-├── charts/                        # ver seção 7
+├── charts/                        # ver docs/componentes.md
 │   ├── time-series-chart.tsx      # <TimeSeriesChart> + <ChartLegend> (linha)
 │   ├── bar-chart.tsx             # <BarChart> (faixas discretas)
 │   ├── chart-tooltip.tsx        # balão de leitura por cursor
@@ -328,7 +342,7 @@ components/
 │   ├── theme-provider.tsx        # useTheme(); escreve data-theme no <html>
 │   └── theme-toggle.tsx         # <ThemeToggle> (topo) e <ThemeChoice> (guia)
 │
-├── ui/                           # biblioteca base — ver seção 6
+├── ui/                           # biblioteca base — ver docs/componentes.md
 │   ├── button.tsx / button-classes.ts
 │   ├── input.tsx  select.tsx  card.tsx  badge.tsx  alert.tsx  switch.tsx
 │   ├── avatar.tsx  skeleton.tsx  logo.tsx  wordmark.tsx  icons.tsx
@@ -360,184 +374,13 @@ components/
 | `dashboard-data.ts` | Tipos, opções de filtro e conjunto de exemplo da Visão Geral. |
 | `settings-data.ts` | `ACCOUNT_PROFILE`, opções de time/fuso/tela inicial, `NOTIFICATION_PREFERENCES`. |
 
----
-
-## 4. Camada de dados
-
-Nenhuma tela do painel lê `fetch` diretamente nem importa medição de um módulo de
-exemplo: tudo passa por `lib/data/client.ts` e chega ao componente pelo
-`useResource`.
-
-```text
-componente (*-view.tsx)
-   │  useResource((rev) => fetchX(query, rev), [deps], { refreshMs })
-   ▼
-fetchX  (em <rota>-resource.ts)
-   │  loadResource({ path, params, map, fallback })
-   ▼
-lib/data/client.ts
-   ├─ API configurada (NEXT_PUBLIC_API_BASE_URL)?
-   │     ├─ sim  → apiGet(path, params) → map(resposta)  → source: "api"
-   │     └─ erro / timeout / 4xx-5xx    → fallback()      → source: "exemplo"
-   └─ não → fallback()                                    → source: "exemplo"
-```
-
-A tela declara **o que** quer; a camada decide **de onde** vem. Trocar a fonte
-não toca em nenhum componente.
-
-### 4.1 `lib/data/client.ts`
-
-- **`isApiConfigured(): boolean`** — `true` quando `NEXT_PUBLIC_API_BASE_URL` não
-  está vazia.
-- **`apiGet<T>(path, params?): Promise<T>`** — leitura na API com corpo já
-  convertido de JSON. Timeout de **8 s** (`AbortController`); `cache: "no-store"`
-  (o painel mostra o estado agora, não um número de cache); lança `ApiError`
-  (com `status?: number`) quando a API não está configurada, demora demais ou
-  responde fora de 2xx.
-- **`loadResource<TResponse, TData>({ path, params?, map, fallback })`** — o ponto
-  de integração de cada bloco de tela:
-
-  | Campo | O que é |
-  | --- | --- |
-  | `path` | Caminho do endpoint (use `ENDPOINTS.*`). |
-  | `params` | `Record<string, string \| number \| undefined>`. Chaves `undefined` são omitidas da query. |
-  | `map` | Converte a resposta da API no formato que a tela desenha. |
-  | `fallback` | Conjunto de exemplo, usado quando a API não responde. |
-
-  Devolve `Resource<T>`:
-
-  ```ts
-  type Resource<T> = {
-    data: T;
-    source: "api" | "exemplo";
-    fetchedAt: Date;          // para o rótulo "atualizado há…"
-    fallbackReason?: string;  // motivo da queda para o exemplo, quando houve
-  };
-  ```
-
-  Nunca rejeita: falha de API vira `source: "exemplo"` com `fallbackReason`.
-
-- **`jitter(value, seed, amplitude = 0.06): number`** — oscila um valor de exemplo
-  de forma **determinística** (a mesma leitura devolve sempre o mesmo número).
-  Serve para uma atualização sem API ainda mostrar movimento, em vez de repetir o
-  mesmo quadro. O selo "Dados de exemplo" fica visível o tempo todo.
-
-### 4.2 `lib/data/endpoints.ts`
-
-`ENDPOINTS` reúne os caminhos publicados pela API, espelhando os controllers de
-`apps/basica/backend/`.
-
-| Chave | Caminho | Serve |
-| --- | --- | --- |
-| `realtimeOverview` | `/v1/analytics/realtime/overview` | CCU, volume de eventos, taxa de erros do recorte |
-| `realtimeAlerts` | `/v1/analytics/realtime/alerts` | Alertas e anomalias ativos |
-| `qoeMetrics` | `/v1/analytics/qoe/metrics` | VST, rebuffer rate, bitrate médio |
-| `qoeTimeseries` | `/v1/analytics/qoe/timeseries` | Série temporal de qualidade de experiência |
-| `errorsSummary` | `/v1/analytics/errors/summary` | Resumo de erros e sessões sem falha |
-| `errorsTop` | `/v1/analytics/errors/top` | Códigos de erro mais frequentes |
-| `errorDetails(code)` | `/v1/analytics/errors/{code}/details` | Detalhe de um código |
-| `breakdownDevices` | `/v1/analytics/breakdown/devices` | Segmentação por dispositivo/SO/versão |
-| `breakdownNetwork` | `/v1/analytics/breakdown/network` | Segmentação por ISP/CDN/conexão |
-| `rcaModules` | `/v1/analytics/rca/modules-breakdown` | Saúde dos módulos (causa provável) |
-| `rcaTopology` | `/v1/analytics/rca/topology-health` | Saúde da topologia de processamento |
-| `rcaFingerprints` | `/v1/analytics/rca/fingerprints` | Assinaturas de falha agrupadas |
-| `rcaCorrelations` | `/v1/analytics/rca/correlations` | Correlações entre mudanças e degradações |
-
-`ApiWindow`: `"5m" | "15m" | "30m" | "1h" | "6h" | "24h"`.
-
-> Alguns `*-resource.ts` ainda apontam para o endpoint mais próximo disponível
-> (Eventos usa `rcaFingerprints`, por exemplo). Ao ligar o backend, ajuste `path`
-> e `map` para a rota definitiva.
-
-### 4.3 O hook `useResource`
-
-```ts
-const overview = useResource(
-  (revision) => fetchOverview(toQuery(filters), revision),
-  [filters.timeRange, filters.device, filters.region, filters.appVersion],
-  { refreshMs: 30_000 },
-);
-```
-
-| Parâmetro | Tipo | Papel |
-| --- | --- | --- |
-| `load` | `(revision: number) => Promise<Resource<T>>` | Função de leitura. Recebe a revisão, para o exemplo variar entre atualizações. |
-| `deps` | `readonly unknown[]` | Ao mudar, dispara nova leitura (filtros, período, recorte). |
-| `options.refreshMs` | `number` | Intervalo de releitura automática. |
-| `options.enabled` | `boolean` (padrão `true`) | Desliga a leitura para dependências que ainda não estão prontas. |
-
-Retorno (`UseResourceResult<T>`): `data?`, `status` (`"loading" | "ready" |
-"error"`), `refreshing` (releitura com o dado anterior na tela), `error?`,
-`source?`, `fetchedAt?`, `fallbackReason?`, `revision` (semente do exemplo),
-`refresh()`.
-
-Detalhes: a função `load` é guardada em `ref` para não virar laço; `refreshing`
-só liga quando já houve um dado antes (primeira carga cai no `Skeleton`); a
-releitura automática é um `setInterval` que incrementa `revision`.
-
-### 4.4 Os quatro estados
-
-| Estado | Condição | O que aparece |
-| --- | --- | --- |
-| **Esperando** | `status === "loading"` sem dado anterior | `Skeleton` do tamanho exato do conteúdo (evita CLS). |
-| **Com dado** | `status === "ready"` | O conteúdo, com números contando até o valor lido (`AnimatedNumber`). |
-| **Atualizando** | `refreshing === true` | O dado anterior, com "atualizando…" no `DataStatus`. |
-| **Sem leitura** | `status === "error"` | `Alert tone="critical"` explicando a falha, com a ação de atualizar. |
-
-Padrão nas `*-view.tsx`:
-
-```tsx
-{resource.status === "error" ? (
-  <Alert tone="critical" title="Não foi possível ler a telemetria">
-    {resource.error} Tente atualizar em alguns instantes.
-  </Alert>
-) : null}
-
-{data ? <Conteudo {...data} /> : <ConteudoSkeleton />}
-```
-
-### 4.5 `*-resource.ts` e `*-data.ts`
-
-**`<rota>-data.ts`** — tipos do dado que a tela desenha; rótulos e mapas de
-metadados (`PERIOD_LABELS`, `URGENCY_META`, `SORT_LABELS`…); opções de filtro; o
-**conjunto de exemplo** com valores **numéricos** (é a tela que formata, e é isso
-que permite animar a contagem); funções puras de apoio (`sortIncidents`,
-`aggregateKpis`).
-
-**`<rota>-resource.ts`** — um tipo `*Response` por endpoint (deixa o formato do
-backend explícito); uma função `fetch*` por bloco chamando `loadResource`. O
-`fallback` costuma aplicar `jitter` nas medições que oscilam e deixar intactos os
-campos que **identificam** o registro (id, nome da fonte, cobertura).
-
-### 4.6 `DataStatus`: procedência visível
-
-`components/dashboard/data-status.tsx` diz três coisas em texto:
-
-| Situação | Selo |
-| --- | --- |
-| `error` | `Leitura falhou` (crítico, `role="status"`) |
-| `source === "api"` | `Telemetria ao vivo` (sucesso) |
-| `source === "exemplo"` | `Dados de exemplo` (atenção) |
-| sem `source` ainda | `Lendo telemetria` (neutro) |
-
-Mais o rótulo "atualizado há X" (recalculado a cada 15 s) e o botão de atualizar.
-`showSource={false}` esconde o selo onde o cabeçalho já identifica o incidente —
-a falha de leitura continua sendo anunciada. **Um número na tela nunca se
-apresenta como medição quando não é.**
-
-### 4.7 Ligar o backend / criar um recurso
-
-Para ligar: preencha `NEXT_PUBLIC_API_BASE_URL`; em cada `*-resource.ts` confira
-`path` e escreva o `map` com o formato real da resposta. Nenhum componente muda.
-
-Para criar um recurso: (1) declare o tipo e um exemplo numérico em
-`<rota>-data.ts`; (2) escreva `fetchX(query, revision = 0)` com `loadResource` em
-`<rota>-resource.ts`; (3) consuma com `useResource` na `*-view.tsx`; (4) desenhe
-os quatro estados; (5) ponha `<DataStatus>` no `PageHeader`.
+Detalhe de `data/*` em [`docs/camada-de-dados.md`](./docs/camada-de-dados.md); de
+`theme.ts` e `persisted-preference.ts` em [`docs/tema.md`](./docs/tema.md); de
+`auth.ts` e `image.ts` em [`docs/autenticacao.md`](./docs/autenticacao.md).
 
 ---
 
-## 5. Telas
+## 4. Telas
 
 Toda tela do painel segue a mesma montagem: `page.tsx` (server, só `metadata` +
 `*-view`); `*-view.tsx` (client, filtros em `useState`, dados por `useResource`);
@@ -557,7 +400,8 @@ ilustrado à esquerda (esferas com deriva animada, decorativo e `aria-hidden`);
 abaixo de `lg` o painel some. Validação **no envio**, não a cada tecla; depois do
 primeiro envio, o erro de cada campo some quando o valor muda; o foco vai para o
 primeiro campo inválido; `<form noValidate>`. Qualquer e-mail válido entra; se o
-domínio é `@globo.com`, a tela sugere o SSO. Detalhes de rede na seção 9.
+domínio é `@globo.com`, a tela sugere o SSO. Detalhes de rede em
+[`docs/autenticacao.md`](./docs/autenticacao.md).
 
 ### `/recuperar-senha`
 
@@ -677,483 +521,73 @@ nunca ficar desatualizado. Referência textual em
 
 ---
 
-## 6. Catálogo de componentes
+## 5. Camada de dados
 
-Os de `components/ui` são a biblioteca base e trazem exemplo no próprio arquivo.
+Nenhuma tela do painel lê `fetch` diretamente nem importa medição de um módulo de
+exemplo: toda leitura passa por `lib/data/client.ts`, que decide entre a API e o
+conjunto de exemplo, e chega ao componente pelo hook `useResource` com quatro
+estados prontos — esperando, com dado, atualizando e sem leitura. O selo
+`DataStatus` mantém a procedência do número visível na tela, e ligar o backend é
+preencher `NEXT_PUBLIC_API_BASE_URL` e escrever o `map` de cada `*-resource.ts` —
+nenhum componente muda.
 
-### 6.1 `ui/`
-
-**`Button`** (`button.tsx` + `button-classes.ts`) — toda ação usa este componente.
-
-| Prop | Valores | Observação |
-| --- | --- | --- |
-| `variant` | `gradient` (padrão), `solid`, `outline`, `ghost`, `quiet`, `danger` | `gradient` = ação primária, uma por área. `solid` = navegação/confirmação. `danger` = destrói (fica em contorno). |
-| `size` | `sm`, `md` (padrão), `lg` | Alturas `40 / 48 / 51 px`. |
-| `fullWidth` | boolean | Ocupa toda a largura. |
-| `loading` | boolean | Mostra `SpinnerIcon`, mantém o rótulo, seta `aria-busy`, desabilita. |
-| `leadingIcon` / `trailingIcon` | `ReactNode` | O trailing some enquanto `loading`. |
-
-`buttonClasses({ variant, size, fullWidth, className })` devolve só as classes,
-sem `"use client"` — para dar aparência de botão a um `<Link>` em Server
-Component.
-
-**Campos** (`input.tsx`):
-
-| Export | Uso |
-| --- | --- |
-| `TextField` | **Forma recomendada.** Cuida de rótulo (`htmlFor`), apoio, erro e `aria-describedby`/`aria-invalid`. Props: `label`, `hint`, `error`, `labelAction`, `fieldSize`. |
-| `PasswordField` | Como `TextField`, com alternância mostrar/ocultar (o botão anuncia a ação, não o estado). |
-| `SearchInput` | Campo de busca com a lupa embutida. `fieldSize` padrão `sm`. |
-| `Input` | Campo cru, sem rótulo. Prefira `TextField`. |
-| `Label`, `FieldHint`, `FieldError` | Primitivos, para composições fora do padrão. |
-
-`FieldSize`: `sm | md | lg` → `44 / 51 / 64 px`. `FIELD_SIZE_CLASSES` é
-compartilhada com `Select`.
-
-**`Select`** (`select.tsx`) — listbox escrito à mão (não `<select>` nativo),
-controlado por `value` / `onValueChange` / `options` (`{ value, label, hint?,
-disabled? }[]`). `aria-label` **obrigatório**. Teclado completo (setas, Home, End,
-Enter, Espaço, Esc, digitação para pular até a opção); papéis `combobox`/
-`listbox`, `aria-activedescendant`. A lista abre em **portal** no `document.body`
-(dentro do cartão seria cortada pelo `overflow`), posicionada em coordenadas de
-viewport, abrindo para cima quando falta espaço. **Não guarda valor**: quem
-decide é a tela.
-
-**`Card`** (`card.tsx`) — `Card`, `CardTitle` (`<h3>`), `CardDescription` (`<p>`).
-`accent`: `none` (padrão), `critical`, `warning`, `info`, `brand`;
-`accentPosition`: `left` (padrão), `top`; `borderTone`: `line` (padrão),
-`critical` (zona de risco); `padding`: `none`, `sm`, `md` (padrão), `lg`.
-
-**`Badge`** (`badge.tsx`) — selo de estado. **Texto obrigatório**. `tone`:
-`critical`, `warning`, `success`, `info`, `neutral`, `brand`. `withDot`: ponto
-colorido antes do texto. Fundo `-soft`, texto `-strong` (contraste AA); `brand`
-usa o gradiente.
-
-**`Alert`** (`alert.tsx`) — aviso de bloco com ícone + texto. `tone`: `critical`,
-`warning`, `success`, `info`. `critical` usa `role="alert"` (interrompe a
-leitura); os demais, `role="status"`. `title` opcional.
-
-**`Switch`** (`switch.tsx`) — alternância binária de **efeito imediato**.
-`role="switch"`, `aria-checked`. Props: `checked`, `onCheckedChange`, `label`
-(rótulo acessível), `disabled`.
-
-**`Avatar`** (`avatar.tsx`) — retrato da pessoa em sessão. Lê do
-`AccountProvider`: foto quando existe, senão as **iniciais** do nome sobre o
-gradiente. `size`: `sm | md | lg` (`32 / 40 / 64 px`).
-
-**`Skeleton`** (`skeleton.tsx`) — `Skeleton` e `SkeletonText` (`lines`). Ocupa
-exatamente o tamanho do conteúdo que vem (evita CLS). Brilho contínuo.
-
-**Marca** (`logo.tsx` + `wordmark.tsx`):
-
-| Export | Peça |
-| --- | --- |
-| `LogoMark` | Símbolo (estrela de quatro pontas sobre elipse navy). `tone`: `brand`, `gradient`, `mono`. **Não acompanha o tema** — cores fixas do manual. |
-| `Wordmark` | Letreiro em SVG, vetorizado do arquivo do design. Herda a cor por `currentColor`; a estrela do "O" é recorte de máscara. Entrada em cascata opcional. |
-| `Logo` | Composição de símbolo + letreiro (`withWordmark`). |
-
-**`icons.tsx`** — conjunto mínimo de ícones SVG inline (`viewBox 0 0 24 24`),
-herdando cor por `currentColor` e tamanho pela prop `size`. Sem dependência
-externa. Decorativos recebem `aria-hidden`.
-
-### 6.2 `shell/`
-
-| Componente | Papel |
-| --- | --- |
-| `AppShell` | `"use client"`. Reúne `Sidebar` + `Topbar` + `<main>`. Guarda o estado da navegação recolhida (persistido, `useSyncExternalStore`), fecha a folha sobreposta no `Esc` e ao navegar. `useMediaQuery` define quando a navegação cabe ao lado do conteúdo (`min-width: 64rem`). |
-| `Sidebar` | Navegação lateral fixa (`lg:sticky`). Recolhida = faixa de ícones; folha sobreposta com véu em telas estreitas. Topo: `LogoMark` + `Wordmark`. Rodapé: link para a conta com `Avatar`. |
-| `Topbar` | Barra grudada no topo do conteúdo (`sticky`, `backdrop-blur`). Botão de abrir (mobile) / recolher (desktop) a navegação, `Wordmark` quando a nav está recolhida, `ThemeToggle` e `Avatar` → `/configuracoes`. |
-
-`app/(painel)/sidebar-nav.tsx` (`"use client"`) exporta `NAV_ITEMS` e
-`SidebarNav`. Item ativo pela rota (`usePathname`). Configurações fecha a lista,
-separada por divisória. Recolhida, o rótulo continua no DOM (`sr-only`) e
-reaparece como dica no hover.
-
-### 6.3 `dashboard/`
-
-| Componente | Papel |
-| --- | --- |
-| `PageHeader` | Abertura padrão de tela: `eyebrow`, `title` (`<h1>`), `subtitle`, `status`, `actions`. Entra sempre com o mesmo movimento. |
-| `DataStatus` | Procedência + frescor + botão de atualizar (seção 4.6). |
-| `FilterBar` | Barra de recorte da Visão Geral (busca + 4 selects). Não guarda estado. `DEFAULT_DASHBOARD_FILTERS` é o recorte do protótipo. |
-| `StatCard` (+ skeleton) | Cartão de indicador. Valor com `AnimatedNumber`, formato `integer`/`compact`, `delta` em texto, `accent` `critical`/`warning`/`info`. |
-| `ExperienceHealthCard` (+ skeleton) | "Saúde da experiência": `TimeSeriesChart` com `baseline`, `highlight` e pico anotado. O `Select` de período espelha o filtro da tela. |
-| `IncidentsCard` (+ skeleton) | Lista curta priorizada por impacto + link para `/incidentes`. |
-| `IncidentRow` | Linha da lista curta: título, sessões · tempo, `Badge withDot`. |
-
-### 6.4 `motion/`
-
-**`Reveal`** (`reveal.tsx`) — único mecanismo de entrada de conteúdo. Revela o
-bloco quando ele chega à área visível (`IntersectionObserver`, `threshold:
-0.01`). `as` (tag; `div` padrão), `variant` (`rise` padrão, `rise-sm`, `fade`,
-`scale`, `slide`), `delay` (ms, prioridade sobre `index`), `index` (→
-`index * 70ms`). Sem `IntersectionObserver` ou sem JS, mostra tudo de uma vez.
-
-**`AnimatedNumber`** (`animated-number.tsx`) — conta do **valor anterior** até o
-atual (não do zero) em 900 ms, com `easeOutCubic`. Respeita `useReducedMotion`. O
-valor final fica em `aria-label`. Props: `value`, `format`, `prefix`, `suffix`.
-
-### 6.5 `theme/`
-
-| Componente | Papel |
-| --- | --- |
-| `ThemeProvider` | `"use client"`. Expõe `useTheme()` → `{ preference, theme, setPreference, toggle }`. Lê a preferência da loja e o gosto do SO por media query; o único efeito escreve `data-theme` no `<html>`. O tema inicial já chega resolvido pelo script do `layout.tsx`. |
-| `ThemeToggle` | Botão do topo: troca claro ⇄ escuro. O rótulo anuncia a ação ("Ativar tema escuro"), não o estado. |
-| `ThemeChoice` | Controle completo com a terceira opção (acompanhar o sistema); exibido no guia `/design-system`. |
-
-### 6.6 `account/`
-
-`AccountProvider` (`account-provider.tsx`, `"use client"`) expõe `useAccount()` →
-`{ profile, updateProfile, reset }`. `profile` = `ACCOUNT_PROFILE` +
-`{ name, photo }` editáveis. Persistido em `localStorage` (`createPersistedJson`,
-chave `view-show:account`). Lido pela navegação, pela barra superior, pelo
-`Avatar` e pela assinatura de quem confirma/refuta uma hipótese em Evidências.
-
-### 6.7 `settings/`
-
-| Componente | Comportamento |
-| --- | --- |
-| `ProfileCard` | Foto de perfil. Vale na hora, sem salvar. Valida tipo (JPEG/PNG/WebP) e tamanho (≤ 8 MB) via `lib/image.ts`; corta em quadrado e reduz a 320 px no navegador. |
-| `AccountDetailsCard` | Nome (editável, **só vale ao salvar** — assina registros), time e fuso (`Select`). `Alert` de confirmação ao salvar. |
-| `NotificationsCard` | `Switch` por item de `NOTIFICATION_PREFERENCES`; estado local em `Set`. |
-| `AccessSecurityCard` | Método de entrada e sessões ativas, de `ACCOUNT_PROFILE`. Estático. |
-| `DangerZoneCard` | Excluir conta. `Card borderTone="critical"`, `Button variant="danger"`. Estático. |
-
-### 6.8 `inline-script.tsx`
-
-`<InlineScript html={...} />` — renderiza um `<script>` síncrono executável no
-servidor e inerte no cliente (o React não reexecuta scripts que insere). Usado no
-`<head>` do `layout.tsx` para o `THEME_BOOTSTRAP_SCRIPT`.
-
-### 6.9 Regras de composição
-
-- **Uma ação primária por área de decisão.** O gradiente marca a principal; o
-  azul sólido, navegação e confirmação; contorno e texto, alternativas;
-  `danger`, o que destrói.
-- **Rótulo sempre visível acima do campo.** Placeholder é exemplo, não rótulo.
-- **Erro abaixo do campo, em texto.** A borda vermelha reforça, não substitui.
-- **Seletor é controlado pela tela.** `Select` não guarda valor.
-- **Falta uma variante?** Acrescente no arquivo do componente — `cn` (`lib/cn.ts`)
-  **não** resolve conflitos de utilitário do Tailwind.
-- **Toda adição entra também em `/design-system`.**
+`client.ts`, `endpoints.ts`, o contrato do `useResource`, o par
+`*-resource.ts` / `*-data.ts` de cada tela e o roteiro para ligar o backend ou
+criar um recurso estão em
+**[`docs/camada-de-dados.md`](./docs/camada-de-dados.md)**.
 
 ---
 
-## 7. Gráficos
+## 6. Catálogo de componentes e gráficos
 
-Os cinco gráficos do painel saem de dois componentes em `components/charts/`:
-`TimeSeriesChart` para séries no tempo e `BarChart` para faixas discretas.
+`components/` reúne a biblioteca base (`ui/`), a moldura das telas (`shell/`), os
+blocos do painel (`dashboard/`), a entrada de conteúdo e os números animados
+(`motion/`), os cartões de Configurações (`settings/`), o tema (`theme/`) e o
+perfil em sessão (`account/`). Os cinco gráficos do painel saem de dois
+componentes em `components/charts/`: `TimeSeriesChart` para séries no tempo e
+`BarChart` para faixas discretas.
 
-| Gráfico da tela | Componente base | Arquivo |
-| --- | --- | --- |
-| Saúde da experiência (Visão Geral) | `TimeSeriesChart` | `components/dashboard/experience-health-card.tsx` |
-| Buffering após a 4.2.1 (Evidências) | `TimeSeriesChart` | `app/(painel)/evidencias/buffering-chart.tsx` |
-| Volume temporal dos eventos (Eventos) | `TimeSeriesChart` | `app/(painel)/eventos/events-chart.tsx` |
-| Fluxo de processamento (Monitoramento) | `TimeSeriesChart` | `app/(painel)/monitoramento/processing-flow-chart.tsx` |
-| Dispositivos afetados por horário (Incidentes) | `BarChart` | `app/(painel)/incidentes/incidents-chart.tsx` |
-
-O mapa de concentração (`geographic-map.tsx`) é um SVG próprio.
-
-### 7.1 Decisões que valem para todos
-
-| Decisão | Por quê |
-| --- | --- |
-| **Desenho em pixels reais**, medindo o contêiner (`useElementSize`) | Um `viewBox` esticado por `preserveAspectRatio="none"` serve a qualquer largura, mas distorce rótulos e espessura do traço. |
-| **Teto do eixo em marca redonda** (`niceMax`) | Um eixo que termina em 24.837 obriga a ler o número; terminando em 25 mil, a altura já diz. |
-| **Grade só na horizontal** | A vertical competiria com o traço da série. |
-| **Rótulos do eixo espaçados pela largura** (`labelStep`) | Rótulos que se tocam viram uma faixa cinza ilegível. |
-| **Valor exato no cursor, não sobre o desenho** | Espalhar números por cima da curva transforma o gráfico numa tabela mal formatada. |
-| **Números tabulares** em eixos, balões e indicadores | Um valor que sobe de 99 para 100 não pode empurrar o que está ao lado. |
-| **Anotação em vez de enfeite** | O pico ganha ponto e rótulo discretos; um deploy entra como linha tracejada com nome. |
-
-### 7.2 `scales.ts`
-
-| Função | O que faz |
-| --- | --- |
-| `toPlot(width, height, margin)` | Área útil do desenho → `{ left, right, top, bottom, width, height }`. |
-| `niceMax(value)` | Arredonda o teto para a próxima marca redonda. `niceMax(24837) → 25000`. |
-| `axisTicks(max, count = 4)` | Marcas do eixo vertical. `axisTicks(400) → [0,100,200,300,400]`. |
-| `labelStep(total, width, minGap = 52)` | Passo entre rótulos do eixo horizontal. |
-| `toLinePath(points)` / `toAreaPath(points, baseline)` | Caminho da linha / linha fechada na base para o preenchimento de área. |
-
-### 7.3 `TimeSeriesChart`
-
-`"use client"`. Props: `labels` (um por ponto), `series` (`ChartSeries[]` =
-`{ id, label, values, tone, area?, dashed? }`), `formatValue`, `height` (220),
-`max`, `reference` (`{ value, label }` — linha da meta), `marker`
-(`{ index, label }` — marco vertical), `highlight` (`[ini, fim]` — faixa de
-fundo), `showPeak`, `tooltipNote`, `ariaLabel` **obrigatório**.
-
-Comportamento: a linha é **escrita da esquerda para a direita** (`--animate-draw`,
-~1,15 s, `pathLength={1}`); séries `dashed` não animam o traço; a área sob a linha
-entra por `fade-in`; o pico ganha ponto e valor com `--animate-pop`; o cursor
-(`onPointerMove`) acha o ponto mais próximo, desenha a linha-guia e abre o
-`ChartTooltip`. `ChartLegend` repete o significado das séries em texto.
-
-### 7.4 `BarChart`
-
-`"use client"`. Para comparar blocos discretos. Props: `bars` (`Bar[]` =
-`{ label, value, tone, toneLabel }`), `formatValue`, `valueLabel`, `height` (220),
-`ariaLabel` **obrigatório**. Cada barra ocupa dois terços da faixa
-(`BAR_FILL = 0.66`, largura máx. `56 px`); as barras **crescem da base** a cada
-leitura (`.bar-grow`, chave `${label}-${value}` reconstrói em vez de deslizar); as
-não-focadas caem para `opacity-45` quando o cursor está sobre uma.
-
-### 7.5 `ChartTooltip`
-
-Segue o eixo horizontal do ponto lido, se vira ao chegar na borda
-(`containerWidth`) e nunca cobre o ponto. É **`aria-hidden`** — a descrição
-textual fica no `ariaLabel` do gráfico.
-
-### 7.6 Cores e legenda
-
-Cores de série vêm dos **tokens de estado**, nunca de uma paleta própria:
-`critical` (o que degrada), `info` → `brand-blue-light` (etapa de entrada),
-`warning`/`brand` → `brand-orange` (comparação, meta), `muted` → `ink-subtle`
-(apoio). A legenda repete o significado em texto.
-
-### 7.7 Como adicionar um gráfico
-
-Escolha o base (série no tempo → `TimeSeriesChart`; faixas → `BarChart`); envolva
-num `Card` com `CardTitle`/`CardDescription` e, se houver janela, um `Select`
-controlado pela tela; passe `series`/`bars` já no formato do componente,
-`formatValue` de `lib/format.ts` e um `ariaLabel` que descreva começo, pico e fim;
-não invente escala nem cor.
+O catálogo completo — props, variantes e regras de composição de cada componente,
+e as decisões de escala, cor e leitura por cursor dos gráficos — está em
+**[`docs/componentes.md`](./docs/componentes.md)**.
 
 ---
 
-## 8. Tema e preferências persistidas
+## 7. Tema e preferências persistidas
 
-### 8.1 As três preferências
+A preferência de tema tem três valores (`light`, `dark`, `system`) e é resolvida
+antes da primeira pintura por um script inline no `<head>`, para não piscar
+branco ao recarregar. Ela e as outras preferências da pessoa (navegação
+recolhida, perfil da conta) vivem em `lib/persisted-preference.ts`, uma pequena
+loja com assinatura lida por `useSyncExternalStore`.
 
-`ThemePreference` (`lib/theme.ts`): `"light" | "dark" | "system"`. O padrão de
-quem nunca escolheu é `"system"`. O que chega ao documento é sempre **um dos
-dois** temas efetivos, no atributo `data-theme` do `<html>` — é ele que troca os
-tokens semânticos em `app/globals.css`.
-
-```ts
-resolveTheme("system", true);  // "dark"  (SO pedindo escuro)
-resolveTheme("light", true);   // "light" (escolha explícita ganha do SO)
-```
-
-### 8.2 O ciclo do tema
-
-```text
-1. Servidor renderiza <html data-theme="light"> (valor conservador)
-2. <head> executa THEME_BOOTSTRAP_SCRIPT (síncrono, antes da 1ª pintura):
-     lê localStorage["view-show:theme"] → resolve "system" pela media query
-     → escreve data-theme="light" | "dark" no <html>  → adiciona a classe "js"
-3. React hidrata. <html suppressHydrationWarning> aceita o valor do documento.
-4. <ThemeProvider> assina a loja e a media query; um efeito reescreve
-   data-theme quando a preferência ou o gosto do SO mudam.
-```
-
-O passo 2 evita a piscada branca ao recarregar no escuro. A classe `js` no
-`<html>` autoriza o CSS a esconder o conteúdo que entra por animação
-(`html.js [data-reveal="hidden"] { opacity: 0 }`). **Sem JavaScript, nada é
-escondido.**
-
-### 8.3 O script de bootstrap
-
-`THEME_BOOTSTRAP_SCRIPT`, em `lib/theme.ts`, é uma **string** injetada como
-`<script>` inline síncrono por `<InlineScript>` no `<head>` do `app/layout.tsx`. A
-chave (`THEME_STORAGE_KEY = "view-show:theme"`) e os valores são os mesmos do
-módulo.
-
-```js
-(function () {
-  var r = document.documentElement;
-  r.classList.add("js");
-  try {
-    var p = localStorage.getItem("view-show:theme");
-    if (p !== "light" && p !== "dark") {
-      p = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    }
-    r.setAttribute("data-theme", p);
-  } catch (e) {
-    r.setAttribute("data-theme", "light");
-  }
-})();
-```
-
-### 8.4 `persisted-preference.ts`
-
-Uma preferência é **estado externo ao React**: existe antes da app montar e
-sobrevive a ela. É modelada como uma pequena loja com assinatura, lida com
-`useSyncExternalStore`.
-
-**`createPersistedPreference<T extends string>(key, fallback, isValid)`** — para
-um valor de uma palavra.
-
-| Membro | O que faz |
-| --- | --- |
-| `subscribe(onChange)` | Assina; escuta o evento `storage` (mudança em outra aba). Devolve o cancelador. |
-| `getSnapshot()` | Valor em vigor, em cache até uma escrita. |
-| `getServerSnapshot()` | Devolve `fallback` (valor conservador no servidor). |
-| `set(value)` | Grava em `localStorage` e notifica os assinantes. |
-
-**`createPersistedJson<T>(key, fallback, revive)`** — mesma ideia, para dados que
-não cabem em uma palavra (o perfil da conta). `revive(raw: unknown)` converte o
-objeto lido ou devolve `null` quando o conteúdo salvo não serve mais.
-
-Armazenamento bloqueado (janela anônima, política corporativa): a preferência
-**continua funcionando** — só não sobrevive ao recarregamento. Tudo em
-`try/catch`.
-
-| Chave | Loja | Conteúdo |
-| --- | --- | --- |
-| `view-show:theme` | `createPersistedPreference` | `light` / `dark` / `system` |
-| `view-show:nav-collapsed` | `createPersistedPreference` | `true` / `false` |
-| `view-show:account` | `createPersistedJson` | `{ name, photo }` |
-
-### 8.5 `useMediaQuery` e `useReducedMotion`
-
-`hooks/use-media-query.ts` lê uma media query com `useSyncExternalStore`; **no
-servidor devolve sempre `false`**. `hooks/use-reduced-motion.ts` é um atalho de
-`useMediaQuery("(prefers-reduced-motion: reduce)")`, usado pelo movimento escrito
-em JS (`AnimatedNumber`, o traço das séries). O CSS já respeita
-`prefers-reduced-motion` sozinho.
-
-### 8.6 O tema escuro no CSS
-
-`app/globals.css`, bloco `:root[data-theme="dark"]`. Azul-noite, derivado do navy
-da marca. **Só os tokens semânticos mudam** — superfícies, tinta, bordas, tons de
-estado, sombras. Nenhum componente usa a variante `dark:` do Tailwind.
-
-| Token | Claro | Escuro |
-| --- | --- | --- |
-| `canvas` | `#F5F7FB` | `#060C22` |
-| `surface` | `#FFFFFF` | `#0D1633` |
-| `ink` | `#171A22` | `#EEF3FF` |
-| `ink-muted` | `#667085` | `#A3B4DB` |
-| `ink-brand` | `#0D47D9` | `#8FB3FF` |
-| `line` | `#E6EAF0` | `#223059` |
-| `critical-strong` | `#C4232F` | `#FF9AA2` |
-
-Os tokens de **marca não mudam**. `ink-brand` é o azul de **texto**; `brand-blue`
-fica reservado a preenchimento. No escuro, o `gradient-navy` da navegação
-**clareia** em vez de escurecer.
-
-### 8.7 Onde a pessoa troca
-
-- **Troca rápida** (claro ⇄ escuro): `ThemeToggle`, botão da barra superior.
-- **Escolha completa** (com "acompanhar o sistema"): `ThemeChoice`, no guia
-  `/design-system`. A tela de Configurações **não** tem controle de aparência.
+O ciclo do tema, o script de bootstrap, o contrato de `persisted-preference.ts`,
+os hooks de media query e a tabela de tokens do tema escuro estão em
+**[`docs/tema.md`](./docs/tema.md)**.
 
 ---
 
-## 9. Autenticação e conta
+## 8. Autenticação e conta
 
 O View Show não guarda senha nem valida credencial: a autenticação é delegada ao
-serviço de identidade (RIE01, RESTR01).
+serviço de identidade (RIE01, RESTR01). O frontend cuida da validação de
+formulário, do envio ao provedor, do SSO Globo e — sem `NEXT_PUBLIC_API_BASE_URL`
+— de uma sessão de demonstração que mantém o painel utilizável. O perfil em
+sessão (nome e foto) vive no `AccountProvider` e é lido pela navegação, pela
+barra superior, pelo `Avatar` e pela assinatura de quem confirma uma hipótese.
 
-### 9.1 `lib/auth.ts`
-
-| Export | Assinatura | Papel |
-| --- | --- | --- |
-| `CORPORATE_DOMAINS` | `["globo.com"]` | Domínios corporativos, para o exemplo de preenchimento e o SSO. |
-| `isCorporateEmail(email)` | `→ boolean` | Reconhece a conta corporativa para **sugerir** o SSO. Não restringe a entrada. |
-| `validateEmail(email)` | `→ string \| undefined` | Formato mínimo: algo `@` domínio com ponto, sem espaços. |
-| `validatePassword(password)` | `→ string \| undefined` | Só verifica preenchimento. |
-| `signIn({ email, password })` | `→ Promise<SignInResult>` | Envia as credenciais. |
-| `ssoEntryPoint()` | `→ string \| undefined` | URL do fluxo de SSO, ou `undefined` sem API configurada. |
-| `AUTH_UNAVAILABLE_MESSAGE` | `string` | Aviso quando o SSO não está configurado. |
-
-```ts
-type SignInResult =
-  | { ok: true; demo?: boolean }        // demo = sessão sem provedor por trás
-  | { ok: false; message: string };
-```
-
-### 9.2 Fluxo de login
-
-`app/(auth)/login/login-form.tsx` (`"use client"`): `handleSubmit` chama
-`preventDefault`, valida os dois campos, leva o foco ao primeiro inválido, então
-`await signIn(...)`. `ok: false` → `<Alert tone="critical">` com `result.message`.
-`ok: true` → `router.push("/visao-geral")`.
-
-**Com API configurada:**
-
-```
-POST {NEXT_PUBLIC_API_BASE_URL}/auth/login
-Content-Type: application/json
-credentials: "include"        // a sessão volta como cookie assinado —
-                              // o token não passa por localStorage
-body: { email: <minúsculas, sem espaços>, password }
-```
-
-| Resposta | Resultado |
-| --- | --- |
-| `2xx` | `{ ok: true }` → vai para `/visao-geral` |
-| `401` / `403` | "E-mail ou senha incorretos. Verifique e tente novamente." |
-| Outro status | "Não foi possível entrar agora. Tente novamente em instantes." |
-| Falha de rede | "Não conseguimos falar com o serviço de autenticação. Verifique a sua conexão." |
-
-### 9.3 Sessão de demonstração
-
-**Sem `NEXT_PUBLIC_API_BASE_URL`**, `signIn` devolve `{ ok: true, demo: true }`
-sem tocar na rede. Travar o acesso deixaria a plataforma inalcançável num
-ambiente sem backend; o painel inteiro funciona com o conjunto de exemplo. Nada é
-persistido no navegador por esta camada. A flag `demo` permite à interface dizer
-que a sessão não tem provedor de identidade por trás.
-
-### 9.4 SSO Globo
-
-O botão "Entrar com SSO Globo" chama `handleSso()`: `ssoEntryPoint()` devolve
-`{API}/auth/sso` quando há API, ou `undefined`. Com URL:
-`window.location.assign(ssoUrl)`. Sem URL: mostra `AUTH_UNAVAILABLE_MESSAGE` — a
-ação **explica** a indisponibilidade em vez de ficar desabilitada.
-
-### 9.5 Recuperação de senha
-
-`/recuperar-senha` é estática. A senha pertence ao provedor corporativo
-(RESTR01). A tela orienta a procurar o suporte interno de TI e volta ao login.
-
-### 9.6 Perfil da conta (`AccountProvider`)
-
-```ts
-const { profile, updateProfile, reset } = useAccount();
-// profile: AccountProfile & { photo: string | null }
-// updateProfile(patch: Partial<{ name: string; photo: string | null }>)
-// reset(): volta ao nome do provedor e remove a foto
-```
-
-`AccountProfile` (de `lib/settings-data.ts`): `name`, `email`, `role`,
-`authMethod`, `lastAccess`, `activeSessions`. Editáveis pela pessoa: **só `name` e
-`photo`**. Persistido em `localStorage` via `createPersistedJson` (chave
-`view-show:account`). Quando a API de conta existir, `updateProfile` passa a
-enviá-la e **nenhuma tela muda**.
-
-| Campo | Quando vale | Onde | Por quê |
-| --- | --- | --- | --- |
-| **Foto** | Na hora | `ProfileCard` | Escolher a imagem já é a confirmação; trocar/remover desfaz. |
-| **Nome** | Só ao salvar | `AccountDetailsCard` | Ele assina registros em Evidências — a alteração passa por confirmação explícita. |
-
-Sem foto, o `Avatar` mostra as **iniciais** do nome sobre o gradiente da marca.
-
-### 9.7 Foto de perfil (`lib/image.ts`)
-
-`readSquareImage(file): Promise<string>` — converte o arquivo num data URL
-quadrado e reduzido, **no navegador**, antes de guardar.
-
-| Constante | Valor |
-| --- | --- |
-| `MAX_SIDE` | `320` px — lado da imagem guardada |
-| `MAX_UPLOAD_BYTES` | `8 * 1024 * 1024` (8 MB) — tamanho máximo do original |
-| `ACCEPTED_IMAGE_TYPES` | `image/jpeg`, `image/png`, `image/webp` |
-
-Erros (`ImageError`): `tipo-invalido`, `arquivo-grande`, `leitura-falhou`, com
-mensagens em `IMAGE_ERROR_MESSAGES`. O corte é **central**. A saída é
-`canvas.toDataURL("image/jpeg", 0.85)`.
+`lib/auth.ts`, o fluxo de login com as respostas da API, o SSO, a sessão de
+demonstração, o `AccountProvider` e o preparo da foto de perfil estão em
+**[`docs/autenticacao.md`](./docs/autenticacao.md)**.
 
 ---
 
-## 10. Design system e movimento
+## 9. Design system e movimento
 
 O guia completo de tokens, com valores e critérios de uso, está em
 [`docs/design-system.md`](./docs/design-system.md). Resumo do essencial:
 
-### 10.1 Tokens
+### 9.1 Tokens
 
 `app/globals.css` é a **única fonte de verdade**. O bloco `@theme` do Tailwind v4
 declara os tokens, e cada token vira utilitário automaticamente:
@@ -1180,7 +614,7 @@ declara os tokens, e cada token vira utilitário automaticamente:
 - **Gradientes**: `bg-gradient-brand` (laranja→vermelho, marca **ação**),
   `bg-gradient-navy` (painéis escuros), `bg-gradient-orb` (esferas do login).
 
-### 10.2 Movimento
+### 9.2 Movimento
 
 O movimento também é token. Os tempos e as curvas ficam em `@theme`, e cada
 utilitário `animate-*` traz duração e curva prontas.
@@ -1204,7 +638,7 @@ entrada é uma coisa só (`<Reveal>`, passo padrão de 70 ms); número que muda 
 aparece inteiro; com `prefers-reduced-motion: reduce`, as durações caem para
 `0.01ms`).
 
-### 10.3 Contenção visual
+### 9.3 Contenção visual
 
 O gradiente da marca marca **ação**, não decoração: fica na ação primária, no
 item ativo da navegação e no retrato da conta. Saiu das faixas de topo dos
@@ -1214,7 +648,7 @@ peça. Cartão não levanta quando o ponteiro passa.
 
 ---
 
-## 11. Acessibilidade
+## 10. Acessibilidade
 
 Adotamos as **WCAG 2.2**. Pontos aplicados no código:
 
@@ -1251,9 +685,9 @@ Adotamos as **WCAG 2.2**. Pontos aplicados no código:
 
 ---
 
-## 12. Desenvolvimento e convenções
+## 11. Desenvolvimento e convenções
 
-### 12.1 Variáveis de ambiente
+### 11.1 Variáveis de ambiente
 
 | Variável | Uso |
 | --- | --- |
@@ -1263,7 +697,7 @@ O prefixo `NEXT_PUBLIC_` é obrigatório para o valor chegar ao navegador — e 
 isso **nada com segredo** deve usar esse prefixo. `.env.local` não é versionado;
 `.env.example` documenta o formato.
 
-### 12.2 Alias de import
+### 11.2 Alias de import
 
 `tsconfig.json` define `"@/*": ["./*"]` a partir da raiz de `apps/frontend`:
 
@@ -1273,7 +707,7 @@ import { useResource } from "@/hooks/use-resource";
 import { ENDPOINTS } from "@/lib/data/endpoints";
 ```
 
-### 12.3 Convenções
+### 11.3 Convenções
 
 - **Server Component por padrão.** `"use client"` só quando há estado, efeito,
   contexto ou API do navegador.
@@ -1291,7 +725,7 @@ import { ENDPOINTS } from "@/lib/data/endpoints";
   conte com sobrescrever cor/tamanho pelo `className`; use variantes do
   componente.
 
-### 12.4 Nota sobre a versão do Next
+### 11.4 Nota sobre a versão do Next
 
 `AGENTS.md` / `CLAUDE.md` trazem um bloco escrito pelo próprio `next dev`: esta é
 uma versão do Next com breaking changes (APIs, convenções, estrutura de
@@ -1302,7 +736,7 @@ Já adotados: `LayoutProps<"/">` e tipos de rota gerados; `metadata`/`viewport`
 exportados de `page.tsx`/`layout.tsx`; `next/font/google` hospedando a fonte
 localmente.
 
-### 12.5 Checklist de PR
+### 11.5 Checklist de PR
 
 - [ ] `npm run lint` sem erros.
 - [ ] `npm run build` passa.
@@ -1318,7 +752,7 @@ localmente.
 
 ---
 
-## 13. Referências do projeto
+## 12. Referências do projeto
 
 - [`apps/frontend/README.md`](./README.md) — visão rápida e tabela de rotas.
 - [`docs/design-system.md`](./docs/design-system.md) — guia visual detalhado
