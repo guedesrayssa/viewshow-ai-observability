@@ -21,7 +21,7 @@ Rotas disponíveis hoje:
 | `/login` | Tela de acesso por e-mail e senha ou SSO Globo |
 | `/recuperar-senha` | Orientação de recuperação de acesso |
 | `/visao-geral` | Hub do painel: estado do ecossistema em tempo quase real |
-| `/configuracoes` | Conta, aparência, preferências operacionais e notificações |
+| `/configuracoes` | Conta, notificações e acesso corporativo |
 | `/incidentes` | Incidentes e degradações que exigem atenção, com busca, filtros e ordenação |
 | `/evidencias` | Hipótese de causa provável e evidências que sustentam o diagnóstico de um incidente |
 | `/eventos` | Eventos e sessões correlacionados, com o dado normalizado ligado à fonte original |

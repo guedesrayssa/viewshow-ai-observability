@@ -18,7 +18,11 @@ import { cn } from "@/lib/cn";
 
 export type PageHeaderProps = {
   title: string;
-  subtitle: string;
+  /**
+   * O que a tela responde. Opcional: em telas cujo título já basta, repetir a
+   * lista de seções abaixo dele só adiciona uma linha para ler.
+   */
+  subtitle?: string;
   /** Linha curta de contexto acima do título, como o código do incidente. */
   eyebrow?: ReactNode;
   /** Ações da tela, alinhadas à direita. */
@@ -59,7 +63,9 @@ export function PageHeader({
         ) : null}
 
         <h1 className={cn("text-h1 text-ink", eyebrow ? "mt-1" : undefined)}>{title}</h1>
-        <p className="mt-1 text-body-sm text-ink-brand">{subtitle}</p>
+        {subtitle ? (
+          <p className="mt-1 text-body-sm text-ink-brand">{subtitle}</p>
+        ) : null}
 
         {status ? <div className="mt-3">{status}</div> : null}
       </div>

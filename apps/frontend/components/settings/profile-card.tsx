@@ -13,7 +13,6 @@ import { useRef, useState } from "react";
 
 import { useAccount } from "@/components/account/account-provider";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/input";
@@ -110,9 +109,6 @@ export function ProfileCard() {
         </div>
 
         <div className="flex flex-col items-start gap-3 sm:items-end">
-          <Badge tone="success" withDot>
-            Conta corporativa ativa
-          </Badge>
           <div className="flex gap-8 text-right">
             <div>
               <p className="text-caption text-ink-subtle">Autenticação</p>
