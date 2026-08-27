@@ -13,7 +13,28 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
-for command_name in aws jq curl mktemp; do
+binding_names=(
+  AWS_ACCOUNT_ID AWS_DEFAULT_REGION ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE
+  ECS_TASK_FAMILY ECS_CONTAINER_NAME ALB_NAME
+)
+binding_values=(
+  248880318395 us-east-1 monitoracao-api data-ingestion-cluster monitoracao-api-service
+  monitoracao-api-task monitoracao-api-container data-ingestion-alb
+)
+for ((binding_index = 0; binding_index < ${#binding_names[@]}; binding_index += 1)); do
+  variable_name="${binding_names[$binding_index]}"
+  expected_value="${binding_values[$binding_index]}"
+  if [[ "${!variable_name}" != "$expected_value" ]]; then
+    echo "unexpected deployment binding: $variable_name" >&2
+    exit 64
+  fi
+done
+if ! [[ "$CI_COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "CI_COMMIT_SHA must be exactly 40 hexadecimal characters" >&2
+  exit 64
+fi
+
+for command_name in aws jq curl mktemp rm sleep dirname mv bash; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "required command is unavailable: $command_name" >&2
     exit 69
@@ -36,11 +57,20 @@ if ! [[ "$smoke_delay_seconds" =~ ^[0-9]+$ ]]; then
   echo "SMOKE_DELAY_SECONDS must be a non-negative integer" >&2
   exit 64
 fi
+
+temporary_directory=""
+cleanup_temporary_directory() {
+  if [[ -n "$temporary_directory" ]]; then
+    rm -rf "$temporary_directory"
+  fi
+}
 temporary_directory="$(mktemp -d)"
+trap cleanup_temporary_directory EXIT
 umask 077
 previous_task_definition=""
 new_task_definition=""
 rollback_required=false
+forward_waiter_pid=""
 
 cleanup_and_rollback() {
   local exit_status=$?
@@ -78,15 +108,25 @@ cleanup_and_rollback() {
   rm -rf "$temporary_directory"
   exit "$exit_status"
 }
+terminate_forward_waiter() {
+  local exit_status="$1"
+  trap - INT TERM
+  if [[ -n "$forward_waiter_pid" ]]; then
+    kill -TERM "$forward_waiter_pid" 2>/dev/null || true
+    wait "$forward_waiter_pid" 2>/dev/null || true
+    forward_waiter_pid=""
+  fi
+  exit "$exit_status"
+}
 trap cleanup_and_rollback EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
+trap 'terminate_forward_waiter 130' INT
+trap 'terminate_forward_waiter 143' TERM
 
 identity_json="$(aws sts get-caller-identity --output json)"
 actual_account="$(jq -r '.Account' <<<"$identity_json")"
 caller_arn="$(jq -r '.Arn' <<<"$identity_json")"
-if [[ "$actual_account" != "$AWS_ACCOUNT_ID" ]]; then
-  echo "unexpected AWS account: $actual_account (expected $AWS_ACCOUNT_ID)" >&2
+if [[ "$actual_account" != "248880318395" ]]; then
+  echo "unexpected AWS account: $actual_account (expected 248880318395)" >&2
   exit 77
 fi
 
@@ -116,12 +156,16 @@ if [[ "$service_status" != "ACTIVE" || "$controller" != "ECS" || "$previous_task
   exit 78
 fi
 
-aws ecr describe-images \
+image_digest="$(aws ecr describe-images \
   --region "$AWS_DEFAULT_REGION" \
   --repository-name "$ECR_REPOSITORY" \
   --image-ids "imageTag=$CI_COMMIT_SHA" \
   --query 'imageDetails[0].imageDigest' \
-  --output text >/dev/null
+  --output text)"
+if [[ -z "$image_digest" || "$image_digest" == "None" ]]; then
+  echo "ECR image could not be resolved for CI_COMMIT_SHA" >&2
+  exit 78
+fi
 
 live_json="$temporary_directory/live.json"
 register_json="$temporary_directory/register.json"
@@ -209,7 +253,15 @@ aws ecs update-service \
 aws ecs wait services-stable \
   --region "$AWS_DEFAULT_REGION" \
   --cluster "$ECS_CLUSTER" \
-  --services "$ECS_SERVICE"
+  --services "$ECS_SERVICE" &
+forward_waiter_pid=$!
+if wait "$forward_waiter_pid"; then
+  forward_waiter_pid=""
+else
+  waiter_status=$?
+  forward_waiter_pid=""
+  exit "$waiter_status"
+fi
 
 deployed_task_definition="$(aws ecs describe-services --region "$AWS_DEFAULT_REGION" --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" --query 'services[0].taskDefinition' --output text)"
 if [[ "$deployed_task_definition" != "$new_task_definition" ]]; then
@@ -221,7 +273,7 @@ for ((attempt = 1; attempt <= smoke_attempts; attempt += 1)); do
   if response="$(curl --fail --silent --show-error --max-time 10 --write-out $'\n%{http_code}' "http://${alb_dns}/health")"; then
     http_status="${response##*$'\n'}"
     body="${response%$'\n'*}"
-    if [[ "$http_status" == "200" ]] && jq -e '. == {"status":"ok"}' >/dev/null <<<"$body"; then
+    if [[ "$http_status" == "200" ]] && jq -e -s 'length == 1 and .[0] == {"status":"ok"}' >/dev/null <<<"$body"; then
       echo "deployment healthy: $new_task_definition ($image_uri)"
       exit 0
     fi
