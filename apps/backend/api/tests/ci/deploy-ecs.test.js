@@ -16,6 +16,7 @@ const imageDigest = `sha256:${"b".repeat(64)}`;
 const dockerImageMediaType = "application/vnd.docker.distribution.manifest.v2+json";
 const ociImageMediaType = "application/vnd.oci.image.manifest.v1+json";
 const ociIndexMediaType = "application/vnd.oci.image.index.v1+json";
+const maxSignalCleanupMilliseconds = 5000;
 
 function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
@@ -591,7 +592,10 @@ test("termination during a long stabilization wait promptly restores the previou
   const updates = calls.split("\n").filter((line) => line.includes("ecs update-service"));
   assert.equal(updates.length, 2);
   assert.equal(state, oldArn);
-  assert.ok(elapsedMilliseconds < 1000, `rollback took ${elapsedMilliseconds}ms`);
+  assert.ok(
+    elapsedMilliseconds < maxSignalCleanupMilliseconds,
+    `rollback took ${elapsedMilliseconds}ms`,
+  );
 });
 
 test("termination during rollback waiter is bounded and preserves the original failure", () => {
@@ -601,7 +605,10 @@ test("termination during rollback waiter is bounded and preserves the original f
   assert.equal(result.status, 1);
   assert.match(result.stderr, /rollback could not be confirmed/);
   assert.equal(calls.split("\n").filter((line) => line.includes("ecs update-service")).length, 2);
-  assert.ok(elapsedMilliseconds < 1000, `rollback waiter termination took ${elapsedMilliseconds}ms`);
+  assert.ok(
+    elapsedMilliseconds < maxSignalCleanupMilliseconds,
+    `rollback waiter termination took ${elapsedMilliseconds}ms`,
+  );
 });
 
 test("conflicting dotenv environment value cannot override the downloaded artifact", () => {

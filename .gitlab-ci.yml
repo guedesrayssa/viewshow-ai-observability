@@ -52,6 +52,9 @@ validate_backend:
       - .npm/
     policy: pull-push
   before_script:
+    - apt-get update
+    - apt-get install --yes --no-install-recommends jq=1.6-2.1+deb12u2
+    - rm -rf /var/lib/apt/lists/*
     - cd apps/backend/api
   script:
     - node --version

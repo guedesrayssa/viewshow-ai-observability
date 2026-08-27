@@ -115,6 +115,14 @@ test("backend validation reuses npm cache without caching the install tree", () 
   assert.doesNotMatch(job, /^      - .*node_modules.*$/m);
 });
 
+test("backend validation installs the exact jq test dependency", () => {
+  const job = topLevelBlock("validate_backend");
+  assert.match(
+    job,
+    /^  before_script:\n    - apt-get update\n    - apt-get install --yes --no-install-recommends jq=1\.6-2\.1\+deb12u2\n    - rm -rf \/var\/lib\/apt\/lists\/\*\n    - cd apps\/backend\/api$/m,
+  );
+});
+
 test("develop publication is protected, digest-producing, and isolated from MR rules", () => {
   const job = topLevelBlock("publish_backend_image");
   assert.match(job, /tags:\n\s+- backend-docker-ephemeral/);
