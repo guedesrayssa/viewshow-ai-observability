@@ -44,17 +44,37 @@ A mutação de revisão de hipótese está especificada, mas só pode ser habili
 em ambiente real quando a identidade do revisor for obtida de uma sessão
 autenticada no servidor.
 
+### 2.1 Perfil de disponibilidade
+
+As fases abaixo descrevem disponibilidade de dados, não versões diferentes da
+API. O formato público permanece estável; capabilities, partial, freshness e
+warnings informam o que pode ser preenchido em cada momento.
+
+| Capacidade | Fase Argus inicial | Fase com ingestão/instrumentação completa |
+|---|---|---|
+| Visão Geral, incidentes e diagnóstico | Prevista | Prevista |
+| Eventos agregados e técnicos | Disponíveis quando representados no Argus | Disponíveis |
+| Seis categorias de eventos individuais | partial ou unavailable | Disponíveis |
+| Payload individual sanitizado | Condicional à existência do evento | Disponível |
+| Qualidade, cobertura, QoE e geografia | Disponíveis pelo Argus | Disponíveis |
+| Taxa e latência interna do pipeline | unavailable até instrumentação | Disponíveis |
+| Fila, DLQ e estado dos workers | unavailable até instrumentação | Disponíveis |
+
+Na fase inicial, ausência de uma capability não impede a adoção dos endpoints
+de Visão Geral, Incidentes e Diagnóstico. A API não fabrica eventos ou
+métricas para completar uma tela.
+
 ## 3. Catálogo de endpoints
 
-| Método | Caminho | Responsabilidade |
-|---|---|---|
-| GET | /api/v1/dashboard/overview | Visão Geral completa |
-| GET | /api/v1/incidents | Lista, gráfico, filtros e facetas de incidentes |
-| GET | /api/v1/incidents/{incidentId}/diagnosis | Incidente, diagnóstico, evidências, séries e timeline |
-| PATCH | /api/v1/incidents/{incidentId}/hypotheses/{hypothesisId}/review | Revisão humana de uma hipótese |
-| GET | /api/v1/incidents/{incidentId}/events | Agregados e eventos correlacionados |
-| GET | /api/v1/incidents/{incidentId}/events/{eventId} | Evento normalizado e origem sanitizada |
-| GET | /api/v1/monitoring/overview | Saúde das fontes e do pipeline |
+| Método | Caminho | Responsabilidade | Disponibilidade inicial |
+|---|---|---|---|
+| GET | /api/v1/dashboard/overview | Visão Geral completa | Fase Argus |
+| GET | /api/v1/incidents | Lista, gráfico, filtros e facetas de incidentes | Fase Argus |
+| GET | /api/v1/incidents/{incidentId}/diagnosis | Incidente, diagnóstico, evidências, séries e timeline | Fase Argus |
+| PATCH | /api/v1/incidents/{incidentId}/hypotheses/{hypothesisId}/review | Revisão humana de uma hipótese | Condicionada à autenticação |
+| GET | /api/v1/incidents/{incidentId}/events | Agregados e eventos correlacionados | Parcial na fase Argus |
+| GET | /api/v1/incidents/{incidentId}/events/{eventId} | Evento normalizado e origem sanitizada | Condicionada à existência do evento individual |
+| GET | /api/v1/monitoring/overview | Saúde das fontes e do pipeline | Parcial até instrumentação do runtime |
 
 ## 4. Convenções comuns
 
@@ -80,8 +100,14 @@ autenticada no servidor.
 ### 4.3 Identificadores
 
 - IDs são opacos e estáveis.
-- number é o identificador humano de um incidente, como INC-4821.
+- id é o identificador canônico obrigatório do incidente.
+- number é a referência humana externa, como INC-4821, e pode ser null quando
+  o incidente ainda não possuir ticket no ServiceNow.
+- Quando existir, number vem da origem de incidentes; o backend não gera um
+  contador sequencial próprio.
 - O frontend não interpreta a estrutura interna de um ID.
+- Quando number for null, o frontend apresenta um rótulo neutro e nunca tenta
+  derivá-lo de id.
 - pk, sk, GSI, TTL e outros campos internos nunca aparecem na API pública.
 
 ### 4.4 Enums
@@ -881,6 +907,11 @@ Status de categoryStats: measured, estimated, partial ou unavailable.
 
 Status das capabilities: available, partial ou unavailable.
 
+Na fase Argus inicial, categoryStats e volumeSeries podem ser preenchidos com
+agregados disponíveis, enquanto individualEvents permanece partial ou
+unavailable. Apenas eventos efetivamente listados podem ser consultados no
+endpoint de detalhe.
+
 Status de quality: linked, normalized, delayed, possible_duplicate ou
 partial.
 
@@ -1164,6 +1195,9 @@ null, o status é unknown e capabilities.pipelineRuntime informa unavailable.
 
 As áreas geográficas são UFs. A API não retorna SVG, paths ou coordenadas; o
 frontend é responsável pela representação do mapa.
+
+Mesmo com pipelineRuntime unavailable, sourceQuality e geographicMetrics
+podem permanecer available a partir de cobertura, QoE e geografia do Argus.
 
 ## 11. Responsabilidades do frontend
 

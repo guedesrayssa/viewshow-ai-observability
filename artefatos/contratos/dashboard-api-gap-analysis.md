@@ -102,6 +102,38 @@ diagnóstico disparado como responsabilidades internas.
 | GET /incidents/{id}/events/{eventId} | Inexistente | Ausente | Não há detalhe normalizado ou raw sanitizado |
 | GET /monitoring/overview | Inexistente | Ausente | Frontend inteiro usa mock |
 
+### 5.1 Bloqueadores para declarar conformidade
+
+| Bloqueador | Evidência atual | Consequência |
+|---|---|---|
+| DTO público inexistente | Rotas devolvem itens do DynamoDB diretamente | pk, sk, trace_id e ttl podem vazar; precisa haver serialização explícita |
+| Identidade incompleta | O seed usa slug em id e não possui number | id deve ser canônico; number deve vir do ServiceNow e aceitar null |
+| Modelo de hipóteses diferente | Há histórico de execuções, mas não candidatos ranqueados dentro de um diagnóstico | hypothesisId, rank e probability exigem evolução do modelo |
+| Revisão sem versão | UpdateItem atual não usa version nem ConditionExpression | expectedVersion não é atendido e revisões concorrentes podem se sobrescrever |
+| Listagem sem cursor | Todos os buckets da janela são reunidos e ordenados em memória | nextCursor não pode ser declarado conforme sem paginação ou snapshot estável |
+
+Esses pontos não invalidam o contrato-alvo. Eles impedem afirmar que a
+implementação atual já está conforme com ele.
+
+### 5.2 Transição das rotas atuais
+
+As rotas abaixo permanecem legadas durante a transição, não entram no OpenAPI
+público novo e não devem receber novas integrações do frontend:
+
+| Rota atual | Tratamento recomendado |
+|---|---|
+| GET /api/v1/dashboard/summary | Manter temporariamente; substituir por /dashboard/overview |
+| GET /api/v1/incidents/:id | Manter até /diagnosis assumir a leitura agregada |
+| GET /api/v1/incidents/:id/evidence | Manter até /diagnosis assumir a leitura agregada |
+| GET /api/v1/incidents/:id/hypothesis | Manter até /diagnosis assumir a leitura agregada |
+| PATCH /api/v1/incidents/:id/hypothesis/review | Substituir pela rota endereçada por hypothesisId |
+| POST /api/v1/incidents/:id/diagnose | Tratar como operação interna |
+| GET /api/v1/golden-set | Retirar da superfície pública |
+| POST /api/v1/ml/analyze | Tratar como operação interna |
+
+A remoção exige confirmar que não existem consumidores. Este documento não
+autoriza excluir rotas nem alterar o backend atual.
+
 ## 6. Visão Geral
 
 ### Implementação atual
@@ -158,11 +190,17 @@ do DynamoDB.
 - Não existem facetas.
 - Parte relevante dos filtros não existe.
 - O serviço retorna o formato persistido, sem DTO público dedicado.
+- Os itens do seed não possuem number. A fonte Argus/ServiceNow possui number
+  para tickets; incidentes sem ticket precisam retornar number igual a null.
 - Campos como startedMinutesAgo, timeAgo, segment e sessions já estão
   formatados.
 - Não há separação confiável entre dispositivos e sessões.
 - O frontend cria o gráfico de impacto a partir de mocks.
 - A busca não possui índice ou tokens normalizados.
+- A paginação por cursor exige redesenhar a consulta ou materializar um
+  snapshot estável; o fluxo atual lê todos os buckets da janela.
+- Facetas condicionadas aos demais filtros não devem ser calculadas com Scan.
+  A implementação deve usar agregados ou contadores pré-computados.
 
 ## 8. Diagnóstico e evidências
 
@@ -192,9 +230,14 @@ O backend possui:
 ### Lacunas
 
 - O backend retorna somente a hipótese mais recente.
+- A tabela preserva hipóteses históricas de execuções distintas, mas não
+  representa várias hipóteses candidatas, ordenadas e pertencentes à mesma
+  execução de diagnóstico.
 - A tela precisa coordenar três requests para montar um contexto parcial.
 - Não há buffering, concentração ou timeline.
 - Não há versionamento da revisão.
+- A atualização não possui ConditionExpression; expectedVersion e
+  REVIEW_VERSION_CONFLICT exigem versionamento e escrita condicional.
 - O body atual aceita somente confirmed ou refuted.
 - Não existe estado inconclusive.
 - Evidências atuais possuem descrição livre e campos mínimos.
@@ -242,6 +285,16 @@ eventos individuais completos a partir de agregados.
 - Até existir a fonte, capabilities deve declarar individualEvents como
   partial ou unavailable.
 
+### Disponibilidade recomendada
+
+- Fase Argus: agregados e eventos técnicos quando existirem; eventos
+  individuais e raw declarados como partial ou unavailable.
+- Fase instrumentada: seis categorias individuais, payload sanitizado e
+  linha do tempo de sessão.
+
+Essa separação permite adotar o restante do contrato sem bloquear a integração
+por uma fonte que ainda não existe.
+
 ## 10. Monitoramento
 
 ### Frontend atual
@@ -278,6 +331,9 @@ O Argus não fornece diretamente:
 
 Essas métricas precisam ser materializadas pela infraestrutura do pipeline a
 partir de SQS, ECS, CloudWatch ou mecanismo equivalente.
+
+Qualidade, cobertura, QoE e geografia podem compor a fase Argus. Taxa e
+latência internas, fila, DLQ e workers pertencem à fase instrumentada.
 
 ### Lacunas
 
@@ -338,6 +394,14 @@ contém:
 Esta observação não altera o contrato HTTP. Ela apenas identifica os dados
 necessários para que as respostas possam ser populadas.
 
+Além dos read models, a futura implementação precisa:
+
+- Serializar DTOs sem campos físicos.
+- Modelar candidatos de hipótese por execução.
+- Usar escrita condicional na revisão.
+- Definir paginação ou snapshots estáveis para incidentes.
+- Pré-computar facetas que dependem de múltiplos filtros.
+
 ## 13. Materiais disponíveis e faltantes
 
 ### Disponíveis
@@ -359,6 +423,26 @@ O acesso ao Figma não é bloqueador para escrever o contrato.
 - Métricas produtivas de SQS/ECS/CloudWatch do pipeline.
 - Confirmação de SLA por fonte para classificar fresh e delayed.
 
+### Dependência em levantamento
+
+Outro levantamento da equipe está mapeando a leitura das informações dos
+bancos da Globo e a transferência para monitoracao-operacional. Quando esse
+material estiver disponível, esta auditoria e o contrato devem ser
+revalidados nos seguintes pontos:
+
+- Origem e estabilidade de id e number.
+- Campos realmente disponíveis por incidente e evidência.
+- Granularidade temporal e geográfica.
+- Correlação entre incidente, hipótese, evidência e evento.
+- Watermark, atraso e significado de observedThrough.
+- Volume, retenção, buckets e paginação.
+- Dimensões que permitem facetas sem inferência.
+- Dados pessoais ou sensíveis que exigem exclusão ou pseudonimização.
+
+O levantamento pode mudar a classificação de disponibilidade e o desenho
+interno dos read models. Só deve mudar o contrato público quando a fonte não
+conseguir sustentar uma semântica já definida.
+
 Esses pontos não impedem o contrato. Eles impedem apenas que algumas
 respostas sejam integralmente preenchidas no primeiro momento.
 
@@ -369,7 +453,7 @@ respostas sejam integralmente preenchidas no primeiro momento.
 - Visão Geral completa.
 - Listagem de incidentes com DTO público.
 - Diagnóstico agregado.
-- Monitoramento.
+- Parte Argus de Monitoramento.
 - Facetas, séries e frescor.
 
 ### Obrigatório antes de habilitar revisão
@@ -384,6 +468,8 @@ respostas sejam integralmente preenchidas no primeiro momento.
 - Eventos individuais das seis categorias.
 - Payload bruto sanitizado.
 - Linha do tempo completa de uma sessão.
+- Taxa e latência internas do pipeline.
+- Profundidade da fila, DLQ e estado dos workers.
 
 ## 15. Conclusão da auditoria
 
