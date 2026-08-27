@@ -7,6 +7,7 @@ region="us-east-1"
 profile="${AWS_PROFILE:-default}"
 gitlab_host="git.inteli.edu.br"
 dry_run=false
+protected=true
 target_keys=(AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN)
 credentials_json=""
 access_key=""
@@ -28,13 +29,20 @@ glab_safe() {
   GLAB_DEBUG=false GLAB_DEBUG_HTTP=false glab "$@"
 }
 
-if [[ "${1:-}" == "--dry-run" ]]; then
-  dry_run=true
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      dry_run=true
+      ;;
+    --allow-unprotected-develop)
+      protected=false
+      ;;
+    *)
+      fail "usage: sync-aws-gitlab-credentials.sh [--dry-run] [--allow-unprotected-develop]" 64
+      ;;
+  esac
   shift
-fi
-if [[ "$#" -ne 0 ]]; then
-  fail "usage: sync-aws-gitlab-credentials.sh [--dry-run]" 64
-fi
+done
 
 for command_name in aws jq glab git awk; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -194,12 +202,17 @@ unset credentials_json
 set_variable() {
   local key="$1"
   local value="$2"
+  local protected_option="--protected"
+
+  if [[ "$protected" != true ]]; then
+    protected_option="--protected=false"
+  fi
 
   case "${variable_modes[$key]}" in
     set)
       printf '%s' "$value" | glab_safe variable set "$key" \
         --repo "$repository_url" \
-        --protected \
+        "$protected_option" \
         --masked \
         --hidden \
         --raw \
@@ -209,18 +222,18 @@ set_variable() {
     update)
       printf '%s' "$value" | glab_safe variable update "$key" \
         --repo "$repository_url" \
-        --protected \
+        "$protected_option" \
         --masked \
         --raw \
         --scope aws-lab \
         --type env_var
       ;;
     migrate)
-      printf '%s' "$value" | jq -Rsc '
+      printf '%s' "$value" | jq -Rsc --argjson protected "$protected" '
         {
           value: .,
           environment_scope: "aws-lab",
-          protected: true,
+          protected: $protected,
           masked: true,
           raw: true,
           variable_type: "env_var"
@@ -272,7 +285,7 @@ for key in "${target_keys[@]}"; do
   if [[ "$metadata_key" != "$key" \
     || "$metadata_scope" != "aws-lab" \
     || "$metadata_hidden" != "true" \
-    || "$metadata_protected" != "true" \
+    || "$metadata_protected" != "$protected" \
     || "$metadata_masked" != "true" \
     || "$metadata_raw" != "true" \
     || "$metadata_type" != "env_var" ]]; then
@@ -286,4 +299,4 @@ if [[ "$metadata_verified" != true ]]; then
 fi
 unset metadata_verified
 
-echo "updated protected AWS variables scoped to aws-lab"
+echo "updated AWS variables scoped to aws-lab (protected=$protected)"

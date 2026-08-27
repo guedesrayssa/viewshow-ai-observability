@@ -43,9 +43,11 @@ function runSynchronizer({
     path_with_namespace: "group/project",
   }),
   dryRun = false,
+  allowUnprotectedDevelop = false,
+  cliOptions,
   configuredEndpoint = "",
   configuredServices = "",
-  postWriteMetadata = metadata(keys.map((key) => [key, "aws-lab"])),
+  postWriteMetadata,
   envOverrides = {},
 } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "credential-sync-"));
@@ -54,6 +56,15 @@ function runSynchronizer({
   const state = path.join(directory, "state");
   fs.mkdirSync(bin);
   fs.mkdirSync(state);
+
+  const options = cliOptions ?? [
+    ...(dryRun ? ["--dry-run"] : []),
+    ...(allowUnprotectedDevelop ? ["--allow-unprotected-develop"] : []),
+  ];
+  const expectedProtected = !options.includes("--allow-unprotected-develop");
+  const expectedPostWriteMetadata = postWriteMetadata ?? metadata(
+    keys.map((key) => [key, "aws-lab", true, { protected: expectedProtected }]),
+  );
 
   writeExecutable(
     path.join(bin, "aws"),
@@ -115,6 +126,14 @@ record_write() {
   printf 'glab:write:%s:%s:value-ok\\n' "$action" "$key" >>"$CALL_LOG"
 }
 debug_ok || { printf 'glab:debug-not-disabled\\n' >>"$CALL_LOG"; exit 97; }
+for argument in "$@"; do
+  case "$argument" in
+    "$FAKE_ACCESS"|"$FAKE_SECRET"|"$FAKE_SESSION")
+      printf 'glab:credential-in-arguments\\n' >>"$CALL_LOG"
+      exit 98
+      ;;
+  esac
+done
 if [[ "$1 $2" == "auth status" ]]; then
   [[ "$#" == 4 && "$3" == "--hostname" && "$4" == "git.inteli.edu.br" ]] || exit 2
   printf 'glab:auth:debug-disabled\\n' >>"$CALL_LOG"
@@ -153,10 +172,10 @@ if [[ "$1" == "api" ]]; then
       *) exit 2 ;;
     esac
     body="$(cat)"
-    jq -e --arg expected "$expected" '
+    jq -e --arg expected "$expected" --argjson expectedProtected "$EXPECTED_PROTECTED" '
       .value == $expected
       and .environment_scope == "aws-lab"
-      and .protected == true
+      and .protected == $expectedProtected
       and .masked == true
       and (has("hidden") | not)
       and .raw == true
@@ -179,10 +198,12 @@ if [[ "$1 $2" == "variable set" || "$1 $2" == "variable update" ]]; then
   esac
   value="$(cat)"
   [[ "$value" == "$expected" ]] || { printf 'glab:value-check-failed:%s\\n' "$key" >>"$CALL_LOG"; exit 3; }
+  protected_flag="--protected"
+  [[ "$EXPECTED_PROTECTED" == true ]] || protected_flag="--protected=false"
   if [[ "$action" == set ]]; then
-    [[ "$*" == "variable set $key --repo $CANONICAL_REPOSITORY --protected --masked --hidden --raw --scope aws-lab --type env_var" ]] || exit 2
+    [[ "$*" == "variable set $key --repo $CANONICAL_REPOSITORY $protected_flag --masked --hidden --raw --scope aws-lab --type env_var" ]] || exit 2
   else
-    [[ "$*" == "variable update $key --repo $CANONICAL_REPOSITORY --protected --masked --raw --scope aws-lab --type env_var" ]] || exit 2
+    [[ "$*" == "variable update $key --repo $CANONICAL_REPOSITORY $protected_flag --masked --raw --scope aws-lab --type env_var" ]] || exit 2
   fi
   record_write "$action" "$key"
   exit $?
@@ -191,7 +212,7 @@ exit 2
 `,
   );
 
-  const result = spawnSync(script, dryRun ? ["--dry-run"] : [], {
+  const result = spawnSync(script, options, {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -207,9 +228,10 @@ exit 2
       CONFIGURED_ENDPOINT: configuredEndpoint,
       CONFIGURED_SERVICES: configuredServices,
       VARIABLE_METADATA: variableMetadata,
-      POST_WRITE_METADATA: postWriteMetadata,
+      POST_WRITE_METADATA: expectedPostWriteMetadata,
       REPOSITORY_VIEW: repositoryView,
       FAIL_WRITE_ATTEMPT: String(failWriteAttempt),
+      EXPECTED_PROTECTED: String(expectedProtected),
       FAKE_ACCESS: "fixture-access",
       FAKE_SECRET: "fixture-secret",
       FAKE_SESSION: "fixture-session",
@@ -245,6 +267,85 @@ test("dry-run completes every preflight without writing variables or leaking cre
   assert.doesNotMatch(calls, /export-credentials/);
   assert.doesNotMatch(calls, /glab:write:/);
   assertNoCredentialFixtureLeaks(output);
+});
+
+test("allow-unprotected-develop explicitly writes unprotected AWS variables", () => {
+  const { result, calls } = runSynchronizer({ allowUnprotectedDevelop: true });
+  const writes = calls.split("\n").filter((line) => line.startsWith("glab:write:"));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(writes, keys.map((key) => `glab:write:set:${key}:value-ok`));
+  assert.doesNotMatch(calls, /credential-in-arguments/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("allow-unprotected-develop updates existing aws-lab variables as unprotected", () => {
+  const { result, calls } = runSynchronizer({
+    allowUnprotectedDevelop: true,
+    variableMetadata: metadata(keys.map((key) => [key, "aws-lab"])),
+  });
+  const writes = calls.split("\n").filter((line) => line.startsWith("glab:write:"));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(writes, keys.map((key) => `glab:write:update:${key}:value-ok`));
+  assert.doesNotMatch(calls, /credential-in-arguments/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("allow-unprotected-develop migrates wildcard variables as unprotected", () => {
+  const { result, calls } = runSynchronizer({
+    allowUnprotectedDevelop: true,
+    variableMetadata: metadata(keys.map((key) => [key])),
+  });
+  const writes = calls.split("\n").filter((line) => line.startsWith("glab:write:"));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(writes, keys.map((key) => `glab:write:migrate:${key}:value-ok`));
+  assert.doesNotMatch(calls, /credential-in-arguments/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("unprotected mode rejects post-write metadata that remains protected", () => {
+  const { result, calls } = runSynchronizer({
+    allowUnprotectedDevelop: true,
+    postWriteMetadata: metadata(keys.map((key) => [key, "aws-lab"])),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /post-write GitLab variable metadata verification failed/);
+  assert.doesNotMatch(calls, /credential-in-arguments/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+for (const options of [
+  ["--dry-run", "--allow-unprotected-develop"],
+  ["--allow-unprotected-develop", "--dry-run"],
+]) {
+  test(`dry-run accepts allow-unprotected-develop in ${options.join(" then ")} order`, () => {
+    const { result, calls } = runSynchronizer({ cliOptions: options });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /dry-run validated/);
+    assert.doesNotMatch(calls, /export-credentials|glab:write:/);
+    assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+  });
+}
+
+test("unknown options fail before external calls without leaking credentials", () => {
+  const { result, calls } = runSynchronizer({ cliOptions: ["--unexpected"] });
+
+  assert.equal(result.status, 64);
+  assert.match(result.stderr, /usage:/);
+  assert.equal(calls, "");
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("credential values are never supplied as GitLab process arguments", () => {
+  const { result, calls } = runSynchronizer();
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(calls, /credential-in-arguments/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
 });
 
 test("missing target variables are created with their corresponding values", () => {
