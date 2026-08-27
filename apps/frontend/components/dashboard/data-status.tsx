@@ -41,6 +41,14 @@ export type DataStatusProps = {
   refreshing?: boolean;
   error?: string;
   onRefresh?: () => void;
+  /**
+   * Mostra o selo de procedência. Desligado, sobram o horário da leitura e a
+   * ação de atualizar — usado onde o cabeçalho já carrega identificação do
+   * incidente e um terceiro selo passaria a competir com ela. A falha de
+   * leitura continua sendo anunciada de qualquer modo: essa é a única
+   * informação da faixa que muda o que a pessoa deve fazer.
+   */
+  showSource?: boolean;
   className?: string;
 };
 
@@ -56,6 +64,7 @@ export function DataStatus({
   refreshing = false,
   error,
   onRefresh,
+  showSource = true,
   className,
 }: DataStatusProps) {
   const [now, setNow] = useState(() => Date.now());
@@ -71,7 +80,7 @@ export function DataStatus({
         <Badge tone="critical" withDot role="status">
           Leitura falhou
         </Badge>
-      ) : source === "api" ? (
+      ) : !showSource ? null : source === "api" ? (
         <Badge tone="success" withDot role="status">
           Telemetria ao vivo
         </Badge>
