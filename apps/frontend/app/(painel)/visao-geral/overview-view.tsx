@@ -14,6 +14,7 @@ import { useCallback, useState } from "react";
 
 import {
   fetchOverview,
+  formatRebufferRate,
   type OverviewFilters,
 } from "@/app/(painel)/visao-geral/overview-resource";
 import { Reveal } from "@/components/motion/reveal";
@@ -42,8 +43,8 @@ import type { StatAccent } from "@/lib/dashboard-data";
 /** Releitura automática do hub, no ritmo do "tempo quase real" do produto. */
 const REFRESH_MS = 30_000;
 
-/** Faixas dos três indicadores, usadas também no espaço reservado. */
-const STAT_ACCENTS: StatAccent[] = ["critical", "warning", "info"];
+/** Faixas dos quatro indicadores, usadas também no espaço reservado. */
+const STAT_ACCENTS: StatAccent[] = ["critical", "warning", "info", "info"];
 
 export function OverviewView() {
   const [filters, setFilters] = useState<DashboardFilters>(
@@ -52,7 +53,7 @@ export function OverviewView() {
 
   const overview = useResource(
     (revision) => fetchOverview(toQuery(filters), revision),
-    [filters.timeRange, filters.device, filters.region, filters.appVersion],
+    [filters.timeRange],
     { refreshMs: REFRESH_MS },
   );
 
@@ -70,6 +71,8 @@ export function OverviewView() {
         status={
           <DataStatus
             source={overview.source}
+            availability={overview.availability}
+            warnings={overview.warnings}
             fetchedAt={overview.fetchedAt}
             refreshing={overview.refreshing}
             error={overview.error}
@@ -96,8 +99,8 @@ export function OverviewView() {
                 <StatCard {...stat} />
               </Reveal>
             ))
-          : STAT_ACCENTS.map((accent) => (
-              <StatCardSkeleton key={accent} accent={accent} />
+          : STAT_ACCENTS.map((accent, index) => (
+              <StatCardSkeleton key={index} accent={accent} />
             ))}
       </div>
 
@@ -114,6 +117,9 @@ export function OverviewView() {
                 baseline={data.baseline}
                 anomalyRange={data.anomalyRange}
                 peakIndex={data.peakIndex}
+                metricLabel="Taxa de travamento"
+                description="Tempo travado sobre tempo assistido, por intervalo"
+                formatValue={formatRebufferRate}
                 timeRange={filters.timeRange}
                 onTimeRangeChange={(timeRange) => onFilterChange({ timeRange })}
               />
@@ -133,7 +139,12 @@ export function OverviewView() {
   );
 }
 
-/** Converte o recorte da barra no formato que a leitura espera. */
+/**
+ * Converte o recorte da barra no formato que a leitura espera.
+ *
+ * As três dimensões seguem no tipo, mas a leitura ainda não as envia: as rotas
+ * que servem esta tela não as aceitam, e a barra as mostra desabilitadas.
+ */
 function toQuery(filters: DashboardFilters): OverviewFilters {
   return {
     timeRange: filters.timeRange,
