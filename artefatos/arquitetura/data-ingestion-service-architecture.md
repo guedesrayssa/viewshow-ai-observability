@@ -12,9 +12,6 @@ Este documento define a arquitetura da aplicação que executará o contrato
 componentes, casos de uso, fluxo operacional, projeções, AWS, observabilidade,
 segurança e rollout.
 
-O histórico consolidado está no
-[Design completo da ingestão](../../docs/superpowers/specs/2026-08-27-argus-dynamodb-ingestion-contract-design.md).
-
 ## 2. Decisão principal
 
 A primeira versão é um monólito modular Python com DDD leve e arquitetura

@@ -31,3 +31,6 @@ Thumbs.db
 # ---------- AWS ----------
 .aws-sam/
 *.pem
+
+# --------- Superpowers
+*superpowers/

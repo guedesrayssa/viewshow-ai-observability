@@ -18,8 +18,6 @@ Este documento é o contrato normativo de dados da ingestão. Ele define:
 
 A arquitetura e as projeções derivadas estão em
 [Arquitetura do Data Ingestion Service](../arquitetura/data-ingestion-service-architecture.md).
-O histórico consolidado das decisões está em
-[Design completo da ingestão](../../docs/superpowers/specs/2026-08-27-argus-dynamodb-ingestion-contract-design.md).
 
 ## 2. Fronteiras do contrato
 
