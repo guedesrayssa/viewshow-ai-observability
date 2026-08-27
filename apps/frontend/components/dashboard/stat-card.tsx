@@ -38,11 +38,19 @@ export function StatCard({
 
       <div className="mt-1 flex items-baseline justify-between gap-2">
         <CardTitle className="text-h2">
-          <AnimatedNumber
-            value={value}
-            format={format === "compact" ? formatCompact : formatInteger}
-            suffix={unit}
-          />
+          {/* Sem medição, um travessão. Escrever zero afirmaria que a grandeza
+              foi observada e deu zero, que é outra coisa. */}
+          {value === null ? (
+            <span className="text-ink-subtle" title="Sem medição nesta janela">
+              —
+            </span>
+          ) : (
+            <AnimatedNumber
+              value={value}
+              format={format === "compact" ? formatCompact : formatInteger}
+              suffix={unit}
+            />
+          )}
         </CardTitle>
         <span
           className={cn(

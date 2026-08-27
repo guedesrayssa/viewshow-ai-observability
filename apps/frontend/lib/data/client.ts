@@ -1,41 +1,71 @@
 /**
  * @file client.ts
- * Ponte entre as telas e a API de telemetria.
+ * Ponte entre as telas e as APIs deste repositório.
  *
  * Toda leitura de dado do painel passa por aqui. A tela não conhece `fetch`,
  * não conhece a URL da API e não conhece o formato bruto da resposta: ela pede
  * um recurso e recebe o dado já no tipo que usa para desenhar.
  *
- * Enquanto a API não está configurada (`NEXT_PUBLIC_API_BASE_URL` vazia) ou não
- * responde, o recurso cai no conjunto de exemplo declarado pela própria tela e
- * devolve `source: "exemplo"`. A interface mostra esse estado em texto — o
- * número na tela nunca se apresenta como medição real quando não é. Ligar o
- * backend depois é preencher a variável de ambiente e escrever o `map` da
- * resposta; nenhum componente muda.
+ * São duas APIs, com domínios que não se cruzam, e por isso duas bases de URL:
  *
- * @see `lib/data/endpoints.ts` para os caminhos publicados pela API.
+ * - `operacional` — Node/Express (`apps/backend/api`): incidentes, evidências,
+ *   hipótese e a revisão humana. É a única que tem sessão, e por isso a única
+ *   que envia o cookie.
+ * - `telemetria` — Flask (`apps/basica/backend`): medição bruta — QoE, erros,
+ *   segmentações e séries no tempo.
+ *
+ * Cada recurso declara o que a leitura devolveu: `source` diz de onde veio o
+ * número, e `availability` diz o quanto do bloco ficou preenchido. Os dois são
+ * necessários porque não respondem a mesma pergunta: uma leitura pode vir da
+ * API e ainda assim estar parcial, quando parte do que a tela desenha não tem
+ * fonte em nenhuma das duas.
+ *
+ * @see `lib/data/endpoints.ts` para os caminhos publicados por cada API.
+ * @see `lib/data/mode.ts` para quando o conjunto de exemplo é permitido.
  */
 
-/** Endereço da API de telemetria. Vazio significa "ainda não integrada". */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+import { ALLOW_EXAMPLE_DATA } from "@/lib/data/mode";
+import { WARNINGS, type Warning } from "@/lib/data/warnings";
+
+/** Qual das duas APIs serve a leitura. */
+export type ApiTarget = "operacional" | "telemetria";
+
+/**
+ * Endereço de cada API. Vazio significa "ainda não integrada neste ambiente".
+ *
+ * A leitura é feita membro a membro porque é assim que o Next substitui a
+ * variável no pacote do navegador; um acesso dinâmico chegaria como `undefined`
+ * no cliente.
+ */
+const API_BASES: Record<ApiTarget, string> = {
+  operacional: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
+  telemetria: process.env.NEXT_PUBLIC_TELEMETRY_API_BASE_URL ?? "",
+};
 
 /** Tempo máximo de espera por resposta, em milissegundos. */
 const REQUEST_TIMEOUT = 8000;
 
 /** Origem do dado que está na tela. */
-export type DataSource = "api" | "exemplo";
+export type DataSource = "api" | "exemplo" | "indisponivel";
+
+/** O quanto do bloco a leitura conseguiu preencher. */
+export type Availability = "measured" | "partial" | "unavailable";
 
 /** Dado entregue a uma tela, com a procedência declarada. */
 export type Resource<T> = {
-  data: T;
+  /** Ausente quando `availability` é `unavailable`. */
+  data?: T;
   source: DataSource;
+  availability: Availability;
+  /** O que da leitura não pôde ser preenchido, e por quê. */
+  warnings: Warning[];
   /** Momento da leitura, para o rótulo "atualizado há...". */
   fetchedAt: Date;
   /** Motivo da queda para o conjunto de exemplo, quando houve uma. */
   fallbackReason?: string;
 };
 
-/** Falha de comunicação com a API. */
+/** Falha de comunicação com uma das APIs. */
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -46,16 +76,16 @@ export class ApiError extends Error {
   }
 }
 
-/** Informa se existe uma API configurada para este ambiente. */
-export function isApiConfigured(): boolean {
-  return API_BASE_URL.trim() !== "";
+/** Informa se a API pedida foi apontada por variável de ambiente. */
+export function isApiConfigured(target: ApiTarget): boolean {
+  return API_BASES[target].trim() !== "";
 }
 
-/** Parâmetros de consulta aceitos pelos endpoints analíticos. */
+/** Parâmetros de consulta aceitos pelos endpoints. */
 export type QueryParams = Record<string, string | number | undefined>;
 
-function buildUrl(path: string, params?: QueryParams): string {
-  const url = new URL(path, API_BASE_URL);
+function buildUrl(target: ApiTarget, path: string, params?: QueryParams): string {
+  const url = new URL(path, API_BASES[target]);
 
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
@@ -65,8 +95,9 @@ function buildUrl(path: string, params?: QueryParams): string {
 }
 
 /**
- * Faz uma leitura na API e devolve o corpo já convertido.
+ * Faz uma leitura em uma das APIs e devolve o corpo já convertido.
  *
+ * @param target - Qual API serve esta leitura.
  * @param path - Caminho do endpoint, como `/v1/analytics/realtime/overview`.
  * @param params - Parâmetros de consulta.
  * @returns O corpo da resposta.
@@ -74,20 +105,31 @@ function buildUrl(path: string, params?: QueryParams): string {
  * responde fora da faixa 2xx.
  *
  * @example
- * const overview = await apiGet<RealtimeOverview>(ENDPOINTS.realtimeOverview);
+ * const overview = await apiGet<RealtimeOverviewResponse>(
+ *   "telemetria",
+ *   ENDPOINTS.telemetria.realtimeOverview,
+ * );
  */
-export async function apiGet<T>(path: string, params?: QueryParams): Promise<T> {
-  if (!isApiConfigured()) {
-    throw new ApiError("API de telemetria não configurada neste ambiente.");
+export async function apiGet<T>(
+  target: ApiTarget,
+  path: string,
+  params?: QueryParams,
+): Promise<T> {
+  if (!isApiConfigured(target)) {
+    throw new ApiError(`A API ${target} não está configurada neste ambiente.`);
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
-    const response = await fetch(buildUrl(path, params), {
+    const response = await fetch(buildUrl(target, path, params), {
       signal: controller.signal,
       headers: { Accept: "application/json" },
+      // A sessão da API operacional é um cookie assinado pelo servidor. Ele
+      // precisa acompanhar a leitura para que uma rota protegida devolva o
+      // recurso, e não 401.
+      credentials: target === "operacional" ? "include" : "same-origin",
       // O painel mostra o estado agora; uma resposta de cache seria um número
       // velho apresentado como recente.
       cache: "no-store",
@@ -114,54 +156,157 @@ export async function apiGet<T>(path: string, params?: QueryParams): Promise<T> 
   }
 }
 
-export type LoadOptions<TResponse, TData> = {
-  /** Caminho do endpoint que servirá este recurso quando a API existir. */
+/** Parte comum a uma leitura simples e a uma leitura composta. */
+type ResourceShape<TData> = {
+  /**
+   * Conjunto de exemplo. Sem ele — ou fora dos ambientes em que o exemplo é
+   * permitido —, a falha vira estado de indisponível, e não número.
+   */
+  fallback?: () => TData;
+  /**
+   * Avisos que valem mesmo quando a leitura funciona: o que aquele bloco
+   * desenha e a fonte não mede.
+   */
+  warnings?: Warning[];
+};
+
+export type LoadOptions<TResponse, TData> = ResourceShape<TData> & {
+  target: ApiTarget;
+  /** Caminho do endpoint que serve este recurso. */
   path: string;
   params?: QueryParams;
   /** Converte a resposta da API no formato que a tela desenha. */
   map: (response: TResponse) => TData;
-  /** Conjunto de exemplo usado enquanto a API não responde. */
-  fallback: () => TData;
+};
+
+export type ComposeOptions<TData> = ResourceShape<TData> & {
+  /**
+   * As APIs sem as quais a leitura não acontece. Uma fonte secundária, cuja
+   * ausência apenas esvazia um bloco, não entra aqui: ela é tratada dentro do
+   * `read` e reportada por `warn`.
+   */
+  targets: ApiTarget[];
+  /**
+   * Faz as leituras e monta o formato que a tela desenha.
+   *
+   * Recebe `warn` para declarar o que não conseguiu preencher. É o que
+   * diferencia "a leitura falhou" de "a leitura foi, e esta parte não tem
+   * fonte" — a segunda continua sendo uma resposta utilizável.
+   */
+  read: (warn: (warning: Warning) => void) => Promise<TData>;
 };
 
 /**
- * Carrega um recurso do painel, com queda para o conjunto de exemplo.
+ * Executa uma leitura já montada e classifica o resultado.
+ *
+ * É a primitiva das duas funções públicas: `loadResource`, para um endpoint, e
+ * `composeResource`, para várias leituras que formam um bloco só.
+ */
+async function resolve<TData>({
+  targets,
+  read,
+  fallback,
+  warnings = [],
+}: ComposeOptions<TData>): Promise<Resource<TData>> {
+  const collected: Warning[] = [...warnings];
+  const warn = (warning: Warning) => {
+    if (!collected.some((item) => item.code === warning.code)) {
+      collected.push(warning);
+    }
+  };
+
+  const unavailableOr = (reason: Warning): Resource<TData> => {
+    if (ALLOW_EXAMPLE_DATA && fallback) {
+      return {
+        data: fallback(),
+        source: "exemplo",
+        availability: collected.length > 0 ? "partial" : "measured",
+        warnings: [reason, WARNINGS.dadoDeExemplo, ...collected],
+        fetchedAt: new Date(),
+        fallbackReason: reason.message,
+      };
+    }
+
+    return {
+      source: "indisponivel",
+      availability: "unavailable",
+      warnings: [reason, ...collected],
+      fetchedAt: new Date(),
+      fallbackReason: reason.message,
+    };
+  };
+
+  if (targets.some((target) => !isApiConfigured(target))) {
+    return unavailableOr(WARNINGS.apiNaoConfigurada);
+  }
+
+  try {
+    const data = await read(warn);
+    return {
+      data,
+      source: "api",
+      availability: collected.length > 0 ? "partial" : "measured",
+      warnings: collected,
+      fetchedAt: new Date(),
+    };
+  } catch (error) {
+    return unavailableOr({
+      code: WARNINGS.leituraFalhou.code,
+      message:
+        error instanceof Error ? error.message : WARNINGS.leituraFalhou.message,
+    });
+  }
+}
+
+/**
+ * Carrega um recurso servido por um único endpoint.
  *
  * @example
  * loadResource({
- *   path: ENDPOINTS.errorsSummary,
+ *   target: "telemetria",
+ *   path: ENDPOINTS.telemetria.errorsSummary,
  *   params: { window: "30m" },
- *   map: (response: ErrorsSummary) => toStats(response),
+ *   map: (response: ErrorsSummaryResponse) => toStats(response),
  *   fallback: () => exampleStats(),
  * });
  */
-export async function loadResource<TResponse, TData>({
+export function loadResource<TResponse, TData>({
+  target,
   path,
   params,
   map,
   fallback,
+  warnings,
 }: LoadOptions<TResponse, TData>): Promise<Resource<TData>> {
-  if (!isApiConfigured()) {
-    return {
-      data: fallback(),
-      source: "exemplo",
-      fetchedAt: new Date(),
-      fallbackReason: "API de telemetria não configurada neste ambiente.",
-    };
-  }
+  return resolve({
+    targets: [target],
+    read: async () => map(await apiGet<TResponse>(target, path, params)),
+    fallback,
+    warnings,
+  });
+}
 
-  try {
-    const response = await apiGet<TResponse>(path, params);
-    return { data: map(response), source: "api", fetchedAt: new Date() };
-  } catch (error) {
-    return {
-      data: fallback(),
-      source: "exemplo",
-      fetchedAt: new Date(),
-      fallbackReason:
-        error instanceof Error ? error.message : "Falha ao falar com a API.",
-    };
-  }
+/**
+ * Carrega um recurso montado a partir de várias leituras.
+ *
+ * Usado onde um bloco da tela só existe com o que duas ou três rotas dizem
+ * juntas — o detalhe de um incidente, por exemplo, que hoje sai de três
+ * leituras separadas na API operacional.
+ *
+ * @example
+ * composeResource({
+ *   targets: ["operacional"],
+ *   read: async () => {
+ *     const [incident, evidence] = await Promise.all([...]);
+ *     return { incident, evidence };
+ *   },
+ *   fallback: () => exampleEvidence(),
+ * });
+ */
+export function composeResource<TData>(
+  options: ComposeOptions<TData>,
+): Promise<Resource<TData>> {
+  return resolve(options);
 }
 
 /**
@@ -170,8 +315,8 @@ export async function loadResource<TResponse, TData>({
  * Serve para que uma atualização do painel sem API ainda mostre movimento nos
  * números e nas séries, em vez de repetir o mesmo quadro. A variação é
  * determinística: a mesma leitura devolve sempre o mesmo valor, e nada aqui
- * chega perto do que a tela apresenta como dado medido — o selo "dados de
- * exemplo" continua visível o tempo todo.
+ * chega perto do que a tela apresenta como dado medido — o selo de exemplo
+ * continua visível o tempo todo.
  *
  * @param value - Valor base da fixture.
  * @param seed - Contador de atualizações e posição do ponto na série.

@@ -20,11 +20,20 @@ export type StatFormat = "integer" | "compact";
 export type StatCardData = {
   id: string;
   label: string;
-  /** Valor medido. A formatação fica com a tela. */
-  value: number;
+  /**
+   * Valor medido. A formatação fica com a tela.
+   *
+   * `null` significa "não medido" e é diferente de zero: um p95 sem amostra na
+   * janela não é um p95 de zero milissegundo. A tela escreve um travessão.
+   */
+  value: number | null;
   format: StatFormat;
   /** Unidade escrita logo depois do número, como `/min` ou ` ms`. */
   unit?: string;
+  /**
+   * Comparação em texto ao lado do número. Vazio quando não há linha de base
+   * publicada contra a qual comparar.
+   */
   delta: string;
   accent: StatAccent;
   deltaTone: DeltaTone;

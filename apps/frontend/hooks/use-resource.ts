@@ -12,7 +12,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { DataSource, Resource } from "@/lib/data/client";
+import type { Availability, DataSource, Resource } from "@/lib/data/client";
+import type { Warning } from "@/lib/data/warnings";
 
 /** Estado da leitura. */
 export type ResourceStatus = "loading" | "ready" | "error";
@@ -24,6 +25,10 @@ export type UseResourceResult<T> = {
   refreshing: boolean;
   error?: string;
   source?: DataSource;
+  /** O quanto do bloco a leitura conseguiu preencher. */
+  availability?: Availability;
+  /** O que da leitura não pôde ser preenchido, e por quê. */
+  warnings: Warning[];
   fetchedAt?: Date;
   /** Motivo da queda para o conjunto de exemplo, quando houve uma. */
   fallbackReason?: string;
@@ -64,9 +69,11 @@ export function useResource<T>(
     status: ResourceStatus;
     error?: string;
     source?: DataSource;
+    availability?: Availability;
+    warnings: Warning[];
     fetchedAt?: Date;
     fallbackReason?: string;
-  }>({ status: "loading" });
+  }>({ status: "loading", warnings: [] });
 
   const [refreshing, setRefreshing] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -97,6 +104,8 @@ export function useResource<T>(
           data: resource.data,
           status: "ready",
           source: resource.source,
+          availability: resource.availability,
+          warnings: resource.warnings,
           fetchedAt: resource.fetchedAt,
           fallbackReason: resource.fallbackReason,
         });
