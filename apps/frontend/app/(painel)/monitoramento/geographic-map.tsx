@@ -138,19 +138,41 @@ export function GeographicMap({ states }: GeographicMapProps) {
                   onBlur={() => setHovered(null)}
                   className={cn(
                     state.level.fillClass,
+                    // A divisa é um fio: ela só precisa dizer onde um estado
+                    // termina e o outro começa. Mais grossa que isso, ela come
+                    // a área dos estados pequenos do Sudeste e do Nordeste e
+                    // vira o desenho mais forte do cartão.
+                    "stroke-surface",
                     // A cor muda com transição para que a troca de métrica seja
                     // lida como o mesmo mapa em outra escala, e não como outro
                     // mapa.
-                    "animate-fade-in cursor-pointer transition-[fill,stroke,filter] duration-300",
-                    active ? "stroke-ink brightness-110" : "stroke-surface",
+                    "animate-fade-in cursor-pointer transition-[fill,opacity] duration-300",
+                    // Sob o ponteiro, o realce vem de os vizinhos recuarem —
+                    // a mesma linguagem do gráfico de barras —, e não de o
+                    // estado clarear.
+                    hovered !== null && !active && "opacity-40",
                   )}
                   style={{ animationDelay: `${index * 22}ms` }}
-                  strokeWidth={active ? 5 : 2.5}
+                  strokeWidth={0.75}
                   strokeLinejoin="round"
                   vectorEffect="non-scaling-stroke"
                 />
               );
             })}
+
+            {/* O contorno do estado em foco é desenhado por último, fora do
+                laço: como borda do próprio caminho, ele ficaria pela metade,
+                encoberto pelos estados vizinhos pintados depois dele. */}
+            {hovered ? (
+              <path
+                d={hovered.path}
+                aria-hidden="true"
+                className="pointer-events-none fill-none stroke-ink"
+                strokeWidth={1.25}
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
           </svg>
 
           {/* Detalhe do estado sob o ponteiro. Fica ao lado do mapa, e não em
