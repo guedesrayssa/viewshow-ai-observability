@@ -38,23 +38,27 @@ import {
   LATENCY_TARGET,
   WINDOW_LABELS,
   type FlowMetric,
+  type StateTelemetry,
   type WindowKey,
 } from "@/app/(painel)/monitoramento/telemetry-data";
+import { ServiceHealthCard } from "@/app/(painel)/monitoramento/service-health-card";
 import {
   fetchGeographicConcentration,
+  fetchServiceTopology,
   fetchTelemetrySources,
 } from "@/app/(painel)/monitoramento/telemetry-resource";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { Unavailable } from "@/components/dashboard/unavailable";
 import { Reveal } from "@/components/motion/reveal";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { XIcon } from "@/components/ui/icons";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useResource } from "@/hooks/use-resource";
+import { useResource, type UseResourceResult } from "@/hooks/use-resource";
 import { formatInteger } from "@/lib/format";
 
 /** Variação a partir da qual a ingestão deixa de ser lida como estável. */
@@ -89,6 +93,13 @@ export function MonitoringView() {
     [],
     { refreshMs: REFRESH_MS },
   );
+
+  // A topologia segue a janela dos filtros técnicos: é a única leitura da
+  // tela com fonte real hoje, e recortá-la junto é o que faz o filtro de
+  // janela ter efeito visível.
+  const topology = useResource(() => fetchServiceTopology(`${window}m`), [window], {
+    refreshMs: REFRESH_MS,
+  });
 
   const allSources = useMemo(() => telemetry.data ?? [], [telemetry.data]);
   const workers = useMemo(
@@ -127,6 +138,8 @@ export function MonitoringView() {
         status={
           <DataStatus
             source={telemetry.source}
+            availability={telemetry.availability}
+            warnings={telemetry.warnings}
             fetchedAt={telemetry.fetchedAt}
             refreshing={telemetry.refreshing}
             error={telemetry.error}
@@ -224,11 +237,33 @@ export function MonitoringView() {
           <Skeleton className="h-96 w-full" />
         </>
       ) : kpis === null ? (
-        <Card padding="lg">
-          <p className="text-center text-body-sm text-ink-muted">
-            Nenhuma fonte corresponde aos filtros aplicados.
-          </p>
-        </Card>
+        allSources.length === 0 && telemetry.source !== "exemplo" ? (
+          <>
+            <Unavailable
+              title="A saúde do pipeline ainda não é medida"
+              minHeight={180}
+            >
+              A execução do pipeline de ingestão não registra taxa, latência nem
+              cobertura nesta fase, e fila e DLQ não existem por desenho — o
+              fluxo é em lote, sem SQS. Estes cartões passam a medir quando o
+              serviço de ingestão publicar os metadados de execução.
+            </Unavailable>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Reveal className="flex">
+                <ServiceHealthCard topology={topology} />
+              </Reveal>
+              <Reveal delay={80} className="flex">
+                <GeographyBlock geography={geography} />
+              </Reveal>
+            </div>
+          </>
+        ) : (
+          <Card padding="lg">
+            <p className="text-center text-body-sm text-ink-muted">
+              Nenhuma fonte corresponde aos filtros aplicados.
+            </p>
+          </Card>
+        )
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -294,11 +329,48 @@ export function MonitoringView() {
             </Reveal>
 
             <Reveal delay={300} className="flex">
-              <GeographicMap states={geography.data} />
+              <GeographyBlock geography={geography} />
             </Reveal>
           </div>
+
+          <Reveal delay={360}>
+            <ServiceHealthCard topology={topology} />
+          </Reveal>
         </>
       )}
     </div>
   );
+}
+
+/**
+ * Cartão da concentração geográfica, com o estado sem fonte.
+ *
+ * Ao vivo, nenhuma API segmenta por unidade federativa: o cartão declara isso
+ * no lugar do mapa, em vez de deixar um esqueleto girando para sempre.
+ */
+function GeographyBlock({
+  geography,
+}: {
+  geography: UseResourceResult<StateTelemetry[]>;
+}) {
+  const empty =
+    geography.status !== "loading" && (geography.data?.length ?? 0) === 0;
+
+  if (empty && geography.source !== "exemplo") {
+    return (
+      <Card padding="lg" className="flex flex-1 flex-col">
+        <CardTitle>Concentração geográfica</CardTitle>
+        <Unavailable
+          title="Sem recorte por unidade federativa"
+          className="mt-5 flex-1"
+        >
+          A segmentação publicada pela telemetria cobre provedor, CDN e tipo de
+          conexão — não há dimensão geográfica. O mapa volta quando a projeção
+          por estado for publicada pelo serviço de ingestão.
+        </Unavailable>
+      </Card>
+    );
+  }
+
+  return <GeographicMap states={geography.data} />;
 }
