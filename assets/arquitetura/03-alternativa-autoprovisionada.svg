@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2260 1030" width="2260" height="1030">
+<defs>
+<marker id="m-8B5CF6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8B5CF6"/></marker>
+<marker id="m-7C8B1F" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7C8B1F"/></marker>
+<marker id="m-2563EB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2563EB"/></marker>
+<marker id="m-DC2626" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#DC2626"/></marker>
+<marker id="m-374151" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#374151"/></marker>
+<marker id="m-0E9F6E" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0E9F6E"/></marker>
+<marker id="m-9CA3AF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.4" markerHeight="6.4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker>
+<style>text{font-family:"Liberation Sans","DejaVu Sans",sans-serif;}</style>
+</defs>
+<rect width="2260" height="1030" fill="#FFFFFF"/>
+<text x="30" y="40" font-size="25" font-weight="bold" fill="#111827">View Show — diagrama de deploy</text>
+<text x="30" y="62" font-size="13.5" fill="#6B7280">Três instâncias EC2 no lugar de onze serviços gerenciados. Cada bloco nomeia a máquina que hospeda os serviços daquele bloco.</text>
+<rect x="30" y="90" width="332" height="232" rx="7" fill="none" stroke="#D1D5DB" stroke-width="1.4" stroke-dasharray="6 5"/>
+<text x="46" y="118" font-size="16" font-weight="bold" fill="#111827">1 · Globo</text>
+<rect x="46" y="162" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="57" y="174" width="42" height="42" rx="9" fill="#7C3AED"/>
+<path d="M68.5,195 a10,7 0 0 1 19,0 a10,7 0 0 1 -19,0" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="78" cy="195" r="3" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="111" y="192" font-size="15.5" font-weight="bold" fill="#111827">ARGUS</text>
+<text x="111" y="211" font-size="12.6" fill="#6B7280">monitoração da Globo</text>
+<rect x="46" y="244" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="57" y="256" width="42" height="42" rx="9" fill="#4285F4"/>
+<path d="M70,281 a4.5,4.5 0 0 1 0.6,-8.9 a6,6 0 0 1 11.4,-1.6 a4.6,4.6 0 0 1 3.9,10.5 z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="111" y="274" font-size="15.5" font-weight="bold" fill="#111827">Google BigQuery</text>
+<text x="111" y="293" font-size="12.6" fill="#6B7280">dataset exposto pela Globo</text>
+<path d="M196,228 V240" fill="none" stroke="#374151" stroke-width="2.0" marker-end="url(#m-374151)"/>
+<rect x="30" y="352" width="332" height="272" rx="7" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.4"/>
+<text x="48" y="382" font-size="15" font-weight="bold" fill="#111827">Legenda</text>
+<path d="M48,408 H84" stroke="#8B5CF6" stroke-width="2.4" fill="none"/>
+<text x="94" y="412" font-size="13" fill="#111827"><tspan font-weight="bold" fill="#8B5CF6">Roxo:</tspan> o dado do ciclo</text>
+<path d="M48,438 H84" stroke="#7C8B1F" stroke-width="2.4" fill="none"/>
+<text x="94" y="442" font-size="13" fill="#111827"><tspan font-weight="bold" fill="#7C8B1F">Verde-oliva:</tspan> arquivo e retenção</text>
+<path d="M48,468 H84" stroke="#0E9F6E" stroke-width="2.4" fill="none"/>
+<text x="94" y="472" font-size="13" fill="#111827"><tspan font-weight="bold" fill="#0E9F6E">Verde:</tspan> agendamento</text>
+<path d="M48,498 H84" stroke="#2563EB" stroke-width="2.4" fill="none"/>
+<text x="94" y="502" font-size="13" fill="#111827"><tspan font-weight="bold" fill="#2563EB">Azul:</tspan> identidade</text>
+<path d="M48,528 H84" stroke="#DC2626" stroke-width="2.4" fill="none"/>
+<text x="94" y="532" font-size="13" fill="#111827"><tspan font-weight="bold" fill="#DC2626">Vermelho:</tspan> falha</text>
+<path d="M48,558 H84" stroke="#374151" stroke-width="2.4" fill="none"/>
+<text x="94" y="562" font-size="13" fill="#111827"><tspan font-weight="bold" fill="#374151">Grafite:</tspan> tráfego do painel</text>
+<path d="M48,588 H84" stroke="#9CA3AF" stroke-width="2.4" stroke-dasharray="6 4" fill="none"/>
+<text x="94" y="592" font-size="13" fill="#111827"><tspan font-weight="bold" fill="#9CA3AF">Tracejado:</tspan> deploy, não é dado</text>
+<rect x="392" y="70" width="1598" height="910" rx="8" fill="none" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="410" y="94" font-size="13.5" font-family="DejaVu Sans Mono, monospace" fill="#6B7280">AWS · us-east-1 · uma VPC 10.0.0.0/16 · três instâncias EC2</text>
+<rect x="420" y="110" width="332" height="570" rx="7" fill="none" stroke="#D1D5DB" stroke-width="1.4" stroke-dasharray="6 5"/>
+<text x="436" y="138" font-size="16" font-weight="bold" fill="#111827">2 · Consumo e processamento</text>
+<text x="436" y="158" font-size="12.4" font-family="DejaVu Sans Mono, monospace" fill="#6B7280">vs-batch · c7g.large · 2 vCPU · 4 GB</text>
+<rect x="436" y="182" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="447" y="194" width="42" height="42" rx="9" fill="#FC6D26"/>
+<path d="M468,206 l9,4.6 v9.2 l-9,4.6 -9,-4.6 v-9.2 z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M459,210.6 l9,4.6 9,-4.6 M468,215.2 v8.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="501" y="212" font-size="15.5" font-weight="bold" fill="#111827">GitLab Registry</text>
+<text x="501" y="231" font-size="12.6" fill="#6B7280">imagem do job</text>
+<rect x="436" y="264" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="447" y="276" width="42" height="42" rx="9" fill="#2496ED"/>
+<path d="M468,288 l9,4.6 v9.2 l-9,4.6 -9,-4.6 v-9.2 z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M459,292.6 l9,4.6 9,-4.6 M468,297.2 v8.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="501" y="294" font-size="15.5" font-weight="bold" fill="#111827">Docker Engine</text>
+<text x="501" y="313" font-size="12.6" fill="#6B7280">runtime, cgroups e limite de RAM</text>
+<rect x="436" y="346" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="447" y="358" width="42" height="42" rx="9" fill="#0F766E"/>
+<circle cx="468" cy="379" r="4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="468" cy="379" r="8.6" stroke-dasharray="3.2 2.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="501" y="376" font-size="15.5" font-weight="bold" fill="#111827">Job View Show</text>
+<text x="501" y="395" font-size="12.6" fill="#6B7280">lê, normaliza e diagnostica</text>
+<rect x="436" y="428" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="447" y="440" width="42" height="42" rx="9" fill="#6B7280"/>
+<circle cx="468" cy="461" r="9" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M468,456 V461 l4,3" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="501" y="458" font-size="15.5" font-weight="bold" fill="#111827">systemd timer</text>
+<text x="501" y="477" font-size="12.6" fill="#6B7280">agenda o ciclo · *:00/15</text>
+<rect x="436" y="510" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="447" y="522" width="42" height="42" rx="9" fill="#DC382D"/>
+<rect x="458.9" y="536" width="5.2" height="14" rx="1.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><rect x="465.4" y="536" width="5.2" height="14" rx="1.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><rect x="471.9" y="536" width="5.2" height="14" rx="1.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="501" y="540" font-size="15.5" font-weight="bold" fill="#111827">Redis</text>
+<text x="501" y="559" font-size="12.6" fill="#6B7280">cache e ciclo que falhou</text>
+<rect x="436" y="592" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="447" y="604" width="42" height="42" rx="9" fill="#E6522C"/>
+<path d="M460,633 V626 M465.3,633 V619 M470.7,633 V623 M476,633 V617" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="501" y="622" font-size="15.5" font-weight="bold" fill="#111827">Prometheus · Grafana</text>
+<text x="501" y="641" font-size="12.6" fill="#6B7280">Loki · Alertmanager · 30 d</text>
+<path d="M586,248 V258" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#m-9CA3AF)"/>
+<path d="M586,330 V340" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#m-9CA3AF)"/>
+<path d="M586,428 V416" fill="none" stroke="#0E9F6E" stroke-width="2.0" marker-end="url(#m-0E9F6E)"/>
+<text x="616" y="422" font-size="12.4" text-anchor="start" fill="#0E9F6E" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">agenda</text>
+<path d="M436,384 H404 V543 H432" fill="none" stroke="#DC2626" stroke-width="2.0" marker-end="url(#m-DC2626)"/>
+<text x="398" y="470" font-size="12.4" text-anchor="middle" fill="#DC2626" transform="rotate(-90 398 470)" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">falha</text>
+<rect x="820" y="110" width="332" height="320" rx="7" fill="none" stroke="#D1D5DB" stroke-width="1.4" stroke-dasharray="6 5"/>
+<text x="836" y="138" font-size="16" font-weight="bold" fill="#111827">3 · Dados</text>
+<text x="836" y="158" font-size="12.4" font-family="DejaVu Sans Mono, monospace" fill="#6B7280">vs-data · m7g.large · 2 vCPU · 8 GB</text>
+<rect x="836" y="182" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="847" y="194" width="42" height="42" rx="9" fill="#10AA50"/>
+<ellipse cx="868" cy="208" rx="9" ry="3.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M859,208 V222 a9,3.4 0 0 0 18,0 V208" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M859,215 a9,3.4 0 0 0 18,0" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="901" y="212" font-size="15.5" font-weight="bold" fill="#111827">MongoDB 7 · rs0</text>
+<text x="901" y="231" font-size="12.6" fill="#6B7280">evidências e incidentes</text>
+<rect x="836" y="264" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="847" y="276" width="42" height="42" rx="9" fill="#C72E49"/>
+<rect x="859" y="288.4" width="18" height="5.2" rx="1.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="873.4" cy="291" r="0.9" fill="#fff" stroke="none"/><rect x="859" y="294.4" width="18" height="5.2" rx="1.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="873.4" cy="297" r="0.9" fill="#fff" stroke="none"/><rect x="859" y="300.4" width="18" height="5.2" rx="1.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="873.4" cy="303" r="0.9" fill="#fff" stroke="none"/>
+<text x="901" y="294" font-size="15.5" font-weight="bold" fill="#111827">MinIO</text>
+<text x="901" y="313" font-size="12.6" fill="#6B7280">snapshot bruto do ciclo</text>
+<rect x="836" y="346" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="847" y="358" width="42" height="42" rx="9" fill="#4B5EAA"/>
+<rect x="859" y="370.4" width="18" height="5.2" rx="1.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="873.4" cy="373" r="0.9" fill="#fff" stroke="none"/><rect x="859" y="376.4" width="18" height="5.2" rx="1.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="873.4" cy="379" r="0.9" fill="#fff" stroke="none"/><rect x="859" y="382.4" width="18" height="5.2" rx="1.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="873.4" cy="385" r="0.9" fill="#fff" stroke="none"/>
+<text x="901" y="376" font-size="15.5" font-weight="bold" fill="#111827">Volumes EBS gp3</text>
+<text x="901" y="395" font-size="12.6" fill="#6B7280">150 GB mongo + 150 GB minio</text>
+<rect x="1220" y="110" width="332" height="484" rx="7" fill="none" stroke="#D1D5DB" stroke-width="1.4" stroke-dasharray="6 5"/>
+<text x="1236" y="138" font-size="16" font-weight="bold" fill="#111827">4 · API e entrada</text>
+<text x="1236" y="158" font-size="12.4" font-family="DejaVu Sans Mono, monospace" fill="#6B7280">vs-edge · t4g.large · 2 vCPU · 8 GB</text>
+<rect x="1236" y="182" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1247" y="194" width="42" height="42" rx="9" fill="#FC6D26"/>
+<path d="M1268,206 l9,4.6 v9.2 l-9,4.6 -9,-4.6 v-9.2 z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M1259,210.6 l9,4.6 9,-4.6 M1268,215.2 v8.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1301" y="212" font-size="15.5" font-weight="bold" fill="#111827">GitLab Registry</text>
+<text x="1301" y="231" font-size="12.6" fill="#6B7280">imagem da API</text>
+<rect x="1236" y="264" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1247" y="276" width="42" height="42" rx="9" fill="#2496ED"/>
+<path d="M1268,288 l9,4.6 v9.2 l-9,4.6 -9,-4.6 v-9.2 z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M1259,292.6 l9,4.6 9,-4.6 M1268,297.2 v8.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1301" y="294" font-size="15.5" font-weight="bold" fill="#111827">Docker Compose</text>
+<text x="1301" y="313" font-size="12.6" fill="#6B7280">serviço e rollback por tag</text>
+<rect x="1236" y="346" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1247" y="358" width="42" height="42" rx="9" fill="#0F766E"/>
+<circle cx="1268" cy="379" r="4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="1268" cy="379" r="8.6" stroke-dasharray="3.2 2.6" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1301" y="376" font-size="15.5" font-weight="bold" fill="#111827">API View Show</text>
+<text x="1301" y="395" font-size="12.6" fill="#6B7280">camada agêntica — bloco 6</text>
+<rect x="1236" y="428" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1247" y="440" width="42" height="42" rx="9" fill="#009639"/>
+<path d="M1259,461 h18 M1271,456 l5,5 -5,5" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M1259,454 h7 M1259,468 h7" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1301" y="458" font-size="15.5" font-weight="bold" fill="#111827">Nginx</text>
+<text x="1301" y="477" font-size="12.6" fill="#6B7280">entrada, TLS e proxy reverso</text>
+<rect x="1236" y="510" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1247" y="522" width="42" height="42" rx="9" fill="#4B5EAA"/>
+<circle cx="1264" cy="543" r="4.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M1268.4,543 h9 M1274,543 v3.4 M1277.4,543 v4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1301" y="540" font-size="15.5" font-weight="bold" fill="#111827">Keycloak + Postgres</text>
+<text x="1301" y="559" font-size="12.6" fill="#6B7280">SSO federado da Globo</text>
+<path d="M1386,248 V258" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#m-9CA3AF)"/>
+<path d="M1386,330 V340" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#m-9CA3AF)"/>
+<path d="M1386,428 V416" fill="none" stroke="#374151" stroke-width="2.0" marker-end="url(#m-374151)"/>
+<path d="M1236,543 H1206 V379 H1232" fill="none" stroke="#2563EB" stroke-width="2.0" marker-end="url(#m-2563EB)"/>
+<text x="1200" y="468" font-size="12.4" text-anchor="middle" fill="#2563EB" transform="rotate(-90 1200 468)" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">valida JWT</text>
+<rect x="1620" y="110" width="332" height="238" rx="7" fill="none" stroke="#D1D5DB" stroke-width="1.4" stroke-dasharray="6 5"/>
+<text x="1636" y="138" font-size="16" font-weight="bold" fill="#111827">5 · Dashboard</text>
+<text x="1636" y="158" font-size="12.4" font-family="DejaVu Sans Mono, monospace" fill="#6B7280">vs-edge · mesma instância do bloco 4</text>
+<rect x="1636" y="182" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1647" y="194" width="42" height="42" rx="9" fill="#111827"/>
+<rect x="1659" y="207.5" width="18" height="12.4" rx="2" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M1664,224 h8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1701" y="212" font-size="15.5" font-weight="bold" fill="#111827">Next.js standalone</text>
+<text x="1701" y="231" font-size="12.6" fill="#6B7280">servido pelo Nginx em /</text>
+<rect x="1636" y="264" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1647" y="276" width="42" height="42" rx="9" fill="#FC6D26"/>
+<rect x="1659" y="289.5" width="18" height="15" rx="2.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M1663,294.5 l3,2.5 -3,2.5 M1669,302 h4.5" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1701" y="294" font-size="15.5" font-weight="bold" fill="#111827">GitLab CI</text>
+<text x="1701" y="313" font-size="12.6" fill="#6B7280">build e deploy por SSH</text>
+<path d="M1536,461 H1580 V215 H1612" fill="none" stroke="#374151" stroke-width="2.0" marker-end="url(#m-374151)"/>
+<text x="1574" y="338" font-size="12.4" text-anchor="middle" fill="#374151" transform="rotate(-90 1574 338)" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">serve o painel</text>
+<rect x="2020" y="182" width="206" height="66" rx="6" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="2031" y="194" width="42" height="42" rx="9" fill="#374151"/>
+<circle cx="2047.5" cy="211.5" r="3.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="2056.5" cy="211.5" r="3.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M2041,222.5 a6.5,6 0 0 1 13,0 M2050,222.5 a6.5,6 0 0 1 13,0" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="2085" y="212" font-size="15.5" font-weight="bold" fill="#111827">Usuários internos</text>
+<text x="2085" y="231" font-size="12.6" fill="#6B7280">Engenharia · SRE · Produto</text>
+<path d="M1936,215 H2016" fill="none" stroke="#374151" stroke-width="2.0" marker-end="url(#m-374151)"/>
+<text x="1976" y="205" font-size="12.4" text-anchor="middle" fill="#374151" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">painel</text>
+<text x="440" y="774" font-size="16" font-weight="bold" fill="#111827">Transversais</text>
+<rect x="440" y="790" width="1550" height="150" rx="7" fill="none" stroke="#D1D5DB" stroke-width="1.4" stroke-dasharray="6 5"/>
+<rect x="456" y="842" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="467" y="854" width="42" height="42" rx="9" fill="#7B42BC"/>
+<rect x="479" y="867.5" width="18" height="15" rx="2.4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M483,872.5 l3,2.5 -3,2.5 M489,880 h4.5" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="521" y="872" font-size="15.5" font-weight="bold" fill="#111827">Terraform</text>
+<text x="521" y="891" font-size="12.6" fill="#6B7280">VPC, sub-redes, EC2 e volumes</text>
+<rect x="862" y="842" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="873" y="854" width="42" height="42" rx="9" fill="#DD344C"/>
+<path d="M894,866 l8,3.2 v5.4 c0,5.2 -4,8.4 -8,9.4 c-4,-1 -8,-4.2 -8,-9.4 v-5.4 z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="927" y="872" font-size="15.5" font-weight="bold" fill="#111827">IAM + Security Groups</text>
+<text x="927" y="891" font-size="12.6" fill="#6B7280">origem por SG, nunca CIDR</text>
+<rect x="1268" y="842" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1279" y="854" width="42" height="42" rx="9" fill="#B45309"/>
+<rect x="1293" y="874" width="14" height="10" rx="2" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M1296,874 v-4 a4,4 0 0 1 8,0 v4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1333" y="872" font-size="15.5" font-weight="bold" fill="#111827">SOPS / age</text>
+<text x="1333" y="891" font-size="12.6" fill="#6B7280">segredos cifrados no repositório</text>
+<rect x="1674" y="842" width="300" height="66" rx="6" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<rect x="1685" y="854" width="42" height="42" rx="9" fill="#3F8624"/>
+<path d="M1698,879 a4.5,4.5 0 0 1 0.6,-8.9 a6,6 0 0 1 11.4,-1.6 a4.6,4.6 0 0 1 3.9,10.5 z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1739" y="872" font-size="15.5" font-weight="bold" fill="#111827">Amazon S3 Standard-IA</text>
+<text x="1739" y="891" font-size="12.6" fill="#6B7280">backup fora do host · vpce-s3</text>
+<path d="M346,277 H386 V379 H432" fill="none" stroke="#8B5CF6" stroke-width="2.0" marker-end="url(#m-8B5CF6)"/>
+<text x="391" y="328" font-size="12.4" text-anchor="middle" fill="#8B5CF6" transform="rotate(-90 391 328)" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">lê a janela</text>
+<path d="M752,364 H780 V215 H832" fill="none" stroke="#8B5CF6" stroke-width="2.0" marker-end="url(#m-8B5CF6)"/>
+<text x="758" y="356" font-size="12.4" text-anchor="start" fill="#8B5CF6" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">grava</text>
+<path d="M752,394 H806 V297 H832" fill="none" stroke="#7C8B1F" stroke-width="2.0" marker-end="url(#m-7C8B1F)"/>
+<text x="758" y="414" font-size="12.4" text-anchor="start" fill="#7C8B1F" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">arquiva</text>
+<path d="M1236,379 H1190 V215 H1156" fill="none" stroke="#8B5CF6" stroke-width="2.0" marker-end="url(#m-8B5CF6)"/>
+<text x="1195" y="300" font-size="12.4" text-anchor="middle" fill="#8B5CF6" transform="rotate(-90 1195 300)" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">consulta</text>
+<path d="M986,434 V740 H1824 V838" fill="none" stroke="#7C8B1F" stroke-width="2.0" marker-end="url(#m-7C8B1F)"/>
+<text x="1000" y="732" font-size="12.4" text-anchor="start" fill="#7C8B1F" paint-order="stroke fill" stroke="#fff" stroke-width="5" stroke-linejoin="round">dump diário · mirror</text>
+</svg>
