@@ -24,6 +24,11 @@ O desenho preserva três independências:
 Este é um contrato de ingestão e persistência. A implementação da aplicação,
 da API e da infraestrutura será planejada e executada em outra sessão.
 
+Documentos focados derivados deste design:
+
+- [Contrato normativo de entrada e persistência](../../../artefatos/contratos/argus-dynamodb-ingestion-contract.md);
+- [Arquitetura e projeções do Data Ingestion Service](../../../artefatos/arquitetura/data-ingestion-service-architecture.md).
+
 ## 2. Decisões arquiteturais
 
 - Aplicação Python em `apps/backend/ingestion-data`.
