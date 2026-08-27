@@ -154,6 +154,16 @@ export function LoginForm({ className }: { className?: string }) {
         >
           Esqueceu a senha?
         </Link>
+
+        <p className="text-center text-body-sm text-ink-muted">
+          Não tem conta?{" "}
+          <Link
+            href="/criar-conta"
+            className="rounded-field font-medium text-ink underline-offset-4 hover:underline"
+          >
+            Criar conta
+          </Link>
+        </p>
       </div>
 
       {/* A divisória separa os dois caminhos de entrada, para que o SSO não

@@ -32,6 +32,19 @@ export type SignInResult =
   | { ok: true; demo?: boolean }
   | { ok: false; message: string };
 
+export type SignUpData = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type SignUpResult =
+  | { ok: true; name: string }
+  | { ok: false; message: string; field?: "name" | "email" | "password" };
+
+/** Tamanho mínimo de senha aceito pelo registro. */
+export const MIN_PASSWORD_LENGTH = 8;
+
 /** Aviso exibido quando o SSO corporativo não está configurado no ambiente. */
 export const AUTH_UNAVAILABLE_MESSAGE =
   "A entrada por SSO Globo ainda não está disponível neste ambiente. Use e-mail e senha.";
@@ -130,6 +143,107 @@ export async function signIn({
       ok: false,
       message:
         "Não conseguimos falar com o serviço de autenticação. Verifique a sua conexão.",
+    };
+  }
+}
+
+/**
+ * Valida o nome informado na criação de conta.
+ *
+ * @param name - Valor digitado.
+ * @returns Mensagem de erro, ou `undefined` quando o valor é aceitável.
+ */
+export function validateName(name: string): string | undefined {
+  if (!name.trim()) return "Informe o seu nome.";
+  return undefined;
+}
+
+/**
+ * Valida a senha escolhida na criação de conta.
+ *
+ * Diferente da validação de entrada, aqui o tamanho importa: é o momento em
+ * que a senha nasce, e o provedor exige o mínimo de oito caracteres.
+ *
+ * @param password - Valor digitado.
+ * @returns Mensagem de erro, ou `undefined` quando o valor é aceitável.
+ */
+export function validateNewPassword(password: string): string | undefined {
+  if (!password) return "Escolha uma senha.";
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `A senha precisa de pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`;
+  }
+  return undefined;
+}
+
+/**
+ * Cria uma conta no provedor de identidade e já abre a sessão.
+ *
+ * O cookie de sessão volta na própria resposta do registro: quem acabou de se
+ * cadastrar entra direto, sem digitar a mesma senha de novo.
+ *
+ * @param data - Nome, e-mail e senha escolhidos.
+ * @returns Resultado da tentativa, com o campo culpado quando houver um.
+ */
+export async function signUp({
+  name,
+  email,
+  password,
+}: SignUpData): Promise<SignUpResult> {
+  if (!API_BASE_URL) {
+    return {
+      ok: false,
+      message:
+        "O serviço de contas não está configurado neste ambiente. Use a entrada de demonstração.",
+    };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      }),
+    });
+
+    if (response.ok) {
+      return { ok: true, name: name.trim() };
+    }
+
+    if (response.status === 409) {
+      return {
+        ok: false,
+        field: "email",
+        message: "Este e-mail já está registrado. Entre com a sua senha.",
+      };
+    }
+
+    if (response.status === 404 || response.status === 501) {
+      return {
+        ok: false,
+        message:
+          "A criação de conta ainda não está publicada neste ambiente da API.",
+      };
+    }
+
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+
+    return {
+      ok: false,
+      message:
+        body?.error?.message ??
+        "Não foi possível criar a conta agora. Tente novamente em instantes.",
+    };
+  } catch {
+    return {
+      ok: false,
+      message:
+        "Não conseguimos falar com o serviço de contas. Verifique a sua conexão.",
     };
   }
 }
