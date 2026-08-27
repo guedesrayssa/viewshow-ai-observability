@@ -12,9 +12,10 @@ credentials_json=""
 access_key=""
 secret_key=""
 session_token=""
+value=""
 
 cleanup_credentials() {
-  unset credentials_json access_key secret_key session_token
+  unset credentials_json access_key secret_key session_token value
 }
 trap cleanup_credentials EXIT
 
@@ -35,7 +36,7 @@ if [[ "$#" -ne 0 ]]; then
   fail "usage: sync-aws-gitlab-credentials.sh [--dry-run]" 64
 fi
 
-for command_name in aws jq glab git; do
+for command_name in aws jq glab git awk; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     fail "required command not found: $command_name" 69
   fi
@@ -45,39 +46,41 @@ origin_url="$(git remote get-url origin)"
 if [[ "$origin_url" != "https://$gitlab_host/"* || "$origin_url" == *"@"* || "$origin_url" == *"?"* || "$origin_url" == *"#"* ]]; then
   fail "unsafe Git origin URL; use a credential-free HTTPS origin for $gitlab_host"
 fi
+repository_url="$origin_url"
 unset origin_url
 
 glab_safe auth status --hostname "$gitlab_host" >/dev/null 2>&1
 
-repository_json="$(glab_safe repo view --output json)"
+repository_json="$(glab_safe repo view "$repository_url" --output json)"
 project_id="$(jq -er '.id | tostring | select(test("^[0-9]+$"))' <<<"$repository_json")"
 repository_path="$(jq -er '.path_with_namespace | select(type == "string")' <<<"$repository_json")"
 repository_web_url="$(jq -er '.web_url | select(type == "string")' <<<"$repository_json")"
 unset repository_json
+origin_canonical_url="${repository_url%.git}"
 
 if [[ -z "$repository_path" || "$repository_path" == /* || "$repository_path" == *"//"* || "$repository_path" == *".."* || "$repository_path" == *"@"* || "$repository_path" == *"?"* || "$repository_path" == *"#"* ]]; then
   fail "invalid GitLab repository path"
 fi
 repository_url="https://$gitlab_host/$repository_path"
-if [[ "$repository_web_url" != "$repository_url" ]]; then
+if [[ "$repository_web_url" != "$repository_url" || "$repository_web_url" != "$origin_canonical_url" ]]; then
   fail "GitLab repository URL does not match the required host"
 fi
-unset repository_web_url repository_path
+unset repository_web_url repository_path origin_canonical_url
 
 variable_metadata="$(
-  glab_safe api "projects/$project_id/variables?per_page=100" |
-    jq -r '
-      if type != "array" then
-        error("GitLab variable metadata must be an array")
-      else
+  glab_safe api --paginate --output ndjson "projects/$project_id/variables?per_page=100" |
+    jq -rsc '
+      [
         .[]
+        | if type == "array" then .[] else . end
+      ]
+      | .[]
         | select(.key == "AWS_ACCESS_KEY_ID" or .key == "AWS_SECRET_ACCESS_KEY" or .key == "AWS_SESSION_TOKEN")
         | if ((.environment_scope | type) != "string" or (.hidden | type) != "boolean") then
             error("GitLab variable metadata is incomplete")
           else
             [.key, .environment_scope, (.hidden | tostring)] | @tsv
           end
-      end
     '
 )"
 
@@ -123,7 +126,7 @@ ecs_result="$(aws --profile "$profile" ecs describe-services \
   --region "$region" \
   --cluster data-ingestion-cluster \
   --services monitoracao-api-service \
-  --query 'services[0].[status,length(failures)]' \
+  --query '[services[0].status, length(failures)]' \
   --output text)"
 if [[ "$ecs_result" != $'ACTIVE\t0' ]]; then
   fail "ECS service is not exactly ACTIVE with zero failures"

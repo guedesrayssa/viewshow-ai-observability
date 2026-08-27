@@ -14,15 +14,14 @@ function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
 }
 
-function metadata(entries) {
-  return JSON.stringify(
-    entries.map(([key, environment_scope = "*", hidden = true]) => ({
+function metadata(entries, ndjson = false) {
+  const records = entries.map(([key, environment_scope = "*", hidden = true]) => ({
       key,
       environment_scope,
       hidden,
       value: "metadata-value-must-not-leak",
-    })),
-  );
+    }));
+  return ndjson ? records.map(JSON.stringify).join("\n") : JSON.stringify(records);
 }
 
 function runSynchronizer({
@@ -32,6 +31,11 @@ function runSynchronizer({
   variableMetadata = "[]",
   failWriteAttempt = 0,
   origin = "https://git.inteli.edu.br/group/project.git",
+  repositoryView = JSON.stringify({
+    id: 42,
+    web_url: canonicalRepository,
+    path_with_namespace: "group/project",
+  }),
   dryRun = false,
 } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "credential-sync-"));
@@ -50,7 +54,7 @@ if [[ "$*" == "--profile default sts get-caller-identity --query Account --outpu
   printf '%s\\n' "$FAKE_ACCOUNT"
 elif [[ "$*" == "--profile default ecr describe-repositories --region us-east-1 --repository-names monitoracao-api --query repositories[0].repositoryName --output text" ]]; then
   printf '%s\\n' "$FAKE_ECR_RESULT"
-elif [[ "$*" == "--profile default ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query services[0].[status,length(failures)] --output text" ]]; then
+elif [[ "$*" == "--profile default ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query [services[0].status, length(failures)] --output text" ]]; then
   printf '%b\\n' "$FAKE_ECS_RESULT"
 elif [[ "$*" == "configure export-credentials --profile default --format process" ]]; then
   printf '%s\\n' '{"Version":1,"AccessKeyId":"fixture-access","SecretAccessKey":"fixture-secret","SessionToken":"fixture-session"}'
@@ -87,13 +91,13 @@ if [[ "$1 $2" == "auth status" ]]; then
   exit 0
 fi
 if [[ "$1 $2" == "repo view" ]]; then
-  [[ "$#" == 4 && "$3" == "--output" && "$4" == "json" ]] || exit 2
+  [[ "$#" == 5 && "$3" == "$CANONICAL_ORIGIN" && "$4" == "--output" && "$5" == "json" ]] || exit 2
   printf 'glab:repo-view:debug-disabled\\n' >>"$CALL_LOG"
-  printf '%s\\n' '{"id":42,"web_url":"https://git.inteli.edu.br/group/project","path_with_namespace":"group/project"}'
+  printf '%s\\n' "$REPOSITORY_VIEW"
   exit 0
 fi
 if [[ "$1" == "api" ]]; then
-  [[ "$#" == 2 && "$2" == "projects/42/variables?per_page=100" ]] || exit 2
+  [[ "$#" == 5 && "$2" == "--paginate" && "$3" == "--output" && "$4" == "ndjson" && "$5" == "projects/42/variables?per_page=100" ]] || exit 2
   printf 'glab:api:metadata:debug-disabled\\n' >>"$CALL_LOG"
   printf '%s\\n' "$VARIABLE_METADATA"
   exit 0
@@ -144,6 +148,7 @@ exit 2
       FAKE_ECR_RESULT: ecrResult,
       FAKE_ECS_RESULT: ecsResult,
       VARIABLE_METADATA: variableMetadata,
+      REPOSITORY_VIEW: repositoryView,
       FAIL_WRITE_ATTEMPT: String(failWriteAttempt),
       FAKE_ACCESS: "fixture-access",
       FAKE_SECRET: "fixture-secret",
@@ -151,6 +156,7 @@ exit 2
       GLAB_DEBUG: "true",
       GLAB_DEBUG_HTTP: "true",
       FAKE_ORIGIN: origin,
+      CANONICAL_ORIGIN: origin,
     },
   });
 
@@ -161,7 +167,7 @@ exit 2
 }
 
 function assertNoCredentialFixtureLeaks(output) {
-  assert.doesNotMatch(output, /fixture-(access|secret|session)/);
+  assert.doesNotMatch(output, /fixture-(access|secret|session)|metadata-value-must-not-leak/);
 }
 
 test("dry-run completes every preflight without writing variables or leaking credentials", () => {
@@ -196,6 +202,24 @@ test("existing hidden target variables are updated without changing hidden mode"
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(writes, keys.map((key) => `glab:write:update:${key}:value-ok`));
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("metadata from a later NDJSON page is classified as an existing variable", () => {
+  const { result, calls } = runSynchronizer({
+    variableMetadata: metadata([
+      ["UNRELATED_VARIABLE"],
+      [keys[0]],
+    ], true),
+  });
+  const writes = calls.split("\n").filter((line) => line.startsWith("glab:write:"));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(writes, [
+    `glab:write:update:${keys[0]}:value-ok`,
+    `glab:write:set:${keys[1]}:value-ok`,
+    `glab:write:set:${keys[2]}:value-ok`,
+  ]);
   assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
 });
 
@@ -235,10 +259,33 @@ test("credential-bearing origins are rejected before repository resolution", () 
   assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
 });
 
-test("AWS resource semantics must match the exact ECR and ECS contract", () => {
+test("mismatched repository-view metadata is rejected before AWS credential export or mutation", () => {
+  const { result, calls } = runSynchronizer({
+    repositoryView: JSON.stringify({
+      id: 42,
+      web_url: "https://git.inteli.edu.br/group/other-project",
+      path_with_namespace: "group/other-project",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /GitLab repository URL does not match/);
+  assert.doesNotMatch(calls, /aws:|export-credentials|glab:write:/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("wrong AWS account prevents credential export and GitLab writes", () => {
+  const { result, calls } = runSynchronizer({ account: "000000000000" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unexpected AWS account/);
+  assert.doesNotMatch(calls, /export-credentials|glab:write:/);
+  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+});
+
+test("wrong ECR repository result prevents credential export and GitLab writes", () => {
   const { result, calls } = runSynchronizer({
     ecrResult: "unexpected-repository",
-    ecsResult: "DRAINING\t1",
   });
 
   assert.notEqual(result.status, 0);
@@ -246,6 +293,22 @@ test("AWS resource semantics must match the exact ECR and ECS contract", () => {
   assert.doesNotMatch(calls, /export-credentials|glab:write:/);
   assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
 });
+
+for (const [name, ecsResult] of [
+  ["missing", "None\t0"],
+  ["inactive", "INACTIVE\t0"],
+  ["failed", "ACTIVE\t1"],
+]) {
+  test(`${name} ECS service response prevents credential export and GitLab writes`, () => {
+    const { result, calls } = runSynchronizer({ ecsResult });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ECS service is not exactly ACTIVE with zero failures/);
+    assert.match(calls, /aws:.*ecs describe-services/);
+    assert.doesNotMatch(calls, /export-credentials|glab:write:/);
+    assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
+  });
+}
 
 for (const [failedAttempt, completedKeys, failedKey] of [
   [2, [keys[0]], keys[1]],
