@@ -2,9 +2,15 @@
  * @file events-resource.ts
  * Leitura dos dados da tela de Eventos.
  *
- * Os eventos correlacionados virão da consulta de eventos da API, e o volume
- * temporal, da série de erros do mesmo recorte. Enquanto a integração não
- * existe, as duas leituras caem no conjunto de exemplo do INC-4821.
+ * O único número real desta tela é o volume por intervalo, que vem da série de
+ * QoE da API de telemetria: cada ponto traz a contagem de eventos do bucket.
+ *
+ * A lista de eventos individuais não tem fonte. Nenhuma das duas APIs expõe as
+ * seis categorias, e a auditoria do contrato registrou que os agregados da
+ * origem não reconstroem um evento individual — não há como derivá-los sem
+ * inventar. Em ambiente com exemplo permitido, a tabela mostra o conjunto de
+ * demonstração com o selo dizendo isso; em produção, a leitura declara
+ * indisponibilidade e a tela desenha o estado vazio com o motivo.
  */
 
 import {
@@ -16,8 +22,14 @@ import {
   type VolumePeriodKey,
   type VolumeSeries,
 } from "@/app/(painel)/eventos/events-data";
-import { jitter, loadResource, type Resource } from "@/lib/data/client";
+import {
+  composeResource,
+  jitter,
+  loadResource,
+  type Resource,
+} from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
+import { WARNINGS } from "@/lib/data/warnings";
 
 /** Recorte pedido pelos filtros da tela. */
 export type EventsQuery = {
@@ -36,44 +48,44 @@ export type EventsData = {
   categories: CategoryStat[];
 };
 
-/** Resposta esperada da API para os eventos correlacionados. */
-export type EventsResponse = {
-  events: CorrelatedEvent[];
-  category_totals: CategoryStat[];
+/** Série de QoE da API de telemetria; só a contagem de eventos interessa aqui. */
+export type QoeTimeseriesResponse = {
+  interval_seconds: number;
+  points: { start: string; metrics: { events: number } }[];
 };
 
-/** Resposta esperada da API para o volume por minuto. */
-export type VolumeResponse = {
-  times: string[];
-  values: number[];
-};
+/** Rótulo do eixo a partir do início do intervalo, no fuso de quem lê. */
+function toClockLabel(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
 
-/** Converte "todos" em ausência de filtro, como a API espera. */
-function optional(value: string): string | undefined {
-  return value === "all" ? undefined : value;
+/** Marcas redondas do eixo: zero, o teto e o meio. */
+function axisFor(values: number[]): { axisMax: number; axisTicks: number[] } {
+  const top = Math.max(...values, 1);
+  const magnitude = 10 ** Math.floor(Math.log10(top));
+  const axisMax = Math.ceil(top / magnitude) * magnitude;
+  return { axisMax, axisTicks: [0, axisMax / 2, axisMax] };
 }
 
 /**
  * Lê os eventos correlacionados ao recorte.
  *
+ * Não há fonte de eventos individuais nesta fase, e a leitura diz isso em vez
+ * de consultar uma rota que não existe.
+ *
  * @example
  * const events = useResource(() => fetchEvents(query), [query]);
  */
 export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
-  return loadResource<EventsResponse, EventsData>({
-    path: ENDPOINTS.rcaFingerprints,
-    params: {
-      window: optional(query.period) ? `${query.period}m` : undefined,
-      category: optional(query.category),
-      device: optional(query.deviceType),
-      region: optional(query.region),
-      app_version: optional(query.appVersion),
-      source: optional(query.source),
-    },
-    map: (response) => ({
-      events: response.events,
-      categories: response.category_totals,
-    }),
+  void query;
+
+  return composeResource<EventsData>({
+    targets: ["telemetria"],
+    warnings: [WARNINGS.eventosIndividuais],
+    read: async () => ({ events: [], categories: [] }),
     // A lista de exemplo é estável: são registros identificados, e mexer nos
     // valores deles daria a impressão de eventos diferentes a cada leitura.
     fallback: () => ({ events: EVENTS, categories: CATEGORY_STATS }),
@@ -83,24 +95,31 @@ export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
 /**
  * Lê o volume temporal de eventos da janela selecionada.
  *
- * @param period - Janela do gráfico de volume.
+ * @param period - Janela do gráfico de volume, em minutos.
  */
 export function fetchEventVolume(
   period: VolumePeriodKey,
   revision = 0,
 ): Promise<Resource<VolumeSeries>> {
-  return loadResource<VolumeResponse, VolumeSeries>({
-    path: ENDPOINTS.qoeTimeseries,
-    params: { window: `${period}m`, metric: "events_per_minute" },
-    map: (response) => ({
-      ...VOLUME_DATASETS[period],
-      times: response.times,
-      values: response.values,
-      peakIndex: response.values.reduce(
-        (best, value, index, all) => (value > all[best] ? index : best),
-        0,
-      ),
-    }),
+  return loadResource<QoeTimeseriesResponse, VolumeSeries>({
+    target: "telemetria",
+    path: ENDPOINTS.telemetria.qoeTimeseries,
+    params: { window: `${period}m` },
+    map: (response) => {
+      const values = response.points.map((point) => point.metrics.events);
+
+      return {
+        times: response.points.map((point) => toClockLabel(point.start)),
+        values,
+        peakIndex: values.reduce(
+          (best, value, index, all) => (value > all[best] ? index : best),
+          0,
+        ),
+        // A origem não detecta anomalia: sem janela destacada.
+        anomalyRange: null,
+        ...axisFor(values),
+      };
+    },
     fallback: () => {
       const series = VOLUME_DATASETS[period];
 

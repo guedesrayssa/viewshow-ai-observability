@@ -31,6 +31,7 @@ import {
 } from "@/app/(painel)/eventos/events-resource";
 import { EventsTable } from "@/app/(painel)/eventos/events-table";
 import { DataStatus } from "@/components/dashboard/data-status";
+import { Unavailable } from "@/components/dashboard/unavailable";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Reveal } from "@/components/motion/reveal";
 import { Alert } from "@/components/ui/alert";
@@ -146,6 +147,8 @@ export function EventsView() {
         status={
           <DataStatus
             source={events.source}
+            availability={events.availability}
+            warnings={events.warnings}
             fetchedAt={events.fetchedAt}
             refreshing={events.refreshing}
             error={events.error}
@@ -337,6 +340,17 @@ export function EventsView() {
                 <Skeleton key={index} className="h-14 w-full" />
               ))}
             </div>
+          ) : events.source !== "exemplo" &&
+            (events.data?.events.length ?? 0) === 0 ? (
+            <Unavailable
+              title="Eventos individuais sem fonte nesta fase"
+              className="mt-6"
+              minHeight={220}
+            >
+              Os agregados publicados pela telemetria não reconstroem eventos
+              um a um. A lista passa a existir quando a instrumentação
+              individual das seis categorias entrar no ar.
+            </Unavailable>
           ) : (
             <EventsTable
               events={visibleEvents}

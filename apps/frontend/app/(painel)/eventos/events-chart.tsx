@@ -60,7 +60,10 @@ export function EventsChart({ series, period, onPeriodChange }: EventsChartProps
 
 function VolumePlot({ series }: { series: VolumeSeries }) {
   const { times, values, peakIndex, anomalyRange } = series;
-  const baseline = values[0];
+  const baseline = values[0] ?? 0;
+
+  const inAnomaly = (index: number) =>
+    anomalyRange !== null && index >= anomalyRange[0] && index <= anomalyRange[1];
 
   return (
     <TimeSeriesChart
@@ -77,11 +80,11 @@ function VolumePlot({ series }: { series: VolumeSeries }) {
           values,
         },
       ]}
-      highlight={anomalyRange}
+      highlight={anomalyRange ?? undefined}
       showPeak
       formatValue={formatVolume}
       tooltipNote={(index) =>
-        index >= anomalyRange[0] && index <= anomalyRange[1]
+        inAnomaly(index)
           ? "dentro da janela anômala"
           : `${formatVolume(Math.abs(values[index] - baseline))} ${
               values[index] >= baseline ? "acima" : "abaixo"
@@ -91,9 +94,11 @@ function VolumePlot({ series }: { series: VolumeSeries }) {
         values[0],
       )}, atinge o pico de ${formatVolumePerMinute(values[peakIndex])} às ${
         times[peakIndex]
-      } e termina em ${formatVolume(values[values.length - 1])}. Janela anômala entre ${
-        times[anomalyRange[0]]
-      } e ${times[anomalyRange[1]]}.`}
+      } e termina em ${formatVolume(values[values.length - 1])}.${
+        anomalyRange
+          ? ` Janela anômala entre ${times[anomalyRange[0]]} e ${times[anomalyRange[1]]}.`
+          : ""
+      }`}
     />
   );
 }

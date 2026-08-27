@@ -241,8 +241,11 @@ export type VolumeSeries = {
   times: string[];
   values: number[];
   peakIndex: number;
-  /** Índices de início e fim da janela anômala destacada no gráfico. */
-  anomalyRange: [number, number];
+  /**
+   * Índices de início e fim da janela anômala. `null` quando a origem não faz
+   * detecção — o destaque some em vez de apontar uma janela que ninguém mediu.
+   */
+  anomalyRange: [number, number] | null;
   axisMax: number;
   axisTicks: number[];
 };
