@@ -1,19 +1,18 @@
 /**
  * @file buffering-chart.tsx
- * Gráfico "Buffering após a versão 4.2.1".
+ * Gráfico "Taxa de travamento no recorte".
  *
- * É a evidência quantitativa da hipótese: mostra o salto do buffer ratio logo
- * depois do deploy destacado. A ordem do desenho é a ordem do argumento —
- * primeiro o marco do deploy, depois a subida — e a comparação com a linha de
- * base aparece ponto a ponto, ao passar o cursor.
+ * É a evidência quantitativa da hipótese: a evolução da fração de tempo
+ * travado ao longo da janela. Quando a origem registra o marco de um deploy,
+ * ele entra como linha tracejada e a leitura ponto a ponto compara com o antes
+ * — sem marco registrado, o gráfico mostra a série e nada mais: um deploy
+ * desenhado sem fonte apontaria um culpado que ninguém mediu.
  */
 
 "use client";
 
 import {
   BUFFERING_PERIOD_LABELS,
-  DEPLOY_INDEX,
-  DEPLOY_LABEL,
   type BufferingPeriodKey,
   type BufferingPoint,
 } from "@/app/(painel)/evidencias/evidence-data";
@@ -25,6 +24,8 @@ import { formatDecimal } from "@/lib/format";
 
 export type BufferingChartProps = {
   points?: BufferingPoint[];
+  /** Marco de deploy na série, quando a origem o registra. */
+  marker: { index: number; label: string } | null;
   period: BufferingPeriodKey;
   onPeriodChange: (period: BufferingPeriodKey) => void;
 };
@@ -36,6 +37,7 @@ function formatRatio(value: number): string {
 
 export function BufferingChart({
   points,
+  marker,
   period,
   onPeriodChange,
 }: BufferingChartProps) {
@@ -43,9 +45,9 @@ export function BufferingChart({
     <Card padding="lg" className="flex flex-1 flex-col">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <CardTitle>Buffering após a versão 4.2.1</CardTitle>
+          <CardTitle>Taxa de travamento no recorte</CardTitle>
           <CardDescription className="mt-1">
-            Youbora · buffer ratio (%) · LG webOS 6.0
+            Tempo travado sobre tempo assistido, em porcentagem
           </CardDescription>
         </div>
 
@@ -65,7 +67,7 @@ export function BufferingChart({
           <Skeleton className="mt-3 h-3 w-56" />
         </>
       ) : (
-        <BufferingPlot points={points} period={period} />
+        <BufferingPlot points={points} marker={marker} />
       )}
     </Card>
   );
@@ -73,20 +75,24 @@ export function BufferingChart({
 
 function BufferingPlot({
   points,
-  period,
+  marker,
 }: {
   points: BufferingPoint[];
-  period: BufferingPeriodKey;
+  marker: { index: number; label: string } | null;
 }) {
-  const deployIndex = Math.min(DEPLOY_INDEX[period], points.length - 1);
+  const deployIndex =
+    marker === null ? null : Math.min(marker.index, points.length - 1);
 
   const peakIndex = points.reduce(
     (best, point, index) => (point.value > points[best].value ? index : best),
     0,
   );
   const peak = points[peakIndex];
-  const baseline = points[0].value;
-  const multiplier = formatDecimal(peak.value / baseline, 1);
+  const start = points[0].value;
+  // A comparação com o primeiro ponto só faz sentido quando ele não é zero e
+  // quando existe um marco que divida a série em antes e depois.
+  const multiplier =
+    deployIndex !== null && start > 0 ? formatDecimal(peak.value / start, 1) : null;
 
   return (
     <>
@@ -98,26 +104,35 @@ function BufferingPlot({
         series={[
           {
             id: "buffer",
-            label: "Buffer ratio",
+            label: "Taxa de travamento",
             tone: "warning",
             area: true,
             values: points.map((point) => point.value),
           },
         ]}
-        marker={{ index: deployIndex, label: DEPLOY_LABEL }}
+        marker={
+          deployIndex === null
+            ? undefined
+            : { index: deployIndex, label: marker?.label ?? "" }
+        }
         showPeak
         formatValue={formatRatio}
-        tooltipNote={(index) =>
-          index >= deployIndex
-            ? `${formatDecimal(points[index].value / baseline, 1)}x a linha de base`
-            : "antes do deploy"
+        tooltipNote={
+          deployIndex === null || start <= 0
+            ? undefined
+            : (index) =>
+                index >= deployIndex
+                  ? `${formatDecimal(points[index].value / start, 1)}x o início da janela`
+                  : "antes do deploy"
         }
-        ariaLabel={`Buffer ratio ao longo do tempo, com pico de ${formatRatio(peak.value)} às ${peak.time}, logo após o deploy 4.2.1`}
+        ariaLabel={`Taxa de travamento ao longo do tempo, com pico de ${formatRatio(peak.value)} às ${peak.time}`}
       />
 
-      <p className="mt-3 text-caption font-medium tabular-nums text-critical-strong">
-        +{multiplier}x vs. linha de base · forte evidência
-      </p>
+      {multiplier !== null ? (
+        <p className="mt-3 text-caption font-medium tabular-nums text-critical-strong">
+          +{multiplier}x vs. início da janela
+        </p>
+      ) : null}
     </>
   );
 }

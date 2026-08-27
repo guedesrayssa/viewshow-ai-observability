@@ -15,6 +15,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -24,20 +25,23 @@ import {
   TIMELINE_DOT_CLASSES,
   WINDOW_LABELS,
   type BufferingPeriodKey,
+  type ReviewStatus,
   type WindowKey,
 } from "@/app/(painel)/evidencias/evidence-data";
 import {
   fetchBuffering,
   fetchEvidence,
+  reviewHypothesis,
 } from "@/app/(painel)/evidencias/evidence-resource";
 import { useAccount } from "@/components/account/account-provider";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { Unavailable } from "@/components/dashboard/unavailable";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { Reveal } from "@/components/motion/reveal";
 import { Alert } from "@/components/ui/alert";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { CheckIcon, XIcon } from "@/components/ui/icons";
 import { Select } from "@/components/ui/select";
@@ -45,8 +49,6 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
 import { formatCompact } from "@/lib/format";
-
-type ReviewStatus = "pending" | "confirmed" | "refuted";
 
 const REVIEW_META: Record<
   Exclude<ReviewStatus, "pending">,
@@ -56,27 +58,36 @@ const REVIEW_META: Record<
   refuted: { label: "Refutada", tone: "critical" },
 };
 
-/** Incidente investigado quando a tela é aberta sem recorte na URL. */
-const DEFAULT_INCIDENT = "falhas-reproducao-tvs-lg";
-
 export function EvidenceView() {
   const searchParams = useSearchParams();
   const { profile } = useAccount();
-  const incidentId = searchParams.get("incidente") ?? DEFAULT_INCIDENT;
 
-  const [reviewStatus, setReviewStatus] = useState<ReviewStatus>("pending");
+  // Sem recorte na URL, a tela pede a escolha em vez de eleger um incidente
+  // sozinha: um diagnóstico aberto "por padrão" pareceria o diagnóstico do
+  // momento, e não é.
+  const incidentId = searchParams.get("incidente");
+
+  const [review, setReview] = useState<{
+    status: ReviewStatus;
+    /** Quem assinou nesta sessão. Vazio quando a revisão veio da API. */
+    by?: string;
+    error?: string;
+    saving?: boolean;
+  }>({ status: "pending" });
   const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
   const [timelineWindow, setTimelineWindow] = useState<WindowKey>("90");
   const [bufferingPeriod, setBufferingPeriod] = useState<BufferingPeriodKey>("120");
 
   const evidence = useResource(
-    (revision) => fetchEvidence(incidentId, revision),
+    (revision) => fetchEvidence(incidentId ?? "", revision),
     [incidentId],
+    { enabled: incidentId !== null },
   );
 
   const buffering = useResource(
     (revision) => fetchBuffering(bufferingPeriod, revision),
     [bufferingPeriod],
+    { enabled: incidentId !== null },
   );
 
   const data = evidence.data;
@@ -84,6 +95,46 @@ export function EvidenceView() {
   function toggleSource(id: string) {
     setExpandedSourceId((current) => (current === id ? null : id));
   }
+
+  async function submitReview(status: "confirmed" | "refuted") {
+    if (!incidentId) return;
+
+    setReview({ status: "pending", saving: true });
+    const result = await reviewHypothesis(incidentId, status);
+
+    if (result.ok) {
+      setReview({ status: result.status, by: profile.name });
+    } else {
+      setReview({ status: "pending", error: result.message });
+    }
+  }
+
+  if (!incidentId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Evidências"
+          subtitle="Hipótese de causa provável e evidências do diagnóstico"
+        />
+        <Unavailable title="Escolha um incidente para investigar" minHeight={280}>
+          Esta tela monta o diagnóstico de um incidente específico, e abrir um
+          por conta própria apresentaria um caso qualquer como se fosse o da
+          sua investigação. Venha pela lista de Incidentes.
+        </Unavailable>
+        <Link
+          href="/incidentes"
+          className={cn(buttonClasses({ variant: "gradient" }), "self-center")}
+        >
+          Ir para Incidentes
+        </Link>
+      </div>
+    );
+  }
+
+  // A revisão registrada na API vale como estado inicial; a feita nesta sessão
+  // tem prioridade, porque acabou de acontecer diante da pessoa.
+  const reviewStatus =
+    review.status !== "pending" ? review.status : (data?.reviewStatus ?? "pending");
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,6 +150,8 @@ export function EvidenceView() {
           <DataStatus
             showSource={false}
             source={evidence.source}
+            availability={evidence.availability}
+            warnings={evidence.warnings}
             fetchedAt={evidence.fetchedAt}
             refreshing={evidence.refreshing}
             error={evidence.error}
@@ -133,12 +186,12 @@ export function EvidenceView() {
                 <div>
                   <p className="text-display text-ink">
                     <AnimatedNumber
-                      value={data.incident.affectedSessions}
+                      value={data.incident.affectedDevices}
                       format={formatCompact}
                     />
                   </p>
                   <p className="mt-1 text-body-sm text-ink-brand">
-                    sessões afetadas
+                    dispositivos afetados
                   </p>
                 </div>
               </>
@@ -159,7 +212,19 @@ export function EvidenceView() {
 
         <Reveal delay={90} className="flex">
           <Card accent="info" padding="lg" className="flex flex-1 flex-col gap-5">
-            {data ? (
+            {data && data.hypothesis === null ? (
+              <>
+                <CardTitle>Hipótese</CardTitle>
+                <Unavailable
+                  title="Ainda sem diagnóstico"
+                  className="flex-1"
+                >
+                  Este incidente ainda não passou pelo diagnóstico automático.
+                  Quando ele rodar, a hipótese aparece aqui com o grau de
+                  confiança e as evidências que a sustentam.
+                </Unavailable>
+              </>
+            ) : data && data.hypothesis ? (
               <>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <CardTitle>Hipótese</CardTitle>
@@ -199,28 +264,48 @@ export function EvidenceView() {
                   </p>
                 </div>
 
-                <div className="mt-auto flex flex-wrap items-center gap-3">
-                  <Button
-                    variant="gradient"
-                    leadingIcon={<CheckIcon size={16} />}
-                    disabled={reviewStatus !== "pending"}
-                    onClick={() => setReviewStatus("confirmed")}
-                  >
-                    Confirmar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    leadingIcon={<XIcon size={16} />}
-                    disabled={reviewStatus !== "pending"}
-                    onClick={() => setReviewStatus("refuted")}
-                  >
-                    Refutar
-                  </Button>
+                <div className="mt-auto flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Confirmar promove o caso à golden set no servidor — um
+                        efeito que a interface não desfaz. O texto do botão não
+                        esconde isso: a frase de apoio abaixo o diz antes do
+                        clique. */}
+                    <Button
+                      variant="gradient"
+                      leadingIcon={<CheckIcon size={16} />}
+                      disabled={reviewStatus !== "pending" || review.saving}
+                      loading={review.saving}
+                      onClick={() => submitReview("confirmed")}
+                    >
+                      Confirmar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      leadingIcon={<XIcon size={16} />}
+                      disabled={reviewStatus !== "pending" || review.saving}
+                      onClick={() => submitReview("refuted")}
+                    >
+                      Refutar
+                    </Button>
 
-                  {reviewStatus !== "pending" ? (
-                    <span className="animate-fade-in text-caption text-ink-muted">
-                      {REVIEW_META[reviewStatus].label} por {profile.name} · agora
-                    </span>
+                    {reviewStatus !== "pending" ? (
+                      <span className="animate-fade-in text-caption text-ink-muted">
+                        {REVIEW_META[reviewStatus].label}
+                        {review.by ? ` por ${review.by} · agora` : " anteriormente"}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {review.error ? (
+                    <p className="text-caption text-critical-strong" role="alert">
+                      {review.error}
+                    </p>
+                  ) : reviewStatus === "pending" ? (
+                    <p className="text-caption text-ink-subtle">
+                      Confirmar registra a revisão e promove o caso ao conjunto
+                      curado, que passa a responder incidentes com a mesma
+                      assinatura.
+                    </p>
                   ) : null}
                 </div>
               </>
@@ -242,7 +327,8 @@ export function EvidenceView() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Reveal delay={150} className="flex">
           <BufferingChart
-            points={buffering.data}
+            points={buffering.data?.points}
+            marker={buffering.data?.marker ?? null}
             period={bufferingPeriod}
             onPeriodChange={setBufferingPeriod}
           />
@@ -252,8 +338,18 @@ export function EvidenceView() {
           <Card padding="lg" className="flex-1">
             <CardTitle>Concentração afetada</CardTitle>
             <CardDescription className="mt-1">
-              Sessões com falha por recorte
+              Participação nos erros da janela, por modelo
             </CardDescription>
+
+            {data && data.concentration.length === 0 ? (
+              <Unavailable
+                title="Sem segmentação disponível"
+                className="mt-5 flex-1"
+              >
+                A telemetria não respondeu a segmentação de erros por modelo,
+                ou não há erros na janela para repartir.
+              </Unavailable>
+            ) : null}
 
             <div className="mt-5 flex flex-col gap-3">
               {data
@@ -285,7 +381,7 @@ export function EvidenceView() {
                   ))}
             </div>
 
-            {data ? (
+            {data && data.concentrationNote ? (
               <p className="mt-4 text-caption text-ink-brand">
                 {data.concentrationNote}
               </p>
@@ -380,7 +476,15 @@ export function EvidenceView() {
             />
           </div>
 
-          {data ? (
+          {data && data.timeline.length === 0 ? (
+            <Unavailable title="Sem linha do tempo de mudanças" className="mt-6">
+              Nenhuma das origens atuais registra deploys ou mudanças
+              correlacionadas a este incidente. A linha do tempo volta quando o
+              serviço de ingestão publicar esses marcos.
+            </Unavailable>
+          ) : null}
+
+          {data && data.timeline.length > 0 ? (
             <>
               <div className="mt-8 overflow-x-auto">
                 <div className="grid min-w-[46rem] grid-cols-6 gap-2">

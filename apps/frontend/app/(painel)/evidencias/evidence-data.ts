@@ -14,7 +14,11 @@ export type IncidentSummary = {
   startedMinutesAgo: number;
   severity: string;
   investigationStatus: string;
-  affectedSessions: number;
+  /**
+   * Dispositivos, não sessões: é o que a API operacional conta. O rótulo da
+   * tela acompanha, para que o número não afirme uma medição que não existe.
+   */
+  affectedDevices: number;
 };
 
 export type Hypothesis = {
@@ -76,10 +80,17 @@ export type ChangeLikelihood = {
   tone: BadgeTone;
 };
 
+/** Situação da revisão humana da hipótese. */
+export type ReviewStatus = "pending" | "confirmed" | "refuted";
+
 /** Tudo o que a tela de Evidências desenha em uma leitura. */
 export type EvidenceData = {
+  incidentId: string;
   incident: IncidentSummary;
-  hypothesis: Hypothesis;
+  /** `null` enquanto o incidente não passou por diagnóstico. */
+  hypothesis: Hypothesis | null;
+  /** O que a API tem registrado sobre a revisão, na hora da leitura. */
+  reviewStatus: ReviewStatus;
   concentration: ConcentrationSlice[];
   concentrationNote: string;
   sources: EvidenceSource[];
@@ -93,7 +104,7 @@ export const INCIDENT: IncidentSummary = {
   startedMinutesAgo: 18,
   severity: "Crítico",
   investigationStatus: "Em investigação",
-  affectedSessions: 12400,
+  affectedDevices: 12400,
 };
 
 export const HYPOTHESIS: Hypothesis = {
