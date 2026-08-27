@@ -97,7 +97,7 @@ if [[ "$1 $2" == "repo view" ]]; then
   exit 0
 fi
 if [[ "$1" == "api" ]]; then
-  [[ "$#" == 5 && "$2" == "--paginate" && "$3" == "--output" && "$4" == "ndjson" && "$5" == "projects/42/variables?per_page=100" ]] || exit 2
+  [[ "$#" == 7 && "$2" == "--hostname" && "$3" == "git.inteli.edu.br" && "$4" == "--paginate" && "$5" == "--output" && "$6" == "ndjson" && "$7" == "projects/42/variables?per_page=100" ]] || exit 2
   printf 'glab:api:metadata:debug-disabled\\n' >>"$CALL_LOG"
   printf '%s\\n' "$VARIABLE_METADATA"
   exit 0

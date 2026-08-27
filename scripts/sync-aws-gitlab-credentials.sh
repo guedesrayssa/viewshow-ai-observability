@@ -68,7 +68,7 @@ fi
 unset repository_web_url repository_path origin_canonical_url
 
 variable_metadata="$(
-  glab_safe api --paginate --output ndjson "projects/$project_id/variables?per_page=100" |
+  glab_safe api --hostname "$gitlab_host" --paginate --output ndjson "projects/$project_id/variables?per_page=100" |
     jq -rsc '
       [
         .[]
