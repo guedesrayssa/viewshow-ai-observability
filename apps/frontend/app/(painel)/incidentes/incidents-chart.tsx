@@ -1,9 +1,12 @@
 /**
  * @file incidents-chart.tsx
- * Gráfico "Dispositivos afetados por horário".
+ * Gráfico "Dispositivos por horário de início".
  *
- * Mostra a evolução de dispositivos impactados e diferencia visualmente
- * incidentes críticos dos de alta severidade (seção 5.3 do entendimento de UX).
+ * Soma os dispositivos dos incidentes que começaram em cada hora e diferencia
+ * visualmente os horários com incidente crítico (seção 5.3 do entendimento de
+ * UX). O rótulo diz "horário de início" porque é o que a barra mede: uma série
+ * contínua de dispositivos afetados exigiria medição por intervalo, que nenhuma
+ * das APIs publica hoje.
  *
  * As barras crescem da base a cada leitura — a altura é o dado, e vê-la ser
  * construída dá a direção antes de ler o eixo — e o valor exato de cada faixa
@@ -53,9 +56,9 @@ export function IncidentsChart({
     <Card padding="lg">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <CardTitle>Dispositivos afetados por horário</CardTitle>
+          <CardTitle>Dispositivos por horário de início</CardTitle>
           <CardDescription className="mt-1">
-            Incidentes ativos, agrupados por urgência
+            Soma dos dispositivos dos incidentes abertos em cada hora
           </CardDescription>
         </div>
 
@@ -83,7 +86,7 @@ export function IncidentsChart({
           }))}
           formatValue={formatCompact}
           valueLabel="Dispositivos"
-          ariaLabel={`Dispositivos afetados por horário. ${buckets
+          ariaLabel={`Dispositivos por horário de início do incidente. ${buckets
             .map(
               (bucket) =>
                 `${bucket.time}: ${formatCompact(bucket.value)}, ${LEVEL_META[bucket.level].label.toLowerCase()}`,

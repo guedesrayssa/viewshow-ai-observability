@@ -20,15 +20,13 @@ import { useMemo, useState } from "react";
 
 import { IncidentsChart } from "@/app/(painel)/incidentes/incidents-chart";
 import {
-  APP_VERSIONS,
   DEVICE_COUNT_CLASSES,
-  DEVICE_TYPES,
   PERIOD_LABELS,
-  REGIONS,
   SORT_LABELS,
   URGENCY_META,
   sortIncidents,
   type ChartPeriodKey,
+  type Incident,
   type PeriodKey,
   type SortKey,
 } from "@/app/(painel)/incidentes/incidents-data";
@@ -56,7 +54,9 @@ const REFRESH_MS = 45_000;
 
 export function IncidentsView() {
   const [search, setSearch] = useState("");
-  const [period, setPeriod] = useState<PeriodKey | "all">("all");
+  // O recorte mais largo que a origem sustenta é o de 24 horas: a listagem
+  // varre baldes por hora, e "todo o período" seria varrer os 30 dias do TTL.
+  const [period, setPeriod] = useState<PeriodKey>("1440");
   const [deviceType, setDeviceType] = useState<string>("all");
   const [region, setRegion] = useState<string>("all");
   const [appVersion, setAppVersion] = useState<string>("all");
@@ -78,10 +78,25 @@ export function IncidentsView() {
 
   const hasActiveFilters =
     search !== "" ||
-    period !== "all" ||
+    period !== "1440" ||
     deviceType !== "all" ||
     region !== "all" ||
     appVersion !== "all";
+
+  // As opções dos filtros dimensionais saem do que a leitura trouxe: são as
+  // facetas que existem de fato no recorte, e não uma lista fixa que pode
+  // oferecer um valor sem nenhum incidente atrás.
+  const facets = useMemo(() => {
+    const list = incidents.data ?? [];
+    const distinct = (pick: (incident: Incident) => string) =>
+      Array.from(new Set(list.map(pick).filter(Boolean))).sort();
+
+    return {
+      deviceTypes: distinct((incident) => incident.deviceType),
+      regions: distinct((incident) => incident.region),
+      appVersions: distinct((incident) => incident.appVersion),
+    };
+  }, [incidents.data]);
 
   // A leitura já chega recortada pelos filtros; a busca por título é local,
   // porque acompanha a digitação e não justifica uma ida à API por tecla.
@@ -96,7 +111,7 @@ export function IncidentsView() {
 
   function clearFilters() {
     setSearch("");
-    setPeriod("all");
+    setPeriod("1440");
     setDeviceType("all");
     setRegion("all");
     setAppVersion("all");
@@ -110,6 +125,8 @@ export function IncidentsView() {
         status={
           <DataStatus
             source={incidents.source}
+            availability={incidents.availability}
+            warnings={incidents.warnings}
             fetchedAt={incidents.fetchedAt}
             refreshing={incidents.refreshing}
             error={incidents.error}
@@ -151,14 +168,11 @@ export function IncidentsView() {
             <Select
               aria-label="Filtrar por período"
               value={period}
-              onValueChange={(value) => setPeriod(value as PeriodKey | "all")}
-              options={[
-                { value: "all", label: `Todo o período` },
-                ...(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => ({
-                  value: key,
-                  label: PERIOD_LABELS[key],
-                })),
-              ]}
+              onValueChange={(value) => setPeriod(value as PeriodKey)}
+              options={(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => ({
+                value: key,
+                label: PERIOD_LABELS[key],
+              }))}
             />
 
             <Select
@@ -167,7 +181,7 @@ export function IncidentsView() {
               onValueChange={(value) => setDeviceType(value)}
               options={[
                 { value: "all", label: `Todos os dispositivos` },
-                ...DEVICE_TYPES.map((name) => ({ value: name, label: name })),
+                ...facets.deviceTypes.map((name) => ({ value: name, label: name })),
               ]}
             />
 
@@ -177,7 +191,7 @@ export function IncidentsView() {
               onValueChange={(value) => setRegion(value)}
               options={[
                 { value: "all", label: `Todas as regiões` },
-                ...REGIONS.map((name) => ({ value: name, label: name })),
+                ...facets.regions.map((name) => ({ value: name, label: name })),
               ]}
             />
 
@@ -187,7 +201,7 @@ export function IncidentsView() {
               onValueChange={(value) => setAppVersion(value)}
               options={[
                 { value: "all", label: `Todas as versões` },
-                ...APP_VERSIONS.map((name) => ({ value: name, label: name })),
+                ...facets.appVersions.map((name) => ({ value: name, label: name })),
               ]}
             />
 
