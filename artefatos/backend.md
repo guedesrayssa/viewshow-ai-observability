@@ -330,7 +330,7 @@ Consequências dessas escolhas:
 
 - **Consultar uma janela é `Query`, nunca `Scan`.** Calcula-se quais buckets a
   janela cobre e cada um vira uma consulta, disparadas em paralelo.
-- **O bucket define o equilíbrio entre escrita e leitura.** Buckets menores
+- **O bucket define o equilíbrio entre escrita e leitura.** menores
   espalham a escrita por mais partições; maiores reduzem o número de consultas
   por janela. Uma janela de 15 min toca 1 ou 2 buckets de uma hora.
 - **O índice de traces é esparso:** só entram registros com `trace_id`, então
