@@ -8,6 +8,10 @@ O objeto avaliado é a aplicação Next.js em `apps/frontend`, que é o produto 
 projeto. O painel estático em `apps/basica/frontend` não é avaliado aqui: ele
 serviu ao MVP de infraestrutura e não é a interface que vai a produção.
 
+A **[demonstração em vídeo](https://youtu.be/Gur7yoTiQI0)** percorre as telas do
+painel com o frontend integrado ao backend, do login ao diagnóstico de um
+incidente, e serve de apoio visual às evidências registradas neste documento.
+
 A aplicação lê duas APIs deste mesmo repositório, e a distinção importa para
 interpretar cada resultado:
 
