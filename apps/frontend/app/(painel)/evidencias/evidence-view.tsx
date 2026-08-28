@@ -97,7 +97,6 @@ export function EvidenceView() {
         subtitle="Hipótese de causa provável e evidências do diagnóstico"
         status={
           <DataStatus
-            showSource={false}
             source={evidence.source}
             fetchedAt={evidence.fetchedAt}
             refreshing={evidence.refreshing}
