@@ -20,6 +20,7 @@ Este documento reúne toda a documentação do frontend. O guia visual detalhado
 7. [Gráficos](#7-gráficos)
 8. [Tema e preferências persistidas](#8-tema-e-preferências-persistidas)
 9. [Autenticação e conta](#9-autenticação-e-conta)
+10. [Design system e movimento](#10-design-system-e-movimento)
 
 ---
 
@@ -1141,6 +1142,72 @@ quadrado e reduzido, **no navegador**, antes de guardar.
 Erros (`ImageError`): `tipo-invalido`, `arquivo-grande`, `leitura-falhou`, com
 mensagens em `IMAGE_ERROR_MESSAGES`. O corte é **central**. A saída é
 `canvas.toDataURL("image/jpeg", 0.85)`.
+
+---
+
+## 10. Design system e movimento
+
+O guia completo de tokens, com valores e critérios de uso, está em
+[`docs/design-system.md`](./docs/design-system.md). Resumo do essencial:
+
+### 10.1 Tokens
+
+`app/globals.css` é a **única fonte de verdade**. O bloco `@theme` do Tailwind v4
+declara os tokens, e cada token vira utilitário automaticamente:
+`--color-ink-muted` produz `text-ink-muted`, `bg-ink-muted` e `border-ink-muted`.
+
+- **Espaçamento**: `--spacing: 0.2rem` (contra os `0.25rem` padrão) — muda a
+  densidade da interface inteira de uma vez. Coloca o painel na densidade de quem
+  trabalha com o navegador em 80%.
+- **Tipografia**: Poppins em quatro pesos (400/500/600/700), via `next/font`. Cada
+  token de tamanho (`text-h1`, `text-body`, `text-caption`…) já embute entrelinha,
+  peso e tracking.
+- **Cores de marca**: `brand-blue`, `brand-blue-light`, `brand-navy`,
+  `brand-orange`, `brand-red`. Azul e navy sustentam a estrutura; laranja e
+  vermelho ficam reservados a ações primárias e atenção.
+- **Estados**: `critical`, `warning`, `info`, `success`. Cada um tem `-soft`
+  (fundo de selos/avisos) e `-strong` (cor do texto — a cor cheia da marca não
+  alcança 4,5:1 em textos pequenos).
+- **Superfícies e texto**: `canvas`, `surface`, `surface-muted`, `ink`,
+  `ink-muted`, `ink-subtle`, `ink-brand`, `line`, `line-strong`.
+- **Raios**: `rounded-field` (10 px), `rounded-card` (14 px), `rounded-panel`
+  (20 px), `rounded-pill`.
+- **Sombras**: `shadow-card` (assenta o cartão), `shadow-raised` (menus,
+  popovers), `shadow-brand` (só o botão em gradiente).
+- **Gradientes**: `bg-gradient-brand` (laranja→vermelho, marca **ação**),
+  `bg-gradient-navy` (painéis escuros), `bg-gradient-orb` (esferas do login).
+
+### 10.2 Movimento
+
+O movimento também é token. Os tempos e as curvas ficam em `@theme`, e cada
+utilitário `animate-*` traz duração e curva prontas.
+
+| Token | Duração | Uso |
+| --- | --- | --- |
+| `animate-fade-in` | 0,4 s | Aparição de apoio: área de gráfico, rótulo, aviso |
+| `animate-rise` | 0,55 s | Entrada de bloco: cabeçalho, cartão, painel |
+| `animate-rise-sm` | 0,4 s | Entrada de item de lista ou linha de tabela |
+| `animate-scale-in` | 0,45 s | Entrada de selo, aba e do símbolo da marca |
+| `animate-slide-in-left` | 0,45 s | Entrada dos itens da navegação lateral |
+| `bar-grow` | 0,8 s | Barra de gráfico crescendo da base |
+| `track-grow` | 0,9 s | Barra horizontal de proporção preenchendo |
+| `animate-draw` | 1,15 s | Série temporal sendo escrita da esquerda para a direita |
+| `animate-pop` | 0,5 s | Marcador de pico, depois que a linha chega nele |
+| `skeleton` | contínuo | Espaço reservado enquanto o dado não chegou |
+
+Regras: o movimento tem que dizer algo (a barra cresce porque a altura é o dado);
+entrada é uma coisa só (`<Reveal>`, passo padrão de 70 ms); número que muda usa
+`<AnimatedNumber>`; nada disso é condição para ler a tela (sem JS o conteúdo
+aparece inteiro; com `prefers-reduced-motion: reduce`, as durações caem para
+`0.01ms`).
+
+### 10.3 Contenção visual
+
+O gradiente da marca marca **ação**, não decoração: fica na ação primária, no
+item ativo da navegação e no retrato da conta. Saiu das faixas de topo dos
+cartões e das barras de proporção, que passaram a usar a cor do estado que
+representam. O cartão se separa do fundo pela borda; a sombra apenas assenta a
+peça. Cartão não levanta quando o ponteiro passa.
 
 ---
 
