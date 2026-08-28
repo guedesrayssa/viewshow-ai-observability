@@ -1,6 +1,6 @@
 # Documentação Técnica: Backend — Sprint 2 (DynamoDB → API → Camada Agêntica)
 
-> Este documento descreve a implementação técnica da segunda etapa do backend do sistema de Monitoração Agêntica do Globoplay, cobrindo tudo **a partir do DynamoDB**: a modelagem das duas tabelas, a API em camadas (Fargate), o esqueleto simplificado da camada agêntica e a infraestrutura AWS provisionada para publicá-la. A etapa anterior (ARGUS → BigQuery → job de consumo/processamento → DynamoDB) é tratada em documentação própria e não é repetida aqui. As decisões de arquitetura completas (ADRs) estão em [`arquitetura.md`](arquitetura.md); o histórico cronológico de decisões técnicas, comandos executados e testes está em [`decisoes.md`](decisoes.md) — este documento organiza e resume esse material como referência de sprint.
+> Este documento descreve a implementação técnica da segunda etapa do backend do sistema de Monitoração Agêntica do Globoplay, cobrindo tudo **a partir do DynamoDB**: a modelagem das duas tabelas, a API em camadas (Fargate), o esqueleto simplificado da camada agêntica, a infraestrutura AWS provisionada para publicá-la e o roteiro de testes de integridade executado. A etapa anterior (ARGUS → BigQuery → job de consumo/processamento → DynamoDB) é tratada em documentação própria e não é repetida aqui. As decisões de arquitetura completas (ADRs) estão em [`arquitetura.md`](arquitetura.md).
 
 **Grupo:** G05 · **Parceiro:** Grupo Globo (Globoplay) — Projeto (CCMD7) · **Sprint:** 2
 
@@ -17,9 +17,7 @@
 7. [Infraestrutura AWS provisionada](#7-infraestrutura-aws-provisionada)
 8. [Decisões técnicas e riscos aceitos](#8-decisões-técnicas-e-riscos-aceitos)
 9. [Plano e execução de testes de integridade](#9-plano-e-execução-de-testes-de-integridade)
-10. [Conexão com o frontend](#10-conexão-com-o-frontend)
-11. [Pendências e próximos passos](#11-pendências-e-próximos-passos)
-12. [Referências](#12-referências)
+10. [Referências](#10-referências)
 
 ---
 
@@ -28,6 +26,8 @@
 &emsp; Ao início deste sprint, a infraestrutura AWS já existia apenas para o **job de ingestão** (BigQuery → DynamoDB): cluster ECS, ALB e repositório ECR próprios, todos com prefixo `data-ingestion-*`. O código da API tinha só um esqueleto Express com duas rotas mockadas (`GET /health`, `GET /items` com dados fictícios), sem nenhuma integração real com DynamoDB, Docker ou deploy. Este sprint cobriu integralmente o trecho `DynamoDB → API (com camada agêntica) → Dashboard` da arquitetura do MVP (ver [`arquitetura.md`](arquitetura.md), Seção 1), partindo desse esqueleto até uma API publicada, testada e consumível pelo frontend.
 
 &emsp; O trabalho seguiu a ordem: (1) modelagem das duas tabelas DynamoDB e da política de acesso a cada uma; (2) reestruturação da API em camadas; (3) implementação incremental de cada camada (serviço de evidências, serviço de golden set, orquestrador, agente, extensão do Bedrock, módulo de ML mockado, autenticação mínima); (4) provisionamento da infraestrutura AWS da API a partir do zero; (5) validação de ponta a ponta via um roteiro de testes de integridade reexecutável; (6) extensão das rotas para suportar a tela de Evidências, incluindo o fluxo de confirmação/refutação de hipótese pelo especialista.
+
+&emsp; A integração do `apps/frontend` com essas rotas — troca dos dados mockados pelas chamadas reais — é tratada na documentação própria do frontend, não neste documento.
 
 ---
 
@@ -158,6 +158,8 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 
 &emsp; Isso é a única exceção à regra de "golden set é só leitura" (ver também Seção 8.1): `goldenSetTable.putCurated` só é chamado por `goldenSetService.promoteCase`, que só é chamado pela rota de revisão — nunca pelo orquestrador ou pelo agente — e essa rota exige sessão autenticada (Seção 5). Refutar uma hipótese nunca escreve na golden set.
 
+&emsp; Essa exceção não enfraquece a proteção da Seção 8.1 — é o outro lado dela. O risco que o ADR-002 endereça é o **job de ingestão** sobrescrever a golden set automaticamente, e esse job roda em um deploy inteiramente separado, sem importar nada de `apps/backend/api` — continua fisicamente sem como escrever ali. Dentro da API, a escrita é sempre uma ação explícita de uma pessoa autenticada: `reviewedBy` vem do e-mail da sessão verificada por `requireAuth`, nunca do corpo da requisição — exatamente o mecanismo de "curadoria por pessoas" do ADR-002/ADR-005.
+
 ---
 
 ## 5. Autenticação e controle de acesso
@@ -235,6 +237,10 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 
 &emsp; Testado publicamente pelo DNS do ALB compartilhado, com confirmação de que a rota do job de ingestão continuou respondendo normalmente após a mudança.
 
+### 7.1. Automação de entrega
+
+&emsp; O pipeline de CI/CD do backend publica uma nova imagem identificada pelo SHA completo do commit e registra uma nova revisão de `monitoracao-api-task` a cada alteração de backend integrada à `develop`. Reutiliza cache de camadas do build, serializa as atualizações do `monitoracao-api-service` (evita dois deploys concorrentes), valida `/health` pelo ALB antes de considerar o deploy bem-sucedido e restaura a revisão anterior da task definition em caso de falha. Como o AWS Academy renova as credenciais a cada sessão de laboratório, `scripts/sync-aws-gitlab-credentials.sh` atualiza as três variáveis protegidas do GitLab a partir do profile local `default` — o equivalente, para o backend, do `credenciais-gitlab.sh` usado pelo frontend (ver [`ci-cd-amplify.md`](ci-cd-amplify.md)).
+
 ---
 
 ## 8. Decisões técnicas e riscos aceitos
@@ -249,51 +255,77 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 
 ### 8.3. Escopo deliberadamente fora deste sprint
 
-&emsp; Ficaram de fora, com justificativa registrada em [`decisoes.md`](decisoes.md): saúde do pipeline de ingestão (tela `/monitoramento`), gráfico de buffering e linha do tempo de mudanças correlacionadas (tela `/evidencias`), e as métricas de telemetria bruta do resumo do dashboard — todas dependem de dados que só existiriam depois que o job de ingestão estivesse rodando de verdade.
+&emsp; Ficaram de fora: saúde do pipeline de ingestão (tela `/monitoramento`), gráfico de buffering e linha do tempo de mudanças correlacionadas (tela `/evidencias`), e as métricas de telemetria bruta do resumo do dashboard — todas dependem de dados que só existiriam depois que o job de ingestão estivesse rodando de verdade.
 
 ---
 
 ## 9. Plano e execução de testes de integridade
 
-&emsp; Sem suíte automatizada ainda (fica como pendência — Seção 11), a validação foi feita por um roteiro manual reexecutável contra o DynamoDB real, documentado em detalhe em [`decisoes.md`](decisoes.md) (seções "Plano de teste de integridade da API" e "Tela de Evidências"). Resumo dos dois ciclos executados:
+&emsp; Sem suíte automatizada ainda, a validação foi feita por um roteiro manual reexecutável contra o DynamoDB real (não usa mock), cobrindo as duas tabelas, as três camadas (`services`/`orchestrator`/`agent`) e as rotas HTTP de ponta a ponta. Cada execução parte de um estado conhecido: a tabela operacional é limpa e re-semeada via `npm run seed`.
+
+### 9.1. Núcleo da API
 
 <div align="center">
 
-<sup>Tabela 8: Cobertura dos testes de integridade</sup>
+<sup>Tabela 8: Casos de teste do núcleo da API</sup>
 
-| Ciclo | Cobertura | Resultado |
-|:---|:---|:---|
-| Núcleo da API (16 casos) | Health, CRUD de incidentes/evidências, golden set, ML mockado, login, os dois caminhos de diagnóstico (golden-set e agente), resumo do dashboard, contagens finais das duas tabelas | 16/16 |
-| Revisão de hipótese e curadoria (13 casos) | `strength` nas evidências, ciclo diagnosticar → tentar revisar sem sessão (401) → logar → confirmar → verificar promoção à golden set, refutar em outro incidente e confirmar que a golden set não foi tocada, status inválido (400) | 13/13 |
+| # | Teste | Resultado esperado |
+|:---:|:---|:---|
+| 1 | Health check | `200`, `{"status":"ok"}` |
+| 2 | Listar incidentes | 4 incidentes (os 4 semeados) |
+| 3 | Detalhe de incidente | campos corretos (`urgency: "P1"`, `component: "Player"`) |
+| 4 | Evidências do incidente | 2 evidências |
+| 5 | Incidente inexistente | `404` |
+| 6 | Golden set — assinatura existente | `expected_score: 0.85` |
+| 7 | Golden set — sem assinatura | `400` |
+| 8 | ML mockado | contrato fixo (`model: "mock-v0"`), ecoa as chaves recebidas |
+| 9 | Login — credenciais corretas | `200` + `Set-Cookie` |
+| 10 | Login — credenciais erradas | `401` |
+| 11 | Diagnóstico — bate com golden set | `source: "golden-set"`, `score: 0.85` |
+| 12 | Diagnóstico — sem match, cai no agente | `source: "agent"`, `score: 0.6` (do ML mock) |
+| 13 | Diagnóstico — incidente inexistente | `404` |
+| 14 | Resumo do dashboard | `stats` agregados batem com os 4 incidentes |
+| 15 | Contagem final da operacional | 11 (base) + 2 diagnósticos (testes 11–12) = **13** |
+| 16 | Golden set permanece intocada | **3, sem alteração** |
 
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
-&emsp; O caso mais importante de cada ciclo é o de contagem final da golden set: depois de rodar os fluxos de diagnóstico e de refutação, a contagem precisa ficar exatamente igual à anterior — é a confirmação prática, não só teórica, de que a proteção por código (Seção 8.1) segura.
+&emsp; O teste 16 é o mais importante do conjunto: mesmo depois de rodar os dois fluxos de diagnóstico (11 e 12), a golden set precisa continuar com a mesma contagem de antes — é a confirmação prática, não só teórica, de que a proteção por código (Seção 8.1) segura.
+
+### 9.2. Revisão de hipótese e curadoria
+
+<div align="center">
+
+<sup>Tabela 9: Casos de teste do fluxo de revisão da tela de Evidências</sup>
+
+| # | Teste | Resultado esperado |
+|:---:|:---|:---|
+| 1 | Evidência inclui `strength` | `"forte"`/`"neutra"`/`"contra"` presentes |
+| 2 | `GET /hypothesis` antes de diagnosticar | `404` |
+| 3 | `POST /diagnose` cria hipótese (agente) | `source: "agent"` |
+| 4 | `GET /hypothesis` depois | hipótese retornada, `reviewStatus` ainda ausente |
+| 5 | `GET /golden-set?signature=...` antes de confirmar | `404` (caso novo, sem curadoria) |
+| 6 | `PATCH /hypothesis/review` sem cookie | `401` |
+| 7 | `POST /auth/login` | `200` + cookie |
+| 8 | `PATCH /hypothesis/review` com cookie, `confirmed` | `reviewStatus: "confirmed"`, `reviewedBy` = e-mail da sessão |
+| 9 | `GET /golden-set?signature=...` depois de confirmar | caso promovido aparece, `curated_by` = e-mail da sessão |
+| 10 | `PATCH /hypothesis/review` com `refuted` num incidente já presente na golden set | `reviewStatus: "refuted"` |
+| 11 | Golden set do caso refutado | **inalterada** (mesmo score do seed) |
+| 12 | `status` inválido no review | `400` |
+| 13 | Contagem final da golden set | 3 (seed) + 1 (promovido no teste 9) = **4** |
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
+&emsp; O teste 11 é o par do teste 16 do ciclo anterior: confirma que só `confirmed` aciona `promoteCase` — `refuted` passa pela mesma rota autenticada e não toca a golden set.
 
 ---
 
-## 10. Conexão com o frontend
-
-> **A preencher.** Esta seção vai documentar como `apps/frontend` passa a consumir as rotas da Seção 6 — troca dos dados mockados (`lib/dashboard-data.ts`, `incidents-view.tsx`, `evidence-view.tsx` etc.) pelas chamadas reais, a criação da camada de cliente HTTP (`lib/api.ts`), a variável `NEXT_PUBLIC_API_BASE_URL` apontando para o ALB, e a página de detalhe de incidente (`app/(painel)/incidentes/[id]`) que ainda não existe. Ainda não implementado neste sprint.
-
-<!-- TODO: preencher após a integração do frontend com as rotas da Seção 6 -->
-
----
-
-## 11. Pendências e próximos passos
-
-- Conectar `apps/frontend` às rotas reais (Seção 10).
-- Build + push de uma nova versão da imagem (`:v2`) e nova revisão da Task Definition — o ambiente publicado no ECS ainda roda a `:v1`, sem as rotas de hipótese/revisão da Seção 4.3.
-- Promover o roteiro manual de testes (Seção 9) para uma suíte automatizada, aproximando o projeto do RNF12 (cobertura mínima de testes) descrito em [`requisitos.md`](requisitos.md).
-- Reavaliar a proteção da golden set (Seção 8.1) caso o projeto saia do ambiente AWS Academy e ganhe permissão para criar roles IAM próprias.
-- Documentação de arquitetura consolidada (ADRs) e documentação do frontend seguem em arquivos próprios, fora do escopo deste documento.
-
----
-
-## 12. Referências
+## 10. Referências
 
 GRUPO GLOBO. **Termo de Abertura de Projeto (TAPI)** — Turma 15, Ciência da Computação, Módulo 7. Inteli, 2026.
 
-Ver também [`arquitetura.md`](arquitetura.md) (decisões de arquitetura do MVP) e [`decisoes.md`](decisoes.md) (histórico cronológico de decisões técnicas e testes deste sprint).
+Ver também [`arquitetura.md`](arquitetura.md) (decisões de arquitetura do MVP).
