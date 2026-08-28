@@ -1,4 +1,10 @@
-# Validação de requisitos no frontend
+# Documentação do Front-end da aplicação
+
+## Link do projeto no S3
+
+Acesse o projeto aqui: <http://g05-telemetria-front.s3-website-us-east-1.amazonaws.com/login/>
+
+## Validação de requisitos no frontend
 
 Este documento valida o frontend do View Show contra a especificação: cada caso
 produz evidência de aceite para um requisito funcional (RF), não funcional
@@ -7,6 +13,10 @@ produz evidência de aceite para um requisito funcional (RF), não funcional
 O objeto avaliado é a aplicação Next.js em `apps/frontend`, que é o produto do
 projeto. O painel estático em `apps/basica/frontend` não é avaliado aqui: ele
 serviu ao MVP de infraestrutura e não é a interface que vai a produção.
+
+A **[demonstração em vídeo](https://youtu.be/Gur7yoTiQI0)** percorre as telas do
+painel com o frontend integrado ao backend, do login ao diagnóstico de um
+incidente, e serve de apoio visual às evidências registradas neste documento.
 
 A aplicação lê duas APIs deste mesmo repositório, e a distinção importa para
 interpretar cada resultado:
