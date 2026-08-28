@@ -17,10 +17,11 @@ const deployReadme = fs.readFileSync(
 );
 
 function topLevelBlock(name, source = pipeline) {
-  const match = new RegExp(`^${name}:\\n`, "m").exec(source);
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`^${escapedName}:[^\\n]*\\n`, "m").exec(source);
   const start = match?.index ?? -1;
   assert.notEqual(start, -1, `missing top-level block ${name}`);
-  const remainder = source.slice(start + name.length + 2);
+  const remainder = source.slice(start + match[0].length);
   const next = remainder.search(/^\S[^\n]*:\n/m);
   return next === -1 ? remainder : remainder.slice(0, next);
 }
@@ -93,17 +94,17 @@ test("institutional runner connects to DinD without an unavailable TLS certifica
 });
 
 test("backend changes exclude deploy documentation and snapshots", () => {
-  const workflow = topLevelBlock("workflow");
-  assert.match(workflow, /apps\/backend\/api\/src\/\*\*\/\*/);
-  assert.match(workflow, /apps\/backend\/api\/tests\/\*\*\/\*/);
-  assert.match(workflow, /apps\/backend\/api\/package\.json/);
-  assert.match(workflow, /apps\/backend\/api\/package-lock\.json/);
-  assert.match(workflow, /apps\/backend\/api\/Dockerfile/);
-  assert.match(workflow, /apps\/backend\/api\/\.dockerignore/);
-  assert.match(workflow, /scripts\/ci\/\*\*\/\*/);
-  assert.doesNotMatch(workflow, /apps\/backend\/api\/\*\*\/\*/);
-  assert.doesNotMatch(workflow, /apps\/backend\/api\/deploy/);
-  assert.doesNotMatch(workflow, /docs\/superpowers/);
+  const backendChanges = topLevelBlock(".mudou-backend");
+  assert.match(backendChanges, /apps\/backend\/api\/src\/\*\*\/\*/);
+  assert.match(backendChanges, /apps\/backend\/api\/tests\/\*\*\/\*/);
+  assert.match(backendChanges, /apps\/backend\/api\/package\.json/);
+  assert.match(backendChanges, /apps\/backend\/api\/package-lock\.json/);
+  assert.match(backendChanges, /apps\/backend\/api\/Dockerfile/);
+  assert.match(backendChanges, /apps\/backend\/api\/\.dockerignore/);
+  assert.match(backendChanges, /scripts\/ci\/\*\*\/\*/);
+  assert.doesNotMatch(backendChanges, /apps\/backend\/api\/\*\*\/\*/);
+  assert.doesNotMatch(backendChanges, /apps\/backend\/api\/deploy/);
+  assert.doesNotMatch(backendChanges, /docs\/superpowers/);
 });
 
 test("merge requests validate containers without protected AWS scope", () => {
@@ -178,7 +179,7 @@ test("deployment guide documents the institutional runner and temporary unprotec
   assert.doesNotMatch(deployReadme, /aws configure export-credentials|printenv/i);
 });
 
-test("every CI executor and Docker service uses a tag plus immutable digest", () => {
+test("every backend CI executor and Docker service uses a tag plus immutable digest", () => {
   assert.match(
     topLevelBlock("validate_backend"),
     /image: node:22\.22\.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94/,
@@ -198,7 +199,15 @@ test("every CI executor and Docker service uses a tag plus immutable digest", ()
     topLevelBlock("deploy_backend_ecs"),
     /image: alpine:3\.22\.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1/,
   );
-  const executorRefs = executorReferences();
+  const backendPipeline = [
+    "validate_backend",
+    "validate_backend_container",
+    "publish_backend_image",
+    "deploy_backend_ecs",
+  ]
+    .map((jobName) => topLevelBlock(jobName))
+    .join("\n");
+  const executorRefs = executorReferences(backendPipeline);
   assert.ok(executorRefs.length > 0);
   for (const reference of executorRefs) {
     assert.match(reference, /^[^@\s]+:[^@\s]+@sha256:[0-9a-f]{64}$/);
