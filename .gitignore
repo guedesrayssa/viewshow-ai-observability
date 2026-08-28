@@ -32,6 +32,13 @@ Thumbs.db
 .aws-sam/
 *.pem
 
+# ---------- Laboratório Argus ----------
+.worktrees/
+artefatos/extras/analysis/.ipynb_checkpoints/
+artefatos/extras/analysis/**/.ipynb_checkpoints/
+artefatos/extras/analysis/outputs/*
+!artefatos/extras/analysis/outputs/.gitkeep
+
 # ---------- Superpowers workflow artifacts ----------
 *superpowers/
 /docs/superpowers/
