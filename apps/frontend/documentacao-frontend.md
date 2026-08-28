@@ -17,6 +17,7 @@ Este documento reúne toda a documentação do frontend. O guia visual detalhado
 4. [Camada de dados](#4-camada-de-dados)
 5. [Telas](#5-telas)
 6. [Catálogo de componentes](#6-catálogo-de-componentes)
+7. [Gráficos](#7-gráficos)
 
 ---
 
@@ -829,6 +830,89 @@ servidor e inerte no cliente (o React não reexecuta scripts que insere). Usado 
 - **Falta uma variante?** Acrescente no arquivo do componente — `cn` (`lib/cn.ts`)
   **não** resolve conflitos de utilitário do Tailwind.
 - **Toda adição entra também em `/design-system`.**
+
+---
+
+## 7. Gráficos
+
+Os cinco gráficos do painel saem de dois componentes em `components/charts/`:
+`TimeSeriesChart` para séries no tempo e `BarChart` para faixas discretas.
+
+| Gráfico da tela | Componente base | Arquivo |
+| --- | --- | --- |
+| Saúde da experiência (Visão Geral) | `TimeSeriesChart` | `components/dashboard/experience-health-card.tsx` |
+| Buffering após a 4.2.1 (Evidências) | `TimeSeriesChart` | `app/(painel)/evidencias/buffering-chart.tsx` |
+| Volume temporal dos eventos (Eventos) | `TimeSeriesChart` | `app/(painel)/eventos/events-chart.tsx` |
+| Fluxo de processamento (Monitoramento) | `TimeSeriesChart` | `app/(painel)/monitoramento/processing-flow-chart.tsx` |
+| Dispositivos afetados por horário (Incidentes) | `BarChart` | `app/(painel)/incidentes/incidents-chart.tsx` |
+
+O mapa de concentração (`geographic-map.tsx`) é um SVG próprio.
+
+### 7.1 Decisões que valem para todos
+
+| Decisão | Por quê |
+| --- | --- |
+| **Desenho em pixels reais**, medindo o contêiner (`useElementSize`) | Um `viewBox` esticado por `preserveAspectRatio="none"` serve a qualquer largura, mas distorce rótulos e espessura do traço. |
+| **Teto do eixo em marca redonda** (`niceMax`) | Um eixo que termina em 24.837 obriga a ler o número; terminando em 25 mil, a altura já diz. |
+| **Grade só na horizontal** | A vertical competiria com o traço da série. |
+| **Rótulos do eixo espaçados pela largura** (`labelStep`) | Rótulos que se tocam viram uma faixa cinza ilegível. |
+| **Valor exato no cursor, não sobre o desenho** | Espalhar números por cima da curva transforma o gráfico numa tabela mal formatada. |
+| **Números tabulares** em eixos, balões e indicadores | Um valor que sobe de 99 para 100 não pode empurrar o que está ao lado. |
+| **Anotação em vez de enfeite** | O pico ganha ponto e rótulo discretos; um deploy entra como linha tracejada com nome. |
+
+### 7.2 `scales.ts`
+
+| Função | O que faz |
+| --- | --- |
+| `toPlot(width, height, margin)` | Área útil do desenho → `{ left, right, top, bottom, width, height }`. |
+| `niceMax(value)` | Arredonda o teto para a próxima marca redonda. `niceMax(24837) → 25000`. |
+| `axisTicks(max, count = 4)` | Marcas do eixo vertical. `axisTicks(400) → [0,100,200,300,400]`. |
+| `labelStep(total, width, minGap = 52)` | Passo entre rótulos do eixo horizontal. |
+| `toLinePath(points)` / `toAreaPath(points, baseline)` | Caminho da linha / linha fechada na base para o preenchimento de área. |
+
+### 7.3 `TimeSeriesChart`
+
+`"use client"`. Props: `labels` (um por ponto), `series` (`ChartSeries[]` =
+`{ id, label, values, tone, area?, dashed? }`), `formatValue`, `height` (220),
+`max`, `reference` (`{ value, label }` — linha da meta), `marker`
+(`{ index, label }` — marco vertical), `highlight` (`[ini, fim]` — faixa de
+fundo), `showPeak`, `tooltipNote`, `ariaLabel` **obrigatório**.
+
+Comportamento: a linha é **escrita da esquerda para a direita** (`--animate-draw`,
+~1,15 s, `pathLength={1}`); séries `dashed` não animam o traço; a área sob a linha
+entra por `fade-in`; o pico ganha ponto e valor com `--animate-pop`; o cursor
+(`onPointerMove`) acha o ponto mais próximo, desenha a linha-guia e abre o
+`ChartTooltip`. `ChartLegend` repete o significado das séries em texto.
+
+### 7.4 `BarChart`
+
+`"use client"`. Para comparar blocos discretos. Props: `bars` (`Bar[]` =
+`{ label, value, tone, toneLabel }`), `formatValue`, `valueLabel`, `height` (220),
+`ariaLabel` **obrigatório**. Cada barra ocupa dois terços da faixa
+(`BAR_FILL = 0.66`, largura máx. `56 px`); as barras **crescem da base** a cada
+leitura (`.bar-grow`, chave `${label}-${value}` reconstrói em vez de deslizar); as
+não-focadas caem para `opacity-45` quando o cursor está sobre uma.
+
+### 7.5 `ChartTooltip`
+
+Segue o eixo horizontal do ponto lido, se vira ao chegar na borda
+(`containerWidth`) e nunca cobre o ponto. É **`aria-hidden`** — a descrição
+textual fica no `ariaLabel` do gráfico.
+
+### 7.6 Cores e legenda
+
+Cores de série vêm dos **tokens de estado**, nunca de uma paleta própria:
+`critical` (o que degrada), `info` → `brand-blue-light` (etapa de entrada),
+`warning`/`brand` → `brand-orange` (comparação, meta), `muted` → `ink-subtle`
+(apoio). A legenda repete o significado em texto.
+
+### 7.7 Como adicionar um gráfico
+
+Escolha o base (série no tempo → `TimeSeriesChart`; faixas → `BarChart`); envolva
+num `Card` com `CardTitle`/`CardDescription` e, se houver janela, um `Select`
+controlado pela tela; passe `series`/`bars` já no formato do componente,
+`formatValue` de `lib/format.ts` e um `ariaLabel` que descreva começo, pico e fim;
+não invente escala nem cor.
 
 ---
 
