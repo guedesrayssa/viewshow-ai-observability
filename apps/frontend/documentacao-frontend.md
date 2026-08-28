@@ -762,3 +762,5 @@ localmente.
 - [Especificação de requisitos](../../artefatos/requisitos.md) — RF04, RNF04,
   RIE01 e RESTR01, que definem as regras de acesso.
 - [Protótipo no Figma](https://www.figma.com/design/kbq8niIkBCHz7oVr1t0Ogp/G05---View-Show?node-id=219-1437).
+- [Demonstração em vídeo](https://youtu.be/Gur7yoTiQI0) — demonstração do
+  funcionamento do frontend integrado ao backend.
