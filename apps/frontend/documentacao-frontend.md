@@ -15,6 +15,7 @@ Este documento reúne toda a documentação do frontend. O guia visual detalhado
 2. [Arquitetura](#2-arquitetura)
 3. [Estrutura de pastas](#3-estrutura-de-pastas)
 4. [Camada de dados](#4-camada-de-dados)
+5. [Telas](#5-telas)
 
 ---
 
@@ -525,6 +526,146 @@ Para criar um recurso: (1) declare o tipo e um exemplo numérico em
 `<rota>-data.ts`; (2) escreva `fetchX(query, revision = 0)` com `loadResource` em
 `<rota>-resource.ts`; (3) consuma com `useResource` na `*-view.tsx`; (4) desenhe
 os quatro estados; (5) ponha `<DataStatus>` no `PageHeader`.
+
+---
+
+## 5. Telas
+
+Toda tela do painel segue a mesma montagem: `page.tsx` (server, só `metadata` +
+`*-view`); `*-view.tsx` (client, filtros em `useState`, dados por `useResource`);
+`PageHeader` no topo com `status` (um `<DataStatus>`) e `actions`; cascata de
+entrada por `<Reveal delay>`; os quatro estados de dado; filtro controlado pela
+tela (é ela que refaz a leitura da telemetria).
+
+### `/login`
+
+| | |
+| --- | --- |
+| Arquivos | `app/(auth)/login/page.tsx`, `login-form.tsx`; moldura em `app/(auth)/layout.tsx` |
+| Regras | `lib/auth.ts` — RF04, RIE01, RESTR01 |
+
+Acesso por e-mail e senha, com atalho de **SSO Globo**. Moldura com painel navy
+ilustrado à esquerda (esferas com deriva animada, decorativo e `aria-hidden`);
+abaixo de `lg` o painel some. Validação **no envio**, não a cada tecla; depois do
+primeiro envio, o erro de cada campo some quando o valor muda; o foco vai para o
+primeiro campo inválido; `<form noValidate>`. Qualquer e-mail válido entra; se o
+domínio é `@globo.com`, a tela sugere o SSO. Detalhes de rede na seção 9.
+
+### `/recuperar-senha`
+
+Tela estática (Server Component). A senha pertence ao provedor corporativo
+(RESTR01): a plataforma não a redefine. Orienta a procurar o suporte interno de
+TI e volta ao login.
+
+### `/visao-geral`
+
+| | |
+| --- | --- |
+| Arquivos | `page.tsx`, `overview-view.tsx`, `overview-resource.ts`; dados em `lib/dashboard-data.ts` |
+| Recurso | `fetchOverview` → `ENDPOINTS.realtimeOverview` |
+| Releitura | automática a cada **30 s** |
+| Filtros | período, dispositivo, região, versão do app (`FilterBar`) |
+
+Hub do painel. Três `StatCard` (taxa de erros `critical`, latência p95 `warning`,
+sessões afetadas `info` — valor conta até o lido, comparação com a base em
+texto); `FilterBar` (não guarda estado, emite `onChange`); `ExperienceHealthCard`
+(série × linha de base, janela anômala destacada, pico anotado); `IncidentsCard`
+(lista curta priorizada, com link para `/incidentes`).
+
+### `/incidentes`
+
+| | |
+| --- | --- |
+| Arquivos | `page.tsx`, `incidents-view.tsx`, `incidents-resource.ts`, `incidents-data.ts`, `incidents-chart.tsx` |
+| Recursos | `fetchIncidents` → `realtimeAlerts`; `fetchAffectedDevices` → `errorsTop` |
+| Releitura | automática a cada **45 s** |
+| Histórias | US-N1-01 (incidentes priorizados), US-N1-04 (segmentar o incidente) |
+
+Busca por título, quatro filtros (período, dispositivo, região, versão),
+ordenação (`urgency`/`devices`/`recency` via `sortIncidents`) e "Limpar filtros".
+O recorte dos selects vai para a leitura da telemetria; a **busca por título é
+local** (acompanha a digitação). `IncidentsChart` = "Dispositivos afetados por
+horário" (`BarChart`), com janela própria. A tabela rola no eixo x em telas
+estreitas; cada linha tem faixa lateral pela urgência e um link
+`Ver evidências` → `/evidencias?incidente=<id>`.
+
+### `/evidencias`
+
+| | |
+| --- | --- |
+| Arquivos | `page.tsx`, `evidence-view.tsx`, `evidence-resource.ts`, `evidence-data.ts`, `buffering-chart.tsx` |
+| Recursos | `fetchEvidence` → `rcaCorrelations`; `fetchBuffering` → `qoeTimeseries` (`metric=buffer_ratio`) |
+| Parâmetro de URL | `?incidente=<id>` (padrão: `falhas-reproducao-tvs-lg`) |
+| Histórias | US-N1-02, US-N1-03, US-N1-05, US-ENG-01 |
+
+A tela é um argumento, e a ordem em que se monta é a ordem do argumento:
+(1) resumo do incidente (`Card accent="critical"`, sessões afetadas com número
+animado); (2) hipótese (`Card accent="info"`, barra de confiança que preenche até
+o grau lido, ações **Confirmar**/**Refutar** — ao decidir, o selo troca e aparece
+a assinatura `<nome> · agora`, com o nome vindo do `AccountProvider`);
+(3) `BufferingChart` (o salto do buffer ratio após o deploy destacado);
+(4) concentração afetada (barras de proporção com nota em texto); (5) evidências
+por fonte (acordeão, uma aberta por vez, detalhe abrindo em altura); (6) linha do
+tempo com janela selecionável. `DataStatus` usa `showSource={false}` (o cabeçalho
+já carrega o código do incidente).
+
+### `/eventos`
+
+| | |
+| --- | --- |
+| Arquivos | `page.tsx`, `events-view.tsx`, `events-resource.ts`, `events-data.ts`, `events-chart.tsx`, `events-table.tsx` |
+| Recursos | `fetchEvents` → `rcaFingerprints`; `fetchEventVolume` → `qoeTimeseries` (`metric=events_per_minute`) |
+| Recorte inicial | Smart TV · Nordeste · App 4.2.1 · últimos 30 min (herdado do INC-4821) |
+| Histórias | US-ENG-02, US-ENG-03 |
+
+Busca global (resumo, entidade, fonte) + filtros + abas por tipo com contagem
+(`CATEGORY_STATS`) + filtro de fonte + "Mais filtros" (lista os filtros ainda sem
+tela própria) + "Limpar filtros". A leitura chega recortada; **busca e tipo
+continuam locais**. `EventsChart` = "Volume temporal dos eventos"
+(`TimeSeriesChart`). `EventsTable` = detalhe expansível por linha (US-ENG-02): ao
+abrir, mostra o dado normalizado (métrica, timestamp, tags, valor) e a ligação
+com a fonte original, sinalizando quando não há correspondência bruta direta. Uma
+linha aberta por vez.
+
+### `/monitoramento`
+
+| | |
+| --- | --- |
+| Arquivos | `page.tsx`, `monitoring-view.tsx`, `telemetry-resource.ts`, `telemetry-data.ts`, `kpi-card.tsx`, `processing-flow-chart.tsx`, `sources-table.tsx`, `geographic-map.tsx`, `br-states-geometry.ts` |
+| Recursos | `fetchTelemetrySources` → `rcaTopology`; `fetchGeographicConcentration` → `breakdownNetwork` |
+| Releitura | automática a cada **20 s** (o pipeline muda de estado em segundos) |
+| Histórias | US-ENG-04, US-ENG-05, US-PM-02 a US-PM-05 |
+
+Filtros técnicos (fonte, métrica, worker, janela de comparação) que mudam **todos
+os painéis**. Aviso de atraso (`Badge critical`) quando uma fonte atrasada está no
+recorte. Quatro `KpiCard` (ingestão, latência de processamento contra
+`LATENCY_TARGET`, profundidade da fila, DLQ — cada um com nota em texto).
+`ProcessingFlowChart` (ingestão × processamento na ordem do pipeline, meta e pico,
+cursor lendo as duas séries). `SourcesTable` (última atualização, cobertura,
+estado — selo de texto; linha da fonte atrasada com fundo próprio só como
+reforço). `GeographicMap` (concentração por **UF**, contorno do IBGE, escala de
+cinco níveis nunca isolada: cada estado alcançável por teclado, resumo por região
+em texto abaixo).
+
+### `/configuracoes`
+
+`PageHeader` (só título) e cinco cartões em cascata:
+
+| Cartão | Comportamento |
+| --- | --- |
+| `ProfileCard` | **Foto**: vale na hora, sem botão de salvar. Cortada em quadrado e reduzida a 320 px no navegador (`lib/image.ts`). |
+| `AccountDetailsCard` | **Nome**: só vale ao salvar (assina registros em Evidências). Time e fuso via `Select`. |
+| `NotificationsCard` | `Switch` por preferência (`NOTIFICATION_PREFERENCES`), efeito imediato. |
+| `AccessSecurityCard` | Método de entrada e sessões ativas (`ACCOUNT_PROFILE`). |
+| `DangerZoneCard` | Excluir conta — `Card borderTone="critical"`, `Button variant="danger"`. |
+
+A **escolha de aparência não fica aqui**: é ação da barra superior.
+
+### `/design-system`
+
+Guia vivo: renderiza tokens e componentes com o **mesmo código** das telas, para
+nunca ficar desatualizado. Referência textual em
+[`docs/design-system.md`](./docs/design-system.md).
 
 ---
 
