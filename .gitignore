@@ -34,3 +34,10 @@ Thumbs.db
 
 # --------- Superpowers
 *superpowers/
+
+# ---------- Laboratório Argus ----------
+.worktrees/
+artefatos/extras/analysis/.ipynb_checkpoints/
+artefatos/extras/analysis/**/.ipynb_checkpoints/
+artefatos/extras/analysis/outputs/*
+!artefatos/extras/analysis/outputs/.gitkeep
