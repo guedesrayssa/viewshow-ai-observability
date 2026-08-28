@@ -2,7 +2,9 @@
 
 > Este documento descreve a implementação técnica da segunda etapa do backend do sistema de Monitoração Agêntica do Globoplay, cobrindo tudo **a partir do DynamoDB**: a modelagem das duas tabelas, a API em camadas (Fargate), o esqueleto simplificado da camada agêntica e a infraestrutura AWS provisionada para publicá-la. A etapa anterior (ARGUS → BigQuery → job de consumo/processamento → DynamoDB) é tratada em documentação própria e não é repetida aqui. As decisões de arquitetura completas (ADRs) estão em [`arquitetura.md`](arquitetura.md); o histórico cronológico de decisões técnicas, comandos executados e testes está em [`decisoes.md`](decisoes.md) — este documento organiza e resume esse material como referência de sprint.
 
-**Grupo:** G05 · **Parceiro:** Grupo Globo (Globoplay) — Projeto (CCMD7) · **Sprint:** Fase 2, a partir do DynamoDB
+**Grupo:** G05 · **Parceiro:** Grupo Globo (Globoplay) — Projeto (CCMD7) · **Sprint:** 2
+
+> **Vídeo de Demonstração:** [Assista à demonstração técnica no YouTube](https://youtu.be/y7UuCoxtTZU)
 
 ## Sumário
 
