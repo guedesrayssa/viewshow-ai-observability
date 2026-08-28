@@ -42,8 +42,9 @@ Nunca coloque credenciais AWS ou tokens do GitLab no repositório.
 
 ### Runners
 
-O pipeline usa runners compartilhados, sem tags de runner. Eles precisam aceitar
-jobs sem tag e suportar Docker-in-Docker com TLS para os jobs de imagem.
+O pipeline usa o runner compartilhado institucional identificado pela tag
+`inteli-gitlab-runner-prd`. Esse runner precisa suportar Docker-in-Docker com TLS
+para os jobs de imagem.
 
 ## Renovação das credenciais do AWS Academy Lab
 
@@ -118,13 +119,16 @@ Resposta esperada:
 
 ### Credenciais expiradas
 
-Inicie novamente o Lab, atualize o profile `default` e repita o dry-run e a
-sincronização. Depois, execute novamente somente o pipeline mais recente.
+Inicie novamente o Lab e atualize o profile `default`. Enquanto a `develop`
+estiver desprotegida, repita os dois comandos com
+`--allow-unprotected-develop`. Depois, execute novamente somente o pipeline mais
+recente.
 
 ### Job de deploy pendente
 
-Confirme que há um runner compartilhado online que aceita jobs sem tag. Para os
-jobs de imagem, confirme também o suporte a Docker-in-Docker com TLS.
+Confirme que o runner compartilhado com a tag `inteli-gitlab-runner-prd` está
+online. Para os jobs de imagem, confirme também o suporte a Docker-in-Docker com
+TLS.
 
 ### Rollback não confirmado
 
