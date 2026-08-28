@@ -102,12 +102,15 @@ docker buildx build \
   --tag "$image_uri" \
   apps/backend/api
 
-if ! IFS= read -r local_image_id <"$build_iid_file" \
-  || ! [[ "$local_image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+build_image_ids=()
+mapfile -t build_image_ids <"$build_iid_file"
+if ((${#build_image_ids[@]} != 1)) \
+  || ! [[ "${build_image_ids[0]}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
   echo "docker build did not report exactly one valid local image ID" >&2
   exit 78
 fi
-readonly local_image_id
+readonly local_image_id="${build_image_ids[0]}"
+unset build_image_ids
 
 describe_sha_tag_digest() {
   local describe_error_file="$work_directory/ecr-describe.stderr"
