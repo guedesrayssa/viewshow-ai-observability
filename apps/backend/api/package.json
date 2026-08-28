@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "node --test --test-concurrency=1",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "reset": "node scripts/reset.js"
   },
   "keywords": [],
   "author": "",
