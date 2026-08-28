@@ -16,6 +16,7 @@ Este documento reúne toda a documentação do frontend. O guia visual detalhado
 3. [Estrutura de pastas](#3-estrutura-de-pastas)
 4. [Camada de dados](#4-camada-de-dados)
 5. [Telas](#5-telas)
+6. [Catálogo de componentes](#6-catálogo-de-componentes)
 
 ---
 
@@ -666,6 +667,168 @@ A **escolha de aparência não fica aqui**: é ação da barra superior.
 Guia vivo: renderiza tokens e componentes com o **mesmo código** das telas, para
 nunca ficar desatualizado. Referência textual em
 [`docs/design-system.md`](./docs/design-system.md).
+
+---
+
+## 6. Catálogo de componentes
+
+Os de `components/ui` são a biblioteca base e trazem exemplo no próprio arquivo.
+
+### 6.1 `ui/`
+
+**`Button`** (`button.tsx` + `button-classes.ts`) — toda ação usa este componente.
+
+| Prop | Valores | Observação |
+| --- | --- | --- |
+| `variant` | `gradient` (padrão), `solid`, `outline`, `ghost`, `quiet`, `danger` | `gradient` = ação primária, uma por área. `solid` = navegação/confirmação. `danger` = destrói (fica em contorno). |
+| `size` | `sm`, `md` (padrão), `lg` | Alturas `40 / 48 / 51 px`. |
+| `fullWidth` | boolean | Ocupa toda a largura. |
+| `loading` | boolean | Mostra `SpinnerIcon`, mantém o rótulo, seta `aria-busy`, desabilita. |
+| `leadingIcon` / `trailingIcon` | `ReactNode` | O trailing some enquanto `loading`. |
+
+`buttonClasses({ variant, size, fullWidth, className })` devolve só as classes,
+sem `"use client"` — para dar aparência de botão a um `<Link>` em Server
+Component.
+
+**Campos** (`input.tsx`):
+
+| Export | Uso |
+| --- | --- |
+| `TextField` | **Forma recomendada.** Cuida de rótulo (`htmlFor`), apoio, erro e `aria-describedby`/`aria-invalid`. Props: `label`, `hint`, `error`, `labelAction`, `fieldSize`. |
+| `PasswordField` | Como `TextField`, com alternância mostrar/ocultar (o botão anuncia a ação, não o estado). |
+| `SearchInput` | Campo de busca com a lupa embutida. `fieldSize` padrão `sm`. |
+| `Input` | Campo cru, sem rótulo. Prefira `TextField`. |
+| `Label`, `FieldHint`, `FieldError` | Primitivos, para composições fora do padrão. |
+
+`FieldSize`: `sm | md | lg` → `44 / 51 / 64 px`. `FIELD_SIZE_CLASSES` é
+compartilhada com `Select`.
+
+**`Select`** (`select.tsx`) — listbox escrito à mão (não `<select>` nativo),
+controlado por `value` / `onValueChange` / `options` (`{ value, label, hint?,
+disabled? }[]`). `aria-label` **obrigatório**. Teclado completo (setas, Home, End,
+Enter, Espaço, Esc, digitação para pular até a opção); papéis `combobox`/
+`listbox`, `aria-activedescendant`. A lista abre em **portal** no `document.body`
+(dentro do cartão seria cortada pelo `overflow`), posicionada em coordenadas de
+viewport, abrindo para cima quando falta espaço. **Não guarda valor**: quem
+decide é a tela.
+
+**`Card`** (`card.tsx`) — `Card`, `CardTitle` (`<h3>`), `CardDescription` (`<p>`).
+`accent`: `none` (padrão), `critical`, `warning`, `info`, `brand`;
+`accentPosition`: `left` (padrão), `top`; `borderTone`: `line` (padrão),
+`critical` (zona de risco); `padding`: `none`, `sm`, `md` (padrão), `lg`.
+
+**`Badge`** (`badge.tsx`) — selo de estado. **Texto obrigatório**. `tone`:
+`critical`, `warning`, `success`, `info`, `neutral`, `brand`. `withDot`: ponto
+colorido antes do texto. Fundo `-soft`, texto `-strong` (contraste AA); `brand`
+usa o gradiente.
+
+**`Alert`** (`alert.tsx`) — aviso de bloco com ícone + texto. `tone`: `critical`,
+`warning`, `success`, `info`. `critical` usa `role="alert"` (interrompe a
+leitura); os demais, `role="status"`. `title` opcional.
+
+**`Switch`** (`switch.tsx`) — alternância binária de **efeito imediato**.
+`role="switch"`, `aria-checked`. Props: `checked`, `onCheckedChange`, `label`
+(rótulo acessível), `disabled`.
+
+**`Avatar`** (`avatar.tsx`) — retrato da pessoa em sessão. Lê do
+`AccountProvider`: foto quando existe, senão as **iniciais** do nome sobre o
+gradiente. `size`: `sm | md | lg` (`32 / 40 / 64 px`).
+
+**`Skeleton`** (`skeleton.tsx`) — `Skeleton` e `SkeletonText` (`lines`). Ocupa
+exatamente o tamanho do conteúdo que vem (evita CLS). Brilho contínuo.
+
+**Marca** (`logo.tsx` + `wordmark.tsx`):
+
+| Export | Peça |
+| --- | --- |
+| `LogoMark` | Símbolo (estrela de quatro pontas sobre elipse navy). `tone`: `brand`, `gradient`, `mono`. **Não acompanha o tema** — cores fixas do manual. |
+| `Wordmark` | Letreiro em SVG, vetorizado do arquivo do design. Herda a cor por `currentColor`; a estrela do "O" é recorte de máscara. Entrada em cascata opcional. |
+| `Logo` | Composição de símbolo + letreiro (`withWordmark`). |
+
+**`icons.tsx`** — conjunto mínimo de ícones SVG inline (`viewBox 0 0 24 24`),
+herdando cor por `currentColor` e tamanho pela prop `size`. Sem dependência
+externa. Decorativos recebem `aria-hidden`.
+
+### 6.2 `shell/`
+
+| Componente | Papel |
+| --- | --- |
+| `AppShell` | `"use client"`. Reúne `Sidebar` + `Topbar` + `<main>`. Guarda o estado da navegação recolhida (persistido, `useSyncExternalStore`), fecha a folha sobreposta no `Esc` e ao navegar. `useMediaQuery` define quando a navegação cabe ao lado do conteúdo (`min-width: 64rem`). |
+| `Sidebar` | Navegação lateral fixa (`lg:sticky`). Recolhida = faixa de ícones; folha sobreposta com véu em telas estreitas. Topo: `LogoMark` + `Wordmark`. Rodapé: link para a conta com `Avatar`. |
+| `Topbar` | Barra grudada no topo do conteúdo (`sticky`, `backdrop-blur`). Botão de abrir (mobile) / recolher (desktop) a navegação, `Wordmark` quando a nav está recolhida, `ThemeToggle` e `Avatar` → `/configuracoes`. |
+
+`app/(painel)/sidebar-nav.tsx` (`"use client"`) exporta `NAV_ITEMS` e
+`SidebarNav`. Item ativo pela rota (`usePathname`). Configurações fecha a lista,
+separada por divisória. Recolhida, o rótulo continua no DOM (`sr-only`) e
+reaparece como dica no hover.
+
+### 6.3 `dashboard/`
+
+| Componente | Papel |
+| --- | --- |
+| `PageHeader` | Abertura padrão de tela: `eyebrow`, `title` (`<h1>`), `subtitle`, `status`, `actions`. Entra sempre com o mesmo movimento. |
+| `DataStatus` | Procedência + frescor + botão de atualizar (seção 4.6). |
+| `FilterBar` | Barra de recorte da Visão Geral (busca + 4 selects). Não guarda estado. `DEFAULT_DASHBOARD_FILTERS` é o recorte do protótipo. |
+| `StatCard` (+ skeleton) | Cartão de indicador. Valor com `AnimatedNumber`, formato `integer`/`compact`, `delta` em texto, `accent` `critical`/`warning`/`info`. |
+| `ExperienceHealthCard` (+ skeleton) | "Saúde da experiência": `TimeSeriesChart` com `baseline`, `highlight` e pico anotado. O `Select` de período espelha o filtro da tela. |
+| `IncidentsCard` (+ skeleton) | Lista curta priorizada por impacto + link para `/incidentes`. |
+| `IncidentRow` | Linha da lista curta: título, sessões · tempo, `Badge withDot`. |
+
+### 6.4 `motion/`
+
+**`Reveal`** (`reveal.tsx`) — único mecanismo de entrada de conteúdo. Revela o
+bloco quando ele chega à área visível (`IntersectionObserver`, `threshold:
+0.01`). `as` (tag; `div` padrão), `variant` (`rise` padrão, `rise-sm`, `fade`,
+`scale`, `slide`), `delay` (ms, prioridade sobre `index`), `index` (→
+`index * 70ms`). Sem `IntersectionObserver` ou sem JS, mostra tudo de uma vez.
+
+**`AnimatedNumber`** (`animated-number.tsx`) — conta do **valor anterior** até o
+atual (não do zero) em 900 ms, com `easeOutCubic`. Respeita `useReducedMotion`. O
+valor final fica em `aria-label`. Props: `value`, `format`, `prefix`, `suffix`.
+
+### 6.5 `theme/`
+
+| Componente | Papel |
+| --- | --- |
+| `ThemeProvider` | `"use client"`. Expõe `useTheme()` → `{ preference, theme, setPreference, toggle }`. Lê a preferência da loja e o gosto do SO por media query; o único efeito escreve `data-theme` no `<html>`. O tema inicial já chega resolvido pelo script do `layout.tsx`. |
+| `ThemeToggle` | Botão do topo: troca claro ⇄ escuro. O rótulo anuncia a ação ("Ativar tema escuro"), não o estado. |
+| `ThemeChoice` | Controle completo com a terceira opção (acompanhar o sistema); exibido no guia `/design-system`. |
+
+### 6.6 `account/`
+
+`AccountProvider` (`account-provider.tsx`, `"use client"`) expõe `useAccount()` →
+`{ profile, updateProfile, reset }`. `profile` = `ACCOUNT_PROFILE` +
+`{ name, photo }` editáveis. Persistido em `localStorage` (`createPersistedJson`,
+chave `view-show:account`). Lido pela navegação, pela barra superior, pelo
+`Avatar` e pela assinatura de quem confirma/refuta uma hipótese em Evidências.
+
+### 6.7 `settings/`
+
+| Componente | Comportamento |
+| --- | --- |
+| `ProfileCard` | Foto de perfil. Vale na hora, sem salvar. Valida tipo (JPEG/PNG/WebP) e tamanho (≤ 8 MB) via `lib/image.ts`; corta em quadrado e reduz a 320 px no navegador. |
+| `AccountDetailsCard` | Nome (editável, **só vale ao salvar** — assina registros), time e fuso (`Select`). `Alert` de confirmação ao salvar. |
+| `NotificationsCard` | `Switch` por item de `NOTIFICATION_PREFERENCES`; estado local em `Set`. |
+| `AccessSecurityCard` | Método de entrada e sessões ativas, de `ACCOUNT_PROFILE`. Estático. |
+| `DangerZoneCard` | Excluir conta. `Card borderTone="critical"`, `Button variant="danger"`. Estático. |
+
+### 6.8 `inline-script.tsx`
+
+`<InlineScript html={...} />` — renderiza um `<script>` síncrono executável no
+servidor e inerte no cliente (o React não reexecuta scripts que insere). Usado no
+`<head>` do `layout.tsx` para o `THEME_BOOTSTRAP_SCRIPT`.
+
+### 6.9 Regras de composição
+
+- **Uma ação primária por área de decisão.** O gradiente marca a principal; o
+  azul sólido, navegação e confirmação; contorno e texto, alternativas;
+  `danger`, o que destrói.
+- **Rótulo sempre visível acima do campo.** Placeholder é exemplo, não rótulo.
+- **Erro abaixo do campo, em texto.** A borda vermelha reforça, não substitui.
+- **Seletor é controlado pela tela.** `Select` não guarda valor.
+- **Falta uma variante?** Acrescente no arquivo do componente — `cn` (`lib/cn.ts`)
+  **não** resolve conflitos de utilitário do Tailwind.
+- **Toda adição entra também em `/design-system`.**
 
 ---
 
