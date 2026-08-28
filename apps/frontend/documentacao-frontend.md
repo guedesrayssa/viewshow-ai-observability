@@ -23,6 +23,7 @@ Este documento reúne toda a documentação do frontend. O guia visual detalhado
 10. [Design system e movimento](#10-design-system-e-movimento)
 11. [Acessibilidade](#11-acessibilidade)
 12. [Desenvolvimento e convenções](#12-desenvolvimento-e-convenções)
+13. [Referências do projeto](#13-referências-do-projeto)
 
 ---
 
@@ -1317,3 +1318,13 @@ localmente.
 
 ---
 
+## 13. Referências do projeto
+
+- [`apps/frontend/README.md`](./README.md) — visão rápida e tabela de rotas.
+- [`docs/design-system.md`](./docs/design-system.md) — guia visual detalhado
+  (tokens, componentes, contraste). Versão navegável em `/design-system`.
+- [Entendimento da experiência do usuário](../../artefatos/entendimento_ux.md) —
+  personas, fluxos e a prancha de fundamentos visuais.
+- [Especificação de requisitos](../../artefatos/requisitos.md) — RF04, RNF04,
+  RIE01 e RESTR01, que definem as regras de acesso.
+- [Protótipo no Figma](https://www.figma.com/design/kbq8niIkBCHz7oVr1t0Ogp/G05---View-Show?node-id=219-1437).
