@@ -74,6 +74,12 @@ apps/frontend/
     └── ...                  # acesso, tema, formatação e utilitários
 ```
 
+## Documentação
+
+A documentação completa do frontend — arquitetura, estrutura de pastas, camada de
+dados, telas, componentes, gráficos, tema e autenticação — está em
+[`documentacao-frontend.md`](./documentacao-frontend.md).
+
 ## Design system
 
 O guia completo está em [`docs/design-system.md`](./docs/design-system.md) e a versão
