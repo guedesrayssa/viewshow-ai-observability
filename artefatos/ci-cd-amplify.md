@@ -136,21 +136,23 @@ NEXT_PUBLIC_API_BASE_URL=https://<api> npm run build
 
 ---
 
-## Pendência que bloqueia o login em produção
+## Limitação conhecida: login não funciona em produção
 
-O Amplify serve **apenas HTTPS**. A API hoje responde em `http://<ip-da-ec2>`, e
-três coisas quebram por causa disso:
+O Amplify serve **apenas HTTPS**. Enquanto a API responder em
+`http://<ip-da-ec2>` (sem TLS), o painel publicado em produção sobe e navega,
+mas a autenticação falha. Três problemas decorrem diretamente da origem HTTP:
 
-1. O navegador bloqueia a chamada como *mixed content* ativo, e a tela de login
-   falha sem explicação visível.
-2. `signIn` usa `credentials: "include"`. O cookie de sessão precisa vir com
-   `SameSite=None; Secure`, e um cookie `Secure` não pode ser gravado por
-   uma origem HTTP.
-3. Com credenciais na requisição, o navegador rejeita
-   `Access-Control-Allow-Origin: *`. A API precisa devolver a origem exata do
-   painel, e não o curinga do modo padrão.
+1. **Mixed content.** O navegador bloqueia a chamada HTTP feita a partir de uma
+   página HTTPS como *mixed content* ativo, e a tela de login falha sem
+   explicação visível.
+2. **Cookie de sessão.** `signIn` usa `credentials: "include"`. O cookie de
+   sessão precisa vir com `SameSite=None; Secure`, e um cookie `Secure` não
+   pode ser gravado por uma origem HTTP.
+3. **CORS com credenciais.** Com credenciais na requisição, o navegador
+   rejeita `Access-Control-Allow-Origin: *`; a API precisa devolver a origem
+   exata do painel, e não o curinga do modo padrão.
 
-Resolver os três significa colocar a API atrás de TLS, com um nome de domínio e
-um certificado do ACM, e trocar o CORS aberto por uma lista de origens
-permitidas. Enquanto isso não acontece, o painel publicado sobe e navega, mas
-não autentica.
+**Resolução:** colocar a API atrás de TLS, com um nome de domínio e um
+certificado do ACM, e trocar o CORS aberto por uma lista de origens
+permitidas. As três mudanças ficam do lado da infraestrutura da API, não do
+Amplify (ver documentação de backend).
