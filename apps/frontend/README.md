@@ -55,6 +55,14 @@ apps/frontend/
 └── lib/                     # regras de acesso e utilitários
 ```
 
+## Documentação
+
+O ponto de entrada é [`documentacao-frontend.md`](./documentacao-frontend.md):
+visão geral, arquitetura, estrutura de pastas e telas. Os domínios mais
+autocontidos ficam em `docs/` — [camada de dados](./docs/camada-de-dados.md),
+[componentes e gráficos](./docs/componentes.md), [tema](./docs/tema.md),
+[autenticação](./docs/autenticacao.md) e o [design system](./docs/design-system.md).
+
 ## Design system
 
 O guia completo está em [`docs/design-system.md`](./docs/design-system.md) e a versão
