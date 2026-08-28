@@ -85,6 +85,13 @@ test("pipeline conservatively cancels obsolete pre-deploy work", () => {
   assert.match(topLevelBlock("deploy_backend_ecs"), /resource_group: monitoracao-api-service/);
 });
 
+test("institutional runner connects to DinD without an unavailable TLS certificate volume", () => {
+  assert.match(pipeline, /^  DOCKER_HOST: "tcp:\/\/docker:2375"$/m);
+  assert.match(pipeline, /^  DOCKER_TLS_CERTDIR: ""$/m);
+  assert.doesNotMatch(pipeline, /^  DOCKER_TLS_VERIFY:/m);
+  assert.doesNotMatch(pipeline, /^  DOCKER_CERT_PATH:/m);
+});
+
 test("backend changes exclude deploy documentation and snapshots", () => {
   const workflow = topLevelBlock("workflow");
   assert.match(workflow, /apps\/backend\/api\/src\/\*\*\/\*/);

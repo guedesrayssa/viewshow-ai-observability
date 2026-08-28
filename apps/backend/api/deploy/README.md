@@ -43,8 +43,9 @@ Nunca coloque credenciais AWS ou tokens do GitLab no repositório.
 ### Runners
 
 O pipeline usa o runner compartilhado institucional identificado pela tag
-`inteli-gitlab-runner-prd`. Esse runner precisa suportar Docker-in-Docker com TLS
-para os jobs de imagem.
+`inteli-gitlab-runner-prd`. Os jobs de imagem usam Docker-in-Docker pela rede
+interna do job, na porta `2375`, porque esse runner não compartilha certificados
+TLS com o container do cliente.
 
 ## Renovação das credenciais do AWS Academy Lab
 
@@ -127,8 +128,8 @@ recente.
 ### Job de deploy pendente
 
 Confirme que o runner compartilhado com a tag `inteli-gitlab-runner-prd` está
-online. Para os jobs de imagem, confirme também o suporte a Docker-in-Docker com
-TLS.
+online. Para os jobs de imagem, confirme também que o serviço Docker-in-Docker
+iniciou e está acessível em `docker:2375`.
 
 ### Rollback não confirmado
 
