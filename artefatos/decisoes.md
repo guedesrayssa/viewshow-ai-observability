@@ -196,6 +196,10 @@ O teste 11 é o par do teste 16 do plano anterior: confirma que só
 `confirmed` aciona `promoteCase` — `refuted` passa pela mesma rota
 autenticada e não toca a golden set.
 
-**Pendente**: a API já publicada no ECS (Dia 9) ainda roda a imagem `:v1`,
-sem essas rotas novas. Precisa de novo build + push + nova revisão da task
-definition antes de valer no ambiente publicado.
+**Automação de entrega**: o backend passa a publicar uma imagem identificada pelo
+SHA completo do commit e a registrar uma nova revisão de `monitoracao-api-task`
+em cada alteração de backend integrada à `develop`. O pipeline reutiliza cache de
+camadas, serializa atualizações de `monitoracao-api-service`, valida `/health` pelo
+ALB e restaura a revisão anterior em caso de falha. Como a AWS Academy renova as
+credenciais a cada laboratório, `scripts/sync-aws-gitlab-credentials.sh` atualiza
+as três variáveis protegidas do GitLab a partir do profile local `default`.
