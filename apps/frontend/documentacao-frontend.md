@@ -21,6 +21,7 @@ Este documento reúne toda a documentação do frontend. O guia visual detalhado
 8. [Tema e preferências persistidas](#8-tema-e-preferências-persistidas)
 9. [Autenticação e conta](#9-autenticação-e-conta)
 10. [Design system e movimento](#10-design-system-e-movimento)
+11. [Acessibilidade](#11-acessibilidade)
 
 ---
 
@@ -1208,6 +1209,43 @@ item ativo da navegação e no retrato da conta. Saiu das faixas de topo dos
 cartões e das barras de proporção, que passaram a usar a cor do estado que
 representam. O cartão se separa do fundo pela borda; a sombra apenas assenta a
 peça. Cartão não levanta quando o ponteiro passa.
+
+---
+
+## 11. Acessibilidade
+
+Adotamos as **WCAG 2.2**. Pontos aplicados no código:
+
+- **Contraste**: `ink` sobre `surface` alcança 17,4:1 e `ink-muted` sobre
+  `surface`, 5,0:1 (acima do mínimo AA de 4,5:1). No tema escuro, `ink` sobre
+  `surface` alcança 15,1:1 e `ink-muted`, 7,2:1.
+- **Foco**: anel de 2 px em `brand-blue-light` com deslocamento de 2 px em todo
+  elemento interativo (utilitário `focus-ring` / regra base em `globals.css`),
+  atendendo ao critério 2.4.11 (Focus Appearance).
+- **Cor nunca comunica sozinha**: todo estado tem rótulo textual (`Badge`,
+  `Alert`, legendas de gráfico, resumo por região no mapa).
+- **Formulários**: rótulo associado por `htmlFor`, `aria-invalid` no campo com
+  erro e `aria-describedby` apontando para a mensagem em vigor. Erros de envio em
+  um `Alert` com `role="alert"`, e o foco vai para o primeiro campo inválido.
+- **`Select`** implementa o teclado do seletor nativo e anuncia a opção ativa por
+  `aria-activedescendant` (papéis `combobox`/`listbox`).
+- **Gráficos**: cada um traz a série inteira descrita em `ariaLabel` (começo,
+  pico, fim); o balão do cursor é `aria-hidden`; todo movimento respeita
+  `prefers-reduced-motion`, inclusive a contagem de números e o traço das séries,
+  escritos em JS.
+- **Mapa de concentração**: cada estado é alcançável por teclado e anuncia nome,
+  valor e intensidade; o resumo por região aparece em texto abaixo.
+- **Navegação recolhida** mantém o rótulo no DOM (`sr-only`) e o repete como dica
+  visual no hover.
+- **Ilustrações decorativas** (painel do login) ficam com `aria-hidden`.
+- **Sem JavaScript**, o conteúdo que entra por animação aparece inteiro.
+
+### Limitações conhecidas
+
+| Situação | Contraste | Como conviver |
+| --- | --- | --- |
+| Texto branco sobre `gradient-brand` | 2,9:1 a 3,7:1 | Restrito a rótulo de botão em negrito. A ação nunca é a única forma de entender a tela. |
+| `ink-subtle` sobre `surface` | 2,6:1 | Uso limitado a placeholder e texto decorativo. Informação que precisa ser lida usa `ink-muted` ou mais escuro. |
 
 ---
 
