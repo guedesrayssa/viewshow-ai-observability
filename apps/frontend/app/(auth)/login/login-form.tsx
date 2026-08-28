@@ -6,6 +6,10 @@
  * pessoa ainda digita interrompe a tarefa sem necessidade. Depois do primeiro
  * envio, o erro de cada campo é limpo assim que o valor muda, para que a
  * correção seja percebida na hora.
+ *
+ * Qualquer e-mail válido entra. A conta corporativa continua tendo o caminho
+ * mais curto — o botão de SSO, que dispensa a senha —, e a interface o sugere
+ * assim que reconhece o domínio.
  */
 
 "use client";
@@ -21,6 +25,7 @@ import { PasswordField, TextField } from "@/components/ui/input";
 import {
   AUTH_UNAVAILABLE_MESSAGE,
   CORPORATE_DOMAINS,
+  isCorporateEmail,
   signIn,
   ssoEntryPoint,
   validateEmail,
@@ -111,6 +116,7 @@ export function LoginForm({ className }: { className?: string }) {
         inputMode="email"
         autoComplete="email"
         placeholder={`nome@${CORPORATE_DOMAINS[0]}`}
+        hint="E-mail corporativo ou da equipe parceira"
         value={email}
         error={fieldErrors.email}
         onChange={(event) => {
@@ -148,11 +154,30 @@ export function LoginForm({ className }: { className?: string }) {
         >
           Esqueceu a senha?
         </Link>
+
+        <p className="text-center text-body-sm text-ink-muted">
+          Não tem conta?{" "}
+          <Link
+            href="/criar-conta"
+            className="rounded-field font-medium text-ink underline-offset-4 hover:underline"
+          >
+            Criar conta
+          </Link>
+        </p>
+      </div>
+
+      {/* A divisória separa os dois caminhos de entrada, para que o SSO não
+          pareça uma segunda etapa do formulário acima. */}
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-line" />
+        <span className="text-caption text-ink-subtle">ou</span>
+        <span className="h-px flex-1 bg-line" />
       </div>
 
       <div className="flex flex-col items-center gap-3">
         <Button
-          variant="gradient"
+          variant="outline"
+          fullWidth
           leadingIcon={<DiamondIcon size={16} />}
           onClick={handleSso}
         >
@@ -160,7 +185,9 @@ export function LoginForm({ className }: { className?: string }) {
         </Button>
 
         <p className="text-center text-caption text-ink-muted">
-          Acesso restrito a contas corporativas @{CORPORATE_DOMAINS[0]}
+          {isCorporateEmail(email)
+            ? "Conta Globo: o SSO entra sem pedir senha."
+            : `Contas @${CORPORATE_DOMAINS[0]} podem entrar direto pelo SSO.`}
         </p>
         <p className="text-center text-micro text-ink-muted">
           Ao continuar, você concorda com as políticas internas de segurança.

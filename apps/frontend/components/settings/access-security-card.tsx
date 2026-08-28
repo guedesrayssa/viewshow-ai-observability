@@ -9,7 +9,7 @@ export function AccessSecurityCard() {
 
       <div className="mt-5 flex flex-1 flex-col gap-5">
         <div>
-          <p className="text-caption text-brand-blue">Método de entrada</p>
+          <p className="text-caption text-ink-brand">Método de entrada</p>
           <p className="text-body-sm font-medium text-ink">
             {ACCOUNT_PROFILE.authMethod} · autenticação corporativa
           </p>
@@ -17,7 +17,7 @@ export function AccessSecurityCard() {
 
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-caption text-brand-blue">Sessões ativas</p>
+            <p className="text-caption text-ink-brand">Sessões ativas</p>
             <p className="text-body-sm font-medium text-ink">
               {ACCOUNT_PROFILE.activeSessions} dispositivos
             </p>

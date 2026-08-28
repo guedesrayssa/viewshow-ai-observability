@@ -10,12 +10,17 @@
 
 import type { ReactNode } from "react";
 
-/** Esferas decorativas do painel, posicionadas como no protótipo do Figma. */
+/**
+ * Esferas decorativas do painel, posicionadas como no protótipo do Figma.
+ *
+ * Cada uma deriva no próprio ritmo. O atraso diferente evita que as quatro
+ * subam juntas, o que seria lido como a página inteira se mexendo.
+ */
 const ORBS = [
-  { size: "65%", left: "48%", top: "60%" },
-  { size: "39%", left: "26%", top: "35%" },
-  { size: "29%", left: "72%", top: "22%" },
-  { size: "29%", left: "39%", top: "85%" },
+  { size: "65%", left: "48%", top: "60%", delay: "0s" },
+  { size: "39%", left: "26%", top: "35%", delay: "-6s" },
+  { size: "29%", left: "72%", top: "22%", delay: "-11s" },
+  { size: "29%", left: "39%", top: "85%", delay: "-3s" },
 ];
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
@@ -29,8 +34,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         {ORBS.map((orb) => (
           <span
             key={`${orb.left}-${orb.top}`}
-            className="absolute aspect-square -translate-x-1/2 -translate-y-1/2 rounded-pill bg-gradient-orb"
-            style={{ width: orb.size, left: orb.left, top: orb.top }}
+            className="absolute aspect-square animate-orb-drift rounded-pill bg-gradient-orb"
+            style={{
+              width: orb.size,
+              left: orb.left,
+              top: orb.top,
+              animationDelay: orb.delay,
+            }}
           />
         ))}
       </aside>

@@ -13,6 +13,14 @@
  * 18,4 mil mensagens na fila e 23 na DLQ, com 7 novas em 15 minutos.
  */
 
+import {
+  STATE_SHAPES,
+  type StateShape,
+} from "@/app/(painel)/monitoramento/br-states-geometry";
+
+export { MAP_VIEW_BOX } from "@/app/(painel)/monitoramento/br-states-geometry";
+export type { StateShape };
+
 /** Janela de comparação usada nos cartões de KPI. */
 export type WindowKey = "15" | "30" | "60" | "360";
 
@@ -113,11 +121,6 @@ export const SOURCES: TelemetrySource[] = [
     queueTrend: { "15": 8, "30": 10, "60": 6, "360": -2 },
   },
 ];
-
-export const WORKERS = Array.from(new Set(SOURCES.map((source) => source.worker))).sort();
-
-/** Fonte cujo atraso precisa ser anunciado no topo da tela. */
-export const DELAYED_SOURCE = SOURCES.find((source) => source.state === "atrasado");
 
 /* ============================== Indicadores ============================= */
 
@@ -382,81 +385,99 @@ export const MAP_METRICS: Record<MapMetric, MapMetricConfig> = {
   },
 };
 
-export type Region = {
+/** Medição de uma unidade federativa no mapa. */
+export type StateTelemetry = {
+  /** Sigla da unidade federativa. */
   id: string;
   name: string;
-  /**
-   * Contorno da região no `viewBox` 0 0 100 108.
-   *
-   * É uma silhueta simplificada do Brasil, desenhada à mão a partir das
-   * coordenadas de pontos conhecidos do território: a longitude de -74 a
-   * -34,8 vira o eixo horizontal e a latitude de +5,3 a -33,75 vira o
-   * vertical. Serve para a leitura comparativa entre as regiões, não para
-   * consulta cartográfica.
-   */
+  region: string;
+  /** Contorno no `viewBox` de `MAP_VIEW_BOX`. */
   path: string;
   values: Record<MapMetric, number>;
+  /** Sessões observadas no estado, em milhares. */
+  sessions: number;
+  /** Fonte que domina a coleta no estado, para o detalhe do mapa. */
+  topSource: string;
 };
 
-export const REGIONS: Region[] = [
-  {
-    id: "norte",
-    name: "Norte",
-    /* Roraima e Amapá ao norte, o litoral até a divisa Pará/Maranhão, a
-       divisa com o Nordeste até o encontro Tocantins/Goiás/Bahia e a
-       fronteira oeste com Peru e Bolívia. */
-    path:
-      "M35,0 L41,11 L51,9 L57,2 L60,15 L66,18 L70,17 " +
-      "L68,31 L71,42 L70,49 L70,51 " +
-      "L60,51 L54,46 L41,44 L34,48 L34,52 " +
-      "L22,45 L14,45 L3,41 L0,35 L10,26 L10,19 L17,11 L26,4 Z",
-    values: { instabilidade: 4, latencia: 2.9, perda: 1.9 },
-  },
-  {
-    id: "nordeste",
-    name: "Nordeste",
-    /* O litoral do Maranhão até o extremo leste na Paraíba, a descida até o
-       sul da Bahia e a volta pela divisa com Minas Gerais e Goiás. */
-    path:
-      "M70,17 L76,22 L82,23 L91,25 L99,31 L100,34 L98,41 L91,51 L89,64 L88,66 " +
-      "L84,60 L78,58 L71,55 L71,54 L70,51 " +
-      "L70,49 L71,42 L68,31 Z",
-    values: { instabilidade: 68, latencia: 6.4, perda: 4.8 },
-  },
-  {
-    id: "centro-oeste",
-    name: "Centro-Oeste",
-    /* Mato Grosso ao norte, a divisa leste com Bahia e Minas Gerais, a
-       divisa sul com São Paulo e Paraná e a fronteira com Paraguai e
-       Bolívia a oeste. */
-    path:
-      "M34,52 L34,48 L41,44 L54,46 L60,51 L70,51 L71,54 " +
-      "L68,59 L68,64 L60,69 L53,77 L50,81 " +
-      "L47,77 L41,76 L42,67 Z",
-    values: { instabilidade: 2, latencia: 2.1, perda: 0.5 },
-  },
-  {
-    id: "sudeste",
-    name: "Sudeste",
-    /* A divisa de Minas Gerais com a Bahia, o litoral do Espírito Santo até
-       a divisa São Paulo/Paraná e a volta pela divisa com o Centro-Oeste. */
-    path:
-      "M71,54 L71,55 L78,58 L84,60 L88,66 " +
-      "L86,71 L82,78 L79,78 L71,81 L66,84 " +
-      "L60,81 L53,77 L60,69 L68,64 L68,59 Z",
-    values: { instabilidade: 18, latencia: 3.1, perda: 1.2 },
-  },
-  {
-    id: "sul",
-    name: "Sul",
-    /* A divisa com São Paulo, o litoral do Paraná até o Chuí e a fronteira
-       com Uruguai, Argentina e Paraguai. */
-    path:
-      "M53,77 L60,81 L66,84 L65,91 L62,96 L56,103 L53,108 " +
-      "L46,100 L42,98 L46,90 L50,85 L50,81 Z",
-    values: { instabilidade: 8, latencia: 2.4, perda: 0.7 },
-  },
-];
+/**
+ * Valores por estado no recorte em investigação.
+ *
+ * A concentração reproduz o caso do INC-4821: o Nordeste, e sobretudo
+ * Pernambuco, Ceará e Bahia, responde pela maior parte da instabilidade.
+ */
+const STATE_VALUES: Record<
+  string,
+  { instabilidade: number; latencia: number; perda: number; sessions: number; topSource: string }
+> = {
+  AC: { instabilidade: 3, latencia: 2.6, perda: 1.4, sessions: 12, topSource: "Player" },
+  AL: { instabilidade: 54, latencia: 5.8, perda: 4.1, sessions: 88, topSource: "Youbora" },
+  AM: { instabilidade: 6, latencia: 3.4, perda: 2.2, sessions: 96, topSource: "Player" },
+  AP: { instabilidade: 4, latencia: 3.1, perda: 1.8, sessions: 14, topSource: "Player" },
+  BA: { instabilidade: 61, latencia: 6.1, perda: 4.4, sessions: 412, topSource: "Youbora" },
+  CE: { instabilidade: 74, latencia: 6.8, perda: 5.2, sessions: 358, topSource: "Youbora" },
+  DF: { instabilidade: 12, latencia: 2.8, perda: 0.9, sessions: 186, topSource: "Apollo" },
+  ES: { instabilidade: 14, latencia: 3.2, perda: 1.1, sessions: 142, topSource: "Apollo" },
+  GO: { instabilidade: 16, latencia: 3.0, perda: 1.2, sessions: 224, topSource: "Apollo" },
+  MA: { instabilidade: 58, latencia: 5.9, perda: 4.3, sessions: 164, topSource: "Youbora" },
+  MG: { instabilidade: 19, latencia: 3.3, perda: 1.4, sessions: 684, topSource: "Apollo" },
+  MS: { instabilidade: 9, latencia: 2.5, perda: 0.8, sessions: 96, topSource: "Prometheus" },
+  MT: { instabilidade: 11, latencia: 2.7, perda: 1.0, sessions: 108, topSource: "Prometheus" },
+  PA: { instabilidade: 22, latencia: 4.2, perda: 2.8, sessions: 218, topSource: "Player" },
+  PB: { instabilidade: 66, latencia: 6.3, perda: 4.7, sessions: 122, topSource: "Youbora" },
+  PE: { instabilidade: 82, latencia: 7.4, perda: 5.8, sessions: 396, topSource: "Youbora" },
+  PI: { instabilidade: 49, latencia: 5.4, perda: 3.6, sessions: 94, topSource: "Youbora" },
+  PR: { instabilidade: 13, latencia: 2.9, perda: 1.0, sessions: 398, topSource: "Apollo" },
+  RJ: { instabilidade: 21, latencia: 3.6, perda: 1.6, sessions: 742, topSource: "Apollo" },
+  RN: { instabilidade: 63, latencia: 6.0, perda: 4.5, sessions: 118, topSource: "Youbora" },
+  RO: { instabilidade: 5, latencia: 2.9, perda: 1.7, sessions: 38, topSource: "Player" },
+  RR: { instabilidade: 4, latencia: 3.3, perda: 2.0, sessions: 11, topSource: "Player" },
+  RS: { instabilidade: 10, latencia: 2.6, perda: 0.8, sessions: 364, topSource: "Apollo" },
+  SC: { instabilidade: 8, latencia: 2.4, perda: 0.7, sessions: 246, topSource: "Apollo" },
+  SE: { instabilidade: 51, latencia: 5.6, perda: 3.9, sessions: 62, topSource: "Youbora" },
+  SP: { instabilidade: 24, latencia: 3.8, perda: 1.8, sessions: 1680, topSource: "Apollo" },
+  TO: { instabilidade: 17, latencia: 3.5, perda: 2.1, sessions: 46, topSource: "Player" },
+};
+
+/** Unidades federativas com contorno e medição, prontas para o mapa. */
+export const STATES: StateTelemetry[] = STATE_SHAPES.map((shape) => {
+  const values = STATE_VALUES[shape.id];
+
+  return {
+    ...shape,
+    values: {
+      instabilidade: values.instabilidade,
+      latencia: values.latencia,
+      perda: values.perda,
+    },
+    sessions: values.sessions,
+    topSource: values.topSource,
+  };
+});
+
+/** Soma de sessões por grande região, para o resumo abaixo do mapa. */
+export function summarizeByRegion(
+  states: StateTelemetry[],
+  metric: MapMetric,
+): { region: string; value: number; sessions: number }[] {
+  const buckets = new Map<string, { total: number; weight: number; sessions: number }>();
+
+  for (const state of states) {
+    const bucket = buckets.get(state.region) ?? { total: 0, weight: 0, sessions: 0 };
+    // A média é ponderada pelas sessões: um estado com 11 mil sessões não pode
+    // pesar o mesmo que São Paulo na leitura da região.
+    bucket.total += state.values[metric] * state.sessions;
+    bucket.weight += state.sessions;
+    bucket.sessions += state.sessions;
+    buckets.set(state.region, bucket);
+  }
+
+  return Array.from(buckets, ([region, bucket]) => ({
+    region,
+    value: bucket.weight === 0 ? 0 : bucket.total / bucket.weight,
+    sessions: bucket.sessions,
+  })).sort((a, b) => b.value - a.value);
+}
 
 /* ============================== Formatação ============================= */
 

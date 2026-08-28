@@ -1,13 +1,39 @@
+/**
+ * @file dashboard-data.ts
+ * Tipos e conjunto de exemplo da Visão Geral.
+ *
+ * Os valores são numéricos, e não texto pronto: é a tela que formata, e é isso
+ * que permite animar a contagem de um indicador quando ele muda. Quando a API
+ * de telemetria estiver ligada, `overview-resource.ts` passa a preencher os
+ * mesmos tipos com a resposta real e nada aqui é usado.
+ */
+
 import type { BadgeTone } from "@/components/ui/badge";
 import type { CardAccent } from "@/components/ui/card";
 
 export type StatAccent = Exclude<CardAccent, "none" | "brand">;
 export type DeltaTone = "accent" | "neutral";
 
+/** Como o valor do indicador deve ser escrito. */
+export type StatFormat = "integer" | "compact";
+
 export type StatCardData = {
   id: string;
   label: string;
-  value: string;
+  /**
+   * Valor medido. A formatação fica com a tela.
+   *
+   * `null` significa "não medido" e é diferente de zero: um p95 sem amostra na
+   * janela não é um p95 de zero milissegundo. A tela escreve um travessão.
+   */
+  value: number | null;
+  format: StatFormat;
+  /** Unidade escrita logo depois do número, como `/min` ou ` ms`. */
+  unit?: string;
+  /**
+   * Comparação em texto ao lado do número. Vazio quando não há linha de base
+   * publicada contra a qual comparar.
+   */
   delta: string;
   accent: StatAccent;
   deltaTone: DeltaTone;
@@ -17,7 +43,9 @@ export const STATS: StatCardData[] = [
   {
     id: "error-rate",
     label: "Taxa de erros",
-    value: "342/min",
+    value: 342,
+    format: "integer",
+    unit: "/min",
     delta: "+18% vs. base",
     accent: "critical",
     deltaTone: "accent",
@@ -25,7 +53,9 @@ export const STATS: StatCardData[] = [
   {
     id: "latency-p95",
     label: "Latência p95",
-    value: "310 ms",
+    value: 310,
+    format: "integer",
+    unit: " ms",
     delta: "+6% vs. base",
     accent: "warning",
     deltaTone: "accent",
@@ -33,7 +63,8 @@ export const STATS: StatCardData[] = [
   {
     id: "affected-sessions",
     label: "Sessões afetadas",
-    value: "12,4 mil",
+    value: 12400,
+    format: "compact",
     delta: "2,8% do recorte",
     accent: "info",
     deltaTone: "neutral",

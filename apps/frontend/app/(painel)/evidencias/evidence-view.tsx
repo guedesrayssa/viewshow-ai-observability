@@ -6,358 +6,539 @@
  * Cobre a US-N1-02 (consultar a hipótese e o nível de confiança), a US-N1-03
  * (consultar as evidências, com detalhe expansível por fonte), a US-N1-05
  * (reunir os insumos do direcionamento) e a US-ENG-01 (confirmar ou refutar
- * tecnicamente a hipótese, com autoria e horário do registro). Os dados são
- * um exemplo fixo, com os mesmos casos do protótipo de alta fidelidade,
- * enquanto a integração com a telemetria não existe.
+ * tecnicamente a hipótese, com autoria e horário do registro).
+ *
+ * A tela é um argumento, e a ordem em que ela se monta é a ordem do argumento:
+ * o incidente, a hipótese com o grau de confiança, as evidências que a
+ * sustentam e, por fim, a linha do tempo que amarra tudo.
  */
 
 "use client";
 
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { BufferingChart } from "@/app/(painel)/evidencias/buffering-chart";
+import {
+  STRENGTH_META,
+  TIMELINE_DOT_CLASSES,
+  WINDOW_LABELS,
+  type BufferingPeriodKey,
+  type ReviewStatus,
+  type WindowKey,
+} from "@/app/(painel)/evidencias/evidence-data";
+import {
+  fetchBuffering,
+  fetchEvidence,
+  reviewHypothesis,
+} from "@/app/(painel)/evidencias/evidence-resource";
+import { useAccount } from "@/components/account/account-provider";
+import { DataStatus } from "@/components/dashboard/data-status";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Unavailable } from "@/components/dashboard/unavailable";
+import { AnimatedNumber } from "@/components/motion/animated-number";
+import { Reveal } from "@/components/motion/reveal";
+import { Alert } from "@/components/ui/alert";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { CheckIcon, XIcon } from "@/components/ui/icons";
 import { Select } from "@/components/ui/select";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
+import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
-import { ACCOUNT_PROFILE } from "@/lib/settings-data";
+import { formatCompact } from "@/lib/format";
 
-import { BufferingChart } from "@/app/(painel)/evidencias/buffering-chart";
-
-const INCIDENT = {
-  id: "INC-4821",
-  title: "Falhas de reprodução em TVs LG",
-  startedMinutesAgo: 18,
-  severity: "Crítico",
-  investigationStatus: "Em investigação",
-  affectedSessions: "12,4 mil",
-};
-
-const HYPOTHESIS = {
-  title: "Regressão do decoder no webOS 6.0",
-  component: "Player",
-  confidence: 78,
-  summary:
-    "O buffer ratio da Youbora sobe 6,1x minutos após o deploy 4.2.1, concentrado em TVs LG com webOS 6.0. A Tsuru registra o mesmo recorte com 6 minutos de defasagem, e o componente Player concentra os erros do incidente.",
-};
-
-type ReviewStatus = "pending" | "confirmed" | "refuted";
-
-const REVIEW_META: Record<Exclude<ReviewStatus, "pending">, { label: string; tone: BadgeTone }> = {
+const REVIEW_META: Record<
+  Exclude<ReviewStatus, "pending">,
+  { label: string; tone: BadgeTone }
+> = {
   confirmed: { label: "Confirmada", tone: "success" },
   refuted: { label: "Refutada", tone: "critical" },
 };
 
-const CONCENTRATION: { label: string; percentage: number }[] = [
-  { label: "webOS 6.0", percentage: 80 },
-  { label: "App 4.2.1", percentage: 71 },
-  { label: "LG OLED55", percentage: 68 },
-  { label: "Nordeste", percentage: 52 },
-];
-
-type EvidenceStrength = "forte" | "neutra" | "contra";
-
-const STRENGTH_META: Record<EvidenceStrength, { label: string; tone: BadgeTone }> = {
-  forte: { label: "Forte", tone: "critical" },
-  neutra: { label: "Neutra", tone: "neutral" },
-  contra: { label: "Contra", tone: "success" },
-};
-
-type EvidenceSource = {
-  id: string;
-  source: string;
-  summary: string;
-  strength: EvidenceStrength;
-  detail: string;
-};
-
-/** Evidências agrupadas por fonte, com detalhe expansível (US-N1-03). */
-const EVIDENCE_SOURCES: EvidenceSource[] = [
-  {
-    id: "youbora",
-    source: "Youbora",
-    summary: "falhas +312% · buffer 6,1x",
-    strength: "forte",
-    detail:
-      "Métrica buffer_ratio, recorte LG webOS 6.0 · App 4.2.1. Amostra de 12,4 mil sessões, atualizada há 2 min.",
-  },
-  {
-    id: "tsuru",
-    source: "Tsuru",
-    summary: "deploy 4.2.1 · diferença de 6 min",
-    strength: "forte",
-    detail:
-      "Marco de deploy 4.2.1 às 09:12, 6 minutos antes do início da subida do buffer ratio na Youbora.",
-  },
-  {
-    id: "apollo",
-    source: "Apollo",
-    summary: "p99 e erros dentro da linha de base",
-    strength: "neutra",
-    detail:
-      "Latência p99 e taxa de erro do backend seguem estáveis no mesmo recorte. Amostra parcial, com 4 min de atraso na ingestão.",
-  },
-  {
-    id: "rpaas-cdn",
-    source: "RPaaS/CDN",
-    summary: "sem variação de erro de borda",
-    strength: "contra",
-    detail:
-      "Taxa de erro 4xx/5xx e cache hit ratio da CDN seguem estáveis, sem indício de degradação de borda no recorte afetado.",
-  },
-];
-
-type TimelineTone = "info" | "warning" | "critical" | "navy";
-
-const TIMELINE_DOT_CLASSES: Record<TimelineTone, string> = {
-  info: "bg-brand-blue-light",
-  warning: "bg-brand-orange",
-  critical: "bg-critical",
-  navy: "bg-brand-navy",
-};
-
-type TimelineMark = {
-  time: string;
-  label: string;
-  source: string;
-  tone: TimelineTone;
-};
-
-/** Marcos correlacionados no mesmo recorte, em ordem cronológica. */
-const TIMELINE: TimelineMark[] = [
-  { time: "09:12", label: "Deploy 4.2.1", source: "Tsuru · Player", tone: "info" },
-  { time: "09:18", label: "Buffer sobe", source: "Youbora", tone: "warning" },
-  { time: "09:23", label: "Segmento detectado", source: "webOS 6.0 · NE", tone: "critical" },
-  { time: "09:30", label: "Decoder +18x", source: "Player", tone: "critical" },
-  { time: "09:34", label: "Incidente criado", source: "ServiceNow", tone: "info" },
-  { time: "09:41", label: "Hipótese 78%", source: "Player · decoder", tone: "navy" },
-];
-
-const CHANGE_LIKELIHOODS: { label: string; cause: string; percentage: number; tone: BadgeTone }[] = [
-  { label: "Provável", cause: "regressão do decoder", percentage: 78, tone: "critical" },
-  { label: "Possível", cause: "degradação de CDN", percentage: 14, tone: "warning" },
-  { label: "Possível", cause: "regressão do app", percentage: 8, tone: "info" },
-];
-
-type WindowKey = "90" | "180" | "360";
-
-const WINDOW_LABELS: Record<WindowKey, string> = {
-  "90": "Janela 90 min",
-  "180": "Janela 3 h",
-  "360": "Janela 6 h",
-};
-
 export function EvidenceView() {
-  const [reviewStatus, setReviewStatus] = useState<ReviewStatus>("pending");
+  const searchParams = useSearchParams();
+  const { profile } = useAccount();
+
+  // Sem recorte na URL, a tela pede a escolha em vez de eleger um incidente
+  // sozinha: um diagnóstico aberto "por padrão" pareceria o diagnóstico do
+  // momento, e não é.
+  const incidentId = searchParams.get("incidente");
+
+  const [review, setReview] = useState<{
+    status: ReviewStatus;
+    /** Quem assinou nesta sessão. Vazio quando a revisão veio da API. */
+    by?: string;
+    error?: string;
+    saving?: boolean;
+  }>({ status: "pending" });
   const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
   const [timelineWindow, setTimelineWindow] = useState<WindowKey>("90");
+  const [bufferingPeriod, setBufferingPeriod] = useState<BufferingPeriodKey>("120");
+
+  const evidence = useResource(
+    (revision) => fetchEvidence(incidentId ?? "", revision),
+    [incidentId],
+    { enabled: incidentId !== null },
+  );
+
+  const buffering = useResource(
+    (revision) => fetchBuffering(bufferingPeriod, revision),
+    [bufferingPeriod],
+    { enabled: incidentId !== null },
+  );
+
+  const data = evidence.data;
 
   function toggleSource(id: string) {
     setExpandedSourceId((current) => (current === id ? null : id));
   }
 
+  async function submitReview(status: "confirmed" | "refuted") {
+    if (!incidentId) return;
+
+    setReview({ status: "pending", saving: true });
+    const result = await reviewHypothesis(incidentId, status);
+
+    if (result.ok) {
+      setReview({ status: result.status, by: profile.name });
+    } else {
+      setReview({ status: "pending", error: result.message });
+    }
+  }
+
+  if (!incidentId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Evidências"
+          subtitle="Hipótese de causa provável e evidências do diagnóstico"
+        />
+        <Unavailable title="Escolha um incidente para investigar" minHeight={280}>
+          Esta tela monta o diagnóstico de um incidente específico, e abrir um
+          por conta própria apresentaria um caso qualquer como se fosse o da
+          sua investigação. Venha pela lista de Incidentes.
+        </Unavailable>
+        <Link
+          href="/incidentes"
+          className={cn(buttonClasses({ variant: "gradient" }), "self-center")}
+        >
+          Ir para Incidentes
+        </Link>
+      </div>
+    );
+  }
+
+  // A revisão registrada na API vale como estado inicial; a feita nesta sessão
+  // tem prioridade, porque acabou de acontecer diante da pessoa.
+  const reviewStatus =
+    review.status !== "pending" ? review.status : (data?.reviewStatus ?? "pending");
+
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-caption font-medium tracking-wide text-ink-subtle uppercase">
-        Incidente {INCIDENT.id} · Iniciado há {INCIDENT.startedMinutesAgo} min
-      </p>
+      <PageHeader
+        eyebrow={
+          data
+            ? `Incidente ${data.incident.id} · iniciado há ${data.incident.startedMinutesAgo} min`
+            : "Carregando incidente"
+        }
+        title="Evidências"
+        subtitle="Hipótese de causa provável e evidências do diagnóstico"
+        status={
+          <DataStatus
+            showSource={false}
+            source={evidence.source}
+            availability={evidence.availability}
+            warnings={evidence.warnings}
+            fetchedAt={evidence.fetchedAt}
+            refreshing={evidence.refreshing}
+            error={evidence.error}
+            onRefresh={evidence.refresh}
+          />
+        }
+      />
+
+      {evidence.status === "error" ? (
+        <Alert tone="critical" title="Não foi possível ler as evidências">
+          {evidence.error} Tente atualizar em alguns instantes.
+        </Alert>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
-        <Card accent="critical" padding="lg" className="flex flex-col justify-between gap-8">
-          <div>
-            <h2 className="text-h2 text-ink">{INCIDENT.title}</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge tone="critical">{INCIDENT.severity}</Badge>
-              <Badge tone="info">{INCIDENT.investigationStatus}</Badge>
-            </div>
-          </div>
+        <Reveal className="flex">
+          <Card
+            accent="critical"
+            padding="lg"
+            className="flex flex-1 flex-col justify-between gap-8"
+          >
+            {data ? (
+              <>
+                <div>
+                  <h2 className="text-h2 text-ink">{data.incident.title}</h2>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge tone="critical">{data.incident.severity}</Badge>
+                    <Badge tone="info">{data.incident.investigationStatus}</Badge>
+                  </div>
+                </div>
 
-          <div>
-            <p className="text-display text-ink">{INCIDENT.affectedSessions}</p>
-            <p className="mt-1 text-body-sm text-brand-blue underline underline-offset-2">
-              sessões afetadas
-            </p>
-          </div>
-        </Card>
-
-        <Card accent="info" padding="lg" className="flex flex-col gap-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <CardTitle>Hipótese</CardTitle>
-            {reviewStatus === "pending" ? (
-              <Badge tone="success" withDot>
-                {HYPOTHESIS.confidence}% de confiança
-              </Badge>
+                <div>
+                  <p className="text-display text-ink">
+                    <AnimatedNumber
+                      value={data.incident.affectedDevices}
+                      format={formatCompact}
+                    />
+                  </p>
+                  <p className="mt-1 text-body-sm text-ink-brand">
+                    dispositivos afetados
+                  </p>
+                </div>
+              </>
             ) : (
-              <Badge tone={REVIEW_META[reviewStatus].tone} withDot>
-                {REVIEW_META[reviewStatus].label}
-              </Badge>
+              <>
+                <div>
+                  <Skeleton className="h-7 w-64" />
+                  <div className="mt-3 flex gap-2">
+                    <Skeleton className="h-6 w-20 rounded-pill" />
+                    <Skeleton className="h-6 w-28 rounded-pill" />
+                  </div>
+                </div>
+                <Skeleton className="h-12 w-40" />
+              </>
             )}
-          </div>
+          </Card>
+        </Reveal>
 
-          <div>
-            <h3 className="text-h3 text-ink">{HYPOTHESIS.title}</h3>
-            <p className="mt-1 text-body-sm text-brand-blue">
-              Componente: {HYPOTHESIS.component}
-            </p>
-          </div>
+        <Reveal delay={90} className="flex">
+          <Card accent="info" padding="lg" className="flex flex-1 flex-col gap-5">
+            {data && data.hypothesis === null ? (
+              <>
+                <CardTitle>Hipótese</CardTitle>
+                <Unavailable
+                  title="Ainda sem diagnóstico"
+                  className="flex-1"
+                >
+                  Este incidente ainda não passou pelo diagnóstico automático.
+                  Quando ele rodar, a hipótese aparece aqui com o grau de
+                  confiança e as evidências que a sustentam.
+                </Unavailable>
+              </>
+            ) : data && data.hypothesis ? (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <CardTitle>Hipótese</CardTitle>
+                  {reviewStatus === "pending" ? (
+                    <Badge tone="success" withDot>
+                      {data.hypothesis.confidence}% de confiança
+                    </Badge>
+                  ) : (
+                    <Badge tone={REVIEW_META[reviewStatus].tone} withDot>
+                      {REVIEW_META[reviewStatus].label}
+                    </Badge>
+                  )}
+                </div>
 
-          <div>
-            <p className="text-label font-medium text-ink">Evidências</p>
-            <p className="mt-1 text-body-sm text-ink-muted">{HYPOTHESIS.summary}</p>
-          </div>
+                <div>
+                  <h3 className="text-h3 text-ink">{data.hypothesis.title}</h3>
+                  <p className="mt-1 text-body-sm text-ink-brand">
+                    Componente: {data.hypothesis.component}
+                  </p>
 
-          <div className="mt-auto flex flex-wrap items-center gap-3">
-            <Button
-              variant="gradient"
-              leadingIcon={<CheckIcon size={16} />}
-              disabled={reviewStatus !== "pending"}
-              onClick={() => setReviewStatus("confirmed")}
-            >
-              Confirmar
-            </Button>
-            <Button
-              variant="outline"
-              leadingIcon={<XIcon size={16} />}
-              disabled={reviewStatus !== "pending"}
-              onClick={() => setReviewStatus("refuted")}
-            >
-              Refutar
-            </Button>
+                  {/* A barra de confiança preenche até o grau lido: o número e
+                      a barra dizem a mesma coisa, uma para leitura e outra
+                      para comparação rápida entre hipóteses. */}
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
+                    <div
+                      key={data.hypothesis.confidence}
+                      className="track-grow h-full rounded-pill bg-success"
+                      style={{ width: `${data.hypothesis.confidence}%` }}
+                    />
+                  </div>
+                </div>
 
-            {reviewStatus !== "pending" ? (
-              <span className="text-caption text-ink-muted">
-                {REVIEW_META[reviewStatus].label} por {ACCOUNT_PROFILE.name} · agora
-              </span>
-            ) : null}
-          </div>
-        </Card>
+                <div>
+                  <p className="text-label font-medium text-ink">Evidências</p>
+                  <p className="mt-1 text-body-sm text-ink-muted">
+                    {data.hypothesis.summary}
+                  </p>
+                </div>
+
+                <div className="mt-auto flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Confirmar promove o caso à golden set no servidor — um
+                        efeito que a interface não desfaz. O texto do botão não
+                        esconde isso: a frase de apoio abaixo o diz antes do
+                        clique. */}
+                    <Button
+                      variant="gradient"
+                      leadingIcon={<CheckIcon size={16} />}
+                      disabled={reviewStatus !== "pending" || review.saving}
+                      loading={review.saving}
+                      onClick={() => submitReview("confirmed")}
+                    >
+                      Confirmar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      leadingIcon={<XIcon size={16} />}
+                      disabled={reviewStatus !== "pending" || review.saving}
+                      onClick={() => submitReview("refuted")}
+                    >
+                      Refutar
+                    </Button>
+
+                    {reviewStatus !== "pending" ? (
+                      <span className="animate-fade-in text-caption text-ink-muted">
+                        {REVIEW_META[reviewStatus].label}
+                        {review.by ? ` por ${review.by} · agora` : " anteriormente"}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {review.error ? (
+                    <p className="text-caption text-critical-strong" role="alert">
+                      {review.error}
+                    </p>
+                  ) : reviewStatus === "pending" ? (
+                    <p className="text-caption text-ink-subtle">
+                      Confirmar registra a revisão e promove o caso ao conjunto
+                      curado, que passa a responder incidentes com a mesma
+                      assinatura.
+                    </p>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-6 w-72" />
+                <SkeletonText lines={3} />
+                <div className="mt-auto flex gap-3">
+                  <Skeleton className="h-11 w-32" />
+                  <Skeleton className="h-11 w-28" />
+                </div>
+              </>
+            )}
+          </Card>
+        </Reveal>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <BufferingChart />
+        <Reveal delay={150} className="flex">
+          <BufferingChart
+            points={buffering.data?.points}
+            marker={buffering.data?.marker ?? null}
+            period={bufferingPeriod}
+            onPeriodChange={setBufferingPeriod}
+          />
+        </Reveal>
 
-        <Card accent="brand" accentPosition="top" padding="lg" className="flex-1">
-          <CardTitle>Concentração afetada</CardTitle>
-          <CardDescription className="mt-1">Sessões com falha por recorte</CardDescription>
+        <Reveal delay={210} className="flex">
+          <Card padding="lg" className="flex-1">
+            <CardTitle>Concentração afetada</CardTitle>
+            <CardDescription className="mt-1">
+              Participação nos erros da janela, por modelo
+            </CardDescription>
 
-          <div className="mt-5 flex flex-col gap-3">
-            {CONCENTRATION.map((item) => (
-              <div key={item.label}>
-                <div className="flex items-center justify-between text-body-sm">
-                  <span className="text-ink">{item.label}</span>
-                  <span className="font-semibold text-ink">{item.percentage}%</span>
-                </div>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-pill bg-canvas">
-                  <div
-                    className="h-full rounded-pill bg-gradient-brand"
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
+            {data && data.concentration.length === 0 ? (
+              <Unavailable
+                title="Sem segmentação disponível"
+                className="mt-5 flex-1"
+              >
+                A telemetria não respondeu a segmentação de erros por modelo,
+                ou não há erros na janela para repartir.
+              </Unavailable>
+            ) : null}
+
+            <div className="mt-5 flex flex-col gap-3">
+              {data
+                ? data.concentration.map((item, index) => (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between text-body-sm">
+                        <span className="text-ink">{item.label}</span>
+                        <span className="font-semibold text-ink">
+                          {item.percentage}%
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
+                        <div
+                          key={item.percentage}
+                          className="track-grow h-full rounded-pill bg-critical"
+                          style={{
+                            width: `${item.percentage}%`,
+                            animationDelay: `${index * 90}ms`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                : Array.from({ length: 4 }, (_, index) => (
+                    <div key={index}>
+                      <Skeleton className="h-3.5 w-full" />
+                      <Skeleton className="mt-1.5 h-2 w-full" />
+                    </div>
+                  ))}
+            </div>
+
+            {data && data.concentrationNote ? (
+              <p className="mt-4 text-caption text-ink-brand">
+                {data.concentrationNote}
+              </p>
+            ) : null}
+          </Card>
+        </Reveal>
+
+        <Reveal delay={270} className="flex">
+          <Card padding="lg" className="flex-1">
+            <CardTitle>Evidências por fonte</CardTitle>
+            <CardDescription className="mt-1">
+              Relação com a hipótese principal
+            </CardDescription>
+
+            {data ? (
+              <ul className="mt-3 flex flex-col divide-y divide-line-subtle">
+                {data.sources.map((item, index) => {
+                  const expanded = expandedSourceId === item.id;
+                  const meta = STRENGTH_META[item.strength];
+
+                  return (
+                    <Reveal as="li" key={item.id} index={index} variant="rise-sm">
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        onClick={() => toggleSource(item.id)}
+                        className="focus-ring flex w-full items-start justify-between gap-3 rounded-field py-3 text-left transition-colors duration-200 hover:bg-surface-muted"
+                      >
+                        <span>
+                          <span className="block text-body-sm font-semibold text-ink">
+                            {item.source}
+                          </span>
+                          <span className="mt-0.5 block text-caption text-ink-muted">
+                            {item.summary}
+                          </span>
+                        </span>
+                        <Badge tone={meta.tone} className="shrink-0">
+                          {meta.label}
+                        </Badge>
+                      </button>
+
+                      {/* O detalhe abre em altura, e não com um corte seco:
+                          é o que mantém a lista estável enquanto o texto
+                          aparece. */}
+                      <div
+                        className={cn(
+                          "grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                        )}
+                      >
+                        <div className="overflow-hidden">
+                          <p className="pb-3 text-caption text-ink-muted">
+                            {item.detail}
+                          </p>
+                        </div>
+                      </div>
+                    </Reveal>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="mt-4 flex flex-col gap-4">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <Skeleton key={index} className="h-12 w-full" />
+                ))}
               </div>
-            ))}
-          </div>
-
-          <p className="mt-4 text-caption text-brand-blue">
-            Recorte combinado explica 64% das falhas
-          </p>
-        </Card>
-
-        <Card accent="brand" accentPosition="top" padding="lg" className="flex-1">
-          <CardTitle>Evidências por fonte</CardTitle>
-          <CardDescription className="mt-1">Relação com a hipótese principal</CardDescription>
-
-          <ul className="mt-3 flex flex-col divide-y divide-line-subtle">
-            {EVIDENCE_SOURCES.map((item) => {
-              const expanded = expandedSourceId === item.id;
-              const meta = STRENGTH_META[item.strength];
-
-              return (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    aria-expanded={expanded}
-                    onClick={() => toggleSource(item.id)}
-                    className="flex w-full items-start justify-between gap-3 rounded-field py-3 text-left transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue-light"
-                  >
-                    <span>
-                      <span className="block text-body-sm font-semibold text-ink">
-                        {item.source}
-                      </span>
-                      <span className="mt-0.5 block text-caption text-ink-muted">
-                        {item.summary}
-                      </span>
-                    </span>
-                    <Badge tone={meta.tone} className="shrink-0">
-                      {meta.label}
-                    </Badge>
-                  </button>
-
-                  {expanded ? (
-                    <p className="pb-3 text-caption text-ink-muted">{item.detail}</p>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+            )}
+          </Card>
+        </Reveal>
       </div>
 
-      <Card accent="brand" accentPosition="top" padding="lg">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <CardTitle>Linha do tempo e mudanças que podem ter impactado</CardTitle>
-            <CardDescription className="mt-1">
-              Marcos correlacionados no mesmo recorte · horário de Brasília
-            </CardDescription>
+      <Reveal delay={330}>
+        <Card padding="lg">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle>
+                Linha do tempo e mudanças que podem ter impactado
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Marcos correlacionados no mesmo recorte · horário de Brasília
+              </CardDescription>
+            </div>
+
+            <Select
+              aria-label="Janela da linha do tempo"
+              value={timelineWindow}
+              onValueChange={(value) => setTimelineWindow(value as WindowKey)}
+              options={(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => ({
+                value: key,
+                label: WINDOW_LABELS[key],
+              }))}
+            />
           </div>
 
-          <Select
-            aria-label="Janela da linha do tempo"
-            fieldSize="sm"
-            value={timelineWindow}
-            onChange={(event) => setTimelineWindow(event.target.value as WindowKey)}
-          >
-            {(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => (
-              <option key={key} value={key}>
-                {WINDOW_LABELS[key]}
-              </option>
-            ))}
-          </Select>
-        </div>
+          {data && data.timeline.length === 0 ? (
+            <Unavailable title="Sem linha do tempo de mudanças" className="mt-6">
+              Nenhuma das origens atuais registra deploys ou mudanças
+              correlacionadas a este incidente. A linha do tempo volta quando o
+              serviço de ingestão publicar esses marcos.
+            </Unavailable>
+          ) : null}
 
-        <div className="mt-8 overflow-x-auto">
-          <div className="grid min-w-[46rem] grid-cols-6 gap-2">
-            {TIMELINE.map((mark) => (
-              <div key={mark.time} className="flex flex-col items-center gap-2 text-center">
-                <span className="text-caption font-semibold text-ink">{mark.time}</span>
+          {data && data.timeline.length > 0 ? (
+            <>
+              <div className="mt-8 overflow-x-auto">
+                <div className="grid min-w-[46rem] grid-cols-6 gap-2">
+                  {data.timeline.map((mark, index) => (
+                    <Reveal
+                      key={mark.time}
+                      index={index}
+                      variant="rise-sm"
+                      className="flex flex-col items-center gap-2 text-center"
+                    >
+                      <span className="text-caption font-semibold text-ink">
+                        {mark.time}
+                      </span>
 
-                <span className="relative flex w-full items-center justify-center py-1">
-                  <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px bg-line" />
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "relative z-10 h-3 w-3 rounded-pill border-2 border-surface shadow-card",
-                      TIMELINE_DOT_CLASSES[mark.tone],
-                    )}
-                  />
-                </span>
+                      <span className="relative flex w-full items-center justify-center py-1">
+                        <span
+                          aria-hidden="true"
+                          className="absolute inset-x-0 top-1/2 h-px bg-line"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "relative z-10 h-3 w-3 rounded-pill border-2 border-surface shadow-card",
+                            TIMELINE_DOT_CLASSES[mark.tone],
+                          )}
+                        />
+                      </span>
 
-                <span className="text-body-sm font-medium text-ink">{mark.label}</span>
-                <span className="text-caption text-brand-blue">{mark.source}</span>
+                      <span className="text-body-sm font-medium text-ink">
+                        {mark.label}
+                      </span>
+                      <span className="text-caption text-ink-brand">
+                        {mark.source}
+                      </span>
+                    </Reveal>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {CHANGE_LIKELIHOODS.map((item) => (
-            <Badge key={item.cause} tone={item.tone}>
-              {item.label}: {item.cause} · {item.percentage}%
-            </Badge>
-          ))}
-        </div>
-      </Card>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {data.changes.map((item, index) => (
+                  <Reveal key={item.cause} index={index} variant="scale">
+                    <Badge tone={item.tone}>
+                      {item.label}: {item.cause} · {item.percentage}%
+                    </Badge>
+                  </Reveal>
+                ))}
+              </div>
+            </>
+          ) : (
+            <Skeleton className="mt-8 h-28 w-full" />
+          )}
+        </Card>
+      </Reveal>
     </div>
   );
 }

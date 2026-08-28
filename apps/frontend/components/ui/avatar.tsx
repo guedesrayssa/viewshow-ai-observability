@@ -2,25 +2,32 @@
  * @file avatar.tsx
  * Retrato da pessoa usuária.
  *
- * Enquanto não há foto, mostra um retrato de espaço reservado: o símbolo de
- * conta sobre o gradiente da marca, do mesmo jeito que a navegação lateral já
- * usa para "Minha conta", só que maior.
+ * Mostra a foto do perfil quando existe uma. Enquanto não existe, mostra as
+ * iniciais do nome sobre o gradiente da marca — mais útil do que um símbolo
+ * genérico de conta, porque já identifica quem está na sessão.
  */
 
-import { UserIcon } from "@/components/ui/icons";
+"use client";
+
+import { useAccount } from "@/components/account/account-provider";
 import { cn } from "@/lib/cn";
 
-export type AvatarSize = "md" | "lg";
+export type AvatarSize = "sm" | "md" | "lg";
 
 const SIZE_CLASSES: Record<AvatarSize, string> = {
-  md: "h-10 w-10",
-  lg: "h-16 w-16",
+  sm: "h-8 w-8 text-caption",
+  md: "h-10 w-10 text-body-sm",
+  lg: "h-16 w-16 text-h3",
 };
 
-const ICON_SIZE: Record<AvatarSize, number> = {
-  md: 20,
-  lg: 30,
-};
+/** Duas iniciais bastam: nome e último sobrenome. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export type AvatarProps = {
   size?: AvatarSize;
@@ -28,23 +35,37 @@ export type AvatarProps = {
 };
 
 /**
- * Retrato de espaço reservado, até a pessoa usuária enviar uma foto.
+ * Retrato da conta em sessão.
  *
  * @example
  * <Avatar size="lg" />
  */
 export function Avatar({ size = "md", className }: AvatarProps) {
+  const { profile } = useAccount();
+
   return (
     <span
       role="img"
-      aria-label="Retrato da conta, sem foto definida"
+      aria-label={
+        profile.photo
+          ? `Foto de ${profile.name}`
+          : `Retrato de ${profile.name}, sem foto definida`
+      }
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-pill bg-gradient-brand text-ink-inverse",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-pill",
+        "bg-gradient-brand font-semibold text-ink-inverse",
         SIZE_CLASSES[size],
         className,
       )}
     >
-      <UserIcon size={ICON_SIZE[size]} />
+      {profile.photo ? (
+        // A foto é um data URL guardado no navegador, e não um arquivo servido:
+        // `next/image` não teria o que otimizar aqui.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={profile.photo} alt="" className="h-full w-full object-cover" />
+      ) : (
+        initialsOf(profile.name)
+      )}
     </span>
   );
 }

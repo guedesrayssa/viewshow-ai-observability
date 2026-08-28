@@ -33,7 +33,7 @@ export function NotificationsCard() {
               <p className="text-body-sm font-semibold text-ink">
                 {preference.title}
               </p>
-              <p className="text-caption text-brand-blue">
+              <p className="text-caption text-ink-brand">
                 {preference.description}
               </p>
             </div>
