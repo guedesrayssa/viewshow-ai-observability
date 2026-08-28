@@ -18,11 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function IncidentsPage() {
-  return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-h1 text-ink">Incidentes</h1>
-
-      <IncidentsView />
-    </div>
-  );
+  return <IncidentsView />;
 }

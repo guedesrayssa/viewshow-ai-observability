@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 
 import { LoginForm } from "@/app/(auth)/login/login-form";
 import { LogoMark } from "@/components/ui/logo";
+import { Wordmark } from "@/components/ui/wordmark";
 
 export const metadata: Metadata = {
   title: "Entrar",
@@ -22,11 +23,18 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <div className="flex flex-col items-center">
-      <LogoMark tone="gradient" size={128} />
+      {/* A abertura monta a marca em duas partes: o símbolo cresce e o
+          letreiro se escreve bloco a bloco. É o único momento de exibição da
+          identidade em todo o produto — o painel, depois, é só trabalho. */}
+      <LogoMark tone="gradient" size={112} className="animate-scale-in" />
 
-      <h1 className="mt-6 text-h1 text-ink">Login</h1>
+      <Wordmark height={30} animated className="mt-5 text-ink" />
 
-      <LoginForm className="mt-8 w-full" />
+      <h1 className="mt-6 animate-rise text-h1 text-ink" style={{ animationDelay: "760ms" }}>
+        Login
+      </h1>
+
+      <LoginForm className="mt-8 w-full animate-rise" />
     </div>
   );
 }

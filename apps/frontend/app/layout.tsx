@@ -2,12 +2,18 @@
  * layout.tsx
  * Layout raiz da aplicação.
  *
- * Define o idioma, carrega a tipografia da marca (Poppins) e importa os tokens
- * do design system. Todo o restante da interface é montado a partir daqui.
+ * Define o idioma, carrega a tipografia da marca (Poppins), importa os tokens
+ * do design system e resolve o tema antes da primeira pintura. Todo o restante
+ * da interface é montado a partir daqui.
  */
 
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
+
+import { AccountProvider } from "@/components/account/account-provider";
+import { InlineScript } from "@/components/inline-script";
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -34,13 +40,31 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101B46",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#060c22" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${poppins.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    // `data-theme` nasce claro e é corrigido pelo script abaixo ainda durante
+    // a leitura do HTML; `suppressHydrationWarning` faz o React aceitar o valor
+    // que já está no documento em vez de reverter para o do servidor.
+    <html
+      lang="pt-BR"
+      data-theme="light"
+      suppressHydrationWarning
+      className={`${poppins.variable} h-full antialiased`}
+    >
+      <head>
+        <InlineScript html={THEME_BOOTSTRAP_SCRIPT} />
+      </head>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>
+          <AccountProvider>{children}</AccountProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

@@ -95,7 +95,7 @@ export function CardDescription({
 }: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-caption text-brand-blue", className)}
+      className={cn("text-caption text-ink-brand", className)}
       {...props}
     />
   );

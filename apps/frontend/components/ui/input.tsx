@@ -25,10 +25,16 @@ import { cn } from "@/lib/cn";
 /** Altura do campo. `lg` é o padrão das telas de acesso; `sm`, o dos filtros. */
 export type FieldSize = "sm" | "md" | "lg";
 
-/** Compartilhada com `Select`, para que campos e seletores fiquem à mesma altura. */
+/**
+ * Compartilhada com `Select`, para que campos e seletores fiquem à mesma
+ * altura.
+ *
+ * As alturas não acompanham inteiramente a redução da escala: um campo de
+ * filtro pode ser compacto, mas continua sendo alvo de clique e de toque.
+ */
 export const FIELD_SIZE_CLASSES: Record<FieldSize, string> = {
-  sm: "h-10 px-3 text-body-sm",
-  md: "h-12 px-4 text-body",
+  sm: "h-11 px-3 text-body-sm",
+  md: "h-13 px-4 text-body",
   lg: "h-16 px-5 text-body",
 };
 

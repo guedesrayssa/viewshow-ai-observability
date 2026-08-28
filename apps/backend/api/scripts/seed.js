@@ -88,8 +88,17 @@ const INCIDENTS = [
         source: "Fastly",
         strength: "forte",
       },
+      {
+        type: "log",
+        description: "Timeout de origem em 12% dos requests servidos pelo POP Recife",
+        source: "CDN",
+        strength: "neutra",
+      },
     ],
-    hypothesis: null,
+    hypothesis: {
+      text: "Degradação do POP Recife da CDN, com timeout na busca à origem",
+      score: 0.71,
+    },
   },
   {
     id: "licencas-drm-tvs-samsung",
@@ -143,8 +152,17 @@ const INCIDENTS = [
         source: "Identidade",
         strength: "neutra",
       },
+      {
+        type: "metric",
+        description: "Taxa de renovação de token voltou à linha de base em 9 min",
+        source: "Identidade",
+        strength: "contra",
+      },
     ],
-    hypothesis: null,
+    hypothesis: {
+      text: "Expiração em lote de tokens antigos do app 4.0.5, já normalizada",
+      score: 0.58,
+    },
   },
 ];
 

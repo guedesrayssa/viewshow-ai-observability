@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="View Show">
+  <!--
+    Símbolo do View Show, o mesmo da navegação lateral, na aplicação gradiente.
+    As cores estão escritas por extenso porque o ícone é servido como arquivo
+    solto, fora da página: os tokens do tema não existem aqui.
+
+    O círculo ocupa quase toda a moldura, e não os 25,9 de raio do componente:
+    na aba do navegador o desenho chega a 16 px, e a margem que dá respiro na
+    tela ali só rouba área da estrela.
+  -->
+  <defs>
+    <linearGradient id="view-show-mark" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff6a32" />
+      <stop offset="55%" stop-color="#f43f4e" />
+      <stop offset="100%" stop-color="#ec0101" />
+    </linearGradient>
+  </defs>
+
+  <circle cx="32" cy="32" r="31" fill="url(#view-show-mark)" />
+  <ellipse cx="32" cy="32" rx="21.07" ry="11.49" fill="#101b46" />
+  <path
+    d="M32 8.06Q33.68 30.32 55.94 32Q33.68 33.68 32 55.94Q30.32 33.68 8.06 32Q30.32 30.32 32 8.06Z"
+    fill="#ffffff"
+  />
+</svg>

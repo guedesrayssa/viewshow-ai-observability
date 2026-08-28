@@ -1,71 +1,144 @@
+/**
+ * @file experience-health-card.tsx
+ * Cartão "Saúde da experiência" da Visão Geral.
+ *
+ * Compara a série principal com a linha de base e marca a janela anômala. O
+ * período é escolhido aqui, mas quem lê a telemetria é a tela: a mudança sobe
+ * para ela e volta como dado novo, com a linha sendo redesenhada.
+ */
+
 "use client";
 
-import { useState } from "react";
+import {
+  ChartLegend,
+  TimeSeriesChart,
+} from "@/components/charts/time-series-chart";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-import { getPointXPercent, LineChart } from "@/components/dashboard/line-chart";
-import {
-  EXPERIENCE_HEALTH_ANOMALY_RANGE,
-  EXPERIENCE_HEALTH_BASELINE,
-  EXPERIENCE_HEALTH_PEAK_INDEX,
-  EXPERIENCE_HEALTH_SERIES,
-  TIME_RANGE_OPTIONS,
-} from "@/lib/dashboard-data";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TIME_RANGE_OPTIONS, type ExperiencePoint } from "@/lib/dashboard-data";
+import { formatSignedPercent } from "@/lib/format";
 
-export function ExperienceHealthCard() {
-  const [timeRange, setTimeRange] = useState(TIME_RANGE_OPTIONS[1].value);
-  const peakValue = EXPERIENCE_HEALTH_SERIES[EXPERIENCE_HEALTH_PEAK_INDEX].value;
-  const anomalyCaptionLeft = getPointXPercent(
-    EXPERIENCE_HEALTH_PEAK_INDEX,
-    EXPERIENCE_HEALTH_SERIES.length,
-  );
+export type ExperienceHealthCardProps = {
+  series: ExperiencePoint[];
+  /**
+   * Valor de referência da métrica. `null` quando não há linha de base
+   * publicada: a linha some do gráfico e a comparação sai do cabeçalho, em vez
+   * de aparecer contra um número inventado.
+   */
+  baseline: number | null;
+  /** Faixa destacada como anômala, ou `null` quando não há detecção. */
+  anomalyRange: [number, number] | null;
+  peakIndex: number;
+  /** O que a série mede, no vocabulário da tela. */
+  metricLabel: string;
+  /** Uma linha dizendo o que a série mede, e contra o quê. */
+  description: string;
+  /** Escreve um valor da série, com a unidade. */
+  formatValue: (value: number) => string;
+  timeRange: string;
+  onTimeRangeChange: (value: string) => void;
+};
+
+export function ExperienceHealthCard({
+  series,
+  baseline,
+  anomalyRange,
+  peakIndex,
+  metricLabel,
+  description,
+  formatValue,
+  timeRange,
+  onTimeRangeChange,
+}: ExperienceHealthCardProps) {
+  const peakValue = series[peakIndex]?.value ?? 0;
+  const versusBaseline =
+    baseline && baseline > 0 ? Math.round((peakValue / baseline - 1) * 100) : null;
 
   return (
-    <Card accent="brand" accentPosition="top" className="flex-1">
+    <Card className="flex-1">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <CardTitle>Saúde da experiência</CardTitle>
-          <CardDescription>
-            Série principal comparada à linha de base
-          </CardDescription>
+          <CardDescription>{description}</CardDescription>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-body-sm font-medium text-critical-strong">
-            {peakValue} erros/min · +18%
+          <span className="text-body-sm font-medium tabular-nums text-critical-strong">
+            {formatValue(peakValue)}
+            {versusBaseline === null
+              ? ""
+              : ` · ${formatSignedPercent(versusBaseline)}`}
           </span>
           <Select
             aria-label="Período do gráfico"
             value={timeRange}
-            onChange={(event) => setTimeRange(event.target.value)}
-          >
-            {TIME_RANGE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
+            onValueChange={onTimeRangeChange}
+            options={TIME_RANGE_OPTIONS}
+          />
         </div>
       </div>
 
-      <div className="relative mt-4 h-72">
-        <LineChart
-          id="experience-health"
-          data={EXPERIENCE_HEALTH_SERIES}
-          max={400}
-          yTicks={[0, 100, 250, 400]}
-          baseline={EXPERIENCE_HEALTH_BASELINE}
-          highlightRange={EXPERIENCE_HEALTH_ANOMALY_RANGE}
-          peakIndex={EXPERIENCE_HEALTH_PEAK_INDEX}
-          peakLabel={`${peakValue}/min`}
-          xTickEvery={2}
-        />
-        <span
-          className="absolute bottom-1 -translate-x-1/2 text-[11px] font-medium whitespace-nowrap text-critical-strong"
-          style={{ left: `${anomalyCaptionLeft}%` }}
-        >
-          janela anômala
-        </span>
+      <TimeSeriesChart
+        // A chave amarrada à série faz o traço ser redesenhado a cada leitura,
+        // em vez de saltar para a nova forma.
+        key={series.map((point) => point.value).join(",")}
+        className="mt-5"
+        height={252}
+        labels={series.map((point) => point.label)}
+        series={[
+          {
+            id: "metrica",
+            label: metricLabel,
+            tone: "critical",
+            area: true,
+            values: series.map((point) => point.value),
+          },
+        ]}
+        reference={
+          baseline === null ? undefined : { value: baseline, label: "linha de base" }
+        }
+        highlight={anomalyRange ?? undefined}
+        showPeak
+        formatValue={formatValue}
+        tooltipNote={
+          baseline && baseline > 0
+            ? (index) => {
+                const value = series[index]?.value ?? 0;
+                const delta = Math.round((value / baseline - 1) * 100);
+                return `${formatSignedPercent(delta)} vs. linha de base`;
+              }
+            : undefined
+        }
+        ariaLabel={`${metricLabel} ao longo do tempo, com pico de ${formatValue(peakValue)} às ${series[peakIndex]?.label ?? ""}`}
+      />
+
+      <ChartLegend
+        className="mt-3"
+        items={
+          anomalyRange
+            ? [
+                { label: metricLabel, tone: "critical" },
+                { label: "Janela anômala", tone: "warning" },
+              ]
+            : [{ label: metricLabel, tone: "critical" }]
+        }
+      />
+    </Card>
+  );
+}
+
+/** Espaço reservado do cartão, enquanto a leitura não termina. */
+export function ExperienceHealthCardSkeleton() {
+  return (
+    <Card className="flex-1">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Skeleton className="h-4 w-44" />
+          <Skeleton className="mt-2 h-3 w-64" />
+        </div>
+        <Skeleton className="h-11 w-40" />
       </div>
+      <Skeleton className="mt-5 h-[252px] w-full" />
     </Card>
   );
 }

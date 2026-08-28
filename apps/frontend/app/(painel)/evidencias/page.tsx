@@ -9,8 +9,10 @@
  */
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { EvidenceView } from "@/app/(painel)/evidencias/evidence-view";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "Evidências",
@@ -20,15 +22,10 @@ export const metadata: Metadata = {
 
 export default function EvidenciasPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-h1 text-ink">Evidências</h1>
-        <p className="mt-1 text-body-sm text-brand-blue">
-          Hipótese de causa provável e evidências do diagnóstico
-        </p>
-      </header>
-
+    // A tela lê o incidente investigado da URL, e por isso precisa de um limite
+    // de suspensão: sem ele, a rota inteira sairia da renderização estática.
+    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
       <EvidenceView />
-    </div>
+    </Suspense>
   );
 }

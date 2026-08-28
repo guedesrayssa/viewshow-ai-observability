@@ -17,7 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { PasswordField, SearchInput, TextField } from "@/components/ui/input";
 import { Logo, LogoMark } from "@/components/ui/logo";
-import { Select } from "@/components/ui/select";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
+import { Wordmark } from "@/components/ui/wordmark";
+import { ThemeChoice } from "@/components/theme/theme-toggle";
+import { Reveal } from "@/components/motion/reveal";
+import { AnimatedNumber } from "@/components/motion/animated-number";
+import { SelectPreview } from "@/app/design-system/select-preview";
 import { SwitchPreview } from "@/app/design-system/switch-preview";
 
 export const metadata: Metadata = {
@@ -171,31 +176,31 @@ export default function DesignSystemPage() {
 
         <Section
           title="Tipografia"
-          description="Poppins em quatro pesos. O token de tamanho já embute entrelinha e peso, então text-h1 basta para um título."
+          description="Poppins em quatro pesos. O token de tamanho já embute entrelinha e peso, então text-h1 basta para um título. Os títulos encolheram mais do que o texto corrido: em um painel, é o título que ocupa espaço sem carregar dado."
         >
           <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-6">
-            <p className="text-display text-ink">Display 40 / 700</p>
-            <p className="text-h1 text-ink">Título H1 32 / 700</p>
-            <p className="text-h2 text-ink">Título H2 24 / 600</p>
-            <p className="text-h3 text-ink">Título H3 20 / 600</p>
-            <p className="text-title text-ink">Title 16 / 600</p>
-            <p className="text-body text-ink">Body 15 / 400</p>
-            <p className="text-body-sm text-ink-muted">Body small 14 / 400</p>
-            <p className="text-label text-ink-muted">Label 13 / 500</p>
-            <p className="text-caption text-ink-subtle">Caption 12 / 400</p>
-            <p className="text-micro text-ink-subtle">Micro 11 / 400</p>
+            <p className="text-display text-ink">Display 32 / 700</p>
+            <p className="text-h1 text-ink">Título H1 26 / 700</p>
+            <p className="text-h2 text-ink">Título H2 20 / 600</p>
+            <p className="text-h3 text-ink">Título H3 17 / 600</p>
+            <p className="text-title text-ink">Title 15 / 600</p>
+            <p className="text-body text-ink">Body 14 / 400</p>
+            <p className="text-body-sm text-ink-muted">Body small 13 / 400</p>
+            <p className="text-label text-ink-muted">Label 12 / 500</p>
+            <p className="text-caption text-ink-subtle">Caption 11 / 400</p>
+            <p className="text-micro text-ink-subtle">Micro 10 / 400</p>
           </div>
         </Section>
 
         <Section
           title="Raios e sombras"
-          description="Raio de 16 px agrupa conteúdo em cartões; 12 px vale para campos e botões. A sombra separa o cartão do fundo sem precisar de borda pesada."
+          description="Raio de 14 px agrupa conteúdo em cartões; 10 px vale para campos e botões. A sombra separa o cartão do fundo sem precisar de borda pesada."
         >
           <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
             {[
-              { label: "rounded-field", extra: "12 px" },
-              { label: "rounded-card", extra: "16 px" },
-              { label: "rounded-panel", extra: "24 px" },
+              { label: "rounded-field", extra: "10 px" },
+              { label: "rounded-card", extra: "14 px" },
+              { label: "rounded-panel", extra: "20 px" },
               { label: "rounded-pill", extra: "circular" },
             ].map((radius) => (
               <div
@@ -213,7 +218,7 @@ export default function DesignSystemPage() {
 
         <Section
           title="Botões"
-          description="Uma ação primária por área de decisão. O gradiente marca a ação principal; o azul sólido, ações de navegação; contorno e texto, alternativas."
+          description="Uma ação primária por área de decisão. O gradiente marca a ação principal; o azul sólido, ações de navegação; contorno e texto, alternativas; danger, o que destrói."
         >
           <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-6">
             <Button variant="gradient">Ver detalhes</Button>
@@ -221,6 +226,7 @@ export default function DesignSystemPage() {
             <Button variant="outline">Refutar</Button>
             <Button variant="ghost">Expandir</Button>
             <Button variant="quiet">Cancelar</Button>
+            <Button variant="danger">Excluir</Button>
             <Button variant="gradient" loading>
               Enviando
             </Button>
@@ -268,29 +274,15 @@ export default function DesignSystemPage() {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-6">
-            <Select aria-label="Período" defaultValue="30min">
-              <option value="30min">Últimos 30 min</option>
-              <option value="1h">Última hora</option>
-            </Select>
-            <Select aria-label="Urgência" defaultValue="all">
-              <option value="all">Todas as urgências</option>
-              <option value="p1">P1 Crítico</option>
-            </Select>
-          </div>
+          <SelectPreview />
         </Section>
 
         <Section
           title="Barra de filtros"
-          description="Busca e seletores nativos, compactos (fieldSize sm), para filtrar listas e painéis sem ocupar a altura de um formulário."
+          description="Busca e seletores compactos (fieldSize sm), para filtrar listas e painéis sem ocupar a altura de um formulário."
         >
           <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-6">
             <SearchInput aria-label="Buscar" placeholder="Buscar" />
-            <Select aria-label="Período" defaultValue="30min">
-              <option value="30min">Últimos 30 min</option>
-              <option value="1h">Última 1 h</option>
-              <option value="24h">Últimas 24 h</option>
-            </Select>
           </div>
         </Section>
 
@@ -339,7 +331,7 @@ export default function DesignSystemPage() {
                 irreversíveis, como excluir a conta.
               </p>
             </div>
-            <Button variant="gradient">Excluir conta</Button>
+            <Button variant="danger">Excluir conta</Button>
           </Card>
         </Section>
 
@@ -356,8 +348,73 @@ export default function DesignSystemPage() {
         </Section>
 
         <Section
+          title="Aparência"
+          description="Claro, escuro e sistema. O tema escuro reescreve apenas os tokens semânticos, então nenhum componente precisa saber em qual dos dois está."
+        >
+          <div className="flex flex-col gap-5 rounded-card border border-line bg-surface p-6">
+            <ThemeChoice className="self-start" />
+            <p className="max-w-2xl text-body-sm text-ink-muted">
+              A troca vale para toda a interface e é resolvida antes da primeira
+              pintura, por um script no <code>&lt;head&gt;</code>. Textos azuis
+              usam <code>ink-brand</code>, que clareia no escuro;{" "}
+              <code>brand-blue</code> fica reservado a preenchimento.
+            </p>
+          </div>
+        </Section>
+
+        <Section
+          title="Movimento"
+          description="Entrada de conteúdo, crescimento de barra, desenho de série e contagem de número. Cada peça se move porque o movimento carrega informação — não como enfeite."
+        >
+          <div className="grid gap-5 sm:grid-cols-3">
+            <Reveal className="rounded-card border border-line bg-surface p-6">
+              <p className="text-caption text-ink-subtle">animate-rise</p>
+              <p className="mt-2 text-body-sm text-ink">
+                Entrada de bloco. Todo conteúdo chega assim, em cascata de 70 ms.
+              </p>
+            </Reveal>
+
+            <div className="rounded-card border border-line bg-surface p-6">
+              <p className="text-caption text-ink-subtle">bar-grow</p>
+              <div className="mt-4 flex h-20 items-end gap-2">
+                {[40, 72, 55, 96].map((height, index) => (
+                  <div
+                    key={height}
+                    className="bar-grow w-6 rounded-t-[0.75rem] bg-gradient-brand"
+                    style={{
+                      height: `${height}%`,
+                      animationDelay: `${index * 60}ms`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-card border border-line bg-surface p-6">
+              <p className="text-caption text-ink-subtle">AnimatedNumber</p>
+              <p className="mt-4 text-h1 text-ink">
+                <AnimatedNumber value={12400} />
+              </p>
+              <p className="text-caption text-ink-muted">sessões afetadas</p>
+            </div>
+          </div>
+
+          <div className="rounded-card border border-line bg-surface p-6">
+            <p className="text-caption text-ink-subtle">skeleton</p>
+            <div className="mt-4 flex items-center gap-4">
+              <Skeleton className="h-12 w-12 rounded-pill" />
+              <SkeletonText lines={3} className="flex-1" />
+            </div>
+            <p className="mt-4 text-body-sm text-ink-muted">
+              Ocupa o tamanho exato do conteúdo que vem, para que a chegada do
+              dado não empurre a página.
+            </p>
+          </div>
+        </Section>
+
+        <Section
           title="Marca"
-          description="Três aplicações, conforme o manual: principal sobre fundo claro, gradiente para superfícies de destaque e monocromática quando não há cor disponível."
+          description="Três aplicações do símbolo, conforme o manual, e o letreiro em SVG que substitui a palavra escrita em Poppins."
         >
           <div className="grid gap-5 sm:grid-cols-3">
             <div className="flex flex-col items-center gap-4 rounded-card border border-line bg-surface p-8">
@@ -371,6 +428,21 @@ export default function DesignSystemPage() {
             <div className="flex flex-col items-center gap-4 rounded-card border border-line bg-surface p-8">
               <LogoMark tone="mono" size={72} />
               <p className="text-caption text-ink-subtle">Monocromática</p>
+            </div>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="flex flex-col items-center gap-4 rounded-card border border-line bg-surface p-8 text-ink">
+              <Wordmark height={40} />
+              <p className="text-caption text-ink-subtle">
+                Letreiro sobre superfície clara
+              </p>
+            </div>
+            <div className="flex flex-col items-center gap-4 rounded-card bg-gradient-navy p-8 text-ink-inverse">
+              <Logo tone="gradient" size={48} />
+              <p className="text-caption text-gray-400">
+                Marca completa sobre o navy da navegação
+              </p>
             </div>
           </div>
         </Section>

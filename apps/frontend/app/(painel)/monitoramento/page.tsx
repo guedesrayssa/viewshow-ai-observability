@@ -18,16 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function MonitoramentoPage() {
-  return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-h1 text-ink">Monitoramento</h1>
-        <p className="mt-1 text-body-sm text-brand-blue">
-          Saúde técnica, distribuição e concentração geográfica
-        </p>
-      </header>
-
-      <MonitoringView />
-    </div>
-  );
+  return <MonitoringView />;
 }

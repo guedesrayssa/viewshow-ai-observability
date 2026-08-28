@@ -24,7 +24,7 @@ const TONE_CLASSES: Record<BadgeTone, string> = {
   critical: "bg-critical-soft text-critical-strong",
   warning: "bg-warning-soft text-warning-strong",
   success: "bg-success-soft text-success-strong",
-  info: "bg-info-soft text-brand-blue",
+  info: "bg-info-soft text-ink-brand",
   neutral: "bg-canvas text-ink-muted",
   brand: "bg-gradient-brand text-ink-inverse",
 };
