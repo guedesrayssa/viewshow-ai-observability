@@ -31,6 +31,7 @@ function runPublisher({
   callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
   imageRevision = commitSha,
   repositoryHead = commitSha,
+  iidFileTrailingNewline = true,
   envOverrides = {},
 } = {}) {
   assert.ok(fs.existsSync(script), "publication helper must exist");
@@ -115,7 +116,11 @@ elif [[ "$1" == "buildx" && "$2" == "build" ]]; then
   done
   expected="buildx build --platform linux/amd64 --load --iidfile IIDFILE --cache-from type=registry,ref=$cache --cache-to type=registry,ref=$cache,mode=max,image-manifest=true,oci-mediatypes=true --label org.opencontainers.image.revision=$EXPECTED_SHA --tag $tagged_image apps/backend/api"
   [[ "\${args[*]}" == "$expected" && -n "$iid_file" ]] || { echo "unexpected docker build: $*" >&2; exit 2; }
-  printf '%s\n' "$LOCAL_IMAGE_ID" >"$iid_file"
+  if [[ "$IID_FILE_TRAILING_NEWLINE" == "true" ]]; then
+    printf '%s\n' "$LOCAL_IMAGE_ID" >"$iid_file"
+  else
+    printf '%s' "$LOCAL_IMAGE_ID" >"$iid_file"
+  fi
 elif [[ "$*" == "push $tagged_image" ]]; then
   printf 'layer: pushed\n%s: digest: %s size: 1234\n' "$EXPECTED_SHA" "$PUSH_DIGEST"
 elif [[ "$1" == "pull" && "$2" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ ]]; then
@@ -164,6 +169,7 @@ fi
       REMOTE_PLATFORM: remotePlatform,
       IMAGE_REVISION: imageRevision,
       REPOSITORY_HEAD: repositoryHead,
+      IID_FILE_TRAILING_NEWLINE: String(iidFileTrailingNewline),
       EXPECTED_SHA: commitSha,
       AWS_ACCOUNT_ID: "248880318395",
       AWS_DEFAULT_REGION: "us-east-1",
@@ -193,6 +199,13 @@ test("absent SHA tag builds, checks again, pushes once, and validates only the d
   assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
   assert.match(calls, new RegExp(`docker:image inspect .*monitoracao-api@${digest}`));
   assert.doesNotMatch(calls, new RegExp(`docker:(pull|image inspect) .*monitoracao-api:${commitSha}`));
+});
+
+test("Buildx iidfile without a trailing newline is accepted", () => {
+  const { result, calls, dotenv } = runPublisher({ iidFileTrailingNewline: false });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
+  assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:push")).length, 1);
 });
 
 test("identical existing SHA tag is reused without a push", () => {
