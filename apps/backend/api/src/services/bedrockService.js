@@ -12,8 +12,9 @@ function isEnabled() {
   return process.env.BEDROCK_ENABLED === "true";
 }
 
-function templateExplanation({ hypothesis, score, evidence, source }) {
-  const originLabel = source === "golden-set" ? "caso já conhecido (golden set)" : "investigação do agente";
+function templateExplanation({ hypothesis, score, evidence, diagnosisSource }) {
+  const originLabel =
+    diagnosisSource === "golden-set" ? "caso já conhecido (golden set)" : "investigação do agente";
   const evidenceLine = evidence.length
     ? ` com base em ${evidence.length} evidência(s) coletada(s)`
     : "";

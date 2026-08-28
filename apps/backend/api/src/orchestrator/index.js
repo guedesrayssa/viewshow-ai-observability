@@ -18,24 +18,32 @@ async function diagnose(incidentId) {
 
   let hypothesis;
   let score;
-  let source;
+  // Nome deliberadamente diferente do `source` de cada item de evidência
+  // (que identifica o sistema de telemetria de origem, ex: "Youbora") —
+  // este aqui diz se o diagnóstico veio da golden set ou do agente.
+  let diagnosisSource;
 
   if (goldenCase) {
     hypothesis = goldenCase.expected_hypothesis;
     score = goldenCase.expected_score;
-    source = "golden-set";
+    diagnosisSource = "golden-set";
   } else {
     const agentResult = agent.investigate({ incident, evidence });
     hypothesis = agentResult.hypothesis;
     score = agentResult.score;
-    source = "agent";
+    diagnosisSource = "agent";
   }
 
-  await evidenceService.saveHypothesis(incidentId, { text: hypothesis, score, source });
+  await evidenceService.saveHypothesis(incidentId, { text: hypothesis, score, diagnosisSource });
 
-  const { explanation, explanationSource } = await bedrockService.explain({ hypothesis, score, evidence, source });
+  const { explanation, explanationSource } = await bedrockService.explain({
+    hypothesis,
+    score,
+    evidence,
+    diagnosisSource,
+  });
 
-  return { incidentId, hypothesis, score, evidence, source, explanation, explanationSource };
+  return { incidentId, hypothesis, score, evidence, diagnosisSource, explanation, explanationSource };
 }
 
 module.exports = { diagnose };
