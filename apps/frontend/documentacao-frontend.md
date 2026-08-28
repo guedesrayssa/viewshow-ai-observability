@@ -4,11 +4,9 @@ Aplicação web do View Show — a plataforma de telemetria de frontend do Globo
 que diagnostica falhas de reprodução em minutos. Construída com **Next.js 16
 (App Router)**, **React 19**, **TypeScript** e **Tailwind CSS v4**.
 
-Antes de ler o resto, vale ver a plataforma rodando: a
-**[demonstração em vídeo](https://youtu.be/Gur7yoTiQI0)** percorre as telas do
+A **[demonstração em vídeo](https://youtu.be/Gur7yoTiQI0)** percorre as telas do
 painel com o frontend integrado ao backend, do login ao diagnóstico de um
-incidente. É a forma mais rápida de entender o que esta documentação descreve em
-detalhe.
+incidente, e serve como visão geral do que esta documentação descreve em detalhe.
 
 Este é o **ponto de entrada** da documentação: reúne a visão geral e as seções
 transversais. Os domínios mais autocontidos moram em arquivos próprios dentro de
