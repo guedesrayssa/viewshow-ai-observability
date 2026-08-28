@@ -6,46 +6,26 @@
  * primária em gradiente, ação sólida em azul de marca, contorno neutro e
  * botões de texto. Toda ação da interface deve usar este componente para
  * manter altura, raio, foco e estados consistentes entre as telas.
+ *
+ * A aparência mora em `button-classes.ts`, que pode ser usado no servidor.
  */
 
 "use client";
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
+import {
+  buttonClasses,
+  type ButtonSize,
+  type ButtonVariant,
+} from "@/components/ui/button-classes";
 import { SpinnerIcon } from "@/components/ui/icons";
-import { cn } from "@/lib/cn";
 
-/** Hierarquia visual da ação. */
-export type ButtonVariant =
-  | "gradient"
-  | "solid"
-  | "outline"
-  | "ghost"
-  | "quiet";
-
-/** Altura e densidade do botão. */
-export type ButtonSize = "sm" | "md" | "lg";
-
-const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  // Ação primária da tela. Uma por área de decisão, para não competir.
-  gradient:
-    "bg-gradient-brand text-ink-inverse shadow-brand hover:brightness-[1.06] active:brightness-95",
-  // Ação de navegação e confirmações secundárias em contexto de dados.
-  solid: "bg-brand-blue text-ink-inverse hover:bg-brand-blue-dark",
-  // Ação alternativa sobre superfícies claras.
-  outline:
-    "border border-line-strong bg-surface text-ink hover:bg-canvas active:bg-line-subtle",
-  // Ação textual de apoio, com peso de link.
-  ghost: "text-brand-blue hover:bg-brand-blue-soft",
-  // Ação terciária, discreta, para cancelar ou descartar.
-  quiet: "text-ink-muted hover:bg-canvas hover:text-ink",
-};
-
-const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: "h-9 gap-1.5 px-3 text-caption",
-  md: "h-11 gap-2 px-4 text-body-sm",
-  lg: "h-12 gap-2 px-5 text-body-sm",
-};
+export {
+  buttonClasses,
+  type ButtonSize,
+  type ButtonVariant,
+} from "@/components/ui/button-classes";
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -89,22 +69,10 @@ export function Button({
       // `disabled` impede o envio duplicado enquanto ela não termina.
       aria-busy={loading || undefined}
       disabled={disabled || loading}
-      className={cn(
-        "inline-flex items-center justify-center rounded-field font-semibold",
-        "transition-[filter,background-color,color,border-color] duration-150",
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        fullWidth && "w-full",
-        className,
-      )}
+      className={buttonClasses({ variant, size, fullWidth, className })}
       {...props}
     >
-      {loading ? (
-        <SpinnerIcon size={size === "sm" ? 16 : 18} />
-      ) : (
-        leadingIcon
-      )}
+      {loading ? <SpinnerIcon size={size === "sm" ? 16 : 18} /> : leadingIcon}
       {children}
       {!loading && trailingIcon}
     </button>

@@ -19,7 +19,7 @@ const TONE_CLASSES: Record<AlertTone, string> = {
   critical: "border-critical/30 bg-critical-soft text-critical-strong",
   warning: "border-warning/40 bg-warning-soft text-warning-strong",
   success: "border-success/30 bg-success-soft text-success-strong",
-  info: "border-info/25 bg-info-soft text-brand-blue",
+  info: "border-info/25 bg-info-soft text-ink-brand",
 };
 
 const TONE_ICONS: Record<AlertTone, ReactNode> = {

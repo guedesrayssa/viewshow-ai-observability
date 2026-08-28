@@ -1,0 +1,562 @@
+{
+  "info": {
+    "_postman_id": "7a2e9f10-4b3c-4e8a-9d21-6f5c8a1b3e70",
+    "name": "Monitoração Agêntica — API (Fase 2)",
+    "description": "Testes da API em apps/backend/api: incidentes, evidências, camada agêntica (orquestrador/agente/golden set), ML mockado e dashboard.\n\nA coleção segue a ordem que um diagnóstico real percorre:\n\n1. **Saúde** — a API está no ar.\n2. **Autenticação** — login fixo, cookie de sessão assinado.\n3. **Incidentes** — listar, detalhar, ver evidências.\n4. **Diagnóstico (camada agêntica)** — um incidente que já bate com a golden set (caminho determinístico) e um que não bate (cai no agente).\n5. **Revisão de hipótese e golden set** — confirmar uma hipótese promove o caso à golden set; refutar não toca nela. Inclui o teste negativo (sem sessão, 401).\n6. **ML mockado** — contrato fixo de entrada/saída.\n7. **Dashboard** — resumo agregado.\n\nO endereço da API vem da variável `baseUrl`. Use o ambiente `local` para rodar contra a máquina do desenvolvedor e `aws` para rodar contra o ALB compartilhado, sem alterar nenhuma requisição.\n\n**Antes de rodar**: popular as tabelas com `npm run seed` em `apps/backend/api` (ver artefatos/backend.md). A pasta 5 depende do estado deixado pela pasta 4 dentro da mesma execução (usa a hipótese recém-criada) — rode a coleção inteira em ordem, não pastas isoladas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "description": "Endereço da API, sem barra no final." },
+    { "key": "authEmail", "value": "demo@globoplay.com" },
+    { "key": "authPassword", "value": "demo123" },
+    { "key": "incidentGoldenSet", "value": "falhas-reproducao-tvs-lg", "description": "Incidente cuja assinatura já existe na golden set — caminho determinístico." },
+    { "key": "incidentAgent", "value": "tokens-autenticacao-invalidos", "description": "Incidente sem correspondência na golden set — cai no agente." },
+    { "key": "incidentRefute", "value": "licencas-drm-tvs-samsung", "description": "Usado no teste de refutação (golden set não deve mudar)." },
+    { "key": "goldenSetScoreAntes", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Asserções aplicadas a todas as requisições da coleção.",
+          "pm.test('Responde em menos de 5 segundos', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Saúde",
+      "item": [
+        {
+          "name": "1.1 Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('status ok', function () { pm.expect(pm.response.json().status).to.eql('ok'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Autenticação",
+      "item": [
+        {
+          "name": "2.1 Login com credenciais erradas (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"x@x.com\",\n  \"password\": \"errada\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "2.2 Login com credenciais corretas (define cookie de sessão)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Definiu cookie de sessão', function () {",
+                  "    pm.expect(pm.cookies.has('session')).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{authEmail}}\",\n  \"password\": \"{{authPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Incidentes",
+      "item": [
+        {
+          "name": "3.1 Listar incidentes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Retorna os 4 incidentes semeados', function () {",
+                  "    pm.expect(corpo.incidents).to.be.an('array').with.lengthOf(4);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents"] }
+          }
+        },
+        {
+          "name": "3.2 Filtrar incidentes por região",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Só retorna incidentes do Sul', function () {",
+                  "    corpo.incidents.forEach((i) => pm.expect(i.region).to.eql('Sul'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/incidents?region=Sul",
+              "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents"],
+              "query": [{ "key": "region", "value": "Sul" }]
+            }
+          }
+        },
+        {
+          "name": "3.3 Detalhe de um incidente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Campos esperados', function () {",
+                  "    pm.expect(corpo.id).to.eql(pm.collectionVariables.get('incidentGoldenSet'));",
+                  "    pm.expect(corpo.urgency).to.eql('P1');",
+                  "    pm.expect(corpo.component).to.eql('Player');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentGoldenSet}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentGoldenSet}}"] }
+          }
+        },
+        {
+          "name": "3.4 Incidente inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/nao-existe", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "nao-existe"] }
+          }
+        },
+        {
+          "name": "3.5 Evidências do incidente (com força: forte/neutra/contra)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Duas evidências, ambas com strength', function () {",
+                  "    pm.expect(corpo.evidence).to.have.lengthOf(2);",
+                  "    corpo.evidence.forEach((e) => pm.expect(e.strength).to.be.oneOf(['forte', 'neutra', 'contra']));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentGoldenSet}}/evidence", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentGoldenSet}}", "evidence"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Diagnóstico (camada agêntica)",
+      "item": [
+        {
+          "name": "4.1 Diagnosticar incidente com correspondência na golden set",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Fonte é a golden set (caminho determinístico)', function () {",
+                  "    pm.expect(corpo.diagnosisSource).to.eql('golden-set');",
+                  "});",
+                  "pm.test('Explicação preenchida mesmo sem Bedrock', function () {",
+                  "    pm.expect(corpo.explanation).to.be.a('string').with.length.greaterThan(0);",
+                  "    pm.expect(corpo.explanationSource).to.eql('template');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentGoldenSet}}/diagnose", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentGoldenSet}}", "diagnose"] }
+          }
+        },
+        {
+          "name": "4.2 Diagnosticar incidente sem correspondência (cai no agente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Fonte é o agente', function () {",
+                  "    pm.expect(corpo.diagnosisSource).to.eql('agent');",
+                  "});",
+                  "pm.test('Score vem do módulo de ML mockado', function () {",
+                  "    pm.expect(corpo.score).to.eql(0.6);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentAgent}}/diagnose", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentAgent}}", "diagnose"] }
+          }
+        },
+        {
+          "name": "4.3 Diagnosticar incidente inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/nao-existe/diagnose", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "nao-existe", "diagnose"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Revisão de hipótese e golden set",
+      "item": [
+        {
+          "name": "5.1 Consultar hipótese atual do incidente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Hipótese vinda do diagnóstico anterior', function () {",
+                  "    pm.expect(corpo.incidentId).to.eql(pm.collectionVariables.get('incidentAgent'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentAgent}}/hypothesis", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentAgent}}", "hypothesis"] }
+          }
+        },
+        {
+          "name": "5.2 Confirmar hipótese COM sessão (usa cookie da requisição 2.2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('reviewStatus confirmed, reviewedBy é o e-mail da sessão', function () {",
+                  "    pm.expect(corpo.reviewStatus).to.eql('confirmed');",
+                  "    pm.expect(corpo.reviewedBy).to.eql(pm.collectionVariables.get('authEmail'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"confirmed\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentAgent}}/hypothesis/review", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentAgent}}", "hypothesis", "review"] }
+          }
+        },
+        {
+          "name": "5.3 Golden set da assinatura DEPOIS de confirmar (promovida)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 — caso promovido pela revisão anterior', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('curated_by é o e-mail que confirmou', function () {",
+                  "    pm.expect(corpo.curated_by).to.eql(pm.collectionVariables.get('authEmail'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/golden-set?signature=Identidade%23Mobile%23Nacional",
+              "host": ["{{baseUrl}}"], "path": ["api", "v1", "golden-set"],
+              "query": [{ "key": "signature", "value": "Identidade#Mobile#Nacional" }]
+            }
+          }
+        },
+        {
+          "name": "5.4 Diagnosticar de novo o incidente de refutação (gera hipótese fresca)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentRefute}}/diagnose", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentRefute}}", "diagnose"] }
+          }
+        },
+        {
+          "name": "5.5 Golden set do incidente de refutação ANTES de refutar (baseline)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('goldenSetScoreAntes', pm.response.json().expected_score);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/golden-set?signature=DRM%23Smart%20TV%23Sul",
+              "host": ["{{baseUrl}}"], "path": ["api", "v1", "golden-set"],
+              "query": [{ "key": "signature", "value": "DRM#Smart TV#Sul" }]
+            }
+          }
+        },
+        {
+          "name": "5.6 Refutar hipótese (não deve tocar a golden set)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('reviewStatus refuted', function () {",
+                  "    pm.expect(pm.response.json().reviewStatus).to.eql('refuted');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"refuted\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentRefute}}/hypothesis/review", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentRefute}}", "hypothesis", "review"] }
+          }
+        },
+        {
+          "name": "5.7 Golden set do incidente de refutação DEPOIS (deve ser igual à 5.5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Score não mudou — refutar nunca escreve na golden set', function () {",
+                  "    pm.expect(pm.response.json().expected_score).to.eql(pm.collectionVariables.get('goldenSetScoreAntes'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/golden-set?signature=DRM%23Smart%20TV%23Sul",
+              "host": ["{{baseUrl}}"], "path": ["api", "v1", "golden-set"],
+              "query": [{ "key": "signature", "value": "DRM#Smart TV#Sul" }]
+            }
+          }
+        },
+        {
+          "name": "5.8 status inválido no review (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"nao-existe\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentRefute}}/hypothesis/review", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentRefute}}", "hypothesis", "review"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. ML mockado",
+      "item": [
+        {
+          "name": "6.1 Analisar entrada qualquer (contrato fixo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Contrato fixo, sempre a mesma análise', function () {",
+                  "    pm.expect(corpo.model).to.eql('mock-v0');",
+                  "    pm.expect(corpo.confidence).to.eql(0.6);",
+                  "});",
+                  "pm.test('Ecoa as chaves recebidas', function () {",
+                  "    pm.expect(corpo.receivedInputKeys).to.eql(['qualquer', 'x']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"qualquer\": \"coisa\",\n  \"x\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/v1/ml/analyze", "host": ["{{baseUrl}}"], "path": ["api", "v1", "ml", "analyze"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Dashboard",
+      "item": [
+        {
+          "name": "7.1 Resumo agregado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const corpo = pm.response.json();",
+                  "pm.test('Três cartões de estatística', function () {",
+                  "    pm.expect(corpo.stats).to.have.lengthOf(3);",
+                  "});",
+                  "pm.test('Traz incidentes recentes', function () {",
+                  "    pm.expect(corpo.recentIncidents.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/dashboard/summary", "host": ["{{baseUrl}}"], "path": ["api", "v1", "dashboard", "summary"] }
+          }
+        }
+      ]
+    }
+  ]
+}

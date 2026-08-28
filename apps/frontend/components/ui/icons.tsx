@@ -123,3 +123,221 @@ export function InfoIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** Busca. */
+export function SearchIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="10.5" cy="10.5" r="7" />
+      <path d="m20.5 20.5-4.4-4.4" />
+    </Icon>
+  );
+}
+
+/** Abertura de seletor e menus. */
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m5 8.5 7 7 7-7" />
+    </Icon>
+  );
+}
+
+/** Volta à tela anterior. */
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m15 4.5-7 7.5 7 7.5" />
+    </Icon>
+  );
+}
+
+/** Fecha um filtro ou aviso. */
+export function XIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m6 6 12 12" />
+      <path d="M18 6 6 18" />
+    </Icon>
+  );
+}
+
+/** Visão Geral, na navegação lateral. */
+export function HomeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h3.5v-6h3v6H17a1 1 0 0 0 1-1v-9" />
+    </Icon>
+  );
+}
+
+/** Evidências, na navegação lateral. */
+export function ListIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6h11" />
+      <path d="M9 12h11" />
+      <path d="M9 18h11" />
+      <path d="M4 6h.01" />
+      <path d="M4 12h.01" />
+      <path d="M4 18h.01" />
+    </Icon>
+  );
+}
+
+/** Eventos, na navegação lateral. */
+export function ActivityIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3 12h4l2-7 4 14 2-7h6" />
+    </Icon>
+  );
+}
+
+/** Monitoramento, na navegação lateral. */
+export function MonitorIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4.5" width="18" height="12" rx="2" />
+      <path d="M8 20h8" />
+      <path d="M12 16.5V20" />
+    </Icon>
+  );
+}
+
+/** Conta da pessoa usuária, no rodapé da navegação lateral. */
+export function UserIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M4.5 20c0-4 3.5-6.5 7.5-6.5s7.5 2.5 7.5 6.5" />
+    </Icon>
+  );
+}
+
+/** Tema escuro, no seletor de aparência. */
+export function MoonIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 14.3A8.5 8.5 0 1 1 9.7 4a7 7 0 0 0 10.3 10.3Z" />
+    </Icon>
+  );
+}
+
+/** Tema claro, no seletor de aparência. */
+export function SunIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2" />
+      <path d="M12 19.5v2" />
+      <path d="M2.5 12h2" />
+      <path d="M19.5 12h2" />
+      <path d="m5.1 5.1 1.4 1.4" />
+      <path d="m17.5 17.5 1.4 1.4" />
+      <path d="m18.9 5.1-1.4 1.4" />
+      <path d="m6.5 17.5-1.4 1.4" />
+    </Icon>
+  );
+}
+
+/**
+ * Configurações, na navegação lateral.
+ *
+ * Dois controles deslizantes, e não uma engrenagem. Toda engrenagem legível a
+ * 19 px precisa de doze vértices e um furo no meio, o que a torna o desenho
+ * mais denso do conjunto — ao lado da casa, da lista e do monitor, todos de
+ * dois ou três traços, ela sempre pesa mais, por melhor que seja desenhada.
+ * Duas tentativas de engrenagem esbarraram nisso. O deslizante diz "ajuste"
+ * com quatro elementos, no mesmo peso dos vizinhos.
+ */
+export function SettingsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M10.5 7h9.5" />
+      <path d="M4 7h2.5" />
+      <circle cx="8.5" cy="7" r="2.25" />
+      <path d="M4 17h9.5" />
+      <path d="M17.5 17H20" />
+      <circle cx="15.5" cy="17" r="2.25" />
+    </Icon>
+  );
+}
+
+/** Aparência do sistema, no seletor de tema. */
+export function DisplayIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M8 20.5h8" />
+      <path d="M12 17v3.5" />
+      <path d="M12 4v13" />
+    </Icon>
+  );
+}
+
+/** Recolhe a navegação lateral para a faixa de ícones. */
+export function PanelCollapseIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M10 4v16" />
+      <path d="m6.8 9.6-2 2.4 2 2.4" />
+    </Icon>
+  );
+}
+
+/** Reabre a navegação lateral. */
+export function PanelExpandIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M10 4v16" />
+      <path d="m5 9.6 2 2.4-2 2.4" />
+    </Icon>
+  );
+}
+
+/** Abre a navegação em telas estreitas. */
+export function MenuIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </Icon>
+  );
+}
+
+/** Recarrega os dados do painel. */
+export function RefreshIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 11.5A8 8 0 0 0 6.3 6.3L3.5 9" />
+      <path d="M4 12.5a8 8 0 0 0 13.7 5.2l2.8-2.7" />
+      <path d="M3.5 4.5V9H8" />
+      <path d="M20.5 19.5V15H16" />
+    </Icon>
+  );
+}
+
+/** Avança para a tela seguinte. */
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m9 4.5 7 7.5-7 7.5" />
+    </Icon>
+  );
+}
+
+/** Exportação de dados, no cabeçalho das telas de painel. */
+export function ExportIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 15V4" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+    </Icon>
+  );
+}

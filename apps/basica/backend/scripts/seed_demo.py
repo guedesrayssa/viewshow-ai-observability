@@ -44,6 +44,17 @@ DEVICES = (
 
 CDNS = ("akamai", "cloudfront", "fastly")
 
+# Cadeia de serviços percorrida por uma requisição de reprodução. Os spans
+# enviados com eventos e erros são o que alimenta a topologia
+# (`/v1/analytics/rca/topology-health`) e o waterfall de trace da API — sem
+# eles, essas rotas respondem vazio e o painel não tem o que mostrar.
+SERVICE_CHAINS = {
+    "player": ("api-gateway", "playback-api", "player-edge"),
+    "drm": ("api-gateway", "playback-api", "drm-service"),
+    "auth": ("api-gateway", "auth-service"),
+    "ui": ("api-gateway", "playback-api"),
+}
+
 # Catálogo de falhas: código, mensagem, se derruba a sessão, módulo de origem e
 # peso relativo. A mistura de fatais e não fatais é o que faz o ranking do
 # painel exibir as duas cores de severidade.
@@ -55,6 +66,40 @@ ERROR_CATALOG = (
     ("MANIFEST_PARSE_ERROR", "unexpected token in HLS manifest", False, "player", 9),
     ("AUTH_TOKEN_EXPIRED", "token expired 412s ago", False, "auth", 6),
 )
+
+
+def build_spans(trace_id, module, moment, rng, *, failed):
+    """Monta o waterfall de spans de uma requisição.
+
+    Recebe o identificador do trace em `trace_id`, o módulo de origem em
+    `module` (que escolhe a cadeia de serviços), o instante em `moment`, a
+    fonte de aleatoriedade em `rng` e, em `failed`, se o último serviço da
+    cadeia falhou. Devolve a lista aceita pelo campo `spans` da ingestão.
+
+    Cada span começa depois do anterior e o pai é o span anterior da cadeia,
+    formando a árvore que a topologia converte em dependências.
+    """
+    chain = SERVICE_CHAINS.get(module, SERVICE_CHAINS["ui"])
+    spans = []
+    offset_ms = 0.0
+
+    for depth, service in enumerate(chain):
+        duration = max(4.0, rng.gauss(80 if depth else 220, 40))
+        last = depth == len(chain) - 1
+        spans.append(
+            {
+                "span_id": f"{trace_id}-s{depth}",
+                "parent_span_id": f"{trace_id}-s{depth - 1}" if depth else None,
+                "service": service,
+                "operation": "handle_request" if depth == 0 else "call_downstream",
+                "started_at": iso(moment + timedelta(milliseconds=offset_ms)),
+                "duration_ms": round(duration, 1),
+                "status": "error" if failed and last else "ok",
+            }
+        )
+        offset_ms += duration * 0.4
+
+    return spans
 
 
 def iso(moment: datetime) -> str:
@@ -106,21 +151,36 @@ def build_events(
     events = []
     for index in range(count):
         device, network = context(index, rng)
-        events.append(
-            {
-                "session_id": f"sess-{index % sessions:04d}",
-                "event_type": "playback_start",
-                "timestamp": iso(now - timedelta(minutes=rng.randint(1, minutes))),
-                "content_id": f"globoplay-ep-{rng.randint(1000, 9999)}",
-                "startup_time_ms": max(300, int(rng.gauss(1900, 700))),
-                "rebuffer_duration_ms": max(0, int(rng.gauss(900, 1400))),
-                "rebuffer_count": rng.choice((0, 0, 0, 1, 2)),
-                "playback_duration_ms": rng.randint(120_000, 3_600_000),
-                "bitrate_kbps": rng.choice((1800, 2600, 3400, 4200, 5200)),
-                "device": device,
-                "network": network,
-            }
-        )
+        moment = now - timedelta(minutes=rng.randint(1, minutes))
+        payload = {
+            "session_id": f"sess-{index % sessions:04d}",
+            "event_type": "playback_start",
+            "timestamp": iso(moment),
+            "content_id": f"globoplay-ep-{rng.randint(1000, 9999)}",
+            "startup_time_ms": max(300, int(rng.gauss(1900, 700))),
+            "rebuffer_duration_ms": max(0, int(rng.gauss(900, 1400))),
+            "rebuffer_count": rng.choice((0, 0, 0, 1, 2)),
+            "playback_duration_ms": rng.randint(120_000, 3_600_000),
+            "bitrate_kbps": rng.choice((1800, 2600, 3400, 4200, 5200)),
+            "device": device,
+            "network": network,
+        }
+
+        # Um em cada três eventos carrega o trace completo da requisição, com
+        # todos os serviços respondendo bem: é o tráfego saudável que dá à
+        # topologia uma taxa de erro realista, em vez de 100% de falha.
+        if index % 3 == 0:
+            trace_id = f"trace-evt-{index:04x}"
+            payload["trace_id"] = trace_id
+            payload["spans"] = build_spans(
+                trace_id,
+                rng.choice(("player", "drm", "auth", "ui")),
+                moment,
+                rng,
+                failed=False,
+            )
+
+        events.append(payload)
     return events
 
 
@@ -141,9 +201,14 @@ def build_errors(
     errors = []
     index = 0
     for code, message, fatal, module, weight in ERROR_CATALOG:
+        # O serviço que reporta o erro é o último da cadeia daquele módulo — o
+        # mesmo que os spans marcam como falho, para as duas leituras baterem.
+        service = SERVICE_CHAINS.get(module, SERVICE_CHAINS["ui"])[-1]
         for _ in range(weight):
             device, network = context(index, rng)
             index += 1
+            moment = now - timedelta(minutes=rng.randint(1, minutes))
+            trace_id = f"trace-{index:04x}"
             errors.append(
                 {
                     "session_id": f"sess-{index % sessions:04d}",
@@ -151,11 +216,12 @@ def build_errors(
                     "message": message,
                     "fatal": fatal,
                     "module": module,
-                    "service": "playback-api",
-                    "trace_id": f"trace-{index:04x}",
-                    "timestamp": iso(now - timedelta(minutes=rng.randint(1, minutes))),
+                    "service": service,
+                    "trace_id": trace_id,
+                    "timestamp": iso(moment),
                     "device": device,
                     "network": network,
+                    "spans": build_spans(trace_id, module, moment, rng, failed=True),
                 }
             )
     return errors
@@ -172,10 +238,17 @@ def build_heartbeats(
     sessões usado nas taxas de erro e de sessões sem falha.
     """
     minutes = int(span.total_seconds() // 60)
+    # Uma em cada cinco sessões manda o heartbeat no último minuto: são elas
+    # que aparecem no CCU, que só conta presença dos últimos dois minutos —
+    # sem isso, o painel mostraria zero simultâneas com o serviço cheio.
     return [
         {
             "session_id": f"sess-{index:04d}",
-            "timestamp": iso(now - timedelta(minutes=rng.randint(1, minutes))),
+            "timestamp": iso(
+                now - timedelta(seconds=rng.randint(5, 55))
+                if index % 5 == 0
+                else now - timedelta(minutes=rng.randint(1, minutes))
+            ),
         }
         for index in range(sessions)
     ]
