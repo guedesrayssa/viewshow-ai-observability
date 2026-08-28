@@ -22,6 +22,7 @@ Este documento reúne toda a documentação do frontend. O guia visual detalhado
 9. [Autenticação e conta](#9-autenticação-e-conta)
 10. [Design system e movimento](#10-design-system-e-movimento)
 11. [Acessibilidade](#11-acessibilidade)
+12. [Desenvolvimento e convenções](#12-desenvolvimento-e-convenções)
 
 ---
 
@@ -1246,6 +1247,73 @@ Adotamos as **WCAG 2.2**. Pontos aplicados no código:
 | --- | --- | --- |
 | Texto branco sobre `gradient-brand` | 2,9:1 a 3,7:1 | Restrito a rótulo de botão em negrito. A ação nunca é a única forma de entender a tela. |
 | `ink-subtle` sobre `surface` | 2,6:1 | Uso limitado a placeholder e texto decorativo. Informação que precisa ser lida usa `ink-muted` ou mais escuro. |
+
+---
+
+## 12. Desenvolvimento e convenções
+
+### 12.1 Variáveis de ambiente
+
+| Variável | Uso |
+| --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | Endereço da API que intermedia autenticação e telemetria. Sem ela: telas em modo de exemplo e login em sessão de demonstração. |
+
+O prefixo `NEXT_PUBLIC_` é obrigatório para o valor chegar ao navegador — e por
+isso **nada com segredo** deve usar esse prefixo. `.env.local` não é versionado;
+`.env.example` documenta o formato.
+
+### 12.2 Alias de import
+
+`tsconfig.json` define `"@/*": ["./*"]` a partir da raiz de `apps/frontend`:
+
+```ts
+import { Button } from "@/components/ui/button";
+import { useResource } from "@/hooks/use-resource";
+import { ENDPOINTS } from "@/lib/data/endpoints";
+```
+
+### 12.3 Convenções
+
+- **Server Component por padrão.** `"use client"` só quando há estado, efeito,
+  contexto ou API do navegador.
+- **Estrutura de uma tela nova** em `app/(painel)/<rota>/`: `page.tsx` (server,
+  só `metadata` + `*-view`), `<rota>-view.tsx` (client), `<rota>-resource.ts`
+  (tipos `*Response` + `fetch*` com `loadResource`), `<rota>-data.ts` (tipos,
+  rótulos, opções, exemplo **numérico**), blocos visuais.
+- **Cabeçalho de tela é `<PageHeader>`.**
+- **JSDoc**: cada arquivo abre com `/** @file … */` explicando **o porquê**, não o
+  que o código faz linha a linha.
+- **Idioma**: código, comentários, rotas e textos de interface em **pt-BR**.
+  Símbolos seguem o inglês quando é o idioma da API/DOM (`fetchOverview`,
+  `onValueChange`).
+- `cn` (`lib/cn.ts`) **não** resolve conflitos de utilitário do Tailwind — não
+  conte com sobrescrever cor/tamanho pelo `className`; use variantes do
+  componente.
+
+### 12.4 Nota sobre a versão do Next
+
+`AGENTS.md` / `CLAUDE.md` trazem um bloco escrito pelo próprio `next dev`: esta é
+uma versão do Next com breaking changes (APIs, convenções, estrutura de
+arquivos). Ao mexer em recursos do framework, consulte
+`node_modules/next/dist/docs/` (resolvido a partir de `apps/frontend/`). O bloco é
+reescrito pelo `next dev` — commitá-lo junto do trabalho mantém a árvore limpa.
+Já adotados: `LayoutProps<"/">` e tipos de rota gerados; `metadata`/`viewport`
+exportados de `page.tsx`/`layout.tsx`; `next/font/google` hospedando a fonte
+localmente.
+
+### 12.5 Checklist de PR
+
+- [ ] `npm run lint` sem erros.
+- [ ] `npm run build` passa.
+- [ ] Sem cor literal fora de `app/globals.css`.
+- [ ] Sem elemento nativo estilizado à mão onde há componente em `components/ui`.
+- [ ] Todo dado novo passa por um `*-resource.ts` e chega pelo `useResource`, com
+      os quatro estados desenhados.
+- [ ] Estado (loading / ready / atualizando / error) visível na tela, com
+      `<DataStatus>` no cabeçalho.
+- [ ] Movimento novo é um token `animate-*`.
+- [ ] Contraste e rótulo textual em todo estado colorido (WCAG 2.2).
+- [ ] Token ou componente novo refletido em `/design-system`.
 
 ---
 
