@@ -184,57 +184,57 @@ o fato de não haver número.
 | N-11 | `/eventos` | Procurar a linha para expandir | Selo "Telemetria parcial" com o motivo declarado, e o bloco de eventos correlacionados no estado de indisponível: "Os agregados publicados pela telemetria não reconstroem eventos um a um." Não há linha para expandir nesta fase. | 11 |
 
 <div align="center">
-	<img src="../assets/testes-frontend/N01.png" alt="Tela de login com os dois campos vazios, cada um com a sua mensagem de erro" style="width:700px;">
+	<img src="../../assets/testes-frontend/N01.png" alt="Tela de login com os dois campos vazios, cada um com a sua mensagem de erro" style="width:700px;">
 	<p><em>Figura 1 - N-01, envio com os dois campos vazios. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N02.png" alt="Tela de login com o e-mail giovana@globo e a mensagem de e-mail inválido" style="width:700px;">
+	<img src="../../assets/testes-frontend/N02.png" alt="Tela de login com o e-mail giovana@globo e a mensagem de e-mail inválido" style="width:700px;">
 	<p><em>Figura 2 - N-02, e-mail sem domínio completo. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N03.png" alt="Tela de login com alerta de e-mail ou senha incorretos" style="width:700px;">
+	<img src="../../assets/testes-frontend/N03.png" alt="Tela de login com alerta de e-mail ou senha incorretos" style="width:700px;">
 	<p><em>Figura 3 - N-03, credencial recusada pelo provedor. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N04.png" alt="Tela de criar conta com senha de seis caracteres e a mensagem de mínimo de oito" style="width:700px;">
+	<img src="../../assets/testes-frontend/N04.png" alt="Tela de criar conta com senha de seis caracteres e a mensagem de mínimo de oito" style="width:700px;">
 	<p><em>Figura 4 - N-04, senha abaixo do mínimo. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N05.png" alt="Tela de criar conta com a confirmação diferente da senha" style="width:700px;">
+	<img src="../../assets/testes-frontend/N05.png" alt="Tela de criar conta com a confirmação diferente da senha" style="width:700px;">
 	<p><em>Figura 5 - N-05, confirmação diferente da senha. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N06.png" alt="Tela de configurações com o nome da conta recém-criada assinando o perfil" style="width:700px;">
+	<img src="../../assets/testes-frontend/N06.png" alt="Tela de configurações com o nome da conta recém-criada assinando o perfil" style="width:700px;">
 	<p><em>Figura 6 - N-06, perfil depois da criação da conta. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N07.png" alt="Tela de criar conta com a mensagem de e-mail já registrado no campo de e-mail" style="width:700px;">
+	<img src="../../assets/testes-frontend/N07.png" alt="Tela de criar conta com a mensagem de e-mail já registrado no campo de e-mail" style="width:700px;">
 	<p><em>Figura 7 - N-07, e-mail já registrado. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N08.png" alt="Visualizador de JSON do navegador com a resposta 501 do endereço de SSO" style="width:700px;">
+	<img src="../../assets/testes-frontend/N08.png" alt="Visualizador de JSON do navegador com a resposta 501 do endereço de SSO" style="width:700px;">
 	<p><em>Figura 8 - N-08, o SSO leva a pessoa para fora da aplicação. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N09.png" alt="Visão geral com as APIs desligadas de propósito, sem fonte de dados e com os cartões em esqueleto" style="width:700px;">
+	<img src="../../assets/testes-frontend/N09.png" alt="Visão geral com as APIs desligadas de propósito, sem fonte de dados e com os cartões em esqueleto" style="width:700px;">
 	<p><em>Figura 9 - N-09, painel com as duas APIs desligadas de propósito. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N10.png" alt="Tela de incidentes com busca, filtros, ordenação e quatro incidentes listados" style="width:700px;">
+	<img src="../../assets/testes-frontend/N10.png" alt="Tela de incidentes com busca, filtros, ordenação e quatro incidentes listados" style="width:700px;">
 	<p><em>Figura 10 - N-10, incidentes servidos pela API operacional. Fonte: Autoria própria, 2026.</em></p>
 </div>
 
 <div align="center">
-	<img src="../assets/testes-frontend/N11.png" alt="Tela de eventos declarando que eventos individuais não têm fonte nesta fase" style="width:700px;">
+	<img src="../../assets/testes-frontend/N11.png" alt="Tela de eventos declarando que eventos individuais não têm fonte nesta fase" style="width:700px;">
 	<p><em>Figura 11 - N-11, ausência de evento individual declarada na tela. Fonte: Autoria própria, 2026.</em></p>
 </div>
 

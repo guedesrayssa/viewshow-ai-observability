@@ -216,7 +216,7 @@ da API** (`us-east-1`). A escolha por uma instância de desempenho fixo — e n�
 de desempenho variável, mais barata — evita que o próprio gerador vire o gargalo
 em rodadas longas.
 
-![Execução do k6 a partir da instância EC2](../assets/testes-carga/01-execucao-ec2.png)
+![Execução do k6 a partir da instância EC2](../../assets/testes-carga/01-execucao-ec2.png)
 
 &emsp; **Por que isso importa tanto.** Se o teste rodasse de um notebook na rede da
 faculdade, boa parte do tempo medido seria distância física até os servidores da
@@ -298,7 +298,7 @@ consulta mais lenta, não à soma delas.
 
 ### 6.2 Rodada 2 — com 291 incidentes, 1 usuário, 30 segundos
 
-![Resumo da ferramenta com a base povoada](../assets/testes-carga/02-smoke-com-dados.png)
+![Resumo da ferramenta com a base povoada](../../assets/testes-carga/02-smoke-com-dados.png)
 
 | Métrica | Base vazia | **Com dado** | Variação |
 | --- | ---: | ---: | ---: |
@@ -384,7 +384,7 @@ rodada.
 
 ### 7.1 Processamento
 
-![Utilização de CPU do serviço em 99,93%](../assets/testes-carga/04-cpu-saturada.png)
+![Utilização de CPU do serviço em 99,93%](../../assets/testes-carga/04-cpu-saturada.png)
 
 | Medida | Valor |
 | --- | ---: |
@@ -407,7 +407,7 @@ resultado devolvido — e é essa anomalia que leva ao diagnóstico da §8.
 
 ### 7.3 Um erro de medição, e por que ele está documentado aqui
 
-![Duas métricas de processamento no mesmo cluster](../assets/testes-carga/03-servico-errado.png)
+![Duas métricas de processamento no mesmo cluster](../../assets/testes-carga/03-servico-errado.png)
 
 &emsp; A primeira leitura do monitoramento indicou **processamento em 0,092%** —
 ou seja, máquina ociosa — durante uma rodada com 91,9% de falha. Isso é

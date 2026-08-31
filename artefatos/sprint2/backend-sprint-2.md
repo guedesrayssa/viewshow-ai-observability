@@ -1,6 +1,6 @@
 # Documentação Técnica: Backend — Sprint 2 (DynamoDB → API → Camada Agêntica)
 
-> Este documento descreve a implementação técnica da segunda etapa do backend do sistema de Monitoração Agêntica do Globoplay, cobrindo tudo **a partir do DynamoDB**: a modelagem das duas tabelas, a API em camadas (Fargate), o esqueleto simplificado da camada agêntica, a infraestrutura AWS provisionada para publicá-la e o roteiro de testes de integridade executado. A etapa anterior (ARGUS → BigQuery → job de consumo/processamento → DynamoDB) é tratada em documentação própria e não é repetida aqui. As decisões de arquitetura completas (ADRs) estão em [`arquitetura.md`](arquitetura.md).
+> Este documento descreve a implementação técnica da segunda etapa do backend do sistema de Monitoração Agêntica do Globoplay, cobrindo tudo **a partir do DynamoDB**: a modelagem das duas tabelas, a API em camadas (Fargate), o esqueleto simplificado da camada agêntica, a infraestrutura AWS provisionada para publicá-la e o roteiro de testes de integridade executado. A etapa anterior (ARGUS → BigQuery → job de consumo/processamento → DynamoDB) é tratada em documentação própria e não é repetida aqui. As decisões de arquitetura completas (ADRs) estão em [`arquitetura-inicial.md`](arquitetura-inicial.md).
 
 **Grupo:** G05 · **Parceiro:** Grupo Globo (Globoplay) — Projeto (CCMD7) · **Sprint:** 2
 
@@ -23,7 +23,7 @@
 
 ## 1. Visão geral e contexto do sprint
 
-&emsp; Ao início deste sprint, a infraestrutura AWS já existia apenas para o **job de ingestão** (BigQuery → DynamoDB): cluster ECS, ALB e repositório ECR próprios, todos com prefixo `data-ingestion-*`. O código da API tinha só um esqueleto Express com duas rotas mockadas (`GET /health`, `GET /items` com dados fictícios), sem nenhuma integração real com DynamoDB, Docker ou deploy. Este sprint cobriu integralmente o trecho `DynamoDB → API (com camada agêntica) → Dashboard` da arquitetura do MVP (ver [`arquitetura.md`](arquitetura.md), Seção 1), partindo desse esqueleto até uma API publicada, testada e consumível pelo frontend.
+&emsp; Ao início deste sprint, a infraestrutura AWS já existia apenas para o **job de ingestão** (BigQuery → DynamoDB): cluster ECS, ALB e repositório ECR próprios, todos com prefixo `data-ingestion-*`. O código da API tinha só um esqueleto Express com duas rotas mockadas (`GET /health`, `GET /items` com dados fictícios), sem nenhuma integração real com DynamoDB, Docker ou deploy. Este sprint cobriu integralmente o trecho `DynamoDB → API (com camada agêntica) → Dashboard` da arquitetura do MVP (ver [`arquitetura-inicial.md`](arquitetura-inicial.md), Seção 1), partindo desse esqueleto até uma API publicada, testada e consumível pelo frontend.
 
 &emsp; O trabalho seguiu a ordem: (1) modelagem das duas tabelas DynamoDB e da política de acesso a cada uma; (2) reestruturação da API em camadas; (3) implementação incremental de cada camada (serviço de evidências, serviço de golden set, orquestrador, agente, extensão do Bedrock, módulo de ML mockado, autenticação mínima); (4) provisionamento da infraestrutura AWS da API a partir do zero; (5) validação de ponta a ponta via um roteiro de testes de integridade reexecutável; (6) extensão das rotas para suportar a tela de Evidências, incluindo o fluxo de confirmação/refutação de hipótese pelo especialista.
 
@@ -33,7 +33,7 @@
 
 ## 2. Modelagem de dados (DynamoDB)
 
-&emsp; Seguindo o ADR-002 (ver [`arquitetura.md`](arquitetura.md)), os dados vivem em **duas tabelas separadas**, cada uma com um papel e um perfil de escrita diferente.
+&emsp; Seguindo o ADR-002 (ver [`arquitetura-inicial.md`](arquitetura-inicial.md)), os dados vivem em **duas tabelas separadas**, cada uma com um papel e um perfil de escrita diferente.
 
 <div align="center">
 
@@ -93,7 +93,7 @@
 
 ### 2.3. Dados de teste
 
-&emsp; Como a Fase 1 (job de ingestão) não roda neste ambiente, os dados de teste são gerados por [`apps/backend/api/scripts/seed.js`](../apps/backend/api/scripts/seed.js) (`npm run seed`), idempotente: popula 4 incidentes de exemplo (P1 a P4, cobrindo os mesmos casos usados no protótipo de alta fidelidade do frontend) com evidências classificadas por força (`forte`/`neutra`/`contra`) e hipóteses, além de 3 casos curados na golden set.
+&emsp; Como a Fase 1 (job de ingestão) não roda neste ambiente, os dados de teste são gerados por [`apps/backend/api/scripts/seed.js`](../../apps/backend/api/scripts/seed.js) (`npm run seed`), idempotente: popula 4 incidentes de exemplo (P1 a P4, cobrindo os mesmos casos usados no protótipo de alta fidelidade do frontend) com evidências classificadas por força (`forte`/`neutra`/`contra`) e hipóteses, além de 3 casos curados na golden set.
 
 ---
 
@@ -359,7 +359,7 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 
 - Conectar `apps/frontend` às rotas reais (Seção 10).
 - Build + push de uma nova versão da imagem (`:v2`) e nova revisão da Task Definition — o ambiente publicado no ECS ainda roda a `:v1`, sem as rotas de hipótese/revisão da Seção 4.3.
-- Promover o roteiro manual de testes (Seção 9) para uma suíte automatizada, aproximando o projeto do RNF12 (cobertura mínima de testes) descrito em [`requisitos.md`](requisitos.md).
+- Promover o roteiro manual de testes (Seção 9) para uma suíte automatizada, aproximando o projeto do RNF12 (cobertura mínima de testes) descrito em [`requisitos.md`](../sprint1/requisitos.md).
 - Reavaliar a proteção da golden set (Seção 8.1) caso o projeto saia do ambiente AWS Academy e ganhe permissão para criar roles IAM próprias.
 - Documentação de arquitetura consolidada (ADRs) e documentação do frontend seguem em arquivos próprios, fora do escopo deste documento.
 
@@ -369,4 +369,4 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 
 GRUPO GLOBO. **Termo de Abertura de Projeto (TAPI)** — Turma 15, Ciência da Computação, Módulo 7. Inteli, 2026.
 
-Ver também [`arquitetura.md`](arquitetura.md) (decisões de arquitetura do MVP).
+Ver também [`arquitetura-inicial.md`](arquitetura-inicial.md) (decisões de arquitetura do MVP).
