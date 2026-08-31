@@ -76,74 +76,66 @@ locals {
   ]))
 }
 
-// Build, zip e publicação do painel.
+// Build, empacotamento e publicação do painel.
+//
+// Três etapas separadas de propósito: a do meio é o `archive_file`, que é
+// nativo do Terraform e monta o zip igual nos três sistemas — evita depender do
+// utilitário `zip`, que não existe numa instalação limpa de Windows.
 //
 // NEXT_PUBLIC_API_BASE_URL="/" só funciona por causa do ajuste em
 // lib/data/client.ts, lib/auth.ts e evidencias/evidence-resource.ts: o Next
 // embute o valor dessa variável nos bundles em tempo de compilação, então sem
 // resolver "/" para window.location.origin no navegador, cada endereço novo de
 // API exigiria recompilar o painel inteiro.
-resource "terraform_data" "painel" {
+resource "terraform_data" "build_painel" {
   triggers_replace = [
     local.hash_frontend,
-    aws_amplify_branch.principal.arn,
-    // Rebuild quando a flag de dado de exemplo mudar: ela também é inlined.
     var.permitir_dado_exemplo,
   ]
 
+  // `&&` encadeia igual no sh e no cmd, e as variáveis vão pelo bloco
+  // `environment` em vez do prefixo `VAR=valor`, que é sintaxe só de shell
+  // POSIX. Assim a linha vale para Linux, macOS e Windows sem ramificação.
   provisioner "local-exec" {
+    command     = "npm ci --no-audit --no-fund && npm run build"
     working_dir = local.frontend_dir
-    interpreter = ["bash", "-c"]
 
-    command = <<-EOT
-      set -euo pipefail
+    environment = {
+      // O build precisa de saída para fonts.googleapis.com: app/layout.tsx usa
+      // next/font/google. As fontes acabam self-hosted no bundle, mas a máquina
+      // que compila precisa alcançar o Google.
+      NEXT_PUBLIC_API_BASE_URL           = "/"
+      NEXT_PUBLIC_TELEMETRY_API_BASE_URL = "/"
+      NEXT_PUBLIC_ALLOW_EXAMPLE_DATA     = var.permitir_dado_exemplo ? "true" : "false"
+    }
+  }
+}
 
-      npm ci --no-audit --no-fund
+// Lido só depois que o build existir: o `depends_on` adia a leitura para o
+// apply, senão o Terraform tentaria zipar out/ durante o plan, antes de a pasta
+// existir.
+data "archive_file" "painel" {
+  type        = "zip"
+  source_dir  = "${local.frontend_dir}/out"
+  output_path = "${path.module}/.terraform-artifacts/painel.zip"
 
-      # O build precisa de saída para fonts.googleapis.com: app/layout.tsx usa
-      # next/font/google. As fontes acabam self-hosted no bundle, mas a máquina
-      # que compila precisa alcançar o Google.
-      NEXT_PUBLIC_API_BASE_URL=/ \
-      NEXT_PUBLIC_TELEMETRY_API_BASE_URL=/ \
-      NEXT_PUBLIC_ALLOW_EXAMPLE_DATA=${var.permitir_dado_exemplo ? "true" : "false"} \
-        npm run build
+  depends_on = [terraform_data.build_painel]
+}
 
-      test -d out || { echo "build nao gerou out/ — output:'export' saiu do next.config.ts?" >&2; exit 1; }
+resource "terraform_data" "painel" {
+  triggers_replace = [
+    data.archive_file.painel.output_sha256,
+    aws_amplify_branch.principal.arn,
+  ]
 
-      rm -f painel.zip
-      (cd out && zip -qr ../painel.zip .)
+  provisioner "local-exec" {
+    command = "node ${abspath("${path.module}/scripts/publicar-painel.mjs")}"
 
-      read -r JOB_ID UPLOAD_URL <<< "$(aws amplify create-deployment \
-        --app-id ${aws_amplify_app.painel.id} \
-        --branch-name ${aws_amplify_branch.principal.branch_name} \
-        --region ${var.regiao} \
-        --query '[jobId,zipUploadUrl]' --output text)"
-
-      curl --silent --show-error --fail -X PUT --upload-file painel.zip "$UPLOAD_URL"
-
-      aws amplify start-deployment \
-        --app-id ${aws_amplify_app.painel.id} \
-        --branch-name ${aws_amplify_branch.principal.branch_name} \
-        --job-id "$JOB_ID" \
-        --region ${var.regiao} >/dev/null
-
-      # Espera a publicação terminar, senão o apply devolve uma URL que ainda
-      # responde 404.
-      for _ in $(seq 1 40); do
-        STATUS="$(aws amplify get-job \
-          --app-id ${aws_amplify_app.painel.id} \
-          --branch-name ${aws_amplify_branch.principal.branch_name} \
-          --job-id "$JOB_ID" --region ${var.regiao} \
-          --query 'job.summary.status' --output text)"
-        case "$STATUS" in
-          SUCCEED) echo "painel publicado"; rm -f painel.zip; exit 0 ;;
-          FAILED|CANCELLED) echo "publicacao falhou: $STATUS" >&2; exit 1 ;;
-        esac
-        sleep 5
-      done
-
-      echo "tempo esgotado esperando a publicacao" >&2
-      exit 1
-    EOT
+    environment = {
+      APP_ID = aws_amplify_app.painel.id
+      BRANCH = aws_amplify_branch.principal.branch_name
+      REGIAO = var.regiao
+      ZIP    = abspath(data.archive_file.painel.output_path)
+    }
   }
 }

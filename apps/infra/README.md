@@ -81,15 +81,71 @@ navegador → Amplify (HTTPS) ─┬─ estáticos: painel Next.js
                                                            → DynamoDB
 ```
 
+## Como funciona
+
+O `terraform apply` faz tudo numa passada:
+
+```
+terraform apply
+  │
+  ├─ cria  ECR, DynamoDB x2, ALB, target group, security groups, cluster ECS
+  │
+  ├─ roda  scripts/publicar-imagem.mjs   constroi a API e envia ao ECR
+  │
+  ├─ cria  task definition + servico ECS  (puxa a imagem do ECR)
+  │
+  ├─ roda  npm run build                  compila o painel
+  ├─ monta archive_file                   zipa out/
+  ├─ roda  scripts/publicar-painel.mjs    envia o zip ao Amplify
+  │
+  └─ roda  npm run seed                   popula as tabelas
+```
+
+E o caminho de uma requisição no navegador:
+
+```
+navegador -> Amplify (HTTPS) -+- paginas do painel
+                              +- /api, /auth, /health
+                                    -> API Gateway (HTTPS)
+                                       -> ALB (HTTP)
+                                          -> Fargate :3000
+                                             -> DynamoDB
+```
+
+### Os dois scripts em `scripts/`
+
+O Terraform não sabe construir imagem Docker nem publicar no Amplify — essas
+duas etapas precisam de comandos. Elas vivem em scripts Node, e não em comandos
+de shell embutidos no `.tf`, por um motivo específico: **rodar igual no Windows**.
+
+| Script | O que faz |
+|---|---|
+| `publicar-imagem.mjs` | Autentica no ECR, `docker build --platform linux/amd64`, `docker push` |
+| `publicar-painel.mjs` | Envia o zip do painel ao Amplify e espera a publicação terminar |
+
+`node arquivo.mjs` é a mesma linha nos três sistemas; um script de shell não é.
+Onde deu para evitar script, foi evitado:
+
+- o **zip** é `archive_file`, nativo do Terraform, em vez do utilitário `zip`
+- o **envio** usa `fetch`, embutido no Node 18+, em vez de `curl`
+- as **variáveis** vão pelo bloco `environment` do provisioner, em vez de
+  `VAR=valor comando`, que é sintaxe só de shell POSIX
+- os comandos encadeiam com `&&`, que funciona igual no `cmd` e no `sh`
+
+Se você mexer nesses arquivos, mantenha essa regra — é o que faz a mesma pasta
+funcionar no Linux de uma pessoa e no Windows de outra.
+
 ## Pré-requisitos
 
-| | Para quê |
-|---|---|
-| Terraform ≥ 1.7 | rodar isto |
-| Docker (daemon ativo) | construir a imagem da API |
-| Node 20+ e `npm` | compilar o painel e rodar o seed |
-| `zip`, `curl` | empacotar e enviar o painel ao Amplify |
-| AWS CLI | credenciais e comandos de conferência |
+| | Para quê | Windows |
+|---|---|---|
+| Terraform ≥ 1.7 | rodar isto | `winget install HashiCorp.Terraform` |
+| Docker, com o daemon ativo | construir a imagem da API | Docker Desktop |
+| Node 18+ e `npm` | compilar o painel, rodar o seed e os dois scripts | `winget install OpenJS.NodeJS` |
+| AWS CLI | credenciais e chamadas ao Amplify | `winget install Amazon.AWSCLI` |
+
+Só isso. Não precisa de `zip`, `curl`, `bash`, WSL nem Git Bash: o zip é montado
+pelo próprio Terraform e o envio usa o `fetch` embutido no Node.
 
 O build do painel precisa de saída para `fonts.googleapis.com`: `app/layout.tsx`
 usa `next/font/google`. As fontes acabam self-hosted no bundle, mas a máquina
@@ -97,9 +153,10 @@ que compila precisa alcançar o Google.
 
 ### Credenciais do Learner Lab
 
-No AWS Academy: **AWS Details → AWS CLI**, copie o bloco e cole em
-`~/.aws/credentials`. São três linhas — `aws configure` não pergunta a terceira,
-então tem que ser à mão:
+No AWS Academy: **AWS Details → AWS CLI**, copie o bloco e cole no arquivo de
+credenciais — `~/.aws/credentials` no Linux e no macOS,
+`C:\Users\<seu-usuario>\.aws\credentials` no Windows. São três linhas, e
+`aws configure` **não pergunta a terceira**, então tem que ser colado à mão:
 
 ```ini
 [g05-lab]

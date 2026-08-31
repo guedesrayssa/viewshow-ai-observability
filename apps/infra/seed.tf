@@ -10,29 +10,29 @@
 resource "terraform_data" "seed" {
   count = var.semear_dados ? 1 : 0
 
-  // O pk de cada item é um bucket de hora calculado no instante da semeadura, e
-  // GET /api/v1/dashboard/summary consulta uma janela de 24 h. Dado semeado há
-  // mais de ~25 h some da tela mesmo continuando na tabela — foi o que
-  // aconteceu em artefatos/sprint2/testes-desempenho.md. Semear de novo é
-  // barato e idempotente (PutCommand por chave fixa), então o timestamp abaixo
-  // força uma re-semeadura a cada apply.
+  // Só re-semeia se as tabelas forem recriadas. Usar timestamp() aqui forçaria
+  // uma re-semeadura a cada apply, mas ao custo de o `terraform plan` nunca
+  // ficar limpo — e um plan que sempre acusa mudança é um plan em que ninguém
+  // repara quando a mudança é de verdade.
+  //
+  // O contraponto é que o dado envelhece: o pk de cada item é um bucket de hora
+  // calculado na semeadura, e o dashboard consulta uma janela de 24 h, então
+  // dado com mais de ~25 h some da tela mesmo continuando na tabela (foi o que
+  // aconteceu em artefatos/sprint2/testes-desempenho.md). Re-semear é um
+  // comando à parte, idempotente, exposto no output `comando_seed`.
   triggers_replace = [
     aws_dynamodb_table.operacional.arn,
     aws_dynamodb_table.golden_set.arn,
-    timestamp(),
   ]
 
   provisioner "local-exec" {
+    command     = "npm ci --omit=dev --no-audit --no-fund && npm run seed"
     working_dir = "${path.module}/../backend/api"
-    interpreter = ["bash", "-c"]
 
-    command = <<-EOT
-      set -euo pipefail
-      npm ci --omit=dev --no-audit --no-fund
-      AWS_REGION=${var.regiao} \
-      OPERATIONAL_TABLE_NAME=${aws_dynamodb_table.operacional.name} \
-      GOLDEN_SET_TABLE_NAME=${aws_dynamodb_table.golden_set.name} \
-        npm run seed
-    EOT
+    environment = {
+      AWS_REGION             = var.regiao
+      OPERATIONAL_TABLE_NAME = aws_dynamodb_table.operacional.name
+      GOLDEN_SET_TABLE_NAME  = aws_dynamodb_table.golden_set.name
+    }
   }
 }

@@ -44,19 +44,19 @@ locals {
 resource "terraform_data" "imagem" {
   triggers_replace = [local.hash_imagem]
 
+  // O trabalho vive em scripts/publicar-imagem.mjs, e não num comando embutido
+  // aqui, para rodar igual em Linux, macOS e Windows: `node arquivo.mjs` é a
+  // mesma linha nos três, enquanto um script de shell não é. As variáveis vão
+  // pelo bloco `environment`, que o Terraform repassa de forma portável — sem
+  // ele seria `VAR=x comando` no bash e `set VAR=x` no cmd.
   provisioner "local-exec" {
-    working_dir = local.api_dir
-    interpreter = ["bash", "-c"]
+    command = "node ${abspath("${path.module}/scripts/publicar-imagem.mjs")}"
 
-    // --platform linux/amd64 é obrigatório: Fargate roda x86_64, e um build
-    // feito num Mac Apple Silicon sairia arm64 e a task morreria no start com
-    // "exec format error".
-    command = <<-EOT
-      set -euo pipefail
-      aws ecr get-login-password --region ${var.regiao} \
-        | docker login --username AWS --password-stdin ${aws_ecr_repository.api.repository_url}
-      docker build --platform linux/amd64 -t ${local.uri_imagem} .
-      docker push ${local.uri_imagem}
-    EOT
+    environment = {
+      REGIAO   = var.regiao
+      REPO_URL = aws_ecr_repository.api.repository_url
+      TAG      = local.tag_imagem
+      CONTEXTO = abspath(local.api_dir)
+    }
   }
 }
