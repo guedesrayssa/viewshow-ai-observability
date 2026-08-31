@@ -140,13 +140,40 @@ criou como `root`:
 docker run --rm -v "$PWD":/infra alpine chown -R "$(id -u):$(id -g)" /infra
 ```
 
-3 a 4 minutos depois do apply terminar, o Terraform já imprimeu a URL:
+## Como encontrar o link do deploy
+
+O `terraform apply` já termina imprimindo a URL na tela, na seção
+`Outputs:`, assim:
 
 ```
+Outputs:
+
 painel_url = "http://54.x.x.x"
 ```
 
-Abra e o painel já está com dado.
+Se você fechou o terminal ou quer o link de novo depois, rode isto de dentro
+de `apps/infra` (não precisa aplicar nada de novo):
+
+```bash
+terraform output painel_url
+```
+
+Ou, sem aspas em volta — útil para colar num navegador ou usar em outro
+script:
+
+```bash
+terraform output -raw painel_url
+```
+
+**A URL não muda entre sessões do laboratório** — é o Elastic IP que garante
+isso (ver `compute.tf`). O link de hoje continua valendo depois de você
+fechar e reabrir o lab amanhã, mesmo com a instância tendo sido parada e
+religada no meio.
+
+O painel só responde de verdade **3 a 4 minutos depois** de o `apply`
+terminar — é o tempo do bootstrap dentro da instância (instalar, compilar,
+semear). Se abrir a URL antes disso, o normal é dar timeout ou conexão
+recusada; espere e recarregue.
 
 ## O que o `apply` faz sozinho, sem SSH
 

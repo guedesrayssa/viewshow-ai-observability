@@ -211,8 +211,10 @@ Node, Docker nem AWS CLI instalados: o build do painel e a instalação da API
 rodam dentro da instância, o único pré-requisito local é o binário do
 Terraform (ou o container oficial, documentado como alternativa).
 
-Detalhes de pré-requisitos, credenciais do lab, variáveis, o que fazer entre
-sessões e uma tabela de "se der erro, é isto" estão em
+Detalhes de pré-requisitos, credenciais do lab, variáveis, [como encontrar o
+link do deploy depois de fechar o
+terminal](apps/infra/README.md#como-encontrar-o-link-do-deploy), o que fazer
+entre sessões e uma tabela de "se der erro, é isto" estão em
 [`apps/infra/README.md`](apps/infra/README.md).
 
 ---
