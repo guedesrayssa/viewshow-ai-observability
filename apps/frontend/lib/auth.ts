@@ -16,8 +16,24 @@
 /** Domínios corporativos, usados no exemplo de preenchimento e no SSO. */
 export const CORPORATE_DOMAINS = ["globo.com"] as const;
 
-/** Endereço da API que intermedia a conversa com o provedor de identidade. */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+/** Endereço bruto da API que intermedia a conversa com o provedor de identidade. */
+const CONFIGURED_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+
+/**
+ * Endereço efetivo da API, resolvendo o valor especial `"/"` para a origem
+ * atual do navegador.
+ *
+ * `"/"` significa "mesma origem do painel" (ver `lib/data/client.ts`, onde a
+ * mesma resolução existe para as leituras de dado). Sem isto, montar a URL por
+ * interpolação de string produziria `"//auth/login"` — um endereço
+ * protocol-relative que funciona por acidente, não por design.
+ */
+const API_BASE_URL =
+  CONFIGURED_API_BASE_URL === "/"
+    ? typeof window === "undefined"
+      ? "http://localhost"
+      : window.location.origin
+    : CONFIGURED_API_BASE_URL;
 
 /** Formato mínimo de e-mail: algo, arroba, domínio com ponto e sem espaços. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

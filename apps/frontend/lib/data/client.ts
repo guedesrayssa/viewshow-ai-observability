@@ -42,6 +42,24 @@ const API_BASES: Record<ApiTarget, string> = {
   telemetria: process.env.NEXT_PUBLIC_TELEMETRY_API_BASE_URL ?? "",
 };
 
+/**
+ * Base efetiva de uma API, resolvendo o valor especial `"/"`.
+ *
+ * `"/"` significa "mesma origem do painel": usado quando o painel e as APIs
+ * são servidos atrás do mesmo host (ex.: nginx num único provisionamento),
+ * caso em que o endereço só é conhecido no navegador, nunca na compilação.
+ * `new URL(path, "/")` lançaria `TypeError: Invalid base URL`, por isso a
+ * resolução para `window.location.origin` acontece aqui, e não na declaração
+ * de `API_BASES`.
+ */
+function apiBase(target: ApiTarget): string {
+  const configurada = API_BASES[target].trim();
+  if (configurada === "/") {
+    return typeof window === "undefined" ? "http://localhost" : window.location.origin;
+  }
+  return configurada;
+}
+
 /** Tempo máximo de espera por resposta, em milissegundos. */
 const REQUEST_TIMEOUT = 8000;
 
@@ -85,7 +103,7 @@ export function isApiConfigured(target: ApiTarget): boolean {
 export type QueryParams = Record<string, string | number | undefined>;
 
 function buildUrl(target: ApiTarget, path: string, params?: QueryParams): string {
-  const url = new URL(path, API_BASES[target]);
+  const url = new URL(path, apiBase(target));
 
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
