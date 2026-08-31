@@ -1,113 +1,138 @@
 # Infraestrutura — View Show num AWS Academy Learner Lab
 
-Terraform que provisiona a demonstração completa do View Show (painel + API
-operacional + dados) dentro de um Learner Lab individual, sozinho, sem tocar
-no console.
+Terraform que reproduz a arquitetura entregue na Sprint 2 — ECS Fargate, ALB,
+ECR, Amplify e DynamoDB — dentro do Learner Lab individual de cada pessoa, com
+um `terraform apply`.
+
+Os nomes dos recursos são os mesmos da Tabela 7 de
+[`artefatos/sprint2/backend-sprint-2.md`](../../artefatos/sprint2/backend-sprint-2.md),
+para que o que sobe aqui seja conferível linha a linha contra a documentação da
+arquitetura.
 
 ## O que sobe
 
-Uma única EC2 rodando:
+| Recurso | Nome | Arquivo |
+|---|---|---|
+| Repositório ECR | `monitoracao-api` | `ecr.tf` |
+| Cluster ECS | `data-ingestion-cluster` | `ecs.tf` |
+| Task definition (Fargate, 256/512) | `monitoracao-api-task` | `ecs.tf` |
+| Serviço ECS | `monitoracao-api-service` | `ecs.tf` |
+| Application Load Balancer | `data-ingestion-alb` | `alb.tf` |
+| Target group (health check em `/health`) | `monitoracao-api-tg` | `alb.tf` |
+| Security group do serviço | `monitoracao-api-sg` | `network.tf` |
+| Log group | `/ecs/monitoracao-api` | `ecs.tf` |
+| Tabelas DynamoDB | `monitoracao-operacional`, `monitoracao-golden-set` | `dynamodb.tf` |
+| App Amplify (deploy manual por zip) | `g05-painel` | `amplify.tf` |
+| API Gateway (só terminação TLS) | `monitoracao-api-service-tls` | `apigateway.tf` |
 
-- o painel (Next.js, exportado como HTML estático)
-- a API operacional (Node/Express, `apps/backend/api`)
-- um nginx na frente, servindo os dois na mesma origem
+O Terraform também constrói e publica a imagem no ECR, compila e publica o
+painel no Amplify, e semeia as tabelas — tudo dentro do `apply`.
 
-Mais as duas tabelas DynamoDB que a API usa (`monitoracao-operacional`,
-`monitoracao-golden-set`) e um bucket S3 privado, que existe só para levar o
-código até a instância — não é o que serve o painel.
+### Duas diferenças em relação à conta compartilhada, e por quê
 
-**Não sobe** a API de telemetria em Flask (`apps/basica`). As telas que
-dependem só dela mostram o conjunto de exemplo do próprio frontend, rotulado
-como tal na tela — nunca um número sem procedência. Ver
-`var.permitir_dado_exemplo` em [`variables.tf`](variables.tf).
+**O cluster e o ALB são criados aqui.** Na conta da entrega eles já existiam,
+provisionados para o job de ingestão (BigQuery → DynamoDB), e a API foi
+pendurada no ALB como uma regra de listener de prioridade 10, preservando a ação
+padrão que servia o job. Esse job não faz parte deste repositório, então num lab
+novo não há o que preservar: o ALB é criado do zero e sua ação padrão já aponta
+para a API.
 
-**Não usa** ECS, ECR nem Load Balancer. O motivo é orçamento: o Learner Lab
-para instâncias EC2 quando a sessão termina, mas **não** desliga Fargate nem
-Load Balancer — eles continuam cobrando entre sessões, e o orçamento do lab é
-de US$ 100. Uma EC2 é o único destes componentes que a AWS desliga sozinha.
+**Existe um API Gateway que não está no diagrama.** Ele não serve tráfego de
+negócio nenhum — é só terminação TLS na frente do ALB. A razão está na próxima
+seção.
 
-## Por que uma origem só
+## Por que o login funciona aqui e não funcionava antes
 
-Painel e API são servidos pelo mesmo nginx, na mesma porta. Isso resolve três
-problemas de uma vez, sem mudar código de aplicação:
+[`ci-cd-amplify.md`](../../artefatos/sprint2/ci-cd-amplify.md) registra como
+limitação conhecida que o login não funciona em produção. A causa são duas
+linhas em `apps/backend/api/src/routes/auth.js`:
 
-- **CORS** deixa de existir — requisição same-origin não é cross-origin.
-- **Conteúdo misto** some — um único esquema, HTTP.
-- **O cookie de sessão volta a funcionar** — `SameSite=Lax` exige same-site, e
-  same-origin é same-site por definição. (O outro defeito do cookie, a flag
-  `Secure` que o descartaria em HTTP puro, nem chega a aparecer aqui: como a
-  API roda como processo Node direto — não a imagem Docker do repositório —
-  simplesmente não definimos `NODE_ENV=production` no systemd. Ver o
-  comentário em `templates/user_data.sh.tftpl`.)
+```js
+secure: process.env.NODE_ENV === "production",   // o Dockerfile crava production
+sameSite: "lax",
+```
 
-E, de graça: o endereço da API não precisa ser conhecido antes do build do
-painel. O Next lê `NEXT_PUBLIC_API_BASE_URL="/"` e resolve para
-`window.location.origin` no navegador (ver `lib/data/client.ts` e
-`lib/auth.ts`), então o mesmo build funciona em qualquer IP, em qualquer
-sessão do lab.
+Com o painel em HTTPS no Amplify e a API em HTTP no ALB, são **sites
+diferentes** e **esquemas diferentes**. O navegador bloqueia a chamada por
+conteúdo misto antes mesmo de sair; e se passasse, `sameSite=lax` não anexaria o
+cookie. Não é um bug de código — é o desenho de duas origens que não fecha.
 
-## Como o código chega na instância
+A correção é de infraestrutura, não de aplicação: o Amplify repassa `/api`,
+`/auth` e `/health` para a API (`custom_rule` com status 200, em `amplify.tf`).
+Do ponto de vista do navegador tudo sai de **uma origem só, em HTTPS**. Conteúdo
+misto some, CORS some, `sameSite=lax` volta a valer e `secure=true` passa a ser
+verdade.
 
-O GitLab deste projeto é privado e auto-hospedado — uma EC2 recém-criada não
-tem como cloná-lo. Em vez de uma credencial de repositório embutida no
-provisionamento, o `apply` empacota `apps/backend/api` e `apps/frontend` (sem
-`node_modules`) com o data source nativo `archive_file` — sem chamar `zip`
-nem nenhum binário externo, então funciona igual em Linux e Windows — e sobe
-os dois zips para um bucket S3 privado. A instância baixa de lá com a própria
-role (`LabInstanceProfile`), sem nenhuma credencial em lugar nenhum.
+Falta um degrau: o Amplify **recusa alvo HTTP** numa regra de proxy (`HTTP URLs
+cannot be used in custom rules`), e o ALB não fala HTTPS sem certificado — que
+exigiria um domínio próprio, que o laboratório não dá. O caminho natural seria
+CloudFront, mas ele é **negado no AWS Academy** (`cloudfront:CreateDistribution`
+→ `AccessDenied`, testado nesta conta). O API Gateway é permitido e entrega
+exatamente o que falta: HTTPS com certificado válido da AWS em
+`*.execute-api.amazonaws.com`, sem domínio nenhum.
 
-A chave do objeto S3 inclui o hash do conteúdo. Mudar o código gera uma chave
-nova, o que muda o `user_data` da instância, e com
-`user_data_replace_on_change = true` isso cria uma instância nova já com o
-código atualizado — não existe um passo de "reimplantar" separado do
-`terraform apply`.
+A cadeia final:
+
+```
+navegador → Amplify (HTTPS) ─┬─ estáticos: painel Next.js
+                             └─ /api,/auth,/health → API Gateway (HTTPS)
+                                                       → ALB (HTTP)
+                                                         → Fargate :3000
+                                                           → DynamoDB
+```
 
 ## Pré-requisitos
 
-- [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.7, **ou**
-  Docker (dá para rodar tudo pelo container oficial, sem instalar nada — ver
-  abaixo). Nada mais: o build do Next e o `npm ci` da API rodam dentro da
-  instância, não na sua máquina.
-- Uma sessão ativa de AWS Academy Learner Lab, com as credenciais coladas em
-  `~/.aws/credentials`.
+| | Para quê |
+|---|---|
+| Terraform ≥ 1.7 | rodar isto |
+| Docker (daemon ativo) | construir a imagem da API |
+| Node 20+ e `npm` | compilar o painel e rodar o seed |
+| `zip`, `curl` | empacotar e enviar o painel ao Amplify |
+| AWS CLI | credenciais e comandos de conferência |
+
+O build do painel precisa de saída para `fonts.googleapis.com`: `app/layout.tsx`
+usa `next/font/google`. As fontes acabam self-hosted no bundle, mas a máquina
+que compila precisa alcançar o Google.
 
 ### Credenciais do Learner Lab
 
-O Learner Lab dá três valores em **AWS Details → AWS CLI**, mas
-`aws configure` só pergunta por dois. Cole o bloco à mão:
+No AWS Academy: **AWS Details → AWS CLI**, copie o bloco e cole em
+`~/.aws/credentials`. São três linhas — `aws configure` não pergunta a terceira,
+então tem que ser à mão:
 
 ```ini
-# ~/.aws/credentials
 [g05-lab]
 aws_access_key_id=ASIA...
 aws_secret_access_key=...
 aws_session_token=...
 ```
 
-E aponte o Terraform para esse perfil antes de qualquer comando:
-
 ```bash
 export AWS_PROFILE=g05-lab          # Linux/macOS
-$env:AWS_PROFILE = "g05-lab"        # Windows, PowerShell
+$env:AWS_PROFILE = "g05-lab"        # Windows/PowerShell
 ```
 
-Essas credenciais expiram com a sessão (~4 horas). Recopie o bloco acima
-sempre que reiniciar o lab.
+As credenciais expiram junto com a sessão de 4 h. Se o apply falhar com
+`ExpiredToken`, recopie o bloco e rode de novo — o Terraform retoma de onde
+parou.
 
 ## Uso
 
 ```bash
 cd apps/infra
-terraform init      # uma vez, ou de novo se algum provider mudar
-terraform plan       # confere o que vai ser criado antes de aplicar
+terraform init
+terraform plan       # confira a lista antes de aplicar
 terraform apply
 ```
 
-Sem Terraform instalado, o binário é um arquivo só — não precisa de `apt`,
-`brew` nem privilégio de administrador:
+Leva de **8 a 15 minutos**. O que mais demora é o ALB ficar `active` (~3 min), o
+serviço ECS estabilizar atrás do health check e a publicação no Amplify.
+
+Sem Terraform instalado, o binário é um arquivo só, sem `apt`, `brew` nem
+administrador:
 
 ```bash
-# Linux/macOS: baixa para um diretório que já está no PATH
 mkdir -p ~/.local/bin
 curl -fsSL -o terraform.zip \
   https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_$(uname -s | tr A-Z a-z)_amd64.zip
@@ -116,131 +141,130 @@ terraform version
 ```
 
 No Windows, baixe o `.zip` da mesma página e extraia `terraform.exe` para uma
-pasta do `PATH` (ou use `winget install HashiCorp.Terraform`).
-
-Só se nenhuma das duas opções servir, dá para rodar pelo container oficial —
-mas **inclua `--user`**, senão o container escreve `terraform.tfstate` como
-`root` e o próximo comando trava com `permission denied`:
-
-```bash
-docker run --rm -it --user "$(id -u):$(id -g)" \
-  -v "${PWD}/../..":/repo -w /repo/apps/infra \
-  -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
-  hashicorp/terraform:latest apply
-```
-
-(O volume monta o repositório inteiro, não só `apps/infra`, porque o
-`archive_file` também lê `apps/backend/api` e `apps/frontend`.)
-
-Se você já rodou sem `--user` e travou nisso, o conserto é devolver os
-arquivos para o seu usuário — de novo, com Docker, já que foi ele quem os
-criou como `root`:
-
-```bash
-docker run --rm -v "$PWD":/infra alpine chown -R "$(id -u):$(id -g)" /infra
-```
+pasta do `PATH`, ou use `winget install HashiCorp.Terraform`.
 
 ## Como encontrar o link do deploy
 
-O `terraform apply` já termina imprimindo a URL na tela, na seção
-`Outputs:`, assim:
+O `apply` termina imprimindo a URL em `Outputs:`:
 
 ```
-Outputs:
-
-painel_url = "http://54.x.x.x"
+painel_url = "https://producao.d1j02paz2xgg2z.amplifyapp.com"
 ```
 
-Se você fechou o terminal ou quer o link de novo depois, rode isto de dentro
-de `apps/infra` (não precisa aplicar nada de novo):
+Para recuperar depois, de dentro de `apps/infra`:
 
 ```bash
 terraform output painel_url
+terraform output -raw painel_url    # sem aspas, para colar ou usar em script
 ```
 
-Ou, sem aspas em volta — útil para colar num navegador ou usar em outro
-script:
+Entre com `demo@globoplay.com` / `demo123` (`terraform output credenciais_demo`).
 
-```bash
-terraform output -raw painel_url
-```
-
-**A URL não muda entre sessões do laboratório** — é o Elastic IP que garante
-isso (ver `compute.tf`). O link de hoje continua valendo depois de você
-fechar e reabrir o lab amanhã, mesmo com a instância tendo sido parada e
-religada no meio.
-
-O painel só responde de verdade **3 a 4 minutos depois** de o `apply`
-terminar — é o tempo do bootstrap dentro da instância (instalar, compilar,
-semear). Se abrir a URL antes disso, o normal é dar timeout ou conexão
-recusada; espere e recarregue.
-
-## O que o `apply` faz sozinho, sem SSH
-
-1. Cria as duas tabelas DynamoDB.
-2. Empacota o código e sobe para o bucket de artefatos.
-3. Sobe a EC2, associa o Elastic IP.
-4. Dentro da instância (`templates/user_data.sh.tftpl`), no primeiro boot:
-   - instala Node 22, nginx;
-   - baixa e instala as duas aplicações;
-   - sobe a API como serviço systemd (`monitoracao-api`);
-   - compila o painel com o endereço da API resolvido em tempo de execução;
-   - configura o nginx para servir os dois na mesma origem;
-   - roda `npm run seed`, que popula as duas tabelas.
+Atenção: **a URL muda a cada `terraform destroy` + `apply`**, porque o `appId` do
+Amplify é novo. Ela é estável enquanto a stack existir.
 
 ## Depois do apply
 
 ```bash
-terraform output painel_url              # a URL
-terraform output comando_ssh             # SSH de depuração, com a chave já pronta
-terraform output comando_logs_bootstrap  # acompanha o provisionamento em tempo real
-terraform output comando_seed            # repovoa os dados sem esperar reiniciar
+terraform output api_url_https   # a API por HTTPS, para Postman
+terraform output api_url         # o ALB direto, em HTTP
+terraform output comando_logs    # acompanha o log da API
+terraform output comando_seed    # repovoa as tabelas
 ```
 
-## Entre sessões do laboratório
+Se o painel abrir vazio, rode o seed de novo: o `pk` de cada item é um bucket de
+hora calculado na semeadura, e o dashboard consulta uma janela de 24 h — dado
+com mais de ~25 h some da tela mesmo continuando na tabela. Foi o que aconteceu
+em [`testes-desempenho.md`](../../artefatos/sprint2/testes-desempenho.md).
 
-O Elastic IP não muda entre sessões, então a mesma URL continua válida. Ao
-final da sessão a AWS **para** a instância (não destrói); ao religar, a API
-volta sozinha porque o serviço está `enabled` no systemd — mas os **dados
-não se renovam sozinhos** nesse caso, porque o `npm run seed` só roda no
-primeiro boot da instância, e não a cada `start`.
+## Custo — leia antes de fechar o laboratório
 
-Duas opções, dependendo do que você precisa:
+O "End Lab" do AWS Academy **para instâncias EC2, e só elas**. Aqui não há EC2:
+o ALB, a task Fargate e o API Gateway **continuam rodando e cobrando** depois que
+você fecha o notebook. São cerca de **US$ 25/mês**, contra um orçamento total de
+US$ 100 — e o indicador de gasto do lab atrasa até 8 horas, então você descobre
+tarde.
 
-- **Só reabrir a demo**: religue a instância no console (`Instance state →
-  Start`) e espere ~40s. Não precisa rodar Terraform de novo.
-- **Dado fresco de novo**: rode `terraform output comando_seed` (repovoa sem
-  reiniciar nada) — ou, se preferir recomeçar do zero, `terraform apply`
-  sem mudar nada é um no-op (a instância parada não aparece como drift); para
-  forçar uma instância nova, o caminho mais simples é
-  `terraform taint aws_instance.app && terraform apply`.
+```bash
+terraform destroy    # ao fim de cada sessão, sem exceção
+```
 
-Se o crédito do laboratório importa, `terraform destroy` no fim de cada
-sessão custa 3-4 minutos a menos na sessão seguinte e garante que nada fica
-cobrando entre uma sessão e outra — as tabelas DynamoDB e o bucket também são
-recriados no próximo `apply`, então nenhum dado "de produção" se perde com
-isso.
-
-## Se o `apply` falhar
-
-| Sintoma | Causa provável | O que fazer |
-| --- | --- | --- |
-| `ExpiredToken` / `InvalidClientTokenId` no meio do apply | Sessão do lab expirou | Reinicie o lab, recole as credenciais, rode `terraform apply` de novo — ele retoma do que falta |
-| `ResourceInUseException: Table already exists` | Alguém já criou `monitoracao-operacional`/`golden-set` na mão neste mesmo lab | `terraform import aws_dynamodb_table.operacional monitoracao-operacional` (e o mesmo para a golden set), ou apague a tabela feita na mão |
-| `UnauthorizedOperation` / `AccessDenied` num recurso | O nome do instance profile não é `LabInstanceProfile` neste ambiente | Confira no console (EC2 → Instâncias → uma existente → IAM Role) e ajuste `var.nome_perfil_instancia` |
-| Painel abre mas todas as telas dizem "indisponível" | O bootstrap ainda não terminou, ou falhou no meio | `terraform output comando_logs_bootstrap` e acompanhe `/var/log/g05-bootstrap.log` |
-| `nginx: [emerg]` nos logs | Configuração gerada não validou (`nginx -t` roda antes do `systemctl restart` e aborta o script se falhar) | Mesmo log acima mostra a linha exata que falhou |
-| Nenhuma tela mostra dado real, só "Dados de exemplo" | Normal se a semeadura falhou silenciosamente, ou se você reiniciou a instância (o seed não repete sozinho, ver acima) | `terraform output comando_seed` |
-| No Windows, `terraform apply` reclama de permissão do arquivo `.pem` | Normal — o SSH do Windows é mais tolerante que o do Linux, mas se travar, restrinja com `icacls g05-view-show.pem /inheritance:r /grant:r "$($env:USERNAME):(R)"` | — |
+Isso é consequência direta da arquitetura, não desta implementação: Fargate e
+ALB não têm estado "parado". Reaplicar custa os mesmos 8-15 minutos.
 
 ## Variáveis
 
-Ver [`variables.tf`](variables.tf) — todas têm default e nenhuma exige
-preenchimento para o caminho comum. As mais prováveis de mexer:
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `regiao` | `us-east-1` | O lab só permite `us-east-1` e `us-west-2` |
+| `nome_cluster` | `data-ingestion-cluster` | Nome do cluster ECS |
+| `nome_alb` | `data-ingestion-alb` | Nome do ALB |
+| `nome_servico` | `monitoracao-api-service` | Serviço ECS |
+| `nome_repositorio_ecr` | `monitoracao-api` | Repositório da imagem |
+| `nome_app_amplify` | `g05-painel` | App do Amplify |
+| `branch_amplify` | `producao` | Vira o subdomínio da URL |
+| `cpu_task` / `memoria_task` | `256` / `512` | Igual ao `task-definition.json` |
+| `quantidade_tasks` | `1` | Tasks simultâneas |
+| `auth_email` / `auth_senha` | `demo@globoplay.com` / `demo123` | Login do painel |
+| `permitir_dado_exemplo` | `true` | Telas que dependem da API de telemetria (fora do escopo) mostram exemplo rotulado em vez de "indisponível" |
+| `semear_dados` | `true` | Roda `seed.js` no apply |
+| `bedrock_habilitado` | `false` | Mantenha desligado: o lab não dá acesso ao Bedrock |
+| `retencao_logs_dias` | `7` | Retenção do log group |
 
-- `permitir_dado_exemplo` — `false` se você não quiser o rótulo "Dados de
-  exemplo" em tela nenhuma (então as telas que dependem da telemetria Flask
-  mostram "indisponível").
-- `auth_senha` — troque se a demo vai ficar acessível para além do grupo.
-- `tipo_instancia` — suba para `t3.medium` se o build do Next parecer lento
-  demais no `t3.small` default.
+`AUTH_COOKIE_SECRET` não é variável: é gerado por `random_password` a cada apply,
+então nunca passa pelo git. O `task-definition.json` versionado traz um
+placeholder, e o código cai em silêncio para um valor conhecido se a variável
+faltar — o que deixaria qualquer pessoa com o repositório forjar uma sessão.
+
+## O que este Terraform não cobre
+
+**A API de telemetria (Flask, `apps/basica/backend`).** Quatro das seis telas do
+painel leem dela: `/eventos` e `/monitoramento` inteiras, 5 dos 6 blocos de
+`/visao-geral` e 2 de 6 de `/evidencias`. Ela não tem pipeline nem nunca foi
+implantada junto da API operacional. Com `permitir_dado_exemplo = true`, essas
+telas mostram o conjunto de exemplo **rotulado como exemplo** na interface, em
+vez de "indisponível" — comportamento previsto no próprio código
+(`apps/frontend/lib/data/mode.ts`). As telas servidas pela API operacional
+(`/incidentes`, `/evidencias`) mostram dado real do DynamoDB.
+
+**O job de ingestão** (BigQuery → DynamoDB) que deu nome ao cluster e ao ALB. O
+código dele não está neste repositório.
+
+**Cognito, Secrets Manager, SQS e EventBridge**, que aparecem como decisões em
+`arquitetura-inicial.md`. Nenhum tem uso no código: a autenticação é um cookie
+HMAC próprio (`src/auth/session.js`), os segredos são variáveis de ambiente da
+task, e não há fila nem agendador. Provisioná-los seria decoração.
+
+## Se o apply falhar
+
+| Erro | Causa | Conserto |
+|---|---|---|
+| `ExpiredToken` | Sessão do lab expirou | Recopie as credenciais e rode de novo |
+| `Cannot pull container image` | Imagem não chegou ao ECR | Confira se o daemon do Docker está ativo |
+| `ResourceInUseException` na tabela | Tabela já criada à mão | `terraform import aws_dynamodb_table.operacional monitoracao-operacional` |
+| `exec format error` no log da task | Imagem construída em ARM (Mac M1/M2) | O `--platform linux/amd64` já está no `ecr.tf`; confira se foi alterado |
+| Painel abre, dado não vem | Seed fora da janela de 24 h | `terraform output comando_seed` e rode |
+| `next/font: Failed to fetch Poppins` | Build sem saída para o Google | Libere `fonts.googleapis.com` |
+
+## Verificação
+
+Depois do apply, esta sequência prova a cadeia inteira:
+
+```bash
+P=$(terraform output -raw painel_url)
+
+curl -s "$P/health"                                     # {"status":"ok"} via proxy do Amplify
+curl -s -o /dev/null -w '%{http_code}\n' "$P/login/"    # 200
+
+# login devolve cookie Secure/SameSite=Lax
+curl -s -i -X POST "$P/auth/login" -H 'Content-Type: application/json' \
+  -d '{"email":"demo@globoplay.com","password":"demo123"}' | grep -i set-cookie
+
+# dado real do DynamoDB
+curl -s "$P/api/v1/dashboard/summary"
+
+# rota protegida sem cookie deve dar 401
+curl -s -o /dev/null -w '%{http_code}\n' -X PATCH \
+  "$P/api/v1/incidents/falhas-reproducao-tvs-lg/hypothesis/review" \
+  -H 'Content-Type: application/json' -d '{"status":"confirmed"}'
+```

@@ -1,11 +1,13 @@
-# As duas tabelas que a API operacional lê e escreve. Nenhum código do
-# repositório as cria — hoje elas existem porque alguém clicou no console.
-# O esquema abaixo foi reconstruído a partir de como o código as usa
-# (apps/backend/api/src/db/*.js e scripts/seed.js), não de um documento
-# formal de schema, porque esse documento não existe no repositório.
+// As duas tabelas da Seção 2 de artefatos/sprint2/backend-sprint-2.md.
+//
+// Nenhum código do repositório cria estas tabelas — elas foram criadas à mão no
+// console durante a Sprint 2. Este arquivo é a primeira definição executável
+// delas, e o esquema abaixo foi derivado do código que lê e escreve:
+// apps/backend/api/src/db/keys.js (convenção de chaves) e
+// apps/backend/api/src/services/*.js (padrões de acesso).
 
 resource "aws_dynamodb_table" "operacional" {
-  name         = var.nome_tabela_operacional
+  name         = var.tabela_operacional
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "pk"
   range_key    = "sk"
@@ -20,18 +22,16 @@ resource "aws_dynamodb_table" "operacional" {
     type = "S"
   }
 
-  # Só as chaves usadas por hash_key/range_key/GSI entram como `attribute`
-  # aqui — os outros campos do item (título, urgência, score...) são livres e
-  # não precisam ser declarados.
   attribute {
     name = "trace_id"
     type = "S"
   }
 
-  # incidents.js serializa a resposta HTTP diretamente do item devolvido pelo
-  # Query neste índice, e evidenceService.js reconstrói a chave da tabela base
-  # a partir de um item vindo dele — por isso a projeção precisa ser ALL, não
-  # é só uma escolha de custo.
+  // Projeção ALL não é preferência: src/routes/incidents.js serializa o item
+  // vindo do Query no índice direto para a resposta HTTP, e
+  // src/services/evidenceService.js remonta a chave {pk, sk} da tabela base a
+  // partir de um item vindo do índice. Com projeção parcial, as duas coisas
+  // quebram.
   global_secondary_index {
     name            = "trace-index"
     hash_key        = "trace_id"
@@ -43,19 +43,29 @@ resource "aws_dynamodb_table" "operacional" {
     attribute_name = "ttl"
     enabled        = true
   }
+
+  tags = {
+    Projeto = "view-show"
+    Camada  = "dados"
+  }
 }
 
 resource "aws_dynamodb_table" "golden_set" {
-  name         = var.nome_tabela_golden_set
+  name         = var.tabela_golden_set
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "case_id"
+
+  // Chave simples, sem sort key e sem GSI: o acesso é sempre GetItem por
+  // assinatura determinística "<component>#<deviceType>#<region>"
+  // (src/services/goldenSetService.js).
+  hash_key = "case_id"
 
   attribute {
     name = "case_id"
     type = "S"
   }
 
-  # Sem range key, sem GSI, sem TTL: goldenSetService.js só faz GetItem por
-  # `case_id` (a assinatura "<component>#<deviceType>#<region>"), e os casos
-  # curados não devem expirar sozinhos.
+  tags = {
+    Projeto = "view-show"
+    Camada  = "dados"
+  }
 }

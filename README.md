@@ -80,7 +80,7 @@ fixture sanitizado e notebooks, está em
 | --- | --- |
 | `/artefatos` | Documentação: requisitos, arquitetura do backend, análise financeira, roteiro de implantação na AWS, relatório de testes e a coleção do Postman |
 | `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
-| `/apps/infra` | Terraform que provisiona o painel + a API operacional + o DynamoDB num AWS Academy Learner Lab individual, com um `terraform apply` |
+| `/apps/infra` | Terraform que reproduz a arquitetura da Sprint 2 — ECS Fargate, ALB, ECR, Amplify e DynamoDB — num AWS Academy Learner Lab individual, com um `terraform apply` |
 | `/assets` | Imagens e logos usados na documentação |
 | `/slides` | Apresentações das sprints |
 
@@ -194,10 +194,10 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
 ## Provisionamento automatizado (Terraform, Learner Lab individual)
 
 Além do runbook manual acima — que sobe a stack da Sprint 1 (`apps/basica`) —
-o diretório [`apps/infra`](apps/infra) provisiona a plataforma atual inteira
-(painel em Next.js, API operacional em Node e as duas tabelas DynamoDB) numa
-única EC2, dentro do próprio AWS Academy Learner Lab de quem está rodando,
-com um único comando:
+o diretório [`apps/infra`](apps/infra) reproduz a **arquitetura da Sprint 2**
+(painel Next.js no Amplify, API operacional em ECS Fargate atrás de um ALB,
+imagem no ECR e as duas tabelas DynamoDB) dentro do próprio AWS Academy Learner
+Lab de quem está rodando, com um único comando:
 
 ```bash
 cd apps/infra
@@ -205,11 +205,17 @@ terraform init
 terraform apply
 ```
 
-3 a 4 minutos depois, `terraform output painel_url` devolve o endereço do
-painel já com dado — o `apply` também popula as tabelas. Não é preciso ter
-Node, Docker nem AWS CLI instalados: o build do painel e a instalação da API
-rodam dentro da instância, o único pré-requisito local é o binário do
-Terraform (ou o container oficial, documentado como alternativa).
+De 8 a 15 minutos depois, `terraform output painel_url` devolve o endereço do
+painel já com dado: o mesmo `apply` constrói e publica a imagem no ECR, compila
+e publica o painel no Amplify e semeia as tabelas. Pré-requisitos locais:
+Terraform, Docker e Node.
+
+Duas coisas que valem saber antes de rodar. O login, registrado como quebrado em
+[`ci-cd-amplify.md`](artefatos/sprint2/ci-cd-amplify.md), **funciona aqui** — o
+Amplify repassa `/api`, `/auth` e `/health` para a API, o que coloca painel e API
+na mesma origem e faz o cookie de sessão voltar a valer. E, ao contrário da EC2,
+**o ALB e o Fargate não são desligados pelo "End Lab"**: rode `terraform destroy`
+ao fim de cada sessão, ou eles seguem cobrando do orçamento do laboratório.
 
 Detalhes de pré-requisitos, credenciais do lab, variáveis, [como encontrar o
 link do deploy depois de fechar o

@@ -1,34 +1,10 @@
-# Fontes de dado: tudo que este provisionamento lê da conta em vez de criar.
-# Nenhuma delas exige permissão além do que o LabRole já concede.
-
 data "aws_caller_identity" "atual" {}
 
-# Amazon Linux 2023 mais recente, x86_64. Buscada por data source, e não
-# fixada por AMI ID, porque um ID trocaria de significado entre regiões e
-# entre contas — cada AWS Academy Learner Lab é uma conta nova.
-data "aws_ami" "al2023" {
-  most_recent = true
-  owners      = ["amazon"]
+data "aws_region" "atual" {}
 
-  filter {
-    name   = "name"
-    values = ["al2023-ami-*-x86_64"]
-  }
-
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-# O Learner Lab não permite criar uma VPC própria em todo cenário testado, e
-# não há necessidade: uma instância pública só precisa do que a VPC default
-# já oferece — sub-rede pública com rota de internet.
+// A VPC default do laboratório. O Learner Lab entrega uma pronta, com subnets
+// públicas em várias AZs — e criar VPC própria só gastaria tempo de apply sem
+// mudar nada do que a arquitetura documentada descreve.
 data "aws_vpc" "default" {
   default = true
 }
@@ -38,26 +14,19 @@ data "aws_subnets" "default" {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
   }
-
-  filter {
-    name   = "default-for-az"
-    values = ["true"]
-  }
 }
 
-# Endereço IP público de quem está aplicando, só para liberar a porta 22 da
-# própria máquina em vez de abrir SSH para a internet inteira. Se o serviço
-# estiver fora do ar ou bloqueado por algum proxy corporativo, defina
-# `ssh_cidr` manualmente na variável.
-data "http" "meu_ip" {
-  count = var.ssh_cidr == "" ? 1 : 0
-  url   = "https://checkip.amazonaws.com"
+// O ALB exige subnets em pelo menos duas zonas de disponibilidade. A default
+// VPC tem uma por AZ, então basta pegar todas.
+data "aws_subnet" "default" {
+  for_each = toset(data.aws_subnets.default.ids)
+  id       = each.value
 }
 
-locals {
-  ssh_cidr = var.ssh_cidr != "" ? var.ssh_cidr : "${chomp(data.http.meu_ip[0].response_body)}/32"
-
-  # Primeira sub-rede pública default da região — qualquer uma serve, já que
-  # não há nada multi-AZ nesta topologia (uma instância só).
-  subnet_id = data.aws_subnets.default.ids[0]
+// LabRole é a única role utilizável no AWS Academy: iam:CreateRole devolve
+// AccessDenied (testado e registrado em artefatos/sprint2/backend-sprint-2.md,
+// seção 8.1). Ela serve tanto como execution role quanto como task role, que é
+// exatamente o que o task-definition.json versionado já fazia.
+data "aws_iam_role" "lab" {
+  name = "LabRole"
 }

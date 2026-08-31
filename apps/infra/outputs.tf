@@ -1,37 +1,48 @@
 output "painel_url" {
-  description = "Endereço do painel. Abra depois de esperar o bootstrap (ver `tempo_estimado_boot`)."
-  value       = "http://${aws_eip.app.public_ip}"
+  description = "Endereço do painel. É por aqui que se entra — o Amplify serve o Next.js e repassa /api, /auth e /health para o ALB."
+  value       = local.painel_url
 }
 
-output "ip_publico" {
-  description = "Elastic IP associado à instância. Não muda entre sessões do laboratório."
-  value       = aws_eip.app.public_ip
+output "api_url" {
+  description = "Endereço direto do ALB. Serve para curl e Postman; o navegador deve usar painel_url, porque uma página HTTPS não pode chamar uma API em HTTP."
+  value       = "http://${aws_lb.principal.dns_name}"
 }
 
-output "comando_ssh" {
-  description = "Conexão SSH de depuração, já com a chave gerada por este apply."
-  value       = "ssh -i ${local_sensitive_file.chave_privada.filename} ec2-user@${aws_eip.app.public_ip}"
+output "credenciais_demo" {
+  description = "Usuário aceito pelo login do painel."
+  value       = "${var.auth_email} / ${var.auth_senha}"
+  sensitive   = true
+}
+
+output "tabelas_dynamodb" {
+  description = "Tabelas criadas."
+  value = {
+    operacional = aws_dynamodb_table.operacional.name
+    golden_set  = aws_dynamodb_table.golden_set.name
+  }
+}
+
+output "imagem_ecr" {
+  description = "Imagem publicada no ECR e rodando na task."
+  value       = local.uri_imagem
+}
+
+output "comando_logs" {
+  description = "Acompanha o log da API em tempo real."
+  value       = "aws logs tail ${aws_cloudwatch_log_group.api.name} --follow --region ${var.regiao}"
 }
 
 output "comando_seed" {
-  description = "Repete a semeadura de dados manualmente, sem esperar a instância reiniciar."
-  value       = "ssh -i ${local_sensitive_file.chave_privada.filename} ec2-user@${aws_eip.app.public_ip} 'cd /srv/app/api && AWS_REGION=${var.regiao} OPERATIONAL_TABLE_NAME=${var.nome_tabela_operacional} GOLDEN_SET_TABLE_NAME=${var.nome_tabela_golden_set} npm run seed'"
+  description = "Repovoa as tabelas sem precisar de um apply inteiro. Rode de novo se o painel abrir vazio: o dado sai da janela de 24 h."
+  value       = "cd ../backend/api && AWS_REGION=${var.regiao} OPERATIONAL_TABLE_NAME=${aws_dynamodb_table.operacional.name} GOLDEN_SET_TABLE_NAME=${aws_dynamodb_table.golden_set.name} npm run seed"
 }
 
-output "comando_logs_bootstrap" {
-  description = "Acompanha o provisionamento dentro da instância em tempo real, útil nos primeiros minutos após o apply."
-  value       = "ssh -i ${local_sensitive_file.chave_privada.filename} ec2-user@${aws_eip.app.public_ip} 'tail -f /var/log/g05-bootstrap.log'"
+output "aviso_custo" {
+  description = "Leia antes de fechar o laboratório."
+  value       = "O ALB e a task Fargate NAO sao desligados pelo End Lab: so a EC2 e, e aqui nao ha EC2. Rode 'terraform destroy' ao fim de cada sessao, ou eles seguem cobrando ~US$ 25/mes do orcamento do lab."
 }
 
-output "tempo_estimado_boot" {
-  description = "Tempo entre a instância ficar `running` e o painel responder: instalar Node/nginx, `npm ci` das duas aplicações, o build do Next e a semeadura."
-  value       = "3 a 4 minutos após o apply terminar"
-}
-
-output "tabela_operacional" {
-  value = aws_dynamodb_table.operacional.name
-}
-
-output "tabela_golden_set" {
-  value = aws_dynamodb_table.golden_set.name
+output "api_url_https" {
+  description = "Endereço HTTPS da API, via API Gateway. É para onde o Amplify repassa /api, /auth e /health."
+  value       = aws_apigatewayv2_stage.default.invoke_url
 }
