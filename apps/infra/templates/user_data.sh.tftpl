@@ -1,0 +1,173 @@
+#!/bin/bash
+# Bootstrap da EC2. Roda uma vez por instância, no primeiro boot.
+#
+# Com `user_data_replace_on_change = true` (ver compute.tf), qualquer mudança
+# de código gera uma chave de objeto S3 nova, o que muda este script
+# renderizado, o que faz o Terraform substituir a instância inteira em vez de
+# tentar reaplicar em cima de uma máquina já configurada. É por isso que este
+# script não precisa ser idempotente para reexecução manual: ele nunca roda
+# duas vezes na mesma instância.
+set -euo pipefail
+exec > >(tee -a /var/log/g05-bootstrap.log) 2>&1
+echo "=== g05 bootstrap: $(date -u '+%Y-%m-%dT%H:%M:%SZ') ==="
+
+# --- AWS CLI -----------------------------------------------------------
+# A AMI do Amazon Linux 2023 já traz a CLI v2. Este bloco só existe para não
+# depender dessa suposição: se um dia a AMI mudar, o instalador oficial cobre.
+if ! command -v aws >/dev/null 2>&1; then
+  echo "aws cli ausente, instalando pelo pacote oficial..."
+  curl -fsS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+  (cd /tmp && unzip -q awscliv2.zip && ./aws/install)
+fi
+
+# --- Node, nginx, unzip --------------------------------------------------
+# Node ${node_major} pelo repositório da NodeSource: a AMI base não traz Node
+# nenhum, e Express 5 / Next 16 pedem uma versão recente — a mesma major do
+# Dockerfile da API, para não rodar em algo nunca testado pelo time.
+if ! command -v node >/dev/null 2>&1 || [[ "$(node -v)" != v${node_major}.* ]]; then
+  curl -fsSL "https://rpm.nodesource.com/setup_${node_major}.x" | bash -
+fi
+
+dnf install -y nodejs nginx unzip
+
+# --- Código: baixado do S3, não clonado do Git --------------------------
+# O bucket é privado e só a role da instância (LabInstanceProfile) tem
+# permissão de leitura — nenhuma credencial de repositório entra em lugar
+# nenhum. Ver o comentário de artifacts.tf para o porquê.
+mkdir -p /srv/app
+aws s3 cp "s3://${bucket}/${chave_api}" /tmp/api.zip --region "${regiao}"
+aws s3 cp "s3://${bucket}/${chave_frontend}" /tmp/frontend.zip --region "${regiao}"
+
+rm -rf /srv/app/api /srv/app/frontend
+mkdir -p /srv/app/api /srv/app/frontend
+unzip -q -o /tmp/api.zip -d /srv/app/api
+unzip -q -o /tmp/frontend.zip -d /srv/app/frontend
+chown -R ec2-user:ec2-user /srv/app
+
+# --- API operacional (Node/Express) -------------------------------------
+cd /srv/app/api
+sudo -u ec2-user npm ci --omit=dev
+
+cat > /etc/systemd/system/monitoracao-api.service <<UNIT
+[Unit]
+Description=API operacional do View Show (Grupo 05)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/srv/app/api
+# NODE_ENV fica de fora de propósito. src/routes/auth.js só marca o cookie de
+# sessão como Secure quando NODE_ENV=production (é a linha que deixa o login
+# quebrado na implantação em contêiner deste projeto: cookie Secure sobre um
+# ALB em HTTP puro é descartado pelo navegador sem aviso nenhum). Aqui a API
+# roda como processo Node direto, fora de contêiner, então essa variável é
+# nossa para não setar. Some o defeito sem tocar em uma linha do código da
+# aplicação.
+Environment="PORT=3000"
+Environment="AWS_REGION=${regiao}"
+Environment="OPERATIONAL_TABLE_NAME=${tabela_operacional}"
+Environment="GOLDEN_SET_TABLE_NAME=${tabela_golden_set}"
+Environment="BEDROCK_ENABLED=false"
+Environment="AUTH_USER_EMAIL=${auth_email}"
+Environment="AUTH_USER_PASSWORD=${auth_senha}"
+Environment="AUTH_COOKIE_SECRET=${auth_cookie_secret}"
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now monitoracao-api
+
+# --- Painel (Next.js, exportado como HTML estático) ---------------------
+# O endereço da API é o valor especial "/": painel e API são servidos pelo
+# mesmo nginx, na mesma porta, e o navegador resolve o endereço sozinho em
+# tempo de execução (lib/data/client.ts e lib/auth.ts). Isso evita recompilar
+# o painel toda vez que o IP público mudar entre sessões do laboratório — o
+# `out/` gerado aqui funciona em qualquer instância, em qualquer sessão.
+#
+# NEXT_PUBLIC_TELEMETRY_API_BASE_URL fica vazio de propósito: esta infra não
+# provisiona a API de telemetria (Flask), e o próprio frontend já sabe cair
+# para o conjunto de exemplo, rotulado como tal, quando uma API não está
+# configurada (lib/data/mode.ts).
+cd /srv/app/frontend
+sudo -u ec2-user env \
+  NEXT_PUBLIC_API_BASE_URL="/" \
+  NEXT_PUBLIC_TELEMETRY_API_BASE_URL="" \
+  NEXT_PUBLIC_ALLOW_EXAMPLE_DATA="${permitir_dado_exemplo}" \
+  npm ci
+
+sudo -u ec2-user env \
+  NEXT_PUBLIC_API_BASE_URL="/" \
+  NEXT_PUBLIC_TELEMETRY_API_BASE_URL="" \
+  NEXT_PUBLIC_ALLOW_EXAMPLE_DATA="${permitir_dado_exemplo}" \
+  npm run build
+
+# --- nginx: painel e API na mesma origem --------------------------------
+# Uma origem só resolve três problemas de uma vez, sem tocar em código: CORS
+# nunca dispara (requisição same-origin não é cross-origin), não há conteúdo
+# misto (um único esquema, HTTP), e o cookie SameSite=Lax da sessão volta a
+# ser enviado (same-origin é same-site por definição).
+rm -f /etc/nginx/conf.d/default.conf
+
+cat > /etc/nginx/conf.d/view-show.conf <<'NGINX'
+server {
+    listen 80 default_server;
+    server_name _;
+
+    root /srv/app/frontend/out;
+    index index.html;
+
+    location = /health {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+    }
+
+    location /auth/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # trailingSlash: true (next.config.ts) emite "<rota>/index.html". $uri/
+    # resolve o diretório pelo index; o /index.html final cobre o 404.html
+    # do "/" (que sai como casca de erro sob output: "export" — o redirect
+    # para /login/ vive no payload React, não em HTTP).
+    location / {
+        try_files $uri $uri/ $uri/index.html /index.html;
+    }
+}
+NGINX
+
+nginx -t
+systemctl enable --now nginx
+systemctl restart nginx
+
+# --- Seed: roda a cada boot ----------------------------------------------
+# scripts/seed.js escreve por PutCommand com chave fixa
+# (INC#<hora>/INCIDENT#<id>...), então repetir não duplica. E como a chave é
+# calculada a partir do instante em que roda, o dado nasce dentro da janela
+# de 24h que o painel consulta toda vez que a instância liga — sem precisar
+# lembrar de rodar nada de novo a cada sessão do laboratório.
+cd /srv/app/api
+sudo -u ec2-user env \
+  AWS_REGION="${regiao}" \
+  OPERATIONAL_TABLE_NAME="${tabela_operacional}" \
+  GOLDEN_SET_TABLE_NAME="${tabela_golden_set}" \
+  npm run seed || echo "aviso: semeadura falhou nesta subida. Rode 'npm run seed' manualmente em /srv/app/api (veja o README)."
+
+echo "=== g05 bootstrap concluído: $(date -u '+%Y-%m-%dT%H:%M:%SZ') ==="

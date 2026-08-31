@@ -80,6 +80,7 @@ fixture sanitizado e notebooks, está em
 | --- | --- |
 | `/artefatos` | Documentação: requisitos, arquitetura do backend, análise financeira, roteiro de implantação na AWS, relatório de testes e a coleção do Postman |
 | `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
+| `/apps/infra` | Terraform que provisiona o painel + a API operacional + o DynamoDB num AWS Academy Learner Lab individual, com um `terraform apply` |
 | `/assets` | Imagens e logos usados na documentação |
 | `/slides` | Apresentações das sprints |
 
@@ -187,6 +188,32 @@ cd apps/basica/deploy
 Como o ambiente é um laboratório da AWS Academy, cuja sessão encerra após quatro horas,
 a instância é configurada com Elastic IP e com o serviço habilitado no systemd. Isso faz
 a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sessão seguinte.
+
+---
+
+## Provisionamento automatizado (Terraform, Learner Lab individual)
+
+Além do runbook manual acima — que sobe a stack da Sprint 1 (`apps/basica`) —
+o diretório [`apps/infra`](apps/infra) provisiona a plataforma atual inteira
+(painel em Next.js, API operacional em Node e as duas tabelas DynamoDB) numa
+única EC2, dentro do próprio AWS Academy Learner Lab de quem está rodando,
+com um único comando:
+
+```bash
+cd apps/infra
+terraform init
+terraform apply
+```
+
+3 a 4 minutos depois, `terraform output painel_url` devolve o endereço do
+painel já com dado — o `apply` também popula as tabelas. Não é preciso ter
+Node, Docker nem AWS CLI instalados: o build do painel e a instalação da API
+rodam dentro da instância, o único pré-requisito local é o binário do
+Terraform (ou o container oficial, documentado como alternativa).
+
+Detalhes de pré-requisitos, credenciais do lab, variáveis, o que fazer entre
+sessões e uma tabela de "se der erro, é isto" estão em
+[`apps/infra/README.md`](apps/infra/README.md).
 
 ---
 
