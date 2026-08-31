@@ -359,7 +359,16 @@ export async function reviewHypothesis(
   incidentId: string,
   status: Exclude<ReviewStatus, "pending">,
 ): Promise<ReviewResult> {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  const configuredBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  // "/" significa "mesma origem do painel" (ver lib/data/client.ts). `new
+  // URL(path, "/")` lançaria `TypeError: Invalid base URL`, por isso resolve
+  // para a origem do navegador aqui, e não na leitura da variável de ambiente.
+  const base =
+    configuredBase === "/"
+      ? typeof window === "undefined"
+        ? "http://localhost"
+        : window.location.origin
+      : configuredBase;
 
   if (!base) {
     return {

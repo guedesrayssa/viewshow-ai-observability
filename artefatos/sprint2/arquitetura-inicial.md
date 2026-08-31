@@ -76,7 +76,7 @@ Os termos abaixo aparecem o tempo todo e são definidos aqui uma única vez.
 
 | Documento | O que contém |
 | --- | --- |
-| [`requisitos.md`](./requisitos.md) | Os requisitos funcionais (RF) e não funcionais (RNF) citados aqui |
+| [`requisitos.md`](../sprint1/requisitos.md) | Os requisitos funcionais (RF) e não funcionais (RNF) citados aqui |
 | [`testes-desempenho.md`](./testes-desempenho.md) | O relatório completo dos testes de carga resumidos na §7 |
 | [`deploy-aws.md`](./deploy-aws.md) | O roteiro manual de implantação usado na Sprint 1 |
 | [`decisoes.md`](./decisoes.md) | Registro cronológico de decisões técnicas menores |
@@ -169,9 +169,9 @@ cada software executa**. Nós de implantação (caixas tridimensionais) são amb
 de execução; componentes (caixas com o ícone de duas abas) são as peças de software
 hospedadas neles; pacotes aninhados são as fronteiras de rede.
 
-![Diagrama de implantação UML da arquitetura otimizada](../assets/arquitetura/05-deploy-otimizado.png)
+![Diagrama de implantação UML da arquitetura otimizada](../../assets/arquitetura/05-deploy-otimizado.png)
 
-<sub>Arquivo vetorial: [`05-deploy-otimizado.svg`](../assets/arquitetura/05-deploy-otimizado.svg)</sub>
+<sub>Arquivo vetorial: [`05-deploy-otimizado.svg`](../../assets/arquitetura/05-deploy-otimizado.svg)</sub>
 
 &emsp; **Como ler:**
 
@@ -194,9 +194,9 @@ privada para a internet passa por ela. Numa visão por fluxo isso desapareceria.
 colore as setas por natureza do que trafega. Ele responde "por onde o dado passa,
 em que ordem" — pergunta que o diagrama UML não responde bem.
 
-![Arquitetura AWS otimizada, organizada por etapa de fluxo](../assets/arquitetura/04-aws-otimizada.png)
+![Arquitetura AWS otimizada, organizada por etapa de fluxo](../../assets/arquitetura/04-aws-otimizada.png)
 
-<sub>Arquivo vetorial: [`04-aws-otimizada.svg`](../assets/arquitetura/04-aws-otimizada.svg)</sub>
+<sub>Arquivo vetorial: [`04-aws-otimizada.svg`](../../assets/arquitetura/04-aws-otimizada.svg)</sub>
 
 &emsp; **Os cinco blocos:**
 
@@ -225,8 +225,8 @@ Essa é uma propriedade de segurança auditável no desenho.
 
 &emsp; Ambos descrevem **a mesma arquitetura**. As versões anteriores, anteriores
 às otimizações da §5 a §8, estão preservadas em
-[`01-aws-atual.png`](../assets/arquitetura/01-aws-atual.png) e
-[`02-deploy-atual.png`](../assets/arquitetura/02-deploy-atual.png) para efeito de
+[`01-aws-atual.png`](../../assets/arquitetura/01-aws-atual.png) e
+[`02-deploy-atual.png`](../../assets/arquitetura/02-deploy-atual.png) para efeito de
 comparação.
 
 ---
@@ -509,7 +509,7 @@ medimos, e a medição contrariou a intuição. Esta seção documenta as três.
 
 ### 5.1 Arquitetura A — totalmente gerenciada
 
-![Arquitetura A, totalmente gerenciada](../assets/arquitetura/01-aws-atual.png)
+![Arquitetura A, totalmente gerenciada](../../assets/arquitetura/01-aws-atual.png)
 
 &emsp; A primeira proposta: todo componente de infraestrutura é um serviço
 gerenciado da AWS. Onze serviços no total.
@@ -526,9 +526,9 @@ submetida à calculadora (§6) e aos testes de carga (§7).
 
 ### 5.2 Arquitetura B — autoprovisionada
 
-![Arquitetura B, com três instâncias EC2 substituindo onze serviços gerenciados](../assets/arquitetura/03-alternativa-autoprovisionada.png)
+![Arquitetura B, com três instâncias EC2 substituindo onze serviços gerenciados](../../assets/arquitetura/03-alternativa-autoprovisionada.png)
 
-<sub>Arquivo vetorial: [`03-alternativa-autoprovisionada.svg`](../assets/arquitetura/03-alternativa-autoprovisionada.svg)</sub>
+<sub>Arquivo vetorial: [`03-alternativa-autoprovisionada.svg`](../../assets/arquitetura/03-alternativa-autoprovisionada.svg)</sub>
 
 &emsp; A hipótese oposta: **trazer a administração para dentro**, substituindo os
 serviços gerenciados por equivalentes de código aberto em três instâncias EC2.
@@ -638,7 +638,7 @@ justificativa da §1.2.
 
 ### 6.2 O resultado, e o que ele revela
 
-**Orçamento final:** [`estimativa-final-10-e-50-req.pdf`](../assets/arquitetura/custos/estimativa-final-10-e-50-req.pdf)
+**Orçamento final:** [`estimativa-final-10-e-50-req.pdf`](../../assets/arquitetura/custos/estimativa-final-10-e-50-req.pdf)
 
 | Item | 10 req/s | 50 req/s | Escala com a carga? |
 | --- | ---: | ---: | --- |
@@ -688,7 +688,7 @@ arquivadas em `assets/arquitetura/custos/` porque cada erro é instrutivo.
 
 &emsp; O erro 4 merece destaque porque é o mais traiçoeiro: **produzia um resultado
 plausível**. A estimativa era US$ 168,38/mês
-([`iteracao-3`](../assets/arquitetura/custos/iteracao-3-dynamodb-sem-dobrar.pdf)) —
+([`iteracao-3`](../../assets/arquitetura/custos/iteracao-3-dynamodb-sem-dobrar.pdf)) —
 um número perfeitamente crível, que ninguém questionaria. Só foi detectado ao
 reconferir a definição de RCU na documentação da AWS.
 
@@ -696,10 +696,10 @@ reconferir a definição de RCU na documentação da AWS.
 
 | Iteração | 10 req/s | 50 req/s | O que estava errado |
 | --- | ---: | ---: | --- |
-| [1](../assets/arquitetura/custos/iteracao-1-alb-superestimado.pdf) | 241,78 | 1.077,84 | ALB com duração de conexão de 300 min |
-| [2](../assets/arquitetura/custos/iteracao-2-alb-conexoes.pdf) | 240,32 | 893,88 | ALB ainda superestimado |
-| [3](../assets/arquitetura/custos/iteracao-3-dynamodb-sem-dobrar.pdf) | 168,38 | 869,00 | DynamoDB subestimado pela metade |
-| **[4 — final](../assets/arquitetura/custos/estimativa-final-10-e-50-req.pdf)** | **211,07** | **732,71** | — |
+| [1](../../assets/arquitetura/custos/iteracao-1-alb-superestimado.pdf) | 241,78 | 1.077,84 | ALB com duração de conexão de 300 min |
+| [2](../../assets/arquitetura/custos/iteracao-2-alb-conexoes.pdf) | 240,32 | 893,88 | ALB ainda superestimado |
+| [3](../../assets/arquitetura/custos/iteracao-3-dynamodb-sem-dobrar.pdf) | 168,38 | 869,00 | DynamoDB subestimado pela metade |
+| **[4 — final](../../assets/arquitetura/custos/estimativa-final-10-e-50-req.pdf)** | **211,07** | **732,71** | — |
 
 &emsp; **A lição metodológica:** uma calculadora de preços não valida a coerência
 dos números que recebe. Ela responde exatamente o que foi perguntado, e uma unidade
@@ -803,7 +803,7 @@ calculadora confirma o erro com aparência de precisão.**
 | Base de dados | 300 incidentes, 2.341 registros, gerados com semente fixa |
 | Critério | **RNF14**: p95 < 2.000 ms, erro < 1% |
 
-![Instalação do k6 e primeira execução na instância EC2](../assets/testes-carga/01-execucao-ec2.png)
+![Instalação do k6 e primeira execução na instância EC2](../../assets/testes-carga/01-execucao-ec2.png)
 
 ### 7.3 Os resultados
 
@@ -847,7 +847,7 @@ a resposta teria sido aumentar a máquina, multiplicando a conta sem resolver na
 
 ### 7.5 A causa, medida no servidor
 
-![Utilização de CPU do serviço em 99,93%](../assets/testes-carga/04-cpu-saturada.png)
+![Utilização de CPU do serviço em 99,93%](../../assets/testes-carga/04-cpu-saturada.png)
 
 | Medida | Valor |
 | --- | ---: |
@@ -879,7 +879,7 @@ sob 137 req/s: 91,9% de erro, p95 de 60 s                    (medido)
 
 ### 7.6 Um erro de medição que documentamos de propósito
 
-![Dois serviços de nome parecido no mesmo cluster](../assets/testes-carga/03-servico-errado.png)
+![Dois serviços de nome parecido no mesmo cluster](../../assets/testes-carga/03-servico-errado.png)
 
 &emsp; A primeira leitura do CloudWatch indicou **0,092% de CPU** — máquina ociosa —
 durante uma rodada com 91,9% de falha. Contradição evidente, que levou
@@ -1244,15 +1244,15 @@ menos honesto e menos útil.
 
 | Artefato | Caminho |
 | --- | --- |
-| Requisitos funcionais e não funcionais | [`requisitos.md`](./requisitos.md) |
+| Requisitos funcionais e não funcionais | [`requisitos.md`](../sprint1/requisitos.md) |
 | Relatório completo dos testes de desempenho | [`testes-desempenho.md`](./testes-desempenho.md) |
 | Script de teste de carga | [`testes-carga/k6/consultas.js`](./testes-carga/k6/consultas.js) |
 | Povoamento de carga | [`testes-carga/seed-carga.js`](./testes-carga/seed-carga.js) |
 | Roteiro manual de implantação (Sprint 1) | [`deploy-aws.md`](./deploy-aws.md) |
 | Registro cronológico de decisões | [`decisoes.md`](./decisoes.md) |
 | Detalhamento do backend | [`backend-sprint-2.md`](./backend-sprint-2.md) |
-| Diagramas (PNG e SVG) | [`../assets/arquitetura/`](../assets/arquitetura/) |
-| Orçamentos exportados da calculadora | [`../assets/arquitetura/custos/`](../assets/arquitetura/custos/) |
+| Diagramas (PNG e SVG) | [`../../assets/arquitetura/`](../../assets/arquitetura/) |
+| Orçamentos exportados da calculadora | [`../../assets/arquitetura/custos/`](../../assets/arquitetura/custos/) |
 
 ---
 

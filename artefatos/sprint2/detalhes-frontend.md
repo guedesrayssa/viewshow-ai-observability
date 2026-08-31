@@ -14,11 +14,11 @@ transversais. Os domínios mais autocontidos moram em arquivos próprios dentro 
 
 | Documento | Cobre |
 | --- | --- |
-| [`docs/camada-de-dados.md`](./docs/camada-de-dados.md) | `client.ts`, `endpoints.ts`, `useResource`, os quatro estados, `*-resource`/`*-data`, `DataStatus` |
-| [`docs/componentes.md`](./docs/componentes.md) | Catálogo de `components/` e os dois componentes de gráfico |
-| [`docs/tema.md`](./docs/tema.md) | As três preferências, o script de bootstrap, `persisted-preference`, tema escuro no CSS |
-| [`docs/autenticacao.md`](./docs/autenticacao.md) | `auth.ts`, login, SSO, sessão de demonstração, `AccountProvider`, foto de perfil |
-| [`docs/design-system.md`](./docs/design-system.md) | Tokens, componentes e regras de uso, com valores e contraste. Versão navegável em `/design-system` |
+| [`docs/camada-de-dados.md`](../../apps/frontend/docs/camada-de-dados.md) | `client.ts`, `endpoints.ts`, `useResource`, os quatro estados, `*-resource`/`*-data`, `DataStatus` |
+| [`docs/componentes.md`](../../apps/frontend/docs/componentes.md) | Catálogo de `components/` e os dois componentes de gráfico |
+| [`docs/tema.md`](../../apps/frontend/docs/tema.md) | As três preferências, o script de bootstrap, `persisted-preference`, tema escuro no CSS |
+| [`docs/autenticacao.md`](../../apps/frontend/docs/autenticacao.md) | `auth.ts`, login, SSO, sessão de demonstração, `AccountProvider`, foto de perfil |
+| [`docs/design-system.md`](../../apps/frontend/docs/design-system.md) | Tokens, componentes e regras de uso, com valores e contraste. Versão navegável em `/design-system` |
 
 ## Sumário
 
@@ -148,7 +148,7 @@ nomes previsíveis:
 **Dados** (`lib/data/` + `hooks/use-resource.ts`) — toda leitura de telemetria
 passa por `lib/data/client.ts`, que decide entre a API e o conjunto de exemplo, e
 chega ao componente pelo hook `useResource`. Detalhado em
-[`docs/camada-de-dados.md`](./docs/camada-de-dados.md).
+[`docs/camada-de-dados.md`](../../apps/frontend/docs/camada-de-dados.md).
 
 ### 2.4 Servidor e cliente
 
@@ -166,7 +166,7 @@ quando precisa de estado, efeito, contexto ou APIs do navegador.
 `button-classes.ts` existe separado de `button.tsx` justamente para que uma tela
 de servidor possa dar aparência de botão a um `<Link>` (`buttonClasses({...})`)
 sem arrastar o componente cliente. O tema é resolvido **antes da primeira
-pintura** por um script inline no `<head>` (ver [`docs/tema.md`](./docs/tema.md)).
+pintura** por um script inline no `<head>` (ver [`docs/tema.md`](../../apps/frontend/docs/tema.md)).
 
 ### 2.5 Fluxo de uma tela do painel
 
@@ -202,7 +202,7 @@ Preferências são **estado externo ao React**: existem antes da app montar e
 sobrevivem a ela. Por isso são lidas com `useSyncExternalStore` a partir de uma
 pequena loja com assinatura (`lib/persisted-preference.ts`), sem efeito de
 correção depois da primeira pintura. Contrato da loja em
-[`docs/tema.md`](./docs/tema.md).
+[`docs/tema.md`](../../apps/frontend/docs/tema.md).
 
 ### 2.7 Princípios
 
@@ -378,9 +378,9 @@ components/
 | `dashboard-data.ts` | Tipos, opções de filtro e conjunto de exemplo da Visão Geral. |
 | `settings-data.ts` | `ACCOUNT_PROFILE`, opções de time/fuso/tela inicial, `NOTIFICATION_PREFERENCES`. |
 
-Detalhe de `data/*` em [`docs/camada-de-dados.md`](./docs/camada-de-dados.md); de
-`theme.ts` e `persisted-preference.ts` em [`docs/tema.md`](./docs/tema.md); de
-`auth.ts` e `image.ts` em [`docs/autenticacao.md`](./docs/autenticacao.md).
+Detalhe de `data/*` em [`docs/camada-de-dados.md`](../../apps/frontend/docs/camada-de-dados.md); de
+`theme.ts` e `persisted-preference.ts` em [`docs/tema.md`](../../apps/frontend/docs/tema.md); de
+`auth.ts` e `image.ts` em [`docs/autenticacao.md`](../../apps/frontend/docs/autenticacao.md).
 
 ---
 
@@ -405,7 +405,7 @@ abaixo de `lg` o painel some. Validação **no envio**, não a cada tecla; depoi
 primeiro envio, o erro de cada campo some quando o valor muda; o foco vai para o
 primeiro campo inválido; `<form noValidate>`. Qualquer e-mail válido entra; se o
 domínio é `@globo.com`, a tela sugere o SSO. Detalhes de rede em
-[`docs/autenticacao.md`](./docs/autenticacao.md).
+[`docs/autenticacao.md`](../../apps/frontend/docs/autenticacao.md).
 
 ### `/recuperar-senha`
 
@@ -521,7 +521,7 @@ A **escolha de aparência não fica aqui**: é ação da barra superior.
 
 Guia vivo: renderiza tokens e componentes com o **mesmo código** das telas, para
 nunca ficar desatualizado. Referência textual em
-[`docs/design-system.md`](./docs/design-system.md).
+[`docs/design-system.md`](../../apps/frontend/docs/design-system.md).
 
 ---
 
@@ -538,7 +538,7 @@ nenhum componente muda.
 `client.ts`, `endpoints.ts`, o contrato do `useResource`, o par
 `*-resource.ts` / `*-data.ts` de cada tela e o roteiro para ligar o backend ou
 criar um recurso estão em
-**[`docs/camada-de-dados.md`](./docs/camada-de-dados.md)**.
+**[`docs/camada-de-dados.md`](../../apps/frontend/docs/camada-de-dados.md)**.
 
 ---
 
@@ -553,7 +553,7 @@ componentes em `components/charts/`: `TimeSeriesChart` para séries no tempo e
 
 O catálogo completo — props, variantes e regras de composição de cada componente,
 e as decisões de escala, cor e leitura por cursor dos gráficos — está em
-**[`docs/componentes.md`](./docs/componentes.md)**.
+**[`docs/componentes.md`](../../apps/frontend/docs/componentes.md)**.
 
 ---
 
@@ -567,7 +567,7 @@ loja com assinatura lida por `useSyncExternalStore`.
 
 O ciclo do tema, o script de bootstrap, o contrato de `persisted-preference.ts`,
 os hooks de media query e a tabela de tokens do tema escuro estão em
-**[`docs/tema.md`](./docs/tema.md)**.
+**[`docs/tema.md`](../../apps/frontend/docs/tema.md)**.
 
 ---
 
@@ -582,14 +582,14 @@ barra superior, pelo `Avatar` e pela assinatura de quem confirma uma hipótese.
 
 `lib/auth.ts`, o fluxo de login com as respostas da API, o SSO, a sessão de
 demonstração, o `AccountProvider` e o preparo da foto de perfil estão em
-**[`docs/autenticacao.md`](./docs/autenticacao.md)**.
+**[`docs/autenticacao.md`](../../apps/frontend/docs/autenticacao.md)**.
 
 ---
 
 ## 9. Design system e movimento
 
 O guia completo de tokens, com valores e critérios de uso, está em
-[`docs/design-system.md`](./docs/design-system.md). Resumo do essencial:
+[`docs/design-system.md`](../../apps/frontend/docs/design-system.md). Resumo do essencial:
 
 ### 9.1 Tokens
 
@@ -758,12 +758,12 @@ localmente.
 
 ## 12. Referências do projeto
 
-- [`apps/frontend/README.md`](./README.md) — visão rápida e tabela de rotas.
-- [`docs/design-system.md`](./docs/design-system.md) — guia visual detalhado
+- [`apps/frontend/README.md`](../../apps/frontend/README.md) — visão rápida e tabela de rotas.
+- [`docs/design-system.md`](../../apps/frontend/docs/design-system.md) — guia visual detalhado
   (tokens, componentes, contraste). Versão navegável em `/design-system`.
-- [Entendimento da experiência do usuário](../../artefatos/entendimento_ux.md) —
+- [Entendimento da experiência do usuário](../sprint1/entendimento_ux.md) —
   personas, fluxos e a prancha de fundamentos visuais.
-- [Especificação de requisitos](../../artefatos/requisitos.md) — RF04, RNF04,
+- [Especificação de requisitos](../sprint1/requisitos.md) — RF04, RNF04,
   RIE01 e RESTR01, que definem as regras de acesso.
 - [Protótipo no Figma](https://www.figma.com/design/kbq8niIkBCHz7oVr1t0Ogp/G05---View-Show?node-id=219-1437).
 - [Demonstração em vídeo](https://youtu.be/Gur7yoTiQI0) — demonstração do
