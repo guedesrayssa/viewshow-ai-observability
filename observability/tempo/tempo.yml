@@ -1,0 +1,58 @@
+# Configuração do Tempo em modo monolítico, com armazenamento em disco local.
+
+# Permite ao Grafana receber resultados de busca TraceQL em streaming pela porta
+# HTTP 3200, sem precisar de uma conexão gRPC separada.
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        # Porta 4317 no host: exportadores OTLP/gRPC.
+        grpc:
+          endpoint: 0.0.0.0:4317
+        # Porta 4318 no host: exportadores OTLP/HTTP.
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  # Blocos curtos deixam os traces consultáveis mais rápido em desenvolvimento.
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    # Sete dias de retenção de traces, alinhados à retenção de logs do Loki.
+    block_retention: 168h
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+overrides:
+  defaults:
+    metrics_generator:
+      # Alimenta o mapa de serviços e as métricas RED do Grafana a partir dos traces.
+      processors: [service-graphs, span-metrics, local-blocks]
+
+usage_report:
+  reporting_enabled: false
