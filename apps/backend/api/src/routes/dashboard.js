@@ -4,6 +4,20 @@
  * p95" do mock original do frontend não entraram aqui de propósito: são
  * métricas de telemetria bruta, que vêm do job de ingestão (fora do escopo
  * desta fase) — melhor não ter do que inventar um número.
+ *
+ * Contrato da resposta (consumido por apps/frontend .../visao-geral):
+ *
+ *   {
+ *     "stats": [
+ *       { "id": string, "label": string, "value": number,
+ *         "format": "compact" | "integer", "accent": "info"|"warning"|"critical" }
+ *     ],
+ *     "recentIncidents": Incident[]   // os 5 mais recentes da janela de 24 h
+ *   }
+ *
+ * `value` é numérico de propósito: quem formata é a tela (convenção de
+ * apps/frontend/lib/dashboard-data.ts), o que deixa o cartão animar a contagem
+ * quando o número muda. `format` diz como escrevê-lo.
  */
 const { Router } = require("express");
 const evidenceService = require("../services/evidenceService");
@@ -23,14 +37,22 @@ router.get("/summary", async (req, res) => {
         {
           id: "affected-sessions",
           label: "Sessões afetadas",
-          value: affectedSessions.toLocaleString("pt-BR"),
+          value: affectedSessions,
+          format: "compact",
           accent: "info",
         },
-        { id: "active-incidents", label: "Incidentes ativos", value: String(activeIncidents), accent: "warning" },
+        {
+          id: "active-incidents",
+          label: "Incidentes ativos",
+          value: activeIncidents,
+          format: "integer",
+          accent: "warning",
+        },
         {
           id: "critical-incidents",
           label: "Incidentes críticos",
-          value: String(criticalIncidents),
+          value: criticalIncidents,
+          format: "integer",
           accent: "critical",
         },
       ],
