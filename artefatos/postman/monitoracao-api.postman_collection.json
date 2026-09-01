@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7a2e9f10-4b3c-4e8a-9d21-6f5c8a1b3e70",
     "name": "Monitoração Agêntica — API (Fase 2)",
-    "description": "Testes da API em apps/backend/api: incidentes, evidências, camada agêntica (orquestrador/agente/golden set), ML mockado e dashboard.\n\nA coleção segue a ordem que um diagnóstico real percorre:\n\n1. **Saúde** — a API está no ar.\n2. **Autenticação** — login fixo, cookie de sessão assinado.\n3. **Incidentes** — listar, detalhar, ver evidências.\n4. **Diagnóstico (camada agêntica)** — um incidente que já bate com a golden set (caminho determinístico) e um que não bate (cai no agente).\n5. **Revisão de hipótese e golden set** — confirmar uma hipótese promove o caso à golden set; refutar não toca nela. Inclui o teste negativo (sem sessão, 401).\n6. **ML mockado** — contrato fixo de entrada/saída.\n7. **Dashboard** — resumo agregado.\n\nO endereço da API vem da variável `baseUrl`. Use o ambiente `local` para rodar contra a máquina do desenvolvedor e `aws` para rodar contra o ALB compartilhado, sem alterar nenhuma requisição.\n\n**Antes de rodar**: popular as tabelas com `npm run seed` em `apps/backend/api` (ver artefatos/backend.md). A pasta 5 depende do estado deixado pela pasta 4 dentro da mesma execução (usa a hipótese recém-criada) — rode a coleção inteira em ordem, não pastas isoladas.",
+    "description": "Testes da API em apps/backend/api: incidentes, evidências, camada agêntica (orquestrador/agente/golden set), ML mockado e dashboard.\n\nA coleção segue a ordem que um diagnóstico real percorre:\n\n1. **Saúde** — a API está no ar.\n2. **Autenticação** — login fixo, cookie de sessão assinado.\n3. **Incidentes** — listar, detalhar, ver evidências.\n4. **Diagnóstico (camada agêntica)** — um incidente que já bate com a golden set (caminho determinístico) e um que não bate (cai no agente).\n5. **Revisão de hipótese e golden set** — confirmar uma hipótese promove o caso à golden set; refutar não toca nela. Confirmar exige sessão.\n6. **ML mockado** — contrato fixo de entrada/saída.\n7. **Dashboard** — resumo agregado.\n8. **Segurança** — `POST /diagnose` e `PATCH /review` respondem 401 sem sessão. Roda por último porque limpa o cookie.\n\nO endereço da API vem da variável `baseUrl`. Use o ambiente `local` para rodar contra a máquina do desenvolvedor e `aws` para rodar contra o ALB compartilhado, sem alterar nenhuma requisição.\n\n**Antes de rodar**: popular as tabelas com `npm run seed` em `apps/backend/api` (ver artefatos/backend.md). A pasta 5 depende do estado deixado pela pasta 4 dentro da mesma execução (usa a hipótese recém-criada) — rode a coleção inteira em ordem, não pastas isoladas.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -554,6 +554,88 @@
             "method": "GET",
             "header": [],
             "url": { "raw": "{{baseUrl}}/api/v1/dashboard/summary", "host": ["{{baseUrl}}"], "path": ["api", "v1", "dashboard", "summary"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Segurança — rotas protegidas sem sessão",
+      "description": "Prova que as duas rotas que ESCREVEM exigem sessão. Roda por último porque limpa o cookie e deixaria as pastas seguintes sem identidade.\n\n**No app do Postman**, `pm.cookies.jar()` exige que o domínio de `baseUrl` esteja em Cookies → Domains Allowlist. No `newman` funciona sem configuração.",
+      "item": [
+        {
+          "name": "8.1 Diagnosticar SEM sessão (401)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Remove o cookie deixado pela requisição 2.2 para que esta chamada",
+                  "// chegue à API sem identidade nenhuma.",
+                  "// pm.request.url.toString() devolve a URL NÃO resolvida aqui",
+                  "// ({{baseUrl}}/...), e o jar limparia um domínio inexistente sem",
+                  "// acusar erro. Resolver a variável é obrigatório.",
+                  "const base = pm.variables.replaceIn('{{baseUrl}}');",
+                  "const jar = pm.cookies.jar();",
+                  "jar.clear(base, function (erro) {",
+                  "    if (erro) { console.log('Falha ao limpar o cookie jar:', erro); }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Barrou antes do orquestrador — nenhuma hipótese no corpo', function () {",
+                  "    pm.expect(pm.response.json()).to.not.have.property('hypothesis');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentAgent}}/diagnose", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentAgent}}", "diagnose"] }
+          }
+        },
+        {
+          "name": "8.2 Revisar hipótese SEM sessão (401)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// pm.request.url.toString() devolve a URL NÃO resolvida aqui",
+                  "// ({{baseUrl}}/...), e o jar limparia um domínio inexistente sem",
+                  "// acusar erro. Resolver a variável é obrigatório.",
+                  "const base = pm.variables.replaceIn('{{baseUrl}}');",
+                  "const jar = pm.cookies.jar();",
+                  "jar.clear(base, function (erro) {",
+                  "    if (erro) { console.log('Falha ao limpar o cookie jar:', erro); }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"status\": \"confirmed\"}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/incidents/{{incidentAgent}}/hypothesis/review", "host": ["{{baseUrl}}"], "path": ["api", "v1", "incidents", "{{incidentAgent}}", "hypothesis", "review"] }
           }
         }
       ]

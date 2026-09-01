@@ -34,13 +34,23 @@ async function diagnose(incidentId) {
     diagnosisSource = "agent";
   }
 
-  await evidenceService.saveHypothesis(incidentId, { text: hypothesis, score, diagnosisSource });
-
+  // A explicação é gerada ANTES de gravar: ela faz parte do item da hipótese,
+  // e não só da resposta desta requisição. Sem isso, quem lê depois via
+  // GET /incidents/:id/hypothesis nunca veria o texto redigido pelo LLM.
+  // explain() nunca lança (ADR-004): no pior caso devolve o template.
   const { explanation, explanationSource } = await bedrockService.explain({
     hypothesis,
     score,
     evidence,
     diagnosisSource,
+  });
+
+  await evidenceService.saveHypothesis(incidentId, {
+    text: hypothesis,
+    score,
+    diagnosisSource,
+    explanation,
+    explanationSource,
   });
 
   return { incidentId, hypothesis, score, evidence, diagnosisSource, explanation, explanationSource };

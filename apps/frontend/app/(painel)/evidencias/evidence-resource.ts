@@ -14,7 +14,9 @@
  * tempo de mudanças e correlação com deploys seguem sem fonte: chegam vazias,
  * com o aviso correspondente, e a tela desenha o bloco de indisponível.
  *
- * Aqui também mora a única escrita do painel: a revisão humana da hipótese.
+ * Aqui também moram as duas escritas do painel: disparar o diagnóstico de um
+ * incidente que ainda não tem hipótese e registrar a revisão humana dela.
+ * As duas exigem sessão.
  */
 
 import {
@@ -83,7 +85,12 @@ export type EvidenceListResponse = { evidence: EvidenceItemResponse[] };
 export type HypothesisResponse = {
   text: string;
   score: number;
-  source?: string;
+  // Nome do campo segue o back: `diagnosisSource` diz se o diagnóstico veio da
+  // golden set ou do agente. Não confundir com o `source` de um item de
+  // evidência, que identifica o sistema de telemetria de origem.
+  diagnosisSource?: string;
+  explanation?: string;
+  explanationSource?: string;
   createdAt?: string;
   reviewStatus?: string;
   reviewedBy?: string;
@@ -176,10 +183,14 @@ function toHypothesis(
     component: incident.component ?? "Componente não informado",
     // `score` vem de 0 a 1; a barra e o selo da tela falam em porcentagem.
     confidence: Math.round((hypothesis.score ?? 0) * 100),
+    // A explicação redigida no diagnóstico é a fonte preferida. O texto fixo
+    // cobre as hipóteses gravadas antes de a explicação passar a ser
+    // persistida, que não têm o campo.
     summary:
-      hypothesis.source === "golden-set"
+      hypothesis.explanation ??
+      (hypothesis.diagnosisSource === "golden-set"
         ? "Diagnóstico reaproveitado de um caso já curado com a mesma assinatura."
-        : "Hipótese levantada pelo agente a partir das evidências coletadas.",
+        : "Hipótese levantada pelo agente a partir das evidências coletadas."),
   };
 }
 
@@ -355,28 +366,120 @@ export type ReviewResult =
  * @example
  * const result = await reviewHypothesis("falhas-reproducao-tvs-lg", "confirmed");
  */
+/**
+ * Base absoluta da API operacional para as escritas, que usam `fetch` direto
+ * em vez do cliente de leitura.
+ *
+ * "/" significa "mesma origem do painel" (ver lib/data/client.ts). `new
+ * URL(path, "/")` lançaria `TypeError: Invalid base URL`, por isso a origem do
+ * navegador é resolvida aqui, e não na leitura da variável de ambiente.
+ *
+ * @returns A base, ou string vazia quando a API não está configurada.
+ */
+function resolveApiBase(): string {
+  const configuredBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  return configuredBase === "/"
+    ? typeof window === "undefined"
+      ? "http://localhost"
+      : window.location.origin
+    : configuredBase;
+}
+
+const API_NAO_CONFIGURADA = {
+  ok: false,
+  needsSignIn: false,
+  message: "A API de incidentes não está configurada neste ambiente.",
+} as const;
+
+/** Resultado de uma tentativa de diagnóstico. */
+export type DiagnosisResult =
+  | { ok: true }
+  | { ok: false; needsSignIn: boolean; message: string };
+
+/**
+ * Teto de espera do diagnóstico. Com o LLM ligado a resposta leva segundos;
+ * sem teto, uma chamada travada deixaria a tela girando para sempre.
+ */
+const DIAGNOSIS_TIMEOUT_MS = 30_000;
+
+/**
+ * Dispara o diagnóstico do incidente.
+ *
+ * Grava uma hipótese nova no servidor a cada chamada, e por isso exige sessão.
+ * Não devolve o diagnóstico: quem chama relê a tela, que passa a encontrar a
+ * hipótese persistida — assim o que aparece é exatamente o que ficou gravado.
+ *
+ * @param incidentId - Incidente a diagnosticar.
+ *
+ * @example
+ * const result = await runDiagnosis("falhas-reproducao-tvs-lg");
+ */
+export async function runDiagnosis(
+  incidentId: string,
+): Promise<DiagnosisResult> {
+  const base = resolveApiBase();
+  if (!base) return API_NAO_CONFIGURADA;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DIAGNOSIS_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(
+      new URL(
+        ENDPOINTS.operacional.incidentDiagnose(incidentId),
+        base,
+      ).toString(),
+      { method: "POST", credentials: "include", signal: controller.signal },
+    );
+
+    if (response.ok) return { ok: true };
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        ok: false,
+        needsSignIn: true,
+        message: "Entre na sua conta para rodar o diagnóstico deste incidente.",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        ok: false,
+        needsSignIn: false,
+        message: "Este incidente não está mais na base operacional.",
+      };
+    }
+
+    return {
+      ok: false,
+      needsSignIn: false,
+      message: "O diagnóstico não pôde ser concluído agora. Tente de novo.",
+    };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return {
+        ok: false,
+        needsSignIn: false,
+        message:
+          "O diagnóstico passou de 30 segundos e foi interrompido. Tente de novo.",
+      };
+    }
+    return {
+      ok: false,
+      needsSignIn: false,
+      message: "Não conseguimos falar com a API de incidentes.",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function reviewHypothesis(
   incidentId: string,
   status: Exclude<ReviewStatus, "pending">,
 ): Promise<ReviewResult> {
-  const configuredBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-  // "/" significa "mesma origem do painel" (ver lib/data/client.ts). `new
-  // URL(path, "/")` lançaria `TypeError: Invalid base URL`, por isso resolve
-  // para a origem do navegador aqui, e não na leitura da variável de ambiente.
-  const base =
-    configuredBase === "/"
-      ? typeof window === "undefined"
-        ? "http://localhost"
-        : window.location.origin
-      : configuredBase;
-
-  if (!base) {
-    return {
-      ok: false,
-      needsSignIn: false,
-      message: "A API de incidentes não está configurada neste ambiente.",
-    };
-  }
+  const base = resolveApiBase();
+  if (!base) return API_NAO_CONFIGURADA;
 
   try {
     const response = await fetch(

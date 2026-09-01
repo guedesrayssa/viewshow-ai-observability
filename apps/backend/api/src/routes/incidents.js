@@ -83,7 +83,13 @@ router.patch("/:id/hypothesis/review", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/:id/diagnose", async (req, res) => {
+/**
+ * Dispara o diagnóstico do incidente (orquestrador → golden set ou agente).
+ * Exige sessão: apesar de ser um POST de leitura do ponto de vista do usuário,
+ * ele ESCREVE uma hipótese na tabela operacional a cada chamada e consome LLM.
+ * Aberta, permitia que qualquer um inflasse a tabela e a conta.
+ */
+router.post("/:id/diagnose", requireAuth, async (req, res) => {
   try {
     const result = await orchestrator.diagnose(req.params.id);
     if (!result) return res.status(404).json({ error: { message: "Incidente não encontrado" } });

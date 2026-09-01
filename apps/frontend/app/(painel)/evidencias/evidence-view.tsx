@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BufferingChart } from "@/app/(painel)/evidencias/buffering-chart";
 import {
@@ -32,6 +32,7 @@ import {
   fetchBuffering,
   fetchEvidence,
   reviewHypothesis,
+  runDiagnosis,
 } from "@/app/(painel)/evidencias/evidence-resource";
 import { useAccount } from "@/components/account/account-provider";
 import { DataStatus } from "@/components/dashboard/data-status";
@@ -74,6 +75,14 @@ export function EvidenceView() {
     error?: string;
     saving?: boolean;
   }>({ status: "pending" });
+  const [diagnosis, setDiagnosis] = useState<{
+    running: boolean;
+    error?: string;
+  }>({ running: false });
+  // Guarda o incidente já tentado automaticamente. Sem isso, a releitura que
+  // segue o diagnóstico voltaria a disparar o efeito, e um incidente que
+  // falhasse entraria em laço de chamadas ao servidor.
+  const autoDiagnosedRef = useRef<string | null>(null);
   const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
   const [timelineWindow, setTimelineWindow] = useState<WindowKey>("90");
   const [bufferingPeriod, setBufferingPeriod] = useState<BufferingPeriodKey>("120");
@@ -95,6 +104,43 @@ export function EvidenceView() {
   function toggleSource(id: string) {
     setExpandedSourceId((current) => (current === id ? null : id));
   }
+
+  /**
+   * Dispara o diagnóstico e relê a tela. A hipótese exibida passa a ser a que
+   * ficou gravada, não a que voltou nesta resposta.
+   */
+  async function startDiagnosis() {
+    if (!incidentId) return;
+
+    setDiagnosis({ running: true });
+    const result = await runDiagnosis(incidentId);
+
+    if (result.ok) {
+      setDiagnosis({ running: false });
+      evidence.refresh();
+    } else {
+      setDiagnosis({ running: false, error: result.message });
+    }
+  }
+
+  // Um incidente sem hipótese não é um erro de leitura, é um diagnóstico que
+  // ainda não rodou — e quem abre a tela quer o diagnóstico, não um aviso de
+  // que ele falta. Dispara uma vez por incidente; o botão cobre o retry.
+  useEffect(() => {
+    if (!incidentId) return;
+    if (evidence.status !== "ready") return;
+    // Só vale para dado vindo da API: no conjunto de exemplo não há o que
+    // diagnosticar, e a chamada iria para um servidor que não está lá.
+    if (evidence.source !== "api") return;
+    if (data?.hypothesis !== null) return;
+    if (autoDiagnosedRef.current === incidentId) return;
+
+    autoDiagnosedRef.current = incidentId;
+    void startDiagnosis();
+    // `startDiagnosis` é recriada a cada render; a guarda por incidente acima
+    // é o que impede a repetição, não a lista de dependências.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incidentId, evidence.status, evidence.source, data?.hypothesis]);
 
   async function submitReview(status: "confirmed" | "refuted") {
     if (!incidentId) return;
@@ -215,14 +261,44 @@ export function EvidenceView() {
             {data && data.hypothesis === null ? (
               <>
                 <CardTitle>Hipótese</CardTitle>
-                <Unavailable
-                  title="Ainda sem diagnóstico"
-                  className="flex-1"
-                >
-                  Este incidente ainda não passou pelo diagnóstico automático.
-                  Quando ele rodar, a hipótese aparece aqui com o grau de
-                  confiança e as evidências que a sustentam.
-                </Unavailable>
+                {diagnosis.running ? (
+                  <>
+                    <p className="text-caption text-ink-muted">
+                      Diagnosticando… o orquestrador procura um caso curado com
+                      a mesma assinatura e, sem encontrar, aciona o agente.
+                    </p>
+                    <Skeleton className="h-6 w-72" />
+                    <SkeletonText lines={3} />
+                  </>
+                ) : (
+                  <>
+                    <Unavailable
+                      title="Ainda sem diagnóstico"
+                      className="flex-1"
+                    >
+                      Este incidente ainda não passou pelo diagnóstico
+                      automático. Rodá-lo grava uma hipótese com o grau de
+                      confiança e a explicação que a sustenta.
+                    </Unavailable>
+                    <div className="mt-auto flex flex-col gap-2">
+                      <Button
+                        variant="gradient"
+                        className="self-start"
+                        onClick={() => void startDiagnosis()}
+                      >
+                        Diagnosticar agora
+                      </Button>
+                      {diagnosis.error ? (
+                        <p
+                          className="text-caption text-critical-strong"
+                          role="alert"
+                        >
+                          {diagnosis.error}
+                        </p>
+                      ) : null}
+                    </div>
+                  </>
+                )}
               </>
             ) : data && data.hypothesis ? (
               <>
