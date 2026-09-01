@@ -1,4 +1,7 @@
-# Configuração do Tempo em modo monolítico, com armazenamento em disco local.
+# Configuração do Tempo 3 em modo monolítico (target=all), com armazenamento em
+# disco local. O Tempo 3 substituiu o ingester pelo live-store e moveu a
+# compactação para o backend-scheduler, então os nomes das seções aqui não
+# correspondem aos da linha 2.x.
 
 # Permite ao Grafana receber resultados de busca TraceQL em streaming pela porta
 # HTTP 3200, sem precisar de uma conexão gRPC separada.
@@ -19,14 +22,16 @@ distributor:
         http:
           endpoint: 0.0.0.0:4318
 
-ingester:
+live_store:
   # Blocos curtos deixam os traces consultáveis mais rápido em desenvolvimento.
-  max_block_duration: 5m
+  max_block_duration: 30s
 
-compactor:
-  compaction:
-    # Sete dias de retenção de traces, alinhados à retenção de logs do Loki.
-    block_retention: 168h
+backend_scheduler:
+  provider:
+    compaction:
+      compaction:
+        # Sete dias de retenção de traces, alinhados à retenção de logs do Loki.
+        block_retention: 168h
 
 metrics_generator:
   registry:
@@ -37,8 +42,6 @@ metrics_generator:
     remote_write:
       - url: http://prometheus:9090/api/v1/write
         send_exemplars: true
-  traces_storage:
-    path: /var/tempo/generator/traces
 
 storage:
   trace:

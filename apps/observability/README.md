@@ -37,7 +37,7 @@ Todas as portas podem ser sobrescritas por variáveis de ambiente
 ## Arquivos
 
 ```
-observability/
+apps/observability/
 ├── grafana/provisioning/datasources/datasources.yml   data sources automáticos
 ├── loki/loki-config.yml                               Loki monolítico, disco local
 ├── prometheus/prometheus.yml                          alvos e intervalo de coleta
@@ -95,3 +95,7 @@ produção: Loki e Tempo rodam em modo monolítico gravando em disco local, com
 anel de consistência em memória e fator de replicação 1, e o Grafana usa a base
 SQLite embutida. A retenção é de 7 dias para logs e traces e de 15 dias para
 métricas.
+
+O `tempo.yml` segue o schema da linha 3.x, que reorganizou a configuração: o
+ingester virou `live_store` e a compactação passou para `backend_scheduler`. Um
+arquivo escrito para o Tempo 2.x não é aceito por esta versão.
