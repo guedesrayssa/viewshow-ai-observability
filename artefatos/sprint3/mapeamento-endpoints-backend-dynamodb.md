@@ -74,3 +74,28 @@ evidência / hipótese):
 | `scripts/reset.js` (não é rota) | `Scan` + `DeleteItem` | Único `Scan` do backend |
 
 Nenhuma rota usa `BatchGetItem` ou `TransactWriteItems`.
+
+---
+
+## 2. Inventário de rotas
+
+Montagem em `src/app.js`:
+
+| # | Método + caminho | Router | `requireAuth` | Lê banco | Escreve banco |
+|---|---|---|:--:|:--:|:--:|
+| 1 | `GET /health` | `health.js` | não | — | — |
+| 2 | `POST /auth/login` | `auth.js` | não | `GetItem` operacional (`USER#`) | — |
+| 3 | `POST /auth/register` | `auth.js` | não | `GetItem` operacional (`USER#`) | `PutItem` operacional (`USER#`) |
+| 4 | `GET /auth/sso` | `auth.js` | não | — | — |
+| 5 | `GET /api/v1/incidents` | `incidents.js` | não | `Query` × N buckets (tabela base) | — |
+| 6 | `GET /api/v1/incidents/:id` | `incidents.js` | não | `Query` GSI `trace-index` | — |
+| 7 | `GET /api/v1/incidents/:id/evidence` | `incidents.js` | não | `Query` GSI `trace-index` | — |
+| 8 | `GET /api/v1/incidents/:id/hypothesis` | `incidents.js` | não | `Query` GSI `trace-index` | — |
+| 9 | `PATCH /api/v1/incidents/:id/hypothesis/review` | `incidents.js` | **sim** | `Query` GSI `trace-index` (×1 ou ×2) | `UpdateItem` operacional **+** `PutItem` golden-set (só se `confirmed`) |
+| 10 | `POST /api/v1/incidents/:id/diagnose` | `incidents.js` | não | `Query` GSI `trace-index` (×2) + `GetItem` golden-set | `PutItem` operacional (hipótese) |
+| 11 | `GET /api/v1/golden-set` | `goldenSet.js` | não | `GetItem` golden-set | — |
+| 12 | `POST /api/v1/ml/analyze` | `ml.js` | não | — (mock) | — |
+| 13 | `GET /api/v1/dashboard/summary` | `dashboard.js` | não | `Query` × 25 buckets (tabela base) | — |
+
+**Só a rota 9 exige autenticação.** As rotas 3, 9 e 10 escrevem no banco; apenas
+a 9 está protegida.
