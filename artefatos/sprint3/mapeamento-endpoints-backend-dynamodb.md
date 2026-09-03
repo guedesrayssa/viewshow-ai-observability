@@ -428,3 +428,132 @@ a 9 está protegida.
 - **Escrita:** nenhuma.
 - **`keys.js`:** `hourBucket`, `itemTypeFromSk`. Padrão **bate**. Ressalvas **A**, **H** em §4.
 - **Auth:** não.
+
+---
+
+## 4. Aderência a `src/db/keys.js` e inconsistências encontradas
+
+Resumo por rota:
+
+| Rota | Padrão de leitura bate com `keys.js`? | Ressalvas |
+|---|---|---|
+| `GET /health`, `GET /auth/sso`, `POST /ml/analyze` | n/a (não tocam banco) | — |
+| `POST /auth/login`, `POST /auth/register` | **Fora de `keys.js`** — família `USER#`/`PROFILE` montada em `userService.js` | **G** |
+| `GET /api/v1/incidents` | Sim (`pk = INC#<hora>`, `sk` por `begins_with("INCIDENT#")`) | **A**, **B**, **C**, **I**, **J** |
+| `GET /api/v1/incidents/:id` `/evidence` `/hypothesis` | Sim (GSI `trace-index`, `itemTypeFromSk`) | **C**, **E** (só `/hypothesis`), **I** |
+| `PATCH …/hypothesis/review` | Parcial — leitura via `keys.js`; chave do golden set fora de `keys.js` | **C**, **D**, **E** |
+| `POST …/diagnose` | Sim (`hypothesisSk`, GSI `trace-index`, `GetItem` golden set por assinatura) | **C**, **E**, **F** |
+| `GET /api/v1/golden-set` | n/a para `keys.js`; usa `case_id` = assinatura (`dynamodb.tf`) | — |
+| `GET /api/v1/dashboard/summary` | Sim | **A**, **C**, **H**, **I** |
+
+### A — Janela temporal × bucket de hora: a leitura depende de **há quanto tempo o `seed` rodou**  · impacto ALTO
+
+`pk` codifica a **hora UTC absoluta** do início do incidente. No seed:
+`hourBucket(new Date(Date.now() - incident.startedMinutesAgo * 60000))`, calculado
+**no instante da carga**. O campo `startedMinutesAgo` é um literal congelado
+(`12`, `38`, `54`, `92`) — não anda com o relógio.
+
+`bucketsForWindow` recalcula os buckets a partir de `new Date()` **no instante da
+requisição**. Conforme o tempo real passa depois do seed, o conjunto de buckets
+consultados desliza para frente e **deixa de cobrir a hora congelada no `pk` do
+incidente**.
+
+Efeito:
+
+- `GET /api/v1/incidents` (janela default 6 h → 7 buckets): os incidentes somem da
+  listagem cerca de **6 h depois do `npm run seed`**, embora os dados digam
+  "há 12 minutos".
+- `GET /api/v1/dashboard/summary` (`window: "24h"` → 25 buckets): "Sessões
+  afetadas", "Incidentes ativos" e "Incidentes críticos" caem a **zero** cerca de
+  **25 h depois do seed**.
+
+Este é o candidato mais provável para o sintoma **"ele não tá lendo de maneira
+correta"**: a leitura está tecnicamente certa para a convenção de chave, mas o
+resultado depende do relógio de parede, não do dado. Rodar `npm run reset &&
+npm run seed` "conserta" temporariamente — o que confirma o diagnóstico.
+
+### B — O filtro de janela é só por bucket de hora; o item nunca é filtrado pelo timestamp  · impacto MÉDIO/ALTO
+
+`listIncidents` **nunca** compara `startedMinutesAgo` (nem qualquer timestamp) com
+`windowMinutes`. Ele só escolhe **quantos buckets de hora** varrer
+(`hours = ceil(windowMinutes/60) + 1`) e devolve tudo que houver neles.
+
+Consequências:
+
+- `window=15m` varre **2 buckets** (hora atual + anterior) e devolve incidentes de
+  **até ~2 h atrás**, sem recorte de 15 min.
+- `window=15m`, `window=30m` e `window=1h` retornam praticamente o mesmo conjunto
+  (diferem só na contagem de buckets, não num corte real de minutos).
+- Não existe limite superior real por janela — só o número de buckets.
+
+### C — `itemTypeFromSk` pressupõe `id` sem `#` (fragilidade latente)  · impacto MÉDIO
+
+`itemTypeFromSk` faz `sk.split("#")` e decide por `parts.length === 2` e
+`parts[2]`. Isso só funciona enquanto o `id` do incidente for **um único segmento
+sem `#`**. Os `id`s do seed são slugs (`falhas-reproducao-tvs-lg`), então hoje está
+ok.
+
+Se um `id` algum dia contiver `#` (ou vier o "id canônico opaco" previsto no
+contrato-alvo), o `sk` de incidente `INCIDENT#a#b` passa a ter `parts.length === 3`
+e `parts[2] === "b"` → classificado como **`UNKNOWN`** → o incidente **desaparece**
+de toda listagem (`listIncidents` filtra `=== "INCIDENT"`) e de todo bundle. O
+comentário em `keys.js` documenta a convenção, mas o código não a defende.
+
+### D — `PATCH …/hypothesis/review` grava sem escrita condicional  · impacto MÉDIO
+
+`operationalTable.update` não recebe `ConditionExpression`:
+
+- Dois revisores concorrentes → o último `UpdateItem` vence silenciosamente
+  (o contrato §8 pede `expectedVersion` e `REVIEW_VERSION_CONFLICT` — não existe
+  versionamento).
+- Se o item da hipótese tiver expirado por TTL entre o `Query` no GSI e o
+  `UpdateItem`, o `UpdateItem` **faz upsert**: cria um item novo só com
+  `{ pk, sk, reviewStatus, reviewedBy, reviewedAt }`, sem `incidentId`/`text`/`score`.
+
+### E — `getLatestHypothesis` pode não apontar para a hipótese revisada  · impacto BAIXO/MÉDIO
+
+A revisão age sobre a hipótese de maior `sk`. Rodar `POST …/diagnose` de novo
+depois de uma revisão insere uma hipótese mais nova (seq = epoch) → a hipótese
+revisada deixa de ser a "última"; `GET …/hypothesis` e uma revisão seguinte
+passam a agir sobre a nova, ainda não revisada. Não há a noção de "hipóteses
+pertencentes à mesma execução de diagnóstico" (confirmado no gap-analysis §8).
+
+### F — `POST …/diagnose` escreve no banco sem `requireAuth`  · impacto MÉDIO
+
+Chama `saveHypothesis` → `PutItem` em `monitoracao-operacional`. Um chamador não
+autenticado consegue inserir itens `HYPOTHESIS`. Só `PATCH …/review` está atrás de
+`requireAuth`. O gap-analysis (§5.2, §8) recomenda tratar `/diagnose` como
+operação interna.
+
+### G — Contas de usuário fora da convenção e apagadas pelo `reset`  · impacto BAIXO
+
+`userService` monta `pk = USER#<email>`, `sk = "PROFILE"` direto, sem passar por
+`keys.js` nem por `operationalTable.js` (fura o ADR-004). Itens de usuário não têm
+`ttl` nem `trace_id` (logo são invisíveis ao GSI `trace-index` e ao
+`listIncidents` — o que está correto). Porém `scripts/reset.js` faz `Scan` +
+`DeleteItem` de **toda** a `monitoracao-operacional`, então `npm run reset` apaga
+as contas registradas junto com os incidentes. Além disso, o fallback em memória
+de `createUser` devolve "sucesso" para uma escrita que nunca chegou ao DynamoDB.
+
+### H — `dashboard/summary`: os números têm semântica frouxa  · impacto MÉDIO
+
+- `affected-sessions.value` = **soma de `incident.devices`** (contagem de
+  dispositivos no seed), rotulada como "Sessões afetadas". O gap-analysis §6 é
+  explícito: *"A soma de devices não pode ser chamada de sessões."*
+- `active-incidents` = `status !== "success"`; `critical-incidents` =
+  `status === "critical"`. Depende do enum de apresentação do seed
+  (`critical | warning | info | success`), divergente do enum do contrato
+  (`detected | investigating | confirmed | resolved | closed`).
+
+### I — As respostas expõem campos físicos de persistência  · impacto MÉDIO (já documentado)
+
+Todas as rotas de `incidents` / `golden-set` devolvem o **item cru** do DynamoDB:
+`pk`, `sk`, `trace_id`, `ttl` vazam na API. O contrato §4.3 / §12: *"pk, sk, GSI,
+TTL e outros campos internos nunca aparecem na API pública."* Não há camada de
+serialização/DTO.
+
+### J — Aliases de `window` incompletos  · impacto BAIXO
+
+`WINDOW_ALIASES` tem só `15m`, `30m`, `1h`, `24h`. `window=6h` → `Number("6h")` =
+`NaN` → default `360` (que por acaso é 6 h — "funciona por acidente"). `window=45m`
+→ `NaN` → `360` (não 45). Só número puro (`window=45`) é interpretado como minutos.
