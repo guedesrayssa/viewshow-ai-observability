@@ -557,3 +557,92 @@ serialização/DTO.
 `WINDOW_ALIASES` tem só `15m`, `30m`, `1h`, `24h`. `window=6h` → `Number("6h")` =
 `NaN` → default `360` (que por acaso é 6 h — "funciona por acidente"). `window=45m`
 → `NaN` → `360` (não 45). Só número puro (`window=45`) é interpretado como minutos.
+
+---
+
+## 5. Golden Set: existe endpoint que grava uma hipótese avaliada como falsa?
+
+**Não. Não existe.**
+
+### 5.1 Todos os caminhos de escrita em `monitoracao-golden-set`
+
+| Camada | O que é |
+|---|---|
+| `src/db/goldenSetTable.js` | Única porta de baixo nível. Exporta `get`, `query`, **`putCurated`** — e **de propósito não exporta** `put`/`update`/`delete` genéricos (barreira estrutural do ADR-002; o cabeçalho do arquivo explica). |
+| `src/services/goldenSetService.js` → `promoteCase(incident, hypothesis, curatedBy)` | Único chamador de `putCurated`. |
+| `src/routes/incidents.js` → `PATCH /api/v1/incidents/:id/hypothesis/review` | Único chamador de `promoteCase`, **exclusivamente no ramo `if (status === "confirmed")`** (linhas 74-77). |
+
+Não há nenhum outro `require` de `goldenSetTable` nem de `goldenSetService` com
+escrita em todo `src/`. `POST /api/v1/ml/analyze` é mock e não toca banco;
+`GET /api/v1/golden-set` é só leitura.
+
+### 5.2 O que acontece quando a hipótese é julgada **falsa** (`status: "refuted"`)
+
+`PATCH …/hypothesis/review` com `status = "refuted"`:
+
+1. `evidenceService.reviewHypothesis` faz **só** um `UpdateItem` em
+   `monitoracao-operacional` no próprio item da hipótese, gravando
+   `reviewStatus: "refuted"`, `reviewedBy: <e-mail da sessão>`, `reviewedAt: <ISO>`.
+2. **Nada é escrito em `monitoracao-golden-set`** — o ramo que chama `promoteCase`
+   só roda para `"confirmed"`.
+
+Além disso, o item que `promoteCase` grava **não tem campo de veredito**: os
+atributos são `case_id`, `incident_signature`, `expected_hypothesis`,
+`expected_score`, `curated_by`, `curated_at`, `source_incident_id`. É sempre um
+caso "esperado/positivo" — não há `verdict`, `label`, `is_false`,
+`refuted_hypothesis` ou equivalente. E a rota nem aceita o `inconclusive` previsto
+no contrato (validação só admite `confirmed | refuted`).
+
+### 5.3 Onde essa escrita **deveria** acontecer, se for desejada
+
+No mesmo fluxo `PATCH /api/v1/incidents/:id/hypothesis/review`, adicionando
+tratamento ao ramo `status === "refuted"` (hoje inexistente), simétrico ao
+`promoteCase`. O contrato §8 já prevê isso: *"A promoção **ou invalidação** no
+golden set é um efeito interno e não bloqueia a resposta HTTP."*
+
+Passos necessários, em ordem:
+
+1. **`src/db/goldenSetTable.js`** — um segundo método de escrita explícito
+   (ex.: `putRefuted`), **ou** aceitar um atributo `verdict` no item de
+   `putCurated`. Não reintroduzir um `put` genérico, para manter a barreira do
+   ADR-002.
+2. **`src/services/goldenSetService.js`** — uma função
+   `recordRefutedCase(incident, hypothesis, curatedBy)`.
+3. **`src/routes/incidents.js`** — chamar essa função quando `status === "refuted"`
+   (e decidir o comportamento para `inconclusive`, se o enum for ampliado).
+4. **Mudança de modelo de dados (não é só código):** `monitoracao-golden-set` tem
+   chave **simples** `case_id` = assinatura, **sem sort key** (`dynamodb.tf`). Um
+   caso "confirmado" e um "refutado" para a mesma assinatura **colidiriam no mesmo
+   item**. Registrar refutações exige `case_id` composto
+   (ex.: `<assinatura>#REFUTED#<seqHipótese>`) ou introduzir uma sort key — ou
+   seja, alterar `apps/infra/dynamodb.tf` e a convenção de chaves. O ideal seria
+   `src/db/keys.js` passar a conhecer também a família de chaves do golden set
+   (hoje não conhece nada dela).
+5. Rever `scripts/reset.js` (`TEST_PROMOTED_CASES`) para também limpar casos
+   refutados criados por teste.
+
+---
+
+## 6. Resumo executivo
+
+- **13 rotas.** Só `PATCH /api/v1/incidents/:id/hypothesis/review` exige
+  autenticação. Três rotas escrevem (`POST /auth/register`, `PATCH …/review`,
+  `POST …/diagnose`); duas delas sem `requireAuth`.
+- **Duas tabelas:** `monitoracao-operacional` (single-table: incidentes,
+  evidências, hipóteses e — fora de `keys.js` — usuários; GSI `trace-index`
+  projeção ALL; TTL) e `monitoracao-golden-set` (chave simples `case_id` =
+  assinatura `<component>#<deviceType>#<region>`; sem GSI; sem TTL).
+- **Operações usadas:** `Query`, `GetItem`, `PutItem`, `UpdateItem`. Nenhuma rota
+  usa `BatchGetItem` ou `TransactWriteItems`; `Scan` só no script `reset.js`.
+- **Os padrões de `pk`/`sk` das rotas batem com `src/db/keys.js`** — a leitura não
+  está "errada" no sentido de montar a chave errada.
+- **A inconsistência que explica "ele não tá lendo de maneira correta" é a A:** a
+  janela de consulta é recalculada a partir do relógio real, enquanto o `pk` do
+  incidente e o `startedMinutesAgo` foram congelados no `seed`. Horas depois da
+  carga, os `Query`s por bucket deixam de cobrir os incidentes e as listagens /
+  o resumo esvaziam sozinhos. Complementarmente, a **B**: a janela nunca é
+  aplicada ao timestamp do item, só à quantidade de buckets de hora.
+- **Golden Set:** não há endpoint que grave hipótese refutada / "falsa". O único
+  gatilho de escrita é `promoteCase`, e só para `status === "confirmed"`. Habilitar
+  o registro de refutação exige código **e** mudança de modelo de dados (chave
+  composta ou sort key na tabela do golden set).
