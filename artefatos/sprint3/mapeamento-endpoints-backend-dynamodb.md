@@ -99,3 +99,332 @@ Montagem em `src/app.js`:
 
 **Só a rota 9 exige autenticação.** As rotas 3, 9 e 10 escrevem no banco; apenas
 a 9 está protegida.
+
+---
+
+## 3. Detalhe rota a rota
+
+### 1. `GET /health`
+
+- **Request:** nada.
+- **Response 200:** `{ "status": "ok" }`.
+- **Erros:** nenhum (síncrono, sem I/O).
+- **Banco:** não lê nem escreve.
+- **Auth:** não.
+
+---
+
+### 2. `POST /auth/login`
+
+- **Request — body** (`application/json`):
+  | Campo | Tipo | Obrigatório |
+  |---|---|---|
+  | `email` | string | sim (de fato) |
+  | `password` | string | sim (de fato) |
+
+  `req.body || {}` — body ausente não dá 400, cai como credenciais inválidas.
+- **Response 200:** `{ "status": "ok", "name": string | null }` + header
+  `Set-Cookie: session=<base64url(email)>.<hmac-sha256>` (`httpOnly`, `sameSite=lax`,
+  `maxAge` 8 h, `secure` só em produção). `name` vem preenchido apenas para conta
+  registrada; para o usuário fixo de demonstração é `null`.
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 401 | `{ error: { message: "Credenciais inválidas" } }` | não é o usuário fixo (`AUTH_USER_EMAIL`/`AUTH_USER_PASSWORD`) **e** `userService.authenticate` devolveu `null` (conta inexistente ou senha errada) |
+
+  Não há 400, 409 nem 500 neste handler. Se o DynamoDB estiver inacessível,
+  `findUser` cai no `Map` em memória e o resultado ainda é 200/401.
+- **Leitura no banco:** `userService.authenticate(email, password)` →
+  `findUser(email)` → **`GetItem`** em `monitoracao-operacional`,
+  `Key = { pk: "USER#" + normalizeEmail(email), sk: "PROFILE" }`.
+  Fallback: `memoryUsers.get(normalized)` se o `GetCommand` lançar.
+- **Escrita no banco:** nenhuma.
+- **`keys.js`:** **não usado.** A chave `USER#<email>` / `PROFILE` é montada em
+  `userService.userKey()`, fora da convenção de `keys.js`.
+- **Auth:** não (é a rota que emite a sessão).
+
+---
+
+### 3. `POST /auth/register`
+
+- **Request — body:**
+  | Campo | Tipo | Regra |
+  |---|---|---|
+  | `name` | string | não-vazio após `trim` |
+  | `email` | string | casar `^[^\s@]+@[^\s@]+\.[^\s@]+$` |
+  | `password` | string | comprimento ≥ 8 |
+- **Response 201:** `{ "status": "ok", "name": string }` + `Set-Cookie: session=…`
+  (abre a sessão já no cadastro).
+- **Erros (nesta ordem):**
+  | HTTP | Código-mensagem | Quando |
+  |---|---|---|
+  | 400 | `"Informe o seu nome."` | `name` vazio |
+  | 400 | `"Digite um e-mail válido."` | `email` não casa o padrão |
+  | 400 | `"A senha precisa de pelo menos 8 caracteres."` | `password.length < 8` |
+  | 409 | `"Este e-mail já está registrado."` | `normalizeEmail(email) === AUTH_USER_EMAIL` (colide com o usuário fixo) |
+  | 409 | `"Este e-mail já está registrado."` | `userService.createUser` devolveu `null` — e-mail já existe (via `findUser` **ou** `ConditionalCheckFailedException` no `PutItem`) |
+  | 500 | `"Falha ao criar a conta"` | `createUser` lançou exceção não prevista |
+- **Leitura no banco:** `createUser` → `findUser(email)` → **`GetItem`**
+  `monitoracao-operacional`, `Key = { pk: "USER#<email>", sk: "PROFILE" }`
+  (+ fallback `Map`).
+- **Escrita no banco:** `createUser` → **`PutItem`** `monitoracao-operacional`,
+  `Item = { pk: "USER#<email>", sk: "PROFILE", email, name, passwordHash: "<salt>:<scrypt-hex>", createdAt: <ISO> }`,
+  `ConditionExpression: "attribute_not_exists(pk)"`.
+  - `ConditionalCheckFailedException` ⇒ devolve `null` ⇒ 409.
+  - Qualquer outro erro ⇒ `warnMemory` + grava em `memoryUsers` (o handler devolve
+    201 mesmo sem o item ter chegado ao DynamoDB).
+- **`keys.js`:** **não usado** (família `USER#`).
+- **Auth:** não.
+
+---
+
+### 4. `GET /auth/sso`
+
+- **Request:** nada.
+- **Response:** **501** `{ error: { message: "SSO ainda não implementado nesta fase" } }` — sempre.
+- **Banco:** não. **Auth:** não.
+
+---
+
+### 5. `GET /api/v1/incidents`
+
+- **Request — query string:**
+  | Parâmetro | Tipo | Obrigatório | Regra |
+  |---|---|---|---|
+  | `window` | string | não | `"15m"`, `"30m"`, `"1h"`, `"24h"` (aliases) **ou** número puro de minutos. Qualquer outra coisa (inclusive `"6h"`, `"45m"`) → `NaN` → **default 360 min (6 h)** |
+  | `deviceType` | string | não | igualdade exata contra `incident.deviceType` |
+  | `region` | string | não | igualdade exata contra `incident.region` |
+  | `appVersion` | string | não | igualdade exata contra `incident.appVersion` |
+- **Response 200:**
+  ```json
+  { "incidents": [ { "pk": "INC#2026-09-03T14", "sk": "INCIDENT#falhas-reproducao-tvs-lg",
+                     "trace_id": "falhas-reproducao-tvs-lg", "ttl": 1756900000,
+                     "id": "falhas-reproducao-tvs-lg", "urgency": "P1",
+                     "title": "Falhas de reprodução em TVs LG", "segment": "12,4 mil sessões · Nordeste · webOS 6.0",
+                     "devices": 8420, "startedAt": "09:18", "startedMinutesAgo": 12,
+                     "component": "Player", "deviceType": "Smart TV", "region": "Nordeste",
+                     "appVersion": "App 4.2.1", "sessions": "12,4 mil sessões",
+                     "timeAgo": "há 18 min", "status": "critical", "statusLabel": "Crítico" } ] }
+  ```
+  Item **cru do DynamoDB** (inclui `pk`, `sk`, `trace_id`, `ttl`). Ordenação
+  ascendente por `startedMinutesAgo`.
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 500 | `{ error: { message: "Falha ao listar incidentes" } }` | qualquer exceção nos `Query` |
+
+  **Não há 400** para `window` inválido (cai no default). **Não há 404** (lista
+  vazia é 200 `{ "incidents": [] }`).
+- **Leitura no banco:** `evidenceService.listIncidents(filters)`:
+  1. `parseWindowMinutes(window)` → minutos.
+  2. `bucketsForWindow` → `hours = max(1, ceil(windowMinutes/60) + 1)` buckets
+     `INC#<hora>`, contando de trás para frente a partir de **`new Date()` (agora)**.
+  3. Para cada bucket, **`Query`** na tabela base:
+     `KeyConditionExpression = "pk = :pk AND begins_with(sk, :prefix)"`,
+     `:pk = "INC#<hora>"`, `:prefix = "INCIDENT#"`.
+  4. `flat()` + `filter(itemTypeFromSk(sk) === "INCIDENT")` (descarta evidência e
+     hipótese, que também começam por `INCIDENT#`) + `matchesFilters` + `sort`.
+- **Escrita no banco:** nenhuma.
+- **`keys.js`:** `hourBucket` (monta `:pk`) e `itemTypeFromSk` (classifica).
+  Padrão de `pk`/`sk` **bate** com `keys.js`. Ressalvas em §4 (itens **A**, **B**, **C**, **J**).
+- **Auth:** não.
+
+---
+
+### 6. `GET /api/v1/incidents/:id`
+
+- **Request:** parâmetro de URL `id` (slug do incidente). Sem query, sem body.
+- **Response 200:** objeto único = item de incidente **cru** (mesma forma da rota 5,
+  sem o wrapper `incidents`).
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 404 | `{ error: { message: "Incidente não encontrado" } }` | `bundle.incident === null` |
+  | 500 | `{ error: { message: "Falha ao buscar incidente" } }` | exceção no `Query` |
+- **Leitura no banco:** `evidenceService.getIncidentById` → `getIncidentBundle` →
+  **`Query`** no **GSI `trace-index`**:
+  `IndexName = "trace-index"`, `KeyConditionExpression = "trace_id = :id"`,
+  `:id = req.params.id`. Todos os itens do incidente compartilham `trace_id`;
+  seleciona o de `itemTypeFromSk(sk) === "INCIDENT"`.
+- **Escrita no banco:** nenhuma.
+- **`keys.js`:** `itemTypeFromSk`. GSI `trace-index` **bate** com `dynamodb.tf`.
+  Ressalva **C** em §4.
+- **Auth:** não.
+
+---
+
+### 7. `GET /api/v1/incidents/:id/evidence`
+
+- **Request:** parâmetro de URL `id`.
+- **Response 200:** `{ "evidence": [ { "pk": "…", "sk": "INCIDENT#<id>#EVIDENCE#001",
+  "trace_id": "<id>", "ttl": …, "incidentId": "<id>", "type": "log",
+  "description": "…", "source": "Player", "strength": "forte",
+  "capturedAt": "<ISO>" } ] }` — itens **crus**, filtrados por
+  `itemTypeFromSk === "EVIDENCE"`.
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 500 | `{ error: { message: "Falha ao buscar evidências" } }` | exceção no `Query` |
+
+  **Não há 404** — incidente inexistente devolve 200 `{ "evidence": [] }`.
+- **Leitura no banco:** `getEvidenceByIncidentId` → `getIncidentBundle` →
+  **`Query`** GSI `trace-index` por `trace_id`.
+- **Escrita:** nenhuma.
+- **`keys.js`:** `itemTypeFromSk`. Bate.
+- **Auth:** não.
+
+---
+
+### 8. `GET /api/v1/incidents/:id/hypothesis`
+
+- **Request:** parâmetro de URL `id`.
+- **Response 200:** a **hipótese mais recente** (objeto único, cru). Formas possíveis:
+  - do seed: `{ pk, sk: "INCIDENT#<id>#HYPOTHESIS#0000000001", trace_id, ttl, incidentId, text, score, source: "seed", createdAt }`;
+  - do orquestrador: `{ …, text, score, diagnosisSource: "golden-set"|"agent", createdAt }`;
+  - após revisão: acrescenta `reviewStatus`, `reviewedBy`, `reviewedAt`.
+  "Mais recente" = maior `sk` em comparação lexicográfica entre os itens `HYPOTHESIS`.
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 404 | `{ error: { message: "Nenhuma hipótese registrada para este incidente" } }` | `bundle.hypotheses` vazio |
+  | 500 | `{ error: { message: "Falha ao buscar hipótese" } }` | exceção no `Query` |
+- **Leitura no banco:** `getLatestHypothesis` → `getIncidentBundle` → **`Query`**
+  GSI `trace-index` por `trace_id`.
+- **Escrita:** nenhuma.
+- **`keys.js`:** `itemTypeFromSk`; a ordenação assume `hypothesisSk` com largura
+  fixa (10 dígitos) para que ordem lexicográfica == cronológica. Ressalva **E** em §4.
+- **Auth:** não.
+
+---
+
+### 9. `PATCH /api/v1/incidents/:id/hypothesis/review` — **requireAuth**
+
+- **Request:**
+  - parâmetro de URL `id`;
+  - header `Cookie: session=<...>` **válido** (HMAC-SHA256, `AUTH_COOKIE_SECRET`);
+  - body: `{ "status": "confirmed" | "refuted" }`.
+- **Response 200:** a hipótese atualizada (`ReturnValues: "ALL_NEW"`), incluindo
+  `reviewStatus = <status>`, `reviewedBy = <e-mail da sessão>`, `reviewedAt = <ISO>`.
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 401 | `{ error: { message: "Sessão inválida ou ausente" } }` | `requireAuth`: cookie `session` ausente ou HMAC não confere |
+  | 400 | `{ error: { message: "status deve ser 'confirmed' ou 'refuted'" } }` | `status` ∉ `{confirmed, refuted}` (inclui body ausente) |
+  | 404 | `{ error: { message: "Nenhuma hipótese registrada para este incidente" } }` | `reviewHypothesis` devolveu `null` (sem hipótese) |
+  | 500 | `{ error: { message: "Falha ao revisar hipótese" } }` | qualquer exceção (inclui falha no `promoteCase`) |
+- **Leitura no banco:**
+  1. `evidenceService.reviewHypothesis` → `getLatestHypothesis` → **`Query`** GSI
+     `trace-index` por `trace_id`.
+  2. **Só se `status === "confirmed"`:** `evidenceService.getIncidentById` →
+     **`Query`** GSI `trace-index` por `trace_id` (2ª vez, para obter o incidente e
+     montar a assinatura).
+- **Escrita no banco:**
+  1. `operationalTable.update` → **`UpdateItem`** em `monitoracao-operacional`,
+     `Key = { pk: hypothesis.pk, sk: hypothesis.sk }` (o `pk`/`sk` da tabela base
+     vêm no item projetado pelo GSI, cuja projeção é `ALL`),
+     `UpdateExpression = "SET reviewStatus = :status, reviewedBy = :reviewedBy, reviewedAt = :reviewedAt"`.
+     **Sem `ConditionExpression`.**
+  2. **Só se `status === "confirmed"`:** `goldenSetService.promoteCase` →
+     `goldenSetTable.putCurated` → **`PutItem`** em `monitoracao-golden-set`,
+     `Item = { case_id: "<component>#<deviceType>#<region>", incident_signature: <mesma>, expected_hypothesis: hypothesis.text, expected_score: hypothesis.score, curated_by: <e-mail da sessão>, curated_at: <ISO>, source_incident_id: incident.id }`.
+     Sobrescreve o item inteiro (sem condição).
+- **`keys.js`:** `itemTypeFromSk` (via `getLatestHypothesis`); ordenação assume
+  `hypothesisSk` de largura fixa. A chave do golden set **não** vem de `keys.js` —
+  vem de `goldenSetService.buildSignature`. Ressalvas **D** e **E** em §4.
+- **Auth:** **sim** (`requireAuth`). É a única rota protegida — justamente porque,
+  com `confirmed`, promove o caso ao golden set (ADR-005).
+
+---
+
+### 10. `POST /api/v1/incidents/:id/diagnose`
+
+- **Request:** parâmetro de URL `id`. Body **ignorado** (`orchestrator.diagnose`
+  só recebe `id`). **Sem `requireAuth`.**
+- **Response 200:**
+  ```json
+  { "incidentId": "<id>", "hypothesis": "<texto>", "score": 0.6,
+    "evidence": [ /* itens crus de evidência */ ],
+    "diagnosisSource": "golden-set" | "agent",
+    "explanation": "<texto>", "explanationSource": "template" | "bedrock" }
+  ```
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 404 | `{ error: { message: "Incidente não encontrado" } }` | `bundle.incident === null` |
+  | 500 | `{ error: { message: "Falha ao diagnosticar incidente" } }` | exceção (Bedrock nunca lança — tem fallback por template) |
+- **Leitura no banco:**
+  1. `evidenceService.getIncidentBundle` → **`Query`** GSI `trace-index` por `trace_id`.
+  2. `goldenSetService.findMatchingCase(signature)` → `goldenSetTable.get` →
+     **`GetItem`** em `monitoracao-golden-set`, `Key = { case_id: "<component>#<deviceType>#<region>" }`.
+  3. Dentro de `saveHypothesis`: `getIncidentById` → **`Query`** GSI `trace-index`
+     por `trace_id` (2ª vez).
+- **Escrita no banco:** `evidenceService.saveHypothesis` → `operationalTable.put`
+  → **`PutItem`** em `monitoracao-operacional`,
+  `Item = { pk: incident.pk, sk: "INCIDENT#<id>#HYPOTHESIS#<epoch:10>", trace_id: <id>, ttl: incident.ttl, incidentId: <id>, text: <hipótese>, score: <número>, diagnosisSource: "golden-set"|"agent", createdAt: <ISO> }`.
+  `seq` = `Math.floor(Date.now()/1000)` (epoch em segundos, 10 dígitos).
+- **`keys.js`:** `hypothesisSk` (monta o `sk`), `hourBucket` (indireto — reusa
+  `incident.pk`), `itemTypeFromSk`. Padrão **bate** com `keys.js`. Ressalva **F** em §4.
+- **Auth:** não — **mas escreve no banco** (ver **F**).
+
+---
+
+### 11. `GET /api/v1/golden-set`
+
+- **Request — query string:**
+  | Parâmetro | Tipo | Obrigatório | Regra |
+  |---|---|---|---|
+  | `signature` | string | **sim** | formato `<component>#<deviceType>#<region>`, ex.: `Player#Smart TV#Nordeste` (URL-encoded) |
+- **Response 200:** item cru do golden set:
+  `{ case_id, incident_signature, expected_hypothesis, expected_score, curated_by, curated_at, [source_incident_id] }`.
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 400 | `{ error: { message: "Informe ?signature=<component>#<deviceType>#<region>" } }` | `signature` ausente |
+  | 404 | `{ error: { message: "Nenhum caso golden set para essa assinatura" } }` | `GetItem` não achou |
+  | 500 | `{ error: { message: "Falha ao consultar golden set" } }` | exceção |
+- **Leitura no banco:** `goldenSetService.findMatchingCase(signature)` →
+  `goldenSetTable.get({ case_id: signature })` → **`GetItem`** em `monitoracao-golden-set`.
+- **Escrita:** nenhuma.
+- **`keys.js`:** não envolvido. Chave = string de assinatura literal, hash key
+  `case_id` (`dynamodb.tf`).
+- **Auth:** não.
+
+---
+
+### 12. `POST /api/v1/ml/analyze`
+
+- **Request — body:** qualquer objeto JSON.
+- **Response 200 (mock fixo):**
+  ```json
+  { "anomalyScore": 0.82, "label": "anomaly", "confidence": 0.6,
+    "model": "mock-v0", "receivedInputKeys": ["<chaves do body>"] }
+  ```
+- **Erros:** nenhum tratado (`mlService.analyze` é puro e não lança).
+- **Banco:** não lê nem escreve.
+- **Auth:** não.
+
+---
+
+### 13. `GET /api/v1/dashboard/summary`
+
+- **Request:** **nenhum parâmetro é lido** (o handler ignora query/body; o contrato-alvo
+  pede `window`, `deviceType`, etc., não implementados).
+- **Response 200:**
+  ```json
+  { "stats": [
+      { "id": "affected-sessions",  "label": "Sessões afetadas",   "value": <Σ incident.devices>,           "format": "compact", "accent": "info" },
+      { "id": "active-incidents",   "label": "Incidentes ativos",  "value": <nº de status !== "success">,   "format": "integer", "accent": "warning" },
+      { "id": "critical-incidents", "label": "Incidentes críticos","value": <nº de status === "critical">,  "format": "integer", "accent": "critical" }
+    ],
+    "recentIncidents": [ /* os 5 primeiros de listIncidents({window:"24h"}), itens crus */ ] }
+  ```
+- **Erros:**
+  | HTTP | Corpo | Quando |
+  |---|---|---|
+  | 500 | `{ error: { message: "Falha ao montar resumo do dashboard" } }` | exceção nos `Query` |
+- **Leitura no banco:** `evidenceService.listIncidents({ window: "24h" })` →
+  `1440` min → `hours = ceil(1440/60)+1 = 25` buckets → **25 `Query`s** na tabela base
+  (`pk = "INC#<hora>" AND begins_with(sk, "INCIDENT#")`), contando de agora para trás.
+- **Escrita:** nenhuma.
+- **`keys.js`:** `hourBucket`, `itemTypeFromSk`. Padrão **bate**. Ressalvas **A**, **H** em §4.
+- **Auth:** não.
