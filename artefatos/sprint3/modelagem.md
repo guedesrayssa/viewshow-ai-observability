@@ -1,4 +1,4 @@
-# Modelagem do Sistema — View Show
+# Modelagem do Sistema
 
 > Este documento apresenta a modelagem estrutural e comportamental do View Show
 > por meio de diagramas UML e descrições textuais. A modelagem foi construída com
@@ -34,22 +34,28 @@ A modelagem utiliza diagramas UML e descrições textuais para representar:
 
 ### 1.2 Escopo da modelagem
 
-A modelagem contempla as funcionalidades pertencentes ao escopo da Sprint 3 e
-ao MVP do View Show.
+A modelagem de casos de uso contempla a aplicação web interna do View Show,
+utilizada por equipes do Globoplay para consultar telemetria, analisar e encaminhar
+incidentes, investigar falhas técnicas e acompanhar a qualidade da experiência
+(QoE). O recorte corresponde às telas de Login, Visão Geral, Incidentes,
+Evidências, Eventos e Monitoramento previstas para o MVP e para a Sprint 3.
 
-[DESCREVER quais módulos, funcionalidades e fronteiras estão incluídos.]
+Não fazem parte da modelagem de casos de uso:
 
-Não fazem parte desta modelagem:
+- a emissão de telemetria pelos frontends do Globoplay;
+- os processos internos de ingestão, enfileiramento, normalização e armazenamento;
+- a execução de correções, deploys ou rollbacks em produção.
 
-- [ITEM FORA DO ESCOPO];
-- [ITEM FORA DO ESCOPO];
-- [ITEM FORA DO ESCOPO].
+Esses elementos viabilizam o produto, mas não são metas iniciadas diretamente
+pelas personas na interface. Integrações e componentes técnicos são tratados nos
+artefatos de arquitetura, backend e requisitos.
 
 ### 1.3 Documentos de referência
 
 | Documento | Utilização neste artefato |
 | --- | --- |
 | [Especificação de requisitos](../sprint1/requisitos.md) | Identificação dos requisitos e casos de uso |
+| [Entendimento da experiência do usuário](../sprint1/entendimento_ux.md) | Identificação das personas, jornadas e objetivos observáveis no frontend |
 | [Arquitetura inicial](../sprint2/arquitetura-inicial.md) | Identificação de componentes e integrações |
 | [Documentação de frontend](../sprint2/frontend.md) | Validação dos fluxos de interface |
 | [Documentação de backend](../sprint2/backend-sprint-2.md) | Validação de serviços, entidades e operações |
@@ -59,8 +65,6 @@ Não fazem parte desta modelagem:
 - Casos de uso são identificados como `UC-XX`.
 - Requisitos funcionais são identificados como `RFXX`.
 - Requisitos não funcionais são identificados como `RNFXX`.
-- Fluxos alternativos são identificados como `A1`, `A2`, etc.
-- Fluxos de exceção são identificados como `E1`, `E2`, etc.
 - Classes, métodos e atributos utilizam os nomes empregados no sistema.
 - Cada diagrama deve possuir título, fonte e uma descrição que explique como
   interpretá-lo.
@@ -73,160 +77,104 @@ Não fazem parte desta modelagem:
 
 ### 2.1 Atores
 
-| ID | Ator | Tipo | Descrição |
-| --- | --- | --- | --- |
-| AT-01 | [NOME DO ATOR] | Primário | [OBJETIVO E RESPONSABILIDADE] |
-| AT-02 | [NOME DO ATOR] | Secundário | [SERVIÇO PRESTADO AO SISTEMA] |
-| AT-03 | [SISTEMA EXTERNO] | Sistema | [FORMA DE INTEGRAÇÃO] |
+| Ator | Responsabilidade principal |
+| --- | --- |
+| Todos os perfis corporativos | Acessar o dashboard, filtrar consultas e exportar informações. |
+| Analista de Atendimento Técnico N1 | Priorizar e encaminhar incidentes com contexto suficiente. |
+| Engenheira de Software | Validar hipóteses e investigar tecnicamente as falhas. |
+| Product Manager | Analisar QoE e priorizar problemas pelo impacto na audiência. |
+
+O ator **Todos os perfis corporativos** concentra funções comuns aos três perfis.
+O SSO e os frontends do Globoplay foram omitidos porque o diagrama representa o
+uso da aplicação web, e não seu contexto técnico.
 
 ### 2.2 Catálogo de casos de uso
 
-A tabela abaixo deve ser validada contra os requisitos da Sprint 1 antes da
-elaboração do diagrama.
-
-| ID | Caso de uso | Ator principal | Requisitos relacionados | Responsável | Status |
-| --- | --- | --- | --- | --- | --- |
-| UC-01 | Autenticar usuário | Usuário interno | RF04, RNF04 | [Nome] | A fazer |
-| UC-02 | Ingerir eventos de telemetria | Aplicação frontend | RF01, RF02, RF06 | [Nome] | A fazer |
-| UC-03 | Normalizar eventos | Sistema de processamento | RF03 | [Nome] | A fazer |
-| UC-04 | Visualizar eventos | Usuário interno | RF05, RF07 | [Nome] | A fazer |
-| UC-05 | Filtrar e investigar falhas | Usuário interno | RF07, RF09 | [Nome] | A fazer |
-| UC-06 | Consultar métricas e alertas | Usuário interno | RF08 | [Nome] | A fazer |
-| UC-07 | Exportar dados | Usuário interno | RF10 | [Nome] | A fazer |
-| UC-XX | [OUTRO CASO DE USO] | [ATOR] | [RFXX] | [Nome] | A fazer |
-
-> Os casos acima são candidatos iniciais. A equipe deve confirmar se representam
-> o comportamento efetivamente entregue na Sprint 3.
+| Grupo | Casos de uso | Requisitos relacionados |
+| --- | --- | --- |
+| Compartilhados | UC-01 Consultar dashboard; UC-02 Autenticar-se; UC-03 Buscar e aplicar filtros; UC-04 Exportar informações | RF04, RF07, RF08, RF09, RF10, RNF04, RNF07, RNF14 |
+| Atendimento N1 | UC-05 Analisar e encaminhar incidente; UC-06 Visualizar incidentes; UC-07 Consultar hipóteses; UC-08 Verificar evidências; UC-09 Preparar resumo | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 |
+| Investigação técnica | UC-10 Investigar falha; UC-11 Validar hipótese; UC-12 Inspecionar eventos; UC-13 Visualizar linha do tempo; UC-14 Comparar versões e períodos; UC-15 Verificar recuperação | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF14 |
+| Análise de produto | UC-16 Analisar qualidade da experiência; UC-17 Acompanhar QoE; UC-18 Comparar segmentos; UC-19 Consultar histórico; UC-20 Avaliar melhoria | RF07, RF08, RF09, RNF05, RNF14, RNF15 |
 
 ### 2.3 Diagrama
 
-<!--
-Inserir o diagrama de casos de uso exportado em SVG ou PNG.
+<div align="center">
 
-Exemplo:
-![Diagrama de casos de uso do View Show](../../assets/modelagem/casos-de-uso.svg)
-
-Também é recomendado disponibilizar a fonte editável:
-[Arquivo-fonte do diagrama](../../assets/modelagem/casos-de-uso.puml)
--->
-
-[INSERIR DIAGRAMA DE CASOS DE USO]
+![Diagrama de casos de uso do View Show](../../assets/diagrama-casos-de-uso.png)
 
 **Figura 1 — Diagrama de casos de uso do View Show.**  
 Fonte: Material produzido pelos autores (2026).
 
-### 2.4 Descrição geral
+</div>
 
-[EXPLICAR os limites do sistema, os atores, os principais casos de uso e as
-relações `include`, `extend` ou generalizações presentes no diagrama.]
+### 2.4 Raciocínio de construção e leitura
 
-### 2.5 Relações entre casos de uso
+A fronteira **Sistema View Show** contém somente metas executadas pelas personas
+na aplicação web. Ingestão, filas, normalização, armazenamento, deploy e rollback
+ficam fora porque são processos técnicos ou externos à interação do usuário.
 
-| Origem | Relação | Destino | Justificativa |
-| --- | --- | --- | --- |
-| UC-XX | `include` | UC-YY | [COMPORTAMENTO OBRIGATÓRIO REUTILIZADO] |
-| UC-XX | `extend` | UC-ZZ | [COMPORTAMENTO OPCIONAL OU CONDICIONAL] |
-| [ATOR/UC] | Generalização | [ATOR/UC] | [JUSTIFICATIVA] |
+Os casos foram derivados das telas de Login, Visão Geral, Incidentes, Evidências,
+Eventos e Monitoramento. O eixo superior reúne recursos compartilhados; as faixas
+inferiores separam Atendimento N1, Investigação Técnica e Análise de Produto. As
+faixas organizam responsabilidades e não representam uma sequência obrigatória.
+
+Uma associação indica participação do ator. `include` identifica uma capacidade
+necessária ao objetivo de origem, enquanto `extend` identifica uma ação opcional
+ou condicionada. A seta aponta para o caso incluído ou estendido.
+
+### 2.5 Relações principais
+
+| Grupo | Relações | Justificativa |
+| --- | --- | --- |
+| Compartilhados | UC-01 inclui UC-02; UC-03 e UC-04 estendem UC-01 | Autenticação é obrigatória; filtros e exportação são acionados conforme a necessidade. |
+| Atendimento N1 | UC-05 inclui progressivamente UC-06, UC-07, UC-08 e UC-09 | A triagem parte da priorização e chega ao resumo fundamentado para encaminhamento. |
+| Investigação técnica | UC-10 inclui progressivamente UC-11, UC-12, UC-13 e UC-14; UC-15 estende UC-14 | A investigação valida a hipótese com eventos e comparação; a recuperação só é verificada após uma correção externa. |
+| Análise de produto | UC-16 inclui progressivamente UC-17, UC-18 e UC-19; UC-20 estende UC-19 | A análise parte dos indicadores, compara segmentos e histórico e, quando aplicável, mede a melhoria posterior. |
 
 ---
 
 ## 3. Descrições dos casos de uso
 
-> Duplicar a subseção seguinte para cada caso de uso identificado no diagrama.
-> A estrutura segue as seções solicitadas para uma descrição em estilo completo.
+### 3.1 Casos de uso compartilhados
 
-### 3.1 UC-XX — [Nome do caso de uso]
-
-#### Escopo
-
-[IDENTIFICAR o sistema ou subsistema tratado pelo caso de uso.]
-
-#### Nível
-
-[OBJETIVO DO USUÁRIO, SUBFUNÇÃO OU RESUMO.]
-
-#### Atores
-
-- **Ator principal:** [ATOR QUE INICIA O CASO DE USO].
-- **Atores secundários:** [ATORES OU SISTEMAS DE APOIO].
-
-#### Interessados e interesses
-
-| Interessado | Interesse |
-| --- | --- |
-| [USUÁRIO OU ÁREA] | [RESULTADO OU GARANTIA ESPERADA] |
-| [ADMINISTRADOR] | [INTERESSE] |
-| [SISTEMA EXTERNO] | [INTERESSE] |
-
-#### Pré-condições
-
-- [CONDIÇÃO QUE DEVE SER VERDADEIRA ANTES DO INÍCIO];
-- [CONDIÇÃO ADICIONAL].
-
-#### Pós-condições
-
-**Em caso de sucesso:**
-
-- [ESTADO GARANTIDO APÓS O SUCESSO];
-- [DADO CRIADO, ALTERADO OU DISPONIBILIZADO].
-
-**Garantias mínimas:**
-
-- [ESTADO PRESERVADO MESMO QUANDO O OBJETIVO NÃO É CONCLUÍDO];
-- [REGISTRO, AUDITORIA OU AUSÊNCIA DE ALTERAÇÃO INDEVIDA].
-
-#### Fluxo Básico
-
-| Passo | Responsável | Ação |
+| Caso de uso | Comportamento essencial | Resultado ou limite |
 | --- | --- | --- |
-| 1 | Ator principal | [AÇÃO QUE INICIA O CASO DE USO] |
-| 2 | Sistema | [VALIDAÇÃO OU PROCESSAMENTO] |
-| 3 | Sistema | [RESPOSTA OU SOLICITAÇÃO] |
-| 4 | Ator principal | [PRÓXIMA INTERAÇÃO] |
-| 5 | Sistema | [PROCESSAMENTO] |
-| 6 | Sistema | [RESULTADO DE SUCESSO] |
+| **UC-01 — Consultar dashboard** | Validar a sessão e apresentar indicadores, evolução temporal e incidentes do período selecionado. | Mantém o contexto para aprofundamento; sinaliza dados parciais. |
+| **UC-02 — Autenticar-se** | Delegar a autenticação ao SSO corporativo e validar token, domínio e permissões. | Cria uma sessão autorizada sem armazenar senhas. |
+| **UC-03 — Buscar e aplicar filtros globais** | Combinar período, dispositivo, versão, região, conteúdo ou componente e atualizar a consulta. | Preserva o recorte entre telas; busca filtrada com P95 de até 2 s e sem PII. |
+| **UC-04 — Exportar informações** | Gerar CSV, XLSX ou PDF a partir da consulta atual. | Inclui período, filtros e fonte; anonimiza os dados e registra a operação. |
 
-#### Fluxos alternativos
+### 3.2 Atendimento N1
 
-##### Alternativas
-
-| ID | Passo de origem | Condição | Fluxo | Retorno |
-| --- | --- | --- | --- | --- |
-| A1 | Passo X | [CONDIÇÃO ALTERNATIVA] | [AÇÕES EXECUTADAS] | Passo Y |
-| A2 | Passo X | [CONDIÇÃO ALTERNATIVA] | [AÇÕES EXECUTADAS] | Encerra |
-
-##### Exceções
-
-| ID | Passo de origem | Exceção | Resposta do sistema | Estado final |
-| --- | --- | --- | --- | --- |
-| E1 | Passo X | [ERRO DE VALIDAÇÃO] | [MENSAGEM E TRATAMENTO] | [ESTADO] |
-| E2 | Passo X | [INDISPONIBILIDADE] | [FALLBACK OU REGISTRO] | [ESTADO] |
-
-#### Requisitos especiais
-
-| ID | Requisito especial | Origem |
+| Caso de uso | Comportamento essencial | Resultado ou limite |
 | --- | --- | --- |
-| RE-01 | [SEGURANÇA, DESEMPENHO, USABILIDADE OU AUDITORIA] | RNFXX |
-| RE-02 | [RESTRIÇÃO DE INTERFACE OU TECNOLOGIA] | RNFXX/RIE/RESTR |
+| **UC-05 — Analisar e encaminhar incidente** | Revisar impacto, recorte, hipóteses e evidências e selecionar a fila responsável. | Produz encaminhamento contextualizado; a decisão permanece humana. |
+| **UC-06 — Visualizar incidentes priorizados** | Listar ocorrências por severidade, impacto, duração ou horário. | Permite selecionar o incidente; informa quando impacto ou dados não estão disponíveis. |
+| **UC-07 — Consultar hipóteses de causa provável** | Exibir hipóteses ordenadas com confiança e justificativa. | Comunica incerteza e nunca apresenta hipótese como causa confirmada. |
+| **UC-08 — Verificar evidências do diagnóstico** | Consultar fonte, horário, qualidade e comparação com o comportamento de referência. | Distingue evidência de inferência e explicita lacunas ou atrasos. |
+| **UC-09 — Preparar resumo para encaminhamento** | Reunir incidente, impacto, recorte, hipótese e evidências em um resumo revisável. | Mantém autoria e contexto e não encaminha automaticamente. |
 
-#### Lista de variantes
+### 3.3 Investigação técnica
 
-| Variação | Possibilidades | Impacto no caso de uso |
+| Caso de uso | Comportamento essencial | Resultado ou limite |
 | --- | --- | --- |
-| Canal ou interface | [WEB, API, PROCESSO AUTOMÁTICO] | [IMPACTO] |
-| Formato de entrada | [JSON, CSV, OUTRO] | [IMPACTO] |
-| Perfil de usuário | [PERFIL A, PERFIL B] | [IMPACTO] |
+| **UC-10 — Investigar falha técnica** | Revisar a hipótese, inspecionar eventos, reconstruir a sessão e comparar versões ou períodos. | Registra conclusão confirmada, refutada ou inconclusiva; não altera a produção. |
+| **UC-11 — Validar hipótese diagnóstica** | Confirmar, refutar ou manter inconclusiva a hipótese com justificativa. | Preserva autoria e histórico da decisão. |
+| **UC-12 — Inspecionar eventos correlacionados** | Filtrar e abrir eventos `request`, `vitals`, `screen_view`, `video_view`, `session` e `error`. | Exibe dados anonimizados e sinaliza duplicidade, atraso ou payload inválido. |
+| **UC-13 — Visualizar linha do tempo da sessão** | Ordenar os eventos e destacar o marco da falha, lacunas e mudanças correlacionadas. | Preserva fuso horário e não infere ordem quando os timestamps são inconfiáveis. |
+| **UC-14 — Comparar versões, releases e períodos** | Comparar séries equivalentes mantendo filtros e tamanho da amostra. | Evidencia regressões sem confundir correlação com causalidade. |
+| **UC-15 — Verificar recuperação após correção** | Comparar janelas equivalentes antes e depois de uma correção executada fora do sistema. | Classifica recuperação como confirmada, parcial, ausente ou inconclusiva. |
 
-#### Frequência de ocorrência
+### 3.4 Análise de produto
 
-[INFORMAR a frequência esperada, o volume estimado e possíveis períodos de pico.]
-
-#### Problemas em aberto
-
-| ID | Problema ou decisão pendente | Responsável | Prazo | Status |
-| --- | --- | --- | --- | --- |
-| PA-01 | [QUESTÃO A SER RESOLVIDA] | [Nome] | DD/MM | Aberto |
-| PA-02 | [QUESTÃO A SER RESOLVIDA] | [Nome] | DD/MM | Aberto |
+| Caso de uso | Comportamento essencial | Resultado ou limite |
+| --- | --- | --- |
+| **UC-16 — Analisar qualidade da experiência** | Examinar métricas agregadas, segmentos e recorrências para priorizar problemas. | Identifica recortes prioritários sem inferir métricas externas como NPS ou retenção. |
+| **UC-17 — Acompanhar indicadores de QoE** | Visualizar a evolução de inicialização, buffering, bitrate, resolução, latência e erros. | Exibe definição, unidade, período, amostra e limitações de cobertura. |
+| **UC-18 — Comparar segmentos da audiência** | Aplicar os mesmos indicadores a plataformas, dispositivos, versões, regiões ou conteúdos. | Destaca segmentos degradados com critérios equivalentes e amostra mínima. |
+| **UC-19 — Consultar histórico de degradações** | Pesquisar incidentes e degradações anteriores por período, segmento ou componente. | Mantém até um ano de histórico, com 30 dias em acesso rápido. |
+| **UC-20 — Avaliar melhoria após uma correção** | Comparar a QoE antes e depois da correção no mesmo segmento. | Registra melhora, estabilidade, piora ou inconclusão sem atribuir causalidade indevida. |
 
 ---
 
@@ -361,12 +309,19 @@ reprocessamento, mensagens de erro e estado preservado.]
 
 ## 6. Rastreabilidade da modelagem
 
-| Requisito | Caso de uso | Classes principais | Diagrama de sequência | Evidência |
-| --- | --- | --- | --- | --- |
-| RF01 | UC-02 | `[ClasseA]`, `[ClasseB]` | DS-XX | [SEÇÃO/LINK] |
-| RF04 | UC-01 | `[ClasseA]`, `[ClasseB]` | DS-XX | [SEÇÃO/LINK] |
-| RF07 | UC-04, UC-05 | `[ClasseA]`, `[ClasseB]` | DS-XX | [SEÇÃO/LINK] |
-| RF10 | UC-07 | `[ClasseA]`, `[ClasseB]` | DS-XX | [SEÇÃO/LINK] |
+A rastreabilidade abaixo registra a origem funcional dos casos de uso. As
+ligações com classes e diagramas de sequência serão acrescentadas quando as
+Seções 4 e 5 forem concluídas.
+
+| Área ou origem funcional | Casos de uso | Requisitos relacionados | Evidência |
+| --- | --- | --- | --- |
+| Login e acesso | UC-02 | RF04, RNF04, RIE01, RESTR01 | [Seção 2.2](#22-catálogo-de-casos-de-uso) e [Seção 3.1](#31-casos-de-uso-compartilhados) |
+| Visão Geral | UC-01, UC-03, UC-04 | RF07, RF08, RF10, RNF07, RNF14 | [Seção 2.2](#22-catálogo-de-casos-de-uso) e [Seção 3.1](#31-casos-de-uso-compartilhados) |
+| Incidentes | UC-05, UC-06 | RF07, RF08, RF09, RNF10, RNF15 | [Seção 3.2](#32-atendimento-n1) |
+| Evidências e hipóteses | UC-07, UC-08, UC-09, UC-11 | RF07, RF09, RNF08, RNF13 | [Seção 3.2](#32-atendimento-n1) e [Seção 3.3](#33-investigação-técnica) |
+| Eventos correlacionados | UC-12, UC-13 | RF05, RF06, RF09, RNF10, RNF14 | [Seção 3.3](#33-investigação-técnica) |
+| Monitoramento e comparação | UC-14 a UC-20 | RF07, RF08, RF09, RF10, RNF05, RNF14, RNF15 | [Seção 3.3](#33-investigação-técnica) e [Seção 3.4](#34-análise-de-produto) |
+| Pipeline de telemetria | Não representado neste diagrama | RF01, RF02, RF03, RNF01, RNF02, RNF03, RNF06, RNF11, RNF12, RIE02, RESTR02 | Excluído da fronteira conforme a [Seção 1.2](#12-escopo-da-modelagem) |
 
 ---
 
@@ -376,12 +331,11 @@ reprocessamento, mensagens de erro e estado preservado.]
 
 #### Casos de uso
 
-- [ ] Todos os atores possuem objetivos claros.
-- [ ] Todos os casos de uso do diagrama possuem descrição textual.
-- [ ] Os fluxos básicos terminam em uma pós-condição de sucesso.
-- [ ] Fluxos alternativos e de exceção referenciam passos do fluxo básico.
-- [ ] Relações `include` e `extend` possuem justificativa.
-- [ ] Os casos de uso estão ligados a requisitos existentes.
+- [x] Todos os atores possuem objetivos claros.
+- [x] Todos os casos de uso do diagrama possuem descrição textual.
+- [x] Cada caso de uso apresenta seu comportamento essencial e resultado esperado.
+- [x] Relações `include` e `extend` possuem justificativa.
+- [x] Os casos de uso estão ligados a requisitos existentes.
 
 #### Diagrama de classes
 
