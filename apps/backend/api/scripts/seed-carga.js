@@ -12,8 +12,9 @@
  *   - assinaturas que batem na golden set em ~60% dos casos, para /diagnose
  *     exercitar tanto o atalho determinístico quanto o fallback do agente.
  *
- * COLOQUE EM: apps/backend/api/scripts/seed-carga.js  (branch feat/backend-2)
- * USO:        node scripts/seed-carga.js
+ * Fonte canônica: artefatos/sprint2/testes-carga/seed-carga.js — esta cópia
+ * precisa ficar em apps/backend/api/scripts/ para importar src/db/keys.js.
+ * USO: node scripts/seed-carga.js
  *
  * Variáveis:
  *   INCIDENTS_PER_HOUR  padrão 12
@@ -22,9 +23,8 @@
  */
 
 require("dotenv").config({ quiet: true });
-const path = require("path");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, BatchWriteCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, BatchWriteCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 
 // Fonte única da convenção de chaves — nunca reimplementar aqui.
 let keys;
@@ -41,7 +41,37 @@ if (!keys) {
   );
   process.exit(1);
 }
-const { hourBucket, incidentSk, evidenceSk, hypothesisSk } = keys;
+const { hourBucket, incidentSk } = keys;
+
+/**
+ * KEY_SCHEME controla o prefixo dos itens filhos — é o que o teste de carga
+ * mediu como causa raiz (testes-desempenho.md, §8).
+ *
+ *   v2 (padrão — CORRIGIDO, é o que src/db/keys.js gera hoje em produção):
+ *       EVIDENCE#<id>#001 / HYPOTHESIS#<id>#0000000001. Chama keys.js direto,
+ *       então nunca diverge do que a API realmente grava.
+ *
+ *   v1 (legado — só para reproduzir o baseline ANTIGO numa rodada dedicada de
+ *       comparação "antes/depois"): INCIDENT#<id>#EVIDENCE#001. Todos os sk
+ *       compartilhavam o prefixo "INCIDENT#", e a Query de listIncidents
+ *       trazia evidências e hipóteses junto, descartando ~87% em memória.
+ *       ⚠️ Não use v1 para inspecionar o CONTEÚDO da resposta com a API já
+ *       corrigida: itemTypeFromSk (agora baseada no primeiro prefixo do sk)
+ *       classificaria esses itens legados como "INCIDENT" também, misturando
+ *       evidência/hipótese na listagem. Serve só para comparar custo de
+ *       leitura (RCU) e latência contra o baseline antigo, não corretude.
+ */
+const KEY_SCHEME = process.env.KEY_SCHEME || "v2";
+
+const evidenceSk = (id, seq) =>
+  KEY_SCHEME === "v1"
+    ? `INCIDENT#${id}#EVIDENCE#${String(seq).padStart(3, "0")}`
+    : keys.evidenceSk(id, seq);
+
+const hypothesisSk = (id, seq) =>
+  KEY_SCHEME === "v1"
+    ? `INCIDENT#${id}#HYPOTHESIS#${String(seq).padStart(10, "0")}`
+    : keys.hypothesisSk(id, seq);
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const OPERATIONAL_TABLE = process.env.OPERATIONAL_TABLE_NAME || "monitoracao-operacional";
@@ -176,6 +206,43 @@ function buildGoldenSet() {
   return casos;
 }
 
+/* ---------- limpeza ---------- */
+
+/** Remove tudo da tabela operacional. Necessário para um antes/depois limpo:
+ *  os itens do esquema antigo continuariam nos mesmos buckets de hora e
+ *  seriam lidos pela Query, mascarando o ganho. */
+async function limparTabela(tableName) {
+  let chaveInicial;
+  let removidos = 0;
+
+  do {
+    const pagina = await client.send(
+      new ScanCommand({
+        TableName: tableName,
+        ProjectionExpression: "pk, sk",
+        ExclusiveStartKey: chaveInicial,
+      }),
+    );
+
+    const itens = pagina.Items || [];
+    for (let i = 0; i < itens.length; i += 25) {
+      const lote = itens.slice(i, i + 25);
+      await client.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [tableName]: lote.map(({ pk, sk }) => ({ DeleteRequest: { Key: { pk, sk } } })),
+          },
+        }),
+      );
+      removidos += lote.length;
+    }
+
+    chaveInicial = pagina.LastEvaluatedKey;
+  } while (chaveInicial);
+
+  return removidos;
+}
+
 /* ---------- escrita em lote ---------- */
 
 async function batchWrite(tableName, items) {
@@ -195,8 +262,16 @@ async function batchWrite(tableName, items) {
 
 async function main() {
   const total = INCIDENTS_PER_HOUR * HOURS_BACK;
+
+  if (process.env.CLEAN === "1") {
+    console.log(`Limpando ${OPERATIONAL_TABLE}…`);
+    const removidos = await limparTabela(OPERATIONAL_TABLE);
+    console.log(`  ${removidos} itens removidos.`);
+  }
+
   console.log(
-    `Gerando ${total} incidentes (${INCIDENTS_PER_HOUR}/hora × ${HOURS_BACK} h) em ${OPERATIONAL_TABLE}…`,
+    `Gerando ${total} incidentes (${INCIDENTS_PER_HOUR}/hora × ${HOURS_BACK} h) ` +
+    `em ${OPERATIONAL_TABLE} · esquema de chaves ${KEY_SCHEME}…`,
   );
 
   const itens = [];

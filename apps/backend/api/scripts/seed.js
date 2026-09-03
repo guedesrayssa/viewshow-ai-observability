@@ -2,9 +2,9 @@
  * Popula monitoracao-operacional e monitoracao-golden-set com dados de teste,
  * já que a Fase 1 (BigQuery -> DynamoDB) não roda neste ambiente.
  *
- * Convenção de chaves (docs/decisoes.md):
+ * Convenção de chaves (src/db/keys.js):
  *   operacional: pk = "INC#<hora-UTC-ISO>", sk = "INCIDENT#<id>" |
- *     "INCIDENT#<id>#EVIDENCE#<seq:3>" | "INCIDENT#<id>#HYPOTHESIS#<epoch:10>",
+ *     "EVIDENCE#<id>#<seq:3>" | "HYPOTHESIS#<id>#<epoch:10>",
  *     trace_id = <incident_id> em todo item, ttl = epoch seconds.
  *   golden-set: case_id = assinatura determinística "<component>#<deviceType>#<region>"
  *     (permite GetItem direto por assinatura, sem Scan e sem GSI extra).

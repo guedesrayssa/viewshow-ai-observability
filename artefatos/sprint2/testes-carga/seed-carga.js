@@ -45,27 +45,32 @@ const { hourBucket, incidentSk } = keys;
 
 /**
  * KEY_SCHEME controla o prefixo dos itens filhos — é o que o teste de carga
- * mediu como causa raiz.
+ * mediu como causa raiz (testes-desempenho.md, §8).
  *
- *   v1 (padrão, = produção):  INCIDENT#<id>#EVIDENCE#001
- *       Todos os sk começam com "INCIDENT#", então a Query de listIncidents
- *       (begins_with(sk, "INCIDENT#")) traz evidências e hipóteses junto e o
- *       Node descarta ~87% em JavaScript.
+ *   v2 (padrão — CORRIGIDO, é o que src/db/keys.js gera hoje em produção):
+ *       EVIDENCE#<id>#001 / HYPOTHESIS#<id>#0000000001. Chama keys.js direto,
+ *       então nunca diverge do que a API realmente grava.
  *
- *   v2 (corrigido):           EVIDENCE#<id>#001
- *       O prefixo passa a discriminar. A MESMA Query em produção passa a casar
- *       só com incidentes — dá para medir o ganho sem redeployar a API.
+ *   v1 (legado — só para reproduzir o baseline ANTIGO numa rodada dedicada de
+ *       comparação "antes/depois"): INCIDENT#<id>#EVIDENCE#001. Todos os sk
+ *       compartilhavam o prefixo "INCIDENT#", e a Query de listIncidents
+ *       trazia evidências e hipóteses junto, descartando ~87% em memória.
+ *       ⚠️ Não use v1 para inspecionar o CONTEÚDO da resposta com a API já
+ *       corrigida: itemTypeFromSk (agora baseada no primeiro prefixo do sk)
+ *       classificaria esses itens legados como "INCIDENT" também, misturando
+ *       evidência/hipótese na listagem. Serve só para comparar custo de
+ *       leitura (RCU) e latência contra o baseline antigo, não corretude.
  */
-const KEY_SCHEME = process.env.KEY_SCHEME || "v1";
+const KEY_SCHEME = process.env.KEY_SCHEME || "v2";
 
 const evidenceSk = (id, seq) =>
-  KEY_SCHEME === "v2"
-    ? `EVIDENCE#${id}#${String(seq).padStart(3, "0")}`
+  KEY_SCHEME === "v1"
+    ? `INCIDENT#${id}#EVIDENCE#${String(seq).padStart(3, "0")}`
     : keys.evidenceSk(id, seq);
 
 const hypothesisSk = (id, seq) =>
-  KEY_SCHEME === "v2"
-    ? `HYPOTHESIS#${id}#${String(seq).padStart(10, "0")}`
+  KEY_SCHEME === "v1"
+    ? `INCIDENT#${id}#HYPOTHESIS#${String(seq).padStart(10, "0")}`
     : keys.hypothesisSk(id, seq);
 
 const REGION = process.env.AWS_REGION || "us-east-1";

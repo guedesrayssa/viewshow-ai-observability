@@ -1,9 +1,9 @@
 /**
- * Teste de desempenho da API de consulta do View Show (branch feat/backend-2).
+ * Teste de desempenho da API de consulta do View Show.
  *
  * Alvo: a API agêntica/de consulta em ECS Fargate (0,25 vCPU · 0,5 GB, conforme
  * apps/backend/api/deploy/task-definition.json). NÃO é a API de ingestão do
- * MVP da Sprint 1 — esta branch não expõe endpoint de ingestão.
+ * MVP da Sprint 1 — esta API não expõe endpoint de ingestão.
  *
  * SLA: RNF14 — "o dashboard e as APIs de consulta devem retornar os resultados
  * de uma busca filtrada em até 2 segundos para 95% das solicitações (P95)".
@@ -14,6 +14,21 @@
  * Modelo ABERTO (constant-arrival-rate): o painel de um SRE não espera a API
  * ficar rápida para o próximo operador abrir a tela. Modelo fechado (VU+sleep)
  * esconderia a saturação — a carga cairia sozinha quando a API degradasse.
+ *
+ * ESTADO DO SCHEMA: apps/backend/api/src/db/keys.js já gera sk com prefixo
+ * próprio para evidência/hipótese (EVIDENCE#/HYPOTHESIS#, não mais
+ * INCIDENT#...#EVIDENCE#...) — a correção do defeito medido em
+ * testes-desempenho.md §8 está aplicada no código. Os números de capacidade
+ * daquele relatório (~4 req/s) descrevem o estado ANTERIOR à correção; esta
+ * rodada deve produzir um novo baseline, não reproduzir o antigo.
+ *
+ * Este arquivo só simula tráfego (requisições, checks, thresholds nativos do
+ * k6). Coleta de métricas de servidor (CPU, RCU, logs) é responsabilidade da
+ * pilha de observabilidade local (docker-compose.observability.yml — Grafana
+ * LGTM), não deste script.
+ *
+ * Verificação de controle de acesso (RNF04): script separado, auth-check.js —
+ * não é objetivo de desempenho, então não compartilha cenário com este.
  *
  * USO:
  *   k6 run -e BASE_URL=http://<host>:3000 -e MODE=smoke consultas.js
@@ -27,6 +42,7 @@ import { Trend } from "k6/metrics";
 const BASE_URL = __ENV.BASE_URL;
 const MODE = __ENV.MODE || "smoke";
 const RATE = Number(__ENV.RATE || 137);
+const STRESS_MULTIPLIER = Number(__ENV.STRESS_MULTIPLIER || 3);
 const INCIDENT_COUNT = Number(__ENV.INCIDENT_COUNT || 300);
 
 if (!BASE_URL) throw new Error("Faltou -e BASE_URL=http://<host>:3000");
@@ -66,23 +82,28 @@ const CENARIOS = {
   },
 
   // 3. O joelho da curva.
-  //    Rampa recalibrada APÓS o load: a 137 req/s a vazão útil foi de ~3,2/s
-  //    com 91,9% de erro, e 800 VUs entregaram menos que 1 VU. O joelho está
-  //    abaixo de 10 req/s, então a rampa original (10→1200) começaria já
-  //    saturada e não mediria nada.
+  //    A rampa anterior (1→20 req/s) foi calibrada para o sistema COM o
+  //    defeito de chave: o joelho ficava abaixo de 10 req/s, e uma rampa até
+  //    1200 já começaria saturada. Com a correção aplicada (src/db/keys.js),
+  //    esse teto não vale mais e o joelho real é desconhecido de novo — a
+  //    faixa abaixo foi alargada até um pouco acima do alvo de negócio
+  //    (137 req/s) para redescobri-lo, sem herdar a suposição do baseline
+  //    antigo.
   breakpoint: {
     executor: "ramping-arrival-rate",
     startRate: 1,
     timeUnit: "1s",
-    preAllocatedVUs: 20,
-    maxVUs: 200,
+    preAllocatedVUs: 30,
+    maxVUs: 300,
     stages: [
-      { duration: "45s", target: 2 },
-      { duration: "45s", target: 4 },
-      { duration: "45s", target: 6 },
-      { duration: "45s", target: 9 },
-      { duration: "45s", target: 13 },
+      { duration: "45s", target: 5 },
+      { duration: "45s", target: 10 },
       { duration: "45s", target: 20 },
+      { duration: "45s", target: 40 },
+      { duration: "45s", target: 70 },
+      { duration: "45s", target: 110 },
+      { duration: "45s", target: 160 },
+      { duration: "45s", target: 220 },
     ],
   },
 
@@ -99,6 +120,28 @@ const CENARIOS = {
       { duration: "30s", target: 1000 },
       { duration: "10s", target: RATE },
       { duration: "1m", target: RATE },
+    ],
+  },
+
+  // 4b. Estresse: diferente do spike (rajada breve de 30s) e do breakpoint
+  //     (degraus curtos para achar o joelho), aqui a carga fica SUSTENTADA
+  //     bem acima da capacidade por minutos — a pergunta não é "onde
+  //     satura", é "como se comporta enquanto satura, e se recupera limpo
+  //     quando a carga cai". Observar principalmente: taxa/tipo de erro
+  //     (5xx vs. timeout vs. conexão recusada) e se o p95 volta ao normal
+  //     no trecho final, ou se sobra efeito residual (fila que não drena).
+  estresse: {
+    executor: "ramping-arrival-rate",
+    startRate: RATE,
+    timeUnit: "1s",
+    preAllocatedVUs: 200,
+    maxVUs: 1500,
+    stages: [
+      { duration: "30s", target: RATE },                    // baseline
+      { duration: "30s", target: RATE * STRESS_MULTIPLIER }, // sobe além da capacidade
+      { duration: "3m", target: RATE * STRESS_MULTIPLIER },  // sustenta (não é rajada)
+      { duration: "30s", target: RATE },                     // volta ao alvo de negócio
+      { duration: "1m", target: RATE },                      // janela de recuperação
     ],
   },
 

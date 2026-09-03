@@ -5,10 +5,43 @@ Roteiro do teste de carga da API do View Show, seguindo o encontro
 rodado de uma EC2 na mesma região da API, com thresholds derivados do SLA,
 `--summary-export` anexado ao relatório e a leitura do servidor durante a rodada.
 
+## Atualização: correção do defeito de chave aplicada
+
+O defeito medido na rodada original (§8 de
+[`../testes-desempenho.md`](../testes-desempenho.md) — os três tipos de
+registro compartilhavam o prefixo `INCIDENT#`, fazendo `listIncidents` ler a
+gaveta inteira) **foi corrigido em `apps/backend/api/src/db/keys.js`**:
+evidência e hipótese agora usam prefixo próprio (`EVIDENCE#`/`HYPOTHESIS#`).
+Consequências para quem for rodar esta rodada:
+
+- **Os números desta pasta (~4 req/s de capacidade) descrevem o estado
+  ANTERIOR à correção.** Não os use como baseline — rode de novo e trate o
+  resultado como um baseline novo.
+- `k6/consultas.js`: o cenário `breakpoint` foi recalibrado (a faixa antiga,
+  1→20 req/s, estava travada no teto do sistema quebrado) e ganhou um cenário
+  novo, `estresse` — carga sustentada acima da capacidade, para observar
+  comportamento e recuperação, diferente do `spike` (rajada breve).
+- `seed-carga.js`: `KEY_SCHEME=v2` (chamando `src/db/keys.js` direto) agora é
+  o **padrão**, porque é o que a API realmente grava. `KEY_SCHEME=v1`
+  continua disponível, mas só para reproduzir o baseline antigo numa rodada
+  de comparação dedicada — ver comentário no topo do arquivo.
+- Novo script, `k6/auth-check.js`: verificação de controle de acesso (RNF04),
+  separado por ser um objetivo diferente (segurança, não desempenho).
+- **Métricas de servidor** (CPU, RCU, logs) passaram a ser responsabilidade da
+  pilha de observabilidade local (`docker-compose.observability.yml` —
+  Grafana/Prometheus/Loki/Tempo), mantida por outra pessoa do time. A seção
+  "Leitura do servidor" abaixo é o roteiro manual original (CloudWatch) e
+  permanece válida como referência, mas não é mais o único caminho.
+- Esta pasta testa a cadeia **API/DynamoDB diretamente pelo ALB**. A cadeia de
+  produção ganhou dois saltos desde esta rodada (API Gateway para TLS + proxy
+  do Amplify — ver `apps/infra/apigateway.tf` e `amplify.tf`). Rodar também
+  contra o domínio do Amplify (`BASE_URL=https://<dominio-amplify>`) mede algo
+  diferente do ALB direto e ainda não tem baseline próprio.
+
 ## O que está sendo testado
 
-**A API de consulta e diagnóstico** (`apps/backend/api`, branch `feat/backend-2`),
-em ECS Fargate no cluster `data-ingestion-cluster`.
+**A API de consulta e diagnóstico** (`apps/backend/api`), em ECS Fargate no
+cluster `data-ingestion-cluster`.
 
 > ⚠️ **Não é a API de ingestão.** O exemplo da aula (`POST /events`) é do MVP da
 > Sprint 1. Esta branch **não expõe endpoint de ingestão** — as rotas são
@@ -117,14 +150,25 @@ k6 run -e BASE_URL=$BASE_URL -e MODE=smoke k6/consultas.js
 k6 run -e BASE_URL=$BASE_URL -e MODE=load  --summary-export=resumo-load.json k6/consultas.js
 ```
 
-| # | `MODE` | Duração | O que responde |
-| --- | --- | --- | --- |
-| 1 | `smoke` | 30 s | script e API funcionam antes de gastar carga |
-| 2 | `load` | 3m45s | **passa no RNF14?** É a rodada do relatório |
-| 3 | `breakpoint` | 5 min | o joelho da curva — onde a vazão para de crescer |
-| 4 | `spike` | 3 min | salto de 137 → 1.000 req/s (gol na Copa) |
-| 5 | `soak` | 2 h | vazamento de memória e TTL |
-| 6 | `diagnose` | 1 min | ⚠️ **escreve no banco** — rodada isolada, taxa baixa |
+| # | `MODE` | Duração | Tipo de teste | O que responde |
+| --- | --- | --- | --- | --- |
+| 1 | `smoke` | 30 s | — | script e API funcionam antes de gastar carga |
+| 2 | `load` | 3m45s | Carga | **passa no RNF14?** É a rodada do relatório |
+| 3 | `breakpoint` | ~6 min | Capacidade | o joelho da curva — onde a vazão para de crescer (faixa recalibrada: 5→220 req/s) |
+| 4 | `spike` | ~3 min | Pico | salto de 137 → 1.000 req/s (gol na Copa) |
+| 4b | `estresse` | ~5m30 | Estresse | carga sustentada 3× acima do alvo por 3 min — como se comporta e se recupera, diferente da rajada breve do `spike` |
+| 5 | `soak` | 2 h | Endurance | vazamento de memória e TTL |
+| 6 | `diagnose` | 1 min | — | ⚠️ **escreve no banco** — rodada isolada, taxa baixa |
+
+```bash
+k6 run -e BASE_URL=$BASE_URL -e MODE=breakpoint --summary-export=resumo-breakpoint.json k6/consultas.js
+k6 run -e BASE_URL=$BASE_URL -e MODE=estresse   --summary-export=resumo-estresse.json k6/consultas.js
+k6 run -e BASE_URL=$BASE_URL -e MODE=spike      --summary-export=resumo-spike.json k6/consultas.js
+k6 run -e BASE_URL=$BASE_URL -e MODE=soak       --summary-export=resumo-soak.json k6/consultas.js
+```
+
+`estresse` aceita `-e STRESS_MULTIPLIER=N` (padrão `3`, isto é, 3× a `RATE`)
+para ajustar o quão acima da capacidade a rodada sustenta a carga.
 
 **`POST /diagnose` não é leitura.** O orquestrador chama `saveHypothesis` a cada
 invocação: a 137 req/s seriam ~25 mil escritas e a tabela cresceria durante o
@@ -132,6 +176,23 @@ teste. Por isso ele tem cenário próprio a 5 req/s.
 
 **`PATCH /incidents/:id/hypothesis/review` fica fora do teste** — quando o status
 é `confirmed`, promove o caso à golden set. Carga aqui corromperia dado curado.
+
+## Verificação de controle de acesso (RNF04)
+
+`k6/auth-check.js` é um script à parte — não mede desempenho, confere se cada
+rota bloqueia acesso sem sessão válida. Baixo custo, roda em segundos:
+
+```bash
+k6 run -e BASE_URL=$BASE_URL k6/auth-check.js
+```
+
+Hoje só `PATCH /api/v1/incidents/:id/hypothesis/review` está atrás de
+`requireAuth` (ver `apps/backend/api/src/middleware/requireAuth.js` e o uso em
+`src/routes/incidents.js`). As demais rotas de consulta (`/incidents`,
+`/dashboard/summary`, `/golden-set`, etc.) respondem sem sessão hoje — o
+script documenta isso como um gap conhecido em relação ao texto do RNF04
+(`requisitos.md`), não como falha do script. Só a rota protegida entra no
+threshold que reprova o run; o resto é informativo.
 
 ## Leitura do servidor durante a rodada
 
@@ -165,5 +226,15 @@ precisa das duas leituras lado a lado.
    o teste **não** exercita hot-spotting.
 3. **`BEDROCK_ENABLED=false`.** O `/diagnose` não chama LLM de verdade; a
    latência medida é do caminho determinístico, não da camada agêntica real.
+   `apps/infra/variables.tf` registra que o Learner Lab usado neste projeto
+   não dá acesso ao Bedrock — não é só uma configuração desligada por escolha.
 4. **O p(95) de 2 s vem do RNF14**, que fala de "busca filtrada" no dashboard.
    Se o parceiro quiser um SLA específico para esta API, o número muda.
+5. **Endurance (`soak`) não cresce a base durante a rodada.** A ingestão que
+   alimentaria incidentes novos continuamente não está implementada ainda
+   (fora deste repositório); o `soak` mede vazamento de memória/CPU sobre uma
+   base estática, não a degradação de payload por acúmulo de dado ao longo do
+   tempo — essa segunda pergunta só é testável quando a ingestão existir.
+6. **A cadeia completa de produção (Amplify → API Gateway → ALB) não tem
+   baseline nesta pasta.** Todas as rodadas documentadas aqui miraram o ALB
+   diretamente.
