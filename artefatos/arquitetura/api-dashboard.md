@@ -1,18 +1,20 @@
-# Contrato da API operacional do dashboard
+# API do dashboard
 
-Status: draft para revisão  
-Versão do contrato: 1.0  
-Base HTTP: /api/v1  
-Formato: JSON  
-Idioma dos identificadores técnicos: inglês  
-Idioma de apresentação: responsabilidade do frontend
+- **Status:** em revisão
+- **Versão:** 1.1
+- **Última atualização:** 06/09/2026
+- **Responsáveis:** equipes de backend e frontend
+- **Base HTTP operacional:** `/api/v1`
+- **Formato:** JSON
+- **Idioma dos identificadores técnicos:** inglês
+- **Idioma de apresentação:** responsabilidade do frontend
 
 ## 1. Objetivo
 
 Este documento define o contrato HTTP entre o backend Node/Express e o
 frontend Next.js do dashboard operacional. Ele descreve somente a interface
-pública: endpoints, parâmetros, respostas, enums, erros, paginação,
-parcialidade, frescor e regras de privacidade.
+pública: autenticação, endpoints, parâmetros, respostas, enums, erros,
+paginação, parcialidade, frescor e regras de privacidade.
 
 O contrato é independente da origem física dos dados. Na primeira versão, os
 dados operacionais vêm do Argus, são normalizados e materializados antes de
@@ -29,20 +31,23 @@ Incluído:
 - Revisão humana de hipótese.
 - Eventos correlacionados.
 - Monitoramento operacional.
+- Autenticação federada e sessão.
+- Importação assíncrona de dump.
+- Solicitação de reanálise.
 - Estados de carregamento parcial, atraso e indisponibilidade.
 
 Fora do escopo desta versão:
 
-- Login, logout, recuperação de senha e SSO.
-- Perfis e autorização de usuários.
+- Recuperação de senha, administrada pelo provedor corporativo.
+- Administração de perfis e grupos de usuários.
 - Configurações do dashboard.
 - Endpoints internos de ML, orquestração e golden set.
 - O backend Flask inicial e sua tabela telemetry.
 - BigQuery.
 
-A mutação de revisão de hipótese está especificada, mas só pode ser habilitada
-em ambiente real quando a identidade do revisor for obtida de uma sessão
-autenticada no servidor.
+A identidade do revisor é obtida exclusivamente da sessão autenticada no
+servidor. Qualquer pessoa autenticada pode iniciar uma importação; a revisão de
+hipótese também exige sessão válida e registra a identidade corporativa.
 
 ### 2.1 Perfil de disponibilidade
 
@@ -58,7 +63,7 @@ warnings informam o que pode ser preenchido em cada momento.
 | Payload individual sanitizado | unavailable | Disponível quando houver fonte individual |
 | Qualidade, cobertura, QoE e geografia | Disponíveis ou parciais conforme o agregado | Disponíveis |
 | Taxa e latência interna do pipeline batch | Parciais, quando registradas pela execução | Disponíveis |
-| Fila e DLQ | unavailable por não existirem no pipeline batch inicial | Condicionadas a uma arquitetura com filas |
+| Fila e DLQ | `unavailable` até o provisionamento | Disponíveis com o Worker de Análise |
 
 Na fase inicial, ausência de uma capability não impede a adoção dos endpoints
 de Visão Geral, Incidentes e Diagnóstico. A API não fabrica eventos ou
@@ -68,6 +73,13 @@ métricas para completar uma tela.
 
 | Método | Caminho | Responsabilidade | Disponibilidade inicial |
 |---|---|---|---|
+| GET | /auth/session | Consultar a sessão corporativa | Com Cognito e SSO configurados |
+| GET | /auth/login | Iniciar autenticação federada | Com Cognito e SSO configurados |
+| GET | /auth/callback | Validar retorno do provedor e criar sessão | Com Cognito e SSO configurados |
+| POST | /auth/logout | Encerrar a sessão | Com Cognito configurado |
+| POST | /api/v1/imports | Iniciar upload multipart de um dump | Fase de importação |
+| POST | /api/v1/imports/{importId}/complete | Concluir o upload e iniciar processamento | Fase de importação |
+| GET | /api/v1/imports/{importId} | Consultar progresso e resultado da importação | Fase de importação |
 | GET | /api/v1/dashboard/overview | Visão Geral completa | Fase Argus |
 | GET | /api/v1/incidents | Lista, gráfico, filtros e facetas de incidentes | Fase Argus |
 | GET | /api/v1/incidents/{incidentId}/diagnosis | Incidente, diagnóstico, evidências, séries e timeline | Fase Argus |
@@ -75,6 +87,7 @@ métricas para completar uma tela.
 | GET | /api/v1/incidents/{incidentId}/events | Agregados e eventos correlacionados | Parcial na fase Argus |
 | GET | /api/v1/incidents/{incidentId}/events/{eventId} | Evento normalizado e origem sanitizada | Condicionada à existência do evento individual |
 | GET | /api/v1/monitoring/overview | Saúde das fontes e do pipeline | Parcial até instrumentação do runtime |
+| POST | /api/v1/incidents/{incidentId}/reanalyze | Solicitar uma nova análise | Com SQS de análise configurada |
 
 ## 4. Convenções comuns
 
@@ -1240,7 +1253,7 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion
 | window | 15m, 30m, 1h ou 6h; padrão 15m |
 | source | Uma ou mais fontes disponíveis |
 | worker | Um ou mais workers disponíveis |
-| flowMetric | ingestion_rate ou processing_latency; padrão processing_latency; queue_depth somente se uma capability futura o habilitar |
+| flowMetric | `ingestion_rate`, `processing_latency` ou `queue_depth`; o último só é aceito quando a capability estiver disponível |
 
 ### 10.2 Response
 
@@ -1259,7 +1272,7 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion
           "queueDepth": "unavailable",
           "deadLetterQueue": "unavailable"
         },
-        "reason": "QUEUELESS_BATCH_PIPELINE"
+        "reason": "ANALYSIS_QUEUE_UNAVAILABLE"
       },
       "geographicMetrics": {
         "status": "partial",
@@ -1555,8 +1568,8 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion
     "freshness": [],
     "warnings": [
       {
-        "code": "QUEUELESS_BATCH_PIPELINE",
-        "message": "Fila e DLQ não se aplicam ao pipeline batch atual."
+        "code": "ANALYSIS_QUEUE_UNAVAILABLE",
+        "message": "As métricas da fila de análise ainda não estão disponíveis."
       }
     ]
   }
@@ -1566,11 +1579,13 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion
 Estados de fonte: stable, delayed, partial, unavailable.  
 Estados de KPI: healthy, warning, critical, unknown.
 
-Na arquitetura inicial, o lote lê o Argus, normaliza os registros e escreve
-diretamente no DynamoDB. Não existem SQS ou DLQ nesse fluxo. Por isso os
-cartões queueDepth e deadLetterQueue permanecem no DTO com value null e status
-unknown, enquanto capabilities.pipelineRuntime explica
-QUEUELESS_BATCH_PIPELINE. O frontend apresenta “N/D — pipeline sem filas”.
+A ingestão lê o ARGUS, normaliza os registros e escreve diretamente no
+DynamoDB. A SQS e a DLQ pertencem somente ao processamento de análise. Antes de
+seu provisionamento, os cartões `queueDepth` e `deadLetterQueue` permanecem no
+DTO com `value: null` e `status: unknown`, enquanto
+`capabilities.pipelineRuntime` informa `ANALYSIS_QUEUE_UNAVAILABLE`. Depois do
+provisionamento, os valores vêm das métricas reais da fila e nunca são
+simulados pelo Backend.
 
 As áreas geográficas são UFs. A API não retorna SVG, paths ou coordenadas; o
 frontend é responsável pela representação do mapa.
@@ -1579,8 +1594,240 @@ sourceQuality e geographicMetrics podem permanecer available ou partial a
 partir de cobertura, QoE e geografia do Argus, independentemente da
 disponibilidade das métricas do runtime.
 
-## 11. Responsabilidades do frontend
+## 11. Autenticação federada e sessão
 
+As rotas de autenticação ficam fora de `/api/v1` porque controlam a sessão do
+navegador e realizam redirecionamentos. O Backend segue o padrão *Backend for
+Frontend*: valida `state`, `nonce`, PKCE, assinatura, emissor, audiência e
+expiração antes de criar a sessão.
+
+### 11.1 Consultar sessão
+
+~~~http
+GET /auth/session
+~~~
+
+Quando existe uma sessão válida:
+
+~~~json
+{
+  "data": {
+    "authenticated": true,
+    "user": {
+      "id": "usr_01K2F8BAYX",
+      "name": "Pessoa autenticada",
+      "email": "pessoa@corp.globo.com"
+    }
+  },
+  "meta": {
+    "requestId": "req_01K2F8BAYX",
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-09-06T15:00:00.000Z",
+    "window": null,
+    "partial": false,
+    "refreshAfterSeconds": null,
+    "freshness": [],
+    "warnings": []
+  }
+}
+~~~
+
+Sessão ausente ou expirada retorna HTTP 401 com `UNAUTHENTICATED`. Tokens do
+provedor nunca são devolvidos ao JavaScript.
+
+### 11.2 Iniciar e concluir login
+
+~~~http
+GET /auth/login
+GET /auth/callback?code=<authorization-code>&state=<state>
+~~~
+
+`/auth/login` gera `state`, `nonce` e o par PKCE e responde com redirecionamento
+para o Cognito. O callback troca o código por tokens, executa todas as
+validações e grava um cookie `HttpOnly`, `Secure` e `SameSite`. Após o sucesso,
+o usuário é redirecionado para o dashboard; uma falha retorna acesso negado sem
+registrar códigos, tokens ou credenciais nos logs.
+
+### 11.3 Logout
+
+~~~http
+POST /auth/logout
+~~~
+
+O Backend invalida a sessão local, remove o cookie e direciona o navegador para
+o encerramento de sessão do Cognito. A operação é idempotente.
+
+## 12. Importação assíncrona de dump
+
+Qualquer pessoa autenticada pode iniciar uma importação. O arquivo não atravessa
+o Backend: ele é enviado diretamente ao S3 por upload multipart com URLs
+pré-assinadas. O Backend controla somente metadados, autorização e estado do
+processamento.
+
+### 12.1 Iniciar upload
+
+~~~http
+POST /api/v1/imports
+Content-Type: application/json
+
+{
+  "fileName": "argus-2026-09-06.sql.gz",
+  "sizeBytes": 11811160064,
+  "sha256": "2b5f...9a10",
+  "partCount": 112
+}
+~~~
+
+Resposta HTTP 201:
+
+~~~json
+{
+  "data": {
+    "importId": "imp_01K2F8BAYX",
+    "status": "UPLOADING",
+    "upload": {
+      "uploadId": "s3-multipart-id",
+      "partSizeBytes": 104857600,
+      "parts": [
+        {
+          "partNumber": 1,
+          "url": "https://s3.amazonaws.com/..."
+        }
+      ],
+      "expiresAt": "2026-09-06T16:00:00.000Z"
+    }
+  },
+  "meta": {
+    "requestId": "req_01K2F8BAYX",
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-09-06T15:00:00.000Z",
+    "window": null,
+    "partial": false,
+    "refreshAfterSeconds": null,
+    "freshness": [],
+    "warnings": []
+  }
+}
+~~~
+
+Quando houver muitas partes, o Backend pode devolver as URLs em páginas. As
+URLs aceitam somente a parte, o tamanho e o tipo de operação autorizados e têm
+expiração curta.
+
+### 12.2 Concluir upload
+
+~~~http
+POST /api/v1/imports/imp_01K2F8BAYX/complete
+Content-Type: application/json
+
+{
+  "parts": [
+    { "partNumber": 1, "etag": "etag-da-parte" }
+  ]
+}
+~~~
+
+O Backend confirma o upload no S3, verifica tamanho e checksum, altera o
+`ImportJob` para `PROCESSING` e inicia uma tarefa Fargate. A resposta HTTP 202
+informa que o processamento continuará em segundo plano:
+
+~~~json
+{
+  "data": {
+    "importId": "imp_01K2F8BAYX",
+    "status": "PROCESSING",
+    "stage": "VALIDATING",
+    "progressPercent": 0
+  },
+  "meta": {
+    "requestId": "req_01K2F8BAYX",
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-09-06T15:10:00.000Z",
+    "window": null,
+    "partial": false,
+    "refreshAfterSeconds": 5,
+    "freshness": [],
+    "warnings": []
+  }
+}
+~~~
+
+### 12.3 Consultar progresso
+
+~~~http
+GET /api/v1/imports/imp_01K2F8BAYX
+~~~
+
+~~~json
+{
+  "data": {
+    "importId": "imp_01K2F8BAYX",
+    "status": "PROCESSING",
+    "stage": "INGESTING",
+    "progressPercent": 72,
+    "createdAt": "2026-09-06T15:00:00.000Z",
+    "completedAt": null,
+    "error": null
+  },
+  "meta": {
+    "requestId": "req_01K2F8BAYX",
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-09-06T15:20:00.000Z",
+    "window": null,
+    "partial": false,
+    "refreshAfterSeconds": 5,
+    "freshness": [],
+    "warnings": []
+  }
+}
+~~~
+
+Estados de `status`: `UPLOADING`, `PROCESSING`, `COMPLETED` e `FAILED`.
+Etapas de processamento: `VALIDATING`, `RESTORING`, `INGESTING` e
+`PUBLISHING`. O frontend respeita `refreshAfterSeconds` até alcançar um estado
+terminal. Em caso de falha, `error` contém código público e mensagem segura,
+sem detalhes da infraestrutura ou do dump.
+
+## 13. Solicitação de reanálise
+
+~~~http
+POST /api/v1/incidents/{incidentId}/reanalyze
+Idempotency-Key: rea_01K2F8BAYX
+~~~
+
+O Backend valida a sessão e a existência do incidente, cria uma solicitação
+`REANALYSIS_REQUESTED` na SQS e retorna HTTP 202:
+
+~~~json
+{
+  "data": {
+    "incidentId": "inc_01K2F8BAYX",
+    "analysisRequestId": "arq_01K2F8BAYX",
+    "status": "ACCEPTED"
+  },
+  "meta": {
+    "requestId": "req_01K2F8BAYX",
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-09-06T15:30:00.000Z",
+    "window": null,
+    "partial": false,
+    "refreshAfterSeconds": null,
+    "freshness": [],
+    "warnings": []
+  }
+}
+~~~
+
+Repetir a mesma chave com o mesmo conteúdo devolve a resposta original.
+Reutilizar a chave com conteúdo diferente retorna HTTP 409 com
+`IDEMPOTENCY_KEY_REUSED`.
+
+## 14. Responsabilidades do frontend
+
+- Redirecionar para o login federado quando a sessão estiver ausente ou
+  expirada.
+- Enviar partes do dump diretamente ao S3 e acompanhar o `ImportJob` de acordo
+  com `refreshAfterSeconds`.
 - Formatar números, datas relativas, percentuais e unidades.
 - Traduzir enums.
 - Respeitar refreshAfterSeconds.
@@ -1601,8 +1848,13 @@ disponibilidade das métricas do runtime.
   produção, indisponibilidade produz estado vazio, partial, delayed ou
   unavailable; nunca fallback para dados de exemplo.
 
-## 12. Responsabilidades do backend
+## 15. Responsabilidades do backend
 
+- Concluir o fluxo federado, proteger tokens e emitir somente o cookie de
+  sessão para o navegador.
+- Criar URLs pré-assinadas, validar a conclusão do upload e iniciar a tarefa de
+  importação sem transportar o dump.
+- Publicar reanálises na SQS com idempotência.
 - Validar path, query e body.
 - Resolver a janela temporal efetiva.
 - Retornar requestId em sucesso e erro.
@@ -1618,7 +1870,7 @@ disponibilidade das métricas do runtime.
   measured, estimated e unknown.
 - Retornar respostas parciais utilizáveis sempre que houver uma versão válida.
 
-## 13. Evolução compatível
+## 16. Evolução compatível
 
 Alterações compatíveis dentro de v1:
 
@@ -1637,7 +1889,7 @@ Alterações incompatíveis exigem nova versão:
 - Alterar significado de null e zero.
 - Alterar a estrutura de cursor esperada pelo cliente.
 
-## 14. Critérios de aceite do contrato
+## 17. Critérios de aceite do contrato
 
 - Todos os exemplos são representáveis em OpenAPI 3.1.
 - Request e response usam schemas fechados para campos conhecidos.
@@ -1649,3 +1901,11 @@ Alterações incompatíveis exigem nova versão:
 - Nenhum campo exige conhecimento de DynamoDB ou Argus pelo frontend.
 - O contrato não depende do backend Flask ou de BigQuery.
 - A troca futura de origem preserva os DTOs públicos.
+
+## 18. Documentos relacionados
+
+- [Visão geral da arquitetura](visao-geral.md)
+- [Fluxos integrados](fluxos.md)
+- [Ingestão e dados](ingestao-e-dados.md)
+- [Análise de dados e diagnóstico por IA](analise-e-ia.md)
+- [Status de implementação](status-implementacao.md)

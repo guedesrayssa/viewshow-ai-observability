@@ -306,6 +306,11 @@ previsão de degradações, a detecção de incidentes e a recuperação de falh
 Cada diagrama é acompanhado por uma explicação de seu objetivo e das decisões
 arquiteturais necessárias para compreender o fluxo.
 
+&emsp;Esta seção registra a representação acadêmica produzida durante a sprint. A
+versão técnica mantida para orientar o desenvolvimento, acompanhada dos
+contratos de dados, eventos e API, está em
+[Fluxos integrados do View Show](../arquitetura/fluxos.md).
+
 ### 5.1 Catálogo de diagramas de sequência
 
 &emsp;Os oito diagramas foram organizados por cenário e vinculados aos casos de uso
