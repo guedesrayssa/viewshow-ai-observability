@@ -284,22 +284,41 @@ omitidos deliberadamente para manter o diagrama legível.]
 
 ## 5. Diagramas de sequência
 
-> Deve existir pelo menos um diagrama de sequência para cada fluxo considerado
-> crítico. Os cenários escolhidos devem estar ligados a um caso de uso descrito
-> na Seção 3.
+Os diagramas de sequência são diagramas de interação da UML utilizados para
+representar, em ordem temporal, as mensagens trocadas entre os participantes de
+um comportamento. A disposição das linhas de vida e das mensagens permite
+identificar responsabilidades, dependências e caminhos alternativos durante a
+realização de um cenário. Essa representação segue os conceitos de interação
+definidos pela especificação UML 2.5.1 (OBJECT MANAGEMENT GROUP, 2017).
+
+No View Show, esses diagramas descrevem como os dados saem do ARGUS, tornam-se
+informações analisáveis e chegam aos usuários. A seção contempla a ingestão
+periódica e por snapshot, a autenticação, a consulta, a revisão humana, a
+previsão de degradações, a detecção de incidentes e a recuperação de falhas.
+Cada diagrama é acompanhado por uma explicação de seu objetivo e das decisões
+arquiteturais necessárias para compreender o fluxo.
 
 ### 5.1 Catálogo de diagramas de sequência
+
+Os oito diagramas foram organizados por cenário e vinculados aos casos de uso
+que realizam ou apoiam. A Tabela 5.1 funciona como índice da seção e diferencia
+as interações iniciadas pelo usuário dos processos técnicos executados de forma
+assíncrona.
+
+**Tabela 5.1: Catálogo dos diagramas de sequência**
 
 | ID | Cenário | Casos de uso relacionados | Tipo de fluxo | Responsável |
 | --- | --- | --- | --- | --- |
 | DS-01A | Sincronização com o MySQL vivo | UC-01, UC-06, UC-17, UC-19 | Suporte técnico | Equipe de arquitetura |
 | DS-01B | Importação de snapshot pela interface | UC-01, UC-06, UC-17, UC-19 | Suporte técnico/alternativo | Equipe de arquitetura |
 | DS-02A | Autenticação federada e consulta | UC-01, UC-02 | Básico | Equipe de arquitetura |
-| DS-02B | Revisão concorrente e promoção ao golden set | UC-07, UC-11 | Concorrente | Equipe de arquitetura |
+| DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-07, UC-11 | Concorrente | Equipe de arquitetura |
 | DS-03A | Previsão preventiva e validação posterior | UC-16, UC-17, UC-19 | Suporte técnico/assíncrono | Equipe de arquitetura |
 | DS-03B | Detecção reativa e diagnóstico por IA | UC-05 a UC-08, UC-10, UC-12, UC-13 | Suporte técnico/assíncrono | Equipe de arquitetura |
-| DS-03C | Falha, retry, DLQ e reanálise | UC-10 | Exceção/alternativo | Equipe de arquitetura |
+| DS-03C | Falha, novas tentativas, DLQ e reanálise | UC-10 | Exceção/alternativo | Equipe de arquitetura |
 | DS-04 | Visão geral ponta a ponta | UC-01, UC-02, UC-05 a UC-08, UC-10, UC-11, UC-16, UC-17, UC-19 | Resumo | Equipe de arquitetura |
+
+Fonte: Material produzido pelos autores (2026).
 
 Os diagramas automáticos de ingestão e análise representam mecanismos
 técnicos que viabilizam os objetivos dos usuários. Por isso, a relação com
@@ -310,54 +329,38 @@ como casos de uso independentes.
 
 ### 5.2 Convenções
 
-- Setas contínuas representam chamadas síncronas; mensagens para a SQS são
-  assíncronas mesmo quando a notação visual usa a mesma ponta de seta.
-- `alt` representa caminhos mutuamente exclusivos.
-- `opt` representa comportamento condicional.
-- `loop` representa paginação, polling ou novas tentativas.
-- Os diagramas apresentam componentes lógicos. ALB, NAT Gateway, sub-redes e
-  rotas pertencem ao diagrama de implantação.
-- Mensagens e timestamps utilizam UTC.
-- Operações repetíveis utilizam identificadores idempotentes.
-- `Prediction` representa risco futuro; `Incident` representa degradação
-  observada ou importada.
+As mensagens estão dispostas de cima para baixo na ordem em que ocorrem. Os
+fragmentos `alt`, `opt`, `loop` e `par` indicam, respectivamente, alternativas
+exclusivas, comportamentos condicionais, repetições e atividades concorrentes.
+As mensagens enviadas à SQS representam comunicação assíncrona; retornos e
+chamadas diretas representam comunicação síncrona. Horários são registrados em
+UTC e as operações repetíveis empregam identificadores idempotentes, de modo
+que uma mesma solicitação possa ser repetida sem duplicar seu efeito.
 
-### 5.3 DS-01 — Ingestão e disponibilização dos dados
+Os diagramas representam componentes lógicos da aplicação. Elementos como
+sub-redes, rotas, ALB e NAT Gateway pertencem ao diagrama de implantação e foram
+omitidos para preservar a legibilidade. O termo `Prediction` identifica uma
+previsão de risco futuro, enquanto `Incident` identifica uma degradação já
+observada nos dados.
 
-#### 5.3.1 Objetivo
+### 5.3 Ingestão e disponibilização dos dados
 
-Representar como o View Show sincroniza dados do MySQL vivo do ARGUS ou de um
-snapshot enviado pela interface, normaliza os registros, persiste fatos e
-projeções no DynamoDB e publica solicitações para o Worker de Análise.
+A ingestão transforma os registros operacionais do ARGUS em fatos e projeções
+consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa
+quanto os snapshots enviados pela interface, preservando as regras de
+normalização e persistência. Esses fluxos fornecem os dados utilizados nos
+casos de uso UC-01, UC-06, UC-17 e UC-19.
 
-#### 5.3.2 Casos de uso relacionados
+#### 5.3.1 DS-01A — Sincronização com o MySQL vivo
 
-- **UC-01 — Consultar dashboard.**
-- **UC-06 — Visualizar incidentes priorizados.**
-- **UC-17 — Acompanhar indicadores de QoE.**
-- **UC-19 — Consultar histórico de degradações.**
-- **Tipo de relação:** suporte técnico à disponibilização dos dados
-  consumidos por esses casos de uso.
-- **Pré-condição:** origem disponível e configuração válida.
-- **Resultado esperado:** novas janelas materializadas e solicitações de análise
-  publicadas sem duplicação.
+A sincronização periódica mantém o DynamoDB atualizado com os dados produzidos
+pelo ARGUS. A cada 15 minutos, o EventBridge inicia uma tarefa no Fargate e o
+Serviço de Ingestão tenta obter no DynamoDB um **bloqueio temporário com
+expiração**. Esse bloqueio, também denominado *lease*, concede a uma única
+execução o direito de atualizar a janela; caso a tarefa seja interrompida, a
+expiração permite que uma execução posterior continue o processamento.
 
-#### 5.3.3 Participantes
-
-| Participante | Tipo | Responsabilidade |
-| --- | --- | --- |
-| EventBridge | Serviço AWS | Acionar a sincronização a cada 15 minutos |
-| ECS/Fargate | Infraestrutura | Executar as tarefas de sincronização e importação |
-| Serviço de Ingestão | Controle | Coordenar leitura, normalização e persistência |
-| Secrets Manager | Serviço AWS | Fornecer credenciais da origem |
-| MySQL ARGUS | Sistema externo | Disponibilizar os dados internos da Globo |
-| Dashboard e Backend | Boundary/Control | Receber o dump e acompanhar a importação |
-| Amazon S3 | Persistência | Armazenar dumps e payloads grandes autorizados |
-| DynamoDB Operacional | Persistência | Armazenar fatos, projeções, controle e outbox |
-| SQS de Análise | Mensageria | Entregar solicitações ao Worker de Análise |
-| CloudWatch | Observabilidade | Receber logs, métricas e alarmes |
-
-#### 5.3.4 DS-01A — Sincronização com o MySQL vivo
+**Diagrama 3: Sincronização dos dados do MySQL vivo do ARGUS**
 
 ```mermaid
 sequenceDiagram
@@ -376,13 +379,13 @@ sequenceDiagram
     EB->>ECS: RunTask(sync)
     ECS->>ING: Iniciar sincronização
     ING->>DB: Criar IngestionRun
-    ING->>DB: Adquirir lease condicional
+    ING->>DB: Adquirir bloqueio temporário
 
-    alt Outro ciclo mantém o lease
+    alt Outra sincronização mantém o bloqueio
         DB-->>ING: ConditionalCheckFailed
         ING->>DB: IngestionRun = SKIPPED_LOCKED
         ING->>CW: Registrar execução ignorada
-    else Lease adquirido
+    else Bloqueio adquirido
         ING->>SM: Obter credenciais do ARGUS
         SM-->>ING: Credenciais
         ING->>MYSQL: Conectar via VPN e TLS
@@ -430,7 +433,7 @@ sequenceDiagram
             ING->>DB: IngestionRun = SUCCEEDED
         end
 
-        ING->>DB: Liberar lease
+        ING->>DB: Liberar bloqueio
         ING->>CW: Publicar logs, métricas e watermarks
     end
 
@@ -442,20 +445,36 @@ sequenceDiagram
     end
 ```
 
-**Figura 3 — Sincronização dos dados do MySQL vivo do ARGUS.**<br>
 Fonte: Material produzido pelos autores (2026).
 
-| Etapa | Comportamento |
-| --- | --- |
-| Inicialização | EventBridge inicia uma task Fargate a cada 15 minutos |
-| Exclusão mútua | O lease impede sincronizações concorrentes |
-| Leitura | A ingestão acessa o MySQL por VPN/TLS e pagina por chave natural |
-| Idempotência | `recordId` e `payloadHash` evitam duplicação e escrita desnecessária |
-| Persistência | Dados são gravados diretamente no DynamoDB |
-| Publicação | Watermark e outbox antecedem o envio para a SQS |
-| Recuperação | Um outbox pendente é republicado na execução seguinte |
+Depois de obter o bloqueio, o serviço recupera as credenciais no Secrets
+Manager e acessa o MySQL pela rede privada, com transporte protegido por TLS.
+Os registros são lidos em páginas, normalizados e identificados por
+`recordId`. O `payloadHash` permite reconhecer quando o conteúdo não mudou e
+evita escritas desnecessárias. Registros novos ou alterados são persistidos
+diretamente no DynamoDB; objetos que ultrapassam o tamanho autorizado são
+armazenados no S3, mantendo-se no banco apenas a referência correspondente.
 
-#### 5.3.5 DS-01B — Importação de snapshot pela interface
+O marcador da última janela completa publicada é denominado *watermark*. Sua
+atualização ocorre na mesma transação que cria o registro de saída pendente,
+conhecido como *outbox*. Esse registro garante que uma solicitação de análise
+não seja perdida caso a comunicação com a SQS falhe: a execução seguinte
+localiza o item pendente e republica a mensagem com a mesma chave de
+idempotência. Se outra sincronização mantiver o bloqueio, a nova tentativa é
+encerrada como `SKIPPED_LOCKED`, sem interferir na tarefa ativa.
+
+#### 5.3.2 DS-01B — Importação de snapshot pela interface
+
+A importação de snapshot permite carregar pela interface uma cópia do banco
+do ARGUS sem interromper o conjunto de dados que já está disponível. O arquivo
+é enviado diretamente ao S3 por partes, mediante endereços temporários
+gerados pelo Backend. Concluído o envio, uma tarefa Fargate restaura o dump em
+um MySQL 8 isolado e reutiliza o mesmo processo de normalização empregado na
+sincronização periódica. Enquanto a tarefa é executada, o Dashboard consulta
+periodicamente o estado do `ImportJob`, prática denominada *polling*, para
+apresentar o progresso ao usuário.
+
+**Diagrama 4: Importação assíncrona de um snapshot do ARGUS**
 
 ```mermaid
 sequenceDiagram
@@ -545,67 +564,43 @@ sequenceDiagram
     end
 ```
 
-**Figura 4 — Importação assíncrona de um snapshot do ARGUS.**<br>
 Fonte: Material produzido pelos autores (2026).
 
-| Etapa | Comportamento |
-| --- | --- |
-| Upload | Qualquer usuário autenticado envia o dump diretamente ao S3 |
-| Processamento | O Backend responde HTTP 202 e inicia uma task Fargate |
-| Restauração | MySQL 8 e volume efêmero existem apenas durante a task |
-| Ingestão | O backfill reutiliza os contratos e regras do DS-01A |
-| Análise | Somente a janela mais recente é analisada automaticamente |
-| Acompanhamento | O Dashboard consulta o `ImportJob` por polling |
-| Conclusão | O novo dataset aparece somente após projeções e watermarks |
+O Backend responde com HTTP 202 porque a restauração e a ingestão continuam
+de forma assíncrona. O MySQL temporário e seu volume existem apenas durante a
+tarefa e são descartados ao final. Depois da restauração, todos os dados são
+ingeridos, mas apenas a janela de 15 minutos mais recente e a última janela
+horária completa seguem automaticamente para análise. O novo conjunto somente
+se torna visível quando as projeções e os marcadores de publicação estiverem
+concluídos.
 
-#### 5.3.6 Tratamento de erros e pós-condições
+As falhas são tratadas de modo a preservar um estado utilizável. Um schema
+incompatível não avança o marcador da ingestão; uma falha de publicação mantém
+o registro de saída pendente; e um dump inválido ou impossível de restaurar
+encerra o `ImportJob` como `FAILED`. Em todos esses casos, o conjunto de dados
+anterior continua disponível. Quando o fluxo termina com sucesso, os fatos e
+projeções estão no DynamoDB e a solicitação de análise foi publicada ou está
+protegida pelo mecanismo de saída transacional. A ingestão não consulta nem
+modifica o conjunto de diagnósticos confirmados.
 
-| Situação | Tratamento | Estado preservado |
-| --- | --- | --- |
-| Lease ocupado | Finaliza como `SKIPPED_LOCKED` | Execução ativa continua |
-| Schema incompatível | Falha sem avançar watermark | Dataset publicado permanece |
-| Falha transitória | Até cinco tentativas com backoff e jitter | Cursor do último chunk |
-| Falha de publicação | Mantém outbox pendente | Janela já materializada |
-| Dump inválido | `ImportJob = FAILED` | Dataset anterior permanece visível |
-| Falha de restauração | Encerra e descarta o ambiente temporário | DynamoDB não é substituído |
+### 5.4 Backend, autenticação e revisão
 
-Ao final do fluxo bem-sucedido, os fatos e projeções estão disponíveis no
-DynamoDB, o watermark representa somente janelas completas e a solicitação de
-análise correspondente está publicada ou protegida pelo outbox. A ingestão não
-lê nem escreve no golden set.
+Os fluxos do Backend representam as interações iniciadas pelos usuários
+corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar
+o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica.
+Essas interações realizam os casos de uso UC-01, UC-02, UC-07 e UC-11. O
+Dashboard atua como interface, enquanto o Backend concentra a validação da
+sessão, a consulta ao DynamoDB e a aplicação das regras de revisão.
 
-### 5.4 DS-02 — Backend, autenticação e revisão
+#### 5.4.1 DS-02A — Autenticação federada e consulta
 
-#### 5.4.1 Objetivo
+A autenticação federada permite que o View Show reconheça a identidade
+corporativa sem armazenar senhas. Quando não existe sessão válida, o Backend
+direciona o usuário ao Cognito, que delega a autenticação ao SSO da Globo.
+Somente depois da validação do retorno o sistema cria a sessão e consulta o
+modelo de leitura da visão geral.
 
-Representar o acesso de usuários internos ao View Show, a consulta autenticada
-dos dados e a revisão concorrente de hipóteses com promoção atômica ao golden
-set.
-
-#### 5.4.2 Casos de uso relacionados
-
-- **UC-01 — Consultar dashboard:** realizado pela consulta autenticada do
-  DS-02A.
-- **UC-02 — Autenticar-se:** realizado pelo fluxo federado do DS-02A.
-- **UC-07 — Consultar hipóteses de causa provável:** realizado pela abertura do
-  diagnóstico no DS-02B.
-- **UC-11 — Validar hipótese diagnóstica:** realizado pela confirmação ou
-  refutação concorrente no DS-02B.
-
-#### 5.4.3 Participantes
-
-| Participante | Tipo | Responsabilidade |
-| --- | --- | --- |
-| Usuário Globo | Ator | Autenticar-se, consultar e revisar hipóteses |
-| Dashboard | Boundary | Iniciar login e apresentar dados |
-| Backend | Controle | Concluir OAuth, validar sessão e servir a API |
-| Cognito | Serviço de identidade | Federar identidade e emitir JWT |
-| SSO Globo | Sistema externo | Autenticar o usuário corporativo |
-| DynamoDB Operacional | Persistência | Fornecer read models e receber revisões |
-| Golden Set | Persistência | Receber casos confirmados |
-| CloudWatch | Observabilidade | Registrar acessos, falhas e latência |
-
-#### 5.4.4 DS-02A — Autenticação federada e consulta
+**Diagrama 5: Autenticação federada e consulta do dashboard**
 
 ```mermaid
 sequenceDiagram
@@ -654,7 +649,7 @@ sequenceDiagram
     API->>API: Validar sessão e JWT
 
     alt Sessão válida
-        API->>DB: Consultar read model da visão geral
+        API->>DB: Consultar modelo de leitura da visão geral
         DB-->>API: Incidentes, métricas e frescor
         API->>API: Converter para DTO público
         API->>CW: Registrar latência e requestId
@@ -674,16 +669,32 @@ sequenceDiagram
     end
 ```
 
-**Figura 5 — Autenticação federada e consulta do dashboard.**<br>
 Fonte: Material produzido pelos autores (2026).
 
-O SSO da Globo autentica o usuário, o Cognito atua como broker e emissor dos
-JWTs e o Backend conclui o fluxo OAuth no padrão BFF. O navegador recebe apenas
-um cookie seguro e inacessível ao JavaScript. Não existe cadastro, senha ou
-armazenamento local de credenciais. As respostas públicas não expõem `pk`,
-`sk`, TTL ou outros detalhes físicos do DynamoDB.
+O SSO da Globo autentica o usuário, enquanto o Cognito atua como intermediário
+de identidade e emite tokens assinados no formato JWT. O Backend conclui o
+fluxo OAuth segundo o padrão *Backend for Frontend* (BFF). O padrão PKCE
+(*Proof Key for Code Exchange*) vincula o pedido de autenticação à troca
+posterior do código, reduzindo o risco de sua utilização indevida. O navegador
+recebe somente um cookie `HttpOnly`, `Secure` e
+`SameSite`, inacessível ao JavaScript. As respostas públicas também ocultam
+chaves e detalhes físicos do DynamoDB.
 
-#### 5.4.5 DS-02B — Revisão concorrente e promoção ao golden set
+Uma sessão inexistente, expirada ou associada a uma identidade não autorizada
+interrompe a consulta antes do acesso aos dados. As falhas são registradas sem
+credenciais ou tokens e o usuário é direcionado novamente ao processo de
+autenticação.
+
+#### 5.4.2 DS-02B — Revisão concorrente e promoção ao conjunto de referência
+
+A revisão de hipóteses permite que uma pessoa confirme ou refute a causa
+provável apresentada pelo sistema. Como dois usuários podem abrir o mesmo
+diagnóstico, o Backend utiliza a versão conhecida pelo revisor para aceitar
+somente a primeira decisão válida. Uma hipótese confirmada passa a integrar o
+*golden set*, isto é, o conjunto de diagnósticos humanos confirmados que serve
+como referência para análises futuras.
+
+**Diagrama 6: Revisão concorrente e promoção de hipótese ao conjunto de referência**
 
 ```mermaid
 sequenceDiagram
@@ -694,7 +705,7 @@ sequenceDiagram
     participant UI as Dashboard
     participant API as Backend
     participant OP as DynamoDB Operacional
-    participant GS as Golden Set
+    participant GS as Conjunto de referência
 
     par Usuários consultam a mesma hipótese
         A->>UI: Abrir diagnóstico
@@ -762,7 +773,6 @@ sequenceDiagram
     end
 ```
 
-**Figura 6 — Revisão concorrente e promoção de hipótese ao golden set.**<br>
 Fonte: Material produzido pelos autores (2026).
 
 A identidade do revisor vem da sessão. A requisição informa
@@ -771,63 +781,37 @@ versão esperada. A primeira decisão válida é terminal. Somente `CONFIRMED`
 inclui a criação do `GoldenCase` na transação; `REFUTED` permanece no histórico
 operacional.
 
-#### 5.4.6 Tratamento de erros e pós-condições
+Requisições sem a versão esperada são rejeitadas sem alterar a hipótese. Se
+outra pessoa concluir a revisão primeiro, o Backend responde com conflito e
+preserva a decisão vencedora. A chave de idempotência permite devolver o mesmo
+resultado quando uma requisição é repetida, sem duplicar a auditoria ou o caso
+confirmado. Ao final, cada hipótese revisada possui uma única decisão humana,
+final e auditável.
 
-| Situação | Resposta | Estado preservado |
-| --- | --- | --- |
-| Sessão ausente ou expirada | HTTP 401 | Recurso inalterado |
-| Identidade não autorizada | HTTP 403 | Recurso inalterado |
-| Recurso inexistente | HTTP 404 | Nenhuma escrita |
-| `expectedVersion` ausente | HTTP 422 | Hipótese inalterada |
-| Outra decisão venceu | HTTP 409 | Primeira decisão preservada |
-| Chave reutilizada com outro body | HTTP 409 | Operação original preservada |
-| Falha transacional | HTTP 503 | Nenhum estado parcial |
-| Repetição após resposta perdida | HTTP 200 | Sem duplicar auditoria ou golden set |
+### 5.5 Worker de Análise
 
-Ao final, o usuário possui uma sessão federada válida para as consultas e cada
-hipótese revisada apresenta exatamente uma decisão humana final e auditável.
+O Worker de Análise consome de forma assíncrona as janelas materializadas pela
+ingestão e coordena três responsabilidades: antecipar degradações, reconhecer
+anomalias já observadas e recuperar processamentos interrompidos. Essas
+atividades não são iniciadas diretamente pelos atores, mas fornecem previsões,
+incidentes, evidências e hipóteses para os casos de uso UC-05 a UC-08, UC-10,
+UC-12, UC-13, UC-16, UC-17 e UC-19.
 
-### 5.5 DS-03 — Worker de Análise
+O orquestrador de análise permanece um módulo interno do Worker. Ele combina os
+resultados dos modelos, recupera informações do DynamoDB e consulta casos
+humanos confirmados antes de solicitar ao agente diagnóstico uma explicação
+para o risco ou incidente. O Amazon Bedrock apoia a geração das hipóteses, mas
+não substitui a decisão humana.
 
-#### 5.5.1 Objetivo
+#### 5.5.1 DS-03A — Previsão preventiva e validação posterior
 
-Representar o consumo assíncrono das janelas materializadas, a previsão
-preventiva, a detecção reativa, o diagnóstico por IA e a recuperação de falhas.
+A previsão preventiva estima, a cada janela horária completa, o risco de
+degradação da experiência na hora seguinte. Antes de produzir uma nova
+previsão, o Worker compara a estimativa anterior com o valor efetivamente
+observado. Essa validação permite acompanhar a qualidade do modelo e registrar
+se ele reconheceu corretamente a ocorrência ou a ausência de uma degradação.
 
-#### 5.5.2 Casos de uso relacionados
-
-- **UC-05 — Analisar e encaminhar incidente.**
-- **UC-06 — Visualizar incidentes priorizados.**
-- **UC-07 — Consultar hipóteses de causa provável.**
-- **UC-08 — Verificar evidências do diagnóstico.**
-- **UC-10 — Investigar falha técnica.**
-- **UC-12 — Inspecionar eventos correlacionados.**
-- **UC-13 — Visualizar linha do tempo da sessão.**
-- **UC-16 — Analisar qualidade da experiência.**
-- **UC-17 — Acompanhar indicadores de QoE.**
-- **UC-19 — Consultar histórico de degradações.**
-
-Os fluxos do Worker não são iniciados por atores. DS-03A fornece previsões
-para UC-16, UC-17 e UC-19; DS-03B fornece incidentes, hipóteses, evidências e
-eventos para UC-05 a UC-08, UC-10, UC-12 e UC-13; DS-03C representa a exceção
-técnica e a solicitação de reanálise como fluxo alternativo de UC-10.
-
-#### 5.5.3 Participantes
-
-| Participante | Tipo | Responsabilidade |
-| --- | --- | --- |
-| SQS de Análise | Mensageria | Entregar solicitações de análise |
-| Worker de Análise | Controle | Validar mensagens e coordenar o processamento |
-| QoE Forecast Model | Serviço de domínio | Prever risco de buffering da próxima hora |
-| Anomaly Detector | Serviço de domínio | Executar MAD e Mahalanobis |
-| Analysis Orchestrator | Controle | Coordenar evidências, incidentes e diagnósticos |
-| Diagnostic Agent | Serviço de aplicação | Produzir hipóteses de causa |
-| Golden Set | Persistência | Fornecer casos confirmados como referência |
-| Amazon Bedrock | Serviço externo | Apoiar a geração de hipóteses |
-| DynamoDB | Persistência | Armazenar execuções e resultados |
-| DLQ | Mensageria | Reter mensagens que esgotaram as tentativas |
-
-#### 5.5.4 DS-03A — Previsão preventiva e validação posterior
+**Diagrama 7: Previsão preventiva e validação da previsão anterior**
 
 ```mermaid
 sequenceDiagram
@@ -839,7 +823,7 @@ sequenceDiagram
     participant M as QoE Forecast Model
     participant O as Analysis Orchestrator
     participant A as Diagnostic Agent
-    participant GS as Golden Set
+    participant GS as Conjunto de referência
     participant B as Amazon Bedrock
 
     Q->>W: ANALYSIS_REQUESTED - QOE_FORECAST
@@ -905,7 +889,6 @@ sequenceDiagram
     end
 ```
 
-**Figura 7 — Previsão preventiva e validação da previsão anterior.**<br>
 Fonte: Material produzido pelos autores (2026).
 
 A previsão executa após uma janela horária completa e registra o limiar e a
@@ -913,8 +896,20 @@ versão do modelo. A mesma execução compara a previsão anterior com o valor
 observado e classifica o resultado como `TP`, `FP`, `TN`, `FN` ou `UNKNOWN`.
 Risco normal não aciona o agente; risco elevado exige qualidade mínima. Uma
 hipótese preventiva não é um incidente e continua sujeita à revisão humana.
+As classificações `TP`, `FP`, `TN` e `FN` representam, respectivamente,
+verdadeiro positivo, falso positivo, verdadeiro negativo e falso negativo;
+`UNKNOWN` indica que os dados disponíveis não permitem avaliar a previsão.
 
-#### 5.5.5 DS-03B — Detecção reativa e diagnóstico por IA
+#### 5.5.2 DS-03B — Detecção reativa e diagnóstico por IA
+
+A detecção reativa examina cada nova janela de 15 minutos para identificar
+alterações relevantes em relação ao comportamento histórico. O detector aplica
+o desvio absoluto mediano (MAD) às séries individuais e a distância de
+Mahalanobis ao conjunto de variáveis correlacionadas. A primeira técnica
+identifica valores afastados do padrão de uma métrica; a segunda verifica se a
+combinação entre várias métricas se tornou atípica.
+
+**Diagrama 8: Detecção reativa e diagnóstico automático por IA**
 
 ```mermaid
 sequenceDiagram
@@ -926,7 +921,7 @@ sequenceDiagram
     participant D as Anomaly Detector
     participant O as Analysis Orchestrator
     participant A as Diagnostic Agent
-    participant GS as Golden Set
+    participant GS as Conjunto de referência
     participant B as Amazon Bedrock
 
     Q->>W: ANALYSIS_REQUESTED - ANOMALY_DETECTION
@@ -993,15 +988,28 @@ sequenceDiagram
     end
 ```
 
-**Figura 8 — Detecção reativa e diagnóstico automático por IA.**<br>
 Fonte: Material produzido pelos autores (2026).
 
 MAD e Mahalanobis permanecem módulos internos do mesmo Worker. O detector
 produz scores e evidências; o `Analysis Orchestrator` cria ou correlaciona o
-incidente. O resultado estatístico vira `Evidence`. O incidente permanece
-disponível mesmo quando o diagnóstico por IA não pode ser concluído.
+incidente. O resultado estatístico torna-se uma evidência associada ao
+incidente. Quando há qualidade e cobertura suficientes, o agente consulta o
+contexto recente e o conjunto de casos confirmados para produzir hipóteses
+justificadas. O incidente permanece disponível mesmo quando o diagnóstico por
+IA não pode ser concluído.
 
-#### 5.5.6 DS-03C — Falha, retry, DLQ e reanálise
+#### 5.5.3 DS-03C — Recuperação de falhas, mensagens não processadas e reanálise
+
+A recuperação de falhas evita que uma indisponibilidade transitória descarte o
+resultado já produzido. O Worker registra cada tentativa e retoma a partir da
+última etapa persistida. Entre as tentativas, aplica-se uma espera progressiva,
+denominada *backoff*, para reduzir a pressão sobre a dependência indisponível.
+Depois do limite configurado, a mensagem segue para a *Dead-Letter Queue*
+(DLQ), fila separada que conserva mensagens não processadas para inspeção e
+reenvio controlado. O mesmo fluxo permite que um usuário autenticado solicite
+uma nova análise do incidente.
+
+**Diagrama 9: Recuperação de falhas, DLQ e reanálise**
 
 ```mermaid
 sequenceDiagram
@@ -1027,7 +1035,7 @@ sequenceDiagram
         W->>DB: Registrar attemptCount
 
         loop Enquanto o processamento estiver ativo
-            W->>Q: Estender visibility timeout
+            W->>Q: Estender tempo de invisibilidade
         end
 
         W->>W: Retomar da última etapa persistida
@@ -1041,11 +1049,11 @@ sequenceDiagram
             W->>DB: AnalysisRun = RETRY_PENDING
 
             alt Ainda há tentativas
-                W->>Q: Alterar visibilidade com backoff
+                W->>Q: Adiar tentativa com espera progressiva
                 Note over Q,W: 30 s, 2 min, 5 min e 15 min
             else Quinta tentativa falhou
                 W->>DB: AnalysisRun = FAILED
-                Q->>DLQ: Redrive automático
+                Q->>DLQ: Encaminhar automaticamente
                 DLQ->>CW: Disparar alarme
             end
         else Mensagem permanentemente inválida
@@ -1057,7 +1065,7 @@ sequenceDiagram
         end
     end
 
-    opt Redrive técnico após correção
+    opt Reenvio técnico após correção
         DLQ->>Q: Republicar mensagem preservada
         Q->>W: Entregar com o mesmo eventId e idempotencyKey
         W->>DB: Retomar ou ignorar se concluída
@@ -1073,59 +1081,50 @@ sequenceDiagram
     end
 ```
 
-**Figura 9 — Recuperação de falhas, DLQ e reanálise.**<br>
 Fonte: Material produzido pelos autores (2026).
+
+Os valores iniciais adotados para a fila foram reunidos na Tabela 5.2. Eles
+delimitam o tempo concedido a cada processamento, o número de tentativas e o
+período disponível para uma recuperação manual.
+
+**Tabela 5.2: Parâmetros operacionais da fila de análise**
 
 | Configuração | Valor inicial |
 | --- | ---: |
 | Tipo da fila | SQS Standard |
-| Visibility timeout | 5 minutos |
+| Tempo de invisibilidade da mensagem | 5 minutos |
 | Renovação durante o processamento | A cada 60 segundos |
 | Máximo de recebimentos | 5 |
 | Retenção da fila principal | 4 dias |
 | Retenção da DLQ | 14 dias |
-| Long polling | 20 segundos |
+| Espera máxima por novas mensagens | 20 segundos |
 | Alarme | Uma ou mais mensagens na DLQ |
+
+Fonte: Material produzido pelos autores (2026).
 
 Mensagens duplicadas são tratadas por idempotência. O Worker retoma da última
 etapa persistida, e uma falha no Bedrock não remove previsão, incidente ou
 evidências nem produz uma hipótese artificial. Erros permanentes seguem
-diretamente para a DLQ; falhas transitórias usam backoff e redrive automático
-após o quinto recebimento.
+diretamente para a DLQ; falhas transitórias usam a espera progressiva e o
+reenvio automático após o quinto recebimento.
 
-#### 5.5.7 Pós-condições
+Ao concluir uma solicitação, o Worker registra a execução como `SUCCEEDED`.
+Cada previsão preserva a versão do modelo, o limiar, a janela-alvo e, quando
+disponível, o resultado de sua validação. Toda anomalia persistida permanece
+associada à evidência que a fundamenta e, quando aplicável, a um incidente. As
+hipóteses continuam pendentes até a revisão humana, enquanto mensagens que não
+puderam ser processadas permanecem recuperáveis na DLQ.
 
-- Toda mensagem concluída possui um `AnalysisRun = SUCCEEDED`.
-- Toda previsão registra `modelVersion`, limiar, janela-alvo e resultado da
-  validação quando disponível.
-- Toda anomalia persistida está ligada a uma evidência e, quando aplicável, a
-  um incidente.
-- Hipóteses produzidas pelo agente permanecem `PENDING` até revisão humana.
-- Mensagens não processáveis permanecem recuperáveis na DLQ.
+### 5.6 Visão geral ponta a ponta
 
-### 5.6 DS-04 — Visão geral ponta a ponta
+O fluxo ponta a ponta sintetiza como os processos anteriores se conectam. Ele
+começa quando o ARGUS ou um snapshot disponibiliza dados, acompanha sua
+normalização e análise e termina quando o usuário consulta o resultado e decide
+sobre uma hipótese. Essa visão não substitui os diagramas detalhados; sua função
+é evidenciar a continuidade entre a origem operacional, o processamento
+automático e a intervenção humana.
 
-#### 5.6.1 Objetivo
-
-Apresentar uma visão resumida do caminho completo dos dados, desde o ARGUS até
-a análise automática, consulta no dashboard, revisão humana e promoção ao
-golden set. Detalhes internos são apresentados nos diagramas anteriores.
-
-#### 5.6.2 Participantes
-
-| Participante | Responsabilidade |
-| --- | --- |
-| MySQL ARGUS/Snapshot | Fornecer dados operacionais |
-| Serviço de Ingestão | Normalizar e materializar janelas |
-| DynamoDB Operacional | Armazenar fatos e resultados |
-| SQS de Análise | Desacoplar ingestão e análise |
-| Worker de Análise | Executar previsão, detecção e diagnóstico |
-| Amazon Bedrock | Apoiar a geração de hipóteses |
-| Dashboard | Apresentar dados e receber a decisão humana |
-| Backend | Autenticar, consultar e revisar hipóteses |
-| Golden Set | Armazenar casos confirmados |
-
-#### 5.6.3 Diagrama
+**Diagrama 10: Visão geral ponta a ponta da plataforma View Show**
 
 ```mermaid
 sequenceDiagram
@@ -1140,7 +1139,7 @@ sequenceDiagram
     participant B as Amazon Bedrock
     participant UI as Dashboard
     participant API as Backend
-    participant GS as Golden Set
+    participant GS as Conjunto de referência
 
     SRC->>ING: Disponibilizar nova janela de dados
     ING->>ING: Validar e normalizar
@@ -1178,7 +1177,7 @@ sequenceDiagram
     U->>UI: Acessar dashboard
     Note over U,API: Autenticação federada conforme DS-02A
     UI->>API: Consultar visão geral ou diagnóstico
-    API->>DB: Consultar read models
+    API->>DB: Consultar modelos de leitura
     DB-->>API: Incidente, previsão, evidências e hipóteses
     API-->>UI: DTO público
     UI-->>U: Exibir resultado e revisão pendente
@@ -1197,61 +1196,42 @@ sequenceDiagram
     UI-->>U: Exibir decisão final
 ```
 
-**Figura 10 — Visão geral ponta a ponta da plataforma View Show.**<br>
 Fonte: Material produzido pelos autores (2026).
 
-#### 5.6.4 Referências aos diagramas detalhados
+Na primeira parte, o DS-01A detalha a sincronização do MySQL e o DS-01B
+detalha a importação de snapshots. Depois da publicação na fila, o DS-03A
+descreve a previsão horária, o DS-03B apresenta a detecção de incidentes e o
+DS-03C mostra a recuperação de falhas. A interação do usuário é aprofundada no
+DS-02A, para autenticação e consulta, e no DS-02B, para revisão de hipóteses.
 
-| Trecho | Diagrama detalhado |
-| --- | --- |
-| MySQL vivo, paginação, checkpoints e outbox | DS-01A |
-| Upload e importação do dump | DS-01B |
-| Login federado e consultas | DS-02A |
-| Concorrência e golden set | DS-02B |
-| Previsão e validação | DS-03A |
-| Detecção e incidente | DS-03B |
-| Retry, DLQ e reanálise | DS-03C |
-
-#### 5.6.5 Pós-condições
-
-- A janela ingerida está disponível no DynamoDB.
-- A solicitação de análise foi processada de forma idempotente.
-- Previsões não são apresentadas como incidentes confirmados.
-- Anomalias podem gerar ou reforçar incidentes.
-- Hipóteses permanecem pendentes até uma revisão humana.
-- Somente hipóteses confirmadas entram no golden set.
-- Todo o fluxo pode ser correlacionado pelo `traceId`.
+Ao final do percurso, a janela ingerida está disponível no DynamoDB e a análise
+foi processada de forma idempotente. Uma previsão continua distinta de um
+incidente observado, enquanto uma anomalia pode criar ou reforçar um incidente.
+As hipóteses permanecem pendentes até a decisão humana e somente as confirmadas
+passam a integrar o conjunto de referência. O `traceId`, identificador de
+correlação propagado entre os componentes, permite acompanhar uma execução ao
+longo de todo o fluxo.
 
 ### 5.7 Rastreabilidade interna
 
-#### 5.7.1 Relação com os casos de uso atuais
+Para evitar que os processos técnicos sejam interpretados como casos de uso
+independentes, a Tabela 5.3 registra a natureza de cada relação. Ela também
+resume a principal decisão arquitetural demonstrada por cada diagrama.
 
-| Diagrama | Natureza da relação | Casos de uso |
-| --- | --- | --- |
-| DS-01A | Suporte técnico: materializa dados vivos | UC-01, UC-06, UC-17, UC-19 |
-| DS-01B | Suporte técnico: materializa dados de snapshot | UC-01, UC-06, UC-17, UC-19 |
-| DS-02A | Realiza autenticação e consulta | UC-01, UC-02 |
-| DS-02B | Realiza consulta e validação de hipótese | UC-07, UC-11 |
-| DS-03A | Suporte técnico: produz previsões de QoE | UC-16, UC-17, UC-19 |
-| DS-03B | Suporte técnico: produz incidentes e diagnósticos | UC-05 a UC-08, UC-10, UC-12, UC-13 |
-| DS-03C | Fluxo de exceção e alternativa de reanálise | UC-10 |
-| DS-04 | Resume as relações anteriores | UC-01, UC-02, UC-05 a UC-08, UC-10, UC-11, UC-16, UC-17, UC-19 |
+**Tabela 5.3: Rastreabilidade dos diagramas de sequência**
 
-#### 5.7.2 Decisões arquiteturais
+| Diagrama | Casos de uso | Natureza da relação | Decisão principal |
+| --- | --- | --- | --- |
+| DS-01A | UC-01, UC-06, UC-17, UC-19 | Suporte técnico | Escrita direta no DynamoDB e saída transacional |
+| DS-01B | UC-01, UC-06, UC-17, UC-19 | Suporte técnico | Upload no S3 e MySQL temporário no Fargate |
+| DS-02A | UC-01, UC-02 | Realização | SSO federado com Backend for Frontend |
+| DS-02B | UC-07, UC-11 | Realização | Concorrência otimista e promoção transacional |
+| DS-03A | UC-16, UC-17, UC-19 | Suporte técnico | Previsão horária e validação posterior |
+| DS-03B | UC-05 a UC-08, UC-10, UC-12, UC-13 | Suporte técnico | Detecção a cada 15 minutos e diagnóstico por IA |
+| DS-03C | UC-10 | Exceção e alternativa | Repetição controlada, DLQ e reanálise |
+| DS-04 | UC-01, UC-02, UC-05 a UC-08, UC-10, UC-11, UC-16, UC-17, UC-19 | Síntese | Continuidade do dado até a decisão humana |
 
-| Decisão arquitetural | Diagrama |
-| --- | --- |
-| Escrita direta no DynamoDB | DS-01A e DS-01B |
-| Upload e MySQL temporário no Fargate | DS-01B |
-| Outbox transacional | DS-01A |
-| SSO federado e BFF | DS-02A |
-| Concorrência otimista | DS-02B |
-| Promoção transacional ao golden set | DS-02B |
-| Previsão horária | DS-03A |
-| Validação TP/FP/TN/FN | DS-03A |
-| Detecção a cada 15 minutos | DS-03B |
-| Retry e DLQ | DS-03C |
-| Fluxo completo | DS-04 |
+Fonte: Material produzido pelos autores (2026).
 
 ---
 
@@ -1323,8 +1303,9 @@ Disponível em:
 https://integrada.minhabiblioteca.com.br/reader/books/9788577800476.
 Acesso em: DD mês AAAA.
 
-OBJECT MANAGEMENT GROUP. *Unified Modeling Language — UML*. Disponível em:
-https://www.omg.org/spec/UML/. Acesso em: DD mês AAAA.
+OBJECT MANAGEMENT GROUP. *OMG Unified Modeling Language (OMG UML)*. Version
+2.5.1. 2017. Disponível em:
+https://www.omg.org/spec/UML/2.5.1. Acesso em: 6 set. 2026.
 
 GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de
 Frontend Globoplay*. 2026. Disponível em:
