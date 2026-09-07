@@ -503,7 +503,9 @@ Efeito:
 Este é o candidato mais provável para o sintoma **"ele não tá lendo de maneira
 correta"**: a leitura está tecnicamente certa para a convenção de chave, mas o
 resultado depende do relógio de parede, não do dado. Rodar `npm run reset &&
-npm run seed` "conserta" temporariamente — o que confirma o diagnóstico.
+npm run seed` "conserta" temporariamente — o que confirma o diagnóstico. (Esse
+"conserta" pressupõe que o `reset` limpou a tabela inteira; acima de 1 MB isso
+não é garantido — ver item **K**, `Scan` sem paginação.)
 
 ### B — O filtro de janela é só por bucket de hora; o item nunca é filtrado pelo timestamp  · impacto MÉDIO/ALTO
 
@@ -578,7 +580,9 @@ desde o hotfix `899691c` ("script reset não mais apaga conta de usuário") o
 com `DELETABLE_PK_PREFIX = "INC#"`. Contas de usuário (`pk = USER#<email>`) ficam
 de fora; `npm run reset` hoje **não** apaga contas registradas. (Versões
 anteriores deste levantamento, feitas sobre a branch de feature antes do rebase
-para `develop`, afirmavam o contrário — corrigido aqui.)
+para `develop`, afirmavam o contrário — corrigido aqui.) Esse `Scan` é de página
+única — sem laço de `LastEvaluatedKey` —, então acima de 1 MB o reset é parcial
+(ver item **K**).
 
 Além disso, o fallback em memória de `createUser` devolve "sucesso" para uma
 escrita que nunca chegou ao DynamoDB.
@@ -618,23 +622,32 @@ no corpo da resposta ([documentação oficial da AWS sobre paginação de `Query
 
 Isso atinge todo caminho que usa `Query` na tabela base:
 
-- `listIncidents` (rotas 5 e 13): cada um dos buckets de hora (`Query` por
+- `listIncidents` (rotas 5 e 13): cada bucket de hora (`Query` por
   `pk = "INC#<hora>"`) para de devolver itens além de 1 MB acumulado naquele
-  bucket — na prática, um bucket com muita evidência/hipótese (ver item **L**)
-  teria incidentes reais omitidos da listagem, sem qualquer sinal de que a
-  página não é a única.
+  bucket — incidentes reais seriam omitidos da listagem sem qualquer sinal de
+  que a página não é a única. No schema v2 a `Query` não carrega mais
+  evidência/hipótese junto (item **L**), então o teto é gasto só com incidentes;
+  em um ambiente com resíduo v1, os filhos legados ainda contam para o 1 MB.
 - `getIncidentBundle` (rotas 6, 7, 8; GSI `trace-index`): um incidente com
   evidências/hipóteses suficientes para passar de 1 MB perde silenciosamente o
   restante do bundle.
 - `dashboard/summary` (rota 13): mesmo truncamento de `listIncidents`, refletido
   nos contadores e em `recentIncidents`.
 
+**O mesmo vale para `scripts/reset.js`.** Ele faz um único `ScanCommand`
+(`ProjectionExpression: "pk, sk"`) e itera `scan.Items` — `scan.LastEvaluatedKey`
+nunca é lido. Um `Scan` também para em 1 MB por página; numa tabela acima disso,
+`npm run reset` apaga só a primeira página de itens `INC#` e **deixa incidentes
+antigos para trás**. Ou seja, `npm run reset && npm run seed` não garante um
+ambiente limpo quando a tabela passa de 1 MB — o que enfraquece o "rodar
+`reset && seed` conserta" citado no item **A**.
+
 Com o volume atual do seed (300 incidentes, 2.341 registros) o teto de 1 MB
 provavelmente não é atingido em nenhuma chamada isolada — por isso o sintoma não
 aparece hoje. Mas o levantamento descreve **como a API opera**, e a ausência de
 paginação é uma propriedade do código, não do volume de teste: ela se torna um
-bug de dados incompletos assim que a base crescer, sem exigir nenhuma mudança de
-código para se manifestar.
+bug de dados incompletos (ou de reset incompleto) assim que a base crescer, sem
+exigir nenhuma mudança de código para se manifestar.
 
 ### L — Amplificação de leitura por prefixo `INCIDENT#` compartilhado  · **corrigido em `a06f8f3`** (era impacto ALTO)
 
@@ -774,7 +787,8 @@ Passos necessários, em ordem:
   projeção ALL; TTL) e `monitoracao-golden-set` (chave simples `case_id` =
   assinatura `<component>#<deviceType>#<region>`; sem GSI; sem TTL).
 - **Operações usadas:** `Query`, `GetItem`, `PutItem`, `UpdateItem`. Nenhuma rota
-  usa `BatchGetItem` ou `TransactWriteItems`; `Scan` só no script `reset.js`.
+  usa `BatchGetItem` ou `TransactWriteItems`; `Scan` só no script `reset.js`
+  (e sem paginação — ver **K**).
 - **Schema de chave v2 (`a06f8f3`).** Evidência e hipótese usam prefixo próprio
   (`EVIDENCE#<id>#<seq>` / `HYPOTHESIS#<id>#<seq>`); `itemTypeFromSk` ainda lê o
   schema v1 (`INCIDENT#<id>#EVIDENCE|HYPOTHESIS#…`) para dados não migrados, e
