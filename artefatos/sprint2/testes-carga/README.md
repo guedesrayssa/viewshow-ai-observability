@@ -26,7 +26,9 @@ Consequências para quem for rodar esta rodada:
   continua disponível, mas só para reproduzir o baseline antigo numa rodada
   de comparação dedicada — ver comentário no topo do arquivo.
 - Novo script, `k6/auth-check.js`: verificação de controle de acesso (RNF04),
-  separado por ser um objetivo diferente (segurança, não desempenho).
+  separado por ser um objetivo diferente (segurança, não desempenho). Todas
+  as rotas entram no threshold e o run falha enquanto alguma aceitar chamada
+  sem sessão.
 - **Métricas de servidor** (CPU, RCU, logs) passaram a ser responsabilidade da
   pilha de observabilidade local (`docker-compose.observability.yml` —
   Grafana/Prometheus/Loki/Tempo), mantida por outra pessoa do time. A seção
@@ -186,13 +188,17 @@ rota bloqueia acesso sem sessão válida. Baixo custo, roda em segundos:
 k6 run -e BASE_URL=$BASE_URL k6/auth-check.js
 ```
 
-Hoje só `PATCH /api/v1/incidents/:id/hypothesis/review` está atrás de
-`requireAuth` (ver `apps/backend/api/src/middleware/requireAuth.js` e o uso em
-`src/routes/incidents.js`). As demais rotas de consulta (`/incidents`,
-`/dashboard/summary`, `/golden-set`, etc.) respondem sem sessão hoje — o
-script documenta isso como um gap conhecido em relação ao texto do RNF04
-(`requisitos.md`), não como falha do script. Só a rota protegida entra no
-threshold que reprova o run; o resto é informativo.
+O script exige `401` sem cookie e com cookie inválido em **todas** as rotas de
+consulta, diagnóstico e curadoria; com sessão válida, exige o status explícito
+esperado de cada endpoint. Isso inclui `POST /incidents/:id/diagnose`. Qualquer
+falha entra no threshold `checks{objetivo:rnf04}` e reprova a execução.
+
+Para não alterar dados reais, `PATCH /hypothesis/review` e `POST /diagnose`
+usam um ID aleatório cuja inexistência é primeiro comprovada por um GET
+autenticado. Portanto, o status autenticado esperado para ambas é `404`; a
+checagem nunca revisa uma hipótese nem cria diagnóstico. Na versão atual da
+API, somente o PATCH possui `requireAuth`, então é esperado que a execução
+revele o gap do RNF04 até a proteção ser aplicada às demais rotas e publicada.
 
 ## Leitura do servidor durante a rodada
 

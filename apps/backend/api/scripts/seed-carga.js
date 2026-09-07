@@ -12,9 +12,9 @@
  *   - assinaturas que batem na golden set em ~60% dos casos, para /diagnose
  *     exercitar tanto o atalho determinístico quanto o fallback do agente.
  *
- * Fonte canônica: artefatos/sprint2/testes-carga/seed-carga.js — esta cópia
- * precisa ficar em apps/backend/api/scripts/ para importar src/db/keys.js.
- * USO: node scripts/seed-carga.js
+ * Fonte canônica: artefatos/sprint2/testes-carga/seed-carga.js. Mantenha a
+ * cópia em apps/backend/api/scripts/ sincronizada.
+ * USO: node scripts/seed-carga.js (a partir de apps/backend/api)
  *
  * Variáveis:
  *   INCIDENTS_PER_HOUR  padrão 12
@@ -55,11 +55,9 @@ const { hourBucket, incidentSk } = keys;
  *       comparação "antes/depois"): INCIDENT#<id>#EVIDENCE#001. Todos os sk
  *       compartilhavam o prefixo "INCIDENT#", e a Query de listIncidents
  *       trazia evidências e hipóteses junto, descartando ~87% em memória.
- *       ⚠️ Não use v1 para inspecionar o CONTEÚDO da resposta com a API já
- *       corrigida: itemTypeFromSk (agora baseada no primeiro prefixo do sk)
- *       classificaria esses itens legados como "INCIDENT" também, misturando
- *       evidência/hipótese na listagem. Serve só para comparar custo de
- *       leitura (RCU) e latência contra o baseline antigo, não corretude.
+ *       A API continua lendo v1 corretamente durante a transição, mas a
+ *       listagem ainda paga o custo de ler e filtrar os filhos legados.
+ *       Use este modo apenas para comparar RCU e latência com o baseline.
  */
 const KEY_SCHEME = process.env.KEY_SCHEME || "v2";
 
@@ -208,15 +206,51 @@ function buildGoldenSet() {
 
 /* ---------- limpeza ---------- */
 
-/** Remove tudo da tabela operacional. Necessário para um antes/depois limpo:
- *  os itens do esquema antigo continuariam nos mesmos buckets de hora e
- *  seriam lidos pela Query, mascarando o ganho. */
-async function limparTabela(tableName) {
+const MAX_BATCH_ATTEMPTS = 8;
+
+function esperarBackoff(tentativa) {
+  const exponencial = Math.min(100 * 2 ** tentativa, 5000);
+  const jitter = Math.floor(Math.random() * 100);
+  return new Promise((resolve) => setTimeout(resolve, exponencial + jitter));
+}
+
+/** Envia até 25 operações, repetindo somente UnprocessedItems. */
+async function enviarLoteComRetry(
+  tableName,
+  requests,
+  { documentClient = client, wait = esperarBackoff, maxAttempts = MAX_BATCH_ATTEMPTS } = {},
+) {
+  let pendentes = { [tableName]: requests };
+
+  for (let tentativa = 0; tentativa < maxAttempts; tentativa += 1) {
+    const resposta = await documentClient.send(new BatchWriteCommand({ RequestItems: pendentes }));
+    const restantes = resposta.UnprocessedItems?.[tableName] || [];
+    if (restantes.length === 0) return;
+
+    if (tentativa === maxAttempts - 1) {
+      throw new Error(
+        `${restantes.length} operações em ${tableName} continuaram não processadas ` +
+        `após ${maxAttempts} tentativas`,
+      );
+    }
+
+    pendentes = { [tableName]: restantes };
+    await wait(tentativa);
+  }
+}
+
+/** Remove apenas dados de incidentes da tabela operacional. Contas USER# e
+ *  outros domínios compartilhados são preservados. A limpeza é necessária
+ *  para o benchmark não misturar os schemas v1 e v2. */
+async function limparTabela(
+  tableName,
+  { documentClient = client, wait = esperarBackoff, maxAttempts = MAX_BATCH_ATTEMPTS } = {},
+) {
   let chaveInicial;
   let removidos = 0;
 
   do {
-    const pagina = await client.send(
+    const pagina = await documentClient.send(
       new ScanCommand({
         TableName: tableName,
         ProjectionExpression: "pk, sk",
@@ -224,16 +258,13 @@ async function limparTabela(tableName) {
       }),
     );
 
-    const itens = pagina.Items || [];
+    const itens = (pagina.Items || []).filter(
+      ({ pk }) => typeof pk === "string" && pk.startsWith("INC#"),
+    );
     for (let i = 0; i < itens.length; i += 25) {
       const lote = itens.slice(i, i + 25);
-      await client.send(
-        new BatchWriteCommand({
-          RequestItems: {
-            [tableName]: lote.map(({ pk, sk }) => ({ DeleteRequest: { Key: { pk, sk } } })),
-          },
-        }),
-      );
+      const requests = lote.map(({ pk, sk }) => ({ DeleteRequest: { Key: { pk, sk } } }));
+      await enviarLoteComRetry(tableName, requests, { documentClient, wait, maxAttempts });
       removidos += lote.length;
     }
 
@@ -248,15 +279,10 @@ async function limparTabela(tableName) {
 async function batchWrite(tableName, items) {
   for (let i = 0; i < items.length; i += 25) {
     const lote = items.slice(i, i + 25);
-    let pendentes = { [tableName]: lote.map((Item) => ({ PutRequest: { Item } })) };
-
-    for (let tentativa = 0; tentativa < 6; tentativa += 1) {
-      const resposta = await client.send(new BatchWriteCommand({ RequestItems: pendentes }));
-      const naoProcessados = resposta.UnprocessedItems || {};
-      if (!naoProcessados[tableName] || naoProcessados[tableName].length === 0) break;
-      pendentes = naoProcessados;
-      await new Promise((r) => setTimeout(r, 2 ** tentativa * 100)); // backoff
-    }
+    await enviarLoteComRetry(
+      tableName,
+      lote.map((Item) => ({ PutRequest: { Item } })),
+    );
   }
 }
 
@@ -298,7 +324,11 @@ async function main() {
   console.log("    Rode o teste logo em seguida: window=15m só encontra dado por ~1 h.");
 }
 
-main().catch((error) => {
-  console.error("Falha ao semear:", error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("Falha ao semear:", error);
+    process.exit(1);
+  });
+}
+
+module.exports = { enviarLoteComRetry, limparTabela };

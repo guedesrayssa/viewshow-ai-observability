@@ -28,12 +28,26 @@ function hypothesisSk(incidentId, seq) {
   return `HYPOTHESIS#${incidentId}#${String(seq).padStart(10, "0")}`;
 }
 
-/** Classifica pelo primeiro segmento do sk — cada tipo tem prefixo próprio. */
+/**
+ * Classifica chaves do schema atual e do schema legado durante a transição.
+ *
+ * v2: EVIDENCE#<id>#<seq> / HYPOTHESIS#<id>#<seq>
+ * v1: INCIDENT#<id>#EVIDENCE#<seq> / INCIDENT#<id>#HYPOTHESIS#<seq>
+ *
+ * A forma do sk inteiro importa: olhar apenas o primeiro segmento faria os
+ * filhos v1 parecerem incidentes e poderia sobrescrever bundle.incident.
+ */
 function itemTypeFromSk(sk) {
-  const prefix = sk.split("#")[0];
-  if (prefix === "INCIDENT") return "INCIDENT";
-  if (prefix === "EVIDENCE") return "EVIDENCE";
-  if (prefix === "HYPOTHESIS") return "HYPOTHESIS";
+  if (typeof sk !== "string") return "UNKNOWN";
+
+  const parts = sk.split("#");
+  if (parts[0] === "EVIDENCE" && parts.length >= 3) return "EVIDENCE";
+  if (parts[0] === "HYPOTHESIS" && parts.length >= 3) return "HYPOTHESIS";
+  if (parts[0] !== "INCIDENT") return "UNKNOWN";
+
+  if (parts.length === 2) return "INCIDENT";
+  if (parts[2] === "EVIDENCE" && parts.length >= 4) return "EVIDENCE";
+  if (parts[2] === "HYPOTHESIS" && parts.length >= 4) return "HYPOTHESIS";
   return "UNKNOWN";
 }
 

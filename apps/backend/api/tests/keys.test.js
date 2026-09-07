@@ -20,6 +20,19 @@ test("itemTypeFromSk classifica os três tipos pelo prefixo", () => {
   assert.equal(itemTypeFromSk("QUALQUER#outra-coisa"), "UNKNOWN");
 });
 
+test("itemTypeFromSk mantém leitura compatível com filhos do schema v1", () => {
+  assert.equal(itemTypeFromSk("INCIDENT#inc-000001#EVIDENCE#001"), "EVIDENCE");
+  assert.equal(itemTypeFromSk("INCIDENT#inc-000001#HYPOTHESIS#0000000042"), "HYPOTHESIS");
+  assert.equal(itemTypeFromSk("INCIDENT#inc-000001#DESCONHECIDO#001"), "UNKNOWN");
+});
+
+test("itemTypeFromSk só aceita a chave curta como incidente", () => {
+  assert.equal(itemTypeFromSk("INCIDENT#inc-000001"), "INCIDENT");
+  assert.notEqual(itemTypeFromSk("INCIDENT#inc-000001#EVIDENCE#001"), "INCIDENT");
+  assert.notEqual(itemTypeFromSk("INCIDENT#inc-000001#HYPOTHESIS#0000000042"), "INCIDENT");
+  assert.equal(itemTypeFromSk(null), "UNKNOWN");
+});
+
 test("regressão: begins_with(sk, 'INCIDENT#') não bate mais com filhos", () => {
   // Guarda de regressão do defeito medido em
   // artefatos/sprint2/testes-desempenho.md §8: antes da correção, os três

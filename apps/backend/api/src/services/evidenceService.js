@@ -111,7 +111,14 @@ async function saveHypothesis(incidentId, hypothesis) {
 async function getLatestHypothesis(incidentId) {
   const bundle = await getIncidentBundle(incidentId);
   if (!bundle.hypotheses.length) return null;
-  return bundle.hypotheses.reduce((latest, item) => (item.sk > latest.sk ? item : latest));
+  // Compara apenas o último segmento para que v1
+  // (INCIDENT#id#HYPOTHESIS#epoch) e v2 (HYPOTHESIS#id#epoch) possam
+  // coexistir sem o prefixo do schema decidir incorretamente qual é a última.
+  return bundle.hypotheses.reduce((latest, item) => {
+    const latestSequence = latest.sk.split("#").at(-1);
+    const itemSequence = item.sk.split("#").at(-1);
+    return itemSequence > latestSequence ? item : latest;
+  });
 }
 
 /** Marca a hipótese mais recente como confirmada/refutada por um humano (US-ENG-01). */
