@@ -41,12 +41,26 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
+    _validate_load_test_fault_config(app)
+
     container.init_app(app)
     cors.init_app(app)
     register_error_handlers(app)
     _register_blueprints(app)
 
     return app
+
+
+def _validate_load_test_fault_config(app: Flask) -> None:
+    if not app.config["LOAD_TEST_FAULTS_ENABLED"]:
+        return
+    if not app.config["LOAD_TEST_FAULT_TOKEN"]:
+        raise RuntimeError(
+            "LOAD_TEST_FAULT_TOKEN é obrigatório quando LOAD_TEST_FAULTS_ENABLED=1."
+        )
+    delay_ms = app.config["LOAD_TEST_TIMEOUT_DELAY_MS"]
+    if not isinstance(delay_ms, int) or not 0 <= delay_ms <= 5_000:
+        raise RuntimeError("LOAD_TEST_TIMEOUT_DELAY_MS deve estar entre 0 e 5000.")
 
 
 def _register_blueprints(app: Flask) -> None:

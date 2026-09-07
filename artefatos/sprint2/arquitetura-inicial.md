@@ -356,13 +356,14 @@ convivem na mesma tabela, distinguidos pelo prefixo do `sk`. A partição é um
 | Entidade | `pk` | `sk` |
 | --- | --- | --- |
 | Incidente | balde de hora | `INCIDENT#<id>` |
-| Evidência | balde de hora | `INCIDENT#<id>#EVIDENCE#001` |
-| Hipótese | balde de hora | `INCIDENT#<id>#HYPOTHESIS#0000000001` |
+| Evidência | balde de hora | `EVIDENCE#<id>#001` |
+| Hipótese | balde de hora | `HYPOTHESIS#<id>#0000000001` |
 
-&emsp; **Esse esquema é a causa do defeito encontrado nos testes de carga.** Os
-três prefixos começam com `INCIDENT#`, então a consulta que lista incidentes lê
-também todas as evidências e hipóteses, e descarta o excedente em memória. A §7
-mede o custo disso; a §8 mostra a correção.
+&emsp; A versão original usava `INCIDENT#<id>#EVIDENCE#…` e
+`INCIDENT#<id>#HYPOTHESIS#…`. Como os três tipos começavam com `INCIDENT#`, a
+consulta que lista incidentes lia também todos os filhos e descartava o excedente
+em memória. A §7 mede o custo desse schema v1. O schema atual separa os prefixos e
+mantém classificação compatível com v1 durante a transição.
 
 &emsp; O modelo de dados aparece neste documento de arquitetura porque, neste
 sistema, **ele é uma decisão arquitetural e não de implementação**: define o custo
@@ -447,7 +448,7 @@ motiva, as alternativas descartadas e o custo que ela impõe.
 | **Alternativa descartada** | **PostgreSQL (RDS).** Mais expressivo em consulta, mas exige dimensionar instância, e a instância mínima com alta disponibilidade custa mais que o DynamoDB no volume do projeto |
 | **Alternativa descartada** | **MongoDB em EC2.** Avaliada seriamente e **rejeitada por medição** — ver §8 |
 | **Custo aceito** | Consultas fora do padrão previsto são caras ou impossíveis. Mudança de padrão de acesso pode exigir índice novo ou remodelagem |
-| **Armadilha encontrada** | O projeto de tabela única exige **disciplina rigorosa nos prefixos de chave**. Falhamos nisso, e a §7 mede o preço |
+| **Armadilha encontrada** | O projeto de tabela única exige **disciplina rigorosa nos prefixos de chave**. O schema v1 falhou nisso, a §7 mede o preço e a correção atual separa os tipos |
 
 #### D3 · EventBridge + SQS, não `cron` em máquina
 
@@ -858,8 +859,8 @@ a resposta teria sido aumentar a máquina, multiplicando a conta sem resolver na
 &emsp; O banco atendeu tudo. **O volume pedido é que era anormal** — cerca de oito
 vezes maior do que o resultado devolvido justificaria.
 
-&emsp; A explicação está no modelo de dados da §3.4: os três tipos de registro
-começam com o prefixo `INCIDENT#`, e a consulta que lista incidentes pede
+&emsp; A explicação está no modelo de dados legado descrito na §3.4: os três tipos
+de registro começavam com o prefixo `INCIDENT#`, e a consulta que lista incidentes pedia
 "tudo que começa com `INCIDENT#`". **Cada consulta lê a gaveta inteira** —
 incidentes, evidências e hipóteses — e descarta 87% em memória.
 
@@ -906,9 +907,9 @@ métrica errada, com a estatística errada, nunca dispara.
 
 &emsp; O teste mudou três coisas neste documento:
 
-1. **O dimensionamento deixou de ser palpite.** A instância de 0,25 vCPU não é
-   subdimensionada — ela é suficiente **depois** da correção. Sem o teste,
-   teríamos aumentado a máquina.
+1. **O dimensionamento ganhou uma hipótese testável.** Não há base para aumentar
+   a instância de 0,25 vCPU antes de medir o schema corrigido; afirmar que ela é
+   suficiente também depende dessa nova rodada.
 2. **O modelo de dados subiu de categoria.** Deixou de ser detalhe de implementação
    e passou a constar como decisão arquitetural (§3.4), porque define o custo de
    toda a camada de consulta.
@@ -921,7 +922,7 @@ métrica errada, com a estatística errada, nunca dispara.
 
 | # | Correção | Esforço | Ganho |
 | --- | --- | --- | --- |
-| **1** | Separar os prefixos: `EVIDENCE#…` e `HYPOTHESIS#…` em vez de `INCIDENT#…` | ~2 linhas + repovoar | ~8× menos leitura e processamento |
+| **1** | Separar os prefixos: `EVIDENCE#…` e `HYPOTHESIS#…` em vez de `INCIDENT#…` | **Implementado**, com compatibilidade de leitura v1/v2 | ~8× menos leitura e processamento (projeção pendente de nova rodada) |
 | **2** | Paginar a rota de listagem (limite + marcador de continuação) | médio | põe teto no tamanho da resposta |
 | **3** | Aumentar a capacidade acima de 0,25 vCPU | configuração | **só depois de 1 e 2** |
 
@@ -1156,7 +1157,7 @@ documento mais bonito e menos útil.
 | --- | --- | --- | --- | --- |
 | **R1** | **A EC2 de borda é ponto único de falha.** O SLA da AWS para instância individual é 99,5% — **abaixo do RNF09**, que exige 99,9% | Indisponibilidade total do painel | ASG `min=max=1` + reassociação do IP elástico no boot → recuperação em ~2–3 min, dentro do orçamento de 43 min/mês desde que os eventos sejam raros | **Aceito conscientemente.** Se o RNF09 for auditado com rigor, revisar |
 | **R2** | **Certificado TLS.** Certificados do ACM são gratuitos e renovam sozinhos no ALB, mas **não podem ser exportados para EC2** | Expiração silenciosa → painel fora do ar | `certbot` com renovação automática, e alarme de dias restantes | **A implementar** |
-| **R3** | **O defeito de chave da §7 ainda está no código.** A rodada `KEY_SCHEME=v2` foi preparada mas não executada | RNF14 não atendido; DynamoDB 4× mais caro que o necessário | Correções 1 e 2 da §7.8, seguidas de nova medição | **Aberto — maior prioridade** |
+| **R3** | **O defeito de prefixo foi corrigido, mas paginação e medição pós-correção continuam pendentes.** A leitura aceita schema v1/v2 e o seed usa v2 por padrão | Ainda não é possível afirmar atendimento ao RNF14 nem quantificar a economia real | Publicar a imagem, semear v2 e repetir a bateria; depois paginar a listagem | **Parcialmente mitigado — medição prioritária** |
 | **R4** | **A latência do Bedrock nunca foi medida.** Estava desativado durante todos os testes | O RNF14 pode não ser atendido com a explicação ativa | Repetir a rodada `pesada` com `BEDROCK_ENABLED=true` | **Aberto** |
 | **R5** | **Mediana travada em 10.001 ms** em todas as rodadas de carga, inclusive na rota `bundle`, que faz uma única consulta. Valor constante assim sugere tempo limite configurado, não fila natural | Pode mascarar outro defeito | Rastrear a origem do tempo limite na cadeia Nginx → aplicação → SDK | **Aberto** |
 | **R6** | **O Bedrock não está no orçamento da §6** | Subestimação da conta | Modelar por token, com base em uso real | **Aberto** |
@@ -1175,12 +1176,11 @@ documento mais bonito e menos útil.
 
 ### 10.3 Trabalho futuro, em ordem de valor
 
-1. **Corrigir os prefixos de chave e paginar** (R3). É a maior economia
-   documentada — US$ 70/mês, 33% da conta — e o único caminho para atender ao
-   RNF14. Custa ~2 linhas de código.
-2. **Medir a arquitetura corrigida.** Repetir as rodadas com `KEY_SCHEME=v2` e
+1. **Publicar e medir a arquitetura com os prefixos corrigidos.** Repetir as
+   rodadas com `KEY_SCHEME=v2` e
    comparar contra a linha de base da §7.3. **Sem isso, os números da §6.4
    permanecem projeção.**
+2. **Paginar a listagem** (R3), colocando teto no tamanho da resposta.
 3. **Ativar o Bedrock e medir** (R4, R6).
 4. **Escrever a infraestrutura como código** (Terraform ou CDK), tornando a §9
    executável em vez de descritiva.
@@ -1203,13 +1203,12 @@ documento mais bonito e menos útil.
 | **RNF09** — 99,9% | Serviços gerenciados multi-AZ; publicação sem interrupção; **ressalva R1 sobre a EC2 de borda** | §9.2, §10.1 |
 | **RNF11** — multi-plataforma | Componente Normalizador converte para `signal_point` | §3.2 |
 | **RNF12** — cobertura 70% | Etapa 1 do pipeline bloqueia a integração | §9.2 |
-| **RNF14** — **p95 < 2 s** | **Não atendido hoje.** Capacidade medida de ~4 req/s; causa identificada e correção especificada | **§7, R3** |
+| **RNF14** — **p95 < 2 s** | O baseline v1 não atendeu (~4 req/s). A principal causa foi corrigida no código, mas o atendimento pós-correção ainda não foi medido | **§7, R3** |
 | **RNF15** — alerta em 30 s | Alarmes do CloudWatch com estatística explícita | §9.4 |
 
-&emsp; **A linha do RNF14 é a mais importante desta tabela.** Ela declara um
-requisito não atendido, com a causa medida, a correção especificada e o ganho
-estimado. Um documento de arquitetura que afirmasse conformidade sem medição seria
-menos honesto e menos útil.
+&emsp; **A linha do RNF14 é a mais importante desta tabela.** Ela separa o baseline
+reprovado, a correção já implementada e a validação ainda pendente. Declarar
+conformidade antes da nova medição seria menos honesto e menos útil.
 
 ---
 
@@ -1274,17 +1273,18 @@ o maior item da fatura. Depois de medir, a substituição saiu mais cara e com m
 garantias — porque **o banco não era caro por culpa do banco**, mas de uma consulta
 que lia oito vezes mais do que devolvia.
 
-&emsp; **Segundo: a maior economia da arquitetura não é arquitetural.** Corrigir
-dois prefixos de chave vale US$ 70 por mês, 33% da conta. Toda a consolidação de
-infraestrutura vale US$ 42, e consome tempo de operação que a torna, em dinheiro,
-aproximadamente neutra. A substituição do load balancer permanece no desenho por
+&emsp; **Segundo: a maior economia projetada da arquitetura não é arquitetural.**
+Corrigir dois prefixos de chave pode economizar cerca de US$ 70 por mês, 33% da
+conta, hipótese que a rodada pós-correção ainda precisa confirmar. Toda a
+consolidação de infraestrutura vale US$ 42, e consome tempo de operação que a
+torna, em dinheiro, aproximadamente neutra. A substituição do load balancer permanece no desenho por
 **portabilidade** — um argumento de RNF06, declarado como tal, e não disfarçado de
 economia.
 
-&emsp; **Terceiro: o sistema hoje não atende ao RNF14.** A capacidade medida é de
-cerca de 4 requisições por segundo contra as 137 do alvo. A causa está identificada,
-a correção está especificada e cabe em duas linhas. Preferimos declarar isso do que
-apresentar um desenho em conformidade que a medição contradiria.
+&emsp; **Terceiro: o baseline v1 não atendeu ao RNF14.** A capacidade medida foi de
+cerca de 4 requisições por segundo contra as 137 do alvo. A principal causa está
+corrigida no código, mas o estado atual continua **não validado** até a nova
+rodada. Preferimos declarar essa lacuna a apresentar conformidade sem medição.
 
 &emsp; O que este documento defende, no fim, é menos um desenho do que um método:
 **premissa sem fonte é hipótese, orçamento sem reconferência é ficção, e arquitetura

@@ -307,6 +307,9 @@ O backend é escolhido por variável de ambiente; nenhum serviço muda:
 | `DYNAMODB_ENDPOINT_URL` | — | Endpoint alternativo (DynamoDB Local). |
 | `DYNAMODB_BUCKET_SECONDS` | `3600` | Faixa de tempo de cada partição. |
 | `DYNAMODB_MAX_QUERY_WORKERS` | `8` | Consultas de bucket disparadas em paralelo. |
+| `LOAD_TEST_FAULTS_ENABLED` | `0` | Habilita exclusivamente as falhas controladas do teste de resiliência. |
+| `LOAD_TEST_FAULT_TOKEN` | vazio | Segredo obrigatório para autorizar um header de falha quando o mecanismo está habilitado. |
+| `LOAD_TEST_TIMEOUT_DELAY_MS` | `250` | Atraso de 0 a 5.000 ms antes da resposta 504 simulada. |
 
 Provisionamento (idempotente — cria tabela, índice e TTL):
 
@@ -380,6 +383,26 @@ Limites conhecidos:
   para relatórios longos é agregar por dia na escrita.
 - **A ingestão não é idempotente** (veja a modelagem acima).
 - **Não há autenticação nem controle de vazão** nos endpoints de ingestão.
+
+### Falhas controladas para teste de resiliência
+
+`POST /v1/telemetry/events` possui um mecanismo opt-in para reproduzir, sem
+alterar a infraestrutura, duas respostas de degradação: fila cheia
+(`429`/`queue_full`) e timeout de dependência (`504`/`dependency_timeout`). O
+mecanismo vem desabilitado, exige token quando habilitado e não persiste o lote
+recusado. Sem `LOAD_TEST_FAULTS_ENABLED=1`, os headers são ignorados.
+
+```bash
+export LOAD_TEST_FAULTS_ENABLED=1
+export LOAD_TEST_FAULT_TOKEN='<segredo-exclusivo-da-rodada>'
+export LOAD_TEST_TIMEOUT_DELAY_MS=250
+```
+
+O cliente autorizado envia `X-View-Show-Test-Fault: queue-full|timeout` e
+`X-View-Show-Test-Token: <segredo>`. O roteiro, os thresholds e os resultados
+ficam em [`../sprint2/testes-carga/README.md`](../sprint2/testes-carga/README.md).
+Essa injeção comprova contrato e recuperação da API, mas não substitui a rodada
+contra uma fila e uma dependência reais em staging.
 
 ## Respostas de erro
 
