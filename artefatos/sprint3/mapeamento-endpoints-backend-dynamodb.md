@@ -4,8 +4,7 @@ Levantamento de **como a API opera hoje**, lido do código — não da documenta
 Objetivo: confirmar se as leituras estão corretas e registrar a arquitetura de
 dados **como ela de fato é**.
 
-- **Escopo:** `apps/backend/api/src` no branch `feat/visao-geral-dashboard-summary`
-  (commit `bc2a432`).
+- **Escopo:** `apps/backend/api/src` no branch `develop` (commit `899691c`).
 - **Data do levantamento:** 2026-09-03.
 - **Método:** leitura de `src/app.js`, `src/routes/*.js`, `src/services/*.js`,
   `src/db/*.js`, `src/middleware/requireAuth.js`, `src/auth/session.js`,
@@ -412,9 +411,9 @@ a 9 está protegida.
 - **Response 200:**
   ```json
   { "stats": [
-      { "id": "affected-sessions",  "label": "Sessões afetadas",   "value": <Σ incident.devices>,           "format": "compact", "accent": "info" },
-      { "id": "active-incidents",   "label": "Incidentes ativos",  "value": <nº de status !== "success">,   "format": "integer", "accent": "warning" },
-      { "id": "critical-incidents", "label": "Incidentes críticos","value": <nº de status === "critical">,  "format": "integer", "accent": "critical" }
+      { "id": "affected-sessions",  "label": "Sessões afetadas",   "value": "<Σ incident.devices, pt-BR>",  "accent": "info" },
+      { "id": "active-incidents",   "label": "Incidentes ativos",  "value": "<nº de status !== \"success\">", "accent": "warning" },
+      { "id": "critical-incidents", "label": "Incidentes críticos","value": "<nº de status === \"critical\">","accent": "critical" }
     ],
     "recentIncidents": [ /* os 5 primeiros de listIncidents({window:"24h"}), itens crus */ ] }
   ```
