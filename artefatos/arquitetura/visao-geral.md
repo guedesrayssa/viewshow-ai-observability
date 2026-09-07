@@ -8,20 +8,13 @@
 
 ## 1. Objetivo
 
-Este documento apresenta como os componentes do View Show se relacionam e
-registra as decisões que orientam o desenvolvimento. Os contratos detalhados
-de dados, mensagens e HTTP estão nos documentos especializados desta pasta.
+Este documento apresenta como os componentes do View Show se relacionam e registra as decisões que orientam o desenvolvimento. Os contratos detalhados de dados, mensagens e HTTP estão nos documentos especializados desta pasta.
 
-O View Show recebe dados operacionais do ARGUS, materializa consultas no
-DynamoDB, executa modelos de análise e apresenta previsões, incidentes,
-evidências e hipóteses em um dashboard autenticado.
+O View Show recebe dados operacionais do ARGUS, materializa consultas no DynamoDB, executa modelos de análise e apresenta previsões, incidentes, evidências e hipóteses em um dashboard autenticado.
 
 ## 2. Limites do sistema
 
-O ARGUS e o SSO corporativo pertencem ao ambiente interno da Globo. O View Show
-consome esses serviços, mas não administra seus bancos, usuários ou regras. O
-Amazon Bedrock é uma dependência gerenciada utilizada para apoiar a formulação
-de hipóteses; a confirmação da causa permanece sob responsabilidade humana.
+O ARGUS e o SSO corporativo pertencem ao ambiente interno da Globo. O View Show consome esses serviços, mas não administra seus bancos, usuários ou regras. O Amazon Bedrock é uma dependência gerenciada utilizada para apoiar a formulação de hipóteses; a confirmação da causa permanece sob responsabilidade humana.
 
 Não fazem parte da primeira versão:
 
@@ -73,35 +66,23 @@ flowchart LR
 
 ### 3.1 Dashboard
 
-Aplicação Next.js entregue pelo Amplify. Ela apresenta dados, inicia uploads,
-consulta o progresso das tarefas e envia decisões humanas. Não acessa o
-DynamoDB, a SQS ou o ARGUS diretamente.
+Aplicação Next.js entregue pelo Amplify. Ela apresenta dados, inicia uploads, consulta o progresso das tarefas e envia decisões humanas. Não acessa o DynamoDB, a SQS ou o ARGUS diretamente.
 
 ### 3.2 Backend API
 
-Aplicação Node/Express executada em ECS/Fargate. Ela valida a sessão, converte
-os modelos de leitura em DTOs públicos, inicia importações, publica reanálises e
-registra revisões. Campos físicos do DynamoDB não aparecem nas respostas.
+Aplicação Node/Express executada em ECS/Fargate. Ela valida a sessão, converte os modelos de leitura em DTOs públicos, inicia importações, publica reanálises e registra revisões. Campos físicos do DynamoDB não aparecem nas respostas.
 
 ### 3.3 Serviço de Ingestão
 
-Aplicação batch Python executada como ECS Task. O EventBridge inicia `sync` a
-cada 15 minutos; importações e reprocessamentos utilizam tarefas sob demanda.
-Ela lê o ARGUS ou um MySQL temporário restaurado, normaliza dados, grava fatos e
-projeções diretamente no DynamoDB e publica solicitações de análise pela outbox.
+Aplicação batch Python executada como ECS Task. O EventBridge inicia `sync` a cada 15 minutos; importações e reprocessamentos utilizam tarefas sob demanda. Ela lê o ARGUS ou um MySQL temporário restaurado, normaliza dados, grava fatos e projeções diretamente no DynamoDB e publica solicitações de análise pela outbox.
 
 ### 3.4 Worker de Análise
 
-Consumidor Python da SQS executado como ECS Service. Ele realiza detecção a cada
-janela de 15 minutos, previsão a cada janela horária e reanálise sob demanda. O
-orquestrador e o agente diagnóstico são módulos internos deste componente.
+Consumidor Python da SQS executado como ECS Service. Ele realiza detecção a cada janela de 15 minutos, previsão a cada janela horária e reanálise sob demanda. O orquestrador e o agente diagnóstico são módulos internos deste componente.
 
 ### 3.5 Persistência
 
-O DynamoDB `monitoracao-operacional` armazena fatos, projeções, previsões,
-incidentes, evidências, hipóteses e controles de execução. O DynamoDB
-`monitoracao-golden-set` conserva apenas diagnósticos confirmados. Dumps e
-objetos grandes ficam no S3; não existe RDS na solução.
+O DynamoDB `monitoracao-operacional` armazena fatos, projeções, previsões, incidentes, evidências, hipóteses e controles de execução. O DynamoDB `monitoracao-golden-set` conserva apenas diagnósticos confirmados. Dumps e objetos grandes ficam no S3; não existe RDS na solução.
 
 ## 4. Comunicação entre componentes
 
@@ -117,10 +98,7 @@ objetos grandes ficam no S3; não existe RDS na solução.
 | Backend | DynamoDB | AWS SDK | ler projeções e registrar revisões |
 | Cognito | SSO Globo | OIDC ou SAML | autenticar identidade corporativa |
 
-Comunicação síncrona é usada quando o solicitante precisa da resposta para
-continuar. Processamentos demorados retornam HTTP 202 e são acompanhados por
-consulta periódica. SQS é usada quando a análise pode ocorrer depois que a
-ingestão já concluiu sua parte.
+Comunicação síncrona é usada quando o solicitante precisa da resposta para continuar. Processamentos demorados retornam HTTP 202 e são acompanhados por consulta periódica. SQS é usada quando a análise pode ocorrer depois que a ingestão já concluiu sua parte.
 
 ## 5. Fluxo principal
 
@@ -154,68 +132,49 @@ sequenceDiagram
     API-->>U: Resultado e revisão pendente
 ```
 
-Os fluxos completos, com alternativas e falhas, estão em
-[Fluxos integrados](fluxos.md).
+Os fluxos completos, com alternativas e falhas, estão em [Fluxos integrados](fluxos.md).
 
 ## 6. Decisões arquiteturais
 
 ### D1 — AWS como ambiente de execução
 
-Frontend, APIs, processamento, mensageria, armazenamento, identidade e
-observabilidade são provisionados na AWS. A comunicação com o ARGUS ocorre por
-conectividade privada autorizada pela Globo.
+Frontend, APIs, processamento, mensageria, armazenamento, identidade e observabilidade são provisionados na AWS. A comunicação com o ARGUS ocorre por conectividade privada autorizada pela Globo.
 
 ### D2 — DynamoDB como banco operacional
 
-O sistema utiliza modelos de leitura orientados às consultas e evita joins no
-momento do request. Não haverá RDS na primeira versão. Itens grandes e dumps
-ficam no S3.
+O sistema utiliza modelos de leitura orientados às consultas e evita joins no momento do request. Não haverá RDS na primeira versão. Itens grandes e dumps ficam no S3.
 
 ### D3 — Escrita direta da ingestão
 
-A ingestão grava fatos e projeções diretamente no DynamoDB. A SQS recebe apenas
-solicitações de análise, reduzindo componentes e evitando um consumidor criado
-somente para repetir a persistência.
+A ingestão grava fatos e projeções diretamente no DynamoDB. A SQS recebe apenas solicitações de análise, reduzindo componentes e evitando um consumidor criado somente para repetir a persistência.
 
 ### D4 — Comunicação assíncrona para análise
 
-Detecção, previsão e reanálise são desacopladas pela SQS. Duplicidade e entrega
-fora de ordem são tratadas por identificadores idempotentes.
+Detecção, previsão e reanálise são desacopladas pela SQS. Duplicidade e entrega fora de ordem são tratadas por identificadores idempotentes.
 
 ### D5 — Outbox para publicação confiável
 
-O watermark da janela e a intenção de publicar sua análise são persistidos na
-mesma transação. Uma execução posterior recupera itens pendentes quando a SQS
-estiver indisponível.
+O watermark da janela e a intenção de publicar sua análise são persistidos na mesma transação. Uma execução posterior recupera itens pendentes quando a SQS estiver indisponível.
 
 ### D6 — Orquestrador dentro do Worker de Análise
 
-O orquestrador é um módulo interno e não possui repositório, deploy ou API
-próprios inicialmente. Essa separação poderá ser revista se ele precisar de
-escala ou ciclo de entrega independentes.
+O orquestrador é um módulo interno e não possui repositório, deploy ou API próprios inicialmente. Essa separação poderá ser revista se ele precisar de escala ou ciclo de entrega independentes.
 
 ### D7 — IA produz hipóteses, não decisões
 
-O Bedrock ajuda a explicar sinais encontrados pelos modelos. Toda hipótese é
-marcada como pendente até uma pessoa autenticada confirmá-la ou refutá-la.
+O Bedrock ajuda a explicar sinais encontrados pelos modelos. Toda hipótese é marcada como pendente até uma pessoa autenticada confirmá-la ou refutá-la.
 
 ### D8 — Conjunto de referência separado
 
-Diagnósticos confirmados ficam em uma tabela separada. A ingestão não possui
-acesso; o Worker de Análise pode consultar; somente o Backend promove uma
-decisão humana.
+Diagnósticos confirmados ficam em uma tabela separada. A ingestão não possui acesso; o Worker de Análise pode consultar; somente o Backend promove uma decisão humana.
 
 ### D9 — Importação assíncrona pelo S3
 
-O navegador envia o dump diretamente ao S3. O Backend devolve HTTP 202 após
-iniciar a restauração, e o dashboard acompanha `ImportJob` até `COMPLETED` ou
-`FAILED`.
+O navegador envia o dump diretamente ao S3. O Backend devolve HTTP 202 após iniciar a restauração, e o dashboard acompanha `ImportJob` até `COMPLETED` ou `FAILED`.
 
 ### D10 — Contratos versionados
 
-Eventos, itens persistidos e respostas públicas possuem versão. Alterações
-incompatíveis criam uma nova versão; campos opcionais podem ser acrescentados
-quando consumidores tratam sua ausência.
+Eventos, itens persistidos e respostas públicas possuem versão. Alterações incompatíveis criam uma nova versão; campos opcionais podem ser acrescentados quando consumidores tratam sua ausência.
 
 ## 7. Segurança
 
@@ -230,20 +189,13 @@ quando consumidores tratam sua ausência.
 
 ## 8. Disponibilidade e recuperação
 
-Falhas da origem impedem apenas a publicação da janela afetada. Falhas da SQS
-deixam a outbox pendente. Falhas do Worker preservam dados intermediários e
-podem resultar em nova tentativa ou DLQ. Falhas do Bedrock não apagam a
-previsão, o incidente ou suas evidências.
+Falhas da origem impedem apenas a publicação da janela afetada. Falhas da SQS deixam a outbox pendente. Falhas do Worker preservam dados intermediários e podem resultar em nova tentativa ou DLQ. Falhas do Bedrock não apagam a previsão, o incidente ou suas evidências.
 
-Dumps inválidos não substituem o dataset disponível. Durante uma importação, o
-conjunto anterior permanece consultável até que todos os fatos, projeções e
-watermarks do novo conjunto tenham sido concluídos.
+Dumps inválidos não substituem o dataset disponível. Durante uma importação, o conjunto anterior permanece consultável até que todos os fatos, projeções e watermarks do novo conjunto tenham sido concluídos.
 
 ## 9. Observabilidade
 
-Todos os componentes propagam `traceId`. Ingestão e análise acrescentam
-`runId`, `eventId` e identificadores de janela. O CloudWatch reúne logs,
-métricas e alarmes de atraso, erro, fila, DLQ, duração e disponibilidade.
+Todos os componentes propagam `traceId`. Ingestão e análise acrescentam `runId`, `eventId` e identificadores de janela. O CloudWatch reúne logs, métricas e alarmes de atraso, erro, fila, DLQ, duração e disponibilidade.
 
 ## 10. Documentos relacionados
 

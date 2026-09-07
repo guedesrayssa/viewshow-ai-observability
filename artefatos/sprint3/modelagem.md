@@ -284,43 +284,21 @@ omitidos deliberadamente para manter o diagrama legível.]
 
 ## 5. Diagramas de sequência
 
-&emsp;Os diagramas de sequência são diagramas de interação da UML utilizados para
-representar, em ordem temporal, as mensagens trocadas entre os participantes de
-um comportamento. A disposição das linhas de vida e das mensagens permite
-identificar responsabilidades, dependências e caminhos alternativos durante a
-realização de um cenário. Essa representação segue os conceitos de interação
-definidos pela especificação UML 2.5.1 (OBJECT MANAGEMENT GROUP, 2017) e a
-abordagem apresentada por Larman (2007).
+&emsp;Os diagramas de sequência são diagramas de interação da UML utilizados para representar, em ordem temporal, as mensagens trocadas entre os participantes de um comportamento. A disposição das linhas de vida e das mensagens permite identificar responsabilidades, dependências e caminhos alternativos durante a realização de um cenário. Essa representação segue os conceitos de interação definidos pela especificação UML 2.5.1 (OBJECT MANAGEMENT GROUP, 2017) e a abordagem apresentada por Larman (2007).
 
-&emsp;Larman (2007) diferencia os Diagramas de Sequência do Sistema, que tratam o
-sistema como uma caixa-preta, dos diagramas de interação empregados no projeto
-orientado a objetos, que detalham os participantes internos e suas mensagens.
-Nesta seção, adota-se a segunda perspectiva em nível de componentes e serviços.
-Por esse motivo, os diagramas apresentam elementos internos do View Show, como
-o Backend, os workers, as filas e os serviços de armazenamento.
+&emsp;Larman (2007) diferencia os Diagramas de Sequência do Sistema, que tratam o sistema como uma caixa-preta, dos diagramas de interação empregados no projeto orientado a objetos, que detalham os participantes internos e suas mensagens. Nesta seção, adota-se a segunda perspectiva em nível de componentes e serviços. Por esse motivo, os diagramas apresentam elementos internos do View Show, como o Backend, os workers, as filas e os serviços de armazenamento.
 
-&emsp;No View Show, esses diagramas descrevem como os dados saem do ARGUS, tornam-se
-informações analisáveis e chegam aos usuários. A seção contempla a ingestão
-periódica e por snapshot, a autenticação, a consulta, a revisão humana, a
-previsão de degradações, a detecção de incidentes e a recuperação de falhas.
-Cada diagrama é acompanhado por uma explicação de seu objetivo e das decisões
-arquiteturais necessárias para compreender o fluxo.
+&emsp;No View Show, esses diagramas descrevem como os dados saem do ARGUS, tornam-se informações analisáveis e chegam aos usuários. A seção contempla a ingestão periódica e por snapshot, a autenticação, a consulta, a revisão humana, a previsão de degradações, a detecção de incidentes e a recuperação de falhas. Cada diagrama é acompanhado por uma explicação de seu objetivo e das decisões arquiteturais necessárias para compreender o fluxo.
 
-&emsp;Esta seção registra a representação acadêmica produzida durante a sprint. A
-versão técnica mantida para orientar o desenvolvimento, acompanhada dos
-contratos de dados, eventos e API, está em
-[Fluxos integrados do View Show](../arquitetura/fluxos.md).
+&emsp;Esta seção registra a representação acadêmica produzida durante a sprint. A versão técnica mantida para orientar o desenvolvimento, acompanhada dos contratos de dados, eventos e API, está em [Fluxos integrados do View Show](../arquitetura/fluxos.md).
 
 ### 5.1 Catálogo de diagramas de sequência
 
-&emsp;Os oito diagramas foram organizados por cenário e vinculados aos casos de uso
-que realizam ou apoiam. A Tabela 5.1 funciona como índice da seção e diferencia
-as interações iniciadas pelo usuário dos processos técnicos executados de forma
-assíncrona.
+&emsp;Os oito diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela x funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
 
 <div align="center">
 
-<strong>Tabela 5.1: Catálogo dos diagramas de sequência</strong>
+<strong>Tabela x: Catálogo dos diagramas de sequência</strong>
 
 </div>
 
@@ -341,51 +319,25 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Os diagramas automáticos de ingestão e análise representam mecanismos
-técnicos que viabilizam os objetivos dos usuários. Por isso, a relação com
-os casos de uso é de suporte, e não a definição de novos casos. A importação
-de snapshot e a solicitação de reanálise permanecem como fluxos técnico e
-alternativo, respectivamente, até a equipe decidir se devem ser formalizadas
-como casos de uso independentes.
+&emsp;Os diagramas automáticos de ingestão e análise representam mecanismos técnicos que viabilizam os objetivos dos usuários. Por isso, a relação com os casos de uso é de suporte, e não a definição de novos casos. A importação de snapshot e a solicitação de reanálise permanecem como fluxos técnico e alternativo, respectivamente, até a equipe decidir se devem ser formalizadas como casos de uso independentes.
 
 ### 5.2 Convenções
 
-&emsp;As mensagens estão dispostas de cima para baixo na ordem em que ocorrem. Os
-fragmentos `alt`, `opt`, `loop` e `par` indicam, respectivamente, alternativas
-exclusivas, comportamentos condicionais, repetições e atividades concorrentes.
-As mensagens enviadas à SQS representam comunicação assíncrona; retornos e
-chamadas diretas representam comunicação síncrona. Horários são registrados em
-UTC e as operações repetíveis empregam identificadores idempotentes, de modo
-que uma mesma solicitação possa ser repetida sem duplicar seu efeito.
+&emsp;As mensagens estão dispostas de cima para baixo na ordem em que ocorrem. Os fragmentos `alt`, `opt`, `loop` e `par` indicam, respectivamente, alternativas exclusivas, comportamentos condicionais, repetições e atividades concorrentes. As mensagens enviadas à SQS representam comunicação assíncrona; retornos e chamadas diretas representam comunicação síncrona. Horários são registrados em UTC e as operações repetíveis empregam identificadores idempotentes, de modo que uma mesma solicitação possa ser repetida sem duplicar seu efeito.
 
-&emsp;Os diagramas representam componentes lógicos da aplicação. Os participantes
-identificam papéis ou serviços responsáveis por cada interação, enquanto as
-mensagens expressam as responsabilidades exercidas no cenário. Elementos como
-sub-redes, rotas, ALB e NAT Gateway pertencem ao diagrama de implantação e foram
-omitidos para preservar a legibilidade. O termo `Prediction` identifica uma
-previsão de risco futuro, enquanto `Incident` identifica uma degradação já
-observada nos dados.
+&emsp;Os diagramas representam componentes lógicos da aplicação. Os participantes identificam papéis ou serviços responsáveis por cada interação, enquanto as mensagens expressam as responsabilidades exercidas no cenário. Elementos como sub-redes, rotas, ALB e NAT Gateway pertencem ao diagrama de implantação e foram omitidos para preservar a legibilidade. O termo `Prediction` identifica uma previsão de risco futuro, enquanto `Incident` identifica uma degradação já observada nos dados.
 
 ### 5.3 Ingestão e disponibilização dos dados
 
-&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções
-consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa
-quanto os snapshots enviados pela interface, preservando as regras de
-normalização e persistência. Esses fluxos fornecem os dados utilizados nos
-casos de uso UC-01, UC-06, UC-17 e UC-19.
+&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos fornecem os dados utilizados nos casos de uso UC-01, UC-06, UC-17 e UC-19.
 
 #### 5.3.1 DS-01A — Sincronização com o MySQL vivo
 
-&emsp;A sincronização periódica mantém o DynamoDB atualizado com os dados produzidos
-pelo ARGUS. A cada 15 minutos, o EventBridge inicia uma tarefa no Fargate e o
-Serviço de Ingestão tenta obter no DynamoDB um **bloqueio temporário com
-expiração**. Esse bloqueio, também denominado *lease*, concede a uma única
-execução o direito de atualizar a janela; caso a tarefa seja interrompida, a
-expiração permite que uma execução posterior continue o processamento.
+&emsp;A sincronização periódica mantém o DynamoDB atualizado com os dados produzidos pelo ARGUS. A cada 15 minutos, o EventBridge inicia uma tarefa no Fargate e o Serviço de Ingestão tenta obter no DynamoDB um **bloqueio temporário com expiração**. Esse bloqueio, também denominado *lease*, concede a uma única execução o direito de atualizar a janela; caso a tarefa seja interrompida, a expiração permite que uma execução posterior continue o processamento.
 
 <div align="center">
 
-<strong>Diagrama 3: Sincronização dos dados do MySQL vivo do ARGUS</strong>
+<strong>Diagrama x: DS-01A — Sincronização dos dados do MySQL vivo do ARGUS</strong>
 
 </div>
 
@@ -478,36 +430,17 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Depois de obter o bloqueio, o serviço recupera as credenciais no Secrets
-Manager e acessa o MySQL pela rede privada, com transporte protegido por TLS.
-Os registros são lidos em páginas, normalizados e identificados por
-`recordId`. O `payloadHash` permite reconhecer quando o conteúdo não mudou e
-evita escritas desnecessárias. Registros novos ou alterados são persistidos
-diretamente no DynamoDB; objetos que ultrapassam o tamanho autorizado são
-armazenados no S3, mantendo-se no banco apenas a referência correspondente.
+&emsp;Depois de obter o bloqueio, o serviço recupera as credenciais no Secrets Manager e acessa o MySQL pela rede privada, com transporte protegido por TLS. Os registros são lidos em páginas, normalizados e identificados por `recordId`. O `payloadHash` permite reconhecer quando o conteúdo não mudou e evita escritas desnecessárias. Registros novos ou alterados são persistidos diretamente no DynamoDB; objetos que ultrapassam o tamanho autorizado são armazenados no S3, mantendo-se no banco apenas a referência correspondente.
 
-&emsp;O marcador da última janela completa publicada é denominado *watermark*. Sua
-atualização ocorre na mesma transação que cria o registro de saída pendente,
-conhecido como *outbox*. Esse registro garante que uma solicitação de análise
-não seja perdida caso a comunicação com a SQS falhe: a execução seguinte
-localiza o item pendente e republica a mensagem com a mesma chave de
-idempotência. Se outra sincronização mantiver o bloqueio, a nova tentativa é
-encerrada como `SKIPPED_LOCKED`, sem interferir na tarefa ativa.
+&emsp;O marcador da última janela completa publicada é denominado *watermark*. Sua atualização ocorre na mesma transação que cria o registro de saída pendente, conhecido como *outbox*. Esse registro garante que uma solicitação de análise não seja perdida caso a comunicação com a SQS falhe: a execução seguinte localiza o item pendente e republica a mensagem com a mesma chave de idempotência. Se outra sincronização mantiver o bloqueio, a nova tentativa é encerrada como `SKIPPED_LOCKED`, sem interferir na tarefa ativa.
 
 #### 5.3.2 DS-01B — Importação de snapshot pela interface
 
-&emsp;A importação de snapshot permite carregar pela interface uma cópia do banco
-do ARGUS sem interromper o conjunto de dados que já está disponível. O arquivo
-é enviado diretamente ao S3 por partes, mediante endereços temporários
-gerados pelo Backend. Concluído o envio, uma tarefa Fargate restaura o dump em
-um MySQL 8 isolado e reutiliza o mesmo processo de normalização empregado na
-sincronização periódica. Enquanto a tarefa é executada, o Dashboard consulta
-periodicamente o estado do `ImportJob`, prática denominada *polling*, para
-apresentar o progresso ao usuário.
+&emsp;A importação de snapshot permite carregar pela interface uma cópia do banco do ARGUS sem interromper o conjunto de dados que já está disponível. O arquivo é enviado diretamente ao S3 por partes, mediante endereços temporários gerados pelo Backend. Concluído o envio, uma tarefa Fargate restaura o dump em um MySQL 8 isolado e reutiliza o mesmo processo de normalização empregado na sincronização periódica. Enquanto a tarefa é executada, o Dashboard consulta periodicamente o estado do `ImportJob`, prática denominada *polling*, para apresentar o progresso ao usuário.
 
 <div align="center">
 
-<strong>Diagrama 4: Importação assíncrona de um snapshot do ARGUS</strong>
+<strong>Diagrama x: DS-01B — Importação assíncrona de um snapshot do ARGUS</strong>
 
 </div>
 
@@ -605,43 +538,21 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O Backend responde com HTTP 202 porque a restauração e a ingestão continuam
-de forma assíncrona. O MySQL temporário e seu volume existem apenas durante a
-tarefa e são descartados ao final. Depois da restauração, todos os dados são
-ingeridos, mas apenas a janela de 15 minutos mais recente e a última janela
-horária completa seguem automaticamente para análise. O novo conjunto somente
-se torna visível quando as projeções e os marcadores de publicação estiverem
-concluídos.
+&emsp;O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. O MySQL temporário e seu volume existem apenas durante a tarefa e são descartados ao final. Depois da restauração, todos os dados são ingeridos, mas apenas a janela de 15 minutos mais recente e a última janela horária completa seguem automaticamente para análise. O novo conjunto somente se torna visível quando as projeções e os marcadores de publicação estiverem concluídos.
 
-&emsp;As falhas são tratadas de modo a preservar um estado utilizável. Um schema
-incompatível não avança o marcador da ingestão; uma falha de publicação mantém
-o registro de saída pendente; e um dump inválido ou impossível de restaurar
-encerra o `ImportJob` como `FAILED`. Em todos esses casos, o conjunto de dados
-anterior continua disponível. Quando o fluxo termina com sucesso, os fatos e
-projeções estão no DynamoDB e a solicitação de análise foi publicada ou está
-protegida pelo mecanismo de saída transacional. A ingestão não consulta nem
-modifica o conjunto de diagnósticos confirmados.
+&emsp;As falhas são tratadas de modo a preservar um estado utilizável. Um schema incompatível não avança o marcador da ingestão; uma falha de publicação mantém o registro de saída pendente; e um dump inválido ou impossível de restaurar encerra o `ImportJob` como `FAILED`. Em todos esses casos, o conjunto de dados anterior continua disponível. Quando o fluxo termina com sucesso, os fatos e projeções estão no DynamoDB e a solicitação de análise foi publicada ou está protegida pelo mecanismo de saída transacional. A ingestão não consulta nem modifica o conjunto de diagnósticos confirmados.
 
 ### 5.4 Backend, autenticação e revisão
 
-&emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários
-corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar
-o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica.
-Essas interações realizam os casos de uso UC-01, UC-02, UC-07 e UC-11. O
-Dashboard atua como interface, enquanto o Backend concentra a validação da
-sessão, a consulta ao DynamoDB e a aplicação das regras de revisão.
+&emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica. Essas interações realizam os casos de uso UC-01, UC-02, UC-07 e UC-11. O Dashboard atua como interface, enquanto o Backend concentra a validação da sessão, a consulta ao DynamoDB e a aplicação das regras de revisão.
 
 #### 5.4.1 DS-02A — Autenticação federada e consulta
 
-&emsp;A autenticação federada permite que o View Show reconheça a identidade
-corporativa sem armazenar senhas. Quando não existe sessão válida, o Backend
-direciona o usuário ao Cognito, que delega a autenticação ao SSO da Globo.
-Somente depois da validação do retorno o sistema cria a sessão e consulta o
-modelo de leitura da visão geral.
+&emsp;A autenticação federada permite que o View Show reconheça a identidade corporativa sem armazenar senhas. Quando não existe sessão válida, o Backend direciona o usuário ao Cognito, que delega a autenticação ao SSO da Globo. Somente depois da validação do retorno o sistema cria a sessão e consulta o modelo de leitura da visão geral.
 
 <div align="center">
 
-<strong>Diagrama 5: Autenticação federada e consulta do dashboard</strong>
+<strong>Diagrama x: DS-02A — Autenticação federada e consulta do dashboard</strong>
 
 </div>
 
@@ -718,32 +629,17 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O SSO da Globo autentica o usuário, enquanto o Cognito atua como intermediário
-de identidade e emite tokens assinados no formato JWT. O Backend conclui o
-fluxo OAuth segundo o padrão *Backend for Frontend* (BFF). O padrão PKCE
-(*Proof Key for Code Exchange*) vincula o pedido de autenticação à troca
-posterior do código, reduzindo o risco de sua utilização indevida. O navegador
-recebe somente um cookie `HttpOnly`, `Secure` e
-`SameSite`, inacessível ao JavaScript. As respostas públicas também ocultam
-chaves e detalhes físicos do DynamoDB.
+&emsp;O SSO da Globo autentica o usuário, enquanto o Cognito atua como intermediário de identidade e emite tokens assinados no formato JWT. O Backend conclui o fluxo OAuth segundo o padrão *Backend for Frontend* (BFF). O padrão PKCE (*Proof Key for Code Exchange*) vincula o pedido de autenticação à troca posterior do código, reduzindo o risco de sua utilização indevida. O navegador recebe somente um cookie `HttpOnly`, `Secure` e `SameSite`, inacessível ao JavaScript. As respostas públicas também ocultam chaves e detalhes físicos do DynamoDB.
 
-&emsp;Uma sessão inexistente, expirada ou associada a uma identidade não autorizada
-interrompe a consulta antes do acesso aos dados. As falhas são registradas sem
-credenciais ou tokens e o usuário é direcionado novamente ao processo de
-autenticação.
+&emsp;Uma sessão inexistente, expirada ou associada a uma identidade não autorizada interrompe a consulta antes do acesso aos dados. As falhas são registradas sem credenciais ou tokens e o usuário é direcionado novamente ao processo de autenticação.
 
 #### 5.4.2 DS-02B — Revisão concorrente e promoção ao conjunto de referência
 
-&emsp;A revisão de hipóteses permite que uma pessoa confirme ou refute a causa
-provável apresentada pelo sistema. Como dois usuários podem abrir o mesmo
-diagnóstico, o Backend utiliza a versão conhecida pelo revisor para aceitar
-somente a primeira decisão válida. Uma hipótese confirmada passa a integrar o
-*golden set*, isto é, o conjunto de diagnósticos humanos confirmados que serve
-como referência para análises futuras.
+&emsp;A revisão de hipóteses permite que uma pessoa confirme ou refute a causa provável apresentada pelo sistema. Como dois usuários podem abrir o mesmo diagnóstico, o Backend utiliza a versão conhecida pelo revisor para aceitar somente a primeira decisão válida. Uma hipótese confirmada passa a integrar o *golden set*, isto é, o conjunto de diagnósticos humanos confirmados que serve como referência para análises futuras.
 
 <div align="center">
 
-<strong>Diagrama 6: Revisão concorrente e promoção de hipótese ao conjunto de referência</strong>
+<strong>Diagrama x: DS-02B — Revisão concorrente e promoção de hipótese ao conjunto de referência</strong>
 
 </div>
 
@@ -830,45 +726,23 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;A identidade do revisor vem da sessão. A requisição informa
-`Idempotency-Key` e `expectedVersion`; a escrita exige `status = PENDING` e a
-versão esperada. A primeira decisão válida é terminal. Somente `CONFIRMED`
-inclui a criação do `GoldenCase` na transação; `REFUTED` permanece no histórico
-operacional.
+&emsp;A identidade do revisor vem da sessão. A requisição informa `Idempotency-Key` e `expectedVersion`; a escrita exige `status = PENDING` e a versão esperada. A primeira decisão válida é terminal. Somente `CONFIRMED` inclui a criação do `GoldenCase` na transação; `REFUTED` permanece no histórico operacional.
 
-&emsp;Requisições sem a versão esperada são rejeitadas sem alterar a hipótese. Se
-outra pessoa concluir a revisão primeiro, o Backend responde com conflito e
-preserva a decisão vencedora. A chave de idempotência permite devolver o mesmo
-resultado quando uma requisição é repetida, sem duplicar a auditoria ou o caso
-confirmado. Ao final, cada hipótese revisada possui uma única decisão humana,
-final e auditável.
+&emsp;Requisições sem a versão esperada são rejeitadas sem alterar a hipótese. Se outra pessoa concluir a revisão primeiro, o Backend responde com conflito e preserva a decisão vencedora. A chave de idempotência permite devolver o mesmo resultado quando uma requisição é repetida, sem duplicar a auditoria ou o caso confirmado. Ao final, cada hipótese revisada possui uma única decisão humana, final e auditável.
 
 ### 5.5 Worker de Análise
 
-&emsp;O Worker de Análise consome de forma assíncrona as janelas materializadas pela
-ingestão e coordena três responsabilidades: antecipar degradações, reconhecer
-anomalias já observadas e recuperar processamentos interrompidos. Essas
-atividades não são iniciadas diretamente pelos atores, mas fornecem previsões,
-incidentes, evidências e hipóteses para os casos de uso UC-05 a UC-08, UC-10,
-UC-12, UC-13, UC-16, UC-17 e UC-19.
+&emsp;O Worker de Análise consome de forma assíncrona as janelas materializadas pela ingestão e coordena três responsabilidades: antecipar degradações, reconhecer anomalias já observadas e recuperar processamentos interrompidos. Essas atividades não são iniciadas diretamente pelos atores, mas fornecem previsões, incidentes, evidências e hipóteses para os casos de uso UC-05 a UC-08, UC-10, UC-12, UC-13, UC-16, UC-17 e UC-19.
 
-&emsp;O orquestrador de análise permanece um módulo interno do Worker. Ele combina os
-resultados dos modelos, recupera informações do DynamoDB e consulta casos
-humanos confirmados antes de solicitar ao agente diagnóstico uma explicação
-para o risco ou incidente. O Amazon Bedrock apoia a geração das hipóteses, mas
-não substitui a decisão humana.
+&emsp;O orquestrador de análise permanece um módulo interno do Worker. Ele combina os resultados dos modelos, recupera informações do DynamoDB e consulta casos humanos confirmados antes de solicitar ao agente diagnóstico uma explicação para o risco ou incidente. O Amazon Bedrock apoia a geração das hipóteses, mas não substitui a decisão humana.
 
 #### 5.5.1 DS-03A — Previsão preventiva e validação posterior
 
-&emsp;A previsão preventiva estima, a cada janela horária completa, o risco de
-degradação da experiência na hora seguinte. Antes de produzir uma nova
-previsão, o Worker compara a estimativa anterior com o valor efetivamente
-observado. Essa validação permite acompanhar a qualidade do modelo e registrar
-se ele reconheceu corretamente a ocorrência ou a ausência de uma degradação.
+&emsp;A previsão preventiva estima, a cada janela horária completa, o risco de degradação da experiência na hora seguinte. Antes de produzir uma nova previsão, o Worker compara a estimativa anterior com o valor efetivamente observado. Essa validação permite acompanhar a qualidade do modelo e registrar se ele reconheceu corretamente a ocorrência ou a ausência de uma degradação.
 
 <div align="center">
 
-<strong>Diagrama 7: Previsão preventiva e validação da previsão anterior</strong>
+<strong>Diagrama x: DS-03A — Previsão preventiva e validação da previsão anterior</strong>
 
 </div>
 
@@ -954,27 +828,15 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;A previsão executa após uma janela horária completa e registra o limiar e a
-versão do modelo. A mesma execução compara a previsão anterior com o valor
-observado e classifica o resultado como `TP`, `FP`, `TN`, `FN` ou `UNKNOWN`.
-Risco normal não aciona o agente; risco elevado exige qualidade mínima. Uma
-hipótese preventiva não é um incidente e continua sujeita à revisão humana.
-As classificações `TP`, `FP`, `TN` e `FN` representam, respectivamente,
-verdadeiro positivo, falso positivo, verdadeiro negativo e falso negativo;
-`UNKNOWN` indica que os dados disponíveis não permitem avaliar a previsão.
+&emsp;A previsão executa após uma janela horária completa e registra o limiar e a versão do modelo. A mesma execução compara a previsão anterior com o valor observado e classifica o resultado como `TP`, `FP`, `TN`, `FN` ou `UNKNOWN`. Risco normal não aciona o agente; risco elevado exige qualidade mínima. Uma hipótese preventiva não é um incidente e continua sujeita à revisão humana. As classificações `TP`, `FP`, `TN` e `FN` representam, respectivamente, verdadeiro positivo, falso positivo, verdadeiro negativo e falso negativo; `UNKNOWN` indica que os dados disponíveis não permitem avaliar a previsão.
 
 #### 5.5.2 DS-03B — Detecção reativa e diagnóstico por IA
 
-&emsp;A detecção reativa examina cada nova janela de 15 minutos para identificar
-alterações relevantes em relação ao comportamento histórico. O detector aplica
-o desvio absoluto mediano (MAD) às séries individuais e a distância de
-Mahalanobis ao conjunto de variáveis correlacionadas. A primeira técnica
-identifica valores afastados do padrão de uma métrica; a segunda verifica se a
-combinação entre várias métricas se tornou atípica.
+&emsp;A detecção reativa examina cada nova janela de 15 minutos para identificar alterações relevantes em relação ao comportamento histórico. O detector aplica o desvio absoluto mediano (MAD) às séries individuais e a distância de Mahalanobis ao conjunto de variáveis correlacionadas. A primeira técnica identifica valores afastados do padrão de uma métrica; a segunda verifica se a combinação entre várias métricas se tornou atípica.
 
 <div align="center">
 
-<strong>Diagrama 8: Detecção reativa e diagnóstico automático por IA</strong>
+<strong>Diagrama x: DS-03B — Detecção reativa e diagnóstico automático por IA</strong>
 
 </div>
 
@@ -1061,28 +923,15 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;MAD e Mahalanobis permanecem módulos internos do mesmo Worker. O detector
-produz scores e evidências; o `Analysis Orchestrator` cria ou correlaciona o
-incidente. O resultado estatístico torna-se uma evidência associada ao
-incidente. Quando há qualidade e cobertura suficientes, o agente consulta o
-contexto recente e o conjunto de casos confirmados para produzir hipóteses
-justificadas. O incidente permanece disponível mesmo quando o diagnóstico por
-IA não pode ser concluído.
+&emsp;MAD e Mahalanobis permanecem módulos internos do mesmo Worker. O detector produz scores e evidências; o `Analysis Orchestrator` cria ou correlaciona o incidente. O resultado estatístico torna-se uma evidência associada ao incidente. Quando há qualidade e cobertura suficientes, o agente consulta o contexto recente e o conjunto de casos confirmados para produzir hipóteses justificadas. O incidente permanece disponível mesmo quando o diagnóstico por IA não pode ser concluído.
 
 #### 5.5.3 DS-03C — Recuperação de falhas, mensagens não processadas e reanálise
 
-&emsp;A recuperação de falhas evita que uma indisponibilidade transitória descarte o
-resultado já produzido. O Worker registra cada tentativa e retoma a partir da
-última etapa persistida. Entre as tentativas, aplica-se uma espera progressiva,
-denominada *backoff*, para reduzir a pressão sobre a dependência indisponível.
-Depois do limite configurado, a mensagem segue para a *Dead-Letter Queue*
-(DLQ), fila separada que conserva mensagens não processadas para inspeção e
-reenvio controlado. O mesmo fluxo permite que um usuário autenticado solicite
-uma nova análise do incidente.
+&emsp;A recuperação de falhas evita que uma indisponibilidade transitória descarte o resultado já produzido. O Worker registra cada tentativa e retoma a partir da última etapa persistida. Entre as tentativas, aplica-se uma espera progressiva, denominada *backoff*, para reduzir a pressão sobre a dependência indisponível. Depois do limite configurado, a mensagem segue para a *Dead-Letter Queue* (DLQ), fila separada que conserva mensagens não processadas para inspeção e reenvio controlado. O mesmo fluxo permite que um usuário autenticado solicite uma nova análise do incidente.
 
 <div align="center">
 
-<strong>Diagrama 9: Recuperação de falhas, DLQ e reanálise</strong>
+<strong>Diagrama x: DS-03C — Recuperação de falhas, DLQ e reanálise</strong>
 
 </div>
 
@@ -1162,13 +1011,11 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Os valores iniciais adotados para a fila foram reunidos na Tabela 5.2. Eles
-delimitam o tempo concedido a cada processamento, o número de tentativas e o
-período disponível para uma recuperação manual.
+&emsp;Os valores iniciais adotados para a fila foram reunidos na Tabela x. Eles delimitam o tempo concedido a cada processamento, o número de tentativas e o período disponível para uma recuperação manual.
 
 <div align="center">
 
-<strong>Tabela 5.2: Parâmetros operacionais da fila de análise</strong>
+<strong>Tabela x: Parâmetros operacionais da fila de análise</strong>
 
 </div>
 
@@ -1189,31 +1036,17 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Mensagens duplicadas são tratadas por idempotência. O Worker retoma da última
-etapa persistida, e uma falha no Bedrock não remove previsão, incidente ou
-evidências nem produz uma hipótese artificial. Erros permanentes seguem
-diretamente para a DLQ; falhas transitórias usam a espera progressiva e o
-reenvio automático após o quinto recebimento.
+&emsp;Mensagens duplicadas são tratadas por idempotência. O Worker retoma da última etapa persistida, e uma falha no Bedrock não remove previsão, incidente ou evidências nem produz uma hipótese artificial. Erros permanentes seguem diretamente para a DLQ; falhas transitórias usam a espera progressiva e o reenvio automático após o quinto recebimento.
 
-&emsp;Ao concluir uma solicitação, o Worker registra a execução como `SUCCEEDED`.
-Cada previsão preserva a versão do modelo, o limiar, a janela-alvo e, quando
-disponível, o resultado de sua validação. Toda anomalia persistida permanece
-associada à evidência que a fundamenta e, quando aplicável, a um incidente. As
-hipóteses continuam pendentes até a revisão humana, enquanto mensagens que não
-puderam ser processadas permanecem recuperáveis na DLQ.
+&emsp;Ao concluir uma solicitação, o Worker registra a execução como `SUCCEEDED`. Cada previsão preserva a versão do modelo, o limiar, a janela-alvo e, quando disponível, o resultado de sua validação. Toda anomalia persistida permanece associada à evidência que a fundamenta e, quando aplicável, a um incidente. As hipóteses continuam pendentes até a revisão humana, enquanto mensagens que não puderam ser processadas permanecem recuperáveis na DLQ.
 
 ### 5.6 Visão geral ponta a ponta
 
-&emsp;O fluxo ponta a ponta sintetiza como os processos anteriores se conectam. Ele
-começa quando o ARGUS ou um snapshot disponibiliza dados, acompanha sua
-normalização e análise e termina quando o usuário consulta o resultado e decide
-sobre uma hipótese. Essa visão não substitui os diagramas detalhados; sua função
-é evidenciar a continuidade entre a origem operacional, o processamento
-automático e a intervenção humana.
+&emsp;O fluxo ponta a ponta sintetiza como os processos anteriores se conectam. Ele começa quando o ARGUS ou um snapshot disponibiliza dados, acompanha sua normalização e análise e termina quando o usuário consulta o resultado e decide sobre uma hipótese. Essa visão não substitui os diagramas detalhados; sua função é evidenciar a continuidade entre a origem operacional, o processamento automático e a intervenção humana.
 
 <div align="center">
 
-<strong>Diagrama 10: Visão geral ponta a ponta da plataforma View Show</strong>
+<strong>Diagrama x: DS-04 — Visão geral ponta a ponta da plataforma View Show</strong>
 
 </div>
 
@@ -1293,29 +1126,17 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Na primeira parte, o DS-01A detalha a sincronização do MySQL e o DS-01B
-detalha a importação de snapshots. Depois da publicação na fila, o DS-03A
-descreve a previsão horária, o DS-03B apresenta a detecção de incidentes e o
-DS-03C mostra a recuperação de falhas. A interação do usuário é aprofundada no
-DS-02A, para autenticação e consulta, e no DS-02B, para revisão de hipóteses.
+&emsp;Na primeira parte, o DS-01A detalha a sincronização do MySQL e o DS-01B detalha a importação de snapshots. Depois da publicação na fila, o DS-03A descreve a previsão horária, o DS-03B apresenta a detecção de incidentes e o DS-03C mostra a recuperação de falhas. A interação do usuário é aprofundada no DS-02A, para autenticação e consulta, e no DS-02B, para revisão de hipóteses.
 
-&emsp;Ao final do percurso, a janela ingerida está disponível no DynamoDB e a análise
-foi processada de forma idempotente. Uma previsão continua distinta de um
-incidente observado, enquanto uma anomalia pode criar ou reforçar um incidente.
-As hipóteses permanecem pendentes até a decisão humana e somente as confirmadas
-passam a integrar o conjunto de referência. O `traceId`, identificador de
-correlação propagado entre os componentes, permite acompanhar uma execução ao
-longo de todo o fluxo.
+&emsp;Ao final do percurso, a janela ingerida está disponível no DynamoDB e a análise foi processada de forma idempotente. Uma previsão continua distinta de um incidente observado, enquanto uma anomalia pode criar ou reforçar um incidente. As hipóteses permanecem pendentes até a decisão humana e somente as confirmadas passam a integrar o conjunto de referência. O `traceId`, identificador de correlação propagado entre os componentes, permite acompanhar uma execução ao longo de todo o fluxo.
 
 ### 5.7 Rastreabilidade interna
 
-&emsp;Para evitar que os processos técnicos sejam interpretados como casos de uso
-independentes, a Tabela 5.3 registra a natureza de cada relação. Ela também
-resume a principal decisão arquitetural demonstrada por cada diagrama.
+&emsp;Para evitar que os processos técnicos sejam interpretados como casos de uso independentes, a Tabela x registra a natureza de cada relação. Ela também resume a principal decisão arquitetural demonstrada por cada diagrama.
 
 <div align="center">
 
-<strong>Tabela 5.3: Rastreabilidade dos diagramas de sequência</strong>
+<strong>Tabela x: Rastreabilidade dos diagramas de sequência</strong>
 
 </div>
 

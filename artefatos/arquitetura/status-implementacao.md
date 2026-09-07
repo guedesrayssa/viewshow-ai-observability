@@ -8,14 +8,11 @@
 
 ## 1. Finalidade
 
-Este documento registra quanto da arquitetura-alvo já está presente no código.
-Ele não redefine contratos. Em caso de divergência, prevalecem os documentos
-normativos desta pasta.
+Este documento registra quanto da arquitetura-alvo já está presente no código. Ele não redefine contratos. Em caso de divergência, prevalecem os documentos normativos desta pasta.
 
 Estados utilizados:
 
-- **Definido:** contrato aprovado, mas implementação ainda não iniciada nesta
-  branch.
+- **Definido:** contrato aprovado, mas implementação ainda não iniciada nesta branch.
 - **Parcial:** existe uma base funcional, porém faltam requisitos do contrato.
 - **Implementado:** código presente e compatível com o contrato.
 - **Testado:** implementação compatível e coberta pelas verificações previstas.
@@ -38,18 +35,13 @@ Estados utilizados:
 | Infraestrutura AWS | Parcial | CI/CD e task definition do backend | provisionar recursos restantes e permissões |
 | Observabilidade ponta a ponta | Definido | métricas e alarmes especificados | instrumentar `traceId`, runs, fila e DLQ |
 
-O estado **Implementado** da documentação significa que os arquivos foram
-criados, não que todos os componentes descritos já existam. Cada linha deve ser
-atualizada no mesmo MR que entregar sua implementação.
+O estado **Implementado** da documentação significa que os arquivos foram criados, não que todos os componentes descritos já existam. Cada linha deve ser atualizada no mesmo MR que entregar sua implementação.
 
 ## 3. Backend e API
 
 ### 3.1 O que existe
 
-A API Node/Express possui rotas de saúde, autenticação inicial, incidentes,
-evidência, hipótese, revisão, diagnóstico, dashboard resumido, golden set e ML.
-Também existem middleware de sessão, clientes DynamoDB e módulos iniciais para
-orquestração e Bedrock.
+A API Node/Express possui rotas de saúde, autenticação inicial, incidentes, evidência, hipótese, revisão, diagnóstico, dashboard resumido, golden set e ML. Também existem middleware de sessão, clientes DynamoDB e módulos iniciais para orquestração e Bedrock.
 
 ### 3.2 Diferenças para o contrato-alvo
 
@@ -65,38 +57,25 @@ orquestração e Bedrock.
 | reanálise assíncrona | diagnóstico síncrono inicial | Definido |
 | autenticação Cognito/SSO | login local e rota SSO inicial | Parcial |
 
-Antes de declarar conformidade, o Backend deve validar path, query e body;
-produzir o envelope público; ocultar `pk`, `sk`, TTL e identificadores físicos;
-preservar `null` versus zero; implementar cursores opacos; e devolver estados
-de parcialidade e frescor.
+Antes de declarar conformidade, o Backend deve validar path, query e body; produzir o envelope público; ocultar `pk`, `sk`, TTL e identificadores físicos; preservar `null` versus zero; implementar cursores opacos; e devolver estados de parcialidade e frescor.
 
-As rotas públicas de golden set e ML pertencem à implementação inicial e não
-devem receber novos consumidores. No desenho-alvo, elas são responsabilidades
-internas do Backend e do Worker de Análise.
+As rotas públicas de golden set e ML pertencem à implementação inicial e não devem receber novos consumidores. No desenho-alvo, elas são responsabilidades internas do Backend e do Worker de Análise.
 
 ## 4. Frontend
 
 ### 4.1 O que existe
 
-Existem páginas de visão geral, incidentes, evidências, eventos e monitoramento.
-A camada `apps/frontend/lib/data` centraliza chamadas e já diferencia dado
-medido, parcial, indisponível e de exemplo.
+Existem páginas de visão geral, incidentes, evidências, eventos e monitoramento. A camada `apps/frontend/lib/data` centraliza chamadas e já diferencia dado medido, parcial, indisponível e de exemplo.
 
 ### 4.2 Diferenças para o contrato-alvo
 
-O frontend atual ainda conhece duas APIs: a operacional Node/Express e a
-telemetria Flask. A arquitetura-alvo oferece uma API operacional única, que lê
-as projeções produzidas pela ingestão. A migração deve ocorrer por recurso,
-mantendo dados de exemplo somente em desenvolvimento e demonstração.
+O frontend atual ainda conhece duas APIs: a operacional Node/Express e a telemetria Flask. A arquitetura-alvo oferece uma API operacional única, que lê as projeções produzidas pela ingestão. A migração deve ocorrer por recurso, mantendo dados de exemplo somente em desenvolvimento e demonstração.
 
-Também faltam o fluxo de upload multipart, o acompanhamento de `ImportJob`, a
-sessão federada pelo Cognito e a integração completa da revisão concorrente.
+Também faltam o fluxo de upload multipart, o acompanhamento de `ImportJob`, a sessão federada pelo Cognito e a integração completa da revisão concorrente.
 
 ## 5. Ingestão e dados
 
-O diretório `apps/backend/ingestion-data` ainda não existe nesta branch. Antes
-da implementação, a equipe deve usar [Ingestão e dados](ingestao-e-dados.md)
-como contrato para:
+O diretório `apps/backend/ingestion-data` ainda não existe nesta branch. Antes da implementação, a equipe deve usar [Ingestão e dados](ingestao-e-dados.md) como contrato para:
 
 1. criar domínio, portas e adaptadores;
 2. validar os schemas do ARGUS;
@@ -107,15 +86,11 @@ como contrato para:
 7. implementar outbox e publicação da análise;
 8. adicionar tarefas ECS, Scheduler e observabilidade.
 
-A implementação só avança para a janela seguinte depois que fatos, projeções e
-watermark da janela atual estiverem consistentes.
+A implementação só avança para a janela seguinte depois que fatos, projeções e watermark da janela atual estiverem consistentes.
 
 ## 6. Análise e IA
 
-O consumidor da SQS, o detector e o modelo de previsão ainda não existem nesta
-branch. Os módulos `src/orchestrator`, `src/agent` e `bedrockService` da API são
-uma base experimental; eles não comprovam conformidade com o Worker definido
-em [Análise e diagnóstico por IA](analise-e-ia.md).
+O consumidor da SQS, o detector e o modelo de previsão ainda não existem nesta branch. Os módulos `src/orchestrator`, `src/agent` e `bedrockService` da API são uma base experimental; eles não comprovam conformidade com o Worker definido em [Análise e diagnóstico por IA](analise-e-ia.md).
 
 Ordem recomendada:
 
@@ -131,8 +106,7 @@ Ordem recomendada:
 
 ## 7. Infraestrutura e segurança
 
-A branch possui pipeline e definição de tarefa para o Backend. Ainda precisam
-ser verificados ou provisionados:
+A branch possui pipeline e definição de tarefa para o Backend. Ainda precisam ser verificados ou provisionados:
 
 - conectividade privada com o ARGUS;
 - task de ingestão e EventBridge Scheduler;
@@ -144,21 +118,18 @@ ser verificados ou provisionados:
 - alarmes e painéis do CloudWatch;
 - permissões do Bedrock e sanitização dos contextos.
 
-Nenhuma atividade de implementação deve depender de credencial compartilhada.
-Cada componente utiliza role IAM própria e de menor privilégio.
+Nenhuma atividade de implementação deve depender de credencial compartilhada. Cada componente utiliza role IAM própria e de menor privilégio.
 
 ## 8. Bloqueios e confirmações externas
 
-- Endereço, porta e mecanismo de conectividade autorizados para o MySQL vivo do
-  ARGUS.
+- Endereço, porta e mecanismo de conectividade autorizados para o MySQL vivo do ARGUS.
 - Schema físico final e SLA de cada dataset.
 - Origem de eventos individuais que não podem ser derivados de agregados.
 - Configuração do SSO corporativo no Cognito.
 - Política de retenção definitiva dos dumps no S3.
 - Limiares aprovados para detecção, previsão e qualidade mínima.
 
-Esses itens não impedem testes locais com contratos e adaptadores. Eles impedem
-somente declarar a integração produtiva como concluída.
+Esses itens não impedem testes locais com contratos e adaptadores. Eles impedem somente declarar a integração produtiva como concluída.
 
 ## 9. Regra de atualização
 

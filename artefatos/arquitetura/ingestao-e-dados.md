@@ -8,8 +8,7 @@
 
 ## 1. Finalidade
 
-Este documento é a fonte normativa da arquitetura de ingestão e do contrato de
-dados entre o ARGUS e o View Show. Ele define:
+Este documento é a fonte normativa da arquitetura de ingestão e do contrato de dados entre o ARGUS e o View Show. Ele define:
 
 - como o serviço de ingestão é organizado e executado;
 - quais dados entram a partir do Argus;
@@ -23,10 +22,7 @@ dados entre o ARGUS e o View Show. Ele define:
 
 ### 1.1 Decisão arquitetural
 
-A primeira versão do Data Ingestion Service é um monólito modular escrito em
-Python, com separação entre domínio, casos de uso, portas e adaptadores. Ele não
-é uma API HTTP: cada operação é iniciada como uma tarefa do ECS/Fargate e
-termina após processar a janela solicitada.
+A primeira versão do Data Ingestion Service é um monólito modular escrito em Python, com separação entre domínio, casos de uso, portas e adaptadores. Ele não é uma API HTTP: cada operação é iniciada como uma tarefa do ECS/Fargate e termina após processar a janela solicitada.
 
 ```text
 ARGUS/MySQL
@@ -38,10 +34,7 @@ ARGUS/MySQL
   → SQS de análise
 ```
 
-A persistência dos dados ingeridos é direta no DynamoDB. A fila não transporta
-todos os registros do ARGUS; ela recebe somente solicitações para que o Worker
-de Análise processe uma janela que já foi materializada. Essa separação impede
-que uma indisponibilidade do Worker bloqueie a ingestão.
+A persistência dos dados ingeridos é direta no DynamoDB. A fila não transporta todos os registros do ARGUS; ela recebe somente solicitações para que o Worker de Análise processe uma janela que já foi materializada. Essa separação impede que uma indisponibilidade do Worker bloqueie a ingestão.
 
 ### 1.2 Estrutura lógica do serviço
 
@@ -54,9 +47,7 @@ apps/backend/ingestion-data/
 └── bootstrap/      CLI, configuração e composição das dependências
 ```
 
-Os casos de uso dependem de portas e não conhecem detalhes do MySQL, DynamoDB
-ou SQS. Essa separação permite trocar a origem ativa por BigQuery ou outro
-adaptador equivalente sem alterar as identidades canônicas nem o frontend.
+Os casos de uso dependem de portas e não conhecem detalhes do MySQL, DynamoDB ou SQS. Essa separação permite trocar a origem ativa por BigQuery ou outro adaptador equivalente sem alterar as identidades canônicas nem o frontend.
 
 Portas principais:
 
@@ -78,9 +69,7 @@ reprocess            relê uma fonte e uma janela informadas
 rebuild-projections  reconstrói projeções sem consultar o ARGUS
 ```
 
-O comando `sync` é executado a cada 15 minutos pelo EventBridge Scheduler. A
-importação de dump utiliza `backfill` em uma tarefa isolada, mas reutiliza os
-mesmos adaptadores, contratos canônicos e regras de persistência.
+O comando `sync` é executado a cada 15 minutos pelo EventBridge Scheduler. A importação de dump utiliza `backfill` em uma tarefa isolada, mas reutiliza os mesmos adaptadores, contratos canônicos e regras de persistência.
 
 ### 1.4 Fluxo resumido
 
@@ -96,10 +85,7 @@ adquirir bloqueio temporário
   → finalizar a execução e liberar o bloqueio
 ```
 
-A solicitação `ANOMALY_DETECTION` é publicada para a janela de 15 minutos mais
-recente. Quando uma nova janela horária estiver completa, a mesma execução
-publica `QOE_FORECAST`. A transação de outbox permite repetir a publicação sem
-duplicar a análise.
+A solicitação `ANOMALY_DETECTION` é publicada para a janela de 15 minutos mais recente. Quando uma nova janela horária estiver completa, a mesma execução publica `QOE_FORECAST`. A transação de outbox permite repetir a publicação sem duplicar a análise.
 
 ### 1.5 Implantação, segurança e observabilidade
 
@@ -113,28 +99,15 @@ O serviço utiliza os seguintes recursos em `us-east-1`:
 - SQS para solicitações de análise;
 - CloudWatch para logs, métricas e alarmes.
 
-A tarefa não possui porta HTTP nem entrada pública. Sua função IAM permite
-somente as operações necessárias sobre a origem, o S3, a tabela operacional e
-a fila de análise. Ela não pode ler nem escrever no conjunto de diagnósticos
-confirmados.
+A tarefa não possui porta HTTP nem entrada pública. Sua função IAM permite somente as operações necessárias sobre a origem, o S3, a tabela operacional e a fila de análise. Ela não pode ler nem escrever no conjunto de diagnósticos confirmados.
 
-Logs estruturados registram `runId`, fonte, etapa, duração, contagens e
-watermarks. Os alarmes mínimos cobrem ausência de execução bem-sucedida,
-atraso da fonte, falha permanente, mudança incompatível de schema, projeção
-atrasada e outbox pendente além do período esperado.
+Logs estruturados registram `runId`, fonte, etapa, duração, contagens e watermarks. Os alarmes mínimos cobrem ausência de execução bem-sucedida, atraso da fonte, falha permanente, mudança incompatível de schema, projeção atrasada e outbox pendente além do período esperado.
 
 ### 1.6 Estratégia de testes e implantação gradual
 
-A implementação deve possuir testes unitários para identidades, tempo,
-`Decimal`, TTL, hashes e qualidade; testes de contrato para cada origem; e
-testes de integração do MySQL até o DynamoDB. Também devem ser exercitados
-reprocessamento idempotente, retomada após interrupção, disputa pelo bloqueio,
-falha de projeção e recuperação de publicação da SQS.
+A implementação deve possuir testes unitários para identidades, tempo, `Decimal`, TTL, hashes e qualidade; testes de contrato para cada origem; e testes de integração do MySQL até o DynamoDB. Também devem ser exercitados reprocessamento idempotente, retomada após interrupção, disputa pelo bloqueio, falha de projeção e recuperação de publicação da SQS.
 
-A implantação começa com `validate`, avança para uma fonte e uma janela curta,
-executa a reconciliação das contagens, habilita as projeções e somente então
-ativa o Scheduler. Uma reversão pausa novas execuções e reprocessa as janelas
-afetadas depois da correção; não exige apagar dados já persistidos.
+A implantação começa com `validate`, avança para uma fonte e uma janela curta, executa a reconciliação das contagens, habilita as projeções e somente então ativa o Scheduler. Uma reversão pausa novas execuções e reprocessa as janelas afetadas depois da correção; não exige apagar dados já persistidos.
 
 ## 2. Fronteiras do contrato
 
@@ -146,12 +119,9 @@ Argus físico
   → monitoracao-operacional
 ```
 
-Este contrato não define DTOs HTTP do dashboard. A API transforma os read
-models do DynamoDB em seu contrato público sem expor `pk`, `sk`, TTL,
-checkpoints ou identificadores físicos da origem.
+Este contrato não define DTOs HTTP do dashboard. A API transforma os read models do DynamoDB em seu contrato público sem expor `pk`, `sk`, TTL, checkpoints ou identificadores físicos da origem.
 
-O Serviço de Ingestão não lê nem escreve `monitoracao-golden-set`. O Worker de
-Análise possui somente leitura nessa tabela, conforme o contrato de análise.
+O Serviço de Ingestão não lê nem escreve `monitoracao-golden-set`. O Worker de Análise possui somente leitura nessa tabela, conforme o contrato de análise.
 
 ## 3. Perfil da entrada
 
@@ -160,10 +130,8 @@ Análise possui somente leitura nessa tabela, conforme o contrato de análise.
 - Motor: MySQL 8.0/Percona 8.0.
 - Collation esperada: `utf8mb4_bin`.
 - Timestamps: predominantemente epoch em milissegundos UTC.
-- Snapshot: dump restaurado em MySQL, nunca interpretado diretamente pelo
-  Serviço de Ingestão.
-- Operação contínua: conexão ao banco vivo do Argus quando ela estiver
-  disponível.
+- Snapshot: dump restaurado em MySQL, nunca interpretado diretamente pelo Serviço de Ingestão.
+- Operação contínua: conexão ao banco vivo do Argus quando ela estiver disponível.
 
 Perfis suportados:
 
@@ -172,14 +140,11 @@ ARGUS_SOURCE_MODE=snapshot
 ARGUS_SOURCE_MODE=live
 ```
 
-Ambos implementam o mesmo `SourceReader`. Host, porta, banco e credenciais são
-fornecidos por segredo de ambiente.
+Ambos implementam o mesmo `SourceReader`. Host, porta, banco e credenciais são fornecidos por segredo de ambiente.
 
 ### 3.2 Evolução da origem
 
-Um futuro `ArgusBigQueryReader` pode substituir o reader MySQL. O mecanismo de
-leitura é registrado em `ingestion.readerAdapter`, mas não participa da
-identidade do fato.
+Um futuro `ArgusBigQueryReader` pode substituir o reader MySQL. O mecanismo de leitura é registrado em `ingestion.readerAdapter`, mas não participa da identidade do fato.
 
 Quando BigQuery expuser os mesmos dados lógicos:
 
@@ -236,8 +201,7 @@ source + entity + metric + bts
 | `metric` | sim | métrica dentro da fonte |
 | `value` | sim | valor já resolvido pelo Argus |
 
-`source`, `entity` e `metric` são case-sensitive. A unidade é resolvida pela
-combinação `source + metric`, nunca somente por `metric`.
+`source`, `entity` e `metric` são case-sensitive. A unidade é resolvida pela combinação `source + metric`, nunca somente por `metric`.
 
 ### 5.2 `live_active_15min`
 
@@ -259,8 +223,7 @@ Medidas:
 - `jointime_s_avg`;
 - `dropped_frames_avg`.
 
-`active_with_error` representa sessões concorrentes com erro, não usuários
-únicos durante a janela.
+`active_with_error` representa sessões concorrentes com erro, não usuários únicos durante a janela.
 
 ### 5.3 `live_qoe_hourly`
 
@@ -281,18 +244,13 @@ Medidas:
 
 ### 5.4 `player_hourly`
 
-Chave natural: `hour_ts + player`.  
-Dimensão: `player`.  
-Medidas: `sessions`, `errors`.
+Chave natural: `hour_ts + player`. Dimensão: `player`. Medidas: `sessions`, `errors`.
 
 ### 5.5 `device_hourly`
 
-Chave natural: `hour_ts + device`.  
-Dimensão: `device`, preservada no formato original `vendor|model`.  
-Medidas: `sessions`, `errors`.
+Chave natural: `hour_ts + device`. Dimensão: `device`, preservada no formato original `vendor|model`. Medidas: `sessions`, `errors`.
 
-O contrato não converte automaticamente modelo em `deviceType`. Essa conversão
-exige catálogo versionado.
+O contrato não converte automaticamente modelo em `deviceType`. Essa conversão exige catálogo versionado.
 
 ### 5.6 `geo_hourly`
 
@@ -302,8 +260,7 @@ Chave natural:
 hour_ts + state_province + isp
 ```
 
-Dimensões: `state`, `isp` e `region` derivada por catálogo UF → região
-versionado. Medidas: `sessions`, `errors`.
+Dimensões: `state`, `isp` e `region` derivada por catálogo UF → região versionado. Medidas: `sessions`, `errors`.
 
 Não há latência nem perda de eventos nessa tabela.
 
@@ -342,14 +299,11 @@ Dimensões:
 
 Medidas: `errors` e `topErrors`.
 
-`top_names` é JSON de origem. Parse inválido gera
-`quality.flags = ["INVALID_SOURCE_JSON"]`, mas não invalida `errors`. O payload
-bruto não é persistido e a lista normalizada é limitada.
+`top_names` é JSON de origem. Parse inválido gera `quality.flags = ["INVALID_SOURCE_JSON"]`, mas não invalida `errors`. O payload bruto não é persistido e a lista normalizada é limitada.
 
 ### 5.9 `incidents`
 
-Chave física: `opened_at + sys_id`.  
-Identidade semântica: `servicenow + sys_id`.
+Chave física: `opened_at + sys_id`. Identidade semântica: `servicenow + sys_id`.
 
 Campos permitidos:
 
@@ -372,11 +326,9 @@ Campos proibidos ou condicionados:
 
 ### 5.10 Saúde e runs upstream
 
-`signal_meta` fornece watermark e contagens por fonte. `collector_run` e as
-tabelas legadas fornecem início, fim, janela, duração e quantidades.
+`signal_meta` fornece watermark e contagens por fonte. `collector_run` e as tabelas legadas fornecem início, fim, janela, duração e quantidades.
 
-O adapter normaliza a diferença entre epoch ms de `collector_run` e timestamps
-ISO textuais das tabelas legadas.
+O adapter normaliza a diferença entre epoch ms de `collector_run` e timestamps ISO textuais das tabelas legadas.
 
 ## 6. Validação do schema físico
 
@@ -458,8 +410,7 @@ measurement.status = measured | estimated | unknown
 quality.status     = verified | partial | delayed | unavailable
 ```
 
-`null` significa indisponível ou não medido. Zero significa medido sem
-ocorrência.
+`null` significa indisponível ou não medido. Zero significa medido sem ocorrência.
 
 ## 8. Identidades e hashes
 
@@ -479,8 +430,7 @@ recordId = "rec_" + base32(
 )[:26]
 ```
 
-`payloadHash` inclui payload, janela, medição e qualidade. Não inclui `runId`,
-`ingestedAt` ou `readerAdapter`.
+`payloadHash` inclui payload, janela, medição e qualidade. Não inclui `runId`, `ingestedAt` ou `readerAdapter`.
 
 ### 8.1 Incidentes
 
@@ -571,8 +521,7 @@ monitoracao-operacional  fatos, incidentes, projeções e controle
 monitoracao-golden-set   curadoria humana/ML; inacessível à ingestão
 ```
 
-`monitoracao-operacional` usa `pk`, `sk`, modo `PAY_PER_REQUEST`, TTL no
-atributo `ttl` e GSI esparso `trace-index`.
+`monitoracao-operacional` usa `pk`, `sk`, modo `PAY_PER_REQUEST`, TTL no atributo `ttl` e GSI esparso `trace-index`.
 
 ### 10.2 Fatos temporais
 
@@ -581,8 +530,7 @@ PK = FACT#TS#<seriesId>#<YYYYMMDD>
 SK = T#<epochMs>#<recordId>
 ```
 
-`seriesId` é o hash de dataset, fonte, entidade, métrica e dimensões ordenadas.
-Os valores originais permanecem como atributos.
+`seriesId` é o hash de dataset, fonte, entidade, métrica e dimensões ordenadas. Os valores originais permanecem como atributos.
 
 Exemplo:
 
@@ -619,8 +567,7 @@ PK = INCIDENT#<incidentId>  SK = HYPOTHESIS#<hypothesisId>
 PK = INCIDENT#<incidentId>  SK = TIMELINE#<timestamp>#<itemId>
 ```
 
-O worker v1 grava apenas `META`. Outros casos de uso autorizados podem gravar
-evidências, hipóteses e timeline na mesma partição.
+O worker v1 grava apenas `META`. Outros casos de uso autorizados podem gravar evidências, hipóteses e timeline na mesma partição.
 
 Índices de listagem:
 
@@ -656,9 +603,7 @@ PK = INGESTION#RUN#<runId>      SK = ERROR#<sequence>
 
 ### 10.6 Projeções e padrões de consulta
 
-Os fatos canônicos são mantidos para auditoria e reconstrução. A API não deve
-consultá-los para montar cada tela em tempo real. O serviço de ingestão produz
-modelos de leitura com as combinações de dimensões autorizadas pelo contrato.
+Os fatos canônicos são mantidos para auditoria e reconstrução. A API não deve consultá-los para montar cada tela em tempo real. O serviço de ingestão produz modelos de leitura com as combinações de dimensões autorizadas pelo contrato.
 
 ```text
 fatos canônicos
@@ -689,17 +634,9 @@ PK = VIEW#GEOGRAPHY#<metric>#<YYYYMMDD>
 SK = T#<epochMs>#<dimensionId>
 ```
 
-Cada projeção registra `projectionVersion`, `formulaVersion`, datasets usados,
-watermarks de entrada, `observedThrough`, cobertura e qualidade. Uma falha de
-projeção não remove fatos nem retrocede o checkpoint da fonte.
+Cada projeção registra `projectionVersion`, `formulaVersion`, datasets usados, watermarks de entrada, `observedThrough`, cobertura e qualidade. Uma falha de projeção não remove fatos nem retrocede o checkpoint da fonte.
 
-Na visão geral, erros por minuto são derivados de contagens de categorias
-disjuntas divididas pela duração da janela; sessões afetadas e observadas vêm
-de `live_active_15min`; e a participação afetada é calculada pela divisão entre
-essas duas grandezas. A projeção de monitoramento utiliza contagens dos runs,
-checkpoints e dados de saúde da origem para apresentar leitura, escrita,
-rejeições, duração, atraso e cobertura. Toda fórmula possui versão explícita e
-preserva `null` quando a entrada necessária não foi medida.
+Na visão geral, erros por minuto são derivados de contagens de categorias disjuntas divididas pela duração da janela; sessões afetadas e observadas vêm de `live_active_15min`; e a participação afetada é calculada pela divisão entre essas duas grandezas. A projeção de monitoramento utiliza contagens dos runs, checkpoints e dados de saúde da origem para apresentar leitura, escrita, rejeições, duração, atraso e cobertura. Toda fórmula possui versão explícita e preserva `null` quando a entrada necessária não foi medida.
 
 As consultas seguem estes padrões:
 
@@ -713,22 +650,13 @@ As consultas seguem estes padrões:
 | Saúde da ingestão | `GetItem` | `INGESTION#SOURCE#<source>` |
 | Execução específica | `Query` | `INGESTION#RUN#<runId>` |
 
-Consultas que atravessam mais de um dia executam uma `Query` por partição
-diária e combinam os resultados no Backend. `Scan` não faz parte do caminho
-operacional. O cursor público da API é opaco e encapsula a última chave
-avaliada, sem expor `pk` ou `sk` ao frontend.
+Consultas que atravessam mais de um dia executam uma `Query` por partição diária e combinam os resultados no Backend. `Scan` não faz parte do caminho operacional. O cursor público da API é opaco e encapsula a última chave avaliada, sem expor `pk` ou `sk` ao frontend.
 
-A visão geral não calcula uma média de percentis segmentados. Quando não existe
-uma distribuição ou um agregado global confiável, o valor global é `null` e a
-medição recebe o estado `unknown`. Dados geográficos vêm de `geo_hourly`; nesse
-recorte, latência e perda permanecem indisponíveis enquanto a origem não as
-fornecer.
+A visão geral não calcula uma média de percentis segmentados. Quando não existe uma distribuição ou um agregado global confiável, o valor global é `null` e a medição recebe o estado `unknown`. Dados geográficos vêm de `geo_hourly`; nesse recorte, latência e perda permanecem indisponíveis enquanto a origem não as fornecer.
 
 ### 10.7 Outbox de solicitações de análise
 
-O watermark e o item de outbox são gravados na mesma transação. Essa regra
-garante que uma janela nunca seja considerada publicada sem existir uma forma
-de solicitar sua análise.
+O watermark e o item de outbox são gravados na mesma transação. Essa regra garante que uma janela nunca seja considerada publicada sem existir uma forma de solicitar sua análise.
 
 ```text
 PK = INGESTION#OUTBOX#<YYYYMMDD>
@@ -736,10 +664,7 @@ SK = CREATED#<epochMs>#<eventId>
 status = PENDING | PUBLISHED
 ```
 
-Depois da confirmação da SQS, o item passa para `PUBLISHED`. Se a tarefa for
-interrompida antes dessa atualização, a execução seguinte republica o mesmo
-`eventId` e a mesma `idempotencyKey`. O Worker de Análise trata essa repetição
-sem criar uma nova execução lógica.
+Depois da confirmação da SQS, o item passa para `PUBLISHED`. Se a tarefa for interrompida antes dessa atualização, a execução seguinte republica o mesmo `eventId` e a mesma `idempotencyKey`. O Worker de Análise trata essa repetição sem criar uma nova execução lógica.
 
 ## 11. Semântica da escrita
 
@@ -754,9 +679,7 @@ Para cada chunk:
 7. reconciliar contagens;
 8. avançar `resumeCursor`.
 
-Uma reexecução com o mesmo conteúdo não consome escrita para itens inalterados.
-Uma falha após a escrita e antes do checkpoint apenas causa uma releitura
-idempotente.
+Uma reexecução com o mesmo conteúdo não consome escrita para itens inalterados. Uma falha após a escrita e antes do checkpoint apenas causa uma releitura idempotente.
 
 ## 12. Checkpoint e bloqueio temporário
 
@@ -776,21 +699,11 @@ idempotente.
 - o dashboard usa somente watermarks publicados ou projetados;
 - fatos e projeções mantêm checkpoints separados.
 
-O bloqueio temporário, também chamado de *lease*, impede que duas tarefas
-atualizem a mesma fonte simultaneamente. O item contém `ownerRunId`,
-`leaseExpiresAt` e o instante da última renovação. A aquisição utiliza escrita
-condicional: ela só é aceita quando o item não existe ou quando o prazo anterior
-já expirou.
+O bloqueio temporário, também chamado de *lease*, impede que duas tarefas atualizem a mesma fonte simultaneamente. O item contém `ownerRunId`, `leaseExpiresAt` e o instante da última renovação. A aquisição utiliza escrita condicional: ela só é aceita quando o item não existe ou quando o prazo anterior já expirou.
 
-Existem dois níveis: um bloqueio global evita duas sincronizações completas ao
-mesmo tempo; um bloqueio por fonte evita que `sync`, `backfill` e `reprocess`
-disputem o mesmo checkpoint. A tarefa renova o prazo enquanto trabalha e só
-pode liberar o item se ainda for sua proprietária. Um conflito encerra a nova
-execução como `SKIPPED_LOCKED`, sem interromper a tarefa ativa.
+Existem dois níveis: um bloqueio global evita duas sincronizações completas ao mesmo tempo; um bloqueio por fonte evita que `sync`, `backfill` e `reprocess` disputem o mesmo checkpoint. A tarefa renova o prazo enquanto trabalha e só pode liberar o item se ainda for sua proprietária. Um conflito encerra a nova execução como `SKIPPED_LOCKED`, sem interromper a tarefa ativa.
 
-O TTL remove itens antigos, mas não determina a validade do bloqueio. A decisão
-sempre compara `leaseExpiresAt` com o horário atual, pois a remoção por TTL não
-é imediata.
+O TTL remove itens antigos, mas não determina a validade do bloqueio. A decisão sempre compara `leaseExpiresAt` com o horário atual, pois a remoção por TTL não é imediata.
 
 ## 13. Retenção e limites
 
@@ -804,9 +717,7 @@ sempre compara `leaseExpiresAt` com o horário atual, pois a remoção por TTL n
 | lease | curto, somente para limpeza |
 | golden set | sem TTL e fora da ingestão |
 
-O limite interno por registro é 200 KB, deixando margem diante do limite físico
-do DynamoDB. Payload maior é dividido ou armazenado no S3 com referência
-canônica. A mensagem de análise não transporta esse payload.
+O limite interno por registro é 200 KB, deixando margem diante do limite físico do DynamoDB. Payload maior é dividido ou armazenado no S3 com referência canônica. A mensagem de análise não transporta esse payload.
 
 ## 14. Erros e qualidade
 
@@ -829,9 +740,7 @@ Não contêm payload completo, PII, segredo, DSN ou stack trace com parâmetros.
 
 ## 15. Publicação para a SQS de análise
 
-A saída canônica grava diretamente no DynamoDB. Depois que fatos, projeções e
-watermark estiverem consistentes, a outbox publica uma referência para a janela
-na SQS de análise:
+A saída canônica grava diretamente no DynamoDB. Depois que fatos, projeções e watermark estiverem consistentes, a outbox publica uma referência para a janela na SQS de análise:
 
 ```json
 {
@@ -856,11 +765,7 @@ na SQS de análise:
 }
 ```
 
-O evento `QOE_FORECAST` é acrescentado quando a janela horária estiver completa.
-O contrato integral das mensagens está em
-[Análise de dados e diagnóstico por IA](analise-e-ia.md). O consumidor tolera
-mensagens duplicadas e fora de ordem. A API usa o watermark de materialização,
-nunca apenas o estado de publicação na fila.
+O evento `QOE_FORECAST` é acrescentado quando a janela horária estiver completa. O contrato integral das mensagens está em [Análise de dados e diagnóstico por IA](analise-e-ia.md). O consumidor tolera mensagens duplicadas e fora de ordem. A API usa o watermark de materialização, nunca apenas o estado de publicação na fila.
 
 ## 16. Critérios de conformidade
 
