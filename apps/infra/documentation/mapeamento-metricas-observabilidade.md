@@ -113,6 +113,7 @@ flowchart TD
         API_RUNTIME["Node.js Runtime (Event Loop, Heap, GC, CPU)"]
         API_AGENT["Camada Agêntica (Orquestrador, Bedrock LLM, ML)"]
         API_DB["DynamoDB Client (RCU, Latência, Scanned vs Returned)"]
+        API_RUM["POST /api/v1/telemetry/rum (Ingestão RUM)"]
         API_OTEL["OpenTelemetry SDK (Traces OTLP)"]
         API_LOGS["Logger JSON Estruturado (Winston / Pino)"]
     end
@@ -133,12 +134,13 @@ flowchart TD
     API_RUNTIME -->|Scrape /metrics| PROM
     API_AGENT -->|Scrape /metrics| PROM
     API_DB -->|Scrape /metrics| PROM
+    API_RUM -->|Registry; scrape /metrics| PROM
     ING_METRICS -->|Push / Metrics| PROM
     ING_HEALTH -->|Push / Metrics| PROM
 
     API_OTEL -->|OTLP / HTTP :4318| TEMPO
     API_LOGS -->|HTTP :3100 com trace_id| LOKI
-    FE_RUM -.->|Ingestão de RUM| API_OTEL
+    FE_RUM -.->|HTTPS / JSON| API_RUM
 
     PROM --> GRAFANA
     TEMPO --> GRAFANA
@@ -222,13 +224,13 @@ Acompanha o fluxo de processamento e a integridade das fontes de dados:
 
 | Métrica Técnica | Identificador Técnico | Tipo | Unidade | Meta Operacional | Destino |
 |:---|:---|:---|:---|:---|:---|
-| **First Contentful Paint** | `frontend_web_vitals_fcp_seconds` | Histograma | segundos | **≤ 30,0 s** (RNF07) | Prometheus / OTel RUM |
-| **Largest Contentful Paint** | `frontend_web_vitals_lcp_seconds` | Histograma | segundos | ≤ 2,5 s | Prometheus / OTel RUM |
-| **Interaction to Next Paint**| `frontend_web_vitals_inp_ms` | Histograma | `ms` | ≤ 200 ms | Prometheus / OTel RUM |
-| **Cumulative Layout Shift** | `frontend_web_vitals_cls` | Gauge | pontuação | ≤ 0,1 | Prometheus / OTel RUM |
-| **Erros de Renderização** | `frontend_client_errors_total` | Contador | erros | 0 erros não tratados | Loki / Console |
-| **Falhas de Fetch na API** | `frontend_api_fetch_errors_total` | Contador | erros | taxa < 0,1% | Prometheus / Loki |
-| **Cliques até a Causa Raiz** | `operator_clicks_to_root_cause` | Histograma | cliques | **≤ 5 cliques** (RNF10) | Telemetria Interna |
+| **First Contentful Paint** | `frontend_web_vitals_fcp_seconds` | Histograma | segundos | **≤ 30,0 s** (RNF07) | API RUM → Prometheus |
+| **Largest Contentful Paint** | `frontend_web_vitals_lcp_seconds` | Histograma | segundos | ≤ 2,5 s | API RUM → Prometheus |
+| **Interaction to Next Paint**| `frontend_web_vitals_inp_ms` | Histograma | `ms` | ≤ 200 ms | API RUM → Prometheus |
+| **Cumulative Layout Shift** | `frontend_web_vitals_cls` | Gauge | pontuação | ≤ 0,1 | API RUM → Prometheus |
+| **Erros de Renderização** | `frontend_client_errors_total` | Contador | erros | 0 erros não tratados | API RUM → Prometheus / Loki |
+| **Falhas de Fetch na API** | `frontend_api_fetch_errors_total` | Contador | erros | taxa < 0,1% | API RUM → Prometheus / Loki |
+| **Cliques até a Causa Raiz** | `operator_clicks_to_root_cause` | Histograma | cliques | **≤ 5 cliques** (RNF10) | API RUM → Prometheus |
 
 ---
 
@@ -270,16 +272,27 @@ Buckets recomendados para o histograma de latência:
 
 &emsp; Medem o desempenho da investigação automatizada e da geração de explicações:
 
-| Métrica / Nome Técnico | Tipo | Labels | Descrição / Racional |
-|:---|:---|:---|:---|
-| `agent_investigation_duration_seconds` | Histograma | `diagnosis_source` | Tempo total de execução de `orchestrator.diagnose()` (labels: `golden-set` vs `agent`). |
-| `bedrock_invocation_duration_seconds` | Histograma | `model_id`, `status` | Tempo de resposta da chamada ao Amazon Bedrock (`anthropic.claude-3-haiku-20240307-v1:0`). |
-| `bedrock_invocations_total` | Contador | `status: success \| failure \| throttled` | Total de chamadas de geração de texto enviadas ao Bedrock. |
-| `bedrock_fallback_total` | Contador | `reason` | Disparos do fallback por template devido a erro ou `BEDROCK_ENABLED=false` (ADR-004). |
-| `bedrock_tokens_total` | Contador | `token_type: input \| output` | Quantidade de tokens de entrada e saída consumidos na geração da explicação. |
-| `golden_set_matches_total` | Contador | `component` | Diagnósticos resolvidos deterministicamente via caso curado sem acionar o agente LLM. |
-| `golden_set_promotions_total` | Contador | `component` | Casos promovidos ao Golden Set através de revisão humana confirmada (`status="confirmed"`). |
-| `hypothesis_review_submissions_total` | Contador | `verdict: confirmed \| refuted` | Avaliações de hipótese submetidas por engenheiros na rota `/review`. |
+> [!WARNING]
+> As métricas `bedrock_*` são **condicionais à disponibilidade do serviço na
+> conta de deploy**. O AWS Academy Learner Lab usado pelo projeto não concede
+> acesso ao Bedrock; por isso `apps/infra/variables.tf` mantém
+> `bedrock_habilitado=false` e a API responde com a explicação por template.
+> Não basta alterar `BEDROCK_ENABLED`: antes é necessário confirmar permissão
+> de conta, modelo e região. Os riscos R4 e R6 de
+> `artefatos/sprint2/arquitetura-inicial.md` permanecem abertos, pois o Bedrock
+> ficou desativado em todos os testes e sua latência e seu consumo de tokens
+> ainda não foram medidos.
+
+| Métrica / Nome Técnico | Tipo | Labels | Descrição / Racional | Status |
+|:---|:---|:---|:---|:---|
+| `agent_investigation_duration_seconds` | Histograma | `diagnosis_source` | Tempo total de execução de `orchestrator.diagnose()` (labels: `golden-set` vs `agent`). | A implementar — independente do Bedrock |
+| `bedrock_invocation_duration_seconds` | Histograma | `model_id`, `status` | Tempo de resposta da chamada ao Amazon Bedrock (`anthropic.claude-3-haiku-20240307-v1:0`). | **Bloqueada no Learner Lab**; validar somente após obter acesso |
+| `bedrock_invocations_total` | Contador | `status: success \| failure \| throttled` | Total de chamadas de geração de texto efetivamente enviadas ao Bedrock. | **Condicional ao acesso ao Bedrock** |
+| `bedrock_fallback_total` | Contador | `reason: disabled \| access_denied \| throttled \| timeout \| error` | Disparos do fallback por template quando o Bedrock está desabilitado ou indisponível (ADR-004). | **Condicional**; `reason="disabled"` pode ser medido agora, demais razões exigem acesso |
+| `bedrock_tokens_total` | Contador | `token_type: input \| output` | Quantidade de tokens de entrada e saída informada pela resposta do modelo. | **Bloqueada no Learner Lab**; não há tokens sem invocação real |
+| `golden_set_matches_total` | Contador | `component` | Diagnósticos resolvidos deterministicamente via caso curado sem acionar o agente LLM. | A implementar — independente do Bedrock |
+| `golden_set_promotions_total` | Contador | `component` | Casos promovidos ao Golden Set através de revisão humana confirmada (`status="confirmed"`). | A implementar — independente do Bedrock |
+| `hypothesis_review_submissions_total` | Contador | `verdict: confirmed \| refuted` | Avaliações de hipótese submetidas por engenheiros na rota `/review`. | A implementar — independente do Bedrock |
 
 ### 4.4 Métricas de Acesso ao Banco de Dados (DynamoDB Client)
 
@@ -376,6 +389,59 @@ Buckets recomendados para o histograma de latência:
 
 &emsp; Para colocar este levantamento em operação na pilha local existente em `apps/observability`, deve-se executar:
 
+### Passo 0: Coletar e enviar RUM no `apps/frontend`
+
+1. Instalar `web-vitals` em `apps/frontend` e criar um componente client-only
+   (por exemplo, `app/web-vitals-reporter.tsx` com `"use client"`) carregado pelo
+   layout raiz. Registrar `onFCP`, `onLCP`, `onINP` e `onCLS`; converter FCP e
+   LCP de milissegundos para segundos antes do envio. Os listeners globais de
+   `error` e `unhandledrejection`, o wrapper central de `fetch` e o evento de
+   abertura da evidência de causa raiz completam as outras três métricas da
+   Seção 3.2.
+2. Resolver `NEXT_PUBLIC_API_BASE_URL="/"` para `window.location.origin`, como
+   já faz `lib/data/client.ts`, e enviar cada observação com
+   `fetch(..., { method: "POST", keepalive: true })` para
+   `/api/v1/telemetry/rum` nessa base. Como o frontend usa `output: "export"`, o
+   coletor roda somente no navegador e a variável é incorporada durante o
+   build; nenhum segredo pode ser colocado nela. O contrato mínimo da
+   requisição é:
+   ```json
+   {
+     "schemaVersion": 1,
+     "name": "frontend_web_vitals_lcp_seconds",
+     "value": 1.84,
+     "unit": "seconds",
+     "metricId": "v5-123",
+     "path": "/incidentes",
+     "navigationType": "navigate",
+     "occurredAt": "2026-09-06T18:30:00.000Z",
+     "rating": "good"
+   }
+   ```
+   Não enviar URL completa, query string, e-mail, cookie, stack trace sem
+   sanitização ou outro dado pessoal. O backend deve aceitar apenas os sete
+   nomes da Seção 3.2 e normalizar `path` para evitar cardinalidade ilimitada.
+3. Criar na API Express o endpoint público e limitado
+   `POST /api/v1/telemetry/rum`, com limite de corpo, rate limit e validação do
+   payload. Ele deve responder `202 Accepted` e atualizar no `prom-client` o
+   histograma, gauge ou contador correspondente; erros sanitizados também podem
+   ser registrados no logger JSON para consulta no Loki. O endpoint não envia
+   métricas diretamente ao Tempo: o Prometheus as coleta em `GET /metrics`.
+4. Configurar a origem antes de testar:
+   - no deploy atual, o Amplify encaminha `/api/*` e
+     `NEXT_PUBLIC_API_BASE_URL="/"`, portanto navegador e endpoint são da mesma
+     origem;
+   - em chamada direta para outro host, definir `FRONTEND_ORIGIN` na API com a
+     origem HTTPS exata do Amplify (ou a origem local no desenvolvimento),
+     permitir `POST`, `OPTIONS` e `Content-Type`, e manter
+     `credentials: true`; não usar `Access-Control-Allow-Origin: *` junto com
+     credenciais;
+   - validar no navegador que o preflight `OPTIONS` retorna a origem permitida
+     e que uma origem diferente é recusada.
+5. Confirmar no Prometheus que as sete séries aparecem após uso real do painel
+   e criar um teste de contrato do endpoint cobrindo payload válido, nome fora
+   da allowlist, corpo excedente e origem CORS não autorizada.
+
 ### Passo 1: Instrumentar `apps/backend/api` com Prometheus
 1. Instalar a biblioteca no backend:
    ```bash
@@ -418,4 +484,4 @@ Buckets recomendados para o histograma de latência:
 2. Provisionar três painéis:
    - **Painel 1: Performance da API (RED + Node.js + DynamoDB):** Vazão req/s, latência p95 (meta 2s), erros 5xx, event loop lag e RCU consumidos.
    - **Painel 2: QoE Globoplay (Dados do Frontend):** Taxa de erros por minuto, startup time p95, sessões afetadas, buffer ratio e mapa de calor por UF.
-   - **Painel 3: Pipeline de Ingestão e Diagnóstico:** Latência de execução batch (meta 120s), volume de registros lidos/escritos, taxa de acerto do Golden Set e latência do Bedrock.
+   - **Painel 3: Pipeline de Ingestão e Diagnóstico:** Latência de execução batch (meta 120s), volume de registros lidos/escritos, taxa de acerto do Golden Set e, somente quando houver acesso confirmado, latência do Bedrock. Enquanto `BEDROCK_ENABLED=false`, exibir explicitamente “Bedrock indisponível/não habilitado” em vez de interpretar a ausência de séries como latência zero.
