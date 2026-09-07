@@ -438,12 +438,12 @@ Resumo por rota:
 |---|---|---|
 | `GET /health`, `GET /auth/sso`, `POST /ml/analyze` | n/a (não tocam banco) | — |
 | `POST /auth/login`, `POST /auth/register` | **Fora de `keys.js`** — família `USER#`/`PROFILE` montada em `userService.js` | **G** |
-| `GET /api/v1/incidents` | Sim (`pk = INC#<hora>`, `sk` por `begins_with("INCIDENT#")`) | **A**, **B**, **C**, **I**, **J** |
-| `GET /api/v1/incidents/:id` `/evidence` `/hypothesis` | Sim (GSI `trace-index`, `itemTypeFromSk`) | **C**, **E** (só `/hypothesis`), **I** |
+| `GET /api/v1/incidents` | Sim (`pk = INC#<hora>`, `sk` por `begins_with("INCIDENT#")`) | **A**, **B**, **C**, **I**, **J**, **K**, **L** |
+| `GET /api/v1/incidents/:id` `/evidence` `/hypothesis` | Sim (GSI `trace-index`, `itemTypeFromSk`) | **C**, **E** (só `/hypothesis`), **I**, **K** |
 | `PATCH …/hypothesis/review` | Parcial — leitura via `keys.js`; chave do golden set fora de `keys.js` | **C**, **D**, **E** |
 | `POST …/diagnose` | Sim (`hypothesisSk`, GSI `trace-index`, `GetItem` golden set por assinatura) | **C**, **E**, **F** |
 | `GET /api/v1/golden-set` | n/a para `keys.js`; usa `case_id` = assinatura (`dynamodb.tf`) | — |
-| `GET /api/v1/dashboard/summary` | Sim | **A**, **C**, **H**, **I** |
+| `GET /api/v1/dashboard/summary` | Sim | **A**, **C**, **H**, **I**, **K**, **L** |
 
 ### A — Janela temporal × bucket de hora: a leitura depende de **há quanto tempo o `seed` rodou**  · impacto ALTO
 
@@ -565,6 +565,58 @@ serialização/DTO.
 `NaN` → default `360` (que por acaso é 6 h — "funciona por acidente"). `window=45m`
 → `NaN` → `360` (não 45). Só número puro (`window=45`) é interpretado como minutos.
 
+### K — Nenhuma `Query` é paginada; `LastEvaluatedKey` é descartado  · impacto ALTO
+
+`operationalTable.query()` (`src/db/operationalTable.js`) e `goldenSetTable.query()`
+fazem `documentClient.send(new QueryCommand(...))` e devolvem só `result.Items || []`
+— `result.LastEvaluatedKey` nunca é lido nem propagado. Uma `Query` do DynamoDB
+processa no máximo **1 MB de dados por chamada** e sinaliza mais páginas via
+`LastEvaluatedKey`; sem um laço que reenvie `ExclusiveStartKey`, qualquer resultado
+que ultrapasse esse teto é **truncado silenciosamente**, sem erro e sem indicação
+no corpo da resposta ([documentação oficial da AWS sobre paginação de `Query`](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.html#Query.Pagination)).
+
+Isso atinge todo caminho que usa `Query` na tabela base:
+
+- `listIncidents` (rotas 5 e 13): cada um dos buckets de hora (`Query` por
+  `pk = "INC#<hora>"`) para de devolver itens além de 1 MB acumulado naquele
+  bucket — na prática, um bucket com muita evidência/hipótese (ver item **L**)
+  teria incidentes reais omitidos da listagem, sem qualquer sinal de que a
+  página não é a única.
+- `getIncidentBundle` (rotas 6, 7, 8; GSI `trace-index`): um incidente com
+  evidências/hipóteses suficientes para passar de 1 MB perde silenciosamente o
+  restante do bundle.
+- `dashboard/summary` (rota 13): mesmo truncamento de `listIncidents`, refletido
+  nos contadores e em `recentIncidents`.
+
+Com o volume atual do seed (300 incidentes, 2.341 registros) o teto de 1 MB
+provavelmente não é atingido em nenhuma chamada isolada — por isso o sintoma não
+aparece hoje. Mas o levantamento descreve **como a API opera**, e a ausência de
+paginação é uma propriedade do código, não do volume de teste: ela se torna um
+bug de dados incompletos assim que a base crescer, sem exigir nenhuma mudança de
+código para se manifestar.
+
+### L — `begins_with(sk, "INCIDENT#")` lê evidências e hipóteses para descartá-las depois  · impacto ALTO
+
+A ressalva já aparece nas rotas 5 e 13 (`flat()` + `filter(itemTypeFromSk(sk) ===
+"INCIDENT")`, "descarta evidência e hipótese, que também começam por `INCIDENT#`"),
+mas o levantamento a trata como observação de funcionamento, não como defeito:
+a conclusão da rota é que a chave "bate" com `keys.js`, e só o item **A**
+(janela × relógio) é apontado como causa de leitura ruim.
+
+Isso subestima o problema. `artefatos/sprint2/testes-desempenho.md` (§8.1-8.2)
+mede esse exato caminho sob carga: a chave de ordenação não distingue incidente
+de evidência/hipótese, então **cada `Query` traz a gaveta inteira** — com o
+povoamento de teste, 2.341 registros lidos e transferidos pela rede para
+devolver 291 incidentes (**~87% do trabalho de leitura é descartado em
+memória**), medindo 967 RCU/s, ~8× mais do que uma chave que separasse os
+prefixos (`EVIDENCE#…`/`HYPOTHESIS#…`) exigiria.
+
+Ou seja: a chave de ordenação "bate" com a convenção documentada em `keys.js`,
+mas **a própria convenção é o defeito** — prefixar incidente, evidência e
+hipótese todos com `INCIDENT#` sob o mesmo `pk` impede o DynamoDB de filtrar do
+lado do servidor, empurrando o filtro para `Array.filter()` em memória depois de
+já ter pago o custo de leitura, transferência e desserialização de tudo.
+
 ---
 
 ## 5. Golden Set: existe endpoint que grava uma hipótese avaliada como falsa?
@@ -642,7 +694,11 @@ Passos necessários, em ordem:
 - **Operações usadas:** `Query`, `GetItem`, `PutItem`, `UpdateItem`. Nenhuma rota
   usa `BatchGetItem` ou `TransactWriteItems`; `Scan` só no script `reset.js`.
 - **Os padrões de `pk`/`sk` das rotas batem com `src/db/keys.js`** — a leitura não
-  está "errada" no sentido de montar a chave errada.
+  está "errada" no sentido de montar a chave errada. Mas a própria convenção tem
+  dois defeitos estruturais: nenhuma `Query` é paginada (**K**), e o `sk` não
+  distingue incidente de evidência/hipótese, fazendo cada `Query` ler a gaveta
+  inteira para descartar ~87% em memória — medido em
+  `artefatos/sprint2/testes-desempenho.md` (**L**).
 - **A inconsistência que explica "ele não tá lendo de maneira correta" é a A:** a
   janela de consulta é recalculada a partir do relógio real, enquanto o `pk` do
   incidente e o `startedMinutesAgo` foram congelados no `seed`. Horas depois da
