@@ -125,7 +125,10 @@ a 9 está protegida.
 - **Response 200:** `{ "status": "ok", "name": string | null }` + header
   `Set-Cookie: session=<base64url(email)>.<hmac-sha256>` (`httpOnly`, `sameSite=lax`,
   `maxAge` 8 h, `secure` só em produção). `name` vem preenchido apenas para conta
-  registrada; para o usuário fixo de demonstração é `null`.
+  registrada; para o usuário fixo de demonstração é `null`. **`maxAge` 8 h é só a
+  validade que o navegador aplica ao descartar o cookie** — o valor assinado
+  contém somente o e-mail (ver §4, item **M**); o servidor não confere emissão
+  nem expiração ao verificar a sessão.
 - **Erros:**
   | HTTP | Corpo | Quando |
   |---|---|---|
@@ -437,7 +440,7 @@ Resumo por rota:
 | Rota | Padrão de leitura bate com `keys.js`? | Ressalvas |
 |---|---|---|
 | `GET /health`, `GET /auth/sso`, `POST /ml/analyze` | n/a (não tocam banco) | — |
-| `POST /auth/login`, `POST /auth/register` | **Fora de `keys.js`** — família `USER#`/`PROFILE` montada em `userService.js` | **G** |
+| `POST /auth/login`, `POST /auth/register` | **Fora de `keys.js`** — família `USER#`/`PROFILE` montada em `userService.js` | **G**, **M** (só `/login`) |
 | `GET /api/v1/incidents` | Sim (`pk = INC#<hora>`, `sk` por `begins_with("INCIDENT#")`) | **A**, **B**, **C**, **I**, **J**, **K**, **L** |
 | `GET /api/v1/incidents/:id` `/evidence` `/hypothesis` | Sim (GSI `trace-index`, `itemTypeFromSk`) | **C**, **E** (só `/hypothesis`), **I**, **K** |
 | `PATCH …/hypothesis/review` | Parcial — leitura via `keys.js`; chave do golden set fora de `keys.js` | **C**, **D**, **E** |
@@ -617,6 +620,26 @@ hipótese todos com `INCIDENT#` sob o mesmo `pk` impede o DynamoDB de filtrar do
 lado do servidor, empurrando o filtro para `Array.filter()` em memória depois de
 já ter pago o custo de leitura, transferência e desserialização de tudo.
 
+### M — Cookie de sessão não tem expiração aplicada pelo servidor  · impacto MÉDIO
+
+`signSession` (`src/auth/session.js`) assina só o payload `base64url(email)` com
+HMAC-SHA256; não há `iat` (instante de emissão) nem `exp` (expiração) no valor
+assinado. `verifySession` (mesmo arquivo) faz apenas
+`crypto.timingSafeEqual` entre a assinatura recebida e a esperada — não decodifica
+nem confere nenhum campo de tempo, porque não existe campo de tempo para conferir.
+
+O `maxAge: 8h` do `Set-Cookie` (rota `POST /auth/login`, §2) é uma instrução para
+o **navegador** descartar o cookie após 8 h — não uma validade que o backend
+impõe. Um valor de cookie copiado antes desse descarte (log, proxy, dispositivo
+comprometido) continua sendo aceito por `requireAuth` **indefinidamente**, em
+qualquer horário, até que `AUTH_COOKIE_SECRET` seja trocado. Não há revogação de
+sessão nem lista de invalidação — trocar a senha do usuário, por exemplo, não
+invalida cookies já emitidos, já que o valor assinado nem contém a senha.
+
+O levantamento deve distinguir as duas coisas: **expiração no navegador**
+(existe, 8 h) e **validade criptográfica no backend** (não existe — o cookie é
+válido enquanto o segredo não mudar).
+
 ---
 
 ## 5. Golden Set: existe endpoint que grava uma hipótese avaliada como falsa?
@@ -686,7 +709,10 @@ Passos necessários, em ordem:
 
 - **13 rotas.** Só `PATCH /api/v1/incidents/:id/hypothesis/review` exige
   autenticação. Três rotas escrevem (`POST /auth/register`, `PATCH …/review`,
-  `POST …/diagnose`); duas delas sem `requireAuth`.
+  `POST …/diagnose`); duas delas sem `requireAuth`. O cookie de sessão emitido
+  em `POST /auth/login` não carrega expiração própria — `maxAge: 8h` é só a
+  validade que o navegador aplica; o backend aceita o mesmo cookie
+  indefinidamente até a troca de `AUTH_COOKIE_SECRET` (**M**).
 - **Duas tabelas:** `monitoracao-operacional` (single-table: incidentes,
   evidências, hipóteses e — fora de `keys.js` — usuários; GSI `trace-index`
   projeção ALL; TTL) e `monitoracao-golden-set` (chave simples `case_id` =
