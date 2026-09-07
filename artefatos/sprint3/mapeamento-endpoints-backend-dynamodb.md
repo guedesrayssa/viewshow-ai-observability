@@ -524,15 +524,23 @@ autenticado consegue inserir itens `HYPOTHESIS`. Só `PATCH …/review` está at
 `requireAuth`. O gap-analysis (§5.2, §8) recomenda tratar `/diagnose` como
 operação interna.
 
-### G — Contas de usuário fora da convenção e apagadas pelo `reset`  · impacto BAIXO
+### G — Contas de usuário fora da convenção de `keys.js`  · impacto BAIXO
 
 `userService` monta `pk = USER#<email>`, `sk = "PROFILE"` direto, sem passar por
 `keys.js` nem por `operationalTable.js` (fura o ADR-004). Itens de usuário não têm
 `ttl` nem `trace_id` (logo são invisíveis ao GSI `trace-index` e ao
-`listIncidents` — o que está correto). Porém `scripts/reset.js` faz `Scan` +
-`DeleteItem` de **toda** a `monitoracao-operacional`, então `npm run reset` apaga
-as contas registradas junto com os incidentes. Além disso, o fallback em memória
-de `createUser` devolve "sucesso" para uma escrita que nunca chegou ao DynamoDB.
+`listIncidents` — o que está correto).
+
+`scripts/reset.js` faz `Scan` + `DeleteItem` em `monitoracao-operacional`, mas
+desde o hotfix `899691c` ("script reset não mais apaga conta de usuário") o
+`Scan` é seguido de um filtro explícito — só é apagado o item cujo `pk` começa
+com `DELETABLE_PK_PREFIX = "INC#"`. Contas de usuário (`pk = USER#<email>`) ficam
+de fora; `npm run reset` hoje **não** apaga contas registradas. (Versões
+anteriores deste levantamento, feitas sobre a branch de feature antes do rebase
+para `develop`, afirmavam o contrário — corrigido aqui.)
+
+Além disso, o fallback em memória de `createUser` devolve "sucesso" para uma
+escrita que nunca chegou ao DynamoDB.
 
 ### H — `dashboard/summary`: os números têm semântica frouxa  · impacto MÉDIO
 
