@@ -234,23 +234,14 @@ relações `include`, `extend` ou generalizações presentes no diagrama.]
 
 ### 4.1. Objetivo e escopo
 
-&emsp; Esta seção documenta duas partes implementadas do backend, mantidas como contextos
-separados no repositório:
+&emsp;Esta seção documenta duas partes implementadas do backend, mantidas como contextos separados no repositório:
 
 - a API Node.js de consulta, diagnóstico e curadoria, em <code>apps/backend/api</code>;
-- a API Flask de ingestão e normalização de telemetria, em
-  <code>apps/basica/backend</code>.
+- a API Flask de ingestão e normalização de telemetria, em <code>apps/basica/backend</code>.
 
-&emsp; Para evitar misturar entidades de domínio com módulos de infraestrutura em uma única
-figura, a modelagem foi dividida em três visões complementares: modelo de domínio e DTO de
-diagnóstico, dependências da API Node.js e contexto de ingestão Flask. Nos diagramas de
-dependências, módulos JavaScript e componentes Flask recebem estereótipos UML para dar
-rastreabilidade ao código; isso não significa que todos sejam classes em tempo de execução.
+&emsp;Para evitar misturar entidades de domínio com módulos de infraestrutura em uma única figura, a modelagem foi dividida em três visões complementares: modelo de domínio e DTO de diagnóstico, dependências da API Node.js e contexto de ingestão Flask. Nos diagramas de dependências, módulos JavaScript e componentes Flask recebem estereótipos UML para dar rastreabilidade ao código; isso não significa que todos sejam classes em tempo de execução.
 
-&emsp; O frontend permanece fora do escopo porque apenas consome as APIs. Também não são
-representados componentes futuros ainda ausentes do código, como um job ARGUS/SQS. Essa exclusão
-não abrange a ingestão Flask, que já implementa os endpoints de eventos, erros e heartbeat,
-validação, normalização e persistência relacionados a RF01–RF03 e RF06.
+&emsp;O frontend permanece fora do escopo porque apenas consome as APIs. Também não são representados componentes futuros ainda ausentes do código, como um job ARGUS/SQS. Essa exclusão não abrange a ingestão Flask, que já implementa os endpoints de eventos, erros e heartbeat, validação, normalização e persistência relacionados a RF01–RF03 e RF06.
 
 ### 4.2. Diagramas
 
@@ -334,14 +325,9 @@ classDiagram
 ```
 
 **Figura x — Modelo de domínio e DTO da API de diagnóstico.**
-Fonte: Material produzido pelos autores (2026), com base em
-<code>apps/backend/api/src</code>.
+Fonte: Material produzido pelos autores (2026), com base em <code>apps/backend/api/src</code>.
 
-&emsp; As ligações acima são associações lógicas usadas para recuperar o bundle pelo
-<code>trace_id</code>; não representam chave estrangeira, exclusão em cascata ou ciclo de vida
-transacional no DynamoDB. Os campos <code>reviewedBy</code> e
-<code>sourceIncidentId</code> são valores escalares copiados, por isso não foram desenhados como
-associações estruturais com <code>Usuario</code> ou <code>Incidente</code>.
+&emsp;As ligações acima são associações lógicas usadas para recuperar o bundle pelo <code>trace_id</code>; não representam chave estrangeira, exclusão em cascata ou ciclo de vida transacional no DynamoDB. Os campos <code>reviewedBy</code> e <code>sourceIncidentId</code> são valores escalares copiados, por isso não foram desenhados como associações estruturais com <code>Usuario</code> ou <code>Incidente</code>.
 
 &emsp;O atributo <code>passwordHash</code> é mantido porque esta visão descreve fielmente a implementação atual da API Node.js. Ele constitui, porém, uma dívida técnica: RF04, RNF04 e RESTR01 determinam que a autenticação do produto-alvo seja delegada ao SSO corporativo e que o View Show não armazene senhas. Sua presença não representa uma decisão arquitetural aprovada e deve ser removida quando a integração federada substituir a sessão local do protótipo.
 
@@ -390,8 +376,7 @@ flowchart TB
 ```
 
 **Figura x — Dependências entre rotas e serviços da API Node.js.**
-Fonte: Material produzido pelos autores (2026), com base nos
-<code>require</code> de <code>apps/backend/api/src</code>.
+Fonte: Material produzido pelos autores (2026), com base nos <code>require</code> de <code>apps/backend/api/src</code>.
 
 #### 4.2.3. Orquestração e persistência da API Node.js
 
@@ -429,14 +414,9 @@ flowchart TB
 ```
 
 **Figura x — Dependências de orquestração e persistência da API Node.js.**
-Fonte: Material produzido pelos autores (2026), com base nos
-<code>require</code> de <code>apps/backend/api/src</code>.
+Fonte: Material produzido pelos autores (2026), com base nos <code>require</code> de <code>apps/backend/api/src</code>.
 
-&emsp; <code>TabelaOperacional</code> representa especificamente o módulo
-<code>db/operationalTable.js</code>, não a tabela física. O serviço de usuários contorna esse
-wrapper e envia <code>GetCommand</code> e <code>PutCommand</code> diretamente pelo
-<code>DynamoDBDocumentClient</code>. Essa exceção à fronteira do repositório de incidentes está
-explícita na Figura 4.
+&emsp;<code>TabelaOperacional</code> representa especificamente o módulo <code>db/operationalTable.js</code>, não a tabela física. O serviço de usuários contorna esse wrapper e envia <code>GetCommand</code> e <code>PutCommand</code> diretamente pelo <code>DynamoDBDocumentClient</code>. Essa exceção à fronteira do repositório de incidentes está explícita na Figura x.
 
 #### 4.2.4. Contexto implementado de ingestão Flask
 
@@ -515,8 +495,7 @@ classDiagram
 ```
 
 **Figura x — Classes principais do contexto Flask de ingestão.**
-Fonte: Material produzido pelos autores (2026), com base em
-<code>apps/basica/backend/app</code>.
+Fonte: Material produzido pelos autores (2026), com base em <code>apps/basica/backend/app</code>.
 
 ### 4.3. Descrição dos elementos
 
@@ -524,7 +503,7 @@ Fonte: Material produzido pelos autores (2026), com base em
 
 | Elemento | Tipo | Responsabilidade | Principais atributos | Origem no código |
 |:---|:---|:---|:---|:---|
-| <code>Usuario</code> | Registro de domínio | Representa uma conta cadastrada; persiste apenas o hash scrypt com sal. | <code>email</code>, <code>name</code>, <code>passwordHash</code>, <code>createdAt</code> | <code>src/services/userService.js</code>; item <code>USER#&lt;email&gt;</code> |
+| <code>Usuario</code> | Registro de domínio | Representa a conta local do protótipo, identificada como dívida técnica a ser substituída pela identidade federada. | <code>email</code>, <code>name</code>, <code>passwordHash</code>, <code>createdAt</code> | <code>src/services/userService.js</code>; item <code>USER#&lt;email&gt;</code> |
 | <code>Incidente</code> | Registro de domínio | Agrupa uma falha ou degradação detectada. | <code>id</code>, <code>traceId</code>, componente, dispositivo, região, versão e estado | item <code>INCIDENT#&lt;id&gt;</code> na tabela operacional |
 | <code>Evidencia</code> | Registro de domínio | Sinal coletado em favor ou contra uma hipótese. | <code>incidentId</code>, tipo, descrição, origem, força e captura | item v2 <code>EVIDENCE#&lt;id&gt;#&lt;seq&gt;</code> |
 | <code>Hipotese</code> | Registro de domínio | Diagnóstico gerado ou semeado e seu estado opcional de revisão humana. | texto, score, origem, revisão e criação | item v2 <code>HYPOTHESIS#&lt;id&gt;#&lt;epoch&gt;</code> |
@@ -622,14 +601,13 @@ formatos durante a transição. Todos os itens relacionados carregam o mesmo
 | <code>ServicoIngestaoTelemetria</code> | Dependência | <code>RepositorioTelemetria</code> | — | Persiste registros normalizados por meio do contrato. |
 | Adaptadores DynamoDB e memória | Realização | <code>RepositorioTelemetria</code> | — | Implementam a mesma porta de persistência. |
 
-&emsp; <code>reviewedBy</code> e <code>source_incident_id</code> são valores escalares sem
-integridade referencial; por isso não recebem multiplicidades nem associações no diagrama.
+&emsp;<code>reviewedBy</code> e <code>source_incident_id</code> são valores escalares sem integridade referencial; por isso não recebem multiplicidades nem associações no diagrama.
 
 ### 4.5. Regras, garantias e limitações
 
 | ID | Elemento(s) | Regra, garantia ou limitação |
 |:---|:---|:---|
-| INV-01 | <code>Usuario</code> | A senha não é persistida em texto puro; apenas o hash scrypt com sal por usuário é armazenado, e a comparação no login usa tempo constante. |
+| INV-01 | <code>Usuario</code> | Enquanto o desvio local do protótipo existir, a senha não pode ser persistida em texto puro; a conformidade final exige remover também o hash e delegar a autenticação ao SSO. |
 | INV-02 | <code>CasoGoldenSet</code> | A promoção para a golden set é disparada somente pela rota de revisão humana quando <code>status = "confirmed"</code>; orquestrador e agente não promovem casos. |
 | INV-03 | <code>Incidente</code>, <code>Evidencia</code>, <code>Hipotese</code> | Itens do mesmo incidente compartilham <code>trace_id</code>, permitindo recuperar o bundle por uma consulta ao GSI, tanto para chaves v2 quanto para itens v1 legados. |
 | REG-04 | <code>Hipotese</code> | A leitura considera mais recente a hipótese cujo último segmento de <code>sk</code> é lexicograficamente maior. |
@@ -639,29 +617,13 @@ integridade referencial; por isso não recebem multiplicidades nem associações
 
 ### 4.6. Decisões de modelagem
 
-- **Visões separadas para legibilidade.** Domínio, dependências da API Node.js e ingestão Flask
-  foram divididos em três figuras. Isso evita cruzar relações de natureza diferente e mantém os
-  nomes dos arquivos rastreáveis.
-- **Registros de domínio sem métodos próprios.** Na API Node.js, usuário, incidente, evidência,
-  hipótese e caso da golden set são objetos literais persistidos. Métodos aparecem nos módulos
-  de serviço, orquestração e infraestrutura que realmente os implementam.
-- **Fronteira de persistência representada como implementada.**
-  <code>TabelaOperacional</code> e <code>TabelaGoldenSet</code> são wrappers de acesso que
-  compartilham <code>ClienteDynamoDB</code>. <code>ServicoUsuario</code> também compartilha o
-  cliente, mas acessa a tabela física diretamente; essa exceção está documentada em vez de ser
-  reinterpretada como uso do wrapper operacional.
-- **Transição de schema explícita.** Novas escritas usam v2; v1 permanece apenas como formato
-  legado reconhecido por <code>itemTypeFromSk()</code>. O GSI por <code>trace_id</code> desacopla
-  a remontagem do bundle do prefixo da chave de ordenação.
-- **Referências escalares não viram associações estruturais.** E-mail do revisor e identificador
-  do incidente de origem não possuem chave estrangeira ou garantia de existência. Eles aparecem
-  apenas no mapeamento de campos.
-- **DTO explícito e completo.** <code>RelatorioDiagnostico</code> não corresponde a uma classe
-  concreta, mas representa exatamente o objeto literal devolvido pelo orquestrador, incluindo
-  <code>evidence</code>.
-- **Ingestão existente em contexto próprio.** O backend Flask implementa coleta, validação,
-  normalização e persistência de telemetria e foi modelado separadamente. Componentes futuros de
-  fila/worker não foram inventados.
+- **Visões separadas para legibilidade.** Domínio, dependências da API Node.js e ingestão Flask foram divididos em três figuras. Isso evita cruzar relações de natureza diferente e mantém os nomes dos arquivos rastreáveis.
+- **Registros de domínio sem métodos próprios.** Na API Node.js, usuário, incidente, evidência, hipótese e caso da golden set são objetos literais persistidos. Métodos aparecem nos módulos de serviço, orquestração e infraestrutura que realmente os implementam.
+- **Fronteira de persistência representada como implementada.** <code>TabelaOperacional</code> e <code>TabelaGoldenSet</code> são wrappers de acesso que compartilham <code>ClienteDynamoDB</code>. <code>ServicoUsuario</code> também compartilha o cliente, mas acessa a tabela física diretamente; essa exceção está documentada em vez de ser reinterpretada como uso do wrapper operacional.
+- **Transição de schema explícita.** Novas escritas usam v2; v1 permanece apenas como formato legado reconhecido por <code>itemTypeFromSk()</code>. O GSI por <code>trace_id</code> desacopla a remontagem do bundle do prefixo da chave de ordenação.
+- **Referências escalares não viram associações estruturais.** E-mail do revisor e identificador do incidente de origem não possuem chave estrangeira ou garantia de existência. Eles aparecem apenas no mapeamento de campos.
+- **DTO explícito e completo.** <code>RelatorioDiagnostico</code> não corresponde a uma classe concreta, mas representa exatamente o objeto literal devolvido pelo orquestrador, incluindo <code>evidence</code>.
+- **Ingestão existente em contexto próprio.** O backend Flask implementa coleta, validação, normalização e persistência de telemetria e foi modelado separadamente. Componentes futuros de fila/worker não foram inventados.
 
 ---
 
@@ -804,15 +766,8 @@ reprocessamento, mensagens de erro e estado preservado.]
 
 ## 8. Referências
 
-LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto
-orientados a objetos e ao desenvolvimento iterativo*. Porto Alegre: Bookman.
-Disponível em:
-https://integrada.minhabiblioteca.com.br/reader/books/9788577800476.
-Acesso em: DD mês AAAA.
+LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto orientados a objetos e ao desenvolvimento iterativo*. 3. ed. Porto Alegre: Bookman, 2007. E-book. Disponível em: https://integrada.minhabiblioteca.com.br/reader/books/9788577800476. Acesso em: 6 set. 2026.
 
-OBJECT MANAGEMENT GROUP. *Unified Modeling Language — UML*. Disponível em:
-https://www.omg.org/spec/UML/. Acesso em: DD mês AAAA.
+OBJECT MANAGEMENT GROUP. *OMG Unified Modeling Language (OMG UML)*. Version 2.5.1. 2017. Disponível em: https://www.omg.org/spec/UML/2.5.1. Acesso em: 6 set. 2026.
 
-GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de
-Frontend Globoplay*. 2026. Disponível em:
-[requisitos.md](../sprint1/requisitos.md).
+GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de Frontend Globoplay*. 2026. Disponível em: [requisitos.md](../sprint1/requisitos.md).
