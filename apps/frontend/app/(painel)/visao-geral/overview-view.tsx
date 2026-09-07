@@ -17,7 +17,7 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   fetchOverview,
@@ -77,6 +77,43 @@ export function OverviewView() {
   const summaryData = summary.data;
   const overviewData = overview.data;
 
+  // A tela tem duas leituras independentes; a que ainda está carregando desenha
+  // um espaço reservado, a que terminou sem dado desenha um estado de
+  // indisponível. Sem essa distinção, uma leitura sem fonte ficaria presa no
+  // espaço reservado para sempre.
+  const summaryLoading = summary.status === "loading";
+
+  // Atualizar tem que refazer as duas leituras: o botão fica no cabeçalho, que
+  // fala pela tela inteira, não só pelo resumo.
+  // `refresh` de cada leitura é estável (useCallback com deps vazias em
+  // use-resource), então depender das duas funções basta.
+  const refreshAll = useCallback(() => {
+    summary.refresh();
+    overview.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary.refresh, overview.refresh]);
+
+  // O cabeçalho combina as duas fontes. O resumo é a leitura principal e dá a
+  // procedência; a telemetria, quando não está medida, rebaixa o selo de "ao
+  // vivo" para "parcial" e entra na lista de avisos — em vez de o cabeçalho
+  // anunciar dado ao vivo enquanto o gráfico está indisponível.
+  const overviewSettled = overview.status !== "loading";
+  const combinedAvailability =
+    summary.availability === "measured" &&
+    overviewSettled &&
+    overview.availability !== "measured"
+      ? "partial"
+      : summary.availability;
+
+  const combinedWarnings = useMemo(() => {
+    const seen = new Set<string>();
+    return [...summary.warnings, ...overview.warnings].filter((warning) => {
+      if (seen.has(warning.code)) return false;
+      seen.add(warning.code);
+      return true;
+    });
+  }, [summary.warnings, overview.warnings]);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -85,12 +122,12 @@ export function OverviewView() {
         status={
           <DataStatus
             source={summary.source}
-            availability={summary.availability}
-            warnings={summary.warnings}
+            availability={combinedAvailability}
+            warnings={combinedWarnings}
             fetchedAt={summary.fetchedAt}
             refreshing={summary.refreshing || overview.refreshing}
-            error={summary.error}
-            onRefresh={summary.refresh}
+            error={summary.error ?? overview.error}
+            onRefresh={refreshAll}
           />
         }
         actions={
@@ -100,22 +137,36 @@ export function OverviewView() {
         }
       />
 
-      {summary.status === "error" ? (
+      {summary.status === "error" || summary.source === "indisponivel" ? (
         <Alert tone="critical" title="Não foi possível ler o resumo de incidentes">
-          {summary.error} Tente atualizar em alguns instantes.
+          {summary.error ??
+            summary.warnings[0]?.message ??
+            "A API de incidentes não respondeu a leitura do resumo."}{" "}
+          Tente atualizar em alguns instantes.
         </Alert>
       ) : null}
 
       <div className="flex flex-col gap-4 md:flex-row">
-        {summaryData
-          ? summaryData.stats.map((stat, index) => (
-              <Reveal key={stat.id} index={index} className="flex flex-1">
-                <StatCard {...stat} />
-              </Reveal>
-            ))
-          : STAT_ACCENTS.map((accent, index) => (
-              <StatCardSkeleton key={index} accent={accent} />
-            ))}
+        {summaryData ? (
+          summaryData.stats.map((stat, index) => (
+            <Reveal key={stat.id} index={index} className="flex flex-1">
+              <StatCard {...stat} />
+            </Reveal>
+          ))
+        ) : summaryLoading ? (
+          STAT_ACCENTS.map((accent, index) => (
+            <StatCardSkeleton key={index} accent={accent} />
+          ))
+        ) : (
+          <Unavailable
+            title="Indicadores de incidentes indisponíveis"
+            warning={summary.warnings[0]}
+            className="flex-1"
+          >
+            A leitura do resumo veio da API de incidentes e não retornou. Nenhum
+            número é exibido para não afirmar um estado que não foi medido.
+          </Unavailable>
+        )}
       </div>
 
       <Reveal delay={180}>
@@ -155,8 +206,18 @@ export function OverviewView() {
         <Reveal delay={320} className="flex w-full lg:w-auto">
           {summaryData ? (
             <IncidentsCard incidents={summaryData.incidents} />
-          ) : (
+          ) : summaryLoading ? (
             <IncidentsCardSkeleton />
+          ) : (
+            <Unavailable
+              title="Incidentes recentes indisponíveis"
+              warning={summary.warnings[0]}
+              minHeight={340}
+              className="w-full lg:w-[360px]"
+            >
+              A lista de incidentes recentes vem da API de incidentes, que não
+              respondeu a leitura do resumo.
+            </Unavailable>
           )}
         </Reveal>
       </div>
