@@ -186,11 +186,11 @@ As User Stories foram revisadas conforme os princípios INVEST:
 - O gráfico deve permitir alterar o período de visualização.
 - Incidentes sem estimativa confiável devem ser identificados como “impacto ainda não determinado”.
 
-**Fundamentação:** Matheus precisa transformar ocorrências vindas de diferentes canais em uma decisão de encaminhamento. O impacto estimado é um dos elementos centrais para definir a prioridade.
+**Fundamentação:** Matheus precisa identificar quais ocorrências exigem análise imediata. O impacto estimado é um dos elementos centrais para definir essa prioridade.
 
 #### US-N1-02 - Consultar hipótese de causa provável
 
-**User Story:** Como analista de atendimento técnico N1, eu quero visualizar a causa provável de um incidente e o nível de confiança dessa hipótese, para direcionar o chamado sem depender exclusivamente de tentativa e erro entre diferentes filas.
+**User Story:** Como analista de atendimento técnico N1, eu quero visualizar a causa provável de um incidente e o nível de confiança dessa hipótese, para avaliar o diagnóstico com base nas informações disponíveis.
 
 **Critérios de aceitação:**
 
@@ -200,11 +200,11 @@ As User Stories foram revisadas conforme os princípios INVEST:
 - A interface não deve apresentar uma hipótese como causa confirmada.
 - Quando não houver evidência suficiente, o sistema deve informar que a causa permanece inconclusiva.
 
-**Fundamentação:** Um incidente pode circular entre equipes de player, CDN, TV, web, identidade e backend. A hipótese reduz encaminhamentos por tentativa e erro sem eliminar a validação humana.
+**Fundamentação:** A hipótese organiza os sinais associados ao incidente e reduz a dependência de tentativa e erro, sem substituir a validação humana.
 
 #### US-N1-03 - Consultar evidências do diagnóstico
 
-**User Story:** Como analista de atendimento técnico N1, eu quero consultar as evidências que sustentam a hipótese apresentada, para justificar o encaminhamento do incidente à equipe responsável.
+**User Story:** Como analista de atendimento técnico N1, eu quero consultar as evidências que sustentam a hipótese apresentada, para confirmar, refutar ou complementar o diagnóstico do incidente.
 
 **Critérios de aceitação:**
 
@@ -214,7 +214,7 @@ As User Stories foram revisadas conforme os princípios INVEST:
 - Cada evidência deve poder ser expandida para exibir detalhes adicionais.
 - Evidências ausentes, atrasadas ou de baixa qualidade devem ser sinalizadas.
 
-**Fundamentação:** O encaminhamento precisa ser justificável mesmo quando a telemetria apresenta perda, atraso, duplicidade ou baixa qualidade.
+**Fundamentação:** A avaliação da hipótese precisa considerar a qualidade dos dados, especialmente quando a telemetria apresenta perda, atraso, duplicidade ou baixa qualidade.
 
 #### US-N1-04 - Segmentar o incidente
 
@@ -230,21 +230,20 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** Médias gerais podem ocultar falhas que atingem uma combinação específica de modelo de TV, versão, região, ISP, conteúdo ou CDN.
 
-#### US-N1-05 - Reunir insumos para o direcionamento
+#### US-N1-05 - Revisar o diagnóstico do incidente
 
-**User Story:** Como analista de atendimento técnico N1, eu quero ter dados e insumos suficientes para identificar a equipe ou fila mais provável para tratar o incidente, para reduzir encaminhamentos incorretos e o tempo gasto nas correções.
+**User Story:** Como analista de atendimento técnico N1, eu quero confirmar ou refutar a hipótese apresentada e, quando possível, informar a causa identificada, para registrar uma avaliação humana do diagnóstico do incidente.
 
 **Critérios de aceitação:**
 
 - O sistema deve apresentar a hipótese mais provável, seu nível de confiança e as evidências associadas.
-- Os dados devem permitir identificar os componentes possivelmente envolvidos, como player, CDN, backend, identidade, web, iOS, Android ou aplicação de TV.
 - A plataforma deve apresentar o recorte afetado, incluindo dispositivo, versão, região, conteúdo ou infraestrutura, conforme a disponibilidade dos dados.
-- A pessoa usuária deve poder copiar ou registrar um resumo com hipótese, evidências e recorte afetado.
-- Quando as evidências envolverem mais de um componente, a plataforma deve deixar essa relação explícita para apoiar a avaliação do analista.
-- A decisão sobre a equipe ou fila de encaminhamento deve permanecer sob responsabilidade do analista N1.
-- A plataforma não deve corrigir código, alterar configurações nem publicar mudanças.
+- A pessoa usuária deve poder classificar a hipótese como confirmada, refutada ou inconclusiva.
+- Quando refutar a hipótese, a pessoa usuária deve poder informar a causa identificada e justificar sua avaliação.
+- O sistema deve registrar a decisão, a justificativa, a autoria e o momento da revisão.
+- O registro da revisão não deve alterar as evidências originais nem executar correções no ambiente monitorado.
 
-**Fundamentação:** O papel do N1 é interpretar as informações disponíveis e decidir o encaminhamento do incidente. A plataforma apoia essa decisão com hipóteses, evidências e contexto, sem assumir automaticamente qual equipe será responsável pelo tratamento.
+**Fundamentação:** A revisão humana permite qualificar o diagnóstico apresentado pelo View Show e registrar situações em que a hipótese automática não corresponde à causa observada.
 
 ### 3.3 User Stories da Persona 2
 

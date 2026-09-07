@@ -68,36 +68,34 @@
   <text x="1260" y="229" text-anchor="middle" class="uc-name">Autenticar-se</text>
 
   <ellipse cx="720" cy="440" rx="235" ry="66" class="usecase"/>
-  <text x="720" y="431" text-anchor="middle" class="uc-id">UC-05</text>
-  <text x="720" y="451" text-anchor="middle" class="uc-name">Analisar e preparar</text>
-  <text x="720" y="474" text-anchor="middle" class="uc-name">encaminhamento de incidente</text>
+  <text x="720" y="431" text-anchor="middle" class="uc-id">UC-03</text>
+  <text x="720" y="463" text-anchor="middle" class="uc-name">Analisar incidente</text>
 
   <ellipse cx="720" cy="690" rx="220" ry="66" class="usecase"/>
-  <text x="720" y="681" text-anchor="middle" class="uc-id">UC-10</text>
+  <text x="720" y="681" text-anchor="middle" class="uc-id">UC-04</text>
   <text x="720" y="707" text-anchor="middle" class="uc-name">Investigar falha técnica</text>
 
   <ellipse cx="1260" cy="690" rx="215" ry="66" class="usecase"/>
-  <text x="1260" y="675" text-anchor="middle" class="uc-id">UC-21</text>
-  <text x="1260" y="701" text-anchor="middle" class="uc-name">Monitorar saúde</text>
-  <text x="1260" y="723" text-anchor="middle" class="uc-name">da telemetria</text>
+  <text x="1260" y="675" text-anchor="middle" class="uc-id">UC-07</text>
+  <text x="1260" y="707" text-anchor="middle" class="uc-name">Monitorar a telemetria</text>
 
   <ellipse cx="720" cy="950" rx="220" ry="66" class="usecase"/>
-  <text x="720" y="935" text-anchor="middle" class="uc-id">UC-15</text>
+  <text x="720" y="935" text-anchor="middle" class="uc-id">UC-05</text>
   <text x="720" y="961" text-anchor="middle" class="uc-name">Avaliar recuperação</text>
   <text x="720" y="983" text-anchor="middle" class="uc-name">após correção</text>
 
   <ellipse cx="1260" cy="950" rx="235" ry="66" class="usecase"/>
-  <text x="1260" y="935" text-anchor="middle" class="uc-id">UC-16</text>
+  <text x="1260" y="935" text-anchor="middle" class="uc-id">UC-06</text>
   <text x="1260" y="961" text-anchor="middle" class="uc-name">Analisar qualidade</text>
   <text x="1260" y="983" text-anchor="middle" class="uc-name">da experiência</text>
 
   <path d="M206 171 L502 210" class="line" data-from="Usuario" data-to="UC01"/>
   <path d="M206 171 L1070 210" class="line" data-from="Usuario" data-to="UC02"/>
   <path d="M1450 210 L1682 188" class="line" data-from="SSO" data-to="UC02"/>
-  <path d="M132 407 L485 440" class="line" data-from="N1" data-to="UC05"/>
-  <path d="M132 687 L500 690" class="line" data-from="Engenharia" data-to="UC10"/>
-  <path d="M132 700 C410 552 830 548 1090 650" class="line" data-from="Engenharia" data-to="UC21"/>
-  <path d="M132 713 C270 798 405 874 560 920" class="line" data-from="Engenharia" data-to="UC15"/>
-  <path d="M132 967 L500 950" class="line" data-from="PM" data-to="UC15"/>
-  <path d="M132 980 C460 1100 920 1092 1260 1016" class="line" data-from="PM" data-to="UC16"/>
+  <path d="M132 407 L485 440" class="line" data-from="N1" data-to="UC03"/>
+  <path d="M132 687 L500 690" class="line" data-from="Engenharia" data-to="UC04"/>
+  <path d="M132 700 C410 552 830 548 1090 650" class="line" data-from="Engenharia" data-to="UC07"/>
+  <path d="M132 713 C270 798 405 874 560 920" class="line" data-from="Engenharia" data-to="UC05"/>
+  <path d="M132 967 L500 950" class="line" data-from="PM" data-to="UC05"/>
+  <path d="M132 980 C460 1100 920 1092 1260 1016" class="line" data-from="PM" data-to="UC06"/>
 </svg>

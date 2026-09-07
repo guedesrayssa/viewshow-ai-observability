@@ -31,7 +31,7 @@ A modelagem utiliza diagramas UML e descrições textuais para representar:
 
 ### 1.2 Escopo da modelagem
 
-A modelagem de casos de uso contempla a aplicação web interna do View Show, utilizada por equipes do Globoplay para consultar telemetria, analisar e encaminhar incidentes, investigar falhas técnicas e acompanhar a qualidade da experiência (QoE). O recorte corresponde às telas de Login, Visão Geral, Incidentes, Evidências, Eventos e Monitoramento previstas para o MVP e para a Sprint 3.
+A modelagem de casos de uso contempla a aplicação web interna do View Show, utilizada por equipes do Globoplay para consultar telemetria, analisar incidentes, investigar falhas técnicas e acompanhar a qualidade da experiência (QoE). O recorte corresponde às telas de Login, Visão Geral, Incidentes, Evidências, Eventos e Monitoramento previstas para o MVP e para a Sprint 3.
 
 Não fazem parte da modelagem de casos de uso:
 
@@ -39,7 +39,7 @@ Não fazem parte da modelagem de casos de uso:
 - os processos internos de ingestão, enfileiramento, normalização e armazenamento;
 - a execução de correções, deploys ou rollbacks em produção.
 
-Esses elementos viabilizam o produto, mas não são metas iniciadas diretamente pelas personas na interface. Integrações e componentes técnicos são tratados nos artefatos de arquitetura, backend e requisitos. A observação de sua saúde, por outro lado, constitui o objetivo de usuário descrito em UC-21.
+Esses elementos viabilizam o produto, mas não constituem objetivos iniciados diretamente pelos atores na interface. A observação da integridade dos dados de telemetria, por sua vez, integra o escopo funcional porque subsidia a avaliação da confiabilidade das análises apresentadas pelo View Show.
 
 ### 1.3 Documentos de referência
 
@@ -66,7 +66,7 @@ Esses elementos viabilizam o produto, mas não são metas iniciadas diretamente 
 
 &emsp;Os casos de uso descrevem o comportamento do sistema a partir dos objetivos dos atores que interagem com ele. Nessa perspectiva, o sistema é tratado como uma caixa-preta: registra-se o resultado que deve ser oferecido ao usuário, sem antecipar a divisão interna entre interfaces, serviços ou mecanismos de persistência. A modelagem desta seção adota a abordagem de Larman (2007), que recomenda priorizar casos de uso no nível de objetivo do usuário e complementar o diagrama com narrativas capazes de explicitar o contrato comportamental do sistema.
 
-&emsp;Esse critério orientou a revisão da granularidade dos casos de uso do View Show. Ações como aplicar um filtro, consultar uma evidência ou comparar dois períodos são necessárias para alcançar objetivos mais amplos, mas não produzem, isoladamente, um resultado de negócio completo. Por essa razão, elas foram incorporadas aos fluxos dos casos principais. O diagrama permanece responsável por apresentar atores, fronteira e objetivos; a Seção 3 registra como cada objetivo é realizado.
+&emsp;No View Show, ações como aplicar filtros, consultar evidências e comparar períodos integram objetivos mais amplos de análise. O diagrama apresenta os atores, a fronteira do sistema e os objetivos que produzem resultados relevantes para esses atores, enquanto a Seção 3 detalha as interações necessárias para alcançá-los.
 
 ### 2.1 Atores
 
@@ -81,7 +81,7 @@ Esses elementos viabilizam o produto, mas não são metas iniciadas diretamente 
 | ID | Ator | Tipo | Responsabilidade principal |
 | --- | --- | --- | --- |
 | AT-01 | Usuário corporativo | Primário, abstrato | Acessar o View Show e consultar informações comuns aos perfis autorizados. |
-| AT-02 | Analista de Atendimento Técnico N1 | Especialização de AT-01 | Priorizar incidentes e preparar seu encaminhamento com contexto suficiente. |
+| AT-02 | Analista de Atendimento Técnico N1 | Especialização de AT-01 | Priorizar incidentes e revisar as hipóteses apresentadas pelo sistema. |
 | AT-03 | Engenheira de Software | Especialização de AT-01 | Validar hipóteses, investigar falhas, avaliar recuperações e monitorar a telemetria. |
 | AT-04 | Product Manager | Especialização de AT-01 | Analisar QoE, priorizar problemas e avaliar resultados posteriores a correções. |
 | AT-05 | Provedor de identidade/SSO | Secundário | Autenticar a conta corporativa e devolver a identidade validada. |
@@ -94,7 +94,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.2 Catálogo de casos de uso
 
-&emsp;O catálogo reúne sete objetivos observáveis para os usuários do View Show. Os identificadores oriundos do levantamento inicial foram preservados quando o comportamento permaneceu como objetivo independente. O identificador UC-21 foi acrescentado para representar o monitoramento da saúde da telemetria, objetivo documentado nas jornadas e telas do projeto que não possuía correspondência explícita no diagrama anterior.
+&emsp;O catálogo apresenta sete objetivos observáveis dos usuários do View Show. Cada caso de uso reúne as interações que conduzem a um resultado relevante para o ator principal, desde o acesso ao sistema até a análise de incidentes, a investigação técnica, a avaliação da qualidade da experiência e o acompanhamento da telemetria.
 
 <div align="center">
 
@@ -106,11 +106,11 @@ Fonte: Material produzido pelos autores (2026).
 | --- | --- | --- | --- |
 | UC-01 | Consultar dashboard | Usuário corporativo | RF07, RF08, RF09, RF10, RNF07, RNF14 |
 | UC-02 | Autenticar-se | Usuário corporativo | RF04, RNF04, RIE01, RESTR01 |
-| UC-05 | Analisar e preparar encaminhamento de incidente | Analista de Atendimento Técnico N1 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 |
-| UC-10 | Investigar falha técnica | Engenheira de Software | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 |
-| UC-15 | Avaliar recuperação após correção | Engenheira de Software e Product Manager | RF07, RF08, RF09, RNF05, RNF14 |
-| UC-16 | Analisar qualidade da experiência | Product Manager | RF07, RF08, RF09, RNF05, RNF14, RNF15 |
-| UC-21 | Monitorar saúde da telemetria | Engenheira de Software | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 |
+| UC-03 | Analisar incidente | Analista de Atendimento Técnico N1 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 |
+| UC-04 | Investigar falha técnica | Engenheira de Software | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 |
+| UC-05 | Avaliar recuperação após correção | Engenheira de Software e Product Manager | RF07, RF08, RF09, RNF05, RNF14 |
+| UC-06 | Analisar qualidade da experiência | Product Manager | RF07, RF08, RF09, RNF05, RNF14, RNF15 |
+| UC-07 | Monitorar a telemetria | Engenheira de Software | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 |
 
 <div align="center">
 
@@ -118,7 +118,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;A consolidação não elimina comportamentos previstos na versão anterior. Ela os posiciona no nível adequado da narrativa: filtros e exportação integram UC-01; priorização, hipóteses, evidências e preparação do resumo integram UC-05; validação da hipótese, inspeção de eventos e comparação integram UC-10; UC-15 reúne a verificação técnica e a avaliação de produto posteriores a uma correção; indicadores, segmentos e histórico integram UC-16. UC-21 complementa o conjunto com a observação da integridade das fontes e do pipeline de telemetria.
+&emsp;A consulta ao dashboard abrange a aplicação de filtros e a exportação de resultados. A análise de incidentes compreende a priorização das ocorrências, a consulta das hipóteses e evidências e o registro da avaliação humana. A investigação técnica aprofunda a inspeção de eventos e as comparações entre recortes. Os demais casos tratam da avaliação posterior a correções, da análise agregada de QoE e da verificação da integridade das fontes e do processamento da telemetria.
 
 ### 2.3 Diagrama
 
@@ -134,19 +134,17 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;A versão editável está disponível no [arquivo-fonte do diagrama](../../assets/modelagem/casos-de-uso.puml), o que permite atualizar atores, associações e casos de uso sem reconstruir a imagem manualmente.
-
 ### 2.4 Critérios de construção e leitura
 
-&emsp;A fronteira **Sistema View Show** contém as funcionalidades percebidas pelos atores durante o uso da aplicação. Ingestão, enfileiramento, normalização, armazenamento, implantação e reversão de versões permanecem fora do diagrama porque correspondem a mecanismos internos ou a atividades realizadas em outros sistemas. Esses processos continuam documentados nos artefatos de arquitetura e nos diagramas de sequência.
+&emsp;A fronteira **Sistema View Show** contém as funcionalidades percebidas pelos atores durante o uso da aplicação. A emissão, a ingestão, o enfileiramento, a normalização e o armazenamento da telemetria são processos internos ou externos à interação direta dos usuários e, por isso, não são representados como casos de uso.
 
-&emsp;Os sete casos representam objetivos completos. Filtrar, exportar, consultar hipóteses, verificar evidências e comparar períodos aparecem nas descrições textuais como passos ou extensões condicionais. A avaliação posterior a uma correção foi mantida como objetivo independente porque ocorre em outro momento da jornada, após uma intervenção realizada fora do View Show. Essa organização evita empregar a relação `include` para indicar ordem temporal, uso que não corresponde à semântica definida pela UML (OBJECT MANAGEMENT GROUP, 2017).
+&emsp;Operações como filtrar resultados, consultar evidências e comparar períodos são descritas nos fluxos dos casos de uso aos quais dão suporte. A avaliação de recuperação constitui um objetivo independente porque ocorre após uma intervenção externa e produz como resultado uma comparação entre janelas temporais equivalentes.
 
-&emsp;A autenticação também não é repetida como inclusão obrigatória em cada objetivo. Nas demais descrições, a existência de uma sessão válida constitui uma pré-condição. UC-02 concentra o comportamento necessário para criar ou renovar essa sessão e registra separadamente as situações de recusa ou indisponibilidade do provedor.
+&emsp;A autenticação é representada como um caso de uso próprio devido à participação do provedor corporativo de identidade. Nos demais casos, a existência de uma sessão válida é estabelecida como pré-condição.
 
 ### 2.5 Relações principais
 
-&emsp;A Tabela x explicita as associações e generalizações utilizadas no diagrama. Não foram empregadas relações `include` ou `extend`, pois os comportamentos condicionais identificados nesta versão podem ser expressos com maior precisão nos fluxos alternativos das descrições.
+&emsp;A Tabela x apresenta as associações entre atores e casos de uso e as relações de generalização entre os perfis especializados e o Usuário corporativo. As associações identificam os objetivos iniciados por cada ator, enquanto as generalizações indicam o compartilhamento das capacidades comuns de acesso e consulta.
 
 <div align="center">
 
@@ -160,10 +158,10 @@ Fonte: Material produzido pelos autores (2026).
 | AT-03 | Generalização | AT-01 | A Engenheira de Software também executa os objetivos comuns. |
 | AT-04 | Generalização | AT-01 | A Product Manager também executa os objetivos comuns. |
 | AT-01 | Associação | UC-01 e UC-02 | Todo perfil autorizado pode autenticar-se e consultar o dashboard. |
-| AT-02 | Associação | UC-05 | O Analista N1 inicia a análise e prepara os insumos para o encaminhamento externo. |
-| AT-03 | Associação | UC-10, UC-15 e UC-21 | A Engenheira investiga falhas, avalia a recuperação e monitora a telemetria. |
-| AT-04 | Associação | UC-15 | A Product Manager avalia o resultado técnico posterior a uma correção. |
-| AT-04 | Associação | UC-16 | A Product Manager inicia a análise de QoE. |
+| AT-02 | Associação | UC-03 | O Analista N1 prioriza o incidente, consulta as evidências e avalia a hipótese apresentada. |
+| AT-03 | Associação | UC-04, UC-05 e UC-07 | A Engenheira investiga falhas, avalia a recuperação e monitora a telemetria. |
+| AT-04 | Associação | UC-05 | A Product Manager avalia os indicadores posteriores a uma correção. |
+| AT-04 | Associação | UC-06 | A Product Manager inicia a análise de QoE. |
 | AT-05 | Associação | UC-02 | O provedor externo participa da autenticação corporativa. |
 
 <div align="center">
@@ -176,9 +174,9 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 3. Descrições dos casos de uso
 
-&emsp;As descrições adotam o estilo completo apresentado por Larman (2007), em especial a organização utilizada no exemplo “Processar venda” e a definição das seções discutida pelo autor. Nesse formato, o caso de uso funciona como um contrato: identifica o objetivo e os participantes, estabelece as condições que devem existir antes e depois da interação e descreve tanto o cenário de sucesso quanto as variações relevantes.
+&emsp;Larman (2007) descreve casos de uso por meio de narrativas estruturadas que caracterizam o objetivo, os participantes e o contrato comportamental estabelecido entre os atores e o sistema. Esse formato articula pré-condições, garantias de sucesso, fluxo principal, variações e requisitos especiais, permitindo especificar o comportamento observável sem antecipar decisões internas de implementação.
 
-&emsp;O nível de detalhamento foi ajustado à complexidade dos cenários do View Show. Preservaram-se todas as seções solicitadas para a entrega, mas foram registradas somente regras que contribuem para compreender o comportamento externo do sistema. Decisões ainda não confirmadas são apresentadas em **Problemas em aberto**, evitando que hipóteses de implementação sejam tratadas como requisitos consolidados.
+&emsp;Os casos de uso do View Show são apresentados segundo essa estrutura. Cada descrição delimita o resultado esperado, relaciona os requisitos que fundamentam o comportamento e registra, em **Problemas em aberto**, somente as decisões funcionais que ainda precisam ser definidas para o respectivo caso de uso.
 
 ### 3.1 UC-01 — Consultar dashboard
 
@@ -196,6 +194,15 @@ Objetivo do usuário.
 
 - **Ator principal:** Usuário corporativo.
 - **Atores secundários:** Nenhum.
+
+#### Requisitos relacionados
+
+- **RF07 — Dashboard de navegação em eventos:** disponibilização da navegação e da visualização gráfica da telemetria.
+- **RF08 — Métricas e alertas operacionais:** apresentação de indicadores de QoE e ocorrências de falha.
+- **RF09 — Consultas para análise de falhas críticas:** realização de consultas simples e filtradas sobre os eventos.
+- **RF10 — Exportação de dados:** exportação do conjunto consultado nos formatos previstos.
+- **RNF07 — Tempo de carregamento da interface:** carregamento dos componentes principais e filtros em até 30 segundos.
+- **RNF14 — Latência de consultas filtradas:** resposta em até dois segundos no percentil 95 das solicitações.
 
 #### Interessados e interesses
 
@@ -246,7 +253,7 @@ Várias vezes ao dia, com aumento durante incidentes e eventos ao vivo.
 
 #### Problemas em aberto
 
-- A exportação será implementada nesta versão ou planejada para uma entrega posterior?
+- Quais informações devem compor obrigatoriamente cada formato de exportação?
 - Quais telas devem preservar os filtros durante a navegação?
 
 ### 3.2 UC-02 — Autenticar-se
@@ -265,6 +272,13 @@ Objetivo do usuário.
 
 - **Ator principal:** Usuário corporativo.
 - **Ator secundário:** Provedor de identidade/SSO.
+
+#### Requisitos relacionados
+
+- **RF04 — Autenticação corporativa:** criação e encerramento de sessões por meio do provedor de identidade corporativo.
+- **RNF04 — Segurança e confidencialidade:** restrição do painel e das APIs a contas autorizadas do domínio corporativo.
+- **RIE01 — Serviço corporativo de autenticação da Globo:** integração responsável por autenticar a identidade e fornecer os dados de autorização.
+- **RESTR01 — Política de acesso corporativo da Globo:** delegação integral da autenticação ao serviço corporativo, sem armazenamento local de senhas.
 
 #### Interessados e interesses
 
@@ -314,12 +328,12 @@ No início de cada sessão e após sua expiração.
 
 #### Problemas em aberto
 
-- Qual provedor corporativo será utilizado na implementação do SSO?
-- Qual será o plano de migração do mecanismo local existente para o acesso exclusivamente centralizado exigido por RNF04 e RESTR01?
+- Qual provedor corporativo e qual protocolo de federação serão utilizados no SSO?
+- Quais grupos ou perfis corporativos determinarão as permissões de acesso ao View Show?
 
-### 3.3 UC-05 — Analisar e preparar encaminhamento de incidente
+### 3.3 UC-03 — Analisar incidente
 
-&emsp;Este caso de uso descreve a atividade de triagem conduzida pelo Atendimento N1. O sistema organiza o impacto, as hipóteses e as evidências, mas preserva a responsabilidade humana pela escolha da equipe que receberá o incidente.
+&emsp;Este caso de uso descreve a análise de um incidente pelo Atendimento N1. O sistema apresenta o impacto estimado, o recorte afetado, as hipóteses e as evidências disponíveis para que o analista avalie o diagnóstico e registre sua decisão.
 
 #### Escopo
 
@@ -334,11 +348,21 @@ Objetivo do usuário.
 - **Ator principal:** Analista de Atendimento Técnico N1.
 - **Atores secundários:** Nenhum.
 
+#### Requisitos relacionados
+
+- **RF07 — Dashboard de navegação em eventos:** apresentação dos incidentes e das evidências relacionadas.
+- **RF08 — Métricas e alertas operacionais:** disponibilização do impacto, da severidade e dos indicadores associados à ocorrência.
+- **RF09 — Consultas para análise de falhas críticas:** aplicação de filtros para delimitar o recorte afetado.
+- **RNF08 — Confiabilidade do diagnóstico por ML:** F1-Score mínimo de 80% para a classificação da causa raiz.
+- **RNF10 — Operacionalidade:** localização da causa provável em até cinco cliques a partir da tela inicial.
+- **RNF13 — Janela de contexto do diagnóstico:** uso dos registros das cinco horas anteriores à falha.
+- **RNF15 — Tempo de sinalização de degradações:** apresentação do alerta em até 30 segundos após o recebimento dos eventos necessários à detecção.
+
 #### Interessados e interesses
 
-- **Analista N1:** identificar a prioridade e a equipe responsável com um número reduzido de interações.
-- **Engenharia:** receber um encaminhamento com hipótese, evidências e recorte afetado.
-- **Globo:** reduzir encaminhamentos incorretos e o tempo de diagnóstico.
+- **Analista N1:** compreender o impacto do incidente e avaliar a hipótese apresentada pelo sistema.
+- **Engenharia:** dispor de uma avaliação humana rastreável sobre a hipótese e suas evidências.
+- **Globo:** reduzir o tempo de diagnóstico e incorporar a validação humana às análises de causa provável.
 
 #### Pré-condições
 
@@ -347,8 +371,8 @@ Objetivo do usuário.
 
 #### Pós-condições
 
-- **Em caso de sucesso:** o sistema registra a equipe ou fila escolhida e disponibiliza um resumo contextualizado pronto para encaminhamento externo.
-- **Garantia mínima:** o sistema preserva o incidente e não escolhe nem aciona automaticamente uma equipe responsável.
+- **Em caso de sucesso:** a hipótese é registrada como confirmada, refutada ou inconclusiva; quando identificada, a causa informada pelo analista também é registrada com sua justificativa.
+- **Garantia mínima:** o incidente e suas evidências permanecem inalterados quando o analista não conclui a revisão.
 
 #### Fluxo Básico
 
@@ -358,17 +382,17 @@ Objetivo do usuário.
 4. O sistema apresenta o recorte afetado e as hipóteses de causa provável.
 5. O sistema apresenta confiança, justificativas e evidências de cada hipótese.
 6. O analista aplica filtros para delimitar o problema.
-7. O sistema prepara um resumo com incidente, impacto, hipótese e evidências.
-8. O analista revisa o resumo, escolhe a equipe ou fila de destino e confirma a preparação do encaminhamento.
-9. O sistema registra o destino e disponibiliza o resumo para cópia, sem afirmar que uma ferramenta externa o recebeu.
+7. O analista avalia a hipótese como confirmada, refutada ou inconclusiva.
+8. Quando a hipótese é refutada e a causa é conhecida, o analista informa a causa identificada e apresenta uma justificativa.
+9. O sistema registra a decisão, a justificativa, a autoria e o momento da revisão.
 
 #### Fluxos alternativos
 
-- **4a. Hipótese inconclusiva:** o sistema informa que não há evidência suficiente e segue para o passo 6.
+- **4a. Nenhuma hipótese disponível:** o sistema informa que a causa permanece inconclusiva e permite ao analista registrar uma causa conhecida. O fluxo segue para o passo 8.
 - **5a. Evidências incompletas:** o sistema identifica as fontes ausentes ou atrasadas e segue para o passo 6.
 - **6a. Nenhum resultado para o recorte:** o sistema mantém o incidente aberto e permite remover filtros. O fluxo retorna ao passo 6.
-- **8a. Mais de um componente envolvido:** o resumo apresenta todos os componentes para decisão do analista.
-- **8b. Preparação cancelada:** o fluxo termina sem alterar o incidente.
+- **8a. Causa não identificada:** o analista mantém a revisão como refutada ou inconclusiva sem informar uma causa alternativa.
+- **9a. Revisão cancelada:** o fluxo termina sem registrar uma nova decisão.
 
 #### Requisitos especiais
 
@@ -378,13 +402,14 @@ Objetivo do usuário.
 - A incerteza da hipótese deve ser apresentada explicitamente.
 - O incidente não deve expor PII.
 - Degradações devem ser sinalizadas conforme RNF15.
+- A decisão deve registrar autoria, data, justificativa e estado da revisão.
 
 #### Lista de variantes
 
 - **2a. Ordenação dos incidentes:** severidade, impacto ou recência.
 - **6a. Recorte do incidente:** período, dispositivo, versão, região ou conteúdo.
-- **8a. Destino:** uma equipe ou uma fila de atendimento.
-- **9a. Forma de encaminhamento:** cópia do resumo ou integração com ferramenta externa.
+- **7a. Estado da revisão:** confirmada, refutada ou inconclusiva.
+- **8a. Origem da causa registrada:** seleção de uma causa apresentada pelo sistema ou descrição informada pelo analista.
 
 #### Frequência de ocorrência
 
@@ -392,12 +417,12 @@ Diária, podendo tornar-se contínua durante incidentes críticos.
 
 #### Problemas em aberto
 
-- Qual ferramenta receberá o encaminhamento do incidente?
-- Qual nível mínimo de evidência permitirá sugerir uma equipe responsável?
+- Quais critérios mínimos devem orientar a confirmação ou a refutação de uma hipótese?
+- Quais informações são obrigatórias quando o analista registra uma causa diferente da hipótese apresentada?
 
-### 3.4 UC-10 — Investigar falha técnica
+### 3.4 UC-04 — Investigar falha técnica
 
-&emsp;Este caso de uso descreve o aprofundamento técnico realizado após a triagem. A investigação articula hipótese, eventos correlacionados, linha do tempo e comparações entre recortes para que a engenheira registre uma conclusão fundamentada. A avaliação posterior a uma intervenção foi separada em UC-15 porque depende de uma correção executada fora do View Show e pode ocorrer em outro momento.
+&emsp;Este caso de uso descreve a investigação técnica de uma falha por meio da análise da hipótese, dos eventos correlacionados, da linha do tempo e da comparação entre recortes equivalentes. O resultado esperado é uma conclusão fundamentada nas evidências disponíveis.
 
 #### Escopo
 
@@ -409,13 +434,26 @@ Objetivo do usuário.
 
 #### Atores
 
-- **Ator principal:** Engenheira de Software, no papel operacional responsável pela observabilidade da plataforma.
+- **Ator principal:** Engenheira de Software especialista no componente investigado.
 - **Atores secundários:** Nenhum.
+
+#### Requisitos relacionados
+
+- **RF05 — Visualização de dados brutos e normalizados:** consulta ao evento original e à representação normalizada.
+- **RF06 — Cobertura mínima de eventos:** disponibilidade dos eventos `request`, `vitals`, `screen_view`, `video_view`, `session` e `error`.
+- **RF07 — Dashboard de navegação em eventos:** acesso gráfico aos eventos e ao contexto do incidente.
+- **RF08 — Métricas e alertas operacionais:** consulta aos indicadores associados à falha.
+- **RF09 — Consultas para análise de falhas críticas:** filtragem e comparação dos eventos investigados.
+- **RNF05 — Retenção do histórico:** consulta a até um ano de dados, distribuídos entre armazenamento de acesso rápido e de baixo custo.
+- **RNF08 — Confiabilidade do diagnóstico por ML:** F1-Score mínimo de 80% para a classificação da causa raiz.
+- **RNF10 — Operacionalidade:** localização da causa provável em até cinco cliques a partir da tela inicial.
+- **RNF13 — Janela de contexto do diagnóstico:** uso dos registros das cinco horas anteriores à falha.
+- **RNF14 — Latência de consultas filtradas:** resposta em até dois segundos no percentil 95 das solicitações.
 
 #### Interessados e interesses
 
 - **Engenharia:** confirmar ou refutar uma hipótese com evidências rastreáveis.
-- **Atendimento N1:** receber uma conclusão técnica sobre o encaminhamento.
+- **Atendimento N1:** consultar a conclusão técnica associada ao incidente.
 - **Globo:** reduzir o tempo de identificação da causa raiz.
 
 #### Pré-condições
@@ -464,16 +502,16 @@ Objetivo do usuário.
 
 #### Frequência de ocorrência
 
-Sempre que um incidente for encaminhado para investigação técnica.
+Sempre que um incidente exigir investigação técnica especializada.
 
 #### Problemas em aberto
 
-- Quando a fonte de eventos individuais estará disponível para consulta?
+- Qual tolerância temporal deve ser considerada ao ordenar eventos com timestamps divergentes?
 - Qual política será adotada para resolver revisões concorrentes de uma mesma hipótese?
 
-### 3.5 UC-15 — Avaliar recuperação após correção
+### 3.5 UC-05 — Avaliar recuperação após correção
 
-&emsp;Este caso de uso registra a avaliação realizada depois de uma correção externa. A separação em relação a UC-10 e UC-16 preserva a unidade do objetivo: a investigação e a priorização podem terminar antes da intervenção, enquanto a verificação de recuperação exige um marco temporal posterior e dados suficientes para uma comparação válida.
+&emsp;Este caso de uso descreve a avaliação dos indicadores após uma correção realizada fora do View Show. A comparação utiliza janelas temporais equivalentes para determinar se o comportamento observado apresenta melhora, estabilidade, piora ou resultado inconclusivo.
 
 #### Escopo
 
@@ -487,6 +525,14 @@ Objetivo do usuário.
 
 - **Atores principais:** Engenheira de Software ou Product Manager.
 - **Atores secundários:** Nenhum.
+
+#### Requisitos relacionados
+
+- **RF07 — Dashboard de navegação em eventos:** apresentação dos indicadores anteriores e posteriores à correção.
+- **RF08 — Métricas e alertas operacionais:** disponibilização das métricas utilizadas para avaliar a recuperação.
+- **RF09 — Consultas para análise de falhas críticas:** seleção de períodos e segmentos equivalentes para comparação.
+- **RNF05 — Retenção do histórico:** acesso a até um ano de dados para compor as janelas temporais.
+- **RNF14 — Latência de consultas filtradas:** resposta em até dois segundos no percentil 95 para consultas em armazenamento de acesso rápido.
 
 #### Interessados e interesses
 
@@ -527,7 +573,7 @@ Objetivo do usuário.
 
 - O histórico deve observar a retenção de 30 dias em armazenamento de acesso rápido e 11 meses em armazenamento de baixo custo, conforme RNF05.
 - As buscas filtradas devem apresentar P95 de até dois segundos quando os dados estiverem em armazenamento de acesso rápido, conforme RNF14.
-- Para o MVP, cada janela deve conter ao menos 20 observações, em conformidade com o limiar `min_samples` vigente no serviço de análise.
+- Cada janela deve conter ao menos 20 observações enquanto não houver um limiar específico definido para o indicador analisado.
 - As janelas devem possuir a mesma duração e preservar dispositivo, versão, região, conteúdo e demais filtros que definem o segmento comparado.
 - O resultado é classificado como melhora quando a distância em relação à linha de base diminui sem piora de indicador crítico; como piora quando essa distância aumenta ou um indicador crítico ultrapassa seu limiar; como estabilidade quando nenhuma variação relevante ocorre; e como inconclusivo quando as condições de amostra ou comparabilidade não são atendidas.
 - Os dados devem permanecer anonimizados e não expor PII.
@@ -546,12 +592,12 @@ Após correções externas relacionadas a incidentes ou degradações relevantes
 
 #### Problemas em aberto
 
-- O limiar inicial de 20 observações precisa ser recalibrado por tipo de indicador após a validação com dados representativos de produção?
-- Como a correção externa será associada ao incidente correspondente?
+- Qual deve ser a amostra mínima para cada indicador utilizado na avaliação?
+- Quais dados identificam o marco da correção e sua associação com o incidente analisado?
 
-### 3.6 UC-16 — Analisar qualidade da experiência
+### 3.6 UC-06 — Analisar qualidade da experiência
 
-&emsp;Este caso de uso representa a análise agregada realizada pela área de produto. O objetivo é reconhecer problemas recorrentes, comparar segmentos afetados e acompanhar a evolução dos indicadores para apoiar a priorização. A avaliação posterior a uma correção pertence a UC-15.
+&emsp;Este caso de uso representa a análise agregada realizada pela área de produto. Seu objetivo é reconhecer problemas recorrentes, comparar segmentos afetados e acompanhar a evolução dos indicadores para apoiar a priorização das melhorias na experiência.
 
 #### Escopo
 
@@ -565,6 +611,15 @@ Objetivo do usuário.
 
 - **Ator principal:** Product Manager.
 - **Atores secundários:** Nenhum.
+
+#### Requisitos relacionados
+
+- **RF07 — Dashboard de navegação em eventos:** visualização gráfica dos indicadores e das degradações de QoE.
+- **RF08 — Métricas e alertas operacionais:** apresentação das métricas de qualidade da experiência e dos alertas relacionados.
+- **RF09 — Consultas para análise de falhas críticas:** filtragem por segmento, plataforma, dispositivo, versão, região ou conteúdo.
+- **RNF05 — Retenção do histórico:** acesso a até um ano de dados para análise de tendências.
+- **RNF14 — Latência de consultas filtradas:** resposta em até dois segundos no percentil 95 das solicitações.
+- **RNF15 — Tempo de sinalização de degradações:** apresentação do alerta em até 30 segundos após o recebimento dos eventos necessários à detecção.
 
 #### Interessados e interesses
 
@@ -624,9 +679,9 @@ Diária ou semanal, com maior frequência durante incidentes ou eventos relevant
 - Qual será a amostra mínima aceita em uma comparação?
 - Como os critérios de sessões afetadas, severidade e recência serão ponderados no ranking?
 
-### 3.7 UC-21 — Monitorar saúde da telemetria
+### 3.7 UC-07 — Monitorar a telemetria
 
-&emsp;Este caso de uso explicita um objetivo já presente nas jornadas de engenharia e na tela de monitoramento do projeto: verificar se a ingestão e o processamento fornecem dados íntegros e suficientemente atuais para as análises do View Show. Ele não transforma as etapas internas do pipeline em objetivos de usuário; registra apenas a observação e o diagnóstico de sua saúde operacional.
+&emsp;Este caso de uso descreve o acompanhamento da integridade e da atualidade da telemetria utilizada pelo View Show. A engenheira observa as fontes e os indicadores de processamento para distinguir degradações da experiência de lacunas, atrasos ou falhas nos dados que sustentam as análises.
 
 #### Escopo
 
@@ -640,6 +695,16 @@ Objetivo do usuário.
 
 - **Ator principal:** Engenheira de Software.
 - **Atores secundários:** Nenhum.
+
+#### Requisitos relacionados
+
+- **RF07 — Dashboard de navegação em eventos:** apresentação visual dos dados e do estado das fontes de telemetria.
+- **RF08 — Métricas e alertas operacionais:** disponibilização dos indicadores e alertas relacionados à operação.
+- **RNF01 — Capacidade de processamento:** acompanhamento do consumo durante picos equivalentes a 50 milhões de eventos simultâneos.
+- **RNF02 — Latência ponta a ponta:** limite de dois minutos entre a captura e a disponibilidade do evento para consulta.
+- **RNF03 — Tolerância a falhas:** isolamento de mensagens inválidas sem interrupção do processamento.
+- **RNF09 — Disponibilidade:** disponibilidade mínima de 99,9% para o dashboard e as APIs de consulta.
+- **RNF15 — Tempo de sinalização de degradações:** apresentação do alerta em até 30 segundos após o recebimento dos eventos necessários à detecção.
 
 #### Interessados e interesses
 
@@ -687,23 +752,22 @@ Objetivo do usuário.
 
 - **2a. Fonte das métricas:** telemetria publicada pelo serviço, métricas da fila ou estado informado pelo componente monitorado.
 - **3a. Recorte operacional:** período, fonte, plataforma ou região.
-- **4a. Atualização da interface:** releitura automática a cada 20 segundos ou atualização manual solicitada pela engenheira.
+- **4a. Atualização da interface:** releitura automática periódica ou atualização manual solicitada pela engenheira.
 
 #### Frequência de ocorrência
 
-Várias consultas ao dia, com acompanhamento prolongado durante incidentes e eventos ao vivo; enquanto a tela permanece aberta, os dados são relidos automaticamente a cada 20 segundos.
+Várias consultas ao dia, com acompanhamento prolongado durante incidentes e eventos ao vivo.
 
 #### Problemas em aberto
 
-- Quais limites operacionais produzirão alertas para cada componente?
-- Quais canais receberão os alertas de saúde da telemetria?
-- Qual equipe será responsável por cada tipo de degradação?
+- Quais limites operacionais devem caracterizar atraso, cobertura parcial e indisponibilidade em cada fonte?
+- Qual granularidade temporal deve ser apresentada no histórico das métricas operacionais?
 
 ### 3.8 Síntese das descrições
 
-&emsp;A consolidação resultou em sete narrativas orientadas a objetivos, sem eliminar as funcionalidades identificadas no levantamento anterior. Os comportamentos mais específicos foram reposicionados nos fluxos básicos, alternativos ou nas listas de variantes. A verificação posterior à correção foi preservada como UC-15 por ocorrer em momento distinto da investigação e da priorização, enquanto UC-21 tornou explícito o monitoramento da integridade dos dados utilizados pelos demais casos. Desse modo, o diagrama apresenta uma visão sintética das interações, enquanto as descrições preservam as condições, garantias e exceções necessárias para orientar análise, implementação e teste.
+&emsp;As sete narrativas delimitam os objetivos dos atores e os resultados que o View Show deve oferecer. Os fluxos básicos descrevem os cenários de sucesso, enquanto os fluxos alternativos registram indisponibilidades, ausência de dados, amostras insuficientes e demais condições que modificam o percurso principal.
 
-&emsp;A organização também mantém a separação entre intenção e solução técnica defendida por Larman (2007). As descrições registram o que os atores esperam do View Show e quais resultados o sistema deve garantir; decisões sobre serviços, bancos de dados, filas e mecanismos de implantação permanecem nos artefatos de arquitetura e nos diagramas de sequência.
+&emsp;A descrição em caixa-preta mantém o foco nas responsabilidades observáveis do sistema, conforme a abordagem de Larman (2007). Dessa forma, os casos de uso fornecem uma base comum para a análise dos requisitos, a definição das interações e a verificação posterior do comportamento esperado.
 
 ---
 
@@ -838,7 +902,7 @@ reprocessamento, mensagens de erro e estado preservado.]
 
 ## 6. Rastreabilidade da modelagem
 
-A rastreabilidade abaixo registra a origem funcional, a realização arquitetural e o estado de implementação de cada objetivo. As classes e os componentes referem-se à modelagem mantida na branch de diagrama de classes; os identificadores DS referem-se à branch de diagramas de sequência e devem ser preservados na integração final.
+A rastreabilidade relaciona os casos de uso aos requisitos, às necessidades de usuário e aos demais elementos da modelagem. Essa relação permite verificar a origem de cada comportamento e identificar os conceitos que participam de sua realização.
 
 <div align="center">
 
@@ -846,16 +910,15 @@ A rastreabilidade abaixo registra a origem funcional, a realização arquitetura
 
 </div>
 
-| Área | Caso de uso | Requisitos | Histórias ou telas de origem | Classes ou componentes principais | Sequências | Estado |
-| --- | --- | --- | --- | --- | --- | --- |
-| Login e acesso | UC-02 | RF04, RNF04, RIE01, RESTR01 | [Tela de Login](../sprint1/entendimento_ux.md#41-login) | `Usuario`, `userService`, `session`; integração SSO ainda pendente | DS-02A | Parcial: o protótipo local não atende ao SSO obrigatório |
-| Visão Geral, filtros e exportação | UC-01 | RF07, RF08, RF09, RF10, RNF07, RNF14 | [Visão Geral](../sprint1/entendimento_ux.md#42-visão-geral) | rota `dashboard`, `EvidenceService`, modelos de leitura | DS-01A, DS-01B, DS-02A, DS-04 | Parcial: consultas existem; exportação ainda não está implementada |
-| Triagem e preparação do encaminhamento | UC-05 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 | [US-N1-01 a US-N1-05](../sprint1/entendimento_ux.md#32-user-stories-da-persona-1) | `Incidente`, `Evidencia`, `Hipotese`, `RelatorioDiagnostico` | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 | Parcial: o resumo pode ser preparado, mas não há integração de destino definida |
-| Investigação de hipótese e eventos | UC-10 | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 | [US-ENG-01 a US-ENG-04](../sprint1/entendimento_ux.md#33-user-stories-da-persona-2) | `Incidente`, `Evidencia`, `Hipotese`, `CasoGoldenSet`, orquestrador | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 | Parcial: revisão e diagnóstico existem; eventos individuais dependem de fonte publicada |
-| Avaliação posterior a uma correção | UC-15 | RF07, RF08, RF09, RNF05, RNF14 | [US-ENG-05](../sprint1/entendimento_ux.md#us-eng-05---verificar-a-recuperação-após-uma-correção) e [US-PM-04](../sprint1/entendimento_ux.md#us-pm-04---avaliar-a-evolução-após-uma-correção) | Componente de comparação ainda não implementado | DS-02C | Proposto: comportamento especificado, contrato técnico pendente |
-| Indicadores, segmentos e histórico de QoE | UC-16 | RF07, RF08, RF09, RNF05, RNF14, RNF15 | [US-PM-01 a US-PM-05](../sprint1/entendimento_ux.md#34-user-stories-da-persona-3) | modelos de leitura do dashboard e DTOs de QoE | DS-01A, DS-01B, DS-03A, DS-03B, DS-04 | Parcial: indicadores existem; ranking e histórico completo dependem da evolução do produto |
-| Saúde operacional da telemetria | UC-21 | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 | [US-ENG-06](../sprint1/entendimento_ux.md#us-eng-06---monitorar-a-saúde-da-telemetria) e [tela de Monitoramento](../sprint1/entendimento_ux.md#46-monitoramento) | `TelemetryRepository`, serviços de análise e tela `/monitoramento` | DS-01A, DS-01B, DS-03C | Parcial: a tela existe; parte das fontes utiliza dados de demonstração ou contratos ainda incompletos |
-| Ingestão e normalização internas | Não constitui caso de uso de usuário | RF01, RF02, RF03, RNF06, RNF11, RNF12, RIE02, RESTR02 | [Escopo da modelagem](#12-escopo-da-modelagem) | API Flask, `TelemetryRepository`, normalização e persistência | DS-01A, DS-01B, DS-03A, DS-03B, DS-03C | Suporte técnico aos objetivos, fora da fronteira do diagrama de casos de uso |
+| Área | Caso de uso | Requisitos | Histórias ou telas relacionadas | Elementos conceituais | Sequências relacionadas |
+| --- | --- | --- | --- | --- | --- |
+| Login e acesso | UC-02 | RF04, RNF04, RIE01, RESTR01 | [Tela de Login](../sprint1/entendimento_ux.md#41-login) | Usuário corporativo, sessão e provedor de identidade | DS-02A |
+| Visão Geral, filtros e exportação | UC-01 | RF07, RF08, RF09, RF10, RNF07, RNF14 | [Visão Geral](../sprint1/entendimento_ux.md#42-visão-geral) | Dashboard, consulta, filtro e exportação | DS-01A, DS-01B, DS-02A, DS-04 |
+| Análise e revisão de incidente | UC-03 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 | [US-N1-01 a US-N1-05](../sprint1/entendimento_ux.md#32-user-stories-da-persona-1) | Incidente, hipótese, evidência e decisão de revisão | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 |
+| Investigação técnica | UC-04 | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 | [US-ENG-01 a US-ENG-04](../sprint1/entendimento_ux.md#33-user-stories-da-persona-2) | Incidente, evento, linha do tempo, hipótese e evidência | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 |
+| Avaliação posterior a uma correção | UC-05 | RF07, RF08, RF09, RNF05, RNF14 | [US-ENG-05](../sprint1/entendimento_ux.md#us-eng-05---verificar-a-recuperação-após-uma-correção) e [US-PM-04](../sprint1/entendimento_ux.md#us-pm-04---avaliar-a-evolução-após-uma-correção) | Incidente, marco temporal, janela de comparação e indicador | DS-02C |
+| Indicadores, segmentos e histórico de QoE | UC-06 | RF07, RF08, RF09, RNF05, RNF14, RNF15 | [US-PM-01 a US-PM-05](../sprint1/entendimento_ux.md#34-user-stories-da-persona-3) | Indicador de QoE, segmento, série temporal e degradação | DS-01A, DS-01B, DS-03A, DS-03B, DS-04 |
+| Integridade da telemetria | UC-07 | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 | [US-ENG-06](../sprint1/entendimento_ux.md#us-eng-06---monitorar-a-saúde-da-telemetria) e [tela de Monitoramento](../sprint1/entendimento_ux.md#56-monitoramento-da-telemetria) | Fonte de telemetria, métrica operacional, cobertura e alerta | DS-01A, DS-01B, DS-03C |
 
 <div align="center">
 
@@ -873,10 +936,10 @@ Fonte: Material produzido pelos autores (2026).
 
 - [x] Todos os atores possuem objetivos claros.
 - [x] Todos os casos de uso do diagrama possuem descrição textual.
-- [x] Cada descrição possui as doze seções solicitadas para o estilo completo.
+- [x] Cada descrição segue as seções do formato completo de Larman.
 - [x] Os fluxos básicos terminam nas pós-condições declaradas.
 - [x] Os fluxos alternativos identificam o passo de origem ou o encerramento.
-- [x] Relações `include` e `extend` não são usadas para representar ordem temporal.
+- [x] As relações representadas possuem semântica compatível com a UML.
 - [x] Os casos de uso estão ligados a requisitos existentes.
 
 #### Diagrama de classes
@@ -886,7 +949,7 @@ Fonte: Material produzido pelos autores (2026).
 - [ ] Associações possuem multiplicidades.
 - [ ] Composição, agregação, herança e dependência foram usadas corretamente.
 - [ ] As classes mencionadas nos diagramas de sequência existem no diagrama.
-- [ ] O diagrama é consistente com a implementação ou explicita diferenças.
+- [ ] O diagrama é consistente com a arquitetura-alvo do View Show.
 
 #### Diagramas de sequência
 
@@ -894,26 +957,27 @@ Fonte: Material produzido pelos autores (2026).
 - [ ] As mensagens aparecem em ordem temporal.
 - [ ] Chamadas síncronas, assíncronas e retornos estão diferenciados.
 - [ ] Alternativas e exceções usam fragmentos combinados.
-- [ ] Participantes correspondem a atores, interfaces, serviços ou classes reais.
+- [ ] Participantes correspondem a atores, interfaces, serviços ou classes da arquitetura-alvo.
 - [ ] O resultado final corresponde às pós-condições do caso de uso.
 
-### 7.2 Pendências consolidadas
+### 7.2 Questões de modelagem em aberto
 
-| ID | Pendência | Impacto | Responsável | Prazo | Status |
-| --- | --- | --- | --- | --- | --- |
-| P-01 | Substituir a autenticação local do protótipo pela federação obrigatória com o SSO corporativo. | Alto | Equipes de Frontend e Arquitetura | Antes da homologação de acesso | Aberta |
-| P-02 | Validar com dados representativos se o limiar inicial de 20 observações é adequado para cada indicador de recuperação. | Médio | Equipes de Dados, Engenharia e Produto | Antes da implementação de UC-15 | Aberta |
-| P-03 | Definir a ferramenta e o contrato de entrega do resumo preparado em UC-05. | Médio | Equipes de Atendimento e Arquitetura | Antes da integração externa | Aberta |
-| P-04 | Especificar e implementar o contrato técnico de comparação e registro apresentado conceitualmente em DS-02C. | Médio | Equipes de Backend e Arquitetura | Antes da implementação de UC-15 | Aberta |
+| ID | Questão | Casos de uso relacionados |
+| --- | --- | --- |
+| Q-01 | Definição das informações obrigatórias em cada formato de exportação e das telas que preservam os filtros. | UC-01 |
+| Q-02 | Definição do protocolo de federação e dos perfis corporativos que determinam as permissões de acesso. | UC-02 |
+| Q-03 | Definição dos critérios de revisão das hipóteses e dos dados obrigatórios para registrar uma causa alternativa. | UC-03, UC-04 |
+| Q-04 | Definição da amostra mínima e dos critérios de comparabilidade para análises temporais e de segmentos. | UC-05, UC-06 |
+| Q-05 | Definição dos limites que caracterizam atraso, cobertura parcial e indisponibilidade das fontes de telemetria. | UC-07 |
 
-### 7.3 Revisão cruzada
+### 7.3 Consistência entre os artefatos
 
-| Entrega | Autor principal | Revisor | Resultado |
-| --- | --- | --- | --- |
-| Casos de uso e descrições | Equipe de modelagem | Revisão cruzada de requisitos e UX | Revisado; sete casos possuem as doze seções do estilo completo |
-| Diagrama de classes | Equipe de backend | Revisão cruzada de implementação | Produzido em MR próprio; integração ainda pendente |
-| Diagramas de sequência | Equipe de arquitetura | Revisão cruzada com os casos de uso | Revisado; identificadores alinhados e DS-02C marcado como proposto |
-| Rastreabilidade e consistência final | Equipe do projeto | Equipe do projeto | Pendente da integração dos MRs de casos de uso, classes e sequências |
+| Relação verificada | Critério de consistência |
+| --- | --- |
+| Casos de uso e requisitos | Cada comportamento está associado a requisitos funcionais, não funcionais, interfaces ou restrições existentes. |
+| Atores e entendimento do usuário | Os papéis e seus objetivos correspondem às personas, jornadas e telas definidas para o View Show. |
+| Casos de uso e diagrama de classes | As entidades e os serviços representam os conceitos necessários às pós-condições dos casos de uso. |
+| Casos de uso e diagramas de sequência | As interações realizam os fluxos básicos e alternativos sem alterar o objetivo ou as garantias declaradas. |
 
 ---
 
