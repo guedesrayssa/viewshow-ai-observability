@@ -294,7 +294,7 @@ omitidos deliberadamente para manter o diagrama legível.]
 
 ### 5.1 Catálogo de diagramas de sequência
 
-&emsp;Os oito diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela x funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
+&emsp;Os nove diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela x funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
 
 <div align="center">
 
@@ -304,14 +304,15 @@ omitidos deliberadamente para manter o diagrama legível.]
 
 | ID | Cenário | Casos de uso relacionados | Tipo de fluxo | Responsável |
 | --- | --- | --- | --- | --- |
-| DS-01A | Sincronização com o MySQL vivo | UC-01, UC-06, UC-17, UC-19 | Suporte técnico | Equipe de arquitetura |
-| DS-01B | Importação de snapshot pela interface | UC-01, UC-06, UC-17, UC-19 | Suporte técnico/alternativo | Equipe de arquitetura |
+| DS-01A | Sincronização com o MySQL vivo | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico | Equipe de arquitetura |
+| DS-01B | Importação de snapshot pela interface | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico/alternativo | Equipe de arquitetura |
 | DS-02A | Autenticação federada e consulta | UC-01, UC-02 | Básico | Equipe de arquitetura |
-| DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-07, UC-11 | Concorrente | Equipe de arquitetura |
-| DS-03A | Previsão preventiva e validação posterior | UC-16, UC-17, UC-19 | Suporte técnico/assíncrono | Equipe de arquitetura |
-| DS-03B | Detecção reativa e diagnóstico por IA | UC-05 a UC-08, UC-10, UC-12, UC-13 | Suporte técnico/assíncrono | Equipe de arquitetura |
-| DS-03C | Falha, novas tentativas, DLQ e reanálise | UC-10 | Exceção/alternativo | Equipe de arquitetura |
-| DS-04 | Visão geral ponta a ponta | UC-01, UC-02, UC-05 a UC-08, UC-10, UC-11, UC-16, UC-17, UC-19 | Resumo | Equipe de arquitetura |
+| DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-05, UC-10 | Concorrente | Equipe de arquitetura |
+| DS-02C | Avaliação da recuperação após correção | UC-15 | Desenho proposto: básico/alternativo | Equipe de arquitetura |
+| DS-03A | Previsão preventiva e validação posterior | UC-16 | Suporte técnico/assíncrono | Equipe de arquitetura |
+| DS-03B | Detecção reativa e diagnóstico por IA | UC-05, UC-10, UC-16 | Suporte técnico/assíncrono | Equipe de arquitetura |
+| DS-03C | Falha, novas tentativas, DLQ e reanálise | UC-21 | Exceção/alternativo | Equipe de arquitetura |
+| DS-04 | Visão geral ponta a ponta | UC-01, UC-02, UC-05, UC-10, UC-16 | Resumo | Equipe de arquitetura |
 
 <div align="center">
 
@@ -329,7 +330,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 5.3 Ingestão e disponibilização dos dados
 
-&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos fornecem os dados utilizados nos casos de uso UC-01, UC-06, UC-17 e UC-19.
+&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos fornecem os dados utilizados nos casos de uso UC-01, UC-05, UC-10, UC-16 e UC-21.
 
 #### 5.3.1 DS-01A — Sincronização com o MySQL vivo
 
@@ -448,7 +449,7 @@ Fonte: Material produzido pelos autores (2026).
 sequenceDiagram
     autonumber
 
-    actor U as Usuário Globo
+    actor U as Operador de dados
     participant UI as Dashboard
     participant API as Backend
     participant S3 as Amazon S3
@@ -461,9 +462,15 @@ sequenceDiagram
 
     U->>UI: Selecionar dump
     UI->>API: POST /api/v1/imports
-    Note over API: Validar JWT conforme DS-02A
+    API->>API: Resolver sessão corporativa e verificar data:import
+    alt Sessão ausente
+        API-->>UI: HTTP 401 UNAUTHENTICATED
+    else Sessão sem data:import
+        API-->>UI: HTTP 403 FORBIDDEN
+    else Operador autorizado
     API->>DB: Criar ImportJob = UPLOADING e candidateDatasetVersion
     API-->>UI: importId + URLs multipart pré-assinadas
+    end
 
     loop Para cada parte do arquivo
         UI->>S3: Enviar parte
@@ -471,11 +478,38 @@ sequenceDiagram
         UI->>UI: Atualizar percentual do upload
     end
 
-    UI->>API: POST /imports/{importId}/complete
-    API->>S3: Confirmar upload, tamanho e checksum
-    API->>DB: ImportJob = PROCESSING
-    API->>ECS: RunTask(import-snapshot, importId)
-    API-->>UI: HTTP 202 Accepted
+    UI->>API: POST /api/v1/imports/{importId}/complete + Idempotency-Key
+    API->>API: Resolver sessão corporativa e verificar data:import
+    alt Sessão ausente
+        API-->>UI: HTTP 401 UNAUTHENTICATED
+    else Sessão sem data:import
+        API-->>UI: HTTP 403 FORBIDDEN
+    else Operador autorizado
+    API->>DB: Reservar chave + hash, completionStep = RESERVED
+
+    alt Primeira conclusão válida
+        API->>S3: Confirmar upload, tamanho e checksum
+        API->>DB: completionStep = UPLOAD_COMPLETED,<br/>status = PROCESSING, stage = STARTING_TASK
+        API->>ECS: RunTask(import-snapshot, clientToken derivado do importId)
+        ECS-->>API: taskArn
+        API->>DB: Persistir taskArn e resposta, stage = VALIDATING
+        API-->>UI: HTTP 202 Accepted
+    else Mesma chave e mesmas partes
+        API->>DB: Consultar etapa e resposta persistidas
+        opt Upload ainda não confirmado
+            API->>S3: Confirmar ou reconhecer upload já concluído
+            API->>DB: completionStep = UPLOAD_COMPLETED,<br/>status = PROCESSING, stage = STARTING_TASK
+        end
+        opt RunTask pendente ou resposta perdida
+            API->>ECS: Repetir RunTask com o mesmo clientToken
+            ECS-->>API: Mesmo taskArn
+            API->>DB: Persistir taskArn e resposta
+        end
+        API-->>UI: Repetir HTTP 202 sem duplicar efeitos
+    else Chave reutilizada com partes diferentes
+        API-->>UI: HTTP 409 IDEMPOTENCY_KEY_REUSED
+    end
+    end
 
     par Processamento assíncrono
         ECS->>DB: stage = VALIDATING
@@ -526,7 +560,8 @@ sequenceDiagram
 
     and Acompanhamento pelo usuário
         loop Enquanto o estado não for terminal
-            UI->>API: GET /imports/{importId}
+            UI->>API: GET /api/v1/imports/{importId}
+            API->>API: Resolver sessão corporativa e verificar data:import
             API->>DB: Consultar ImportJob
             DB-->>API: status, stage e progresso
             API-->>UI: Estado atual
@@ -534,7 +569,8 @@ sequenceDiagram
         end
     end
 
-    UI->>API: GET /imports/{importId}
+    UI->>API: GET /api/v1/imports/{importId}
+    API->>API: Resolver sessão corporativa e verificar data:import
     API->>DB: Consultar estado final
     DB-->>API: COMPLETED ou FAILED
 
@@ -553,13 +589,13 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. O `ImportJob` recebe uma `candidateDatasetVersion`, usada nas chaves físicas de fatos, projeções e watermarks, enquanto o dashboard continua consultando `activeDatasetVersion`. Depois da validação, uma transação troca o ponteiro ativo, cria itens independentes de outbox para a detecção e para a previsão e conclui o job. O `recordId` permanece estável entre versões.
+&emsp;O ator deste fluxo é o `Operador de dados`: o Backend resolve a sessão corporativa e exige `data:import`, concedida somente pelo grupo Cognito `data-operator`, antes de criar ou consultar o `ImportJob` e antes de acessar S3 ou ECS. Sessão ausente recebe HTTP 401 com `UNAUTHENTICATED`; sessão válida sem a permissão recebe HTTP 403 com `FORBIDDEN`. Claims no body ou em headers não concedem essa autorização. O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. A conclusão reserva condicionalmente a chave de idempotência e o hash canônico das partes no `ImportJob`; cada etapa alcançada, o `taskArn` e a resposta são persistidos. Se a chamada for repetida ou interrompida, o Backend retoma a etapa pendente e utiliza o mesmo `clientToken` no `RunTask`, sem criar outra tarefa. O `ImportJob` registra `createdBy`, `completionRequestedBy` e `activatedBy` a partir da sessão autorizada, além de `createdAt`, `completionRequestedAt` e `activatedAt`; `activatedBy` guarda o operador cujo comando autorizado iniciou o processamento. Ele recebe uma `candidateDatasetVersion`, usada nas chaves físicas de fatos, projeções e watermarks, e grava `activatedDatasetVersion` somente quando a candidata é promovida, enquanto o dashboard continua consultando `activeDatasetVersion`. Depois da validação, uma transação troca o ponteiro ativo, cria itens independentes de outbox para a detecção e para a previsão e conclui o job. O `recordId` permanece estável entre versões.
 
 &emsp;As falhas são tratadas de modo a preservar um estado utilizável. Dump inválido, falha de restauração, backfill incompleto ou validação inconsistente encerram o `ImportJob` como `FAILED` sem alterar o ponteiro ativo; a versão candidata permanece invisível e pode ser removida posteriormente. Falhas de publicação mantêm apenas o item correspondente da outbox como `PENDING`. O encerramento do MySQL e o descarte do volume são executados no caminho comum após sucesso ou falha, sem remover o dump retido no S3. A ingestão não consulta nem modifica o conjunto de diagnósticos confirmados.
 
 ### 5.4 Backend, autenticação e revisão
 
-&emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica. Essas interações realizam os casos de uso UC-01, UC-02, UC-07 e UC-11. O Dashboard atua como interface, enquanto o Backend concentra a validação da sessão, a consulta ao DynamoDB e a aplicação das regras de revisão.
+&emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica; o terceiro compara os indicadores anteriores e posteriores a uma correção externa. Essas interações realizam os casos de uso UC-01, UC-02, UC-05, UC-10 e UC-15. O Dashboard atua como interface, enquanto o Backend concentra a validação da sessão, a consulta ao DynamoDB e a aplicação das regras de revisão e comparação.
 
 #### 5.4.1 DS-02A — Autenticação federada e consulta
 
@@ -650,7 +686,7 @@ Fonte: Material produzido pelos autores (2026).
 
 #### 5.4.2 DS-02B — Revisão concorrente e promoção ao conjunto de referência
 
-&emsp;A revisão de hipóteses permite que uma pessoa confirme ou refute a causa provável apresentada pelo sistema. Como dois usuários podem abrir o mesmo diagnóstico, o Backend utiliza a versão conhecida pelo revisor para aceitar somente a primeira decisão válida. Uma hipótese confirmada passa a integrar o *golden set*, isto é, o conjunto de diagnósticos humanos confirmados que serve como referência para análises futuras.
+&emsp;A revisão de hipóteses permite que uma pessoa confirme, refute ou marque como inconclusiva a causa provável apresentada pelo sistema. Como dois usuários podem abrir o mesmo diagnóstico, o Backend utiliza a versão conhecida pelo revisor para aceitar somente a decisão compatível com o estado e a versão atuais. Uma hipótese confirmada passa a integrar o *golden set*, isto é, o conjunto de diagnósticos humanos confirmados que serve como referência para análises futuras. Uma decisão inconclusiva permanece revisável e não promove a hipótese.
 
 <div align="center">
 
@@ -685,24 +721,31 @@ sequenceDiagram
         UI-->>B: Exibir hipótese pendente
     end
 
-    par Decisões concorrentes
-        A->>UI: Confirmar hipótese
-        UI->>API: PATCH review - CONFIRMED, version 0, Idempotency-Key A
-    and
-        B->>UI: Refutar hipótese
-        UI->>API: PATCH review - REFUTED, version 0, Idempotency-Key B
-    end
-
+    A->>UI: Registrar decisão humana
+    UI->>API: PATCH review, expectedVersion=0, Idempotency-Key A
     API->>API: Obter identidade do Usuário A
     API->>OP: Consultar Idempotency-Key A
 
     alt Chave A ainda não processada
-        API->>OP: TransactWriteItems
-        Note over API,GS: Condição: status PENDING e version 0
-        Note over OP,GS: Confirmar hipótese, auditar, salvar resposta e criar GoldenCase antes do HTTP 200
-        OP-->>API: Transação concluída
-        API-->>UI: HTTP 200, version = 1
-        UI-->>A: Hipótese confirmada
+        alt Decisão CONFIRMED
+            API->>OP: TransactWriteItems
+            Note over API,GS: Condição: status PENDING e version 0
+            Note over OP,GS: Confirmar hipótese, registrar auditoria imutável,<br/>salvar resposta idempotente e criar GoldenCase
+            OP-->>API: Transação concluída
+            API-->>UI: HTTP 200 - CONFIRMED, version = 1
+        else Decisão REFUTED
+            API->>OP: TransactWriteItems
+            Note over API,OP: Condição: status PENDING e version 0
+            Note over API,OP: Refutar hipótese, registrar auditoria imutável<br/>e salvar resposta idempotente, sem GoldenCase
+            OP-->>API: Transação concluída
+            API-->>UI: HTTP 200 - REFUTED, version = 1
+        else Decisão INCONCLUSIVE
+            API->>OP: TransactWriteItems
+            Note over API,OP: Condição: status PENDING e version 0
+            Note over API,OP: Gravar hipótese INCONCLUSIVE, auditoria imutável<br/>e resposta idempotente, sem escrever no golden set
+            OP-->>API: Transação concluída
+            API-->>UI: HTTP 200 - INCONCLUSIVE, version = 1
+        end
     else Mesma chave e mesmo conteúdo
         OP-->>API: Resultado armazenado
         API-->>UI: HTTP 200 com resposta anterior
@@ -710,25 +753,41 @@ sequenceDiagram
         API-->>UI: HTTP 409 - IDEMPOTENCY_KEY_REUSED
     end
 
+    Note over A,B: O cenário continua pelo ramo INCONCLUSIVE
+    B->>UI: Refutar hipótese com expectedVersion=0 ainda obsoleto
+    UI->>API: PATCH review - REFUTED, expectedVersion=0, Idempotency-Key B
     API->>API: Obter identidade do Usuário B
     API->>OP: Consultar Idempotency-Key B
 
     alt Chave B ainda não processada
         API->>OP: TransactWriteItems
-        Note over API,OP: Condição: status PENDING e version 0
+        Note over API,OP: Condição falha: expectedVersion=0 está obsoleta,<br/>estado atual INCONCLUSIVE, version 1
         OP-->>API: ConditionalCheckFailed
         API->>OP: Consultar estado atual
-        OP-->>API: CONFIRMED, version = 1
+        OP-->>API: INCONCLUSIVE, version = 1
         API-->>UI: HTTP 409 - REVIEW_VERSION_CONFLICT
-        UI-->>B: Hipótese já revisada
+        UI-->>B: Atualizar a hipótese antes de revisar
     else Repetição de operação concluída
         OP-->>API: Resultado armazenado
         API-->>UI: Devolver resposta anterior
     end
 
+    A->>UI: Confirmar a hipótese após nova análise
+    UI->>API: PATCH review - CONFIRMED, expectedVersion=1, Idempotency-Key C
+    API->>OP: TransactWriteItems
+    Note over API,GS: Condição: status INCONCLUSIVE e expectedVersion=1,<br/>registrar auditoria, resposta idempotente e GoldenCase
+    OP-->>API: Transação concluída
+    API-->>UI: HTTP 200 - CONFIRMED, version = 2
+
+    B->>UI: Tentar refutar com expectedVersion=2 atual
+    UI->>API: PATCH review - REFUTED, expectedVersion=2, Idempotency-Key D
+    API->>OP: Consultar estado atual
+    OP-->>API: CONFIRMED, version = 2
+    API-->>UI: HTTP 409 - REVIEW_FINAL_STATE_CONFLICT
+
     opt Resposta de sucesso foi perdida
         A->>UI: Repetir confirmação
-        UI->>API: Mesmo body e Idempotency-Key A
+        UI->>API: Mesmo body e Idempotency-Key C
         API->>OP: Consultar resultado idempotente
         OP-->>API: Decisão já concluída
         API-->>UI: HTTP 200 sem nova auditoria
@@ -741,13 +800,77 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;A identidade do revisor vem da sessão. A requisição informa `Idempotency-Key` e `expectedVersion`; a escrita exige `status = PENDING` e a versão esperada. A primeira decisão válida é terminal. Somente `CONFIRMED` inclui a criação do `GoldenCase` na transação; `REFUTED` permanece no histórico operacional.
+&emsp;A identidade do revisor vem da sessão. A requisição informa `Idempotency-Key` e `expectedVersion`; a escrita exige a versão esperada e aceita `PENDING` ou `INCONCLUSIVE`. `CONFIRMED` e `REFUTED` são terminais. `INCONCLUSIVE` grava uma decisão humana, mas não é terminal: outra revisão pode decidir `CONFIRMED` ou `REFUTED` com nova `Idempotency-Key` e a versão atual. Somente `CONFIRMED` inclui a criação do `GoldenCase` na transação; `REFUTED` e `INCONCLUSIVE` permanecem no histórico operacional.
 
-&emsp;Requisições sem a versão esperada são rejeitadas sem alterar a hipótese. Se outra pessoa concluir a revisão primeiro, o Backend responde com conflito e preserva a decisão vencedora. A chave de idempotência permite devolver o mesmo resultado quando uma requisição é repetida, sem duplicar a auditoria ou o caso confirmado. Ao final, cada hipótese revisada possui uma única decisão humana, final e auditável.
+&emsp;Requisições sem a versão esperada são rejeitadas sem alterar a hipótese. Uma requisição com versão obsoleta recebe `REVIEW_VERSION_CONFLICT`; uma tentativa de alterar `CONFIRMED` ou `REFUTED` com a versão atual recebe `REVIEW_FINAL_STATE_CONFLICT`. Toda decisão grava auditoria imutável. A chave de idempotência permite devolver o mesmo resultado quando uma requisição é repetida, sem duplicar a auditoria ou o caso confirmado.
+
+#### 5.4.3 DS-02C — Avaliação da recuperação após correção
+
+&emsp;A avaliação de recuperação ocorre depois de uma correção realizada fora do View Show. A Engenheira de Software ou a Product Manager seleciona o incidente, confirma o marco temporal da intervenção e solicita a comparação de janelas equivalentes. O fluxo realiza UC-15 sem atribuir ao sistema a implantação da correção nem transformar uma associação temporal em afirmação de causalidade. Como o backend atual ainda não publica operações específicas para esse objetivo, as mensagens do DS-02C representam responsabilidades conceituais e não contratos HTTP já implementados.
+
+<div align="center">
+
+<strong>Diagrama x: DS-02C — Avaliação da recuperação após correção</strong>
+
+</div>
+
+```mermaid
+sequenceDiagram
+    autonumber
+
+    actor U as Engenheira ou Product Manager
+    participant UI as Dashboard
+    participant API as Backend
+    participant DB as DynamoDB
+
+    U->>UI: Selecionar incidente ou problema
+    UI->>API: Solicitar contexto de recuperação
+    API->>DB: Consultar segmento e marco da correção
+    DB-->>API: Contexto disponível
+    API-->>UI: Segmento, marco e janelas sugeridas
+
+    alt Marco da correção inexistente
+        UI-->>U: Solicitar marco aproximado
+        U->>UI: Informar data e hora estimadas
+    else Marco registrado
+        UI-->>U: Exibir marco associado
+    end
+
+    U->>UI: Confirmar marco e janelas equivalentes
+    UI->>API: Solicitar comparação de recuperação
+    API->>DB: Consultar indicadores anteriores e posteriores
+    DB-->>API: Métricas, períodos e tamanhos das amostras
+    API->>API: Verificar janelas equivalentes e mínimo de 20 observações
+    API->>API: Calcular variações absolutas e percentuais
+
+    alt Amostras suficientes e períodos comparáveis
+        API->>API: Classificar recuperação
+        API-->>UI: Variações e resultado da comparação
+        UI-->>U: Exibir melhora, estabilidade ou piora
+        U->>UI: Registrar conclusão e limitações
+        UI->>API: Solicitar registro da avaliação
+        API->>DB: Armazenar avaliação, autoria e data
+        DB-->>API: Avaliação registrada
+        API-->>UI: Confirmar registro
+    else Amostra insuficiente ou períodos incompatíveis
+        API-->>UI: Comparação inconclusiva e limitações
+        UI-->>U: Solicitar ajuste das janelas ou nova avaliação futura
+    end
+```
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+&emsp;O componente responsável pela comparação deverá devolver os períodos, os tamanhos das amostras e as variações absolutas e percentuais para que o resultado permaneça auditável. No MVP, a classificação conclusiva exige janelas de mesma duração, os mesmos filtros de segmento e ao menos 20 observações em cada janela; nos demais cenários, a interface informa a limitação e preserva o contexto para ajuste ou repetição posterior.
+
+&emsp;A conclusão registrada representa a interpretação do ator a partir dos indicadores disponíveis. O View Show não executa implantação ou reversão e não afirma que a correção causou a variação observada. Essa delimitação mantém o diagrama coerente com a fronteira funcional definida em UC-15.
 
 ### 5.5 Worker de Análise
 
-&emsp;O Worker de Análise consome de forma assíncrona as janelas materializadas pela ingestão e coordena três responsabilidades: antecipar degradações, reconhecer anomalias já observadas e recuperar processamentos interrompidos. Essas atividades não são iniciadas diretamente pelos atores, mas fornecem previsões, incidentes, evidências e hipóteses para os casos de uso UC-05 a UC-08, UC-10, UC-12, UC-13, UC-16, UC-17 e UC-19.
+&emsp;O Worker de Análise consome de forma assíncrona as janelas materializadas pela ingestão e coordena três responsabilidades: antecipar degradações, reconhecer anomalias já observadas e recuperar processamentos interrompidos. Essas atividades não são iniciadas diretamente pelos atores, mas fornecem previsões, incidentes, evidências, hipóteses e informações operacionais para os casos de uso UC-05, UC-10, UC-16 e UC-21.
 
 &emsp;O orquestrador de análise permanece um módulo interno do Worker. Ele combina os resultados dos modelos, recupera informações do DynamoDB e consulta casos humanos confirmados antes de solicitar ao agente diagnóstico uma explicação para o risco ou incidente. O Amazon Bedrock apoia a geração das hipóteses, mas não substitui a decisão humana.
 
@@ -819,7 +942,7 @@ sequenceDiagram
                 W->>DB: AnalysisRun = SUCCEEDED
                 W->>Q: Confirmar mensagem
             else Qualidade suficiente
-                O->>DB: Reunir evidências e contexto recente
+                O->>DB: Reunir evidências e contexto de até 5h
                 O->>GS: Consultar casos confirmados
                 GS-->>O: Casos semelhantes
                 O->>DB: Diagnosis = PROCESSING
@@ -938,7 +1061,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;MAD e Mahalanobis permanecem módulos internos do mesmo Worker. O detector produz scores e evidências; o `Analysis Orchestrator` cria ou correlaciona o incidente. O resultado estatístico torna-se uma evidência associada ao incidente. Quando há qualidade e cobertura suficientes, o agente consulta o contexto recente e o conjunto de casos confirmados para produzir hipóteses justificadas. O incidente permanece disponível mesmo quando o diagnóstico por IA não pode ser concluído.
+&emsp;MAD e Mahalanobis permanecem módulos internos do mesmo Worker. O detector produz scores e evidências; o `Analysis Orchestrator` cria ou correlaciona o incidente. O resultado estatístico torna-se uma evidência associada ao incidente. Quando há qualidade e cobertura suficientes, o agente consulta o contexto de até cinco horas anteriores à falha e o conjunto de casos confirmados para produzir hipóteses justificadas. Eventos individuais ficam restritos ao mesmo dispositivo; quando existirem apenas agregados, são usadas métricas do segmento afetado e o diagnóstico recebe qualidade limitada. O incidente permanece disponível mesmo quando o diagnóstico por IA não pode ser concluído.
 
 #### 5.5.3 DS-03C — Recuperação de falhas, mensagens não processadas e reanálise
 
@@ -1141,7 +1264,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Na primeira parte, o DS-01A detalha a sincronização do MySQL e o DS-01B detalha a importação de snapshots. Depois da publicação na fila, o DS-03A descreve a previsão horária, o DS-03B apresenta a detecção de incidentes e o DS-03C mostra a recuperação de falhas. A interação do usuário é aprofundada no DS-02A, para autenticação e consulta, e no DS-02B, para revisão de hipóteses.
+&emsp;Na primeira parte, o DS-01A detalha a sincronização do MySQL e o DS-01B detalha a importação de snapshots. Depois da publicação na fila, o DS-03A descreve a previsão horária, o DS-03B apresenta a detecção de incidentes e o DS-03C mostra a recuperação de falhas. A interação do usuário é aprofundada no DS-02A, para autenticação e consulta, no DS-02B, para revisão de hipóteses, e no DS-02C, para avaliação posterior a uma correção externa.
 
 &emsp;Ao final do percurso, a janela ingerida está disponível no DynamoDB e a análise foi processada de forma idempotente. Uma previsão continua distinta de um incidente observado, enquanto uma anomalia pode criar ou reforçar um incidente. As hipóteses permanecem pendentes até a decisão humana e somente as confirmadas passam a integrar o conjunto de referência. O `traceId`, identificador de correlação propagado entre os componentes, permite acompanhar uma execução ao longo de todo o fluxo.
 
@@ -1157,14 +1280,15 @@ Fonte: Material produzido pelos autores (2026).
 
 | Diagrama | Casos de uso | Natureza da relação | Decisão principal |
 | --- | --- | --- | --- |
-| DS-01A | UC-01, UC-06, UC-17, UC-19 | Suporte técnico | Escrita direta no DynamoDB e saída transacional |
-| DS-01B | UC-01, UC-06, UC-17, UC-19 | Suporte técnico | Upload no S3 e MySQL temporário no Fargate |
+| DS-01A | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico | Escrita direta no DynamoDB e saída transacional |
+| DS-01B | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico | Upload no S3 e MySQL temporário no Fargate |
 | DS-02A | UC-01, UC-02 | Realização | SSO federado com Backend for Frontend |
-| DS-02B | UC-07, UC-11 | Realização | Concorrência otimista e promoção transacional |
-| DS-03A | UC-16, UC-17, UC-19 | Suporte técnico | Previsão horária e validação posterior |
-| DS-03B | UC-05 a UC-08, UC-10, UC-12, UC-13 | Suporte técnico | Detecção a cada 15 minutos e diagnóstico por IA |
-| DS-03C | UC-10 | Exceção e alternativa | Repetição controlada, DLQ e reanálise |
-| DS-04 | UC-01, UC-02, UC-05 a UC-08, UC-10, UC-11, UC-16, UC-17, UC-19 | Síntese | Continuidade do dado até a decisão humana |
+| DS-02B | UC-05, UC-10 | Realização | Concorrência otimista e promoção transacional |
+| DS-02C | UC-15 | Realização proposta | Responsabilidades conceituais para uma comparação auditável, sem contrato HTTP implementado nem inferência indevida de causalidade |
+| DS-03A | UC-16 | Suporte técnico | Previsão horária e validação posterior |
+| DS-03B | UC-05, UC-10, UC-16 | Suporte técnico | Detecção a cada 15 minutos e diagnóstico por IA |
+| DS-03C | UC-21 | Exceção e alternativa | Repetição controlada, DLQ e reanálise |
+| DS-04 | UC-01, UC-02, UC-05, UC-10, UC-16 | Síntese | Continuidade do dado até a decisão humana |
 
 <div align="center">
 
@@ -1236,15 +1360,8 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 8. Referências
 
-LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto
-orientados a objetos e ao desenvolvimento iterativo*. 3. ed. Porto Alegre:
-Bookman, 2007. E-book. Disponível em:
-https://app.minhabiblioteca.com.br/books/9788577800476. Acesso em: 6 set. 2026.
+LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto orientados a objetos e ao desenvolvimento iterativo*. 3. ed. Porto Alegre: Bookman, 2007. E-book. Disponível em: https://integrada.minhabiblioteca.com.br/reader/books/9788577800476. Acesso em: 6 set. 2026.
 
-OBJECT MANAGEMENT GROUP. *OMG Unified Modeling Language (OMG UML)*. Version
-2.5.1. 2017. Disponível em:
-https://www.omg.org/spec/UML/2.5.1. Acesso em: 6 set. 2026.
+OBJECT MANAGEMENT GROUP. *OMG Unified Modeling Language (OMG UML)*. Version 2.5.1. 2017. Disponível em: https://www.omg.org/spec/UML/2.5.1. Acesso em: 6 set. 2026.
 
-GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de
-Frontend Globoplay*. 2026. Disponível em:
-[requisitos.md](../sprint1/requisitos.md).
+GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de Frontend Globoplay*. 2026. Disponível em: [requisitos.md](../sprint1/requisitos.md).
