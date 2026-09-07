@@ -129,6 +129,88 @@ class TelemetryEndpointTests(ApiTestCase):
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.get_json()["error"]["code"], "method_not_allowed")
 
+    def test_fault_header_is_ignored_when_load_test_faults_are_disabled(self):
+        response = self.client.post(
+            "/v1/telemetry/events",
+            json=_event("session-1"),
+            headers={"X-View-Show-Test-Fault": "queue-full"},
+        )
+
+        self.assertEqual(response.status_code, 202)
+
+
+class IngestionResilienceEndpointTests(unittest.TestCase):
+    TOKEN = "token-local-de-resiliencia"
+
+    def setUp(self):
+        self.client = create_app(
+            {
+                "TESTING": True,
+                "LOAD_TEST_FAULTS_ENABLED": True,
+                "LOAD_TEST_FAULT_TOKEN": self.TOKEN,
+                "LOAD_TEST_TIMEOUT_DELAY_MS": 0,
+            }
+        ).test_client()
+
+    def post_with_fault(self, fault: str, *, token: str | None = None):
+        return self.client.post(
+            "/v1/telemetry/events",
+            json=_event("session-fault"),
+            headers={
+                "X-View-Show-Test-Fault": fault,
+                "X-View-Show-Test-Token": token or self.TOKEN,
+            },
+        )
+
+    def test_queue_full_returns_429_without_persisting_and_then_recovers(self):
+        failure = self.post_with_fault("queue-full")
+
+        self.assertEqual(failure.status_code, 429)
+        self.assertEqual(failure.get_json()["error"]["code"], "queue_full")
+        self.assertEqual(
+            self.client.get("/v1/analytics/realtime/overview").get_json()["events"]["total"],
+            0,
+        )
+
+        recovery = self.client.post("/v1/telemetry/events", json=_event("session-recovery"))
+        self.assertEqual(recovery.status_code, 202)
+        self.assertEqual(recovery.get_json()["accepted"], 1)
+
+    def test_dependency_timeout_returns_504_without_persisting_and_then_recovers(self):
+        failure = self.post_with_fault("timeout")
+
+        self.assertEqual(failure.status_code, 504)
+        self.assertEqual(failure.get_json()["error"]["code"], "dependency_timeout")
+        self.assertEqual(
+            self.client.get("/v1/analytics/realtime/overview").get_json()["events"]["total"],
+            0,
+        )
+
+        recovery = self.client.post("/v1/telemetry/events", json=_event("session-recovery"))
+        self.assertEqual(recovery.status_code, 202)
+
+    def test_fault_injection_requires_the_configured_token(self):
+        response = self.post_with_fault("queue-full", token="token-incorreto")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"]["code"], "fault_injection_unauthorized")
+
+    def test_unknown_fault_is_rejected(self):
+        response = self.post_with_fault("disk-on-fire")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"]["code"], "validation_error")
+
+    def test_enabling_faults_without_token_fails_at_startup(self):
+        with self.assertRaisesRegex(RuntimeError, "LOAD_TEST_FAULT_TOKEN é obrigatório"):
+            create_app(
+                {
+                    "TESTING": True,
+                    "LOAD_TEST_FAULTS_ENABLED": True,
+                    "LOAD_TEST_FAULT_TOKEN": "",
+                }
+            )
+
 
 class AnalyticsEndpointTests(ApiTestCase):
     def setUp(self):

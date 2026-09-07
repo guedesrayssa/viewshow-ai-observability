@@ -1,9 +1,18 @@
-# Teste de desempenho — API de consulta
+# Suíte de carga e resiliência
 
-Roteiro do teste de carga da API do View Show, seguindo o encontro
-**S04 · Testes de desempenho**. O entregável da sprint é: script versionado,
-rodado de uma EC2 na mesma região da API, com thresholds derivados do SLA,
-`--summary-export` anexado ao relatório e a leitura do servidor durante a rodada.
+Roteiro dos testes do View Show, seguindo o encontro **S04 · Testes de
+desempenho**. A pasta contém dois alvos independentes e não mistura suas
+métricas:
+
+| Alvo | Script | Requisitos | Estado da evidência |
+| --- | --- | --- | --- |
+| API Node de consulta e diagnóstico (`apps/backend/api`) | `k6/consultas.js`, `k6/auth-check.js` | RNF14, RNF09 e RNF04 | rodada de carga AWS anterior à correção documentada; repetição pós-correção pendente |
+| API Flask de ingestão (`apps/basica/backend`) | `k6/ingestao-resiliencia.js` | RNF01 e RNF03 | carga de 10 mil eventos/min, fila cheia, timeout e recuperação executados localmente |
+
+Toda rodada deve manter o script versionado, aplicar thresholds verificáveis,
+exportar o resumo JSON e registrar o ambiente e as limitações no relatório. Os
+resultados de ingestão desta branch estão em
+[`RESULTADOS-INGESTAO-RESILIENCIA.md`](RESULTADOS-INGESTAO-RESILIENCIA.md).
 
 ## Atualização: correção do defeito de chave aplicada
 
@@ -29,6 +38,9 @@ Consequências para quem for rodar esta rodada:
   separado por ser um objetivo diferente (segurança, não desempenho). Todas
   as rotas entram no threshold e o run falha enquanto alguma aceitar chamada
   sem sessão.
+- Novo script, `k6/ingestao-resiliencia.js`: exerce o endpoint real de
+  telemetria a **10.000 eventos/minuto** e mede as fases de fila cheia, timeout
+  e recuperação. Ele mira a API Flask, não a API Node das consultas.
 - **Métricas de servidor** (CPU, RCU, logs) passaram a ser responsabilidade da
   pilha de observabilidade local (`docker-compose.observability.yml` —
   Grafana/Prometheus/Loki/Tempo), mantida por outra pessoa do time. A seção
@@ -40,15 +52,15 @@ Consequências para quem for rodar esta rodada:
   contra o domínio do Amplify (`BASE_URL=https://<dominio-amplify>`) mede algo
   diferente do ALB direto e ainda não tem baseline próprio.
 
-## O que está sendo testado
+## API de consulta: o que está sendo testado
 
 **A API de consulta e diagnóstico** (`apps/backend/api`), em ECS Fargate no
 cluster `data-ingestion-cluster`.
 
-> ⚠️ **Não é a API de ingestão.** O exemplo da aula (`POST /events`) é do MVP da
-> Sprint 1. Esta branch **não expõe endpoint de ingestão** — as rotas são
-> consulta (`/incidents`, `/dashboard/summary`), diagnóstico (`/diagnose`) e
-> curadoria (`/golden-set`). O SLA aplicável muda de RNF03 para **RNF14**.
+> Esta aplicação Node **não é a API de ingestão**: suas rotas são consulta
+> (`/incidents`, `/dashboard/summary`), diagnóstico (`/diagnose`) e curadoria
+> (`/golden-set`). A ingestão existe separadamente em `apps/basica/backend` e é
+> coberta na seção final deste roteiro. O SLA aplicável a esta parte é RNF14.
 
 ## As quatro perguntas do slide 20
 
@@ -265,11 +277,85 @@ precisa das duas leituras lado a lado.
    não dá acesso ao Bedrock — não é só uma configuração desligada por escolha.
 4. **O p(95) de 2 s vem do RNF14**, que fala de "busca filtrada" no dashboard.
    Se o parceiro quiser um SLA específico para esta API, o número muda.
-5. **Endurance (`soak`) não cresce a base durante a rodada.** A ingestão que
-   alimentaria incidentes novos continuamente não está implementada ainda
-   (fora deste repositório); o `soak` mede vazamento de memória/CPU sobre uma
-   base estática, não a degradação de payload por acúmulo de dado ao longo do
-   tempo — essa segunda pergunta só é testável quando a ingestão existir.
+5. **Endurance (`soak`) não cresce a base de incidentes durante a rodada.** A
+   API Flask de telemetria existe neste repositório, mas não alimenta
+   continuamente a tabela de incidentes da API Node; por isso o `soak` mede
+   vazamento de memória/CPU sobre uma base estática, não degradação por acúmulo.
 6. **A cadeia completa de produção (Amplify → API Gateway → ALB) não tem
    baseline nesta pasta.** Todas as rodadas documentadas aqui miraram o ALB
    diretamente.
+
+## Ingestão: 10 mil eventos/minuto e falhas controladas
+
+O alvo é `POST /v1/telemetry/events`, implementado pela API Flask em
+`apps/basica/backend`. O gerador usa modelo aberto e envia 100 requisições por
+minuto com 100 eventos em cada lote: **10.000 eventos/minuto**. O tamanho do
+lote respeita o limite de 500 eventos da própria API.
+
+| `MODE` | Fases | Critérios automáticos |
+| --- | --- | --- |
+| `carga` | 1 min nominal | ≥ 10.000 eventos aceitos, HTTP 202 e lote completo em 100% dos checks, p95 < 2 s, erro < 1%, nenhum descarte |
+| `fila_cheia` | 30 s nominal → 30 s de falha → 1 min de recuperação | falha sempre em 429/`queue_full`; recuperação aceita ≥ 10.000 eventos, p95 < 2 s e nenhum descarte |
+| `timeout` | 30 s nominal → 30 s de falha → 1 min de recuperação | falha sempre em 504/`dependency_timeout`; recuperação aceita ≥ 10.000 eventos, p95 < 2 s e nenhum descarte |
+
+Os contadores `ingestion_events_attempted`, `ingestion_events_accepted` e
+`ingestion_events_expected_rejection` medem **eventos**, enquanto `http_reqs`
+mede lotes e inclui o pré-voo. `dropped_iterations` precisa permanecer zero;
+caso contrário, o gerador não sustentou a taxa pedida.
+
+### Proteção da injeção de falha
+
+A falha controlada vem desabilitada. Quando habilitada, exige um segredo e só
+atua em `/v1/telemetry/events` com os headers de teste. Token ausente ou
+incorreto responde 403; nome de falha desconhecido responde 400; nenhum lote
+recusado é persistido. A inicialização falha se o mecanismo for habilitado sem
+token.
+
+Nunca mantenha `LOAD_TEST_FAULTS_ENABLED=1` depois da janela de teste. Use um
+token exclusivo e execute em ambiente controlado. As variáveis e o contrato
+também estão documentados em
+[`../../sprint1/backend.md`](../../sprint1/backend.md).
+
+### Execução
+
+Em um terminal, inicie a API de teste:
+
+```bash
+cd apps/basica/backend
+export TELEMETRY_BACKEND=memory
+export LOAD_TEST_FAULTS_ENABLED=1
+export LOAD_TEST_FAULT_TOKEN='<segredo-da-rodada>'
+export LOAD_TEST_TIMEOUT_DELAY_MS=250
+gunicorn --workers 1 --threads 8 --bind 127.0.0.1:18080 wsgi:app
+```
+
+Em outro terminal, a partir da pasta do k6:
+
+```bash
+cd artefatos/sprint2/testes-carga/k6
+export BASE_URL=http://127.0.0.1:18080
+export FAULT_TOKEN='<segredo-da-rodada>'
+./rodadas-ingestao.sh local
+```
+
+Também é possível executar uma rodada isolada:
+
+```bash
+k6 run -e BASE_URL="$BASE_URL" -e MODE=carga \
+  --summary-export=../resultados/resumo-ingestao-carga-local.json \
+  ingestao-resiliencia.js
+```
+
+`EVENT_RATE` e `BATCH_SIZE` são configuráveis, mas a taxa deve ser inteira e
+divisível pelo lote. O padrão é a carga exigida de 10.000 eventos/minuto.
+
+### Limite da evidência de resiliência
+
+As respostas 429 e 504 são **simulações determinísticas na borda da API**. Elas
+validam backpressure explícito, ausência de persistência do lote recusado e
+recuperação sem reinício, mas não medem uma SQS saturada, retry do SDK,
+visibilidade de mensagem, DLQ, DynamoDB throttling nem escalonamento do worker.
+A aprovação completa de RNF01/RNF03 exige repetir a matriz em staging com as
+dependências reais e correlacionar profundidade/idade da fila, CPU, memória,
+throttling e perda/duplicação de eventos. O relatório local não faz alegação de
+capacidade da AWS.
