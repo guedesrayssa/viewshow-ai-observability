@@ -24,9 +24,39 @@ const evidenceService = require("../services/evidenceService");
 
 const router = Router();
 
+/**
+ * Remove repetições do mesmo incidente, ficando com a ocorrência mais recente
+ * (menor `startedMinutesAgo`).
+ *
+ * Execuções distintas do seed gravam o mesmo `id` em baldes de horas
+ * diferentes, e `listIncidents` devolve todas. Sem juntar as repetições, o
+ * mesmo incidente somaria `devices` mais de uma vez e contaria como vários —
+ * inflando os três indicadores — e ainda ocuparia mais de uma vaga entre os
+ * recentes. Por isso a deduplicação acontece antes dos agregados e do `slice`.
+ */
+function dedupeById(incidents) {
+  const byId = new Map();
+
+  for (const incident of incidents) {
+    const current = byId.get(incident.id);
+    const minutesAgo = incident.startedMinutesAgo ?? Infinity;
+    const currentMinutesAgo = current
+      ? current.startedMinutesAgo ?? Infinity
+      : Infinity;
+
+    if (!current || minutesAgo < currentMinutesAgo) {
+      byId.set(incident.id, incident);
+    }
+  }
+
+  return [...byId.values()];
+}
+
 router.get("/summary", async (req, res) => {
   try {
-    const incidents = await evidenceService.listIncidents({ window: "24h" });
+    const incidents = dedupeById(
+      await evidenceService.listIncidents({ window: "24h" }),
+    );
 
     const affectedSessions = incidents.reduce((total, incident) => total + (incident.devices || 0), 0);
     const activeIncidents = incidents.filter((incident) => incident.status !== "success").length;

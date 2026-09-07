@@ -12,10 +12,14 @@ const app = require("../src/app");
  */
 test("GET /api/v1/dashboard/summary devolve stats numéricos e incidentes recentes", async (t) => {
   const original = evidenceService.listIncidents;
+  // "a" aparece duas vezes: execuções distintas do seed gravaram o mesmo
+  // incidente em baldes de horas diferentes. Os agregados e a lista de recentes
+  // têm que enxergar um "a" só, ficando com a ocorrência mais recente.
   evidenceService.listIncidents = async () => [
     { id: "a", title: "A", status: "critical", statusLabel: "Crítico", devices: 1200, startedMinutesAgo: 5 },
     { id: "b", title: "B", status: "warning", statusLabel: "Atenção", devices: 300, startedMinutesAgo: 20 },
     { id: "c", title: "C", status: "success", statusLabel: "Estável", devices: 0, startedMinutesAgo: 40 },
+    { id: "a", title: "A", status: "critical", statusLabel: "Crítico", devices: 1200, startedMinutesAgo: 70 },
   ];
   t.after(() => {
     evidenceService.listIncidents = original;
@@ -47,10 +51,13 @@ test("GET /api/v1/dashboard/summary devolve stats numéricos e incidentes recent
   }
 
   const byId = Object.fromEntries(body.stats.map((stat) => [stat.id, stat.value]));
+  // Sem deduplicar, "a" entraria duas vezes: 2.700 sessões, 3 ativos, 2 críticos.
   assert.equal(byId["affected-sessions"], 1500);
   assert.equal(byId["active-incidents"], 2);
   assert.equal(byId["critical-incidents"], 1);
 
   assert.equal(body.recentIncidents.length, 3);
   assert.equal(body.recentIncidents[0].id, "a");
+  // A ocorrência mantida é a mais recente das duas de "a".
+  assert.equal(body.recentIncidents[0].startedMinutesAgo, 5);
 });
