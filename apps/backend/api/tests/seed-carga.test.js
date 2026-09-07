@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 
 const { enviarLoteComRetry, limparTabela } = require("../scripts/seed-carga");
 
@@ -64,4 +65,15 @@ test("batch write falha se ainda houver UnprocessedItems após os retries", asyn
     /1 operações em operacional continuaram não processadas após 2 tentativas/,
   );
   assert.equal(tentativas, 2);
+});
+
+test("seed rejeita KEY_SCHEME inválido em vez de rotular dados v2 incorretamente", () => {
+  const result = spawnSync(process.execPath, ["-e", "require('./scripts/seed-carga')"], {
+    cwd: process.cwd(),
+    env: { ...process.env, KEY_SCHEME: "v3" },
+    encoding: "utf8",
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /KEY_SCHEME inválido: v3\. Use v1 ou v2\./);
 });

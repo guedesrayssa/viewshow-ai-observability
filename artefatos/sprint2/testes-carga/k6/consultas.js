@@ -46,6 +46,13 @@ const STRESS_MULTIPLIER = Number(__ENV.STRESS_MULTIPLIER || 3);
 const INCIDENT_COUNT = Number(__ENV.INCIDENT_COUNT || 300);
 
 if (!BASE_URL) throw new Error("Faltou -e BASE_URL=http://<host>:3000");
+if (!Number.isFinite(RATE) || RATE <= 0) throw new Error("RATE deve ser um número positivo");
+if (!Number.isFinite(STRESS_MULTIPLIER) || STRESS_MULTIPLIER <= 1) {
+  throw new Error("STRESS_MULTIPLIER deve ser um número maior que 1");
+}
+if (!Number.isInteger(INCIDENT_COUNT) || INCIDENT_COUNT <= 0) {
+  throw new Error("INCIDENT_COUNT deve ser um inteiro positivo");
+}
 
 /** IDs são ordinais determinísticos gerados por seed-carga.js. */
 function incidentId() {
@@ -175,13 +182,20 @@ if (!CENARIOS[MODE]) {
 export const options = {
   scenarios: { [MODE]: CENARIOS[MODE] },
   thresholds: {
-    // RNF14 — a única linha com SLA de origem documentada.
-    http_req_duration: ["p(95)<2000"],
-    // RNF09 (disponibilidade 99,9%) traduzido para a janela do teste.
-    http_req_failed: ["rate<0.01"],
+    // Breakpoint, spike e estresse procuram degradação deliberadamente. Seus
+    // checks continuam no relatório, mas não reprovam a execução pelo SLA de
+    // operação normal. Load/soak validam RNF14 e RNF09.
+    ...(["load", "soak"].includes(MODE)
+      ? {
+          http_req_duration: ["p(95)<2000"],
+          http_req_failed: ["rate<0.01"],
+          checks: ["rate>0.99"],
+        }
+      : {}),
+    ...(MODE === "smoke" ? { http_req_failed: ["rate<0.01"], checks: ["rate==1"] } : {}),
     // Vazão mínima: o alvo declarado, com folga de 5%.
     ...(MODE === "load" ? { http_reqs: [`rate>${Math.floor(RATE * 0.95)}`] } : {}),
-    checks: ["rate>0.99"],
+    ...(MODE === "diagnose" ? { http_req_failed: ["rate<0.01"], checks: ["rate>0.99"] } : {}),
   },
   // Sem isso o k6 agrega /incidents/inc-000001 e /incidents/inc-000002 como
   // URLs diferentes e o resumo vira ilegível.
@@ -190,9 +204,9 @@ export const options = {
 
 /* ------------------------------- setup -------------------------------- */
 
-/** Login uma vez. O cookie é HMAC com maxAge de 8 h (src/auth/session.js),
- *  então não precisa renovar durante o teste. Só o PATCH de review exige
- *  sessão — e ele fica FORA da carga, porque promove caso à golden set. */
+/** Login uma vez. O cookie é enviado em todas as chamadas, inclusive enquanto
+ *  algumas rotas ainda são públicas, para que a suíte continue válida quando
+ *  o RNF04 for aplicado a todas as APIs de consulta. */
 export function setup() {
   const res = http.post(
     `${BASE_URL}/auth/login`,
@@ -206,20 +220,30 @@ export function setup() {
   if (res.status !== 200) {
     throw new Error(`Login falhou: HTTP ${res.status}. A API está de pé em ${BASE_URL}?`);
   }
-  return { cookie: res.cookies.session ? res.cookies.session[0].value : null };
+  const cookie = res.cookies.session ? res.cookies.session[0].value : null;
+  if (!cookie) throw new Error("Login OK mas nenhum cookie 'session' voltou.");
+  return { cookie };
+}
+
+function requestParams(data, tags) {
+  return {
+    headers: { Cookie: `session=${data.cookie}` },
+    tags,
+  };
 }
 
 /* ------------------------------ cenários ------------------------------ */
 
-export default function () {
+export default function (data) {
   const sorteio = Math.random();
 
   if (sorteio < 0.45) {
     // A — leitura PESADA: window=24h varre 25 buckets de hora em paralelo.
     //     É o pior caso real e o que a tela de incidentes usa.
-    const res = http.get(`${BASE_URL}/api/v1/incidents?window=24h`, {
-      tags: { cenario: "pesada", name: "GET /incidents?window=24h" },
-    });
+    const res = http.get(
+      `${BASE_URL}/api/v1/incidents?window=24h`,
+      requestParams(data, { cenario: "pesada", name: "GET /incidents?window=24h" }),
+    );
     latenciaPesada.add(res.timings.duration);
     check(res, {
       "pesada: 200": (r) => r.status === 200,
@@ -233,18 +257,20 @@ export default function () {
   } else if (sorteio < 0.7) {
     // B — leitura LEVE: window=15m varre só 2 buckets.
     //     ⚠️ Só devolve dado se o seed rodou há menos de ~1 h.
-    const res = http.get(`${BASE_URL}/api/v1/incidents?window=15m`, {
-      tags: { cenario: "leve", name: "GET /incidents?window=15m" },
-    });
+    const res = http.get(
+      `${BASE_URL}/api/v1/incidents?window=15m`,
+      requestParams(data, { cenario: "leve", name: "GET /incidents?window=15m" }),
+    );
     latenciaLeve.add(res.timings.duration);
     check(res, { "leve: 200": (r) => r.status === 200 });
   } else if (sorteio < 0.9) {
     // C — BUNDLE: Query única no GSI trace-index. Caminho da tela de evidências.
     //     Independe do relógio, então não sofre com o envelhecimento do seed.
     const id = incidentId();
-    const res = http.get(`${BASE_URL}/api/v1/incidents/${id}/evidence`, {
-      tags: { cenario: "bundle", name: "GET /incidents/:id/evidence" },
-    });
+    const res = http.get(
+      `${BASE_URL}/api/v1/incidents/${id}/evidence`,
+      requestParams(data, { cenario: "bundle", name: "GET /incidents/:id/evidence" }),
+    );
     latenciaBundle.add(res.timings.duration);
     check(res, {
       "bundle: 200": (r) => r.status === 200,
@@ -254,9 +280,10 @@ export default function () {
     });
   } else {
     // D — SUMMARY: o que /visao-geral chama ao abrir.
-    const res = http.get(`${BASE_URL}/api/v1/dashboard/summary`, {
-      tags: { cenario: "summary", name: "GET /dashboard/summary" },
-    });
+    const res = http.get(
+      `${BASE_URL}/api/v1/dashboard/summary`,
+      requestParams(data, { cenario: "summary", name: "GET /dashboard/summary" }),
+    );
     check(res, {
       "summary: 200": (r) => r.status === 200,
       "summary: tem stats": (r) => {
@@ -267,11 +294,13 @@ export default function () {
 }
 
 /** Cenário isolado — ESCREVE no banco a cada chamada. */
-export function diagnosticar() {
+export function diagnosticar(data) {
   const id = incidentId();
-  const res = http.post(`${BASE_URL}/api/v1/incidents/${id}/diagnose`, null, {
-    tags: { cenario: "diagnose", name: "POST /incidents/:id/diagnose" },
-  });
+  const res = http.post(
+    `${BASE_URL}/api/v1/incidents/${id}/diagnose`,
+    null,
+    requestParams(data, { cenario: "diagnose", name: "POST /incidents/:id/diagnose" }),
+  );
   check(res, {
     "diagnose: 200": (r) => r.status === 200,
     "diagnose: tem hypothesis": (r) => {

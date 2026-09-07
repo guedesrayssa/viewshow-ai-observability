@@ -60,6 +60,9 @@ const { hourBucket, incidentSk } = keys;
  *       Use este modo apenas para comparar RCU e latência com o baseline.
  */
 const KEY_SCHEME = process.env.KEY_SCHEME || "v2";
+if (!["v1", "v2"].includes(KEY_SCHEME)) {
+  throw new Error(`KEY_SCHEME inválido: ${KEY_SCHEME}. Use v1 ou v2.`);
+}
 
 const evidenceSk = (id, seq) =>
   KEY_SCHEME === "v1"

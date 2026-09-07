@@ -73,13 +73,19 @@ Da `apps/backend/api/deploy/task-definition.json`:
 ## Antes de rodar: semear
 
 O `scripts/seed.js` cria **4 incidentes**. Testar contra isso mede um caminho
-quase vazio. Use o `seed-carga.js` deste diretório:
+quase vazio. A partir da raiz do repositório, use a cópia executável já
+sincronizada com este diretório:
 
 ```bash
-cp artefatos/testes-carga/seed-carga.js apps/backend/api/scripts/
-cd apps/backend/api
-node scripts/seed-carga.js          # 300 incidentes ≈ 2.500 itens
+(cd apps/backend/api && CLEAN=1 KEY_SCHEME=v2 node scripts/seed-carga.js)
+# 300 incidentes ≈ 2.500 itens
 ```
+
+`CLEAN=1` remove somente itens de incidentes (`pk=INC#...`) e preserva contas
+de usuário (`pk=USER#...`). Para comparar com o baseline legado, use
+`KEY_SCHEME=v1` em uma rodada separada e sempre limpe entre os schemas; sem
+isso, itens v1 remanescentes continuam aumentando leitura e contaminam o
+resultado v2.
 
 > ⚠️ **O seed envelhece.** Os buckets são calculados no instante do seed, e a
 > consulta calcula os dela no instante da requisição. `window=15m` varre só
@@ -145,6 +151,7 @@ rede do Inteli (slide 22, item 4).
 ## Rodando
 
 ```bash
+cd artefatos/sprint2/testes-carga
 export BASE_URL=http://data-ingestion-alb-1869738103.us-east-1.elb.amazonaws.com
 export INCIDENT_COUNT=300
 
@@ -172,6 +179,24 @@ k6 run -e BASE_URL=$BASE_URL -e MODE=soak       --summary-export=resumo-soak.jso
 `estresse` aceita `-e STRESS_MULTIPLIER=N` (padrão `3`, isto é, 3× a `RATE`)
 para ajustar o quão acima da capacidade a rodada sustenta a carga.
 
+`k6/rodadas.sh` executa a bateria unificada (`smoke`, carga, capacidade,
+estresse, pico e endurance), continua após uma rodada reprovada e devolve
+status final diferente de zero se qualquer execução falhar:
+
+```bash
+(cd k6 && ./rodadas.sh v2)
+# bateria curta, sem pico/endurance:
+(cd k6 && MODOS="smoke load breakpoint" ./rodadas.sh v2)
+```
+
+O argumento `v1`/`v2` apenas rotula os resumos; ele não altera o DynamoDB.
+Execute antes o seed correspondente com `CLEAN=1 KEY_SCHEME=v1|v2`. O modo
+`diagnose` não entra na bateria porque escreve no banco.
+
+Os thresholds de RNF14/RNF09 reprovam `load` e `soak`. `breakpoint`, `spike` e
+`estresse` continuam registrando checks e erros, mas não usam o SLA de operação
+normal como critério de aprovação, pois procuram saturação deliberadamente.
+
 **`POST /diagnose` não é leitura.** O orquestrador chama `saveHypothesis` a cada
 invocação: a 137 req/s seriam ~25 mil escritas e a tabela cresceria durante o
 teste. Por isso ele tem cenário próprio a 5 req/s.
@@ -192,6 +217,10 @@ O script exige `401` sem cookie e com cookie inválido em **todas** as rotas de
 consulta, diagnóstico e curadoria; com sessão válida, exige o status explícito
 esperado de cada endpoint. Isso inclui `POST /incidents/:id/diagnose`. Qualquer
 falha entra no threshold `checks{objetivo:rnf04}` e reprova a execução.
+
+`consultas.js` também faz login e envia a sessão em todas as requisições. Isso
+mantém os cenários de desempenho válidos quando a proteção RNF04 for aplicada
+às rotas que ainda estão públicas.
 
 Para não alterar dados reais, `PATCH /hypothesis/review` e `POST /diagnose`
 usam um ID aleatório cuja inexistência é primeiro comprovada por um GET
