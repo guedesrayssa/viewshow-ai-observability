@@ -4,13 +4,23 @@ Levantamento de **como a API opera hoje**, lido do código — não da documenta
 Objetivo: confirmar se as leituras estão corretas e registrar a arquitetura de
 dados **como ela de fato é**.
 
-- **Escopo:** `apps/backend/api/src` no branch `develop` (commit `899691c`).
-- **Data do levantamento:** 2026-09-03.
+- **Escopo:** `apps/backend/api/src` no branch `develop` (commit `a06f8f3`).
+- **Data do levantamento:** 2026-09-03 (primeira leitura sobre `899691c`);
+  **revisado em 2026-09-07** para o `develop` atual (`a06f8f3`).
 - **Método:** leitura de `src/app.js`, `src/routes/*.js`, `src/services/*.js`,
   `src/db/*.js`, `src/middleware/requireAuth.js`, `src/auth/session.js`,
   `src/orchestrator/index.js`, `src/agent/index.js`, `scripts/seed.js`,
   `scripts/reset.js` e `apps/infra/dynamodb.tf` (definição executável das tabelas).
 - **Não houve alteração de código.** Este é um documento de levantamento.
+
+> **Mudança de schema entre `899691c` e `a06f8f3`.** Depois da primeira leitura, o
+> MR *"fix(api): corrige fan-out de chave no DynamoDB"* (mergeado no `develop` em
+> 2026-09-07) trocou a convenção de `sk` de evidência e hipótese: elas deixaram de
+> usar o prefixo `INCIDENT#<id>#…` e passaram a ter prefixo próprio
+> (`EVIDENCE#…` / `HYPOTHESIS#…`), com `itemTypeFromSk` lendo os dois esquemas
+> durante a transição. Este documento descreve o schema **v2** (`a06f8f3`); o
+> antigo aparece marcado como **v1 (legado)** onde ainda é relevante para dados
+> não migrados. Ver §1.2 e §4, item **L**.
 
 > Referências de contrato-alvo (para contraste, não é o que está implementado):
 > `artefatos/contratos/dashboard-api-contract.md` e
@@ -39,17 +49,27 @@ evidência / hipótese):
 | Família | `pk` | `sk` | `trace_id` | `ttl` | Outros atributos |
 |---|---|---|---|---|---|
 | **Incidente** | `INC#<YYYY-MM-DDTHH>` (hora UTC do início) | `INCIDENT#<id>` | `<id>` | sim | `id, urgency, title, segment, devices, startedAt, startedMinutesAgo, component, deviceType, region, appVersion, sessions, timeAgo, status, statusLabel` (seed) |
-| **Evidência** | mesmo bucket do incidente | `INCIDENT#<id>#EVIDENCE#<seq:3>` | `<id>` | sim | `incidentId, type, description, source, strength, capturedAt` |
-| **Hipótese** | mesmo bucket do incidente | `INCIDENT#<id>#HYPOTHESIS#<seq:10>` | `<id>` | sim | `incidentId, text, score, source` (seed) / `diagnosisSource` (orquestrador), `createdAt`; após revisão: `reviewStatus, reviewedBy, reviewedAt` |
+| **Evidência** | mesmo bucket do incidente | `EVIDENCE#<id>#<seq:3>` (v2) — legado v1: `INCIDENT#<id>#EVIDENCE#<seq:3>` | `<id>` | sim | `incidentId, type, description, source, strength, capturedAt` |
+| **Hipótese** | mesmo bucket do incidente | `HYPOTHESIS#<id>#<seq:10>` (v2) — legado v1: `INCIDENT#<id>#HYPOTHESIS#<seq:10>` | `<id>` | sim | `incidentId, text, score, source` (seed) / `diagnosisSource` (orquestrador), `createdAt`; após revisão: `reviewStatus, reviewedBy, reviewedAt` |
 | **Usuário** *(fora de `keys.js`)* | `USER#<email-normalizado>` | `PROFILE` | — | **não** | `email, name, passwordHash` (`<salt>:<scrypt-hex>`), `createdAt` |
 
 `keys.js` fornece:
 
 - `hourBucket(date)` → `INC#` + `date.toISOString().slice(0,13)` (ex.: `INC#2026-09-03T14`).
 - `incidentSk(id)` → `INCIDENT#<id>`.
-- `evidenceSk(id, seq)` → `INCIDENT#<id>#EVIDENCE#<seq>` com `seq` preenchido a 3 dígitos.
-- `hypothesisSk(id, seq)` → `INCIDENT#<id>#HYPOTHESIS#<seq>` com `seq` preenchido a 10 dígitos.
-- `itemTypeFromSk(sk)` → `split("#")`; `length === 2` ⇒ `INCIDENT`; `parts[2] === "EVIDENCE"` ⇒ `EVIDENCE`; `parts[2] === "HYPOTHESIS"` ⇒ `HYPOTHESIS`; senão `UNKNOWN`.
+- `evidenceSk(id, seq)` → `EVIDENCE#<id>#<seq>` com `seq` preenchido a 3 dígitos
+  (v2; antes de `a06f8f3` era `INCIDENT#<id>#EVIDENCE#<seq>`).
+- `hypothesisSk(id, seq)` → `HYPOTHESIS#<id>#<seq>` com `seq` preenchido a 10 dígitos
+  (v2; antes de `a06f8f3` era `INCIDENT#<id>#HYPOTHESIS#<seq>`).
+- `itemTypeFromSk(sk)` → `split("#")` e classifica os **dois esquemas**:
+  - **v2:** `parts[0] === "EVIDENCE"` e `length >= 3` ⇒ `EVIDENCE`;
+    `parts[0] === "HYPOTHESIS"` e `length >= 3` ⇒ `HYPOTHESIS`;
+  - **v1 (legado):** `parts[0] === "INCIDENT"` com `length === 2` ⇒ `INCIDENT`;
+    `parts[2] === "EVIDENCE"` e `length >= 4` ⇒ `EVIDENCE`;
+    `parts[2] === "HYPOTHESIS"` e `length >= 4` ⇒ `HYPOTHESIS`;
+  - senão ⇒ `UNKNOWN`.
+- `itemTypeFromSk` olha o `sk` inteiro (não só o primeiro segmento) justamente para
+  não confundir um filho v1 (`INCIDENT#<id>#EVIDENCE#…`) com um incidente.
 
 > **`keys.js` não conhece a família `USER#` nem a tabela `monitoracao-golden-set`.**
 > A chave de usuário é montada localmente em `src/services/userService.js`
@@ -224,8 +244,12 @@ a 9 está protegida.
   3. Para cada bucket, **`Query`** na tabela base:
      `KeyConditionExpression = "pk = :pk AND begins_with(sk, :prefix)"`,
      `:pk = "INC#<hora>"`, `:prefix = "INCIDENT#"`.
-  4. `flat()` + `filter(itemTypeFromSk(sk) === "INCIDENT")` (descarta evidência e
-     hipótese, que também começam por `INCIDENT#`) + `matchesFilters` + `sort`.
+  4. `flat()` + `filter(itemTypeFromSk(sk) === "INCIDENT")` + `matchesFilters` + `sort`.
+     No schema v2 o `begins_with(sk, "INCIDENT#")` já **não casa** com evidência
+     (`EVIDENCE#…`) nem hipótese (`HYPOTHESIS#…`) — o `Query` volta só com
+     incidentes. O `filter(itemTypeFromSk === "INCIDENT")` continua ali como
+     guarda de compatibilidade para filhos **v1 legados** (`INCIDENT#<id>#EVIDENCE#…`)
+     que ainda existam na tabela.
 - **Escrita no banco:** nenhuma.
 - **`keys.js`:** `hourBucket` (monta `:pk`) e `itemTypeFromSk` (classifica).
   Padrão de `pk`/`sk` **bate** com `keys.js`. Ressalvas em §4 (itens **A**, **B**, **C**, **J**).
@@ -258,11 +282,12 @@ a 9 está protegida.
 ### 7. `GET /api/v1/incidents/:id/evidence`
 
 - **Request:** parâmetro de URL `id`.
-- **Response 200:** `{ "evidence": [ { "pk": "…", "sk": "INCIDENT#<id>#EVIDENCE#001",
+- **Response 200:** `{ "evidence": [ { "pk": "…", "sk": "EVIDENCE#<id>#001",
   "trace_id": "<id>", "ttl": …, "incidentId": "<id>", "type": "log",
   "description": "…", "source": "Player", "strength": "forte",
   "capturedAt": "<ISO>" } ] }` — itens **crus**, filtrados por
-  `itemTypeFromSk === "EVIDENCE"`.
+  `itemTypeFromSk === "EVIDENCE"` (que também reconhece o `sk` v1
+  `INCIDENT#<id>#EVIDENCE#001` de itens legados).
 - **Erros:**
   | HTTP | Corpo | Quando |
   |---|---|---|
@@ -281,10 +306,13 @@ a 9 está protegida.
 
 - **Request:** parâmetro de URL `id`.
 - **Response 200:** a **hipótese mais recente** (objeto único, cru). Formas possíveis:
-  - do seed: `{ pk, sk: "INCIDENT#<id>#HYPOTHESIS#0000000001", trace_id, ttl, incidentId, text, score, source: "seed", createdAt }`;
+  - do seed: `{ pk, sk: "HYPOTHESIS#<id>#0000000001", trace_id, ttl, incidentId, text, score, source: "seed", createdAt }` (v1 legado: `INCIDENT#<id>#HYPOTHESIS#0000000001`);
   - do orquestrador: `{ …, text, score, diagnosisSource: "golden-set"|"agent", createdAt }`;
   - após revisão: acrescenta `reviewStatus`, `reviewedBy`, `reviewedAt`.
-  "Mais recente" = maior `sk` em comparação lexicográfica entre os itens `HYPOTHESIS`.
+  "Mais recente" = `getLatestHypothesis` compara **só o último segmento do `sk`**
+  (`sk.split("#").at(-1)`, o `seq`/epoch) entre os itens `HYPOTHESIS`, para que
+  itens v1 (`INCIDENT#<id>#HYPOTHESIS#<epoch>`) e v2 (`HYPOTHESIS#<id>#<epoch>`)
+  coexistam sem o prefixo do schema decidir incorretamente qual é a última.
 - **Erros:**
   | HTTP | Corpo | Quando |
   |---|---|---|
@@ -294,7 +322,8 @@ a 9 está protegida.
   GSI `trace-index` por `trace_id`.
 - **Escrita:** nenhuma.
 - **`keys.js`:** `itemTypeFromSk`; a ordenação assume `hypothesisSk` com largura
-  fixa (10 dígitos) para que ordem lexicográfica == cronológica. Ressalva **E** em §4.
+  fixa (10 dígitos) no `seq`/epoch para que a comparação do último segmento seja
+  cronológica. Ressalva **E** em §4.
 - **Auth:** não.
 
 ---
@@ -362,7 +391,7 @@ a 9 está protegida.
      por `trace_id` (2ª vez).
 - **Escrita no banco:** `evidenceService.saveHypothesis` → `operationalTable.put`
   → **`PutItem`** em `monitoracao-operacional`,
-  `Item = { pk: incident.pk, sk: "INCIDENT#<id>#HYPOTHESIS#<epoch:10>", trace_id: <id>, ttl: incident.ttl, incidentId: <id>, text: <hipótese>, score: <número>, diagnosisSource: "golden-set"|"agent", createdAt: <ISO> }`.
+  `Item = { pk: incident.pk, sk: "HYPOTHESIS#<id>#<epoch:10>", trace_id: <id>, ttl: incident.ttl, incidentId: <id>, text: <hipótese>, score: <número>, diagnosisSource: "golden-set"|"agent", createdAt: <ISO> }` (schema v2; antes de `a06f8f3` gravava `INCIDENT#<id>#HYPOTHESIS#<epoch:10>`).
   `seq` = `Math.floor(Date.now()/1000)` (epoch em segundos, 10 dígitos).
 - **`keys.js`:** `hypothesisSk` (monta o `sk`), `hourBucket` (indireto — reusa
   `incident.pk`), `itemTypeFromSk`. Padrão **bate** com `keys.js`. Ressalva **F** em §4.
@@ -427,6 +456,8 @@ a 9 está protegida.
 - **Leitura no banco:** `evidenceService.listIncidents({ window: "24h" })` →
   `1440` min → `hours = ceil(1440/60)+1 = 25` buckets → **25 `Query`s** na tabela base
   (`pk = "INC#<hora>" AND begins_with(sk, "INCIDENT#")`), contando de agora para trás.
+  No schema v2 esse `begins_with` casa só com incidentes (evidência/hipótese têm
+  prefixo próprio) — ver §4, item **L**.
 - **Escrita:** nenhuma.
 - **`keys.js`:** `hourBucket`, `itemTypeFromSk`. Padrão **bate**. Ressalvas **A**, **H** em §4.
 - **Auth:** não.
@@ -441,12 +472,12 @@ Resumo por rota:
 |---|---|---|
 | `GET /health`, `GET /auth/sso`, `POST /ml/analyze` | n/a (não tocam banco) | — |
 | `POST /auth/login`, `POST /auth/register` | **Fora de `keys.js`** — família `USER#`/`PROFILE` montada em `userService.js` | **G**, **M** (só `/login`) |
-| `GET /api/v1/incidents` | Sim (`pk = INC#<hora>`, `sk` por `begins_with("INCIDENT#")`) | **A**, **B**, **C**, **I**, **J**, **K**, **L** |
+| `GET /api/v1/incidents` | Sim (`pk = INC#<hora>`, `sk` por `begins_with("INCIDENT#")`) | **A**, **B**, **C**, **I**, **J**, **K**, **L** (corrigido em `a06f8f3`; resíduo só p/ dados v1) |
 | `GET /api/v1/incidents/:id` `/evidence` `/hypothesis` | Sim (GSI `trace-index`, `itemTypeFromSk`) | **C**, **E** (só `/hypothesis`), **I**, **K** |
 | `PATCH …/hypothesis/review` | Parcial — leitura via `keys.js`; chave do golden set fora de `keys.js` | **C**, **D**, **E** |
 | `POST …/diagnose` | Sim (`hypothesisSk`, GSI `trace-index`, `GetItem` golden set por assinatura) | **C**, **E**, **F** |
 | `GET /api/v1/golden-set` | n/a para `keys.js`; usa `case_id` = assinatura (`dynamodb.tf`) | — |
-| `GET /api/v1/dashboard/summary` | Sim | **A**, **C**, **H**, **I**, **K**, **L** |
+| `GET /api/v1/dashboard/summary` | Sim | **A**, **C**, **H**, **I**, **K**, **L** (corrigido em `a06f8f3`; resíduo só p/ dados v1) |
 
 ### A — Janela temporal × bucket de hora: a leitura depende de **há quanto tempo o `seed` rodou**  · impacto ALTO
 
@@ -488,18 +519,25 @@ Consequências:
   (diferem só na contagem de buckets, não num corte real de minutos).
 - Não existe limite superior real por janela — só o número de buckets.
 
-### C — `itemTypeFromSk` pressupõe `id` sem `#` (fragilidade latente)  · impacto MÉDIO
+### C — `itemTypeFromSk` pressupõe `id` de incidente sem `#` (fragilidade latente)  · impacto MÉDIO
 
-`itemTypeFromSk` faz `sk.split("#")` e decide por `parts.length === 2` e
-`parts[2]`. Isso só funciona enquanto o `id` do incidente for **um único segmento
-sem `#`**. Os `id`s do seed são slugs (`falhas-reproducao-tvs-lg`), então hoje está
-ok.
+`itemTypeFromSk` faz `sk.split("#")` e, para o **incidente**, decide por
+`parts[0] === "INCIDENT"` e `parts.length === 2`. Isso só funciona enquanto o `id`
+do incidente for **um único segmento sem `#`**. Os `id`s do seed são slugs
+(`falhas-reproducao-tvs-lg`), então hoje está ok.
 
 Se um `id` algum dia contiver `#` (ou vier o "id canônico opaco" previsto no
 contrato-alvo), o `sk` de incidente `INCIDENT#a#b` passa a ter `parts.length === 3`
-e `parts[2] === "b"` → classificado como **`UNKNOWN`** → o incidente **desaparece**
-de toda listagem (`listIncidents` filtra `=== "INCIDENT"`) e de todo bundle. O
-comentário em `keys.js` documenta a convenção, mas o código não a defende.
+sem `parts[2]` em `{EVIDENCE, HYPOTHESIS}` → cai no `return "UNKNOWN"` final → o
+incidente **desaparece** de toda listagem (`listIncidents` filtra `=== "INCIDENT"`)
+e de todo bundle. O comentário em `keys.js` documenta a convenção, mas o código não
+a defende.
+
+**No schema v2 o risco é menor para evidência/hipótese:** elas passam a ser
+classificadas por `parts[0] === "EVIDENCE"`/`"HYPOTHESIS"` com `length >= 3`, então
+um `#` no `id` não as derruba para `UNKNOWN`. O ramo frágil que resta é o do
+**incidente** (`INCIDENT#<id>` com `id` de segmento único) e o dos filhos **v1
+legados** (`INCIDENT#<id>#EVIDENCE#…`), que continuam dependendo de `parts[2]`.
 
 ### D — `PATCH …/hypothesis/review` grava sem escrita condicional  · impacto MÉDIO
 
@@ -598,27 +636,45 @@ paginação é uma propriedade do código, não do volume de teste: ela se torna
 bug de dados incompletos assim que a base crescer, sem exigir nenhuma mudança de
 código para se manifestar.
 
-### L — `begins_with(sk, "INCIDENT#")` lê evidências e hipóteses para descartá-las depois  · impacto ALTO
+### L — Amplificação de leitura por prefixo `INCIDENT#` compartilhado  · **corrigido em `a06f8f3`** (era impacto ALTO)
 
-A ressalva já aparece nas rotas 5 e 13 (`flat()` + `filter(itemTypeFromSk(sk) ===
-"INCIDENT")`, "descarta evidência e hipótese, que também começam por `INCIDENT#`"),
-mas o levantamento a trata como observação de funcionamento, não como defeito:
-a conclusão da rota é que a chave "bate" com `keys.js`, e só o item **A**
-(janela × relógio) é apontado como causa de leitura ruim.
+**Estado v1 (até `899691c`).** Evidência e hipótese usavam `sk` prefixado por
+`INCIDENT#<id>#…`, igual ao incidente. A `Query` de `listIncidents`
+(`begins_with(sk, "INCIDENT#")`) casava com os três tipos sob o mesmo `pk`, e o
+recorte para só incidentes acontecia depois, em memória
+(`flat()` + `filter(itemTypeFromSk(sk) === "INCIDENT")`). O DynamoDB não tinha
+como filtrar do lado do servidor.
 
-Isso subestima o problema. `artefatos/sprint2/testes-desempenho.md` (§8.1-8.2)
-mede esse exato caminho sob carga: a chave de ordenação não distingue incidente
-de evidência/hipótese, então **cada `Query` traz a gaveta inteira** — com o
-povoamento de teste, 2.341 registros lidos e transferidos pela rede para
-devolver 291 incidentes (**~87% do trabalho de leitura é descartado em
-memória**), medindo 967 RCU/s, ~8× mais do que uma chave que separasse os
-prefixos (`EVIDENCE#…`/`HYPOTHESIS#…`) exigiria.
+`artefatos/sprint2/testes-desempenho.md` (§8.1–8.2) mediu esse caminho sob carga
+**sobre o schema v1**: 2.341 registros lidos e transferidos para devolver 291
+incidentes (**~87% do trabalho de leitura descartado em memória**), 967 RCU/s,
+~8× o custo de uma chave que separasse os prefixos. **Esse número é um resultado
+histórico do schema v1**, não uma medição do código atual.
 
-Ou seja: a chave de ordenação "bate" com a convenção documentada em `keys.js`,
-mas **a própria convenção é o defeito** — prefixar incidente, evidência e
-hipótese todos com `INCIDENT#` sob o mesmo `pk` impede o DynamoDB de filtrar do
-lado do servidor, empurrando o filtro para `Array.filter()` em memória depois de
-já ter pago o custo de leitura, transferência e desserialização de tudo.
+**Estado v2 (`a06f8f3`, MR *"fix(api): corrige fan-out de chave no DynamoDB"*).**
+`evidenceSk`/`hypothesisSk` passaram a usar prefixo próprio
+(`EVIDENCE#…` / `HYPOTHESIS#…`). Agora:
+
+- `listIncidents` continua com `begins_with(sk, "INCIDENT#")`, mas isso **casa só
+  com incidentes** — a `Query` já não traz evidência/hipótese, então o filtro em
+  memória virou uma guarda de compatibilidade (ver abaixo), não a linha de
+  defesa principal.
+- `itemTypeFromSk` classifica os dois esquemas (v1 e v2), para que itens
+  gravados antes da migração continuem legíveis.
+- `getLatestHypothesis` compara só o último segmento do `sk` (o `seq`/epoch),
+  para ordenar corretamente hipóteses v1 e v2 misturadas.
+
+**Ressalva residual — dados legados.** Itens v1 já gravados
+(`INCIDENT#<id>#EVIDENCE#…` / `…#HYPOTHESIS#…`) **ainda começam por `INCIDENT#`** e
+continuam sendo lidos e descartados em memória pela `Query` de `listIncidents`
+até que a tabela seja migrada ou recriada (`npm run reset && npm run seed`, que
+regrava tudo no schema v2). Em um ambiente só com dados v2 a amplificação não
+existe; em um ambiente com resíduo v1, ela persiste proporcionalmente ao volume
+legado.
+
+**Pendência.** Não há ainda uma medição de desempenho na AWS sobre o schema v2
+equivalente à de sprint2 — a redução de RCU/s e do trabalho descartado está
+prevista pelo desenho da chave, mas **ainda não foi medida**.
 
 ### M — Cookie de sessão não tem expiração aplicada pelo servidor  · impacto MÉDIO
 
@@ -719,12 +775,19 @@ Passos necessários, em ordem:
   assinatura `<component>#<deviceType>#<region>`; sem GSI; sem TTL).
 - **Operações usadas:** `Query`, `GetItem`, `PutItem`, `UpdateItem`. Nenhuma rota
   usa `BatchGetItem` ou `TransactWriteItems`; `Scan` só no script `reset.js`.
+- **Schema de chave v2 (`a06f8f3`).** Evidência e hipótese usam prefixo próprio
+  (`EVIDENCE#<id>#<seq>` / `HYPOTHESIS#<id>#<seq>`); `itemTypeFromSk` ainda lê o
+  schema v1 (`INCIDENT#<id>#EVIDENCE|HYPOTHESIS#…`) para dados não migrados, e
+  `getLatestHypothesis` compara só o último segmento do `sk` para ordenar v1 e v2
+  misturados.
 - **Os padrões de `pk`/`sk` das rotas batem com `src/db/keys.js`** — a leitura não
-  está "errada" no sentido de montar a chave errada. Mas a própria convenção tem
-  dois defeitos estruturais: nenhuma `Query` é paginada (**K**), e o `sk` não
-  distingue incidente de evidência/hipótese, fazendo cada `Query` ler a gaveta
-  inteira para descartar ~87% em memória — medido em
-  `artefatos/sprint2/testes-desempenho.md` (**L**).
+  está "errada" no sentido de montar a chave errada. O defeito estrutural que
+  resta é **K**: nenhuma `Query` é paginada. A
+  amplificação de leitura por prefixo `INCIDENT#` compartilhado (**L**), medida em
+  `artefatos/sprint2/testes-desempenho.md` como ~87% do trabalho descartado / 967
+  RCU/s sobre o **schema v1**, foi **corrigida em `a06f8f3`** — resta amplificação
+  proporcional só onde ainda houver dados v1 não migrados, e uma **medição na AWS
+  sobre o v2 ainda pendente**.
 - **A inconsistência que explica "ele não tá lendo de maneira correta" é a A:** a
   janela de consulta é recalculada a partir do relógio real, enquanto o `pk` do
   incidente e o `startedMinutesAgo` foram congelados no `seed`. Horas depois da
