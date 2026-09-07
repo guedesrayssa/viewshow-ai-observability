@@ -116,7 +116,7 @@ arquivos e dão um layout compartilhado sem entrar na URL. `/login` e
 | Rota | Conteúdo |
 | --- | --- |
 | `/` | Redireciona para `/login` |
-| `/login` | Acesso corporativo por SSO Globo; o formulário local existente é uma simulação transitória do protótipo |
+| `/login` | Acesso por e-mail e senha ou SSO Globo |
 | `/recuperar-senha` | Orientação de recuperação de acesso |
 | `/visao-geral` | Hub do painel: estado do ecossistema em tempo quase real |
 | `/incidentes` | Incidentes e degradações que exigem atenção |
@@ -399,11 +399,19 @@ tela (é ela que refaz a leitura da telemetria).
 | Arquivos | `app/(auth)/login/page.tsx`, `login-form.tsx`; moldura em `app/(auth)/layout.tsx` |
 | Regras | `lib/auth.ts` — RF04, RIE01, RESTR01 |
 
-O comportamento-alvo é o acesso exclusivamente federado pelo **SSO Globo**, sem cadastro, armazenamento ou validação local de senha, conforme RF04, RNF04 e RESTR01. O formulário de e-mail e senha ainda presente no protótipo simula a criação de sessão e permanece registrado como desvio de implementação; ele não deve ser interpretado como alternativa arquitetural válida nem promovido para produção. A moldura apresenta um painel navy ilustrado à esquerda, decorativo e marcado com `aria-hidden`; abaixo de `lg`, esse painel é ocultado. Detalhes do contrato-alvo estão em [`docs/autenticacao.md`](../../apps/frontend/docs/autenticacao.md).
+Acesso por e-mail e senha, com atalho de **SSO Globo**. Moldura com painel navy
+ilustrado à esquerda (esferas com deriva animada, decorativo e `aria-hidden`);
+abaixo de `lg` o painel some. Validação **no envio**, não a cada tecla; depois do
+primeiro envio, o erro de cada campo some quando o valor muda; o foco vai para o
+primeiro campo inválido; `<form noValidate>`. Qualquer e-mail válido entra; se o
+domínio é `@globo.com`, a tela sugere o SSO. Detalhes de rede em
+[`docs/autenticacao.md`](../../apps/frontend/docs/autenticacao.md).
 
 ### `/recuperar-senha`
 
-Tela estática (*Server Component*). A credencial pertence ao provedor corporativo, conforme RESTR01; a plataforma não a redefine. A tela orienta o usuário a procurar o suporte interno de TI e permite retornar ao login.
+Tela estática (Server Component). A senha pertence ao provedor corporativo
+(RESTR01): a plataforma não a redefine. Orienta a procurar o suporte interno de
+TI e volta ao login.
 
 ### `/visao-geral`
 
@@ -482,7 +490,7 @@ linha aberta por vez.
 | Arquivos | `page.tsx`, `monitoring-view.tsx`, `telemetry-resource.ts`, `telemetry-data.ts`, `kpi-card.tsx`, `processing-flow-chart.tsx`, `sources-table.tsx`, `geographic-map.tsx`, `br-states-geometry.ts` |
 | Recursos | `fetchTelemetrySources` → `rcaTopology`; `fetchGeographicConcentration` → `breakdownNetwork` |
 | Releitura | automática a cada **20 s** (o pipeline muda de estado em segundos) |
-| Histórias | US-ENG-06 (objetivo principal); apoio a US-ENG-04, US-ENG-05 e US-PM-02 a US-PM-05 |
+| Histórias | US-ENG-04, US-ENG-05, US-PM-02 a US-PM-05 |
 
 Filtros técnicos (fonte, métrica, worker, janela de comparação) que mudam **todos
 os painéis**. Aviso de atraso (`Badge critical`) quando uma fonte atrasada está no
