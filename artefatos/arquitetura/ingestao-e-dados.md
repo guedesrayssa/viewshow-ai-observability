@@ -1,8 +1,8 @@
-# Ingestão e dados: ARGUS → DynamoDB
+# Ingestão e dados: ARGUS → DynamoDB e S3
 
 - **Status:** aprovado para implementação
-- **Versão:** 1.1
-- **Última atualização:** 06/09/2026
+- **Versão:** 1.2
+- **Última atualização:** 07/09/2026
 - **Responsáveis:** equipe de ingestão e dados
 - **Região AWS:** `us-east-1`
 
@@ -15,7 +15,8 @@ Este documento é a fonte normativa da arquitetura de ingestão e do contrato de
 - como os registros físicos são validados;
 - como são transformados em registros canônicos;
 - como identidades, timestamps, números e qualidade são representados;
-- como os registros são persistidos em `monitoracao-operacional`;
+- como os últimos 30 dias são persistidos em `monitoracao-operacional`;
+- como os 11 meses anteriores são arquivados em Parquet no S3 e consultados pelo Athena;
 - como idempotência, retenção, checkpoints e evolução de schema funcionam;
 - quais projeções são produzidas para a API e para o Worker de Análise;
 - como o serviço é implantado, observado e recuperado na AWS.
@@ -29,12 +30,12 @@ ARGUS/MySQL
   → adaptador da origem
   → domínio canônico
   → casos de uso de ingestão
-  → DynamoDB e projeções
+  → DynamoDB quente e S3/Parquet histórico
   → outbox
   → SQS de análise
 ```
 
-A persistência dos dados ingeridos é direta no DynamoDB. A fila não transporta todos os registros do ARGUS; ela recebe somente solicitações para que o Worker de Análise processe uma janela que já foi materializada. Essa separação impede que uma indisponibilidade do Worker bloqueie a ingestão.
+A persistência dos dados ingeridos é dividida em duas camadas. O DynamoDB atende aos últimos 30 dias, necessários às telas e análises de baixa latência; o S3 conserva em Parquet os 11 meses anteriores, catalogados pelo Glue Data Catalog e consultados pelo Athena. A fila não transporta todos os registros do ARGUS; ela recebe somente solicitações para que o Worker de Análise processe uma janela que já foi materializada. Essa separação impede que uma indisponibilidade do Worker bloqueie a ingestão.
 
 ### 1.2 Estrutura lógica do serviço
 
@@ -52,7 +53,8 @@ Os casos de uso dependem de portas e não conhecem detalhes do MySQL, DynamoDB o
 Portas principais:
 
 - `SourceReader`: valida o schema e lê páginas por chave natural;
-- `CanonicalRecordSink`: persiste registros canônicos no DynamoDB;
+- `HotRecordSink`: persiste registros canônicos e projeções no DynamoDB;
+- `ArchiveRecordSink`: grava lotes Parquet particionados no S3 e registra suas partições no Glue Data Catalog;
 - `ProjectionRepository`: consulta fatos e grava modelos de leitura;
 - `CheckpointRepository`: controla retomada e publicação de janelas;
 - `LeaseRepository`: controla o bloqueio temporário das execuções;
@@ -80,6 +82,7 @@ adquirir bloqueio temporário
   → ler, normalizar e comparar registros em páginas
   → gravar somente itens novos ou alterados
   → atualizar as projeções afetadas
+  → arquivar lotes históricos em Parquet e registrar partições
   → publicar watermark e outbox na mesma transação
   → enviar solicitações de análise à SQS
   → finalizar a execução e liberar o bloqueio
@@ -94,7 +97,9 @@ O serviço utiliza os seguintes recursos em `us-east-1`:
 - EventBridge Scheduler para a execução periódica;
 - ECS/Fargate para `sync`, `backfill` e reprocessamento;
 - Secrets Manager para as credenciais da origem;
-- S3 para dumps e payloads autorizados que ultrapassem o limite interno;
+- S3 para dumps, payloads autorizados e histórico em Parquet;
+- Glue Data Catalog para schemas e partições do histórico;
+- Athena para validação e consulta dos períodos arquivados;
 - DynamoDB para fatos, projeções, checkpoints, execuções e outbox;
 - SQS para solicitações de análise;
 - CloudWatch para logs, métricas e alarmes.
@@ -105,21 +110,21 @@ Logs estruturados registram `runId`, fonte, etapa, duração, contagens e waterm
 
 ### 1.6 Estratégia de testes e implantação gradual
 
-A implementação deve possuir testes unitários para identidades, tempo, `Decimal`, TTL, hashes e qualidade; testes de contrato para cada origem; e testes de integração do MySQL até o DynamoDB. Também devem ser exercitados reprocessamento idempotente, retomada após interrupção, disputa pelo bloqueio, falha de projeção e recuperação de publicação da SQS.
+A implementação deve possuir testes unitários para identidades, tempo, `Decimal`, TTL, hashes e qualidade; testes de contrato para cada origem; e testes de integração do MySQL até o DynamoDB e o arquivo Parquet catalogado. Também devem ser exercitados reprocessamento idempotente, retomada após interrupção, disputa pelo bloqueio, falha de projeção, partição histórica incompleta e recuperação de publicação da SQS.
 
 A implantação começa com `validate`, avança para uma fonte e uma janela curta, executa a reconciliação das contagens, habilita as projeções e somente então ativa o Scheduler. Uma reversão pausa novas execuções e reprocessa as janelas afetadas depois da correção; não exige apagar dados já persistidos.
 
 ## 2. Fronteiras do contrato
 
 ```text
-Argus físico
+ARGUS físico
   → adapter da origem
   → contrato canônico
-  → adapter de persistência
-  → monitoracao-operacional
+  → adapters de persistência
+  → monitoracao-operacional e arquivo Parquet no S3
 ```
 
-Este contrato não define DTOs HTTP do dashboard. A API transforma os read models do DynamoDB em seu contrato público sem expor `pk`, `sk`, TTL, checkpoints ou identificadores físicos da origem.
+Este contrato não define DTOs HTTP do dashboard. A API transforma os modelos de leitura do DynamoDB ou do arquivo histórico em seu contrato público sem expor `pk`, `sk`, TTL, caminhos do S3, checkpoints ou identificadores físicos da origem.
 
 O Serviço de Ingestão não lê nem escreve `monitoracao-golden-set`. O Worker de Análise possui somente leitura nessa tabela, conforme o contrato de análise.
 
@@ -517,20 +522,21 @@ O `number` nunca é chave primária.
 ### 10.1 Tabelas físicas
 
 ```text
-monitoracao-operacional  fatos, incidentes, projeções e controle
+monitoracao-operacional  fatos e projeções de até 30 dias, incidentes e controle
 monitoracao-golden-set   curadoria humana/ML; inacessível à ingestão
+S3/Parquet               fatos e projeções dos 11 meses anteriores
 ```
 
 `monitoracao-operacional` usa `pk`, `sk`, modo `PAY_PER_REQUEST`, TTL no atributo `ttl` e GSI esparso `trace-index`.
 
-### 10.2 Fatos temporais
+### 10.2 Camada quente de fatos temporais
 
 ```text
 PK = DATASET#<datasetVersion>#FACT#TS#<seriesId>#<YYYYMMDD>
 SK = T#<epochMs>#<recordId>
 ```
 
-`seriesId` é o hash do dataset lógico, fonte, entidade, métrica e dimensões ordenadas. Os valores originais permanecem como atributos. `datasetVersion` identifica a versão física criada por uma importação e impede que um backfill sobrescreva gradualmente a versão que ainda atende às consultas.
+`seriesId` é o hash do dataset lógico, fonte, entidade, métrica e dimensões ordenadas. Os valores originais permanecem como atributos. `datasetVersion` identifica a versão física criada por uma importação e impede que um backfill sobrescreva gradualmente a versão que ainda atende às consultas. O atributo `ttl` aponta para o fim da janela quente de 30 dias e somente é habilitado depois que a partição histórica correspondente foi validada.
 
 Exemplo:
 
@@ -559,7 +565,22 @@ Exemplo:
 }
 ```
 
-### 10.3 Incidentes
+### 10.3 Arquivo histórico
+
+Fatos e projeções que ultrapassam a janela quente permanecem disponíveis no S3 até completar 12 meses desde `observedAt`. Os arquivos usam Parquet com compressão e particionamento temporal:
+
+```text
+s3://<bucket>/canonical/
+  datasetVersion=<datasetVersion>/
+  recordType=<recordType>/
+  year=<YYYY>/month=<MM>/day=<DD>/part-*.parquet
+```
+
+O Glue Data Catalog registra o schema e as partições de cada `datasetVersion`. O Athena lê somente os prefixos indicados pelo manifesto ativo. Cada linha preserva `recordId`, `datasetVersion`, `recordType`, `observedAt`, `payloadHash`, dimensões e medidas canônicas, permitindo reconciliar o arquivo com a camada quente e eliminar sobreposição na fronteira temporal.
+
+A ingestão inicia a compactação antes do fim da janela quente, valida contagem, schema, checksum e intervalo temporal e só então registra a partição como disponível. Arquivos incompletos ficam fora do catálogo consultável. A expiração no DynamoDB ocorre somente depois que a partição correspondente estiver validada no S3; em caso de falha, a cópia permanece retida como medida de segurança, mas deixa de integrar consultas quentes após a fronteira temporal.
+
+### 10.4 Incidentes
 
 ```text
 PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = META
@@ -580,7 +601,7 @@ PK = DATASET#<datasetVersion>#VIEW#INCIDENTS#ACTIVE
 SK = PRIORITY#<priority>#STARTED#<epochMs>#<incidentId>
 ```
 
-### 10.4 Controle
+### 10.5 Controle
 
 ```text
 PK = DATASET#<datasetVersion>#INGESTION#SOURCE#<source>  SK = CHECKPOINT
@@ -592,11 +613,17 @@ PK = INGESTION#RUN#<runId>      SK = ERROR#<sequence>
 
 PK = CONTROL#DATASET             SK = ACTIVE
 activeDatasetVersion = <datasetVersion>
+hotFrom = <timestamp ISO UTC>
+hotThrough = <timestamp ISO UTC>
+archivePrefix = <prefixo S3>
+glueDatabase = <database>
+glueTable = <table>
+schemaVersion = <versão>
 ```
 
-O item `CONTROL#DATASET/ACTIVE` é o único ponto usado pelo Backend e pelo Worker para selecionar a versão consultável. Cada `ImportJob` registra `candidateDatasetVersion`; a troca condicional de `activeDatasetVersion` ocorre apenas depois que fatos, projeções e watermarks da candidata foram validados. Uma falha mantém o ponteiro anterior e deixa a versão incompleta invisível para as consultas.
+O item `CONTROL#DATASET/ACTIVE` é o manifesto usado pelo Backend e pelo Worker para selecionar a versão consultável e localizar suas camadas quente e histórica. Cada `ImportJob` registra `candidateDatasetVersion`; a troca condicional do manifesto ocorre apenas depois que fatos, projeções, arquivos Parquet, partições e watermarks da candidata foram validados. Uma falha mantém o manifesto anterior e deixa a versão incompleta invisível para as consultas.
 
-### 10.5 Tipos DynamoDB
+### 10.6 Tipos DynamoDB
 
 - timestamps de negócio: string ISO UTC;
 - timestamps usados em ordenação: epoch ms incorporado na `sk`;
@@ -607,9 +634,9 @@ O item `CONTROL#DATASET/ACTIVE` é o único ponto usado pelo Backend e pelo Work
 - mapas e listas: limitados e validados;
 - floats especiais: proibidos.
 
-### 10.6 Projeções e padrões de consulta
+### 10.7 Projeções e padrões de consulta
 
-Os fatos canônicos são mantidos para auditoria e reconstrução. A API não deve consultá-los para montar cada tela em tempo real. O serviço de ingestão produz modelos de leitura com as combinações de dimensões autorizadas pelo contrato.
+Os fatos canônicos são mantidos nas duas camadas para auditoria e reconstrução. A API não deve consultá-los para montar cada tela em tempo real. O serviço de ingestão produz modelos de leitura com as combinações de dimensões autorizadas pelo contrato e arquiva tanto os fatos quanto as projeções históricas necessárias às consultas.
 
 ```text
 fatos canônicos
@@ -656,11 +683,11 @@ As consultas seguem estes padrões:
 | Saúde da ingestão | `GetItem` | `DATASET#<datasetVersion>#INGESTION#SOURCE#<source>` |
 | Execução específica | `Query` | `INGESTION#RUN#<runId>` |
 
-Antes de consultar fatos ou projeções, o Backend e o Worker leem `activeDatasetVersion`; uma execução de análise conserva a versão recebida no evento até o fim. Consultas que atravessam mais de um dia executam uma `Query` por partição diária da mesma versão e combinam os resultados no Backend. `Scan` não faz parte do caminho operacional. O cursor público da API é opaco e encapsula `datasetVersion` e a última chave avaliada, sem expor `pk` ou `sk` ao frontend. As páginas seguintes continuam na versão do cursor mesmo que outra versão se torne ativa durante a navegação.
+Antes de consultar fatos ou projeções, o Backend e o Worker leem o manifesto ativo; uma execução de análise conserva a versão recebida no evento até o fim. Intervalos contidos nos últimos 30 dias usam `Query` nas partições diárias do DynamoDB. Intervalos anteriores usam o Athena sobre as partições Parquet da mesma versão. Quando a janela atravessa a fronteira, o Backend consulta os dois níveis, combina os resultados por ordem temporal e remove duplicatas por `recordId`; a resposta continua associada a um único `datasetVersion`. `Scan` não faz parte do caminho operacional. O cursor público da API é opaco e encapsula `datasetVersion`, nível de armazenamento e posição, sem expor `pk`, `sk` ou caminhos do S3 ao frontend. As páginas seguintes continuam na versão do cursor mesmo que outra versão se torne ativa durante a navegação.
 
 A visão geral não calcula uma média de percentis segmentados. Quando não existe uma distribuição ou um agregado global confiável, o valor global é `null` e a medição recebe o estado `unknown`. Dados geográficos vêm de `geo_hourly`; nesse recorte, latência e perda permanecem indisponíveis enquanto a origem não as fornecer.
 
-### 10.7 Outbox de solicitações de análise
+### 10.8 Outbox de solicitações de análise
 
 O watermark e todos os itens de outbox exigidos pela janela são gravados na mesma transação. Cada item representa exatamente um evento e possui estado próprio. Assim, toda janela de 15 minutos cria um item `ANOMALY_DETECTION`; quando ela também conclui uma hora, a mesma transação cria outro item `QOE_FORECAST`.
 
@@ -676,7 +703,7 @@ Depois da confirmação individual da SQS, somente o item correspondente passa p
 
 ## 11. Semântica da escrita
 
-Para cada chunk:
+Para cada lote destinado à camada quente:
 
 1. normalizar e validar;
 2. calcular chaves, `recordId` e `payloadHash`;
@@ -688,6 +715,8 @@ Para cada chunk:
 8. avançar `resumeCursor`.
 
 Uma reexecução com o mesmo conteúdo não consome escrita para itens inalterados. Uma falha após a escrita e antes do checkpoint apenas causa uma releitura idempotente.
+
+Para o arquivo histórico, a unidade idempotente é a partição de `datasetVersion`, `recordType` e data. A ingestão grava em um prefixo temporário, confere checksum e contagem, publica o objeto final e registra a partição no Glue. Uma repetição com o mesmo conteúdo reutiliza a partição; conteúdo divergente produz uma nova versão do dataset.
 
 ## 12. Checkpoint e bloqueio temporário
 
@@ -717,7 +746,8 @@ O TTL remove itens antigos, mas não determina a validade do bloqueio. A decisã
 
 | Item | Retenção |
 |---|---|
-| fatos e projeções temporais | 30 dias desde `observedAt` |
+| fatos e projeções temporais no DynamoDB | até 30 dias desde `observedAt` |
+| fatos e projeções em Parquet no S3 | 11 meses anteriores, até completar 12 meses desde `observedAt` |
 | incidente aberto | sem TTL |
 | incidente finalizado e filhos | 90 dias desde encerramento/resolução |
 | runs e erros | 90 dias |
@@ -725,7 +755,7 @@ O TTL remove itens antigos, mas não determina a validade do bloqueio. A decisã
 | lease | curto, somente para limpeza |
 | golden set | sem TTL e fora da ingestão |
 
-O limite interno por registro é 200 KB, deixando margem diante do limite físico do DynamoDB. Payload maior é dividido ou armazenado no S3 com referência canônica. A mensagem de análise não transporta esse payload.
+O limite interno por registro quente é 200 KB, deixando margem diante do limite físico do DynamoDB. Payload maior é dividido ou armazenado no S3 com referência canônica. A mensagem de análise não transporta esse payload. Dumps de importação obedecem a uma política própria e não contam como arquivo histórico canônico.
 
 ## 14. Erros e qualidade
 
@@ -748,7 +778,7 @@ Não contêm payload completo, PII, segredo, DSN ou stack trace com parâmetros.
 
 ## 15. Publicação para a SQS de análise
 
-A saída canônica grava diretamente no DynamoDB. Depois que fatos, projeções e watermark estiverem consistentes, a outbox publica uma referência para a janela na SQS de análise:
+A saída canônica grava a janela operacional no DynamoDB e mantém o arquivo histórico no S3. Depois que fatos, projeções e watermark da camada necessária à análise estiverem consistentes, a outbox publica uma referência para a janela na SQS de análise:
 
 ```json
 {
@@ -788,6 +818,9 @@ Uma implementação está conforme quando:
 - não expõe `sys_id` ao frontend;
 - impede o Serviço de Ingestão de acessar `monitoracao-golden-set`;
 - não depende de `Scan`;
+- roteia consultas entre DynamoDB e Athena sem misturar versões do dataset;
+- conserva no S3 os dados retirados do DynamoDB até completar 12 meses;
+- só expira a camada quente depois de validar a partição histórica correspondente;
 - permite reexecução sem duplicação;
 - persiste somente itens novos ou alterados;
 - mantém fatos e projeções recuperáveis de forma independente;

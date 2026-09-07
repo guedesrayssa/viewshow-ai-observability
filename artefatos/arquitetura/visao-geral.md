@@ -1,8 +1,8 @@
 # Visão geral da arquitetura
 
 - **Status:** aprovado para implementação
-- **Versão:** 1.0
-- **Última atualização:** 06/09/2026
+- **Versão:** 1.1
+- **Última atualização:** 07/09/2026
 - **Responsáveis:** equipe de arquitetura
 - **Região AWS:** `us-east-1`
 
@@ -10,7 +10,7 @@
 
 Este documento apresenta como os componentes do View Show se relacionam e registra as decisões que orientam o desenvolvimento. Os contratos detalhados de dados, mensagens e HTTP estão nos documentos especializados desta pasta.
 
-O View Show recebe dados operacionais do ARGUS, materializa consultas no DynamoDB, executa modelos de análise e apresenta previsões, incidentes, evidências e hipóteses em um dashboard autenticado.
+O View Show recebe dados operacionais do ARGUS, mantém até 30 dias de dados no DynamoDB, arquiva os 11 meses anteriores em Parquet no S3, executa modelos de análise e apresenta previsões, incidentes, evidências e hipóteses em um dashboard autenticado.
 
 ## 2. Limites do sistema
 
@@ -34,7 +34,9 @@ flowchart LR
     UI[Dashboard<br/>Amplify]
     COG[Cognito]
     API[Backend API<br/>ECS/Fargate]
-    S3[(S3<br/>dumps e objetos)]
+    S3[(S3<br/>dumps e histórico Parquet)]
+    GLUE[Glue Data Catalog]
+    ATH[Athena]
     ING[Serviço de Ingestão<br/>ECS Task]
     DB[(DynamoDB<br/>operacional)]
     OUT[Outbox]
@@ -47,7 +49,11 @@ flowchart LR
     ARGUS -->|VPN + TLS| ING
     UI -->|upload pré-assinado| S3
     S3 -->|dump| ING
-    ING -->|escrita direta| DB
+    ING -->|até 30 dias| DB
+    ING -->|arquivamento Parquet| S3
+    ING -->|registrar partições| GLUE
+    GLUE --> ATH
+    S3 -->|ler histórico| ATH
     ING --> OUT
     OUT --> Q
     Q --> W
@@ -61,6 +67,7 @@ flowchart LR
     API -->|ECS RunTask de importação| ING
     API -->|solicitar reanálise| Q
     API --> DB
+    API -->|consultar histórico| ATH
     API -->|revisão confirmada| GS
     UI --> COG
     COG --> SSO
@@ -75,11 +82,11 @@ Aplicação Next.js entregue pelo Amplify. Ela apresenta dados, inicia uploads, 
 
 ### 3.2 Backend API
 
-Aplicação Node/Express executada em ECS/Fargate. Ela valida a sessão, converte os modelos de leitura em DTOs públicos, inicia importações, publica reanálises e registra revisões. Campos físicos do DynamoDB não aparecem nas respostas.
+Aplicação Node/Express executada em ECS/Fargate. Ela valida a sessão, converte os modelos de leitura em DTOs públicos, inicia importações, publica reanálises e registra revisões. Consultas de até 30 dias usam o DynamoDB; períodos anteriores usam o Athena sobre os arquivos do S3. Quando o intervalo atravessa a fronteira, o Backend combina os resultados sem expor detalhes físicos de armazenamento.
 
 ### 3.3 Serviço de Ingestão
 
-Aplicação batch Python executada como ECS Task. O EventBridge inicia `sync` a cada 15 minutos; importações e reprocessamentos utilizam tarefas sob demanda. Ela lê o ARGUS ou um MySQL temporário restaurado, normaliza dados, grava fatos e projeções diretamente no DynamoDB e publica solicitações de análise pela outbox.
+Aplicação batch Python executada como ECS Task. O EventBridge inicia `sync` a cada 15 minutos; importações e reprocessamentos utilizam tarefas sob demanda. Ela lê o ARGUS ou um MySQL temporário restaurado, normaliza dados, grava a camada quente no DynamoDB, arquiva o histórico em Parquet no S3, atualiza as partições no Glue Data Catalog e publica solicitações de análise pela outbox.
 
 ### 3.4 Worker de Análise
 
@@ -87,7 +94,7 @@ Consumidor Python da SQS executado como ECS Service. Ele realiza detecção a ca
 
 ### 3.5 Persistência
 
-O DynamoDB `monitoracao-operacional` armazena fatos, projeções, previsões, incidentes, evidências, hipóteses e controles de execução. Fatos e projeções são isolados por `datasetVersion`, e um ponteiro identifica a versão ativa. O DynamoDB `monitoracao-golden-set` conserva apenas diagnósticos confirmados. Dumps e objetos grandes ficam no S3; não existe RDS na solução.
+O DynamoDB `monitoracao-operacional` armazena os fatos e as projeções dos últimos 30 dias, além de previsões, incidentes, evidências, hipóteses e controles de execução. O S3 conserva em Parquet os fatos e as projeções dos 11 meses anteriores, completando um horizonte de 12 meses; o Glue Data Catalog registra seus schemas e partições, e o Athena executa as consultas históricas. Todos os dados temporais são isolados por `datasetVersion`, e um manifesto identifica a versão ativa e seus dois níveis de armazenamento. O DynamoDB `monitoracao-golden-set` conserva apenas diagnósticos confirmados. Dumps de importação e objetos grandes também ficam no S3; não existe RDS na solução.
 
 ## 4. Comunicação entre componentes
 
@@ -100,11 +107,14 @@ O DynamoDB `monitoracao-operacional` armazena fatos, projeções, previsões, in
 | Backend | ECS/Fargate | AWS SDK, `RunTask` | iniciar a restauração e a importação do dump |
 | Backend | SQS | AWS SDK, assíncrona | solicitar reanálise de um incidente |
 | Ingestão | DynamoDB | AWS SDK | fatos, projeções e controle |
+| Ingestão | S3 | AWS SDK | arquivar fatos e projeções em Parquet |
+| Ingestão | Glue Data Catalog | AWS SDK | registrar schemas e partições históricas |
 | Ingestão | SQS | AWS SDK, assíncrona | solicitar análise de uma janela pronta |
 | SQS | Worker | long polling | distribuir e repetir análises |
 | Worker | Bedrock | AWS SDK | gerar hipóteses candidatas |
 | Dashboard | Backend | HTTPS/JSON | consultas e comandos do usuário |
 | Backend | DynamoDB | AWS SDK | ler projeções, controlar importações e registrar revisões |
+| Backend | Athena | AWS SDK, SQL assíncrono | consultar períodos anteriores aos 30 dias da camada quente |
 | Backend | CloudWatch | logs e métricas | registrar latência, falhas e identificadores de acompanhamento |
 | Cognito | SSO Globo | OIDC ou SAML | autenticar identidade corporativa |
 
@@ -117,6 +127,8 @@ sequenceDiagram
     participant A as ARGUS
     participant I as Ingestão
     participant D as DynamoDB
+    participant S3 as S3 / Parquet
+    participant ATH as Athena
     participant Q as SQS
     participant W as Worker de Análise
     participant B as Bedrock
@@ -126,6 +138,7 @@ sequenceDiagram
     A->>I: Disponibilizar nova janela
     I->>I: Validar e normalizar
     I->>D: Gravar fatos e projeções
+    I->>S3: Arquivar fatos e projeções históricos
     I->>D: Publicar watermark e outbox
     I->>Q: Solicitar análise
     Q->>W: Entregar janela materializada
@@ -137,12 +150,19 @@ sequenceDiagram
         W->>D: Salvar evidências e hipóteses
     end
     U->>API: Consultar resultado
-    API->>D: Consultar modelo de leitura
-    D-->>API: Dados públicos necessários
+    alt Período contido nos últimos 30 dias
+        API->>D: Consultar modelo de leitura quente
+        D-->>API: Dados públicos necessários
+    else Período anterior à camada quente
+        API->>ATH: Consultar histórico da versão ativa
+        ATH->>S3: Ler partições Parquet catalogadas
+        S3-->>ATH: Dados históricos
+        ATH-->>API: Dados públicos necessários
+    end
     API-->>U: Resultado e revisão pendente
 ```
 
-Os fluxos completos, com alternativas e falhas, estão em [Fluxos integrados](fluxos.md).
+Os diagramas completos, com alternativas e falhas, estão na [Seção 5 da modelagem](../sprint3/modelagem.md#5-diagramas-de-sequência); o [índice de fluxos](fluxos.md) relaciona cada cenário aos contratos técnicos aplicáveis.
 
 ## 6. Decisões arquiteturais
 
@@ -150,13 +170,13 @@ Os fluxos completos, com alternativas e falhas, estão em [Fluxos integrados](fl
 
 Frontend, APIs, processamento, mensageria, armazenamento, identidade e observabilidade são provisionados na AWS. A comunicação com o ARGUS ocorre por conectividade privada autorizada pela Globo.
 
-### D2 — DynamoDB como banco operacional
+### D2 — Armazenamento temporal em camadas
 
-O sistema utiliza modelos de leitura orientados às consultas e evita joins no momento do request. Não haverá RDS na primeira versão. Itens grandes e dumps ficam no S3.
+O sistema utiliza modelos de leitura orientados às consultas e evita `Scan` no caminho operacional. O DynamoDB mantém até 30 dias de fatos e projeções para acesso de baixa latência. Os 11 meses anteriores permanecem em Parquet no S3, com schema e partições no Glue Data Catalog e consultas pelo Athena. Não haverá RDS na primeira versão.
 
-### D3 — Escrita direta da ingestão
+### D3 — Persistência sob responsabilidade da ingestão
 
-A ingestão grava fatos e projeções diretamente no DynamoDB. A SQS recebe apenas solicitações de análise, reduzindo componentes e evitando um consumidor criado somente para repetir a persistência.
+A ingestão grava diretamente a camada quente no DynamoDB e o arquivo histórico no S3. A SQS recebe apenas solicitações de análise, reduzindo componentes e evitando um consumidor criado somente para repetir a persistência.
 
 ### D4 — Comunicação assíncrona para análise
 
@@ -180,7 +200,7 @@ Diagnósticos confirmados ficam em uma tabela separada. A ingestão não possui 
 
 ### D9 — Importação assíncrona e ativação versionada
 
-O navegador envia o dump diretamente ao S3. O Backend devolve HTTP 202 após iniciar a restauração, e o dashboard acompanha `ImportJob` até `COMPLETED` ou `FAILED`. A tarefa grava fatos, projeções e watermarks em um namespace identificado por `candidateDatasetVersion`; somente depois da validação troca condicionalmente `activeDatasetVersion`. O `recordId` permanece estável entre versões.
+O navegador envia o dump diretamente ao S3. O Backend devolve HTTP 202 após iniciar a restauração, e o dashboard acompanha `ImportJob` até `COMPLETED` ou `FAILED`. A tarefa grava a camada quente, o arquivo histórico e os watermarks em um namespace identificado por `candidateDatasetVersion`; somente depois de validar os dois níveis troca condicionalmente o manifesto ativo. O `recordId` permanece estável entre versões.
 
 ### D10 — Contratos versionados
 
@@ -193,7 +213,8 @@ Eventos, itens persistidos e respostas públicas possuem versão. Alterações i
 - Workers permanecem em sub-redes privadas e não expõem portas públicas.
 - Cada componente utiliza role IAM de menor privilégio.
 - Secrets Manager conserva credenciais e parâmetros sensíveis.
-- Dumps no S3 usam criptografia, acesso restrito e política de retenção.
+- Dumps e arquivos Parquet no S3 usam criptografia, acesso restrito e políticas de retenção distintas.
+- As consultas do Athena são limitadas ao prefixo da versão ativa e gravam seus resultados em um prefixo isolado.
 - Contextos enviados ao Bedrock são limitados e sanitizados.
 - Logs não incluem tokens, credenciais ou payloads operacionais completos.
 
@@ -201,11 +222,11 @@ Eventos, itens persistidos e respostas públicas possuem versão. Alterações i
 
 Falhas da origem impedem apenas a publicação da janela afetada. Falhas da SQS deixam a outbox pendente. Falhas do Worker preservam dados intermediários e podem resultar em nova tentativa ou DLQ. Falhas do Bedrock não apagam a previsão, o incidente ou suas evidências.
 
-Dumps inválidos não substituem o dataset disponível. Durante uma importação, fatos, projeções e watermarks são gravados sob a versão candidata, enquanto todas as consultas continuam usando `activeDatasetVersion`. O conjunto anterior permanece consultável até a troca do ponteiro; uma falha deixa a candidata invisível e não mistura seus registros aos da versão ativa.
+Dumps inválidos não substituem o dataset disponível. Durante uma importação, fatos, projeções, arquivos Parquet, partições e watermarks são gravados sob a versão candidata, enquanto todas as consultas continuam usando o manifesto ativo. O conjunto anterior permanece consultável até a troca condicional; uma falha deixa a candidata invisível e não mistura seus registros aos da versão ativa.
 
 ## 9. Observabilidade
 
-Todos os componentes propagam `traceId`. Ingestão e análise acrescentam `runId`, `eventId` e identificadores de janela. O CloudWatch reúne logs, métricas e alarmes de atraso, erro, fila, DLQ, duração e disponibilidade.
+Todos os componentes propagam `traceId`. Ingestão e análise acrescentam `runId`, `eventId` e identificadores de janela. O CloudWatch reúne logs, métricas e alarmes de atraso, erro, fila, DLQ, duração e disponibilidade. O monitoramento também acompanha falhas de compactação em Parquet, partições ausentes, tempo e volume lido pelo Athena.
 
 ## 10. Documentos relacionados
 

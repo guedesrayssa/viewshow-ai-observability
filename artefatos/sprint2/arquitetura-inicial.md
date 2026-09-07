@@ -7,12 +7,6 @@ de experiência no Globoplay
 &emsp; **Data:** 27 de agosto de 2026
 &emsp; **Região AWS:** `us-east-1` (Norte da Virgínia)
 
-> **Nota de evolução:** este documento registra a arquitetura discutida na
-> Sprint 2 e permanece como evidência acadêmica do processo. A fonte técnica
-> atual para desenvolvimento está em
-> [`artefatos/arquitetura`](../arquitetura/README.md). Em caso de divergência,
-> prevalecem os contratos mantidos naquela pasta.
-
 ---
 
 ## Sumário

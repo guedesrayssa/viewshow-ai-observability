@@ -290,7 +290,7 @@ omitidos deliberadamente para manter o diagrama legível.]
 
 &emsp;No View Show, esses diagramas descrevem como os dados saem do ARGUS, tornam-se informações analisáveis e chegam aos usuários. A seção contempla a ingestão periódica e por snapshot, a autenticação, a consulta, a revisão humana, a previsão de degradações, a detecção de incidentes e a recuperação de falhas. Cada diagrama é acompanhado por uma explicação de seu objetivo e das decisões arquiteturais necessárias para compreender o fluxo.
 
-&emsp;Esta seção registra a representação acadêmica produzida durante a sprint. A versão técnica mantida para orientar o desenvolvimento, acompanhada dos contratos de dados, eventos e API, está em [Fluxos integrados do View Show](../arquitetura/fluxos.md).
+&emsp;Os diagramas apresentam a arquitetura-alvo do View Show e especificam as responsabilidades dos participantes em cada cenário. As interações são descritas independentemente do estágio de implementação dos componentes.
 
 ### 5.1 Catálogo de diagramas de sequência
 
@@ -302,17 +302,17 @@ omitidos deliberadamente para manter o diagrama legível.]
 
 </div>
 
-| ID | Cenário | Casos de uso relacionados | Tipo de fluxo | Responsável |
-| --- | --- | --- | --- | --- |
-| DS-01A | Sincronização com o MySQL vivo | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico | Equipe de arquitetura |
-| DS-01B | Importação de snapshot pela interface | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico/alternativo | Equipe de arquitetura |
-| DS-02A | Autenticação federada e consulta | UC-01, UC-02 | Básico | Equipe de arquitetura |
-| DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-05, UC-10 | Concorrente | Equipe de arquitetura |
-| DS-02C | Avaliação da recuperação após correção | UC-15 | Desenho proposto: básico/alternativo | Equipe de arquitetura |
-| DS-03A | Previsão preventiva e validação posterior | UC-16 | Suporte técnico/assíncrono | Equipe de arquitetura |
-| DS-03B | Detecção reativa e diagnóstico por IA | UC-05, UC-10, UC-16 | Suporte técnico/assíncrono | Equipe de arquitetura |
-| DS-03C | Falha, novas tentativas, DLQ e reanálise | UC-21 | Exceção/alternativo | Equipe de arquitetura |
-| DS-04 | Visão geral ponta a ponta | UC-01, UC-02, UC-05, UC-10, UC-16 | Resumo | Equipe de arquitetura |
+| ID | Cenário | Casos de uso relacionados | Tipo de fluxo |
+| --- | --- | --- | --- |
+| DS-01A | Sincronização com o MySQL vivo | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico |
+| DS-01B | Importação de snapshot pela interface | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico/alternativo |
+| DS-02A | Autenticação federada e consulta | UC-01, UC-02 | Básico |
+| DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-03, UC-04 | Concorrente |
+| DS-02C | Avaliação da recuperação após correção | UC-05 | Básico/alternativo |
+| DS-03A | Previsão preventiva e validação posterior | UC-06 | Suporte técnico/assíncrono |
+| DS-03B | Detecção reativa e diagnóstico por IA | UC-03, UC-04, UC-06 | Suporte técnico/assíncrono |
+| DS-03C | Falha, novas tentativas, DLQ e reanálise | UC-04, UC-07 | Exceção/alternativo |
+| DS-04 | Visão geral ponta a ponta | UC-01, UC-02, UC-03, UC-04, UC-06 | Resumo |
 
 <div align="center">
 
@@ -320,7 +320,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Os diagramas automáticos de ingestão e análise representam mecanismos técnicos que viabilizam os objetivos dos usuários. Por isso, a relação com os casos de uso é de suporte, e não a definição de novos casos. A importação de snapshot e a solicitação de reanálise permanecem como fluxos técnico e alternativo, respectivamente, até a equipe decidir se devem ser formalizadas como casos de uso independentes.
+&emsp;Os diagramas automáticos de ingestão e análise representam mecanismos técnicos que viabilizam os objetivos dos usuários. Por isso, sua relação com os casos de uso é de suporte. A importação de snapshot e a solicitação de reanálise são apresentadas como variações operacionais dos fluxos de disponibilização e análise dos dados.
 
 ### 5.2 Convenções
 
@@ -330,11 +330,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 5.3 Ingestão e disponibilização dos dados
 
-&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos fornecem os dados utilizados nos casos de uso UC-01, UC-05, UC-10, UC-16 e UC-21.
+&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos fornecem os dados utilizados nos casos de uso UC-01, UC-03, UC-04, UC-06 e UC-07.
 
 #### 5.3.1 DS-01A — Sincronização com o MySQL vivo
 
-&emsp;A sincronização periódica mantém o DynamoDB atualizado com os dados produzidos pelo ARGUS. A cada 15 minutos, o EventBridge inicia uma tarefa no Fargate e o Serviço de Ingestão tenta obter no DynamoDB um **bloqueio temporário com expiração**. Esse bloqueio, também denominado *lease*, concede a uma única execução o direito de atualizar a janela; caso a tarefa seja interrompida, a expiração permite que uma execução posterior continue o processamento.
+&emsp;A sincronização periódica mantém no DynamoDB os últimos 30 dias dos dados produzidos pelo ARGUS e arquiva no S3, em formato Parquet, os 11 meses anteriores. A cada 15 minutos, o EventBridge inicia uma tarefa no Fargate e o Serviço de Ingestão tenta obter no DynamoDB um **bloqueio temporário com expiração**. Esse bloqueio, também denominado *lease*, concede a uma única execução o direito de atualizar a janela; caso a tarefa seja interrompida, a expiração permite que uma execução posterior continue o processamento.
 
 <div align="center">
 
@@ -353,6 +353,7 @@ sequenceDiagram
     participant MYSQL as MySQL ARGUS
     participant DB as DynamoDB
     participant S3 as Amazon S3
+    participant GLUE as Glue Data Catalog
     participant Q as SQS de Análise
     participant CW as CloudWatch
 
@@ -401,6 +402,12 @@ sequenceDiagram
             end
 
             ING->>DB: Atualizar projeções afetadas
+            opt Dados ultrapassaram 30 dias na camada quente
+                ING->>S3: Gravar partição Parquet histórica
+                S3-->>ING: Checksum e contagem confirmados
+                ING->>GLUE: Registrar partição validada
+                ING->>DB: Autorizar expiração da cópia quente
+            end
             ING->>ING: Determinar eventos exigidos pela janela
             ING->>DB: Transação: watermark + uma outbox PENDING por evento
 
@@ -431,7 +438,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Depois de obter o bloqueio, o serviço recupera as credenciais no Secrets Manager e acessa o MySQL pela rede privada, com transporte protegido por TLS. Os registros são lidos em páginas, normalizados e identificados por `recordId`. O `payloadHash` permite reconhecer quando o conteúdo não mudou e evita escritas desnecessárias. Registros novos ou alterados são persistidos diretamente no DynamoDB; objetos que ultrapassam o tamanho autorizado são armazenados no S3, mantendo-se no banco apenas a referência correspondente.
+&emsp;Depois de obter o bloqueio, o serviço recupera as credenciais no Secrets Manager e acessa o MySQL pela rede privada, com transporte protegido por TLS. Os registros são lidos em páginas, normalizados e identificados por `recordId`. O `payloadHash` permite reconhecer quando o conteúdo não mudou e evita escritas desnecessárias. Registros novos ou alterados permanecem no DynamoDB durante a janela quente. Ao ultrapassarem 30 dias, são consolidados em partições Parquet no S3 e registrados no Glue Data Catalog; a expiração da cópia quente somente é autorizada após a validação do arquivo histórico.
 
 &emsp;O marcador da última janela completa publicada é denominado *watermark*. Sua atualização ocorre na mesma transação que cria um item de saída pendente, conhecido como *outbox*, para cada evento exigido. Toda janela produz uma detecção, e o fechamento horário também produz uma previsão; cada item possui identificadores e estado próprios. Se uma publicação falhar, a execução seguinte republica somente os itens `PENDING` com as mesmas chaves de idempotência. Se outra sincronização mantiver o bloqueio, a nova tentativa é encerrada como `SKIPPED_LOCKED`, sem interferir na tarefa ativa.
 
@@ -457,6 +464,7 @@ sequenceDiagram
     participant MYSQL as MySQL 8 temporário
     participant ING as Serviço de Ingestão
     participant DB as DynamoDB
+    participant GLUE as Glue Data Catalog
     participant Q as SQS de Análise
     participant CW as CloudWatch
 
@@ -532,9 +540,12 @@ sequenceDiagram
                 ECS->>DB: stage = INGESTING
                 ECS->>ING: Executar backfill(snapshot)
                 ING->>MYSQL: Ler dados restaurados
-                Note over ING,DB: Paginação, normalização e escrita seguem o DS-01A
-                ING->>DB: Gravar fatos e projeções na versão candidata
-                ING->>DB: Validar contagens, projeções e watermarks
+                Note over ING,DB: Paginação e normalização seguem o DS-01A
+                ING->>DB: Gravar até 30 dias na versão candidata
+                ING->>S3: Gravar 11 meses em Parquet na versão candidata
+                S3-->>ING: Checksum e contagens do arquivo
+                ING->>GLUE: Registrar partições da versão candidata
+                ING->>DB: Validar camadas, projeções e watermarks
 
                 alt Backfill ou validação falhou
                     ING->>DB: ImportJob = FAILED
@@ -542,7 +553,7 @@ sequenceDiagram
                 else Versão candidata concluída
                     ECS->>DB: stage = ACTIVATING
                     ING->>DB: TransactWriteItems
-                    Note over ING,DB: Atualizar watermark e activeDatasetVersion,<br/>criar duas outboxes PENDING e concluir ImportJob
+                    Note over ING,DB: Atualizar watermark e manifesto ativo,<br/>criar duas outboxes PENDING e concluir ImportJob
                     ING->>Q: Publicar ANOMALY_DETECTION
                     Q-->>ING: Detecção aceita
                     ING->>DB: Outbox da detecção = PUBLISHED
@@ -589,13 +600,13 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O ator deste fluxo é o `Operador de dados`: o Backend resolve a sessão corporativa e exige `data:import`, concedida somente pelo grupo Cognito `data-operator`, antes de criar ou consultar o `ImportJob` e antes de acessar S3 ou ECS. Sessão ausente recebe HTTP 401 com `UNAUTHENTICATED`; sessão válida sem a permissão recebe HTTP 403 com `FORBIDDEN`. Claims no body ou em headers não concedem essa autorização. O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. A conclusão reserva condicionalmente a chave de idempotência e o hash canônico das partes no `ImportJob`; cada etapa alcançada, o `taskArn` e a resposta são persistidos. Se a chamada for repetida ou interrompida, o Backend retoma a etapa pendente e utiliza o mesmo `clientToken` no `RunTask`, sem criar outra tarefa. O `ImportJob` registra `createdBy`, `completionRequestedBy` e `activatedBy` a partir da sessão autorizada, além de `createdAt`, `completionRequestedAt` e `activatedAt`; `activatedBy` guarda o operador cujo comando autorizado iniciou o processamento. Ele recebe uma `candidateDatasetVersion`, usada nas chaves físicas de fatos, projeções e watermarks, e grava `activatedDatasetVersion` somente quando a candidata é promovida, enquanto o dashboard continua consultando `activeDatasetVersion`. Depois da validação, uma transação troca o ponteiro ativo, cria itens independentes de outbox para a detecção e para a previsão e conclui o job. O `recordId` permanece estável entre versões.
+&emsp;O ator deste fluxo é o `Operador de dados`: o Backend resolve a sessão corporativa e exige `data:import`, concedida somente pelo grupo Cognito `data-operator`, antes de criar ou consultar o `ImportJob` e antes de acessar S3 ou ECS. Sessão ausente recebe HTTP 401 com `UNAUTHENTICATED`; sessão válida sem a permissão recebe HTTP 403 com `FORBIDDEN`. Claims no body ou em headers não concedem essa autorização. O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. A conclusão reserva condicionalmente a chave de idempotência e o hash canônico das partes no `ImportJob`; cada etapa alcançada, o `taskArn` e a resposta são persistidos. Se a chamada for repetida ou interrompida, o Backend retoma a etapa pendente e utiliza o mesmo `clientToken` no `RunTask`, sem criar outra tarefa. O `ImportJob` registra `createdBy`, `completionRequestedBy` e `activatedBy` a partir da sessão autorizada, além de `createdAt`, `completionRequestedAt` e `activatedAt`; `activatedBy` guarda o operador cujo comando autorizado iniciou o processamento. Ele recebe uma `candidateDatasetVersion`, usada nas chaves do DynamoDB, nos prefixos do S3, nas partições do Glue e nos watermarks. O dashboard continua consultando o manifesto anterior até que os dois níveis da candidata sejam validados. Depois da validação, uma transação troca o manifesto ativo, cria itens independentes de outbox para a detecção e para a previsão e conclui o job. O `recordId` permanece estável entre versões.
 
-&emsp;As falhas são tratadas de modo a preservar um estado utilizável. Dump inválido, falha de restauração, backfill incompleto ou validação inconsistente encerram o `ImportJob` como `FAILED` sem alterar o ponteiro ativo; a versão candidata permanece invisível e pode ser removida posteriormente. Falhas de publicação mantêm apenas o item correspondente da outbox como `PENDING`. O encerramento do MySQL e o descarte do volume são executados no caminho comum após sucesso ou falha, sem remover o dump retido no S3. A ingestão não consulta nem modifica o conjunto de diagnósticos confirmados.
+&emsp;As falhas são tratadas de modo a preservar um estado utilizável. Dump inválido, falha de restauração, backfill incompleto ou validação inconsistente encerram o `ImportJob` como `FAILED` sem alterar o manifesto ativo; a versão candidata permanece invisível e pode ser removida posteriormente. Falhas de publicação mantêm apenas o item correspondente da outbox como `PENDING`. O encerramento do MySQL e o descarte do volume são executados no caminho comum após sucesso ou falha, sem remover o dump retido no S3. A ingestão não consulta nem modifica o conjunto de diagnósticos confirmados.
 
 ### 5.4 Backend, autenticação e revisão
 
-&emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica; o terceiro compara os indicadores anteriores e posteriores a uma correção externa. Essas interações realizam os casos de uso UC-01, UC-02, UC-05, UC-10 e UC-15. O Dashboard atua como interface, enquanto o Backend concentra a validação da sessão, a consulta ao DynamoDB e a aplicação das regras de revisão e comparação.
+&emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica; o terceiro compara os indicadores anteriores e posteriores a uma correção externa. Essas interações realizam os casos de uso UC-01, UC-02, UC-03, UC-04 e UC-05. O Dashboard atua como interface, enquanto o Backend concentra a validação da sessão, a consulta aos dados e a aplicação das regras de revisão e comparação.
 
 #### 5.4.1 DS-02A — Autenticação federada e consulta
 
@@ -680,7 +691,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O SSO da Globo autentica o usuário, enquanto o Cognito atua como intermediário de identidade e emite tokens assinados no formato JWT. O Backend conclui o fluxo OAuth segundo o padrão *Backend for Frontend* (BFF). O padrão PKCE (*Proof Key for Code Exchange*) vincula o pedido de autenticação à troca posterior do código, reduzindo o risco de sua utilização indevida. O navegador recebe somente um cookie `HttpOnly`, `Secure` e `SameSite`, inacessível ao JavaScript. As respostas públicas também ocultam chaves e detalhes físicos do DynamoDB.
+&emsp;O SSO da Globo autentica o usuário, enquanto o Cognito atua como intermediário de identidade e emite tokens assinados no formato JWT. O Backend conclui o fluxo OAuth segundo o padrão *Backend for Frontend* (BFF). O padrão PKCE (*Proof Key for Code Exchange*) vincula o pedido de autenticação à troca posterior do código, reduzindo o risco de sua utilização indevida. O navegador recebe somente um cookie `HttpOnly`, `Secure` e `SameSite`, inacessível ao JavaScript. As respostas públicas também ocultam chaves e detalhes físicos das camadas de armazenamento.
 
 &emsp;Uma sessão inexistente, expirada ou associada a uma identidade não autorizada interrompe a consulta antes do acesso aos dados. As falhas são registradas sem credenciais ou tokens e o usuário é direcionado novamente ao processo de autenticação.
 
@@ -721,7 +732,7 @@ sequenceDiagram
         UI-->>B: Exibir hipótese pendente
     end
 
-    A->>UI: Registrar decisão humana
+    A->>UI: Confirmar, refutar ou marcar a hipótese como inconclusiva
     UI->>API: PATCH review, expectedVersion=0, Idempotency-Key A
     API->>API: Obter identidade do Usuário A
     API->>OP: Consultar Idempotency-Key A
@@ -736,7 +747,7 @@ sequenceDiagram
         else Decisão REFUTED
             API->>OP: TransactWriteItems
             Note over API,OP: Condição: status PENDING e version 0
-            Note over API,OP: Refutar hipótese, registrar auditoria imutável<br/>e salvar resposta idempotente, sem GoldenCase
+            Note over API,OP: Refutar hipótese, registrar causa alternativa quando informada,<br/>auditoria imutável e resposta idempotente, sem GoldenCase
             OP-->>API: Transação concluída
             API-->>UI: HTTP 200 - REFUTED, version = 1
         else Decisão INCONCLUSIVE
@@ -806,7 +817,7 @@ Fonte: Material produzido pelos autores (2026).
 
 #### 5.4.3 DS-02C — Avaliação da recuperação após correção
 
-&emsp;A avaliação de recuperação ocorre depois de uma correção realizada fora do View Show. A Engenheira de Software ou a Product Manager seleciona o incidente, confirma o marco temporal da intervenção e solicita a comparação de janelas equivalentes. O fluxo realiza UC-15 sem atribuir ao sistema a implantação da correção nem transformar uma associação temporal em afirmação de causalidade. Como o backend atual ainda não publica operações específicas para esse objetivo, as mensagens do DS-02C representam responsabilidades conceituais e não contratos HTTP já implementados.
+&emsp;A avaliação de recuperação ocorre depois de uma correção realizada fora do View Show. A Engenheira de Software ou a Product Manager seleciona o incidente, confirma o marco temporal da intervenção e solicita a comparação de janelas equivalentes. O fluxo realiza UC-05 sem atribuir ao sistema a implantação da correção nem transformar uma associação temporal em afirmação de causalidade.
 
 <div align="center">
 
@@ -822,6 +833,7 @@ sequenceDiagram
     participant UI as Dashboard
     participant API as Backend
     participant DB as DynamoDB
+    participant ATH as Amazon Athena
 
     U->>UI: Selecionar incidente ou problema
     UI->>API: Solicitar contexto de recuperação
@@ -838,8 +850,13 @@ sequenceDiagram
 
     U->>UI: Confirmar marco e janelas equivalentes
     UI->>API: Solicitar comparação de recuperação
-    API->>DB: Consultar indicadores anteriores e posteriores
-    DB-->>API: Métricas, períodos e tamanhos das amostras
+    alt Janelas contidas nos últimos 30 dias
+        API->>DB: Consultar indicadores anteriores e posteriores
+        DB-->>API: Métricas, períodos e tamanhos das amostras
+    else Janela inclui período histórico
+        API->>ATH: Consultar partições Parquet da versão ativa
+        ATH-->>API: Métricas, períodos e tamanhos das amostras
+    end
     API->>API: Verificar janelas equivalentes e mínimo de 20 observações
     API->>API: Calcular variações absolutas e percentuais
 
@@ -864,13 +881,13 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O componente responsável pela comparação deverá devolver os períodos, os tamanhos das amostras e as variações absolutas e percentuais para que o resultado permaneça auditável. No MVP, a classificação conclusiva exige janelas de mesma duração, os mesmos filtros de segmento e ao menos 20 observações em cada janela; nos demais cenários, a interface informa a limitação e preserva o contexto para ajuste ou repetição posterior.
+&emsp;O componente responsável pela comparação deverá devolver os períodos, os tamanhos das amostras e as variações absolutas e percentuais para que o resultado permaneça auditável. Consultas de até 30 dias utilizam o DynamoDB, enquanto períodos anteriores são obtidos pelo Athena a partir dos arquivos Parquet no S3. No MVP, a classificação conclusiva exige janelas de mesma duração, os mesmos filtros de segmento e ao menos 20 observações em cada janela; nos demais cenários, a interface informa a limitação e preserva o contexto para ajuste ou repetição posterior.
 
-&emsp;A conclusão registrada representa a interpretação do ator a partir dos indicadores disponíveis. O View Show não executa implantação ou reversão e não afirma que a correção causou a variação observada. Essa delimitação mantém o diagrama coerente com a fronteira funcional definida em UC-15.
+&emsp;A conclusão registrada representa a interpretação do ator a partir dos indicadores disponíveis. O View Show não executa implantação ou reversão e não afirma que a correção causou a variação observada. Essa delimitação mantém o diagrama coerente com a fronteira funcional definida em UC-05.
 
 ### 5.5 Worker de Análise
 
-&emsp;O Worker de Análise consome de forma assíncrona as janelas materializadas pela ingestão e coordena três responsabilidades: antecipar degradações, reconhecer anomalias já observadas e recuperar processamentos interrompidos. Essas atividades não são iniciadas diretamente pelos atores, mas fornecem previsões, incidentes, evidências, hipóteses e informações operacionais para os casos de uso UC-05, UC-10, UC-16 e UC-21.
+&emsp;O Worker de Análise consome de forma assíncrona as janelas materializadas pela ingestão e coordena três responsabilidades: antecipar degradações, reconhecer anomalias já observadas e recuperar processamentos interrompidos. Essas atividades não são iniciadas diretamente pelos atores, mas fornecem previsões, incidentes, evidências, hipóteses e informações operacionais para os casos de uso UC-03, UC-04, UC-06 e UC-07.
 
 &emsp;O orquestrador de análise permanece um módulo interno do Worker. Ele combina os resultados dos modelos, recupera informações do DynamoDB e consulta casos humanos confirmados antes de solicitar ao agente diagnóstico uma explicação para o risco ou incidente. O Amazon Bedrock apoia a geração das hipóteses, mas não substitui a decisão humana.
 
@@ -1196,6 +1213,9 @@ sequenceDiagram
     participant SRC as MySQL ARGUS / Snapshot
     participant ING as Serviço de Ingestão
     participant DB as DynamoDB Operacional
+    participant S3 as S3 / Parquet histórico
+    participant GLUE as Glue Data Catalog
+    participant ATH as Amazon Athena
     participant Q as SQS de Análise
     participant W as Worker de Análise
     participant B as Amazon Bedrock
@@ -1205,7 +1225,9 @@ sequenceDiagram
 
     SRC->>ING: Disponibilizar nova janela de dados
     ING->>ING: Validar e normalizar
-    ING->>DB: Gravar fatos e projeções
+    ING->>DB: Manter até 30 dias de fatos e projeções
+    ING->>S3: Arquivar 11 meses em Parquet
+    ING->>GLUE: Registrar partições históricas
     ING->>DB: Publicar watermark e outbox
     ING->>Q: ANALYSIS_REQUESTED
     Q->>W: Entregar janela materializada
@@ -1239,11 +1261,20 @@ sequenceDiagram
     U->>UI: Acessar dashboard
     Note over U,API: Autenticação federada conforme DS-02A
     UI->>API: Consultar visão geral ou diagnóstico
-    API->>DB: Consultar modelos de leitura
-    DB-->>API: Incidente, previsão, evidências e hipóteses
+    alt Janela contida nos últimos 30 dias
+        API->>DB: Consultar modelos de leitura quentes
+        DB-->>API: Incidente, previsão, evidências e hipóteses
+    else Janela inclui período histórico
+        API->>ATH: Consultar partições Parquet da versão ativa
+        ATH->>GLUE: Resolver schema e partições
+        GLUE-->>ATH: Metadados catalogados
+        ATH->>S3: Ler arquivos Parquet
+        S3-->>ATH: Dados históricos
+        ATH-->>API: Séries e indicadores históricos
+    end
     API-->>UI: DTO público
     UI-->>U: Exibir resultado e revisão pendente
-    U->>UI: Confirmar ou refutar hipótese
+    U->>UI: Confirmar, refutar ou marcar hipótese como inconclusiva
     UI->>API: PATCH review com key e expectedVersion
 
     alt Hipótese confirmada
@@ -1252,10 +1283,14 @@ sequenceDiagram
         API-->>UI: HTTP 200 - CONFIRMED
     else Hipótese refutada
         API->>DB: Transação condicional sem promoção
+        Note over API,DB: Registrar causa alternativa quando informada
         API-->>UI: HTTP 200 - REFUTED
+    else Hipótese inconclusiva
+        API->>DB: Registrar decisão revisável sem promoção
+        API-->>UI: HTTP 200 - INCONCLUSIVE
     end
 
-    UI-->>U: Exibir decisão final
+    UI-->>U: Exibir decisão registrada e seu estado
 ```
 
 <div align="center">
@@ -1266,7 +1301,7 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Na primeira parte, o DS-01A detalha a sincronização do MySQL e o DS-01B detalha a importação de snapshots. Depois da publicação na fila, o DS-03A descreve a previsão horária, o DS-03B apresenta a detecção de incidentes e o DS-03C mostra a recuperação de falhas. A interação do usuário é aprofundada no DS-02A, para autenticação e consulta, no DS-02B, para revisão de hipóteses, e no DS-02C, para avaliação posterior a uma correção externa.
 
-&emsp;Ao final do percurso, a janela ingerida está disponível no DynamoDB e a análise foi processada de forma idempotente. Uma previsão continua distinta de um incidente observado, enquanto uma anomalia pode criar ou reforçar um incidente. As hipóteses permanecem pendentes até a decisão humana e somente as confirmadas passam a integrar o conjunto de referência. O `traceId`, identificador de correlação propagado entre os componentes, permite acompanhar uma execução ao longo de todo o fluxo.
+&emsp;Ao final do percurso, até 30 dias da janela ingerida estão disponíveis no DynamoDB e os 11 meses anteriores permanecem em Parquet no S3, sob o mesmo `datasetVersion`. Uma previsão continua distinta de um incidente observado, enquanto uma anomalia pode criar ou reforçar um incidente. As hipóteses permanecem pendentes até a decisão humana e somente as confirmadas passam a integrar o conjunto de referência; decisões refutadas podem registrar a causa alternativa informada, e decisões inconclusivas permanecem revisáveis. O `traceId`, identificador de correlação propagado entre os componentes, permite acompanhar uma execução ao longo de todo o fluxo.
 
 ### 5.7 Rastreabilidade interna
 
@@ -1280,15 +1315,15 @@ Fonte: Material produzido pelos autores (2026).
 
 | Diagrama | Casos de uso | Natureza da relação | Decisão principal |
 | --- | --- | --- | --- |
-| DS-01A | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico | Escrita direta no DynamoDB e saída transacional |
-| DS-01B | UC-01, UC-05, UC-10, UC-16, UC-21 | Suporte técnico | Upload no S3 e MySQL temporário no Fargate |
+| DS-01A | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico | Persistência operacional e arquivamento histórico da telemetria |
+| DS-01B | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico | Upload no S3, MySQL temporário no Fargate e ativação versionada |
 | DS-02A | UC-01, UC-02 | Realização | SSO federado com Backend for Frontend |
-| DS-02B | UC-05, UC-10 | Realização | Concorrência otimista e promoção transacional |
-| DS-02C | UC-15 | Realização proposta | Responsabilidades conceituais para uma comparação auditável, sem contrato HTTP implementado nem inferência indevida de causalidade |
-| DS-03A | UC-16 | Suporte técnico | Previsão horária e validação posterior |
-| DS-03B | UC-05, UC-10, UC-16 | Suporte técnico | Detecção a cada 15 minutos e diagnóstico por IA |
-| DS-03C | UC-21 | Exceção e alternativa | Repetição controlada, DLQ e reanálise |
-| DS-04 | UC-01, UC-02, UC-05, UC-10, UC-16 | Síntese | Continuidade do dado até a decisão humana |
+| DS-02B | UC-03, UC-04 | Realização | Concorrência otimista, auditoria e promoção transacional |
+| DS-02C | UC-05 | Realização | Comparação auditável de janelas equivalentes sem inferência indevida de causalidade |
+| DS-03A | UC-06 | Suporte técnico | Previsão horária e validação posterior |
+| DS-03B | UC-03, UC-04, UC-06 | Suporte técnico | Detecção a cada 15 minutos e diagnóstico por IA |
+| DS-03C | UC-04, UC-07 | Exceção e alternativa | Repetição controlada, DLQ e reanálise |
+| DS-04 | UC-01, UC-02, UC-03, UC-04, UC-06 | Síntese | Continuidade do dado até a decisão humana |
 
 <div align="center">
 

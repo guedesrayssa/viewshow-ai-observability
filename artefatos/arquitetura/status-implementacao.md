@@ -1,10 +1,10 @@
 # Status de implementação da arquitetura
 
 - **Status:** acompanhamento contínuo
-- **Versão:** 1.0
-- **Última atualização:** 06/09/2026
+- **Versão:** 1.1
+- **Última atualização:** 07/09/2026
 - **Responsáveis:** equipe do projeto
-- **Base auditada:** branch `docs/sequencia-uml`, commit anterior `8425006`
+- **Base auditada:** branch `docs/sequencia-uml`, estado anterior ao ajuste arquitetural `8f55706`
 
 ## 1. Finalidade
 
@@ -27,6 +27,7 @@ Estados utilizados:
 | Frontend operacional | Parcial | telas em `apps/frontend/app/(painel)` | consumir somente a API operacional-alvo |
 | Autenticação federada | Parcial | sessão local, middleware e rota SSO iniciais | Cognito federado, callback e cookie seguro |
 | Serviço de ingestão | Definido | contrato e arquitetura aprovados | criar `apps/backend/ingestion-data` |
+| Arquivo histórico S3/Glue/Athena | Definido | retenção e roteamento especificados | provisionar bucket, catálogo, workgroup e compactação Parquet |
 | Importação de dump | Definido | fluxo, API e persistência documentados | upload multipart e tarefa Fargate |
 | SQS e outbox de análise | Definido | contratos de dados e eventos aprovados | provisionar fila, DLQ e publisher |
 | Worker de Análise | Definido | contrato de análise aprovado | implementar consumidor, detector e previsão |
@@ -80,11 +81,12 @@ O diretório `apps/backend/ingestion-data` ainda não existe nesta branch. Antes
 1. criar domínio, portas e adaptadores;
 2. validar os schemas do ARGUS;
 3. implementar IDs e hashes determinísticos;
-4. persistir fatos e controles no DynamoDB;
-5. implementar checkpoint e bloqueio temporário;
-6. construir as projeções sem `Scan`;
-7. implementar outbox e publicação da análise;
-8. adicionar tarefas ECS, Scheduler e observabilidade.
+4. persistir no DynamoDB os fatos e as projeções dos últimos 30 dias;
+5. arquivar os 11 meses anteriores em Parquet no S3 e registrar as partições no Glue;
+6. implementar checkpoint e bloqueio temporário;
+7. construir as projeções sem `Scan` e o roteamento histórico pelo Athena;
+8. implementar outbox e publicação da análise;
+9. adicionar tarefas ECS, Scheduler e observabilidade.
 
 A implementação só avança para a janela seguinte depois que fatos, projeções e watermark da janela atual estiverem consistentes.
 
@@ -111,6 +113,7 @@ A branch possui pipeline e definição de tarefa para o Backend. Ainda precisam 
 - conectividade privada com o ARGUS;
 - task de ingestão e EventBridge Scheduler;
 - bucket e políticas para importação multipart;
+- prefixos Parquet, Glue Data Catalog e workgroup do Athena para o arquivo histórico;
 - tabelas operacionais e de referência com permissões separadas;
 - fila de análise e DLQ;
 - ECS Service do Worker de Análise;

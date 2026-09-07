@@ -1,16 +1,16 @@
 # Análise de dados e diagnóstico por IA
 
 - **Status:** aprovado para implementação
-- **Versão:** 1.0
-- **Última atualização:** 06/09/2026
+- **Versão:** 1.1
+- **Última atualização:** 07/09/2026
 - **Responsáveis:** equipe de análise de dados e IA
 - **Região AWS:** `us-east-1`
 
 ## 1. Objetivo e escopo
 
-Este documento define como o View Show transforma janelas já materializadas no DynamoDB em previsões, incidentes, evidências e hipóteses diagnósticas. Ele é a fonte normativa do contrato da fila de análise, da execução dos modelos, da orquestração do diagnóstico e da recuperação de falhas.
+Este documento define como o View Show transforma janelas materializadas em previsões, incidentes, evidências e hipóteses diagnósticas. Ele é a fonte normativa do contrato da fila de análise, da execução dos modelos, da orquestração do diagnóstico e da recuperação de falhas.
 
-O Worker de Análise não ingere registros diretamente do ARGUS. Ele recebe pela SQS apenas uma referência à janela que deve processar e consulta os dados no DynamoDB. A ingestão continua responsável pela normalização e pela persistência dos fatos e das projeções de entrada.
+O Worker de Análise não ingere registros diretamente do ARGUS. Ele recebe pela SQS apenas uma referência à janela que deve processar. As execuções online consultam no DynamoDB os dados recentes necessários à detecção, à previsão e ao contexto de até cinco horas. Treinamentos, avaliações e reproduções históricas podem consultar pelo Athena os 11 meses arquivados em Parquet no S3. A ingestão continua responsável pela normalização e pela persistência das duas camadas.
 
 ## 2. Componentes e responsabilidades
 
@@ -164,7 +164,7 @@ Cada registro preserva `eventId`, `traceId`, tipo, janela, tentativa, versão do
 
 ## 6. Detecção reativa
 
-O detector consulta a janela atual, o histórico e o baseline por meio de `Query`. A primeira versão combina:
+O detector consulta por `Query` a janela atual, o histórico recente e o baseline materializados no DynamoDB. A primeira versão combina:
 
 - desvio absoluto mediano (MAD) para séries individuais;
 - distância de Mahalanobis para variáveis correlacionadas.
@@ -205,11 +205,11 @@ Antes de gerar uma nova previsão, o Worker avalia a previsão cuja janela-alvo 
 
 ## 8. Dataset importado e versionamento
 
-Cada importação recebe uma `candidateDatasetVersion` derivada do `importId` e do checksum do dump. Fatos, projeções e watermarks são gravados em chaves físicas que contêm essa versão e permanecem invisíveis durante o processamento. Depois da validação, a importação troca condicionalmente `activeDatasetVersion` e passa a ser consultável; uma falha mantém a versão anterior ativa. O dump permanece no S3 conforme a política de retenção.
+Cada importação recebe uma `candidateDatasetVersion` derivada do `importId` e do checksum do dump. Fatos, projeções e watermarks são gravados nas chaves do DynamoDB e nos prefixos Parquet do S3 que contêm essa versão, permanecendo invisíveis durante o processamento. Depois de validar as duas camadas e suas partições, a importação troca condicionalmente o manifesto ativo; uma falha mantém a versão anterior consultável. O dump permanece no S3 conforme a política de retenção.
 
 Previsões, detecções e avaliações sempre registram o `datasetVersion` recebido no evento. O Worker conserva essa versão durante toda a execução, mesmo que outra versão seja ativada em paralelo. Dessa forma, uma análise feita sobre um dump pode ser reproduzida e comparada com outra versão sem confundir os resultados.
 
-O treinamento e a avaliação de novos modelos ocorrem fora do fluxo online. Somente um artefato previamente avaliado é disponibilizado ao Worker, com nome, versão, checksum, métricas de avaliação e data de aprovação. A troca da versão ativa não altera resultados históricos.
+O treinamento e a avaliação de novos modelos ocorrem fora do fluxo online. Esses processos podem consultar o histórico de até 12 meses: até 30 dias no DynamoDB e os 11 meses anteriores no S3 por meio do Athena, sempre sob um único `datasetVersion`. Somente um artefato previamente avaliado é disponibilizado ao Worker, com nome, versão, checksum, métricas de avaliação e data de aprovação. A troca da versão ativa não altera resultados históricos.
 
 ## 9. Orquestração e diagnóstico
 
@@ -224,7 +224,7 @@ O agente diagnóstico só é acionado quando existe risco elevado ou anomalia e 
 
 Esse contexto é estruturado, limitado e sanitizado antes de ser enviado ao Bedrock. O agente recebe hipóteses candidatas, valida o formato, associa cada hipótese às evidências disponíveis e as ordena por confiança.
 
-O resultado da IA permanece como hipótese `PENDING`. A interface deve deixar claro que a causa raiz ainda não foi confirmada. Somente a decisão humana pode alterar a hipótese para `CONFIRMED` ou `REFUTED`.
+O resultado da IA permanece como hipótese `PENDING`. A interface deve deixar claro que a causa raiz ainda não foi confirmada. A decisão humana pode alterar a hipótese para `CONFIRMED`, `REFUTED` ou `INCONCLUSIVE`; somente os dois primeiros estados são finais.
 
 ## 10. Persistência de incidentes e diagnósticos
 
@@ -245,7 +245,7 @@ READY         hipóteses disponíveis para revisão
 FAILED        investigação interrompida sem apagar as evidências
 ```
 
-O Worker de Análise pode ler o conjunto de referência, mas não pode promovê-lo ou alterá-lo. O Backend possui a permissão de escrita usada pela revisão humana. A confirmação atualiza a hipótese, registra auditoria, salva a resposta idempotente e cria o caso de referência em uma única transação antes do HTTP 200. A refutação grava hipótese, auditoria e resposta idempotente na transação, mas não altera o conjunto de referência. Nesta versão, `CONFIRMED` e `REFUTED` são as únicas decisões finais.
+O Worker de Análise pode ler o conjunto de referência, mas não pode promovê-lo ou alterá-lo. O Backend possui a permissão de escrita usada pela revisão humana. A confirmação atualiza a hipótese, registra auditoria, salva a resposta idempotente e cria o caso de referência em uma única transação antes do HTTP 200. A refutação grava a decisão, a causa alternativa eventualmente informada, a auditoria e a resposta idempotente, sem alterar o conjunto de referência. Uma decisão inconclusiva também é auditada, permanece revisável e não cria um caso de referência. `CONFIRMED` e `REFUTED` são estados finais; `INCONCLUSIVE` admite nova revisão com a versão vigente.
 
 ## 11. Falhas, novas tentativas e DLQ
 
@@ -296,6 +296,7 @@ Uma implementação está conforme quando:
 - nunca usa `Scan` no caminho operacional;
 - distingue previsão de incidente observado;
 - registra versões do dataset, modelo e detector;
+- usa a camada quente no fluxo online e preserva a versão ao consultar o histórico arquivado;
 - preserva resultados intermediários diante de falhas;
 - não apresenta hipótese de IA como causa confirmada;
 - restringe a promoção ao conjunto de referência à revisão humana;

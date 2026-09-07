@@ -1,8 +1,8 @@
 # API do dashboard
 
 - **Status:** em revisão
-- **Versão:** 1.1
-- **Última atualização:** 06/09/2026
+- **Versão:** 1.2
+- **Última atualização:** 07/09/2026
 - **Responsáveis:** equipes de backend e frontend
 - **Base HTTP operacional:** `/api/v1`
 - **Formato:** JSON
@@ -13,7 +13,7 @@
 
 Este documento define o contrato HTTP entre o backend Node/Express e o frontend Next.js do dashboard operacional. Ele descreve somente a interface pública: autenticação, endpoints, parâmetros, respostas, enums, erros, paginação, parcialidade, frescor e regras de privacidade.
 
-O contrato é independente da origem física dos dados. Na primeira versão, os dados operacionais vêm do Argus, são normalizados e materializados antes de serem consultados pelo backend. Uma troca futura da origem não deve exigir alterações nos componentes do frontend.
+O contrato é independente da origem física e da camada de armazenamento. Os dados operacionais vêm do ARGUS, são normalizados e materializados antes de serem consultados pelo Backend. Os últimos 30 dias ficam no DynamoDB e os 11 meses anteriores em Parquet no S3, consultados pelo Athena; essa divisão não altera endpoints nem DTOs do frontend.
 
 ## 2. Escopo
 
@@ -86,6 +86,7 @@ Na fase inicial, ausência de uma capability não impede a adoção dos endpoint
 - Quando from e to forem aceitos, devem ser enviados juntos.
 - from/to não podem ser combinados com window.
 - O backend resolve a janela efetiva e a devolve em meta.window.
+- A janela deve estar contida no horizonte de 12 meses mantido pela plataforma.
 
 ### 4.2 Números e unidades
 
@@ -233,6 +234,7 @@ fields é opcional. details pode ser usado para conflitos sem incluir dados sens
 | 404 | RESOURCE_NOT_FOUND | Recurso inexistente |
 | 409 | CONFLICT | Estado incompatível com a operação |
 | 409 | REVIEW_VERSION_CONFLICT | Revisão concorrente |
+| 409 | REVIEW_FINAL_STATE_CONFLICT | Tentativa de alterar uma hipótese já confirmada ou refutada |
 | 409 | DIAGNOSIS_NOT_READY | Diagnóstico ainda não revisável |
 | 409 | HYPOTHESIS_SUPERSEDED | Hipótese substituída |
 | 422 | VALIDATION_ERROR | Body semanticamente inválido |
@@ -299,6 +301,18 @@ Facetas e contagens são retornadas somente para dimensões e combinações supo
   }
 }
 ~~~
+
+### 4.11 Roteamento temporal interno
+
+O Backend seleciona a camada de consulta a partir da janela efetiva e do manifesto da versão ativa:
+
+- intervalos contidos nos últimos 30 dias usam as projeções do DynamoDB;
+- intervalos anteriores usam o Athena sobre as partições Parquet no S3;
+- intervalos que atravessam a fronteira consultam as duas camadas e são combinados por ordem temporal, com eliminação de duplicatas pelo identificador canônico;
+- todos os resultados pertencem ao mesmo `datasetVersion` e seguem o mesmo DTO público;
+- cursores preservam, de forma opaca, a versão e a posição em cada camada necessária à continuação.
+
+O frontend não escolhe DynamoDB ou Athena e não recebe nomes de tabelas, chaves ou caminhos do S3. Um intervalo anterior ao horizonte disponível retorna `DATA_UNAVAILABLE`; uma partição histórica incompleta produz resposta parcial somente quando os dados restantes ainda sustentarem o resultado.
 
 ## 5. Visão Geral
 
@@ -865,7 +879,7 @@ A janela analítica é determinada pelo incidente e informada em meta.window.
 
 Enums:
 
-- review.status: pending, confirmed ou refuted.
+- review.status: pending, confirmed, refuted ou inconclusive.
 - evidence.type: metric_deviation, segment_concentration, deployment_correlation, error_correlation, geographic_concentration, temporal_correlation.
 - evidence.relation: supports, contradicts, context.
 - evidence.strength: strong, moderate, weak.
@@ -890,16 +904,24 @@ Idempotency-Key: rev_01K2F8BAYX
 
 ~~~json
 {
-  "status": "confirmed",
-  "note": "O início coincide com o deploy e com a concentração na versão 4.2.1.",
+  "status": "refuted",
+  "note": "As evidências apontam para uma falha de resolução de nomes.",
+  "correctedCause": {
+    "summary": "Falha de DNS no modelo de dispositivo afetado",
+    "component": "network"
+  },
   "expectedVersion": 0
 }
 ~~~
 
 Regras:
 
-- status é `confirmed` ou `refuted`; ambas são decisões finais nesta versão.
-- note é opcional e aceita até 1.000 caracteres.
+- status é `confirmed`, `refuted` ou `inconclusive`;
+- `confirmed` e `refuted` são decisões finais; `inconclusive` permanece revisável;
+- note aceita até 1.000 caracteres e é obrigatória para `refuted` e `inconclusive`;
+- correctedCause é opcional e aceito somente para `refuted`, quando o revisor conhece uma causa diferente da hipótese apresentada;
+- correctedCause.summary é obrigatório quando o objeto é informado e aceita até 500 caracteres;
+- correctedCause.component é opcional e utiliza um identificador técnico estável;
 - expectedVersion é obrigatório.
 - reviewedBy, e-mail, nome e ID de usuário não são aceitos no body.
 - A identidade do revisor vem exclusivamente da sessão no servidor.
@@ -912,8 +934,12 @@ Regras:
     "incidentId": "inc_01K2F6YQ9G",
     "hypothesisId": "hyp_01K2F7CMQ2",
     "review": {
-      "status": "confirmed",
-      "note": "O início coincide com o deploy e com a concentração na versão 4.2.1.",
+      "status": "refuted",
+      "note": "As evidências apontam para uma falha de resolução de nomes.",
+      "correctedCause": {
+        "summary": "Falha de DNS no modelo de dispositivo afetado",
+        "component": "network"
+      },
       "reviewedAt": "2026-08-26T18:20:14.000Z",
       "version": 1
     }
@@ -931,9 +957,9 @@ Regras:
 }
 ~~~
 
-Uma repetição idêntica devolve 200 sem duplicar auditoria. Uma alteração concorrente com `expectedVersion` antiga devolve `REVIEW_VERSION_CONFLICT`.
+Uma repetição idêntica devolve 200 sem duplicar auditoria. Uma alteração concorrente com `expectedVersion` antiga devolve `REVIEW_VERSION_CONFLICT`. Uma hipótese em `inconclusive` pode receber uma nova revisão com outra chave de idempotência e a versão atual.
 
-O Backend somente devolve HTTP 200 depois que a hipótese, a auditoria, a resposta idempotente e, em caso de confirmação, o `GoldenCase` forem gravados na mesma operação transacional. Uma hipótese `refuted` permanece no histórico operacional e não cria nem remove itens do conjunto de referência. A invalidação de um caso anteriormente confirmado, se necessária, pertence a um caso de uso futuro separado.
+O Backend somente devolve HTTP 200 depois que a hipótese, a auditoria e a resposta idempotente forem gravadas na mesma operação transacional. Em caso de confirmação, a transação também cria o `GoldenCase`. Hipóteses `refuted` ou `inconclusive` e causas alternativas informadas permanecem no histórico operacional, sem criar ou remover itens do conjunto de referência. Uma decisão final não pode ser sobrescrita por outra revisão.
 
 ## 9. Eventos correlacionados
 
@@ -1514,7 +1540,7 @@ GET /api/v1/monitoring/overview?window=15m&source=argus&worker=argus-ingestion
 
 Estados de fonte: stable, delayed, partial, unavailable. Estados de KPI: healthy, warning, critical, unknown.
 
-A ingestão lê o ARGUS, normaliza os registros e escreve diretamente no DynamoDB. A SQS e a DLQ pertencem somente ao processamento de análise. Antes de seu provisionamento, os cartões `queueDepth` e `deadLetterQueue` permanecem no DTO com `value: null` e `status: unknown`, enquanto `capabilities.pipelineRuntime` informa `ANALYSIS_QUEUE_UNAVAILABLE`. Depois do provisionamento, os valores vêm das métricas reais da fila e nunca são simulados pelo Backend.
+A ingestão lê o ARGUS, normaliza os registros, mantém a camada quente no DynamoDB e arquiva o histórico em Parquet no S3. A SQS e a DLQ pertencem somente ao processamento de análise. Antes de seu provisionamento, os cartões `queueDepth` e `deadLetterQueue` permanecem no DTO com `value: null` e `status: unknown`, enquanto `capabilities.pipelineRuntime` informa `ANALYSIS_QUEUE_UNAVAILABLE`. Depois do provisionamento, os valores vêm das métricas reais da fila e nunca são simulados pelo Backend.
 
 As áreas geográficas são UFs. A API não retorna SVG, paths ou coordenadas; o frontend é responsável pela representação do mapa.
 

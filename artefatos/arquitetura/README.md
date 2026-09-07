@@ -14,7 +14,7 @@ A regra editorial é **uma decisão, um único lugar oficial**. Quando um arquiv
 ## Ordem de leitura
 
 1. [Visão geral](visao-geral.md): componentes, comunicação, AWS, segurança e decisões arquiteturais.
-2. [Fluxos integrados](fluxos.md): comportamento do sistema em cenários de sucesso, alternativa e falha.
+2. [Diagramas de sequência](../sprint3/modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
 3. Documento específico da área em desenvolvimento.
 4. [Status de implementação](status-implementacao.md): cobertura atual, responsáveis, evidências e bloqueios.
 
@@ -26,11 +26,11 @@ Explica os limites do sistema, as responsabilidades dos componentes, os tipos de
 
 ### [Fluxos integrados](fluxos.md)
 
-Contém os diagramas Mermaid de ingestão, importação, autenticação, consulta, análise, diagnóstico, revisão e recuperação.
+Funciona como índice técnico dos diagramas de sequência e reúne as invariantes arquiteturais que atravessam mais de um fluxo. A representação canônica dos diagramas está na seção de modelagem da Sprint 3.
 
 ### [Ingestão e dados](ingestao-e-dados.md)
 
-É a fonte normativa para ARGUS, dump, normalização, DynamoDB, padrões de `Query`, projeções, checkpoint, watermark, bloqueio temporário, outbox e publicação das solicitações de análise.
+É a fonte normativa para ARGUS, dump, normalização, armazenamento quente no DynamoDB, arquivamento em Parquet no S3, catálogo Glue, consultas históricas pelo Athena, checkpoint, watermark, bloqueio temporário, outbox e publicação das solicitações de análise.
 
 ### [Análise de dados e diagnóstico por IA](analise-e-ia.md)
 
@@ -66,10 +66,14 @@ Alterações incompatíveis em mensagens, dados ou HTTP exigem uma nova versão 
 ## Glossário
 
 - **Backfill:** processamento de um período histórico de dados.
+- **Athena:** serviço de consulta SQL utilizado para ler o histórico em Parquet armazenado no S3.
 - **Checkpoint:** posição persistida que permite retomar uma execução.
 - **Dataset version:** identificação do conjunto de dados usado em uma análise.
 - **DLQ:** fila que preserva mensagens não processadas após o limite de tentativas.
 - **Golden set ou conjunto de referência:** diagnósticos confirmados por pessoas e utilizados como referência em análises futuras.
+- **Glue Data Catalog:** catálogo que registra schemas e partições dos arquivos históricos consultados pelo Athena.
+- **Armazenamento quente:** fatos e projeções dos últimos 30 dias mantidos no DynamoDB para consultas de baixa latência.
+- **Armazenamento histórico:** fatos e projeções dos 11 meses anteriores mantidos em Parquet no S3.
 - **Idempotência:** propriedade que permite repetir uma operação sem duplicar seu efeito.
 - **Lease ou bloqueio temporário:** direito de uma execução processar uma fonte por um período limitado; outra execução pode assumir após a expiração.
 - **Outbox:** registro persistido da intenção de publicar uma mensagem.
