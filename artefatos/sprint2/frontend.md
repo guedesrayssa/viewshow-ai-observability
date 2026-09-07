@@ -53,6 +53,8 @@ cd apps/frontend && npm run dev -- -p 3001
 
 ## 2. Casos de validação
 
+&emsp;Os casos VF-02 a VF-06 registram o comportamento observado no protótipo com sessão local e são mantidos como evidência histórica da rodada. Esse mecanismo não atende à arquitetura-alvo: RF04, RNF04 e RESTR01 exigem autenticação exclusivamente federada pelo SSO corporativo, sem cadastro ou validação local de senha. Portanto, esses resultados não constituem aceite do requisito de autenticação; o único cenário de conformidade arquitetural é VF-07, ainda não atendido nesta fase.
+
 | ID | Tela | Procedimento | Critério de aceite | Requisitos | Resultado |
 | --- | --- | --- | --- | --- | --- |
 | VF-01 | Todas as rotas | Requisitar as 11 rotas publicadas. | Toda rota responde, e a raiz redireciona para a entrada. | RF07 | Passou (seção 3.2) |
@@ -247,7 +249,7 @@ o fato de não haver número.
 | RF01 Ingestão multiplataforma | Nenhum | Não avaliado | Fora do frontend. O requisito é servido pela API de ingestão. |
 | RF02 Ingestão de eventos | Nenhum | Não avaliado | Fora do frontend. |
 | RF03 Normalização | Nenhum | Não avaliado | Fora do frontend. A tela consome o dado já normalizado. |
-| RF04 Cadastro e login | VF-02 a VF-07, E-01 a E-19, A-01 a A-05, N-01 a N-08 | Parcial | Cadastro, entrada, recusa de credencial, recusa de e-mail duplicado e validação campo a campo funcionam na tela. A lacuna é o SSO, que não está implementado nesta fase (D1). |
+| RF04 Autenticação corporativa por SSO | VF-07 e N-08; VF-02 a VF-06 documentam somente o desvio local do protótipo | Não atendido nesta fase | O SSO corporativo não está implementado. Cadastro e senha local não satisfazem RF04, RNF04 ou RESTR01 e devem ser removidos antes da conformidade do produto. |
 | RF05 Bruto e normalizado | VF-10, N-11 | Não atendido nesta fase | A tela declara que evento individual não tem fonte publicada, então o par bruto e normalizado não existe para ser exibido. A recusa é explícita, não silenciosa. |
 | RF06 Cobertura mínima de eventos | Nenhum | Não avaliado | Fora do frontend. |
 | RF07 Dashboard de navegação | VF-01, VF-08, VF-09, N-09, N-10 | Parcial | As 11 rotas respondem e a tela de incidentes lê a API. Na falha provocada de N-09, o painel declarou a ausência de fonte e não inventou número; as ressalvas são manter os blocos em esqueleto (D3) e mostrar a mensagem crua do navegador (D4). Os filtros cumulativos existem; o recorte aplicado não foi capturado. |

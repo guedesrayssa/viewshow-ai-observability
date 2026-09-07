@@ -321,6 +321,21 @@ As User Stories foram revisadas conforme os princípios INVEST:
 
 **Fundamentação:** A correção ocorre nas ferramentas de engenharia; a plataforma verifica se os indicadores retornaram ao baseline esperado.
 
+#### US-ENG-06 - Monitorar a saúde da telemetria
+
+**User Story:** Como engenheira de software no papel de operadora da plataforma, eu quero acompanhar a saúde das fontes e do pipeline de telemetria, para distinguir uma degradação real da experiência de uma lacuna, atraso ou falha no processamento dos dados.
+
+**Critérios de aceitação:**
+
+- O sistema deve apresentar taxa de ingestão, latência de processamento, profundidade da fila, mensagens isoladas e instante da última atualização.
+- A engenheira deve poder filtrar o monitoramento por período, fonte, plataforma e região.
+- Fontes atrasadas, indisponíveis ou com cobertura parcial devem ser identificadas sem que valores ausentes sejam substituídos por estimativas.
+- O sistema deve informar o componente afetado e preservar o recorte selecionado durante o acompanhamento.
+- A interface deve atualizar os indicadores automaticamente enquanto permanecer aberta e permitir atualização manual.
+- As métricas operacionais não devem expor informações pessoalmente identificáveis.
+
+**Fundamentação:** As análises do View Show dependem da atualidade e da integridade dos dados. Tornar a saúde da telemetria observável permite que a engenharia reconheça quando o diagnóstico está limitado pela própria fonte ou pelo processamento, em vez de atribuir indevidamente a lacuna a uma falha do produto.
+
 ### 3.4 User Stories da Persona 3
 
 As histórias da Persona 3 representam uma evolução posterior ao núcleo técnico. Elas utilizam informações agregadas e não pressupõem correlação comprovada com retenção, conversão, NPS ou satisfação enquanto essas fontes não estiverem integradas.
@@ -513,7 +528,7 @@ O protótipo de alta fidelidade aplica a identidade do View Show aos wireframes 
 
 **Objetivo:** acompanhar a saúde do pipeline de telemetria, a qualidade das fontes e a distribuição geográfica das instabilidades.
 
-**Funcionalidades:** filtros por fonte, métrica, worker e janela de tempo; alerta de atraso de fonte; cartões de taxa de ingestão, latência de processamento, profundidade da fila e mensagens na DLQ; gráfico do fluxo de processamento; tabela com atualização, cobertura e estado das fontes; e mapa de concentração geográfica. A tela apoia US-ENG-04, US-ENG-05 e US-PM-02 a US-PM-05.
+**Funcionalidades:** filtros por fonte, métrica, worker e janela de tempo; alerta de atraso de fonte; cartões de taxa de ingestão, latência de processamento, profundidade da fila e mensagens na DLQ; gráfico do fluxo de processamento; tabela com atualização, cobertura e estado das fontes; e mapa de concentração geográfica. A observação da integridade operacional realiza diretamente US-ENG-06; os recortes e indicadores também apoiam US-ENG-04, US-ENG-05 e US-PM-02 a US-PM-05.
 
 ### 5.7 Configurações
 

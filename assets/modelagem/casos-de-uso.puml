@@ -26,38 +26,26 @@ PM --|> Usuario
 rectangle "Sistema View Show" {
   usecase "UC-01\nConsultar dashboard" as UC01
   usecase "UC-02\nAutenticar-se" as UC02
-  usecase "UC-05\nAnalisar e encaminhar\nincidente" as UC05
+  usecase "UC-05\nAnalisar e preparar\nencaminhamento de incidente" as UC05
   usecase "UC-10\nInvestigar falha técnica" as UC10
+  usecase "UC-15\nAvaliar recuperação\napós correção" as UC15
   usecase "UC-16\nAnalisar qualidade\nda experiência" as UC16
-
-  note bottom of UC01
-    Filtros e exportação são
-    passos ou variações do fluxo.
-  end note
-  note right of UC05
-    Priorizar incidentes, consultar
-    hipóteses e evidências e preparar
-    o resumo compõem o fluxo.
-  end note
-  note right of UC10
-    Validar hipótese, inspecionar
-    eventos, comparar períodos e
-    verificar recuperação compõem o fluxo.
-  end note
-  note right of UC16
-    Indicadores, segmentos, histórico e
-    avaliação após correção compõem o fluxo.
-  end note
+  usecase "UC-21\nMonitorar saúde\nda telemetria" as UC21
 }
 
-Usuario --> UC01
-Usuario --> UC02
-SSO --> UC02
-N1 --> UC05
-Engenharia --> UC10
-PM --> UC16
+Usuario -- UC01
+Usuario -- UC02
+SSO -- UC02
+N1 -- UC05
+Engenharia -- UC10
+Engenharia -- UC15
+Engenharia -- UC21
+PM -- UC15
+PM -- UC16
 
 UC01 -[hidden]down- UC05
 UC05 -[hidden]down- UC10
-UC10 -[hidden]down- UC16
+UC10 -[hidden]down- UC15
+UC15 -[hidden]right- UC16
+UC16 -[hidden]up- UC21
 @enduml

@@ -24,6 +24,17 @@ stages:
   - apps/frontend/**/*
   - .gitlab-ci.yml
 
+.mudou-modelagem: &mudou-modelagem
+  - artefatos/sprint1/entendimento_ux.md
+  - artefatos/sprint1/requisitos.md
+  - artefatos/sprint2/detalhes-frontend.md
+  - artefatos/sprint2/frontend.md
+  - artefatos/sprint3/modelagem.md
+  - assets/modelagem/casos-de-uso.puml
+  - assets/modelagem/casos-de-uso.svg
+  - scripts/validate-modelagem.mjs
+  - .gitlab-ci.yml
+
 workflow:
   auto_cancel:
     on_new_commit: conservative
@@ -180,6 +191,14 @@ deploy_backend_ecs:
     policy: pull
 
 # ---------------------------------------------------------------- validar ----
+
+validate_modelagem:
+  stage: validar
+  image: node:22-alpine
+  script:
+    - node scripts/validate-modelagem.mjs
+  rules:
+    - changes: *mudou-modelagem
 
 lint:
   extends: .node
