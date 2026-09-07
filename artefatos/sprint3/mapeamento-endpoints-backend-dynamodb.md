@@ -746,29 +746,52 @@ no contrato (validação só admite `confirmed | refuted`).
 
 ### 5.3 Onde essa escrita **deveria** acontecer, se for desejada
 
-No mesmo fluxo `PATCH /api/v1/incidents/:id/hypothesis/review`, adicionando
-tratamento ao ramo `status === "refuted"` (hoje inexistente), simétrico ao
-`promoteCase`. O contrato §8 já prevê isso: *"A promoção **ou invalidação** no
-golden set é um efeito interno e não bloqueia a resposta HTTP."*
+O contrato §8 menciona *"A promoção **ou invalidação** no golden set é um efeito
+interno e não bloqueia a resposta HTTP."* — mas **não define** o que "invalidação"
+significa nem prevê persistência de exemplos negativos. Antes de projetar o
+código, é preciso separar três coisas distintas que o termo "invalidação" mistura:
 
-Passos necessários, em ordem:
+**(a) Invalidar / remover / desativar um caso positivo existente.**
+`findMatchingCase(signature)` faz `GetItem` em `monitoracao-golden-set` pela
+**chave exata** `case_id = "<component>#<deviceType>#<region>"`. Hoje não há
+nenhum caminho que apague, sobrescreva ou marque como inativo um caso já curado.
+Uma refutação escrita numa chave **diferente** (ex.: `<assinatura>#REFUTED#<seq>`)
+**não invalida** o caso positivo: o `GetItem` pela assinatura pura continua
+achando e devolvendo o caso `confirmed` intacto. Invalidar de fato exigiria
+`DeleteItem` na chave da assinatura, ou um atributo `active`/`invalidated_at` no
+próprio item positivo mais um filtro em `findMatchingCase`.
+
+**(b) Armazenar hipóteses refutadas como exemplos negativos.**
+É um modelo de dados **novo**, não coberto pelo contrato. A tabela tem chave
+**simples** `case_id`, **sem sort key** (`dynamodb.tf`): um positivo e um negativo
+para a mesma assinatura colidiriam no mesmo item. Guardar negativos exige `case_id`
+composto (ex.: `<assinatura>#REFUTED#<seqHipótese>`) **ou** uma sort key — ou seja,
+alterar `apps/infra/dynamodb.tf` e a convenção de chaves. O ideal seria
+`src/db/keys.js` passar a conhecer a família de chaves do golden set (hoje não
+conhece nada dela).
+
+**(c) Como o orquestrador consultaria cada modelo.**
+Hoje o orquestrador só faz uma consulta: `findMatchingCase` → `GetItem` pelo
+positivo. Para usar negativos ele precisaria de uma **segunda** leitura — um
+`Query` por `begins_with(case_id, "<assinatura>#REFUTED#")` (com chave composta)
+ou pela sort key — e de uma regra de precedência definida (um negativo recente
+suprime o positivo? apenas rebaixa o score? só serve de contexto para o agente?).
+Nada disso está especificado.
+
+**Se, definido o acima, o time quiser o caminho (b)+(c)**, os passos de código são:
 
 1. **`src/db/goldenSetTable.js`** — um segundo método de escrita explícito
    (ex.: `putRefuted`), **ou** aceitar um atributo `verdict` no item de
    `putCurated`. Não reintroduzir um `put` genérico, para manter a barreira do
    ADR-002.
 2. **`src/services/goldenSetService.js`** — uma função
-   `recordRefutedCase(incident, hypothesis, curatedBy)`.
-3. **`src/routes/incidents.js`** — chamar essa função quando `status === "refuted"`
-   (e decidir o comportamento para `inconclusive`, se o enum for ampliado).
-4. **Mudança de modelo de dados (não é só código):** `monitoracao-golden-set` tem
-   chave **simples** `case_id` = assinatura, **sem sort key** (`dynamodb.tf`). Um
-   caso "confirmado" e um "refutado" para a mesma assinatura **colidiriam no mesmo
-   item**. Registrar refutações exige `case_id` composto
-   (ex.: `<assinatura>#REFUTED#<seqHipótese>`) ou introduzir uma sort key — ou
-   seja, alterar `apps/infra/dynamodb.tf` e a convenção de chaves. O ideal seria
-   `src/db/keys.js` passar a conhecer também a família de chaves do golden set
-   (hoje não conhece nada dela).
+   `recordRefutedCase(incident, hypothesis, curatedBy)` e a lógica de consulta de
+   (c) em `findMatchingCase` (ou numa função irmã).
+3. **`src/routes/incidents.js`** — chamar essa função no ramo `status === "refuted"`
+   (hoje inexistente), simétrico ao `promoteCase` do ramo `confirmed`, e decidir o
+   comportamento para `inconclusive` se o enum for ampliado.
+4. **Mudança de modelo de dados** (chave composta ou sort key em
+   `monitoracao-golden-set`), conforme (b).
 5. Rever `scripts/reset.js` (`TEST_PROMOTED_CASES`) para também limpar casos
    refutados criados por teste.
 
@@ -809,6 +832,9 @@ Passos necessários, em ordem:
   o resumo esvaziam sozinhos. Complementarmente, a **B**: a janela nunca é
   aplicada ao timestamp do item, só à quantidade de buckets de hora.
 - **Golden Set:** não há endpoint que grave hipótese refutada / "falsa". O único
-  gatilho de escrita é `promoteCase`, e só para `status === "confirmed"`. Habilitar
-  o registro de refutação exige código **e** mudança de modelo de dados (chave
-  composta ou sort key na tabela do golden set).
+  gatilho de escrita é `promoteCase`, e só para `status === "confirmed"`. O
+  contrato fala em "promoção ou invalidação" mas não define o que invalidar
+  significa nem prevê exemplos negativos — §5.3 separa (a) invalidar um caso
+  positivo, (b) persistir refutações como exemplos negativos e (c) como o
+  orquestrador consultaria cada um. Habilitar (b)+(c) exige código **e** mudança
+  de modelo de dados (chave composta ou sort key na tabela do golden set).
