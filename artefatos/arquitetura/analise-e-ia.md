@@ -89,9 +89,9 @@ Campos obrigatórios:
 - `traceId`: correlação entre ingestão, análise e API;
 - `occurredAt`: instante de negócio que originou a solicitação;
 - `producedAt`: instante em que a mensagem foi criada;
-- `payload.window`: janela que já pode ser consultada;
-- `inputWatermark`: versão publicada da entrada;
-- `datasetVersion`: conjunto de dados utilizado pela análise.
+- `payload.window`: janela que já pode ser consultada, obrigatória em `ANOMALY_DETECTION` e `QOE_FORECAST`;
+- `payload.inputWatermark`: marcador publicado da entrada, obrigatório nos eventos baseados em janela;
+- `payload.datasetVersion`: conjunto de dados utilizado, obrigatório nos eventos baseados em janela.
 
 Mensagem sem campo obrigatório, com versão incompatível ou janela inválida é considerada erro permanente e enviada à DLQ com metadados sanitizados.
 
@@ -114,7 +114,25 @@ Mensagem sem campo obrigatório, com versão incompatível ou janela inválida �
 
 ### 4.3 Reanálise
 
-`REANALYSIS_REQUESTED` não modifica a execução anterior. Seu payload contém `incidentId`, `requestedBy`, `reason` e uma nova `idempotencyKey`. A identidade do solicitante vem da sessão validada pelo Backend.
+`REANALYSIS_REQUESTED` não modifica a execução anterior. O endpoint HTTP não recebe body: a chave enviada no header `Idempotency-Key` ocupa somente a raiz do evento, a identidade do solicitante vem da sessão validada e o Backend define `reason` como `MANUAL_REQUEST`.
+
+```json
+{
+  "eventId": "evt_01K2F8BAYX",
+  "eventType": "REANALYSIS_REQUESTED",
+  "schemaVersion": "1.0",
+  "idempotencyKey": "rea_01K2F8BAYX",
+  "traceId": "trc_01K2F8BAYX",
+  "occurredAt": "2026-09-06T15:30:00.000Z",
+  "producedAt": "2026-09-06T15:30:00.000Z",
+  "source": "backend-api",
+  "payload": {
+    "incidentId": "inc_01K2F8BAYX",
+    "requestedBy": "usr_01K2F8BAYX",
+    "reason": "MANUAL_REQUEST"
+  }
+}
+```
 
 ## 5. Idempotência e estado da execução
 
@@ -179,7 +197,7 @@ Persistência principal:
 PK = PREDICTION#<predictionId>
 SK = META
 
-PK = VIEW#PREDICTIONS#DAY#<YYYYMMDD>
+PK = DATASET#<datasetVersion>#VIEW#PREDICTIONS#DAY#<YYYYMMDD>
 SK = TARGET#<epochMs>#<predictionId>
 ```
 
@@ -187,9 +205,9 @@ Antes de gerar uma nova previsão, o Worker avalia a previsão cuja janela-alvo 
 
 ## 8. Dataset importado e versionamento
 
-Cada importação concluída recebe um `datasetVersion` derivado do `importId`, do checksum do dump e do watermark produzido. O dump permanece no S3 conforme a política de retenção, enquanto os registros normalizados são gravados no DynamoDB.
+Cada importação recebe uma `candidateDatasetVersion` derivada do `importId` e do checksum do dump. Fatos, projeções e watermarks são gravados em chaves físicas que contêm essa versão e permanecem invisíveis durante o processamento. Depois da validação, a importação troca condicionalmente `activeDatasetVersion` e passa a ser consultável; uma falha mantém a versão anterior ativa. O dump permanece no S3 conforme a política de retenção.
 
-Previsões, detecções e avaliações sempre registram o `datasetVersion`. Dessa forma, uma análise feita sobre um dump pode ser reproduzida e comparada com outra versão sem confundir os resultados.
+Previsões, detecções e avaliações sempre registram o `datasetVersion` recebido no evento. O Worker conserva essa versão durante toda a execução, mesmo que outra versão seja ativada em paralelo. Dessa forma, uma análise feita sobre um dump pode ser reproduzida e comparada com outra versão sem confundir os resultados.
 
 O treinamento e a avaliação de novos modelos ocorrem fora do fluxo online. Somente um artefato previamente avaliado é disponibilizado ao Worker, com nome, versão, checksum, métricas de avaliação e data de aprovação. A troca da versão ativa não altera resultados históricos.
 
@@ -211,11 +229,11 @@ O resultado da IA permanece como hipótese `PENDING`. A interface deve deixar cl
 ## 10. Persistência de incidentes e diagnósticos
 
 ```text
-PK = INCIDENT#<incidentId>  SK = META
-PK = INCIDENT#<incidentId>  SK = EVIDENCE#<evidenceId>
-PK = INCIDENT#<incidentId>  SK = DIAGNOSIS#<diagnosisId>
-PK = INCIDENT#<incidentId>  SK = HYPOTHESIS#<hypothesisId>
-PK = INCIDENT#<incidentId>  SK = TIMELINE#<timestamp>#<itemId>
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = META
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = EVIDENCE#<evidenceId>
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = DIAGNOSIS#<diagnosisId>
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = HYPOTHESIS#<hypothesisId>
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = TIMELINE#<timestamp>#<itemId>
 ```
 
 Estados do diagnóstico:
@@ -227,7 +245,7 @@ READY         hipóteses disponíveis para revisão
 FAILED        investigação interrompida sem apagar as evidências
 ```
 
-O Worker de Análise pode ler o conjunto de referência, mas não pode promovê-lo ou alterá-lo. O Backend possui a permissão de escrita usada pela revisão humana. A confirmação atualiza a hipótese, registra auditoria, salva a resposta idempotente e cria o caso de referência em uma única transação.
+O Worker de Análise pode ler o conjunto de referência, mas não pode promovê-lo ou alterá-lo. O Backend possui a permissão de escrita usada pela revisão humana. A confirmação atualiza a hipótese, registra auditoria, salva a resposta idempotente e cria o caso de referência em uma única transação antes do HTTP 200. A refutação grava hipótese, auditoria e resposta idempotente na transação, mas não altera o conjunto de referência. Nesta versão, `CONFIRMED` e `REFUTED` são as únicas decisões finais.
 
 ## 11. Falhas, novas tentativas e DLQ
 

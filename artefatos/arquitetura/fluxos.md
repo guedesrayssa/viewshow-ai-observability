@@ -121,15 +121,15 @@ sequenceDiagram
             end
 
             ING->>DB: Atualizar projeções afetadas
-            ING->>DB: Transação: watermark + OUTBOX PENDING
-            ING->>Q: ANALYSIS_REQUESTED - ANOMALY_DETECTION
+            ING->>ING: Determinar eventos exigidos pela janela
+            ING->>DB: Transação: watermark + uma outbox PENDING por evento
 
-            opt Nova janela horária completa
-                ING->>Q: ANALYSIS_REQUESTED - QOE_FORECAST
+            loop Para cada item PENDING
+                ING->>Q: Publicar evento com eventId e idempotencyKey próprios
+                Q-->>ING: Evento aceito
+                ING->>DB: Marcar somente esse item como PUBLISHED
             end
 
-            Q-->>ING: Mensagens aceitas
-            ING->>DB: OUTBOX = PUBLISHED
             ING->>DB: IngestionRun = SUCCEEDED
         end
 
@@ -137,11 +137,11 @@ sequenceDiagram
         ING->>CW: Publicar logs, métricas e watermarks
     end
 
-    opt Publicação SQS interrompida
-        Note over DB: OUTBOX permanece PENDING
-        ING->>DB: Próxima execução recupera o outbox
-        ING->>Q: Republicar com a mesma idempotencyKey
-        ING->>DB: OUTBOX = PUBLISHED
+    opt Uma publicação SQS foi interrompida
+        Note over DB: Somente a outbox não confirmada permanece PENDING
+        ING->>DB: Próxima execução recupera itens PENDING
+        ING->>Q: Republicar cada item com os mesmos IDs
+        ING->>DB: Marcar cada item confirmado como PUBLISHED
     end
 ```
 
@@ -153,7 +153,7 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Depois de obter o bloqueio, o serviço recupera as credenciais no Secrets Manager e acessa o MySQL pela rede privada, com transporte protegido por TLS. Os registros são lidos em páginas, normalizados e identificados por `recordId`. O `payloadHash` permite reconhecer quando o conteúdo não mudou e evita escritas desnecessárias. Registros novos ou alterados são persistidos diretamente no DynamoDB; objetos que ultrapassam o tamanho autorizado são armazenados no S3, mantendo-se no banco apenas a referência correspondente.
 
-&emsp;O marcador da última janela completa publicada é denominado *watermark*. Sua atualização ocorre na mesma transação que cria o registro de saída pendente, conhecido como *outbox*. Esse registro garante que uma solicitação de análise não seja perdida caso a comunicação com a SQS falhe: a execução seguinte localiza o item pendente e republica a mensagem com a mesma chave de idempotência. Se outra sincronização mantiver o bloqueio, a nova tentativa é encerrada como `SKIPPED_LOCKED`, sem interferir na tarefa ativa.
+&emsp;O marcador da última janela completa publicada é denominado *watermark*. Sua atualização ocorre na mesma transação que cria um item de saída pendente, conhecido como *outbox*, para cada evento exigido. Toda janela produz uma detecção, e o fechamento horário também produz uma previsão; cada item possui identificadores e estado próprios. Se uma publicação falhar, a execução seguinte republica somente os itens `PENDING` com as mesmas chaves de idempotência. Se outra sincronização mantiver o bloqueio, a nova tentativa é encerrada como `SKIPPED_LOCKED`, sem interferir na tarefa ativa.
 
 ### 3.2 DS-01B — Importação de snapshot pela interface
 
@@ -183,7 +183,7 @@ sequenceDiagram
     U->>UI: Selecionar dump
     UI->>API: POST /api/v1/imports
     Note over API: Validar JWT conforme DS-02A
-    API->>DB: Criar ImportJob = UPLOADING
+    API->>DB: Criar ImportJob = UPLOADING e candidateDatasetVersion
     API-->>UI: importId + URLs multipart pré-assinadas
 
     loop Para cada parte do arquivo
@@ -220,15 +220,30 @@ sequenceDiagram
                 ECS->>ING: Executar backfill(snapshot)
                 ING->>MYSQL: Ler dados restaurados
                 Note over ING,DB: Paginação, normalização e escrita seguem o DS-01A
-                ING->>DB: Gravar fatos, projeções e watermarks
-                ING->>Q: ANOMALY_DETECTION da janela mais recente
-                ING->>Q: QOE_FORECAST da última janela horária
-                ING->>DB: ImportJob = COMPLETED
-                ECS->>CW: Publicar métricas da importação
-                ECS->>MYSQL: Encerrar banco temporário
-                ECS->>ECS: Descartar volume efêmero
+                ING->>DB: Gravar fatos e projeções na versão candidata
+                ING->>DB: Validar contagens, projeções e watermarks
+
+                alt Backfill ou validação falhou
+                    ING->>DB: ImportJob = FAILED
+                    ING->>CW: Registrar falha sem ativar a candidata
+                else Versão candidata concluída
+                    ECS->>DB: stage = ACTIVATING
+                    ING->>DB: TransactWriteItems
+                    Note over ING,DB: Atualizar watermark e activeDatasetVersion,<br/>criar duas outboxes PENDING e concluir ImportJob
+                    ING->>Q: Publicar ANOMALY_DETECTION
+                    Q-->>ING: Detecção aceita
+                    ING->>DB: Outbox da detecção = PUBLISHED
+                    ING->>Q: Publicar QOE_FORECAST
+                    Q-->>ING: Previsão aceita
+                    ING->>DB: Outbox da previsão = PUBLISHED
+                    ECS->>CW: Publicar métricas da importação
+                end
             end
         end
+
+        ECS->>MYSQL: Encerrar banco temporário, se iniciado
+        ECS->>ECS: Descartar volume efêmero
+        ECS->>CW: Registrar resultado da limpeza
 
     and Acompanhamento pelo usuário
         loop Enquanto o estado não for terminal
@@ -259,9 +274,9 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. O MySQL temporário e seu volume existem apenas durante a tarefa e são descartados ao final. Depois da restauração, todos os dados são ingeridos, mas apenas a janela de 15 minutos mais recente e a última janela horária completa seguem automaticamente para análise. O novo conjunto somente se torna visível quando as projeções e os marcadores de publicação estiverem concluídos.
+&emsp;O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. O `ImportJob` recebe uma `candidateDatasetVersion`, usada nas chaves físicas de fatos, projeções e watermarks, enquanto o dashboard continua consultando `activeDatasetVersion`. Depois da validação, uma transação troca o ponteiro ativo, cria itens independentes de outbox para a detecção e para a previsão e conclui o job. O `recordId` permanece estável entre versões.
 
-&emsp;As falhas são tratadas de modo a preservar um estado utilizável. Um schema incompatível não avança o marcador da ingestão; uma falha de publicação mantém o registro de saída pendente; e um dump inválido ou impossível de restaurar encerra o `ImportJob` como `FAILED`. Em todos esses casos, o conjunto de dados anterior continua disponível. Quando o fluxo termina com sucesso, os fatos e projeções estão no DynamoDB e a solicitação de análise foi publicada ou está protegida pelo mecanismo de saída transacional. A ingestão não consulta nem modifica o conjunto de diagnósticos confirmados.
+&emsp;As falhas são tratadas de modo a preservar um estado utilizável. Dump inválido, falha de restauração, backfill incompleto ou validação inconsistente encerram o `ImportJob` como `FAILED` sem alterar o ponteiro ativo; a versão candidata permanece invisível e pode ser removida posteriormente. Falhas de publicação mantêm apenas o item correspondente da outbox como `PENDING`. O encerramento do MySQL e o descarte do volume são executados no caminho comum após sucesso ou falha, sem remover o dump retido no S3. A ingestão não consulta nem modifica o conjunto de diagnósticos confirmados.
 
 ## 4. Backend, autenticação e revisão
 
@@ -393,10 +408,10 @@ sequenceDiagram
 
     par Decisões concorrentes
         A->>UI: Confirmar hipótese
-        UI->>API: PATCH review - CONFIRMED, version 0, key A
+        UI->>API: PATCH review - CONFIRMED, version 0, Idempotency-Key A
     and
         B->>UI: Refutar hipótese
-        UI->>API: PATCH review - REFUTED, version 0, key B
+        UI->>API: PATCH review - REFUTED, version 0, Idempotency-Key B
     end
 
     API->>API: Obter identidade do Usuário A
@@ -405,7 +420,7 @@ sequenceDiagram
     alt Chave A ainda não processada
         API->>OP: TransactWriteItems
         Note over API,GS: Condição: status PENDING e version 0
-        Note over OP,GS: Confirmar hipótese, auditar, salvar resposta e criar GoldenCase
+        Note over OP,GS: Confirmar hipótese, auditar, salvar resposta e criar GoldenCase antes do HTTP 200
         OP-->>API: Transação concluída
         API-->>UI: HTTP 200, version = 1
         UI-->>A: Hipótese confirmada
@@ -718,9 +733,9 @@ sequenceDiagram
 
     opt Usuário solicita nova análise
         U->>UI: Solicitar reanálise
-        UI->>API: POST /incidents/{id}/reanalyze
-        API->>API: Validar sessão
-        API->>Q: REANALYSIS_REQUESTED com nova idempotencyKey
+        UI->>API: POST /incidents/{id}/reanalyze e Idempotency-Key
+        API->>API: Validar sessão e obter requestedBy
+        API->>Q: REANALYSIS_REQUESTED com key na raiz e reason MANUAL_REQUEST
         API-->>UI: HTTP 202 Accepted
         UI-->>U: Reanálise solicitada
     end

@@ -85,7 +85,7 @@ adquirir bloqueio temporário
   → finalizar a execução e liberar o bloqueio
 ```
 
-A solicitação `ANOMALY_DETECTION` é publicada para a janela de 15 minutos mais recente. Quando uma nova janela horária estiver completa, a mesma execução publica `QOE_FORECAST`. A transação de outbox permite repetir a publicação sem duplicar a análise.
+A solicitação `ANOMALY_DETECTION` é publicada para a janela de 15 minutos mais recente. Quando uma nova janela horária estiver completa, a mesma execução também publica `QOE_FORECAST`. Cada tipo possui um item independente na outbox, permitindo repetir somente a publicação pendente sem duplicar a análise.
 
 ### 1.5 Implantação, segurança e observabilidade
 
@@ -430,7 +430,7 @@ recordId = "rec_" + base32(
 )[:26]
 ```
 
-`payloadHash` inclui payload, janela, medição e qualidade. Não inclui `runId`, `ingestedAt` ou `readerAdapter`.
+`payloadHash` inclui payload, janela, medição e qualidade. Não inclui `runId`, `ingestedAt` ou `readerAdapter`. O `recordId` permanece estável entre versões do dataset para permitir comparação e rastreabilidade; o isolamento entre versões é realizado pelas chaves físicas que incluem `datasetVersion`.
 
 ### 8.1 Incidentes
 
@@ -526,18 +526,19 @@ monitoracao-golden-set   curadoria humana/ML; inacessível à ingestão
 ### 10.2 Fatos temporais
 
 ```text
-PK = FACT#TS#<seriesId>#<YYYYMMDD>
+PK = DATASET#<datasetVersion>#FACT#TS#<seriesId>#<YYYYMMDD>
 SK = T#<epochMs>#<recordId>
 ```
 
-`seriesId` é o hash de dataset, fonte, entidade, métrica e dimensões ordenadas. Os valores originais permanecem como atributos.
+`seriesId` é o hash do dataset lógico, fonte, entidade, métrica e dimensões ordenadas. Os valores originais permanecem como atributos. `datasetVersion` identifica a versão física criada por uma importação e impede que um backfill sobrescreva gradualmente a versão que ainda atende às consultas.
 
 Exemplo:
 
 ```json
 {
-  "pk": "FACT#TS#4e98a1...#20260826",
+  "pk": "DATASET#dsv_01K2F8BAYX#FACT#TS#4e98a1...#20260826",
   "sk": "T#1787788800000#rec_a23...",
+  "datasetVersion": "dsv_01K2F8BAYX",
   "recordType": "signal_observation",
   "seriesId": "4e98a1...",
   "observedAt": "2026-08-26T18:00:00.000Z",
@@ -561,10 +562,10 @@ Exemplo:
 ### 10.3 Incidentes
 
 ```text
-PK = INCIDENT#<incidentId>  SK = META
-PK = INCIDENT#<incidentId>  SK = EVIDENCE#<evidenceId>
-PK = INCIDENT#<incidentId>  SK = HYPOTHESIS#<hypothesisId>
-PK = INCIDENT#<incidentId>  SK = TIMELINE#<timestamp>#<itemId>
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = META
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = EVIDENCE#<evidenceId>
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = HYPOTHESIS#<hypothesisId>
+PK = DATASET#<datasetVersion>#INCIDENT#<incidentId>  SK = TIMELINE#<timestamp>#<itemId>
 ```
 
 O worker v1 grava apenas `META`. Outros casos de uso autorizados podem gravar evidências, hipóteses e timeline na mesma partição.
@@ -572,23 +573,28 @@ O worker v1 grava apenas `META`. Outros casos de uso autorizados podem gravar ev
 Índices de listagem:
 
 ```text
-PK = VIEW#INCIDENTS#DAY#<YYYYMMDD>
+PK = DATASET#<datasetVersion>#VIEW#INCIDENTS#DAY#<YYYYMMDD>
 SK = OPENED#<epochMs>#<incidentId>
 
-PK = VIEW#INCIDENTS#ACTIVE
+PK = DATASET#<datasetVersion>#VIEW#INCIDENTS#ACTIVE
 SK = PRIORITY#<priority>#STARTED#<epochMs>#<incidentId>
 ```
 
 ### 10.4 Controle
 
 ```text
-PK = INGESTION#SOURCE#<source>  SK = CHECKPOINT
-PK = INGESTION#SOURCE#<source>  SK = HEALTH
+PK = DATASET#<datasetVersion>#INGESTION#SOURCE#<source>  SK = CHECKPOINT
+PK = DATASET#<datasetVersion>#INGESTION#SOURCE#<source>  SK = HEALTH
 PK = INGESTION#SOURCE#<source>  SK = LEASE
 
 PK = INGESTION#RUN#<runId>      SK = META
 PK = INGESTION#RUN#<runId>      SK = ERROR#<sequence>
+
+PK = CONTROL#DATASET             SK = ACTIVE
+activeDatasetVersion = <datasetVersion>
 ```
+
+O item `CONTROL#DATASET/ACTIVE` é o único ponto usado pelo Backend e pelo Worker para selecionar a versão consultável. Cada `ImportJob` registra `candidateDatasetVersion`; a troca condicional de `activeDatasetVersion` ocorre apenas depois que fatos, projeções e watermarks da candidata foram validados. Uma falha mantém o ponteiro anterior e deixa a versão incompleta invisível para as consultas.
 
 ### 10.5 Tipos DynamoDB
 
@@ -618,23 +624,23 @@ fatos canônicos
 Projeções principais:
 
 ```text
-PK = VIEW#OVERVIEW#<sliceId>#<YYYYMMDD>
+PK = DATASET#<datasetVersion>#VIEW#OVERVIEW#<sliceId>#<YYYYMMDD>
 SK = T#<epochMs>
 
-PK = VIEW#INCIDENTS#DAY#<YYYYMMDD>
+PK = DATASET#<datasetVersion>#VIEW#INCIDENTS#DAY#<YYYYMMDD>
 SK = OPENED#<epochMs>#<incidentId>
 
-PK = VIEW#INCIDENTS#ACTIVE
+PK = DATASET#<datasetVersion>#VIEW#INCIDENTS#ACTIVE
 SK = PRIORITY#<priority>#STARTED#<epochMs>#<incidentId>
 
-PK = VIEW#MONITORING#<source>#<YYYYMMDD>
+PK = DATASET#<datasetVersion>#VIEW#MONITORING#<source>#<YYYYMMDD>
 SK = T#<epochMs>
 
-PK = VIEW#GEOGRAPHY#<metric>#<YYYYMMDD>
+PK = DATASET#<datasetVersion>#VIEW#GEOGRAPHY#<metric>#<YYYYMMDD>
 SK = T#<epochMs>#<dimensionId>
 ```
 
-Cada projeção registra `projectionVersion`, `formulaVersion`, datasets usados, watermarks de entrada, `observedThrough`, cobertura e qualidade. Uma falha de projeção não remove fatos nem retrocede o checkpoint da fonte.
+Cada projeção registra `datasetVersion`, `projectionVersion`, `formulaVersion`, datasets usados, watermarks de entrada, `observedThrough`, cobertura e qualidade. Uma falha de projeção não remove fatos nem retrocede o checkpoint da fonte.
 
 Na visão geral, erros por minuto são derivados de contagens de categorias disjuntas divididas pela duração da janela; sessões afetadas e observadas vêm de `live_active_15min`; e a participação afetada é calculada pela divisão entre essas duas grandezas. A projeção de monitoramento utiliza contagens dos runs, checkpoints e dados de saúde da origem para apresentar leitura, escrita, rejeições, duração, atraso e cobertura. Toda fórmula possui versão explícita e preserva `null` quando a entrada necessária não foi medida.
 
@@ -642,29 +648,31 @@ As consultas seguem estes padrões:
 
 | Necessidade | Operação | Partição consultada |
 | --- | --- | --- |
-| Série de uma métrica | `Query` por intervalo de `sk` | `FACT#TS#<seriesId>#<dia>` |
-| Visão geral | `Query` por janela, em ordem temporal | `VIEW#OVERVIEW#<sliceId>#<dia>` |
-| Incidentes do dia | `Query` paginada | `VIEW#INCIDENTS#DAY#<dia>` |
-| Incidentes ativos | `Query` por prioridade e início | `VIEW#INCIDENTS#ACTIVE` |
-| Detalhe de incidente | `Query` da partição completa ou prefixos de `sk` | `INCIDENT#<incidentId>` |
-| Saúde da ingestão | `GetItem` | `INGESTION#SOURCE#<source>` |
+| Série de uma métrica | `Query` por intervalo de `sk` | `DATASET#<datasetVersion>#FACT#TS#<seriesId>#<dia>` |
+| Visão geral | `Query` por janela, em ordem temporal | `DATASET#<datasetVersion>#VIEW#OVERVIEW#<sliceId>#<dia>` |
+| Incidentes do dia | `Query` paginada | `DATASET#<datasetVersion>#VIEW#INCIDENTS#DAY#<dia>` |
+| Incidentes ativos | `Query` por prioridade e início | `DATASET#<datasetVersion>#VIEW#INCIDENTS#ACTIVE` |
+| Detalhe de incidente | `Query` da partição completa ou prefixos de `sk` | `DATASET#<datasetVersion>#INCIDENT#<incidentId>` |
+| Saúde da ingestão | `GetItem` | `DATASET#<datasetVersion>#INGESTION#SOURCE#<source>` |
 | Execução específica | `Query` | `INGESTION#RUN#<runId>` |
 
-Consultas que atravessam mais de um dia executam uma `Query` por partição diária e combinam os resultados no Backend. `Scan` não faz parte do caminho operacional. O cursor público da API é opaco e encapsula a última chave avaliada, sem expor `pk` ou `sk` ao frontend.
+Antes de consultar fatos ou projeções, o Backend e o Worker leem `activeDatasetVersion`; uma execução de análise conserva a versão recebida no evento até o fim. Consultas que atravessam mais de um dia executam uma `Query` por partição diária da mesma versão e combinam os resultados no Backend. `Scan` não faz parte do caminho operacional. O cursor público da API é opaco e encapsula `datasetVersion` e a última chave avaliada, sem expor `pk` ou `sk` ao frontend. As páginas seguintes continuam na versão do cursor mesmo que outra versão se torne ativa durante a navegação.
 
 A visão geral não calcula uma média de percentis segmentados. Quando não existe uma distribuição ou um agregado global confiável, o valor global é `null` e a medição recebe o estado `unknown`. Dados geográficos vêm de `geo_hourly`; nesse recorte, latência e perda permanecem indisponíveis enquanto a origem não as fornecer.
 
 ### 10.7 Outbox de solicitações de análise
 
-O watermark e o item de outbox são gravados na mesma transação. Essa regra garante que uma janela nunca seja considerada publicada sem existir uma forma de solicitar sua análise.
+O watermark e todos os itens de outbox exigidos pela janela são gravados na mesma transação. Cada item representa exatamente um evento e possui estado próprio. Assim, toda janela de 15 minutos cria um item `ANOMALY_DETECTION`; quando ela também conclui uma hora, a mesma transação cria outro item `QOE_FORECAST`.
 
 ```text
 PK = INGESTION#OUTBOX#<YYYYMMDD>
-SK = CREATED#<epochMs>#<eventId>
+SK = CREATED#<epochMs>#<eventType>#<eventId>
+eventId = "evt_" + hash("event:" + datasetVersion + eventType + windowEnd)
+idempotencyKey = "ana_" + hash("analysis:" + datasetVersion + eventType + windowEnd)
 status = PENDING | PUBLISHED
 ```
 
-Depois da confirmação da SQS, o item passa para `PUBLISHED`. Se a tarefa for interrompida antes dessa atualização, a execução seguinte republica o mesmo `eventId` e a mesma `idempotencyKey`. O Worker de Análise trata essa repetição sem criar uma nova execução lógica.
+Depois da confirmação individual da SQS, somente o item correspondente passa para `PUBLISHED`. Se a detecção for aceita e a previsão falhar, por exemplo, a previsão permanece `PENDING` e é a única republicada. Se a tarefa for interrompida depois da publicação e antes da atualização, a execução seguinte republica o mesmo `eventId` e a mesma `idempotencyKey`; o Worker trata essa repetição sem criar uma nova execução lógica.
 
 ## 11. Semântica da escrita
 
@@ -765,7 +773,7 @@ A saída canônica grava diretamente no DynamoDB. Depois que fatos, projeções 
 }
 ```
 
-O evento `QOE_FORECAST` é acrescentado quando a janela horária estiver completa. O contrato integral das mensagens está em [Análise de dados e diagnóstico por IA](analise-e-ia.md). O consumidor tolera mensagens duplicadas e fora de ordem. A API usa o watermark de materialização, nunca apenas o estado de publicação na fila.
+Um item adicional e independente de outbox para `QOE_FORECAST` é criado quando a janela horária estiver completa. O contrato integral das mensagens está em [Análise de dados e diagnóstico por IA](analise-e-ia.md). O consumidor tolera mensagens duplicadas e fora de ordem. A API usa o watermark de materialização, nunca apenas o estado de publicação na fila.
 
 ## 16. Critérios de conformidade
 

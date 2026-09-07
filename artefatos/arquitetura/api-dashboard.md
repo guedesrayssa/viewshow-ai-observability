@@ -150,6 +150,7 @@ Toda métrica quantitativa ou valor de impacto exposto pela API possui measureme
   "meta": {
     "requestId": "req_01K2F8BAYX",
     "schemaVersion": "1.0",
+    "datasetVersion": "dsv_01K2F8BAYX",
     "generatedAt": "2026-08-26T18:11:30.000Z",
     "window": {
       "preset": "30m",
@@ -171,7 +172,7 @@ Toda métrica quantitativa ou valor de impacto exposto pela API possui measureme
 }
 ~~~
 
-meta.window pode ser null em respostas de mutação e detalhes sem janela temporal. refreshAfterSeconds pode ser null quando polling não é aplicável.
+`meta.datasetVersion` identifica a versão usada para produzir a resposta e pode ser `null` em operações que ainda não consultam um dataset, como o início de upload. `meta.window` pode ser `null` em respostas de mutação e detalhes sem janela temporal. `refreshAfterSeconds` pode ser `null` quando polling não é aplicável.
 
 Estados de freshness:
 
@@ -284,8 +285,9 @@ Facetas e contagens são retornadas somente para dimensões e combinações supo
 ### 4.10 Paginação
 
 - Incidentes e eventos usam cursor opaco.
-- O cursor é vinculado aos filtros e à ordenação usados para produzi-lo.
+- O cursor é vinculado a `datasetVersion`, aos filtros e à ordenação usados para produzi-lo.
 - Um cursor reutilizado com filtros diferentes gera VALIDATION_ERROR.
+- As páginas seguintes continuam na versão registrada no cursor, mesmo que outro dataset seja ativado durante a navegação.
 - A resposta não exige total exato.
 
 ~~~json
@@ -652,7 +654,7 @@ GET /api/v1/incidents?window=1h&deviceType=smart-tv&sort=impact&chartMetric=affe
 
 Cada valor dentro de impact possui measurement próprio. Quando sua qualidade for unknown, somente o value correspondente é null; os demais impactos podem continuar medidos ou estimados.
 
-diagnosis.status: not_started, processing, ready, inconclusive ou failed.
+diagnosis.status: not_started, processing, ready ou failed.
 
 As contagens de uma faceta respeitam os filtros ativos somente quando esse conjunto estiver declarado em capabilities.filtering.supportedFilterSets. A API não cruza agregados incompatíveis para preencher facetas.
 
@@ -863,7 +865,7 @@ A janela analítica é determinada pelo incidente e informada em meta.window.
 
 Enums:
 
-- review.status: pending, confirmed, refuted, inconclusive.
+- review.status: pending, confirmed ou refuted.
 - evidence.type: metric_deviation, segment_concentration, deployment_correlation, error_correlation, geographic_concentration, temporal_correlation.
 - evidence.relation: supports, contradicts, context.
 - evidence.strength: strong, moderate, weak.
@@ -883,6 +885,7 @@ rationale é uma justificativa curta e auditável. A API não expõe raciocínio
 ~~~http
 PATCH /api/v1/incidents/{incidentId}/hypotheses/{hypothesisId}/review
 Content-Type: application/json
+Idempotency-Key: rev_01K2F8BAYX
 ~~~
 
 ~~~json
@@ -895,7 +898,7 @@ Content-Type: application/json
 
 Regras:
 
-- status é confirmed, refuted ou inconclusive.
+- status é `confirmed` ou `refuted`; ambas são decisões finais nesta versão.
 - note é opcional e aceita até 1.000 caracteres.
 - expectedVersion é obrigatório.
 - reviewedBy, e-mail, nome e ID de usuário não são aceitos no body.
@@ -928,9 +931,9 @@ Regras:
 }
 ~~~
 
-Uma repetição idêntica devolve 200 sem duplicar auditoria. Uma alteração concorrente com expectedVersion antiga devolve REVIEW_VERSION_CONFLICT.
+Uma repetição idêntica devolve 200 sem duplicar auditoria. Uma alteração concorrente com `expectedVersion` antiga devolve `REVIEW_VERSION_CONFLICT`.
 
-A promoção ou invalidação no golden set é um efeito interno e não bloqueia a resposta HTTP.
+O Backend somente devolve HTTP 200 depois que a hipótese, a auditoria, a resposta idempotente e, em caso de confirmação, o `GoldenCase` forem gravados na mesma operação transacional. Uma hipótese `refuted` permanece no histórico operacional e não cria nem remove itens do conjunto de referência. A invalidação de um caso anteriormente confirmado, se necessária, pertence a um caso de uso futuro separado.
 
 ## 9. Eventos correlacionados
 
@@ -1595,6 +1598,7 @@ Resposta HTTP 201:
 {
   "data": {
     "importId": "imp_01K2F8BAYX",
+    "candidateDatasetVersion": "dsv_01K2F8BAYX",
     "status": "UPLOADING",
     "upload": {
       "uploadId": "s3-multipart-id",
@@ -1642,6 +1646,7 @@ O Backend confirma o upload no S3, verifica tamanho e checksum, altera o `Import
 {
   "data": {
     "importId": "imp_01K2F8BAYX",
+    "candidateDatasetVersion": "dsv_01K2F8BAYX",
     "status": "PROCESSING",
     "stage": "VALIDATING",
     "progressPercent": 0
@@ -1669,6 +1674,7 @@ GET /api/v1/imports/imp_01K2F8BAYX
 {
   "data": {
     "importId": "imp_01K2F8BAYX",
+    "candidateDatasetVersion": "dsv_01K2F8BAYX",
     "status": "PROCESSING",
     "stage": "INGESTING",
     "progressPercent": 72,
@@ -1689,7 +1695,7 @@ GET /api/v1/imports/imp_01K2F8BAYX
 }
 ~~~
 
-Estados de `status`: `UPLOADING`, `PROCESSING`, `COMPLETED` e `FAILED`. Etapas de processamento: `VALIDATING`, `RESTORING`, `INGESTING` e `PUBLISHING`. O frontend respeita `refreshAfterSeconds` até alcançar um estado terminal. Em caso de falha, `error` contém código público e mensagem segura, sem detalhes da infraestrutura ou do dump.
+Estados de `status`: `UPLOADING`, `PROCESSING`, `COMPLETED` e `FAILED`. Etapas de processamento: `VALIDATING`, `RESTORING`, `INGESTING` e `ACTIVATING`. `candidateDatasetVersion` identifica o namespace isolado da importação; ele somente se torna a versão ativa depois da validação de fatos, projeções e watermarks. O frontend respeita `refreshAfterSeconds` até alcançar um estado terminal. Em caso de falha, `error` contém código público e mensagem segura, sem detalhes da infraestrutura ou do dump, e a versão ativa anterior permanece disponível.
 
 ## 13. Solicitação de reanálise
 
@@ -1698,7 +1704,7 @@ POST /api/v1/incidents/{incidentId}/reanalyze
 Idempotency-Key: rea_01K2F8BAYX
 ~~~
 
-O Backend valida a sessão e a existência do incidente, cria uma solicitação `REANALYSIS_REQUESTED` na SQS e retorna HTTP 202:
+O endpoint não recebe body. O Backend valida a sessão e a existência do incidente, copia o `Idempotency-Key` para a raiz do evento, obtém `requestedBy` exclusivamente da sessão e define `reason` como `MANUAL_REQUEST`. Em seguida, cria uma solicitação `REANALYSIS_REQUESTED` na SQS e retorna HTTP 202:
 
 ~~~json
 {

@@ -55,6 +55,11 @@ flowchart LR
     W -->|leitura| GS
     W --> BR
     UI --> API
+    API -->|iniciar login e trocar código| COG
+    COG -->|tokens assinados| API
+    API -->|criar e conferir upload| S3
+    API -->|ECS RunTask de importação| ING
+    API -->|solicitar reanálise| Q
     API --> DB
     API -->|revisão confirmada| GS
     UI --> COG
@@ -82,7 +87,7 @@ Consumidor Python da SQS executado como ECS Service. Ele realiza detecção a ca
 
 ### 3.5 Persistência
 
-O DynamoDB `monitoracao-operacional` armazena fatos, projeções, previsões, incidentes, evidências, hipóteses e controles de execução. O DynamoDB `monitoracao-golden-set` conserva apenas diagnósticos confirmados. Dumps e objetos grandes ficam no S3; não existe RDS na solução.
+O DynamoDB `monitoracao-operacional` armazena fatos, projeções, previsões, incidentes, evidências, hipóteses e controles de execução. Fatos e projeções são isolados por `datasetVersion`, e um ponteiro identifica a versão ativa. O DynamoDB `monitoracao-golden-set` conserva apenas diagnósticos confirmados. Dumps e objetos grandes ficam no S3; não existe RDS na solução.
 
 ## 4. Comunicação entre componentes
 
@@ -90,12 +95,17 @@ O DynamoDB `monitoracao-operacional` armazena fatos, projeções, previsões, in
 | --- | --- | --- | --- |
 | ARGUS | Ingestão | MySQL sobre VPN e TLS | leitura de dados operacionais |
 | Dashboard | S3 | HTTPS com URL pré-assinada | upload multipart do dump |
+| Backend | Cognito | HTTPS/OIDC | iniciar login e trocar o código de autorização por tokens |
+| Backend | S3 | AWS SDK | criar URLs pré-assinadas e conferir o upload multipart |
+| Backend | ECS/Fargate | AWS SDK, `RunTask` | iniciar a restauração e a importação do dump |
+| Backend | SQS | AWS SDK, assíncrona | solicitar reanálise de um incidente |
 | Ingestão | DynamoDB | AWS SDK | fatos, projeções e controle |
 | Ingestão | SQS | AWS SDK, assíncrona | solicitar análise de uma janela pronta |
 | SQS | Worker | long polling | distribuir e repetir análises |
 | Worker | Bedrock | AWS SDK | gerar hipóteses candidatas |
 | Dashboard | Backend | HTTPS/JSON | consultas e comandos do usuário |
-| Backend | DynamoDB | AWS SDK | ler projeções e registrar revisões |
+| Backend | DynamoDB | AWS SDK | ler projeções, controlar importações e registrar revisões |
+| Backend | CloudWatch | logs e métricas | registrar latência, falhas e identificadores de acompanhamento |
 | Cognito | SSO Globo | OIDC ou SAML | autenticar identidade corporativa |
 
 Comunicação síncrona é usada quando o solicitante precisa da resposta para continuar. Processamentos demorados retornam HTTP 202 e são acompanhados por consulta periódica. SQS é usada quando a análise pode ocorrer depois que a ingestão já concluiu sua parte.
@@ -154,7 +164,7 @@ Detecção, previsão e reanálise são desacopladas pela SQS. Duplicidade e ent
 
 ### D5 — Outbox para publicação confiável
 
-O watermark da janela e a intenção de publicar sua análise são persistidos na mesma transação. Uma execução posterior recupera itens pendentes quando a SQS estiver indisponível.
+O watermark da janela e um item de outbox por evento são persistidos na mesma transação. A detecção de anomalia e a previsão horária possuem `eventId`, `idempotencyKey` e estado independentes; uma execução posterior recupera somente os itens pendentes quando a SQS estiver indisponível.
 
 ### D6 — Orquestrador dentro do Worker de Análise
 
@@ -168,9 +178,9 @@ O Bedrock ajuda a explicar sinais encontrados pelos modelos. Toda hipótese é m
 
 Diagnósticos confirmados ficam em uma tabela separada. A ingestão não possui acesso; o Worker de Análise pode consultar; somente o Backend promove uma decisão humana.
 
-### D9 — Importação assíncrona pelo S3
+### D9 — Importação assíncrona e ativação versionada
 
-O navegador envia o dump diretamente ao S3. O Backend devolve HTTP 202 após iniciar a restauração, e o dashboard acompanha `ImportJob` até `COMPLETED` ou `FAILED`.
+O navegador envia o dump diretamente ao S3. O Backend devolve HTTP 202 após iniciar a restauração, e o dashboard acompanha `ImportJob` até `COMPLETED` ou `FAILED`. A tarefa grava fatos, projeções e watermarks em um namespace identificado por `candidateDatasetVersion`; somente depois da validação troca condicionalmente `activeDatasetVersion`. O `recordId` permanece estável entre versões.
 
 ### D10 — Contratos versionados
 
@@ -191,7 +201,7 @@ Eventos, itens persistidos e respostas públicas possuem versão. Alterações i
 
 Falhas da origem impedem apenas a publicação da janela afetada. Falhas da SQS deixam a outbox pendente. Falhas do Worker preservam dados intermediários e podem resultar em nova tentativa ou DLQ. Falhas do Bedrock não apagam a previsão, o incidente ou suas evidências.
 
-Dumps inválidos não substituem o dataset disponível. Durante uma importação, o conjunto anterior permanece consultável até que todos os fatos, projeções e watermarks do novo conjunto tenham sido concluídos.
+Dumps inválidos não substituem o dataset disponível. Durante uma importação, fatos, projeções e watermarks são gravados sob a versão candidata, enquanto todas as consultas continuam usando `activeDatasetVersion`. O conjunto anterior permanece consultável até a troca do ponteiro; uma falha deixa a candidata invisível e não mistura seus registros aos da versão ativa.
 
 ## 9. Observabilidade
 
