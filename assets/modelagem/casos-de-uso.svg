@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Diagrama de Casos de Uso — View Show</title>
+  <desc id="desc">Cinco casos de uso de objetivo do usuário, com um usuário corporativo abstrato, três perfis especializados e o provedor de identidade.</desc>
+  <defs>
+    <style>
+      .title { font: 700 30px Arial, sans-serif; fill: #172033; }
+      .boundary-title { font: 700 19px Arial, sans-serif; fill: #172033; }
+      .label { font: 600 16px Arial, sans-serif; fill: #172033; }
+      .small { font: 14px Arial, sans-serif; fill: #39465e; }
+      .uc-id { font: 700 15px Arial, sans-serif; fill: #172033; }
+      .uc-name { font: 16px Arial, sans-serif; fill: #172033; }
+      .line { stroke: #233148; stroke-width: 2.2; fill: none; }
+      .usecase { fill: #f5f7fb; stroke: #233148; stroke-width: 2.2; }
+      .note { fill: #fff8df; stroke: #ad8b31; stroke-width: 1.6; }
+      .note-line { stroke: #ad8b31; stroke-width: 1.5; stroke-dasharray: 7 5; fill: none; }
+    </style>
+    <marker id="generalization" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 1 1 L 13 7 L 1 13 Z" fill="white" stroke="#233148" stroke-width="1.5"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="white"/>
+  <text x="800" y="48" text-anchor="middle" class="title">Diagrama de Casos de Uso — View Show</text>
+
+  <rect x="300" y="85" width="1075" height="855" rx="8" fill="#ffffff" stroke="#233148" stroke-width="2.5"/>
+  <text x="325" y="118" class="boundary-title">Sistema View Show</text>
+
+  <!-- Ator abstrato: Usuário corporativo -->
+  <g aria-label="Usuário corporativo">
+    <circle cx="155" cy="118" r="18" class="line"/>
+    <path d="M155 136 L155 184 M124 154 L186 154 M155 184 L128 220 M155 184 L182 220" class="line"/>
+    <text x="155" y="244" text-anchor="middle" class="label">Usuário corporativo</text>
+    <text x="155" y="264" text-anchor="middle" class="small">«abstrato»</text>
+  </g>
+
+  <!-- Generalizações dos perfis -->
+  <path d="M150 870 L150 302 L150 282" class="line" marker-end="url(#generalization)"/>
+
+  <!-- Analista N1 -->
+  <g aria-label="Analista de Atendimento Técnico N1">
+    <circle cx="70" cy="390" r="16" class="line"/>
+    <path d="M70 406 L70 448 M43 423 L97 423 M70 448 L47 480 M70 448 L93 480" class="line"/>
+    <text x="70" y="506" text-anchor="middle" class="label">Analista N1</text>
+    <path d="M98 423 L150 423" class="line"/>
+  </g>
+
+  <!-- Engenheira -->
+  <g aria-label="Engenheira de Software">
+    <circle cx="70" cy="610" r="16" class="line"/>
+    <path d="M70 626 L70 668 M43 643 L97 643 M70 668 L47 700 M70 668 L93 700" class="line"/>
+    <text x="70" y="726" text-anchor="middle" class="label">Engenheira de</text>
+    <text x="70" y="746" text-anchor="middle" class="label">Software</text>
+    <path d="M98 643 L150 643" class="line"/>
+  </g>
+
+  <!-- Product Manager -->
+  <g aria-label="Product Manager">
+    <circle cx="70" cy="820" r="16" class="line"/>
+    <path d="M70 836 L70 878 M43 853 L97 853 M70 878 L47 910 M70 878 L93 910" class="line"/>
+    <text x="70" y="936" text-anchor="middle" class="label">Product Manager</text>
+    <path d="M98 853 L150 853" class="line"/>
+  </g>
+
+  <!-- Provedor de identidade -->
+  <g aria-label="Provedor de identidade e SSO">
+    <circle cx="1500" cy="162" r="17" class="line"/>
+    <path d="M1500 179 L1500 225 M1472 196 L1528 196 M1500 225 L1476 258 M1500 225 L1524 258" class="line"/>
+    <text x="1500" y="282" text-anchor="middle" class="label">Provedor de identidade</text>
+    <text x="1500" y="302" text-anchor="middle" class="label">/ SSO</text>
+  </g>
+
+  <!-- Casos compartilhados -->
+  <ellipse cx="600" cy="185" rx="185" ry="58" class="usecase"/>
+  <text x="600" y="178" text-anchor="middle" class="uc-id">UC-01</text>
+  <text x="600" y="203" text-anchor="middle" class="uc-name">Consultar dashboard</text>
+
+  <ellipse cx="1080" cy="185" rx="165" ry="58" class="usecase"/>
+  <text x="1080" y="178" text-anchor="middle" class="uc-id">UC-02</text>
+  <text x="1080" y="203" text-anchor="middle" class="uc-name">Autenticar-se</text>
+
+  <path d="M186 154 L415 185" class="line"/>
+  <path d="M186 154 L915 185" class="line"/>
+  <path d="M1245 185 L1467 185" class="line"/>
+
+  <rect x="470" y="270" width="260" height="64" rx="5" class="note"/>
+  <text x="600" y="296" text-anchor="middle" class="small">Filtros e exportação são passos</text>
+  <text x="600" y="317" text-anchor="middle" class="small">ou variações do fluxo.</text>
+  <path d="M600 243 L600 270" class="note-line"/>
+
+  <!-- Objetivo do Analista N1 -->
+  <ellipse cx="690" cy="430" rx="220" ry="63" class="usecase"/>
+  <text x="690" y="416" text-anchor="middle" class="uc-id">UC-05</text>
+  <text x="690" y="442" text-anchor="middle" class="uc-name">Analisar e encaminhar incidente</text>
+  <path d="M98 423 L470 430" class="line"/>
+
+  <rect x="1010" y="380" width="300" height="102" rx="5" class="note"/>
+  <text x="1030" y="406" class="small">Passos do fluxo:</text>
+  <text x="1030" y="428" class="small">• priorizar incidentes;</text>
+  <text x="1030" y="450" class="small">• consultar hipóteses e evidências;</text>
+  <text x="1030" y="472" class="small">• preparar o resumo.</text>
+  <path d="M910 430 L1010 430" class="note-line"/>
+
+  <!-- Objetivo da Engenharia -->
+  <ellipse cx="690" cy="650" rx="220" ry="63" class="usecase"/>
+  <text x="690" y="642" text-anchor="middle" class="uc-id">UC-10</text>
+  <text x="690" y="668" text-anchor="middle" class="uc-name">Investigar falha técnica</text>
+  <path d="M98 643 L470 650" class="line"/>
+
+  <rect x="1010" y="596" width="300" height="112" rx="5" class="note"/>
+  <text x="1030" y="622" class="small">Passos do fluxo:</text>
+  <text x="1030" y="644" class="small">• validar a hipótese e eventos;</text>
+  <text x="1030" y="666" class="small">• comparar versões e períodos;</text>
+  <text x="1030" y="688" class="small">• verificar a recuperação.</text>
+  <path d="M910 650 L1010 650" class="note-line"/>
+
+  <!-- Objetivo de Produto -->
+  <ellipse cx="690" cy="850" rx="220" ry="63" class="usecase"/>
+  <text x="690" y="836" text-anchor="middle" class="uc-id">UC-16</text>
+  <text x="690" y="861" text-anchor="middle" class="uc-name">Analisar qualidade da experiência</text>
+  <path d="M98 853 L470 850" class="line"/>
+
+  <rect x="1010" y="794" width="300" height="112" rx="5" class="note"/>
+  <text x="1030" y="820" class="small">Passos do fluxo:</text>
+  <text x="1030" y="842" class="small">• acompanhar indicadores e segmentos;</text>
+  <text x="1030" y="864" class="small">• consultar o histórico;</text>
+  <text x="1030" y="886" class="small">• avaliar o efeito de uma correção.</text>
+  <path d="M910 850 L1010 850" class="note-line"/>
+
+  <text x="825" y="970" text-anchor="middle" class="small">As notas apresentam passos internos; elas não representam casos de uso adicionais.</text>
+</svg>

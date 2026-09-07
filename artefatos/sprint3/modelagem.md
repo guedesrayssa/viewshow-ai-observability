@@ -75,106 +75,485 @@ artefatos de arquitetura, backend e requisitos.
 
 ## 2. Diagrama de casos de uso
 
+&emsp;Os casos de uso descrevem o comportamento do sistema a partir dos objetivos dos atores que interagem com ele. Nessa perspectiva, o sistema é tratado como uma caixa-preta: registra-se o resultado que deve ser oferecido ao usuário, sem antecipar a divisão interna entre interfaces, serviços ou mecanismos de persistência. A modelagem desta seção adota a abordagem de Larman (2007), que recomenda priorizar casos de uso no nível de objetivo do usuário e complementar o diagrama com narrativas capazes de explicitar o contrato comportamental do sistema.
+
+&emsp;Esse critério orientou a revisão da granularidade dos casos de uso do View Show. Ações como aplicar um filtro, consultar uma evidência ou comparar dois períodos são necessárias para alcançar objetivos mais amplos, mas não produzem, isoladamente, um resultado de negócio completo. Por essa razão, elas foram incorporadas aos fluxos dos casos principais. O diagrama permanece responsável por apresentar atores, fronteira e objetivos; a Seção 3 registra como cada objetivo é realizado.
+
 ### 2.1 Atores
 
-| Ator | Responsabilidade principal |
-| --- | --- |
-| Todos os perfis corporativos | Acessar o dashboard, filtrar consultas e exportar informações. |
-| Analista de Atendimento Técnico N1 | Priorizar e encaminhar incidentes com contexto suficiente. |
-| Engenheira de Software | Validar hipóteses e investigar tecnicamente as falhas. |
-| Product Manager | Analisar QoE e priorizar problemas pelo impacto na audiência. |
-
-O ator **Todos os perfis corporativos** concentra funções comuns aos três perfis.
-O SSO e os frontends do Globoplay foram omitidos porque o diagrama representa o
-uso da aplicação web, e não seu contexto técnico.
-
-### 2.2 Catálogo de casos de uso
-
-| Grupo | Casos de uso | Requisitos relacionados |
-| --- | --- | --- |
-| Compartilhados | UC-01 Consultar dashboard; UC-02 Autenticar-se; UC-03 Buscar e aplicar filtros; UC-04 Exportar informações | RF04, RF07, RF08, RF09, RF10, RNF04, RNF07, RNF14 |
-| Atendimento N1 | UC-05 Analisar e encaminhar incidente; UC-06 Visualizar incidentes; UC-07 Consultar hipóteses; UC-08 Verificar evidências; UC-09 Preparar resumo | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 |
-| Investigação técnica | UC-10 Investigar falha; UC-11 Validar hipótese; UC-12 Inspecionar eventos; UC-13 Visualizar linha do tempo; UC-14 Comparar versões e períodos; UC-15 Verificar recuperação | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF14 |
-| Análise de produto | UC-16 Analisar qualidade da experiência; UC-17 Acompanhar QoE; UC-18 Comparar segmentos; UC-19 Consultar histórico; UC-20 Avaliar melhoria | RF07, RF08, RF09, RNF05, RNF14, RNF15 |
-
-### 2.3 Diagrama
+&emsp;Um ator representa um papel exercido na interação com o sistema, e não uma pessoa específica. O papel **Usuário corporativo** foi definido como abstrato para concentrar as capacidades comuns de acesso e consulta. Analista de Atendimento Técnico N1, Engenheira de Software e Product Manager especializam esse papel e acrescentam objetivos próprios de suas responsabilidades. O provedor de identidade é mantido como ator secundário porque participa da troca de informações necessária à autenticação, embora esteja fora da fronteira do View Show.
 
 <div align="center">
 
-![Diagrama de casos de uso do View Show](../../assets/diagrama-casos-de-uso.png)
+<strong>Tabela x: Atores do diagrama de casos de uso</strong>
 
-**Figura 1 — Diagrama de casos de uso do View Show.**  
+</div>
+
+| ID | Ator | Tipo | Responsabilidade principal |
+| --- | --- | --- | --- |
+| AT-01 | Usuário corporativo | Primário, abstrato | Acessar o View Show e consultar informações comuns aos perfis autorizados. |
+| AT-02 | Analista de Atendimento Técnico N1 | Especialização de AT-01 | Priorizar e encaminhar incidentes com contexto suficiente. |
+| AT-03 | Engenheira de Software | Especialização de AT-01 | Validar hipóteses e investigar tecnicamente as falhas. |
+| AT-04 | Product Manager | Especialização de AT-01 | Analisar QoE e priorizar problemas pelo impacto na audiência. |
+| AT-05 | Provedor de identidade/SSO | Secundário | Autenticar a conta corporativa e devolver a identidade validada. |
+
+<div align="center">
+
 Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### 2.4 Raciocínio de construção e leitura
+### 2.2 Catálogo de casos de uso
 
-A fronteira **Sistema View Show** contém somente metas executadas pelas personas
-na aplicação web. Ingestão, filas, normalização, armazenamento, deploy e rollback
-ficam fora porque são processos técnicos ou externos à interação do usuário.
+&emsp;O catálogo reúne cinco objetivos observáveis para os usuários do View Show. Os identificadores foram preservados em relação ao levantamento original para manter a correspondência com os demais artefatos produzidos na sprint. A eventual renumeração deve ser realizada de forma conjunta com a matriz de rastreabilidade e com os diagramas de sequência.
 
-Os casos foram derivados das telas de Login, Visão Geral, Incidentes, Evidências,
-Eventos e Monitoramento. O eixo superior reúne recursos compartilhados; as faixas
-inferiores separam Atendimento N1, Investigação Técnica e Análise de Produto. As
-faixas organizam responsabilidades e não representam uma sequência obrigatória.
+<div align="center">
 
-Uma associação indica participação do ator. `include` identifica uma capacidade
-necessária ao objetivo de origem, enquanto `extend` identifica uma ação opcional
-ou condicionada. A seta aponta para o caso incluído ou estendido.
+<strong>Tabela x: Catálogo dos casos de uso</strong>
+
+</div>
+
+| ID | Caso de uso | Ator principal | Requisitos relacionados |
+| --- | --- | --- | --- |
+| UC-01 | Consultar dashboard | Usuário corporativo | RF07, RF08, RF09, RF10, RNF07, RNF14 |
+| UC-02 | Autenticar-se | Usuário corporativo | RF04, RNF04, RIE01, RESTR01 |
+| UC-05 | Analisar e encaminhar incidente | Analista de Atendimento Técnico N1 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 |
+| UC-10 | Investigar falha técnica | Engenheira de Software | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 |
+| UC-16 | Analisar qualidade da experiência | Product Manager | RF07, RF08, RF09, RNF05, RNF14, RNF15 |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+&emsp;A consolidação não elimina comportamentos previstos na versão anterior. Ela apenas os posiciona no nível adequado da narrativa: filtros e exportação passam a integrar UC-01; priorização, hipóteses, evidências e preparação do resumo integram UC-05; validação da hipótese, inspeção de eventos, comparação e verificação da recuperação integram UC-10; indicadores, segmentos, histórico e avaliação posterior à correção integram UC-16.
+
+### 2.3 Diagrama
+
+&emsp;O Diagrama x sintetiza a fronteira funcional do View Show e as associações entre os atores e seus objetivos. As notas vinculadas aos casos de uso resumem comportamentos internos das respectivas narrativas; elas não introduzem novos casos de uso.
+
+<div align="center">
+
+<strong>Diagrama x: Casos de uso do View Show</strong>
+
+![Diagrama de casos de uso do View Show](../../assets/modelagem/casos-de-uso.svg)
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+&emsp;A versão editável está disponível no [arquivo-fonte do diagrama](../../assets/modelagem/casos-de-uso.puml), o que permite atualizar atores, associações e casos de uso sem reconstruir a imagem manualmente.
+
+### 2.4 Critérios de construção e leitura
+
+&emsp;A fronteira **Sistema View Show** contém as funcionalidades percebidas pelos atores durante o uso da aplicação. Ingestão, enfileiramento, normalização, armazenamento, implantação e reversão de versões permanecem fora do diagrama porque correspondem a mecanismos internos ou a atividades realizadas em outros sistemas. Esses processos continuam documentados nos artefatos de arquitetura e nos diagramas de sequência.
+
+&emsp;Os cinco casos representam objetivos completos. Filtrar, exportar, consultar hipóteses, verificar evidências, comparar períodos e verificar a recuperação aparecem nas descrições textuais como passos ou extensões condicionais. Essa organização evita empregar a relação `include` para indicar ordem temporal, uso que não corresponde à semântica definida pela UML (OBJECT MANAGEMENT GROUP, 2017).
+
+&emsp;A autenticação também não é repetida como inclusão obrigatória em cada objetivo. Nas demais descrições, a existência de uma sessão válida constitui uma pré-condição. UC-02 concentra o comportamento necessário para criar ou renovar essa sessão e registra separadamente as situações de recusa ou indisponibilidade do provedor.
 
 ### 2.5 Relações principais
 
-| Grupo | Relações | Justificativa |
-| --- | --- | --- |
-| Compartilhados | UC-01 inclui UC-02; UC-03 e UC-04 estendem UC-01 | Autenticação é obrigatória; filtros e exportação são acionados conforme a necessidade. |
-| Atendimento N1 | UC-05 inclui progressivamente UC-06, UC-07, UC-08 e UC-09 | A triagem parte da priorização e chega ao resumo fundamentado para encaminhamento. |
-| Investigação técnica | UC-10 inclui progressivamente UC-11, UC-12, UC-13 e UC-14; UC-15 estende UC-14 | A investigação valida a hipótese com eventos e comparação; a recuperação só é verificada após uma correção externa. |
-| Análise de produto | UC-16 inclui progressivamente UC-17, UC-18 e UC-19; UC-20 estende UC-19 | A análise parte dos indicadores, compara segmentos e histórico e, quando aplicável, mede a melhoria posterior. |
+&emsp;A Tabela x explicita as associações e generalizações utilizadas no diagrama. Não foram empregadas relações `include` ou `extend`, pois os comportamentos condicionais identificados nesta versão podem ser expressos com maior precisão nos fluxos alternativos das descrições.
+
+<div align="center">
+
+<strong>Tabela x: Relações representadas no diagrama</strong>
+
+</div>
+
+| Origem | Relação | Destino | Justificativa |
+| --- | --- | --- | --- |
+| AT-02 | Generalização | AT-01 | O Analista N1 também executa os objetivos comuns de um usuário corporativo. |
+| AT-03 | Generalização | AT-01 | A Engenheira de Software também executa os objetivos comuns. |
+| AT-04 | Generalização | AT-01 | A Product Manager também executa os objetivos comuns. |
+| AT-01 | Associação | UC-01 e UC-02 | Todo perfil autorizado pode autenticar-se e consultar o dashboard. |
+| AT-02 | Associação | UC-05 | O Analista N1 inicia a análise e decide o encaminhamento. |
+| AT-03 | Associação | UC-10 | A Engenheira inicia a investigação técnica. |
+| AT-04 | Associação | UC-16 | A Product Manager inicia a análise de QoE. |
+| AT-05 | Associação | UC-02 | O provedor externo participa da autenticação corporativa. |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
 
 ---
 
 ## 3. Descrições dos casos de uso
 
-### 3.1 Casos de uso compartilhados
+&emsp;As descrições adotam o estilo completo apresentado por Larman (2007), em especial a organização utilizada no exemplo “Processar venda” e a definição das seções discutida pelo autor. Nesse formato, o caso de uso funciona como um contrato: identifica o objetivo e os participantes, estabelece as condições que devem existir antes e depois da interação e descreve tanto o cenário de sucesso quanto as variações relevantes.
 
-| Caso de uso | Comportamento essencial | Resultado ou limite |
-| --- | --- | --- |
-| **UC-01 — Consultar dashboard** | Validar a sessão e apresentar indicadores, evolução temporal e incidentes do período selecionado. | Mantém o contexto para aprofundamento; sinaliza dados parciais. |
-| **UC-02 — Autenticar-se** | Delegar a autenticação ao SSO corporativo e validar token, domínio e permissões. | Cria uma sessão autorizada sem armazenar senhas. |
-| **UC-03 — Buscar e aplicar filtros globais** | Combinar período, dispositivo, versão, região, conteúdo ou componente e atualizar a consulta. | Preserva o recorte entre telas; busca filtrada com P95 de até 2 s e sem PII. |
-| **UC-04 — Exportar informações** | Gerar CSV, XLSX ou PDF a partir da consulta atual. | Inclui período, filtros e fonte; anonimiza os dados e registra a operação. |
+&emsp;O nível de detalhamento foi ajustado à complexidade dos cenários do View Show. Preservaram-se todas as seções solicitadas para a entrega, mas foram registradas somente regras que contribuem para compreender o comportamento externo do sistema. Decisões ainda não confirmadas são apresentadas em **Problemas em aberto**, evitando que hipóteses de implementação sejam tratadas como requisitos consolidados.
 
-### 3.2 Atendimento N1
+### 3.1 UC-01 — Consultar dashboard
 
-| Caso de uso | Comportamento essencial | Resultado ou limite |
-| --- | --- | --- |
-| **UC-05 — Analisar e encaminhar incidente** | Revisar impacto, recorte, hipóteses e evidências e selecionar a fila responsável. | Produz encaminhamento contextualizado; a decisão permanece humana. |
-| **UC-06 — Visualizar incidentes priorizados** | Listar ocorrências por severidade, impacto, duração ou horário. | Permite selecionar o incidente; informa quando impacto ou dados não estão disponíveis. |
-| **UC-07 — Consultar hipóteses de causa provável** | Exibir hipóteses ordenadas com confiança e justificativa. | Comunica incerteza e nunca apresenta hipótese como causa confirmada. |
-| **UC-08 — Verificar evidências do diagnóstico** | Consultar fonte, horário, qualidade e comparação com o comportamento de referência. | Distingue evidência de inferência e explicita lacunas ou atrasos. |
-| **UC-09 — Preparar resumo para encaminhamento** | Reunir incidente, impacto, recorte, hipótese e evidências em um resumo revisável. | Mantém autoria e contexto e não encaminha automaticamente. |
+&emsp;Este caso de uso reúne a consulta compartilhada pelos três perfis corporativos. O objetivo é permitir que o usuário construa um recorte coerente dos dados e obtenha informações que possam ser aprofundadas nas análises de incidente, de investigação técnica ou de qualidade da experiência.
 
-### 3.3 Investigação técnica
+#### Escopo
 
-| Caso de uso | Comportamento essencial | Resultado ou limite |
-| --- | --- | --- |
-| **UC-10 — Investigar falha técnica** | Revisar a hipótese, inspecionar eventos, reconstruir a sessão e comparar versões ou períodos. | Registra conclusão confirmada, refutada ou inconclusiva; não altera a produção. |
-| **UC-11 — Validar hipótese diagnóstica** | Confirmar, refutar ou manter inconclusiva a hipótese com justificativa. | Preserva autoria e histórico da decisão. |
-| **UC-12 — Inspecionar eventos correlacionados** | Filtrar e abrir eventos `request`, `vitals`, `screen_view`, `video_view`, `session` e `error`. | Exibe dados anonimizados e sinaliza duplicidade, atraso ou payload inválido. |
-| **UC-13 — Visualizar linha do tempo da sessão** | Ordenar os eventos e destacar o marco da falha, lacunas e mudanças correlacionadas. | Preserva fuso horário e não infere ordem quando os timestamps são inconfiáveis. |
-| **UC-14 — Comparar versões, releases e períodos** | Comparar séries equivalentes mantendo filtros e tamanho da amostra. | Evidencia regressões sem confundir correlação com causalidade. |
-| **UC-15 — Verificar recuperação após correção** | Comparar janelas equivalentes antes e depois de uma correção executada fora do sistema. | Classifica recuperação como confirmada, parcial, ausente ou inconclusiva. |
+Sistema View Show.
 
-### 3.4 Análise de produto
+#### Nível
 
-| Caso de uso | Comportamento essencial | Resultado ou limite |
-| --- | --- | --- |
-| **UC-16 — Analisar qualidade da experiência** | Examinar métricas agregadas, segmentos e recorrências para priorizar problemas. | Identifica recortes prioritários sem inferir métricas externas como NPS ou retenção. |
-| **UC-17 — Acompanhar indicadores de QoE** | Visualizar a evolução de inicialização, buffering, bitrate, resolução, latência e erros. | Exibe definição, unidade, período, amostra e limitações de cobertura. |
-| **UC-18 — Comparar segmentos da audiência** | Aplicar os mesmos indicadores a plataformas, dispositivos, versões, regiões ou conteúdos. | Destaca segmentos degradados com critérios equivalentes e amostra mínima. |
-| **UC-19 — Consultar histórico de degradações** | Pesquisar incidentes e degradações anteriores por período, segmento ou componente. | Mantém até um ano de histórico, com 30 dias em acesso rápido. |
-| **UC-20 — Avaliar melhoria após uma correção** | Comparar a QoE antes e depois da correção no mesmo segmento. | Registra melhora, estabilidade, piora ou inconclusão sem atribuir causalidade indevida. |
+Objetivo do usuário.
+
+#### Atores
+
+- **Ator principal:** Usuário corporativo.
+- **Atores secundários:** Nenhum.
+
+#### Interessados e interesses
+
+- **Usuário corporativo:** consultar rapidamente indicadores, incidentes e eventos relevantes ao seu trabalho.
+- **Globo:** disponibilizar informações confiáveis, protegidas e sem exposição de dados pessoais.
+- **Equipe de operação:** tornar dados parciais e indisponibilidades claramente identificáveis.
+
+#### Pré-condições
+
+- O usuário possui uma sessão autenticada.
+
+#### Pós-condições
+
+- **Em caso de sucesso:** os indicadores e incidentes do recorte selecionado são apresentados e o contexto dos filtros permanece disponível.
+- **Garantia mínima:** uma falha de fonte é informada sem substituir os dados ausentes por valores fictícios.
+
+#### Fluxo Básico
+
+1. O usuário acessa o dashboard.
+2. O sistema carrega os indicadores e incidentes do período padrão.
+3. O usuário seleciona filtros como período, dispositivo, versão ou região.
+4. O sistema atualiza os resultados e identifica o recorte aplicado.
+5. O usuário consulta os detalhes de uma ocorrência ou conjunto de eventos.
+
+#### Fluxos alternativos
+
+- **2a. Fonte indisponível:** o sistema identifica os componentes sem dados e mantém disponíveis os componentes carregados corretamente.
+- **4a. Nenhum resultado:** o sistema apresenta um estado vazio e permite alterar os filtros. O fluxo retorna ao passo 3.
+- **5a. Exportação solicitada:** o sistema gera CSV, XLSX ou PDF com o período e os filtros utilizados.
+- **5b. Exportação indisponível:** o sistema informa a falha e preserva a consulta atual.
+
+#### Requisitos especiais
+
+- Acesso restrito a usuários autorizados, conforme RNF04.
+- Carregamento dos componentes principais conforme RNF07.
+- Buscas filtradas com P95 de até dois segundos, conforme RNF14.
+- Os resultados devem excluir informações pessoalmente identificáveis (PII).
+
+#### Lista de variantes
+
+- Perfil do usuário: Analista N1, Engenheira de Software ou Product Manager.
+- Período e filtros aplicados à consulta.
+- Formato de exportação: CSV, XLSX ou PDF.
+
+#### Frequência de ocorrência
+
+Várias vezes ao dia, com aumento durante incidentes e eventos ao vivo.
+
+#### Problemas em aberto
+
+- A exportação será implementada nesta versão ou planejada para uma entrega posterior?
+- Quais telas devem preservar os filtros durante a navegação?
+
+### 3.2 UC-02 — Autenticar-se
+
+&emsp;Este caso de uso isola a criação da sessão corporativa utilizada pelos demais objetivos. A separação permite registrar a participação do provedor de identidade e explicitar as garantias mínimas aplicáveis quando a autenticação não é concluída.
+
+#### Escopo
+
+Sistema View Show.
+
+#### Nível
+
+Objetivo do usuário.
+
+#### Atores
+
+- **Ator principal:** Usuário corporativo.
+- **Ator secundário:** Provedor de identidade/SSO.
+
+#### Interessados e interesses
+
+- **Usuário corporativo:** acessar a plataforma com segurança e baixa carga operacional.
+- **Globo:** restringir o acesso a contas corporativas autorizadas.
+- **Segurança da informação:** impedir sessões inválidas e proteger as credenciais.
+
+#### Pré-condições
+
+- O usuário possui uma conta autorizada.
+- O provedor de identidade está configurado.
+
+#### Pós-condições
+
+- **Em caso de sucesso:** uma sessão autorizada é criada e o sistema disponibiliza o dashboard.
+- **Garantia mínima:** nenhuma sessão é criada quando a identidade ou o domínio não são validados.
+
+#### Fluxo Básico
+
+1. O usuário acessa a página de entrada.
+2. O usuário seleciona a autenticação corporativa.
+3. O sistema encaminha a solicitação ao provedor de identidade.
+4. O provedor autentica o usuário e devolve sua identidade.
+5. O sistema valida o domínio e as permissões recebidas.
+6. O sistema cria a sessão e apresenta o dashboard.
+
+#### Fluxos alternativos
+
+- **3a. Provedor indisponível:** o sistema informa a indisponibilidade sem exibir uma resposta técnica bruta.
+- **4a. Credencial recusada:** o sistema informa que a autenticação não foi concluída e retorna ao passo 1.
+- **5a. Domínio não autorizado:** o sistema nega o acesso e não cria uma sessão.
+- **6a. Sessão expirada:** o sistema solicita nova autenticação.
+
+#### Requisitos especiais
+
+- Acesso restrito ao domínio corporativo, conforme RNF04 e RESTR01.
+- Chamadas sem autenticação ou sem autorização retornam 401 ou 403.
+- Credenciais não são expostas nem armazenadas pela interface web.
+
+#### Lista de variantes
+
+- Autenticação por SSO.
+- Autenticação por credencial local, caso essa opção permaneça no escopo.
+
+#### Frequência de ocorrência
+
+No início de cada sessão e após sua expiração.
+
+#### Problemas em aberto
+
+- Qual provedor corporativo será utilizado na implementação do SSO?
+- O cadastro com senha local continuará disponível após a integração com o provedor corporativo?
+
+### 3.3 UC-05 — Analisar e encaminhar incidente
+
+&emsp;Este caso de uso descreve a atividade de triagem conduzida pelo Atendimento N1. O sistema organiza o impacto, as hipóteses e as evidências, mas preserva a responsabilidade humana pela escolha da equipe que receberá o incidente.
+
+#### Escopo
+
+Sistema View Show.
+
+#### Nível
+
+Objetivo do usuário.
+
+#### Atores
+
+- **Ator principal:** Analista de Atendimento Técnico N1.
+- **Atores secundários:** Nenhum.
+
+#### Interessados e interesses
+
+- **Analista N1:** identificar a prioridade e a equipe responsável com um número reduzido de interações.
+- **Engenharia:** receber um encaminhamento com hipótese, evidências e recorte afetado.
+- **Globo:** reduzir encaminhamentos incorretos e o tempo de diagnóstico.
+
+#### Pré-condições
+
+- O analista está autenticado.
+- Existe ao menos um incidente detectado.
+
+#### Pós-condições
+
+- **Em caso de sucesso:** o sistema disponibiliza um resumo contextualizado para o encaminhamento decidido pelo analista.
+- **Garantia mínima:** o sistema preserva o incidente e não escolhe nem aciona automaticamente uma equipe responsável.
+
+#### Fluxo Básico
+
+1. O sistema apresenta os incidentes por severidade e impacto.
+2. O analista seleciona um incidente.
+3. O sistema apresenta o recorte afetado e as hipóteses de causa provável.
+4. O sistema apresenta confiança, justificativas e evidências de cada hipótese.
+5. O analista aplica filtros para delimitar o problema.
+6. O sistema prepara um resumo com incidente, impacto, hipótese e evidências.
+7. O analista revisa o resumo e escolhe a equipe ou fila de destino.
+
+#### Fluxos alternativos
+
+- **3a. Hipótese inconclusiva:** o sistema informa que não há evidência suficiente e segue para o passo 5.
+- **4a. Evidências incompletas:** o sistema identifica as fontes ausentes ou atrasadas e segue para o passo 5.
+- **5a. Nenhum resultado para o recorte:** o sistema mantém o incidente aberto e permite remover filtros. O fluxo retorna ao passo 5.
+- **7a. Mais de um componente envolvido:** o resumo apresenta todos os componentes para decisão do analista.
+- **7b. Encaminhamento cancelado:** o fluxo termina sem alterar o incidente.
+
+#### Requisitos especiais
+
+- A causa provável deve ser localizável em até cinco cliques, conforme RNF10.
+- A incerteza da hipótese deve ser apresentada explicitamente.
+- O incidente não deve expor PII.
+- Degradações devem ser sinalizadas conforme RNF15.
+
+#### Lista de variantes
+
+- Severidade e estado do incidente.
+- Filtros utilizados para delimitar o recorte.
+- Um ou mais componentes possivelmente envolvidos.
+- Resumo copiado ou registrado para encaminhamento.
+
+#### Frequência de ocorrência
+
+Diária, podendo tornar-se contínua durante incidentes críticos.
+
+#### Problemas em aberto
+
+- Qual ferramenta receberá o encaminhamento do incidente?
+- Qual nível mínimo de evidência permitirá sugerir uma equipe responsável?
+
+### 3.4 UC-10 — Investigar falha técnica
+
+&emsp;Este caso de uso descreve o aprofundamento técnico realizado após a triagem. A investigação articula hipótese, eventos correlacionados, linha do tempo e comparações entre recortes para que a engenheira registre uma conclusão fundamentada, sem executar alterações no ambiente de produção.
+
+#### Escopo
+
+Sistema View Show.
+
+#### Nível
+
+Objetivo do usuário.
+
+#### Atores
+
+- **Ator principal:** Engenheira de Software.
+- **Atores secundários:** Nenhum.
+
+#### Interessados e interesses
+
+- **Engenharia:** confirmar ou refutar uma hipótese com evidências rastreáveis.
+- **Atendimento N1:** receber uma conclusão técnica sobre o encaminhamento.
+- **Globo:** reduzir o tempo de identificação da causa raiz.
+
+#### Pré-condições
+
+- A engenheira está autenticada.
+- Existe um incidente selecionado para investigação.
+
+#### Pós-condições
+
+- **Em caso de sucesso:** a hipótese é registrada como confirmada, refutada ou inconclusiva, com autoria e justificativa.
+- **Garantia mínima:** nenhuma alteração é executada em produção pelo View Show.
+
+#### Fluxo Básico
+
+1. A engenheira abre o diagnóstico do incidente.
+2. O sistema apresenta a hipótese, a confiança e as evidências relacionadas.
+3. A engenheira inspeciona os eventos brutos e normalizados.
+4. O sistema apresenta a linha do tempo da sessão e destaca o momento da falha.
+5. A engenheira compara versões, dispositivos ou períodos equivalentes.
+6. A engenheira registra sua conclusão e justificativa.
+7. Após uma correção externa, a engenheira compara os indicadores anteriores e posteriores.
+
+#### Fluxos alternativos
+
+- **3a. Evento bruto indisponível:** o sistema informa que a comparação com o evento normalizado não pode ser realizada.
+- **4a. Marcação temporal inconfiável:** o sistema sinaliza a limitação e não afirma uma ordem precisa para os eventos.
+- **5a. Evidências conflitantes:** a hipótese permanece inconclusiva e o fluxo segue para o passo 6.
+- **7a. Correção ainda não executada:** a verificação de recuperação é omitida.
+- **7b. Amostra insuficiente:** a recuperação é classificada como inconclusiva.
+
+#### Requisitos especiais
+
+- Suporte aos eventos definidos no RF06.
+- Visualização de dados brutos e normalizados, conforme RF05.
+- Janela de diagnóstico de cinco horas, conforme RNF13.
+- Histórico de até um ano, conforme RNF05.
+- Registro da autoria e do momento da conclusão.
+
+#### Lista de variantes
+
+- Tipo de evento inspecionado.
+- Versão, dispositivo ou período utilizado na comparação.
+- Hipótese confirmada, refutada ou inconclusiva.
+- Recuperação total, parcial, ausente ou inconclusiva.
+
+#### Frequência de ocorrência
+
+Sempre que um incidente for encaminhado para investigação técnica.
+
+#### Problemas em aberto
+
+- Quando a fonte de eventos individuais estará disponível para consulta?
+- Quais critérios objetivos caracterizarão a recuperação do incidente?
+
+### 3.5 UC-16 — Analisar qualidade da experiência
+
+&emsp;Este caso de uso representa a análise agregada realizada pela área de produto. O objetivo é reconhecer segmentos afetados, acompanhar a evolução dos indicadores e avaliar resultados posteriores a uma correção, sem interpretar correlação temporal como evidência suficiente de causalidade.
+
+#### Escopo
+
+Sistema View Show.
+
+#### Nível
+
+Objetivo do usuário.
+
+#### Atores
+
+- **Ator principal:** Product Manager.
+- **Atores secundários:** Nenhum.
+
+#### Interessados e interesses
+
+- **Product Manager:** priorizar problemas pelo impacto técnico na experiência.
+- **Engenharia:** receber recortes comparáveis e tecnicamente fundamentados.
+- **Globo:** acompanhar tendências sem atribuir causalidade indevida.
+
+#### Pré-condições
+
+- A Product Manager está autenticada.
+- Existem dados agregados para o período consultado.
+
+#### Pós-condições
+
+- **Em caso de sucesso:** os segmentos prioritários e a evolução da QoE são apresentados; quando houver correção, seu resultado é classificado.
+- **Garantia mínima:** amostras insuficientes ou períodos não comparáveis são identificados como inconclusivos.
+
+#### Fluxo Básico
+
+1. A Product Manager acessa os indicadores de QoE.
+2. O sistema apresenta buffering, inicialização, latência e erros no período.
+3. A Product Manager seleciona plataformas, dispositivos, versões ou regiões.
+4. O sistema compara os segmentos utilizando os mesmos indicadores.
+5. A Product Manager consulta degradações anteriores do segmento.
+6. Quando aplicável, a Product Manager seleciona uma correção concluída.
+7. O sistema compara janelas equivalentes antes e depois da correção.
+
+#### Fluxos alternativos
+
+- **2a. Indicador indisponível:** o sistema identifica a lacuna sem inferir valores.
+- **4a. Amostra insuficiente:** o segmento é marcado como inconclusivo.
+- **5a. Histórico em armazenamento de longo prazo:** o sistema informa que a recuperação pode levar mais tempo.
+- **6a. Correção inexistente:** o fluxo termina com a análise histórica.
+- **7a. Períodos não comparáveis:** o sistema solicita janelas equivalentes e retorna ao passo 6.
+
+#### Requisitos especiais
+
+- Cada indicador deve apresentar definição, unidade, período e tamanho da amostra.
+- Buscas filtradas devem atender ao RNF14.
+- Os dados devem permanecer anonimizados.
+- O histórico deve seguir a política definida no RNF05.
+
+#### Lista de variantes
+
+- Indicador analisado.
+- Plataforma, dispositivo, versão, região ou conteúdo.
+- Período histórico ou comparação anterior/posterior à correção.
+
+#### Frequência de ocorrência
+
+Diária ou semanal e após incidentes ou eventos relevantes.
+
+#### Problemas em aberto
+
+- Qual será a amostra mínima aceita em uma comparação?
+- Quais critérios tornarão dois períodos equivalentes?
+- Como uma correção será associada ao incidente correspondente?
+
+### 3.6 Síntese das descrições
+
+&emsp;A consolidação resultou em cinco narrativas orientadas a objetivos, sem eliminar as funcionalidades identificadas no levantamento anterior. Os comportamentos mais específicos foram reposicionados nos fluxos básicos, alternativos ou nas listas de variantes. Desse modo, o diagrama apresenta uma visão sintética das interações, enquanto as descrições preservam as condições, garantias e exceções necessárias para orientar análise, implementação e teste.
+
+&emsp;A organização também mantém a separação entre intenção e solução técnica defendida por Larman (2007). As descrições registram o que os atores esperam do View Show e quais resultados o sistema deve garantir; decisões sobre serviços, bancos de dados, filas e mecanismos de implantação permanecem nos artefatos de arquitetura e nos diagramas de sequência.
 
 ---
 
@@ -196,7 +575,7 @@ Exemplo:
 
 [INSERIR DIAGRAMA DE CLASSES UML]
 
-**Figura 2 — Diagrama de classes do View Show.**  
+**Figura x — Diagrama de classes do View Show.**
 Fonte: Material produzido pelos autores (2026).
 
 ### 4.3 Descrição das classes
@@ -278,7 +657,7 @@ Exemplo:
 
 [INSERIR DIAGRAMA DE SEQUÊNCIA UML]
 
-**Figura X — Diagrama de sequência do cenário [NOME].**  
+**Figura x — Diagrama de sequência do cenário [NOME].**
 Fonte: Material produzido pelos autores (2026).
 
 #### Descrição textual da sequência
@@ -315,12 +694,11 @@ Seções 4 e 5 forem concluídas.
 
 | Área ou origem funcional | Casos de uso | Requisitos relacionados | Evidência |
 | --- | --- | --- | --- |
-| Login e acesso | UC-02 | RF04, RNF04, RIE01, RESTR01 | [Seção 2.2](#22-catálogo-de-casos-de-uso) e [Seção 3.1](#31-casos-de-uso-compartilhados) |
-| Visão Geral | UC-01, UC-03, UC-04 | RF07, RF08, RF10, RNF07, RNF14 | [Seção 2.2](#22-catálogo-de-casos-de-uso) e [Seção 3.1](#31-casos-de-uso-compartilhados) |
-| Incidentes | UC-05, UC-06 | RF07, RF08, RF09, RNF10, RNF15 | [Seção 3.2](#32-atendimento-n1) |
-| Evidências e hipóteses | UC-07, UC-08, UC-09, UC-11 | RF07, RF09, RNF08, RNF13 | [Seção 3.2](#32-atendimento-n1) e [Seção 3.3](#33-investigação-técnica) |
-| Eventos correlacionados | UC-12, UC-13 | RF05, RF06, RF09, RNF10, RNF14 | [Seção 3.3](#33-investigação-técnica) |
-| Monitoramento e comparação | UC-14 a UC-20 | RF07, RF08, RF09, RF10, RNF05, RNF14, RNF15 | [Seção 3.3](#33-investigação-técnica) e [Seção 3.4](#34-análise-de-produto) |
+| Login e acesso | UC-02 | RF04, RNF04, RIE01, RESTR01 | [Seção 3.2](#32-uc-02--autenticar-se) |
+| Visão Geral, filtros e exportação | UC-01 | RF07, RF08, RF09, RF10, RNF07, RNF14 | [Seção 3.1](#31-uc-01--consultar-dashboard) |
+| Incidentes, hipóteses e evidências para triagem | UC-05 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 | [Seção 3.3](#33-uc-05--analisar-e-encaminhar-incidente) |
+| Investigação, eventos e recuperação | UC-10 | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 | [Seção 3.4](#34-uc-10--investigar-falha-técnica) |
+| Indicadores, segmentos e histórico de QoE | UC-16 | RF07, RF08, RF09, RNF05, RNF14, RNF15 | [Seção 3.5](#35-uc-16--analisar-qualidade-da-experiência) |
 | Pipeline de telemetria | Não representado neste diagrama | RF01, RF02, RF03, RNF01, RNF02, RNF03, RNF06, RNF11, RNF12, RIE02, RESTR02 | Excluído da fronteira conforme a [Seção 1.2](#12-escopo-da-modelagem) |
 
 ---
@@ -333,8 +711,10 @@ Seções 4 e 5 forem concluídas.
 
 - [x] Todos os atores possuem objetivos claros.
 - [x] Todos os casos de uso do diagrama possuem descrição textual.
-- [x] Cada caso de uso apresenta seu comportamento essencial e resultado esperado.
-- [x] Relações `include` e `extend` possuem justificativa.
+- [x] Cada descrição possui as doze seções solicitadas para o estilo completo.
+- [x] Os fluxos básicos terminam nas pós-condições declaradas.
+- [x] Os fluxos alternativos identificam o passo de origem ou o encerramento.
+- [x] Relações `include` e `extend` não são usadas para representar ordem temporal.
 - [x] Os casos de uso estão ligados a requisitos existentes.
 
 #### Diagrama de classes
@@ -376,13 +756,14 @@ Seções 4 e 5 forem concluídas.
 ## 8. Referências
 
 LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto
-orientados a objetos e ao desenvolvimento iterativo*. Porto Alegre: Bookman.
-Disponível em:
-https://integrada.minhabiblioteca.com.br/reader/books/9788577800476.
-Acesso em: DD mês AAAA.
+orientados a objetos e ao desenvolvimento iterativo*. 3. ed. Porto Alegre:
+Bookman, 2007. E-book. Disponível em:
+https://integrada.minhabiblioteca.com.br/reader/books/9788577800476. Acesso em:
+6 set. 2026.
 
-OBJECT MANAGEMENT GROUP. *Unified Modeling Language — UML*. Disponível em:
-https://www.omg.org/spec/UML/. Acesso em: DD mês AAAA.
+OBJECT MANAGEMENT GROUP. *OMG Unified Modeling Language (OMG UML)*. Version
+2.5.1. 2017. Disponível em:
+https://www.omg.org/spec/UML/2.5.1. Acesso em: 6 set. 2026.
 
 GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de
 Frontend Globoplay*. 2026. Disponível em:
