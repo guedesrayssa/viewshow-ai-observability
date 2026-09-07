@@ -28,11 +28,18 @@ import {
   type IncidentResponse,
 } from "@/app/(painel)/visao-geral/incident-mapping";
 
-/** Um indicador como `/api/v1/dashboard/summary` o publica. */
+/**
+ * Um indicador como `/api/v1/dashboard/summary` o publica.
+ *
+ * `value` deveria chegar numérico, mas o tipo aceita `string` de propósito:
+ * front e back sobem por jobs independentes no mesmo estágio, então por uma
+ * janela o front novo pode ler a resposta anterior, em que o número vinha
+ * formatado. `toNumericValue` faz a ponte.
+ */
 export type SummaryStatResponse = {
   id: string;
   label: string;
-  value: number;
+  value: number | string;
   format: StatFormat;
   accent: StatAccent;
 };
@@ -53,6 +60,39 @@ const STAT_ACCENTS = new Set<StatAccent>(["critical", "warning", "info"]);
 const STAT_FORMATS = new Set<StatFormat>(["integer", "compact"]);
 
 /**
+ * Converte o `value` do indicador para número, tolerando a resposta anterior.
+ *
+ * Enquanto o deploy do back não alcança o do front, o número pode chegar
+ * formatado em pt-BR ("12.400"). Sem normalizar, `Math.round("12.400")` é 12 —
+ * o cartão mostraria 12 no lugar de 12.400. Como os três indicadores são
+ * sempre inteiros (contagens e total de sessões), remover os pontos de milhar
+ * e trocar a vírgula decimal por ponto basta. Passada a transição, `value` já
+ * é `number` e a função só o repassa.
+ *
+ * O que não dá para ler — string vazia, só espaço, texto, `NaN`, ou um tipo
+ * inesperado — vira `null`, nunca `0`: `Number("")` é `0`, e um zero afirmaria
+ * que a grandeza foi medida e deu zero. Com `null`, o cartão desenha um
+ * travessão.
+ */
+export function toNumericValue(value: number | string): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/\./g, "").replace(",", ".");
+  if (normalized === "") {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
  * Completa o indicador da API com os campos que só a tela usa.
  *
  * A rota resume contagens, não mede contra uma linha de base: `delta` fica
@@ -62,7 +102,7 @@ function toStatCard(stat: SummaryStatResponse): StatCardData {
   return {
     id: stat.id,
     label: stat.label,
-    value: stat.value,
+    value: toNumericValue(stat.value),
     format: STAT_FORMATS.has(stat.format) ? stat.format : "integer",
     delta: "",
     accent: STAT_ACCENTS.has(stat.accent) ? stat.accent : "info",
