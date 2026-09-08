@@ -1927,12 +1927,12 @@ Fonte: Material produzido pelos autores (2026).
 
 #### Diagramas de sequência
 
-- [ ] Cada diagrama referencia um caso de uso e um fluxo específico.
-- [ ] As mensagens aparecem em ordem temporal.
-- [ ] Chamadas síncronas, assíncronas e retornos estão diferenciados.
-- [ ] Alternativas e exceções usam fragmentos combinados.
-- [ ] Participantes correspondem a atores, interfaces, serviços ou classes da arquitetura-alvo.
-- [ ] O resultado final corresponde às pós-condições do caso de uso.
+- [x] Cada diagrama referencia um caso de uso e um fluxo específico.
+- [x] As mensagens aparecem em ordem temporal.
+- [x] Chamadas síncronas, assíncronas e retornos estão diferenciados.
+- [x] Alternativas e exceções usam fragmentos combinados.
+- [x] Participantes correspondem a atores, interfaces, serviços ou classes da arquitetura-alvo.
+- [x] O resultado final corresponde às pós-condições do caso de uso.
 
 ### 7.2 Questões de modelagem em aberto
 
