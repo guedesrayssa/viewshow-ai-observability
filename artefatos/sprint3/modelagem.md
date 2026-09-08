@@ -50,6 +50,11 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 | [Arquitetura inicial](../sprint2/arquitetura-inicial.md) | Identificação de componentes e integrações |
 | [Documentação de frontend](../sprint2/frontend.md) | Validação dos fluxos de interface |
 | [Documentação de backend](../sprint2/backend-sprint-2.md) | Validação de serviços, entidades e operações |
+| [Visão geral da arquitetura](../arquitetura/visao-geral.md) | Fonte normativa dos componentes, limites e decisões arquiteturais representados no diagrama de classes |
+| [Ingestão e dados](../arquitetura/ingestao-e-dados.md) | Fonte normativa de <code>DatasetVersion</code>, <code>Manifesto</code> e das fronteiras de persistência |
+| [Análise de dados e diagnóstico por IA](../arquitetura/analise-e-ia.md) | Fonte normativa de <code>Previsao</code>, <code>Diagnostico</code> e do Worker de Análise |
+| [API do dashboard](../arquitetura/api-dashboard.md) | Fonte normativa dos DTOs, enums e estados representados no diagrama de classes |
+| [Status de implementação](../arquitetura/status-implementacao.md) | Registro do que já está implementado, mantido fora do diagrama de classes |
 
 ### 1.4 Convenções adotadas
 
@@ -775,397 +780,382 @@ Várias consultas ao dia, com acompanhamento prolongado durante incidentes e eve
 
 ### 4.1. Objetivo e escopo
 
-&emsp;Esta seção documenta duas partes implementadas do backend, mantidas como contextos separados no repositório:
+&emsp;Esta seção modela exclusivamente a arquitetura-alvo final do View Show, definida nos documentos de [Visão geral da arquitetura](../arquitetura/visao-geral.md), [Ingestão e dados](../arquitetura/ingestao-e-dados.md), [Análise de dados e diagnóstico por IA](../arquitetura/analise-e-ia.md) e [API do dashboard](../arquitetura/api-dashboard.md), e alinhada aos casos de uso da Seção 2 e aos diagramas de sequência da Seção 5 deste documento. As classes, os estados e os relacionamentos representados aqui não são derivados dos arquivos, rotas ou módulos hoje presentes no repositório: eles descrevem a solução aprovada para implementação, independentemente do que já foi construído.
 
-- a API Node.js de consulta, diagnóstico e curadoria, em <code>apps/backend/api</code>;
-- a API Flask de ingestão e normalização de telemetria, em <code>apps/basica/backend</code>.
+&emsp;Elementos transitórios do protótipo — autenticação local, hash de senha, nomes de arquivos e módulos atuais, o schema v1/v2 da tabela operacional e demais limitações momentâneas da implementação — não são modelados nesta seção. Essas informações permanecem registradas no [Status de implementação](../arquitetura/status-implementacao.md), que compara o código existente com o contrato-alvo sem redefini-lo.
 
-&emsp;Para evitar misturar entidades de domínio com módulos de infraestrutura em uma única figura, a modelagem foi dividida em três visões complementares: modelo de domínio e DTO de diagnóstico, dependências da API Node.js e contexto de ingestão Flask. Nos diagramas de dependências, módulos JavaScript e componentes Flask recebem estereótipos UML para dar rastreabilidade ao código; isso não significa que todos sejam classes em tempo de execução.
+&emsp;A modelagem é dividida em três visões complementares, para não misturar conceitos de natureza diferente na mesma figura:
 
-&emsp;O frontend permanece fora do escopo porque apenas consome as APIs. Também não são representados componentes futuros ainda ausentes do código, como um job ARGUS/SQS. Essa exclusão não abrange a ingestão Flask, que já implementa os endpoints de eventos, erros e heartbeat, validação, normalização e persistência relacionados a RF01–RF03 e RF06.
+- **Visão de domínio** (4.2.1): as entidades e os objetos de valor que persistem através do tempo de vida de um incidente, de uma previsão ou de uma importação, independentemente de qual componente os manipula.
+- **Visão de aplicação** (4.2.2): os serviços e as fronteiras que operam sobre o domínio — a API do dashboard, o Worker de Análise, a autorização e os repositórios — segundo os componentes definidos na [Visão geral da arquitetura](../arquitetura/visao-geral.md#3-componentes).
+- **Visão de persistência** (4.2.3): o mapeamento entre as classes de domínio e as camadas físicas de armazenamento (DynamoDB, S3/Parquet, Glue e Athena), sem transformar esses componentes de infraestrutura em classes de domínio.
+
+&emsp;O Serviço de Ingestão e seus registros canônicos (`SignalObservation`, `DimensionalMetricAggregate`, `Incident` físico) possuem contrato próprio e detalhado em [Ingestão e dados](../arquitetura/ingestao-e-dados.md); nesta seção, a Ingestão aparece apenas como fronteira de serviço na visão de aplicação, para não duplicar um contrato já normativo em outro documento. O frontend permanece fora do escopo porque apenas consome a API do dashboard.
 
 ### 4.2. Diagramas
 
-**Figura x — Diagrama de classes do View Show.**
-Fonte: Material produzido pelos autores (2026).
+#### 4.2.1. Modelo de domínio
+
+<div align="center">
+
+<strong>Diagrama x: Modelo de domínio do View Show</strong>
+
+</div>
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
-    class Usuario {
-        <<registro de dominio>>
+    class Operador {
+        <<entidade de domínio>>
+        +id: String
         +email: String
         +name: String
-        -passwordHash: String
-        +createdAt: DateTime
+        +groups: String[]
     }
 
     class Incidente {
-        <<registro de dominio>>
+        <<entidade de domínio>>
         +id: String
-        +traceId: String
-        +component: String
-        +deviceType: String
-        +region: String
-        +appVersion: String
-        +urgency: String
+        +number: String?
+        +title: String
+        +priority: String
         +status: String
-        +startedMinutesAgo: Number
-        +devices: Number
-        +ttl: Number
+        +startedAt: DateTime
+        +detectedAt: DateTime
+        +endedAt: DateTime?
     }
 
     class Evidencia {
-        <<registro de dominio>>
-        +incidentId: String
+        <<entidade de domínio>>
+        +id: String
         +type: String
-        +description: String
-        +source: String
+        +statement: String
+        +relation: String
         +strength: String
-        +capturedAt: DateTime
+        +observedAt: DateTime
+    }
+
+    class Diagnostico {
+        <<entidade de domínio>>
+        +id: String
+        +status: String
+        +summary: String?
+        +confidence: Number?
+        +generatedAt: DateTime?
     }
 
     class Hipotese {
-        <<registro de dominio>>
-        +incidentId: String
-        +text: String
-        +score: Number
-        +diagnosisSource: String?
-        +source: String?
-        +reviewStatus: String?
-        +reviewedBy: String?
+        <<entidade de domínio>>
+        +id: String
+        +rank: Number
+        +statement: String
+        +probability: Number
+        +rationale: String
+    }
+
+    class DecisaoRevisao {
+        <<objeto de valor>>
+        +status: String
+        +note: String?
+        +correctedCause: String?
         +reviewedAt: DateTime?
-        +createdAt: DateTime
+        +version: Number
     }
 
     class CasoGoldenSet {
-        <<registro de dominio>>
-        +caseId: String
-        +incidentSignature: String
-        +expectedHypothesis: String
-        +expectedScore: Number
-        +curatedBy: String
-        +curatedAt: DateTime
-        +sourceIncidentId: String?
+        <<entidade de domínio>>
+        +id: String
+        +statement: String
+        +sourceHypothesisId: String?
+        +confirmedAt: DateTime
     }
 
-    class RelatorioDiagnostico {
-        <<DTO>>
-        +incidentId: String
-        +hypothesis: String
-        +score: Number
-        +evidence: Evidencia[]
-        +diagnosisSource: String
-        +explanation: String
-        +explanationSource: String
+    class Previsao {
+        <<entidade de domínio>>
+        +id: String
+        +predictedValue: Number
+        +riskScore: Number
+        +riskLevel: String
+        +modelVersion: String
+        +classificationOutcome: String?
     }
 
-    Incidente "1" -- "0..*" Evidencia : agrupa por trace_id
-    Incidente "1" -- "0..*" Hipotese : agrupa por trace_id
-    RelatorioDiagnostico "1" --> "0..*" Evidencia : inclui
+    class Janela {
+        <<objeto de valor>>
+        +start: DateTime
+        +end: DateTime
+        +grainSeconds: Number
+    }
+
+    class ImportJob {
+        <<entidade de domínio>>
+        +id: String
+        +status: String
+        +stage: String
+        +error: String?
+        +createdAt: DateTime
+        +activatedAt: DateTime?
+    }
+
+    class DatasetVersion {
+        <<objeto de valor>>
+        +id: String
+    }
+
+    class Manifesto {
+        <<entidade de domínio>>
+        +hotFrom: DateTime
+        +hotThrough: DateTime
+        +archivePrefix: String
+    }
+
+    class AnalysisRun {
+        <<entidade de domínio>>
+        +id: String
+        +eventType: String
+        +idempotencyKey: String
+        +status: String
+        +attemptCount: Number
+    }
+
+    Operador "1" -- "0..*" ImportJob : cria e conclui
+    Operador "1" -- "0..*" DecisaoRevisao : registra
+    Incidente "1" --> "0..*" Evidencia : reúne
+    Incidente "1" --> "0..1" Diagnostico : produz
+    Previsao "1" --> "0..1" Diagnostico : produz
+    Diagnostico "1" --> "1..*" Hipotese : ordena por confiança
+    Hipotese "1" --> "0..*" Evidencia : associa
+    Hipotese "1" *-- "1" DecisaoRevisao : recebe
+    DecisaoRevisao "1" ..> "0..1" CasoGoldenSet : confirmed cria
+    Previsao "1" *-- "1" Janela : targetWindow
+    Incidente "1" --> "1" DatasetVersion : pertence a
+    Previsao "1" --> "1" DatasetVersion : pertence a
+    ImportJob "1" --> "1" DatasetVersion : ativa candidata
+    Manifesto "1" --> "1" DatasetVersion : aponta versão ativa
+    AnalysisRun "1" --> "0..1" Incidente : correlaciona ou cria
+    AnalysisRun "1" --> "0..1" Previsao : produz
 ```
 
-**Figura x — Modelo de domínio e DTO da API de diagnóstico.**
-Fonte: Material produzido pelos autores (2026), com base em <code>apps/backend/api/src</code>.
+<div align="center">
 
-&emsp;As ligações acima são associações lógicas usadas para recuperar o bundle pelo <code>trace_id</code>; não representam chave estrangeira, exclusão em cascata ou ciclo de vida transacional no DynamoDB. Os campos <code>reviewedBy</code> e <code>sourceIncidentId</code> são valores escalares copiados, por isso não foram desenhados como associações estruturais com <code>Usuario</code> ou <code>Incidente</code>.
+Fonte: Material produzido pelos autores (2026).
 
-&emsp;O atributo <code>passwordHash</code> é mantido porque esta visão descreve fielmente a implementação atual da API Node.js. Ele constitui, porém, uma dívida técnica: RF04, RNF04 e RESTR01 determinam que a autenticação do produto-alvo seja delegada ao SSO corporativo e que o View Show não armazene senhas. Sua presença não representa uma decisão arquitetural aprovada e deve ser removida quando a integração federada substituir a sessão local do protótipo.
+</div>
 
-#### 4.2.2. Rotas e serviços da API Node.js
+&emsp;`Operador` substitui qualquer noção de conta local: representa a identidade corporativa validada pelo Cognito federado ao SSO da Globo (RF04, RNF04, RIE01, RESTR01), sem atributo de senha, hash ou cadastro próprio. Os perfis especializados do diagrama de casos de uso — Analista N1, Engenheira de Software e Product Manager — são papéis de autorização sobre essa mesma identidade, não classes de domínio adicionais; a permissão `data:import`, concedida pelo grupo Cognito `data-operator`, é o que autoriza um `Operador` a criar ou concluir um `ImportJob`.
+
+&emsp;`Incidente` representa uma degradação já observada; `Previsao` representa uma estimativa de risco futuro. Essa distinção é proposital: uma previsão nunca se torna um incidente automaticamente, e cada uma pode originar, no máximo, um `Diagnostico`. O `Diagnostico` agrega as `Hipotese` candidatas — cada uma associada às evidências que a sustentam — e permanece com `status = PENDING`/`not_started` até que existam dados suficientes para investigar.
+
+&emsp;`AnalysisRun` representa a execução idempotente de uma mensagem da SQS de Análise (`ANOMALY_DETECTION`, `QOE_FORECAST` ou `REANALYSIS_REQUESTED`); seu `idempotencyKey` garante que uma entrega duplicada ou fora de ordem não produza um `Incidente` ou uma `Previsao` repetidos. Cada execução correlaciona ou cria, no máximo, um `Incidente` (detecção) ou produz, no máximo, uma `Previsao` (previsão preventiva), nunca os dois ao mesmo tempo.
+
+&emsp;`DecisaoRevisao` modela a revisão humana embutida em cada `Hipotese`, com os quatro estados definidos pelo contrato da API: `pending`, `confirmed`, `refuted` e `inconclusive`. Apenas uma decisão `confirmed` cria um `CasoGoldenSet`; `refuted` pode registrar `correctedCause` quando o revisor conhece uma causa diferente; `inconclusive` não é terminal e permanece revisável com uma nova versão. `confirmed` e `refuted` são estados finais e não podem ser sobrescritos.
+
+&emsp;`DatasetVersion` identifica a versão física ativada por uma importação; `Incidente`, `Previsao` e `ImportJob` referenciam a versão sob a qual foram produzidos, e o `Manifesto` aponta qual `DatasetVersion` está ativa e delimita a fronteira entre a camada quente (`hotFrom`/`hotThrough`, no DynamoDB) e o arquivo histórico (`archivePrefix`, em Parquet no S3). Um `ImportJob` só ativa sua `candidateDatasetVersion` como versão do `Manifesto` depois de validar as duas camadas; uma falha preserva a versão anterior.
+
+#### 4.2.2. Serviços e fronteiras da aplicação
+
+<div align="center">
+
+<strong>Diagrama x: Serviços e fronteiras da arquitetura-alvo</strong>
+
+</div>
 
 ```mermaid
 flowchart TB
-    App["app.js"]
-
-    subgraph Routes["Rotas HTTP"]
-        Auth["routes/auth.js"]
-        Incidents["routes/incidents.js"]
-        Dashboard["routes/dashboard.js"]
-        GoldenRoute["routes/goldenSet.js"]
-        MlRoute["routes/ml.js"]
-        Health["routes/health.js"]
-        RequireAuth["middleware/requireAuth.js"]
+    subgraph API["Fronteira pública: API do Dashboard"]
+        AuthB["Autenticação e sessão<br/>&lt;&lt;boundary&gt;&gt;"]
+        OverviewB["Visão geral, incidentes e eventos<br/>&lt;&lt;boundary&gt;&gt;"]
+        ReviewB["Revisão de hipótese<br/>&lt;&lt;boundary&gt;&gt;"]
+        ImportB["Importação de dump<br/>&lt;&lt;boundary&gt;&gt;"]
+        ReanalyzeB["Reanálise<br/>&lt;&lt;boundary&gt;&gt;"]
+        MonitoringB["Monitoramento<br/>&lt;&lt;boundary&gt;&gt;"]
     end
 
-    subgraph Services["Serviços e orquestração"]
-        UserService["services/userService.js"]
-        Session["auth/session.js"]
-        EvidenceService["services/evidenceService.js"]
-        GoldenService["services/goldenSetService.js"]
-        MlService["services/mlService.js"]
-        Orchestrator["orchestrator/index.js"]
+    subgraph AppSvc["Serviços de aplicação"]
+        AuthzSvc["Serviço de autorização<br/>&lt;&lt;control&gt;&gt;"]
+        ImportSvc["Serviço de importação<br/>&lt;&lt;control&gt;&gt;"]
+        ReviewSvc["Serviço de revisão<br/>&lt;&lt;control&gt;&gt;"]
     end
 
-    App --> Auth
-    App --> Incidents
-    App --> Dashboard
-    App --> GoldenRoute
-    App --> MlRoute
-    App --> Health
-
-    Auth --> UserService
-    Auth --> Session
-    Incidents --> EvidenceService
-    Incidents --> GoldenService
-    Incidents --> Orchestrator
-    Incidents --> RequireAuth
-    Dashboard --> EvidenceService
-    GoldenRoute --> GoldenService
-    MlRoute --> MlService
-    RequireAuth --> Session
-```
-
-**Figura x — Dependências entre rotas e serviços da API Node.js.**
-Fonte: Material produzido pelos autores (2026), com base nos <code>require</code> de <code>apps/backend/api/src</code>.
-
-#### 4.2.3. Orquestração e persistência da API Node.js
-
-```mermaid
-flowchart TB
-    subgraph Orchestration["Orquestração e serviços"]
-        UserService["services/userService.js"]
-        EvidenceService["services/evidenceService.js"]
-        GoldenService["services/goldenSetService.js"]
-        MlService["services/mlService.js"]
-        BedrockService["services/bedrockService.js"]
-        Orchestrator["orchestrator/index.js"]
-        Agent["agent/index.js"]
+    subgraph Analysis["Worker de Análise"]
+        Orchestrator["Analysis Orchestrator<br/>&lt;&lt;control&gt;&gt;"]
+        Detector["Anomaly Detector<br/>&lt;&lt;control&gt;&gt;"]
+        Forecast["QoE Forecast Model<br/>&lt;&lt;control&gt;&gt;"]
+        Agent["Diagnostic Agent<br/>&lt;&lt;control&gt;&gt;"]
     end
 
-    subgraph Persistence["Persistência DynamoDB"]
-        OperationalTable["db/operationalTable.js"]
-        GoldenTable["db/goldenSetTable.js"]
-        Keys["db/keys.js"]
-        Client["db/client.js<br/>DynamoDBDocumentClient"]
+    subgraph Repos["Repositórios"]
+        OperRepo[("Repositório operacional<br/>&lt;&lt;repository&gt;&gt;")]
+        GoldenRepo[("Repositório do conjunto<br/>de referência<br/>&lt;&lt;repository&gt;&gt;")]
+        HistRepo[("Repositório histórico<br/>&lt;&lt;repository&gt;&gt;")]
     end
 
-    Orchestrator --> EvidenceService
-    Orchestrator --> GoldenService
-    Orchestrator --> BedrockService
+    subgraph External["Integrações externas"]
+        Ingestion["Serviço de Ingestão"]
+        Cognito["Cognito / SSO Globo"]
+        Bedrock["Amazon Bedrock"]
+        Queue["SQS de Análise"]
+        Fargate["ECS/Fargate"]
+    end
+
+    AuthB --> AuthzSvc --> Cognito
+    OverviewB --> AuthzSvc
+    ReviewB --> AuthzSvc
+    ImportB --> AuthzSvc
+    ReanalyzeB --> AuthzSvc
+    MonitoringB --> AuthzSvc
+
+    ReviewB --> ReviewSvc
+    ImportB --> ImportSvc
+    ReanalyzeB --> Queue
+
+    ReviewSvc --> OperRepo
+    ReviewSvc --> GoldenRepo
+    ImportSvc --> Fargate
+    ImportSvc --> OperRepo
+    OverviewB --> OperRepo
+    OverviewB --> HistRepo
+    MonitoringB --> OperRepo
+
+    Ingestion --> OperRepo
+    Ingestion --> HistRepo
+    Ingestion --> Queue
+
+    Queue --> Orchestrator
+    Orchestrator --> Detector
+    Orchestrator --> Forecast
     Orchestrator --> Agent
-    Agent --> MlService
-
-    EvidenceService --> OperationalTable
-    EvidenceService --> Keys
-    GoldenService --> GoldenTable
-    UserService --> Client
-    OperationalTable --> Client
-    GoldenTable --> Client
+    Orchestrator --> OperRepo
+    Orchestrator --> GoldenRepo
+    Agent --> Bedrock
 ```
 
-**Figura x — Dependências de orquestração e persistência da API Node.js.**
-Fonte: Material produzido pelos autores (2026), com base nos <code>require</code> de <code>apps/backend/api/src</code>.
+<div align="center">
 
-&emsp;<code>TabelaOperacional</code> representa especificamente o módulo <code>db/operationalTable.js</code>, não a tabela física. O serviço de usuários contorna esse wrapper e envia <code>GetCommand</code> e <code>PutCommand</code> diretamente pelo <code>DynamoDBDocumentClient</code>. Essa exceção à fronteira do repositório de incidentes está explícita na Figura x.
+Fonte: Material produzido pelos autores (2026).
 
-#### 4.2.4. Contexto implementado de ingestão Flask
+</div>
 
-```mermaid
-classDiagram
-    direction LR
+&emsp;O Backend é a única fronteira pública do View Show, conforme a invariante transversal registrada em [Fluxos integrados](../arquitetura/fluxos.md#3-invariantes-transversais); nenhum outro componente expõe endpoint diretamente ao Dashboard. O Serviço de Autorização concentra a validação da sessão federada e das permissões associadas ao `Operador`, incluindo `data:import`, antes de qualquer fronteira delegar a uma consulta ou a um comando.
 
-    class ControladorTelemetria {
-        <<Flask Blueprint>>
-        +ingest_events()
-        +ingest_errors()
-        +ingest_heartbeat()
-    }
+&emsp;O orquestrador de análise (`Analysis Orchestrator`), o detector de anomalias, o modelo de previsão e o agente diagnóstico permanecem módulos internos do Worker de Análise, conforme a decisão D6 da [Visão geral da arquitetura](../arquitetura/visao-geral.md#d6--orquestrador-dentro-do-worker-de-análise): eles não possuem repositório, API ou ciclo de implantação próprios nesta versão. O Worker consulta o Repositório do conjunto de referência apenas para leitura; somente o Serviço de Revisão, acionado pela fronteira de revisão do Backend, possui permissão de escrita nesse repositório (decisão D8).
 
-    class ServicoIngestaoTelemetria {
-        <<service>>
-        +ingest_events(payload) IngestionResult
-        +ingest_errors(payload) IngestionResult
-        +ingest_heartbeats(payload) IngestionResult
-    }
+&emsp;Cada repositório é a única porta de acesso à sua área de persistência — o Repositório operacional concentra incidentes, evidências, diagnósticos, hipóteses, previsões, `ImportJob` e o `Manifesto`; o Repositório do conjunto de referência isola os `CasoGoldenSet` confirmados; o Repositório histórico encapsula as consultas ao Athena sobre o arquivo Parquet no S3. ARGUS, Cognito/SSO, Amazon Bedrock, a SQS de Análise e o ECS/Fargate são integrações externas ou serviços gerenciados pela AWS: aparecem como dependências da aplicação, não como classes de domínio.
 
-    class RepositorioTelemetria {
-        <<interface>>
-        +add_events(events) int
-        +add_errors(errors) int
-        +add_heartbeats(heartbeats) int
-    }
+#### 4.2.3. Mapeamento de persistência
 
-    class RepositorioDynamoDB {
-        <<repository>>
-    }
+&emsp;A tabela a seguir liga cada classe de domínio à área de armazenamento física correspondente, sem promover tabelas, buckets ou filas a classes de domínio. Os contratos completos de chaves, partições e watermarks estão em [Ingestão e dados](../arquitetura/ingestao-e-dados.md#10-contrato-de-persistência).
 
-    class RepositorioMemoria {
-        <<repository>>
-    }
-
-    class EventoReproducao {
-        <<domain>>
-    }
-
-    class EventoErro {
-        <<domain>>
-    }
-
-    class Heartbeat {
-        <<domain>>
-    }
-
-    class DeviceInfo {
-        <<value object>>
-    }
-
-    class NetworkInfo {
-        <<value object>>
-    }
-
-    class Span {
-        <<value object>>
-    }
-
-    ControladorTelemetria --> ServicoIngestaoTelemetria : delega payload
-    ServicoIngestaoTelemetria --> RepositorioTelemetria : persiste aceitos
-    ServicoIngestaoTelemetria ..> EventoReproducao : normaliza
-    ServicoIngestaoTelemetria ..> EventoErro : normaliza
-    ServicoIngestaoTelemetria ..> Heartbeat : normaliza
-    RepositorioTelemetria <|.. RepositorioDynamoDB
-    RepositorioTelemetria <|.. RepositorioMemoria
-    EventoReproducao *-- DeviceInfo
-    EventoReproducao *-- NetworkInfo
-    EventoReproducao *-- "0..*" Span
-    EventoErro *-- DeviceInfo
-    EventoErro *-- NetworkInfo
-    EventoErro *-- "0..*" Span
-    Heartbeat *-- DeviceInfo
-    Heartbeat *-- NetworkInfo
-```
-
-**Figura x — Classes principais do contexto Flask de ingestão.**
-Fonte: Material produzido pelos autores (2026), com base em <code>apps/basica/backend/app</code>.
+| Classe de domínio | Repositório | Armazenamento físico |
+|:---|:---|:---|
+| <code>Incidente</code>, <code>Evidencia</code>, <code>Diagnostico</code>, <code>Hipotese</code> | Repositório operacional | DynamoDB <code>monitoracao-operacional</code> (até 30 dias) e arquivo Parquet no S3 para o período histórico da mesma <code>DatasetVersion</code> |
+| <code>Previsao</code> | Repositório operacional | DynamoDB <code>monitoracao-operacional</code> |
+| <code>ImportJob</code> | Repositório operacional | DynamoDB <code>monitoracao-operacional</code>, item de controle de importação |
+| <code>Manifesto</code> | Repositório operacional | DynamoDB <code>monitoracao-operacional</code>, item <code>CONTROL#DATASET/ACTIVE</code> |
+| <code>CasoGoldenSet</code> | Repositório do conjunto de referência | DynamoDB <code>monitoracao-golden-set</code>, sem TTL |
+| <code>Operador</code> | Nenhum — identidade federada | Cognito federado ao SSO da Globo; o View Show não mantém tabela própria de contas nem credenciais |
 
 ### 4.3. Descrição dos elementos
 
-#### 4.3.1. Domínio e DTO
+#### 4.3.1. Modelo de domínio
 
-| Elemento | Tipo | Responsabilidade | Principais atributos | Origem no código |
-|:---|:---|:---|:---|:---|
-| <code>Usuario</code> | Registro de domínio | Representa a conta local do protótipo, identificada como dívida técnica a ser substituída pela identidade federada. | <code>email</code>, <code>name</code>, <code>passwordHash</code>, <code>createdAt</code> | <code>src/services/userService.js</code>; item <code>USER#&lt;email&gt;</code> |
-| <code>Incidente</code> | Registro de domínio | Agrupa uma falha ou degradação detectada. | <code>id</code>, <code>traceId</code>, componente, dispositivo, região, versão e estado | item <code>INCIDENT#&lt;id&gt;</code> na tabela operacional |
-| <code>Evidencia</code> | Registro de domínio | Sinal coletado em favor ou contra uma hipótese. | <code>incidentId</code>, tipo, descrição, origem, força e captura | item v2 <code>EVIDENCE#&lt;id&gt;#&lt;seq&gt;</code> |
-| <code>Hipotese</code> | Registro de domínio | Diagnóstico gerado ou semeado e seu estado opcional de revisão humana. | texto, score, origem, revisão e criação | item v2 <code>HYPOTHESIS#&lt;id&gt;#&lt;epoch&gt;</code> |
-| <code>CasoGoldenSet</code> | Registro de domínio | Diagnóstico confirmado e indexado por assinatura determinística. | identificador, assinatura, hipótese e score esperados, curadoria e incidente de origem opcional | <code>src/services/goldenSetService.js</code> |
-| <code>RelatorioDiagnostico</code> | DTO | Retorno não persistido do orquestrador. | <code>incidentId</code>, hipótese, score, <code>evidence</code>, origem e explicação | objeto retornado por <code>orchestrator.diagnose()</code> |
-
-#### 4.3.2. API Node.js
-
-| Elemento | Camada | Responsabilidade | Origem no código |
+| Elemento | Tipo | Responsabilidade | Fonte normativa |
 |:---|:---|:---|:---|
-| <code>AplicacaoExpress</code> | Bootstrap HTTP | Registra os seis routers e os middlewares globais. | <code>src/app.js</code> |
-| <code>ControladorAutenticacao</code> | HTTP | Expõe login, cadastro e o stub de SSO. | <code>src/routes/auth.js</code> |
-| <code>ControladorIncidentes</code> | HTTP | Expõe listagem, detalhe, evidências, hipótese, revisão e diagnóstico. | <code>src/routes/incidents.js</code> |
-| <code>ControladorDashboard</code> | HTTP | Expõe o resumo agregado de incidentes. | <code>src/routes/dashboard.js</code> |
-| <code>ControladorGoldenSet</code> | HTTP | Busca um caso curado por assinatura. | <code>src/routes/goldenSet.js</code> |
-| <code>ControladorML</code> | HTTP | Expõe diretamente o contrato mockado de análise. | <code>src/routes/ml.js</code> |
-| <code>ControladorHealth</code> | HTTP | Expõe o estado básico do processo. | <code>src/routes/health.js</code> |
-| <code>MiddlewareAutenticacao</code> | Middleware | Protege a revisão de hipótese com cookie de sessão válido. | <code>src/middleware/requireAuth.js</code> |
-| <code>ServicoUsuario</code> | Serviço | Cria e autentica contas; acessa o cliente DynamoDB diretamente e usa memória como fallback local. | <code>src/services/userService.js</code> |
-| <code>GerenciadorSessao</code> | Serviço | Assina, verifica e interpreta o cookie de sessão. | <code>src/auth/session.js</code> |
-| <code>ServicoEvidencias</code> | Serviço | Consulta incidentes e bundles e grava/revisa hipóteses. | <code>src/services/evidenceService.js</code> |
-| <code>ServicoGoldenSet</code> | Serviço | Consulta casos por assinatura e promove hipóteses confirmadas. | <code>src/services/goldenSetService.js</code> |
-| <code>ServicoML</code> | Serviço | Analisa a entrada segundo um contrato atualmente mockado. | <code>src/services/mlService.js</code> |
-| <code>ServicoExplicacao</code> | Serviço | Produz explicação via Bedrock ou template de fallback. | <code>src/services/bedrockService.js</code> |
-| <code>Orquestrador</code> | Orquestração | Escolhe golden set ou agente, persiste a hipótese e monta o relatório. | <code>src/orchestrator/index.js</code> |
-| <code>AgenteInvestigador</code> | Orquestração | Combina incidente, evidências e o score do serviço de ML. | <code>src/agent/index.js</code> |
-| <code>TabelaOperacional</code> | Persistência | Wrapper de Query, Put e Update para incidentes, evidências e hipóteses. | <code>src/db/operationalTable.js</code> |
-| <code>TabelaGoldenSet</code> | Persistência | Wrapper de Get, Query e escrita curada da golden set. | <code>src/db/goldenSetTable.js</code> |
-| <code>ClienteDynamoDB</code> | Infraestrutura | Instância compartilhada de <code>DynamoDBDocumentClient</code>. | <code>src/db/client.js</code> |
-| <code>ChavesDynamoDB</code> | Infraestrutura | Monta chaves v2 e classifica itens dos schemas v1 e v2. | <code>src/db/keys.js</code> |
+| <code>Operador</code> | Entidade de domínio | Identidade corporativa autenticada, portadora dos grupos que autorizam operações sensíveis como a importação de dump. | [Visão geral §7](../arquitetura/visao-geral.md#7-segurança); RF04, RNF04, RIE01, RESTR01 |
+| <code>Incidente</code> | Entidade de domínio | Agrupa uma degradação efetivamente observada, da detecção ao encerramento. | [API do dashboard §6](../arquitetura/api-dashboard.md#6-incidentes) |
+| <code>Evidencia</code> | Entidade de domínio | Sinal que sustenta ou contesta uma hipótese diagnóstica. | [API do dashboard §7](../arquitetura/api-dashboard.md#7-diagnóstico-e-evidências) |
+| <code>Diagnostico</code> | Entidade de domínio | Agrega as hipóteses candidatas de um incidente ou de uma previsão de risco elevado. | [Análise e IA §9](../arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico) |
+| <code>Hipotese</code> | Entidade de domínio | Causa provável ranqueada por confiança, sujeita a revisão humana. | [Análise e IA §9](../arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico) |
+| <code>DecisaoRevisao</code> | Objeto de valor | Decisão humana sobre uma hipótese, com concorrência otimista por versão. | [API do dashboard §8](../arquitetura/api-dashboard.md#8-revisão-de-hipótese) |
+| <code>CasoGoldenSet</code> | Entidade de domínio | Diagnóstico confirmado, usado como referência para análises futuras. | [Análise e IA §10](../arquitetura/analise-e-ia.md#10-persistência-de-incidentes-e-diagnósticos) |
+| <code>Previsao</code> | Entidade de domínio | Estimativa de risco de degradação para a janela horária seguinte. | [Análise e IA §7](../arquitetura/analise-e-ia.md#7-previsão-preventiva) |
+| <code>Janela</code> | Objeto de valor | Intervalo temporal e granularidade de uma previsão. | [Análise e IA §7](../arquitetura/analise-e-ia.md#7-previsão-preventiva) |
+| <code>ImportJob</code> | Entidade de domínio | Acompanha o upload, a restauração e a ativação de um dump do ARGUS. | [Visão geral §D9](../arquitetura/visao-geral.md#d9--importação-assíncrona-e-ativação-versionada) |
+| <code>DatasetVersion</code> | Objeto de valor | Identifica a versão física de um conjunto de dados. | [Ingestão e dados §10.5](../arquitetura/ingestao-e-dados.md#105-controle) |
+| <code>Manifesto</code> | Entidade de domínio | Aponta a <code>DatasetVersion</code> ativa e a fronteira entre as camadas quente e histórica. | [Ingestão e dados §10.5](../arquitetura/ingestao-e-dados.md#105-controle) |
+| <code>AnalysisRun</code> | Entidade de domínio | Execução idempotente de uma mensagem de análise; evita duplicar incidentes ou previsões em reentregas. | [Análise e IA §5](../arquitetura/analise-e-ia.md#5-idempotência-e-estado-da-execução) |
 
-#### 4.3.3. Ingestão Flask
+#### 4.3.2. Serviços e fronteiras
 
-| Elemento | Camada | Responsabilidade | Origem no código |
+| Elemento | Camada | Responsabilidade | Fonte normativa |
 |:---|:---|:---|:---|
-| <code>ControladorTelemetria</code> | HTTP | Recebe eventos, erros e heartbeat nos endpoints <code>/v1/telemetry</code>. | <code>app/controllers/telemetry.py</code> |
-| <code>ServicoIngestaoTelemetria</code> | Serviço | Valida lotes, normaliza itens, separa aceitos e rejeitados e persiste os aceitos. | <code>app/services/ingestion.py</code> |
-| <code>RepositorioTelemetria</code> | Porta | Define o contrato de persistência e consulta da telemetria. | <code>app/repositories/base.py</code> |
-| <code>RepositorioDynamoDB</code> | Adaptador | Implementa o contrato usando DynamoDB. | <code>app/repositories/dynamodb.py</code> |
-| <code>RepositorioMemoria</code> | Adaptador | Implementa o mesmo contrato para execução local e testes. | <code>app/repositories/memory.py</code> |
-| <code>EventoReproducao</code>, <code>EventoErro</code>, <code>Heartbeat</code> | Domínio | Representam os três tipos persistidos pela ingestão. | <code>app/domain/models.py</code> |
-| <code>DeviceInfo</code>, <code>NetworkInfo</code>, <code>Span</code> | Objetos de valor | Estruturam dispositivo, rede e trechos de trace. | <code>app/domain/models.py</code> |
+| Autenticação e sessão | Fronteira (boundary) | Conclui o fluxo OIDC com o Cognito e emite o cookie de sessão. | [API do dashboard §11](../arquitetura/api-dashboard.md#11-autenticação-federada-e-sessão) |
+| Visão geral, incidentes e eventos | Fronteira (boundary) | Expõe consultas de leitura sobre o Repositório operacional e o Repositório histórico. | [API do dashboard §5, §6, §9](../arquitetura/api-dashboard.md#5-visão-geral) |
+| Revisão de hipótese | Fronteira (boundary) | Recebe a decisão humana e delega ao Serviço de revisão. | [API do dashboard §8](../arquitetura/api-dashboard.md#8-revisão-de-hipótese) |
+| Importação de dump | Fronteira (boundary) | Inicia e acompanha o <code>ImportJob</code>. | [API do dashboard §12](../arquitetura/api-dashboard.md#12-importação-assíncrona-de-dump) |
+| Reanálise | Fronteira (boundary) | Publica uma solicitação <code>REANALYSIS_REQUESTED</code> na SQS de Análise. | [API do dashboard §13](../arquitetura/api-dashboard.md#13-solicitação-de-reanálise) |
+| Monitoramento | Fronteira (boundary) | Expõe a saúde das fontes e do pipeline de ingestão e análise. | [API do dashboard §10](../arquitetura/api-dashboard.md#10-monitoramento) |
+| Serviço de autorização | Serviço (control) | Resolve a sessão corporativa e verifica permissões como <code>data:import</code>. | [Visão geral §7](../arquitetura/visao-geral.md#7-segurança) |
+| Serviço de importação | Serviço (control) | Cria o <code>ImportJob</code>, gera URLs pré-assinadas e inicia a tarefa Fargate. | [Visão geral §D9](../arquitetura/visao-geral.md#d9--importação-assíncrona-e-ativação-versionada) |
+| Serviço de revisão | Serviço (control) | Aplica a concorrência otimista da <code>DecisaoRevisao</code> e promove o <code>CasoGoldenSet</code>. | [Análise e IA §10](../arquitetura/analise-e-ia.md#10-persistência-de-incidentes-e-diagnósticos) |
+| Analysis Orchestrator | Serviço (control), interno ao Worker | Decide quando investigar, reúne contexto e aciona o agente diagnóstico. | [Análise e IA §9](../arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico); decisão D6 |
+| Anomaly Detector | Serviço (control), interno ao Worker | Aplica MAD e distância de Mahalanobis à janela de 15 minutos. | [Análise e IA §6](../arquitetura/analise-e-ia.md#6-detecção-reativa) |
+| QoE Forecast Model | Serviço (control), interno ao Worker | Estima o risco de degradação da hora seguinte. | [Análise e IA §7](../arquitetura/analise-e-ia.md#7-previsão-preventiva) |
+| Diagnostic Agent | Serviço (control), interno ao Worker | Estrutura o contexto enviado ao Bedrock e ranqueia as hipóteses recebidas. | [Análise e IA §9](../arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico) |
+| Repositório operacional | Repositório | Única porta de acesso à tabela <code>monitoracao-operacional</code>. | [Ingestão e dados §10.1](../arquitetura/ingestao-e-dados.md#101-tabelas-físicas) |
+| Repositório do conjunto de referência | Repositório | Única porta de acesso à tabela <code>monitoracao-golden-set</code>; leitura pelo Worker, escrita pelo Serviço de revisão. | Decisão D8 |
+| Repositório histórico | Repositório | Encapsula as consultas ao Athena sobre o arquivo Parquet do S3. | [Ingestão e dados §10.3](../arquitetura/ingestao-e-dados.md#103-arquivo-histórico) |
 
-#### 4.3.4. Mapeamento entre nomes conceituais e persistidos
+#### 4.3.3. Estados e enumerações
 
-&emsp; Os diagramas usam nomes conceituais em português e camelCase para leitura. A tabela
-abaixo torna explícita a tradução para os objetos efetivamente persistidos.
-
-| Elemento conceitual | Campo ou representação física | Obrigatoriedade e observação |
+| Elemento | Estados possíveis | Transição relevante |
 |:---|:---|:---|
-| <code>Incidente.traceId</code> | <code>trace_id</code> | Obrigatório nos itens do bundle e chave do GSI <code>trace-index</code>. |
-| <code>Evidencia.seq</code> | último segmento de <code>sk</code> | Não existe como atributo separado; é codificado com três dígitos na chave. |
-| <code>Hipotese.origem</code> | <code>diagnosisSource</code> ou <code>source</code> | Diagnósticos gerados usam <code>diagnosisSource</code>; hipóteses do seed usam <code>source</code>. |
-| <code>Hipotese.reviewStatus</code> | <code>reviewStatus</code> | Opcional até ocorrer revisão humana. |
-| <code>Hipotese.reviewedBy</code> | <code>reviewedBy</code> | Opcional até ocorrer revisão humana; contém um e-mail copiado. |
-| <code>Hipotese.reviewedAt</code> | <code>reviewedAt</code> | Opcional até ocorrer revisão humana. |
-| <code>CasoGoldenSet.caseId</code> | <code>case_id</code> | Obrigatório e usado como chave primária. |
-| <code>CasoGoldenSet.incidentSignature</code> | <code>incident_signature</code> | Obrigatório. |
-| <code>CasoGoldenSet.expectedHypothesis</code> | <code>expected_hypothesis</code> | Obrigatório. |
-| <code>CasoGoldenSet.expectedScore</code> | <code>expected_score</code> | Obrigatório. |
-| <code>CasoGoldenSet.curatedBy</code> | <code>curated_by</code> | Obrigatório. |
-| <code>CasoGoldenSet.curatedAt</code> | <code>curated_at</code> | Obrigatório. |
-| <code>CasoGoldenSet.sourceIncidentId</code> | <code>source_incident_id</code> | Opcional; casos carregados pelo seed não possuem esse campo. |
-| Identidade técnica do item | <code>pk</code> e <code>sk</code> | Infraestrutura de persistência, omitida dos registros de domínio. |
-
-#### 4.3.5. Versões do schema da tabela operacional
-
-| Tipo | Schema v2 — novas escritas | Schema v1 — somente leitura legada |
-|:---|:---|:---|
-| Incidente | <code>INCIDENT#&lt;id&gt;</code> | igual ao v2 |
-| Evidência | <code>EVIDENCE#&lt;id&gt;#&lt;seq:3&gt;</code> | <code>INCIDENT#&lt;id&gt;#EVIDENCE#&lt;seq&gt;</code> |
-| Hipótese | <code>HYPOTHESIS#&lt;id&gt;#&lt;epoch:10&gt;</code> | <code>INCIDENT#&lt;id&gt;#HYPOTHESIS#&lt;epoch&gt;</code> |
-
-&emsp; <code>db/keys.js</code> gera apenas chaves v2 para novas escritas e reconhece os dois
-formatos durante a transição. Todos os itens relacionados carregam o mesmo
-<code>trace_id</code>; <code>getIncidentBundle()</code> consulta o GSI
-<code>trace-index</code> por esse valor e remonta o bundle sem depender do prefixo de
-<code>sk</code>.
+| <code>Incidente.status</code> | <code>detected</code>, <code>investigating</code>, <code>confirmed</code>, <code>resolved</code>, <code>closed</code> | Criado como <code>detected</code> pelo Analysis Orchestrator ao correlacionar uma anomalia; demais transições dependem da investigação e da revisão humana. |
+| <code>Diagnostico.status</code> | <code>not_started</code>, <code>processing</code>, <code>ready</code>, <code>failed</code> | Avança para <code>processing</code> quando há qualidade suficiente para investigar; <code>failed</code> preserva evidências já produzidas. |
+| <code>DecisaoRevisao.status</code> | <code>pending</code>, <code>confirmed</code>, <code>refuted</code>, <code>inconclusive</code> | <code>confirmed</code> e <code>refuted</code> são terminais; apenas <code>confirmed</code> cria um <code>CasoGoldenSet</code>; <code>inconclusive</code> permanece revisável. |
+| <code>Previsao.classificationOutcome</code> | <code>TP</code>, <code>FP</code>, <code>TN</code>, <code>FN</code>, <code>UNKNOWN</code> | Calculado ao avaliar a previsão anterior contra o valor efetivamente observado na janela seguinte. |
+| <code>ImportJob.status</code> | <code>UPLOADING</code>, <code>PROCESSING</code>, <code>COMPLETED</code>, <code>FAILED</code> | <code>ImportJob.stage</code> detalha <code>PROCESSING</code> em <code>VALIDATING</code>, <code>RESTORING</code>, <code>INGESTING</code> e <code>ACTIVATING</code>. |
+| <code>AnalysisRun.status</code> | <code>PROCESSING</code>, <code>RETRY_PENDING</code>, <code>SUCCEEDED</code>, <code>FAILED</code> | Uma execução <code>SUCCEEDED</code> confirma a mensagem sem reprocessar; uma execução incompleta retoma a partir da última etapa persistida. |
 
 ### 4.4. Relacionamentos e dependências
 
 | Origem | Relação | Destino | Multiplicidade | Justificativa |
 |:---|:---|:---|:---|:---|
-| <code>Incidente</code> | Associação | <code>Evidencia</code> | <code>1 — 0..*</code> | Compartilham <code>trace_id</code>, mas não há exclusão em cascata nem transação de ciclo de vida. |
-| <code>Incidente</code> | Associação | <code>Hipotese</code> | <code>1 — 0..*</code> | O bundle reúne as hipóteses pelo GSI; cada item possui persistência e TTL próprios. |
-| <code>RelatorioDiagnostico</code> | Associação | <code>Evidencia</code> | <code>1 — 0..*</code> | O retorno de <code>diagnose()</code> inclui o array <code>evidence</code>. |
-| <code>ControladorIncidentes</code> | Dependência | serviços de evidências, golden set, orquestrador e autenticação | — | Corresponde aos imports reais de <code>routes/incidents.js</code>. |
-| <code>ControladorGoldenSet</code> | Dependência | <code>ServicoGoldenSet</code> | — | A rota consulta diretamente o serviço por assinatura. |
-| <code>ControladorML</code> | Dependência | <code>ServicoML</code> | — | A rota expõe diretamente <code>mlService.analyze()</code>. |
-| <code>Orquestrador</code> | Dependência | evidências, golden set, explicação e agente | — | Decide a origem do diagnóstico e combina o resultado. |
-| <code>AgenteInvestigador</code> | Dependência | <code>ServicoML</code> | — | Recebe dados prontos e delega o cálculo do score. |
-| <code>ServicoEvidencias</code> | Dependência | <code>TabelaOperacional</code> e <code>ChavesDynamoDB</code> | — | Usa o wrapper para persistência e o módulo de chaves para schema/classificação. |
-| <code>ServicoUsuario</code> | Dependência | <code>ClienteDynamoDB</code> | — | Envia comandos diretamente, sem importar <code>TabelaOperacional</code>. |
-| <code>TabelaOperacional</code>, <code>TabelaGoldenSet</code> | Dependência | <code>ClienteDynamoDB</code> | — | Ambos os wrappers compartilham o cliente de baixo nível. |
-| <code>ServicoIngestaoTelemetria</code> | Dependência | <code>RepositorioTelemetria</code> | — | Persiste registros normalizados por meio do contrato. |
-| Adaptadores DynamoDB e memória | Realização | <code>RepositorioTelemetria</code> | — | Implementam a mesma porta de persistência. |
-
-&emsp;<code>reviewedBy</code> e <code>source_incident_id</code> são valores escalares sem integridade referencial; por isso não recebem multiplicidades nem associações no diagrama.
+| <code>Incidente</code> | Associação | <code>Evidencia</code> | <code>1 — 0..*</code> | Um incidente reúne todas as evidências coletadas em seu favor ou contra suas hipóteses. |
+| <code>Incidente</code> | Associação | <code>Diagnostico</code> | <code>1 — 0..1</code> | Um incidente possui, no máximo, um diagnóstico em andamento ou concluído. |
+| <code>Previsao</code> | Associação | <code>Diagnostico</code> | <code>1 — 0..1</code> | Uma previsão com risco elevado pode originar um diagnóstico preventivo, sem se tornar um incidente. |
+| <code>Diagnostico</code> | Associação | <code>Hipotese</code> | <code>1 — 1..*</code> | O agente diagnóstico ranqueia ao menos uma hipótese candidata por confiança. |
+| <code>Hipotese</code> | Associação | <code>Evidencia</code> | <code>1 — 0..*</code> | Cada hipótese cita as evidências que a sustentam. |
+| <code>Hipotese</code> | Composição | <code>DecisaoRevisao</code> | <code>1 — 1</code> | A decisão de revisão só existe enquanto a hipótese existir. |
+| <code>DecisaoRevisao</code> | Dependência | <code>CasoGoldenSet</code> | — | Uma decisão <code>confirmed</code> cria o caso na mesma transação; as demais não o alteram. |
+| <code>Operador</code> | Associação | <code>DecisaoRevisao</code> | <code>1 — 0..*</code> | A identidade do revisor vem exclusivamente da sessão autenticada. |
+| <code>Operador</code> | Associação | <code>ImportJob</code> | <code>1 — 0..*</code> | Um operador com <code>data:import</code> cria e conclui a importação. |
+| <code>Previsao</code> | Composição | <code>Janela</code> | <code>1 — 1</code> | A janela-alvo é parte inseparável da previsão. |
+| <code>Incidente</code>, <code>Previsao</code> | Associação | <code>DatasetVersion</code> | <code>* — 1</code> | Toda previsão ou incidente é produzido sob uma versão específica do conjunto de dados. |
+| <code>ImportJob</code> | Associação | <code>DatasetVersion</code> | <code>1 — 1</code> | O job ativa sua <code>candidateDatasetVersion</code> somente após validar as duas camadas. |
+| <code>Manifesto</code> | Associação | <code>DatasetVersion</code> | <code>1 — 1</code> | O manifesto aponta exatamente uma versão ativa por vez. |
+| <code>AnalysisRun</code> | Associação | <code>Incidente</code> | <code>1 — 0..1</code> | Uma detecção reativa correlaciona ou cria, no máximo, um incidente. |
+| <code>AnalysisRun</code> | Associação | <code>Previsao</code> | <code>1 — 0..1</code> | Uma previsão preventiva produz, no máximo, uma previsão. |
+| Fronteiras da API do dashboard | Dependência | Serviço de autorização | — | Nenhuma fronteira acessa dados sem validar sessão e permissões antes. |
+| Analysis Orchestrator | Dependência | Anomaly Detector, QoE Forecast Model, Diagnostic Agent | — | O orquestrador combina os três módulos internos do Worker de Análise. |
+| Analysis Orchestrator, Serviço de revisão | Dependência | Repositório do conjunto de referência | — | O Worker apenas lê; somente o Serviço de revisão escreve (decisão D8). |
+| Diagnostic Agent | Dependência | Amazon Bedrock | — | O agente delega a geração das hipóteses candidatas ao modelo gerenciado. |
 
 ### 4.5. Regras, garantias e limitações
 
 | ID | Elemento(s) | Regra, garantia ou limitação |
 |:---|:---|:---|
-| INV-01 | <code>Usuario</code> | Enquanto o desvio local do protótipo existir, a senha não pode ser persistida em texto puro; a conformidade final exige remover também o hash e delegar a autenticação ao SSO. |
-| INV-02 | <code>CasoGoldenSet</code> | A promoção para a golden set é disparada somente pela rota de revisão humana quando <code>status = "confirmed"</code>; orquestrador e agente não promovem casos. |
-| INV-03 | <code>Incidente</code>, <code>Evidencia</code>, <code>Hipotese</code> | Itens do mesmo incidente compartilham <code>trace_id</code>, permitindo recuperar o bundle por uma consulta ao GSI, tanto para chaves v2 quanto para itens v1 legados. |
-| REG-04 | <code>Hipotese</code> | A leitura considera mais recente a hipótese cujo último segmento de <code>sk</code> é lexicograficamente maior. |
-| LIM-01 | <code>Hipotese</code> | Hipóteses geradas usam epoch em segundos e <code>PutCommand</code> sem condição. Duas gravações para o mesmo incidente no mesmo segundo podem usar a mesma chave e a segunda pode sobrescrever a primeira; preservação integral do histórico não é garantida. |
-| GAR-01 | <code>ServicoExplicacao</code> | Uma falha específica na chamada ao Bedrock é capturada e substituída por explicação baseada em template. |
-| LIM-02 | <code>Orquestrador</code> | <code>diagnose()</code> retorna <code>null</code> quando o incidente não existe e pode propagar falhas de persistência, golden set, agente ou ML; portanto não há garantia de produzir sempre um relatório. |
+| INV-01 | <code>Operador</code> | Nenhuma senha, hash ou credencial é persistida pelo View Show; a autenticação é sempre delegada ao Cognito federado ao SSO da Globo (RF04, RNF04, RIE01, RESTR01). |
+| INV-02 | <code>DecisaoRevisao</code>, <code>CasoGoldenSet</code> | A promoção ao conjunto de referência ocorre somente quando <code>status = confirmed</code>, na mesma transação que grava a decisão; o Worker de Análise não possui permissão de escrita nesse repositório. |
+| INV-03 | <code>DecisaoRevisao</code> | <code>confirmed</code> e <code>refuted</code> são estados finais e não podem ser sobrescritos; <code>inconclusive</code> admite nova revisão com a versão vigente. |
+| INV-04 | <code>Incidente</code>, <code>Previsao</code> | Uma previsão nunca é registrada como incidente observado; um incidente só é criado ou atualizado quando uma anomalia efetivamente observada o sustenta. |
+| REG-05 | <code>DecisaoRevisao</code> | Toda escrita exige a versão esperada (<code>expectedVersion</code>); uma versão obsoleta é rejeitada por concorrência otimista, sem alterar a hipótese. |
+| REG-06 | <code>ImportJob</code>, <code>Manifesto</code> | A <code>candidateDatasetVersion</code> só se torna a versão ativa do manifesto depois de validar as camadas quente e histórica; uma falha preserva a versão anterior. |
+| REG-07 | <code>Operador</code>, <code>ImportJob</code> | Criar ou concluir um <code>ImportJob</code> exige a permissão <code>data:import</code>, concedida pelo grupo Cognito <code>data-operator</code>; a identidade e a autorização vêm exclusivamente da sessão, nunca de claims no corpo da requisição. |
+| GAR-01 | <code>Diagnostico</code> | Uma falha na chamada ao Bedrock não remove a previsão, o incidente ou as evidências já produzidas; o diagnóstico é marcado como recuperável. |
+| LIM-01 | <code>CasoGoldenSet</code> | Um caso confirmado referencia a hipótese de origem para fins de auditoria, mas não mantém vínculo estrutural com o incidente original, pois serve como referência atemporal para análises futuras. |
+| GAR-02 | <code>AnalysisRun</code> | Mensagens duplicadas ou fora de ordem são identificadas por <code>idempotencyKey</code>; uma execução já <code>SUCCEEDED</code> é confirmada sem reprocessar e sem criar um segundo <code>Incidente</code> ou uma segunda <code>Previsao</code>. |
 
 ### 4.6. Decisões de modelagem
 
-- **Visões separadas para legibilidade.** Domínio, dependências da API Node.js e ingestão Flask foram divididos em três figuras. Isso evita cruzar relações de natureza diferente e mantém os nomes dos arquivos rastreáveis.
-- **Registros de domínio sem métodos próprios.** Na API Node.js, usuário, incidente, evidência, hipótese e caso da golden set são objetos literais persistidos. Métodos aparecem nos módulos de serviço, orquestração e infraestrutura que realmente os implementam.
-- **Fronteira de persistência representada como implementada.** <code>TabelaOperacional</code> e <code>TabelaGoldenSet</code> são wrappers de acesso que compartilham <code>ClienteDynamoDB</code>. <code>ServicoUsuario</code> também compartilha o cliente, mas acessa a tabela física diretamente; essa exceção está documentada em vez de ser reinterpretada como uso do wrapper operacional.
-- **Transição de schema explícita.** Novas escritas usam v2; v1 permanece apenas como formato legado reconhecido por <code>itemTypeFromSk()</code>. O GSI por <code>trace_id</code> desacopla a remontagem do bundle do prefixo da chave de ordenação.
-- **Referências escalares não viram associações estruturais.** E-mail do revisor e identificador do incidente de origem não possuem chave estrangeira ou garantia de existência. Eles aparecem apenas no mapeamento de campos.
-- **DTO explícito e completo.** <code>RelatorioDiagnostico</code> não corresponde a uma classe concreta, mas representa exatamente o objeto literal devolvido pelo orquestrador, incluindo <code>evidence</code>.
-- **Ingestão existente em contexto próprio.** O backend Flask implementa coleta, validação, normalização e persistência de telemetria e foi modelado separadamente. Componentes futuros de fila/worker não foram inventados.
+- **Arquitetura-alvo como única fonte.** Todas as classes, estados e relacionamentos desta seção vêm dos documentos normativos de arquitetura e dos contratos já consolidados nas Seções 2, 3 e 5 deste artefato, nunca dos arquivos, rotas ou módulos atualmente implementados. O [Status de implementação](../arquitetura/status-implementacao.md) é o local correto para registrar o quanto do código já corresponde a este modelo.
+- **Três visões para não misturar naturezas distintas.** Domínio, aplicação e persistência foram separados porque cada um responde a uma pergunta diferente: o que existe, quem opera sobre o que existe e onde isso é fisicamente guardado. Fundi-las produziria um diagrama denso e menos rastreável aos documentos de origem.
+- **Autenticação sem estado local.** <code>Operador</code> não possui atributo de senha nem tabela própria porque a arquitetura-alvo delega toda a autenticação ao Cognito/SSO; qualquer implementação com sessão local ou hash de senha é uma divergência a ser corrigida, não uma variação válida do modelo.
+- **Previsão e incidente como conceitos distintos.** Separar <code>Previsao</code> de <code>Incidente</code> evita que uma estimativa de risco seja tratada como uma degradação confirmada, preservando a distinção normativa entre previsão preventiva e detecção reativa.
+- **Decisão de revisão como objeto de valor, não como log solto.** Modelar <code>DecisaoRevisao</code> junto da <code>Hipotese</code> deixa explícitos os quatro estados de revisão e a regra de que somente a confirmação promove um caso ao conjunto de referência, sem introduzir uma classe de auditoria genérica que os contratos não definem.
+- **Infraestrutura mapeada, não modelada como domínio.** DynamoDB, S3/Parquet, Glue, Athena, SQS e ECS aparecem apenas na visão de aplicação, como dependências externas, e no mapeamento de persistência da Seção 4.2.3 — nunca como classes com atributos e operações próprias.
+- **Ingestão tratada como fronteira, não repetida em detalhe.** O contrato interno do Serviço de Ingestão já está descrito normativamente em outro documento; repeti-lo aqui violaria a regra de manutenção de [Fluxos integrados](../arquitetura/fluxos.md#5-regra-de-manutenção), que reserva a esta modelagem apenas a representação estrutural de mais alto nível.
 
 ---
 
@@ -2264,12 +2254,12 @@ Fonte: Material produzido pelos autores (2026).
 
 #### Diagrama de classes
 
-- [ ] As classes representam conceitos ou componentes relevantes.
-- [ ] Atributos e operações possuem tipos.
-- [ ] Associações possuem multiplicidades.
-- [ ] Composição, agregação, herança e dependência foram usadas corretamente.
-- [ ] As classes mencionadas nos diagramas de sequência existem no diagrama.
-- [ ] O diagrama é consistente com a arquitetura-alvo do View Show.
+- [x] As classes representam conceitos ou componentes relevantes.
+- [x] Atributos e operações possuem tipos.
+- [x] Associações possuem multiplicidades.
+- [x] Composição, agregação, herança e dependência foram usadas corretamente.
+- [x] As classes mencionadas nos diagramas de sequência existem no diagrama.
+- [x] O diagrama é consistente com a arquitetura-alvo do View Show.
 
 #### Diagramas de sequência
 
