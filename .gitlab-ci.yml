@@ -204,6 +204,18 @@ tipos:
   rules:
     - changes: *mudou-frontend
 
+# Os testes usam jsdom e dublês de leitura (`vi.fn`), não a aplicação
+# compilada: rodam em `validar`, ao lado de lint e tipos, sem depender do
+# build. `npm test` é `vitest run`, que sai diferente de zero se algum caso
+# quebrar — e aí o pipeline falha.
+testes-frontend:
+  extends: .node
+  stage: validar
+  script:
+    - npm test
+  rules:
+    - changes: *mudou-frontend
+
 # -------------------------------------------------------------- construir ----
 
 # O endereço da API entra no bundle na compilação, não na publicação: qualquer
