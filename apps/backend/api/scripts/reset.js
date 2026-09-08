@@ -25,14 +25,18 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }
 /** Só entram aqui casos que a suíte de testes promove sozinha — nunca um dos 3 curados manualmente pelo seed. */
 const TEST_PROMOTED_CASES = ["Identidade#Mobile#Nacional"];
 
+/** Só apagamos o que começa com esse prefixo — contas de usuário (USER#) ficam de fora. */
+const DELETABLE_PK_PREFIX = "INC#";
+
 async function resetOperationalTable() {
   const scan = await client.send(
     new ScanCommand({ TableName: OPERATIONAL_TABLE, ProjectionExpression: "pk, sk" }),
   );
-  for (const item of scan.Items) {
+  const deletable = scan.Items.filter((item) => item.pk.startsWith(DELETABLE_PK_PREFIX));
+  for (const item of deletable) {
     await client.send(new DeleteCommand({ TableName: OPERATIONAL_TABLE, Key: { pk: item.pk, sk: item.sk } }));
   }
-  console.log(`Removidos ${scan.Items.length} itens de ${OPERATIONAL_TABLE}`);
+  console.log(`Removidos ${deletable.length} itens de ${OPERATIONAL_TABLE}`);
 }
 
 async function resetTestPromotedGoldenSetCases() {
