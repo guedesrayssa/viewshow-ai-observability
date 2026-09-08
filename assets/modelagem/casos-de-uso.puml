@@ -1,0 +1,51 @@
+@startuml
+title Diagrama de Casos de Uso — View Show
+left to right direction
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #F5F7FB
+  BorderColor #233148
+  FontColor #172033
+}
+
+actor "Usuário\ncorporativo" as Usuario <<abstract>>
+actor "Analista de Atendimento\nTécnico N1" as N1
+actor "Engenheira de\nSoftware" as Engenharia
+actor "Product Manager" as PM
+actor "Provedor de\nidentidade / SSO" as SSO
+
+N1 --|> Usuario
+Engenharia --|> Usuario
+PM --|> Usuario
+
+rectangle "Sistema View Show" {
+  usecase "UC-01\nConsultar dashboard" as UC01
+  usecase "UC-02\nAutenticar-se" as UC02
+  usecase "UC-03\nAnalisar incidente" as UC03
+  usecase "UC-04\nInvestigar falha técnica" as UC04
+  usecase "UC-05\nAvaliar recuperação\napós correção" as UC05
+  usecase "UC-06\nAnalisar qualidade\nda experiência" as UC06
+  usecase "UC-07\nMonitorar a telemetria" as UC07
+}
+
+Usuario -- UC01
+Usuario -- UC02
+SSO -- UC02
+N1 -- UC03
+Engenharia -- UC04
+Engenharia -- UC05
+Engenharia -- UC07
+PM -- UC05
+PM -- UC06
+
+UC01 -[hidden]down- UC03
+UC03 -[hidden]down- UC04
+UC04 -[hidden]down- UC05
+UC05 -[hidden]right- UC06
+UC06 -[hidden]up- UC07
+@enduml

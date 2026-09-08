@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" role="img" aria-labelledby="title desc">
+  <title id="title">Diagrama de Casos de Uso — View Show</title>
+  <desc id="desc">Sete casos de uso orientados aos objetivos dos usuários, com um usuário corporativo abstrato, três perfis especializados e um provedor externo de identidade.</desc>
+  <defs>
+    <style>
+      .title { font: 700 30px Arial, sans-serif; fill: #172033; }
+      .boundary-title { font: 700 20px Arial, sans-serif; fill: #172033; }
+      .actor-label { font: 600 16px Arial, sans-serif; fill: #172033; }
+      .small { font: 14px Arial, sans-serif; fill: #39465e; }
+      .uc-id { font: 700 16px Arial, sans-serif; fill: #172033; }
+      .uc-name { font: 17px Arial, sans-serif; fill: #172033; }
+      .line { stroke: #233148; stroke-width: 2.2; fill: none; }
+      .usecase { fill: #f5f7fb; stroke: #233148; stroke-width: 2.2; }
+    </style>
+    <marker id="generalization" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 1 1 L 13 7 L 1 13 Z" fill="white" stroke="#233148" stroke-width="1.5"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="1180" fill="white"/>
+  <text x="900" y="48" text-anchor="middle" class="title">Diagrama de Casos de Uso — View Show</text>
+
+  <rect x="360" y="85" width="1260" height="1020" rx="8" fill="#ffffff" stroke="#233148" stroke-width="2.5"/>
+  <text x="385" y="120" class="boundary-title">Sistema View Show</text>
+
+  <g aria-label="Usuário corporativo abstrato">
+    <circle cx="175" cy="135" r="18" class="line"/>
+    <path d="M175 153 L175 201 M144 171 L206 171 M175 201 L148 237 M175 201 L202 237" class="line"/>
+    <text x="175" y="262" text-anchor="middle" class="actor-label">Usuário corporativo</text>
+    <text x="175" y="283" text-anchor="middle" class="small">«abstrato»</text>
+  </g>
+
+  <g aria-label="Analista de Atendimento Técnico N1">
+    <circle cx="105" cy="374" r="16" class="line"/>
+    <path d="M105 390 L105 432 M78 407 L132 407 M105 432 L82 464 M105 432 L128 464" class="line"/>
+    <text x="105" y="490" text-anchor="middle" class="actor-label">Analista N1</text>
+  </g>
+  <g aria-label="Engenheira de Software">
+    <circle cx="105" cy="654" r="16" class="line"/>
+    <path d="M105 670 L105 712 M78 687 L132 687 M105 712 L82 744 M105 712 L128 744" class="line"/>
+    <text x="105" y="770" text-anchor="middle" class="actor-label">Engenheira de</text>
+    <text x="105" y="791" text-anchor="middle" class="actor-label">Software</text>
+  </g>
+  <g aria-label="Product Manager">
+    <circle cx="105" cy="934" r="16" class="line"/>
+    <path d="M105 950 L105 992 M78 967 L132 967 M105 992 L82 1024 M105 992 L128 1024" class="line"/>
+    <text x="105" y="1050" text-anchor="middle" class="actor-label">Product Manager</text>
+  </g>
+
+  <path d="M132 407 C154 352 163 322 164 294" class="line" marker-end="url(#generalization)" data-from="N1" data-to="Usuario"/>
+  <path d="M132 687 C228 545 228 390 178 294" class="line" marker-end="url(#generalization)" data-from="Engenharia" data-to="Usuario"/>
+  <path d="M132 967 C286 744 286 465 192 294" class="line" marker-end="url(#generalization)" data-from="PM" data-to="Usuario"/>
+
+  <g aria-label="Provedor de identidade e SSO">
+    <circle cx="1710" cy="154" r="17" class="line"/>
+    <path d="M1710 171 L1710 217 M1682 188 L1738 188 M1710 217 L1686 250 M1710 217 L1734 250" class="line"/>
+    <text x="1710" y="276" text-anchor="middle" class="actor-label">Provedor de identidade</text>
+    <text x="1710" y="297" text-anchor="middle" class="actor-label">/ SSO</text>
+  </g>
+
+  <ellipse cx="720" cy="210" rx="220" ry="62" class="usecase"/>
+  <text x="720" y="203" text-anchor="middle" class="uc-id">UC-01</text>
+  <text x="720" y="229" text-anchor="middle" class="uc-name">Consultar dashboard</text>
+
+  <ellipse cx="1260" cy="210" rx="190" ry="62" class="usecase"/>
+  <text x="1260" y="203" text-anchor="middle" class="uc-id">UC-02</text>
+  <text x="1260" y="229" text-anchor="middle" class="uc-name">Autenticar-se</text>
+
+  <ellipse cx="720" cy="440" rx="235" ry="66" class="usecase"/>
+  <text x="720" y="431" text-anchor="middle" class="uc-id">UC-03</text>
+  <text x="720" y="463" text-anchor="middle" class="uc-name">Analisar incidente</text>
+
+  <ellipse cx="720" cy="690" rx="220" ry="66" class="usecase"/>
+  <text x="720" y="681" text-anchor="middle" class="uc-id">UC-04</text>
+  <text x="720" y="707" text-anchor="middle" class="uc-name">Investigar falha técnica</text>
+
+  <ellipse cx="1260" cy="690" rx="215" ry="66" class="usecase"/>
+  <text x="1260" y="675" text-anchor="middle" class="uc-id">UC-07</text>
+  <text x="1260" y="707" text-anchor="middle" class="uc-name">Monitorar a telemetria</text>
+
+  <ellipse cx="720" cy="950" rx="220" ry="66" class="usecase"/>
+  <text x="720" y="935" text-anchor="middle" class="uc-id">UC-05</text>
+  <text x="720" y="961" text-anchor="middle" class="uc-name">Avaliar recuperação</text>
+  <text x="720" y="983" text-anchor="middle" class="uc-name">após correção</text>
+
+  <ellipse cx="1260" cy="950" rx="235" ry="66" class="usecase"/>
+  <text x="1260" y="935" text-anchor="middle" class="uc-id">UC-06</text>
+  <text x="1260" y="961" text-anchor="middle" class="uc-name">Analisar qualidade</text>
+  <text x="1260" y="983" text-anchor="middle" class="uc-name">da experiência</text>
+
+  <path d="M206 171 L502 210" class="line" data-from="Usuario" data-to="UC01"/>
+  <path d="M206 171 L1070 210" class="line" data-from="Usuario" data-to="UC02"/>
+  <path d="M1450 210 L1682 188" class="line" data-from="SSO" data-to="UC02"/>
+  <path d="M132 407 L485 440" class="line" data-from="N1" data-to="UC03"/>
+  <path d="M132 687 L500 690" class="line" data-from="Engenharia" data-to="UC04"/>
+  <path d="M132 700 C410 552 830 548 1090 650" class="line" data-from="Engenharia" data-to="UC07"/>
+  <path d="M132 713 C270 798 405 874 560 920" class="line" data-from="Engenharia" data-to="UC05"/>
+  <path d="M132 967 L500 950" class="line" data-from="PM" data-to="UC05"/>
+  <path d="M132 980 C460 1100 920 1092 1260 1016" class="line" data-from="PM" data-to="UC06"/>
+</svg>
