@@ -14,3 +14,4 @@ export * from "./domain/evidence.js";
 export * from "./prompts/rca-v1.js";
 export * from "./application/investigate.js";
 export * from "./adapters/llm/ollama-provider.js";
+export * from "./contracts/analysis-event.js";

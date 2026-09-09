@@ -23,6 +23,7 @@ ports, com um adaptador de cada lado.
 | `src/domain/quality-gate.ts` | Decide se os dados sustentam investigação |
 | `src/domain/response-validation.ts` | Interpreta e ancora a resposta do modelo |
 | `src/domain/outcome.ts` | Piso de confiança e ordenação por confiança |
+| `src/contracts/analysis-event.ts` | Envelope da fila de análise e identidade da execução |
 | `src/domain/evidence.ts` | Entrada da investigação: incidente, evidência, caso curado |
 | `src/prompts/rca-v1.ts` | Prompt versionado, com bloco de dados delimitado |
 | `src/application/investigate.ts` | Orquestração: gate → curado → modelo → validação |
@@ -102,6 +103,21 @@ npm run verify   # typecheck + testes
 Sem AWS, sem rede, sem banco. Os testes de integração sobem um servidor HTTP
 local que fala o protocolo do Ollama, então o caminho de rede é exercitado de
 verdade — o único faz-de-conta é o modelo.
+
+## Falha de contrato é permanente
+
+`parseAnalysisEvent` devolve `permanent: true` em toda rejeição. O documento é
+explícito (§4): campo obrigatório ausente, versão incompatível ou janela
+inválida vão direto à DLQ. Reprocessar não conserta contrato quebrado — só
+queima as cinco tentativas antes de chegar ao mesmo lugar.
+
+Os metadados que acompanham a mensagem à DLQ levam só identificadores. O escopo
+do payload pode carregar dimensões vindas de telemetria, e isso não precisa
+estar na DLQ.
+
+A identidade da execução vem da `idempotencyKey`, nunca do `eventId`: uma
+republicação técnica preserva a primeira e troca o segundo, e deduplicar pelo
+`eventId` reprocessaria a mesma análise.
 
 ## Vocabulário
 
