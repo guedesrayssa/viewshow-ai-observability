@@ -64,12 +64,14 @@ validate_observability_iac:
 variables:
   AWS_ACCOUNT_ID: "248880318395"
   AWS_DEFAULT_REGION: "us-east-1"
-  ECR_REPOSITORY: "monitoracao-api"
-  ECS_CLUSTER: "data-ingestion-cluster"
-  ECS_SERVICE: "monitoracao-api-service"
-  ECS_TASK_FAMILY: "monitoracao-api-task"
-  ECS_CONTAINER_NAME: "monitoracao-api-container"
-  ALB_NAME: "data-ingestion-alb"
+  ECR_REPOSITORY: "g05-s3-api"
+  ECS_CLUSTER: "g05-s3-cluster"
+  ECS_SERVICE: "g05-s3-api-service"
+  ECS_TASK_FAMILY: "g05-s3-api-task"
+  ECS_CONTAINER_NAME: "g05-s3-api"
+  ALB_NAME: "g05-s3-alb"
+  AMPLIFY_APP_NAME: "g05-s3-painel"
+  AMPLIFY_BRANCH: "producao"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
   DOCKER_HOST: "tcp://docker:2375"
   DOCKER_TLS_CERTDIR: ""
@@ -130,7 +132,7 @@ validate_backend_container:
     - |
       set -eu
       set -o pipefail
-      image_uri="monitoracao-api-ci:${CI_COMMIT_SHA}"
+      image_uri="g05-s3-api-ci:${CI_COMMIT_SHA}"
       docker buildx build \
         --platform linux/amd64 \
         --load \
@@ -181,7 +183,7 @@ deploy_backend_ecs:
   tags:
     - inteli-gitlab-runner-prd
   interruptible: false
-  resource_group: monitoracao-api-service
+  resource_group: g05-s3-api-service
   needs:
     - job: publish_backend_image
       artifacts: true
@@ -311,16 +313,14 @@ construir:verificacao:
     - dnf install --quiet --assumeyes zip
   script:
     - cd apps/frontend
-    - ./deploy/deploy-amplify.sh "$AMPLIFY_APP_ID" "$AMPLIFY_BRANCH" out
+    - ./deploy/deploy-amplify.sh out
 
 publicar:staging:
   extends: .publicar
   needs: ["construir:staging"]
-  variables:
-    AMPLIFY_BRANCH: develop
+  resource_group: g05-s3-amplify-producao
   environment:
-    name: staging
-    url: https://develop.$AMPLIFY_DEFAULT_DOMAIN
+    name: aws-lab
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
       changes: *mudou-frontend
@@ -331,11 +331,9 @@ publicar:staging:
 publicar:producao:
   extends: .publicar
   needs: ["construir:producao"]
-  variables:
-    AMPLIFY_BRANCH: main
+  resource_group: g05-s3-amplify-producao
   environment:
-    name: producao
-    url: https://main.$AMPLIFY_DEFAULT_DOMAIN
+    name: aws-lab
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *mudou-frontend

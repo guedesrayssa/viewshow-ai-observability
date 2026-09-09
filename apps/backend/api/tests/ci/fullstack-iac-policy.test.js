@@ -636,7 +636,10 @@ function containerEnvironmentEntries(ecs) {
     const names = topLevelAttributeValues(container).filter(
       (attribute) => attribute.name === "name",
     );
-    return names.length === 1 && names[0].value === "var.nome_container";
+    return (
+      names.length === 1 &&
+      ["local.nome_container", "var.nome_container"].includes(names[0].value)
+    );
   });
   assert.equal(
     apiContainers.length,
@@ -795,6 +798,159 @@ test("infrastructure is consolidated under apps/fullstack", () => {
     fs.existsSync(path.join(repositoryRoot, "apps/observability")),
     false,
     "legacy apps/observability must not remain",
+  );
+});
+
+test("fullstack Terraform fails closed to the isolated Sprint 3 namespace and account", () => {
+  const variables = readIfPresent(path.join(fullstackPath, "variables.tf"));
+  const names = readIfPresent(path.join(fullstackPath, "names.tf"));
+  const versions = readIfPresent(path.join(fullstackPath, "versions.tf"));
+  const activeTerraform = fs
+    .readdirSync(fullstackPath)
+    .filter((name) => name.endsWith(".tf"))
+    .map((name) => readIfPresent(path.join(fullstackPath, name)))
+    .join("\n");
+  const namespaceBlock = /variable "deployment_namespace"\s*\{([\s\S]*?)^\}/m.exec(
+    variables,
+  )?.[1];
+
+  assert.match(variables, /variable "deployment_namespace"/);
+  assert.ok(namespaceBlock, "deployment_namespace must have a variable block");
+  assert.doesNotMatch(namespaceBlock, /default\s*=/);
+  assert.match(namespaceBlock, /var\.deployment_namespace == "g05-s3"/);
+  assert.match(versions, /allowed_account_ids\s*=\s*\["248880318395"\]/);
+  assert.match(versions, /Stack\s*=\s*"g05-sprint3-entrega"/);
+  assert.match(versions, /ManagedBy\s*=\s*"terraform"/);
+
+  const isolatedNames = {
+    nomeCluster: "${var.deployment_namespace}-cluster",
+    nomeAlb: "${var.deployment_namespace}-alb",
+    nomeServico: "${var.deployment_namespace}-api-service",
+    nomeTaskDefinition: "${var.deployment_namespace}-api-task",
+    nomeContainer: "${var.deployment_namespace}-api",
+    nomeRepositorioEcr: "${var.deployment_namespace}-api",
+    nomeTargetGroup: "${var.deployment_namespace}-api-tg",
+    nomeSecurityGroup: "${var.deployment_namespace}-api-sg",
+    nomeAppAmplify: "${var.deployment_namespace}-painel",
+    tabelaOperacional: "${var.deployment_namespace}-operacional",
+    tabelaGoldenSet: "${var.deployment_namespace}-golden-set",
+  };
+  const localNames = {
+    nomeCluster: "nome_cluster",
+    nomeAlb: "nome_alb",
+    nomeServico: "nome_servico",
+    nomeTaskDefinition: "nome_task_definition",
+    nomeContainer: "nome_container",
+    nomeRepositorioEcr: "nome_repositorio_ecr",
+    nomeTargetGroup: "nome_target_group",
+    nomeSecurityGroup: "nome_security_group",
+    nomeAppAmplify: "nome_app_amplify",
+    tabelaOperacional: "tabela_operacional",
+    tabelaGoldenSet: "tabela_golden_set",
+  };
+
+  for (const [key, expectedValue] of Object.entries(isolatedNames)) {
+    assert.match(
+      names,
+      new RegExp(
+        `\\b${localNames[key]}\\s*=\\s*"${expectedValue.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")}"`,
+      ),
+      `${localNames[key]} must be derived from deployment_namespace`,
+    );
+  }
+
+  assert.match(names, /nome_log_group\s*=\s*"\/ecs\/\$\{local\.nome_repositorio_ecr\}"/);
+  assert.match(names, /nome_api_gateway\s*=\s*"\$\{local\.nome_servico\}-tls"/);
+  assert.doesNotMatch(activeTerraform, /var\.nome_/);
+  assert.doesNotMatch(activeTerraform, /variable "nome_/);
+});
+
+test("fullstack Terraform accepts only us-east-1", () => {
+  const variables = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "variables.tf")),
+  );
+  const regionBlock = /variable "regiao"\s*\{([\s\S]*?)^\}/m.exec(
+    variables,
+  )?.[1];
+
+  assert.ok(regionBlock, "regiao must have a variable block");
+  assert.match(regionBlock, /var\.regiao == "us-east-1"/);
+  assert.doesNotMatch(regionBlock, /us-west-2/);
+});
+
+test("default VPC discovery selects only public default-for-AZ subnets", () => {
+  const data = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "data.tf")),
+  );
+
+  assert.match(
+    data,
+    /name\s*=\s*"default-for-az"[\s\S]*?values\s*=\s*\["true"\]/,
+  );
+  assert.match(
+    data,
+    /name\s*=\s*"map-public-ip-on-launch"[\s\S]*?values\s*=\s*\["true"\]/,
+  );
+  assert.match(
+    data,
+    /condition\s*=\s*length\(data\.aws_subnets\.default\.ids\)\s*>=\s*2/,
+  );
+  assert.match(
+    data,
+    /length\(distinct\([\s\S]*data\.aws_subnet\.default[\s\S]*availability_zone[\s\S]*\)\)\s*>=\s*2/,
+  );
+});
+
+test("cost output preserves the stack until an explicit destroy request", () => {
+  const outputs = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "outputs.tf")),
+  );
+  const costOutput = /output "aviso_custo"\s*\{([\s\S]*?)^\}/m.exec(outputs)?.[1];
+
+  assert.ok(costOutput, "aviso_custo must exist");
+  assert.match(costOutput, /preserv/i);
+  assert.match(costOutput, /pedido explicito/i);
+  assert.doesNotMatch(costOutput, /destroy[^\n]*fim de cada sessao/i);
+});
+
+test("root README applies only the saved plan accepted by the create-only gate", () => {
+  const readme = readIfPresent(rootReadmePath);
+
+  assert.match(readme, /estado legado[\s\S]*outra conta[\s\S]*não pode ser adotado/i);
+  assert.match(readme, /novo estado local[\s\S]*preserv/i);
+  assert.match(
+    readme,
+    /terraform -chdir=apps\/fullstack plan \\\n+\s+-input=false \\\n+\s+-var='deployment_namespace=g05-s3' \\\n+\s+-out=\.terraform-artifacts\/g05-s3\.tfplan/,
+  );
+  assert.match(
+    readme,
+    /terraform -chdir=apps\/fullstack show -json \\\n+\s+\.terraform-artifacts\/g05-s3\.tfplan \| \\\n+\s+node scripts\/ci\/validate-terraform-create-plan\.mjs/,
+  );
+  assert.match(
+    readme,
+    /terraform -chdir=apps\/fullstack apply \\\n+\s+-input=false \\\n+\s+\.terraform-artifacts\/g05-s3\.tfplan/,
+  );
+  assert.doesNotMatch(readme, /seguir primeiro a seção de migração/i);
+});
+
+test("saved Terraform plans must pass the local create-plan gate before apply", () => {
+  const validatorPath = path.join(
+    repositoryRoot,
+    "scripts/ci/validate-terraform-create-plan.mjs",
+  );
+  const validator = readIfPresent(validatorPath);
+  const operationalGuidance = [
+    readIfPresent(path.join(fullstackPath, "README.md")),
+    readIfPresent(
+      path.join(fullstackPath, "documentation/infraestrutura-integracao.md"),
+    ),
+  ].join("\n");
+
+  assert.ok(fs.existsSync(validatorPath), "create-plan validator must exist");
+  assert.ok(validator.length > 0, "create-plan validator must be versioned source");
+  assert.match(
+    operationalGuidance,
+    /terraform show -json <saved plan> \| node scripts\/ci\/validate-terraform-create-plan\.mjs/,
   );
 });
 
@@ -964,23 +1120,21 @@ test("frontend fingerprint covers deterministic production build inputs", () => 
   );
 });
 
-test("relocation guide preserves existing local Terraform state before apply", () => {
+test("isolated deployment guide rejects legacy state and records teardown state", () => {
   const guide = readIfPresent(
     path.join(fullstackPath, "documentation/infraestrutura-integracao.md"),
   );
 
-  assert.match(guide, /^## Migração segura do estado local$/m);
-  assert.match(guide, /apps\/infra\/terraform\.tfstate/);
+  assert.match(guide, /^## Estado local isolado e teardown$/m);
   assert.match(
     guide,
-    /cp -p .*terraform\.tfstate .*terraform\.tfstate\.pre-fullstack/,
+    /estado legado[\s\S]*outra conta[\s\S]*não pode ser[\s\S]*adotado/i,
   );
+  assert.match(guide, /novo estado local[\s\S]*necessário[\s\S]*teardown/i);
   assert.match(
     guide,
-    /cp -p apps\/infra\/terraform\.tfstate apps\/fullstack\/terraform\.tfstate/,
+    /terraform -chdir=apps\/fullstack plan -out=g05-s3\.tfplan \\\n+  -var='deployment_namespace=g05-s3'/,
   );
-  assert.match(guide, /terraform -chdir=apps\/fullstack state list/);
-  assert.match(guide, /não execute\s+`terraform apply`[^.]*estado/i);
 });
 
 test("moved observability guidance recognizes the implemented metrics endpoint", () => {

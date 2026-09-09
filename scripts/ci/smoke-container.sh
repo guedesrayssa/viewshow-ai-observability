@@ -4,7 +4,7 @@ set -Eeuo pipefail
 image="${1:?usage: smoke-container.sh IMAGE}"
 attempts="${SMOKE_ATTEMPTS:-30}"
 delay_seconds="${SMOKE_DELAY_SECONDS:-1}"
-container_name="monitoracao-api-smoke-${CI_PIPELINE_ID:-local}-$$"
+container_name="g05-s3-api-smoke-${CI_PIPELINE_ID:-local}-$$"
 
 image_architecture="$(docker image inspect "$image" --format '{{.Architecture}}')"
 if [[ "$image_architecture" != "amd64" ]]; then

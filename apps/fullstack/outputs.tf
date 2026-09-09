@@ -3,6 +3,11 @@ output "painel_url" {
   value       = local.painel_url
 }
 
+output "deployment_namespace" {
+  description = "Namespace isolado que identifica todos os recursos desta stack."
+  value       = var.deployment_namespace
+}
+
 output "api_url" {
   description = "Endereço direto do ALB. Serve para curl e Postman; o navegador deve usar painel_url, porque uma página HTTPS não pode chamar uma API em HTTP."
   value       = "http://${aws_lb.principal.dns_name}"
@@ -28,7 +33,7 @@ output "comando_logs" {
 
 output "aviso_custo" {
   description = "Leia antes de fechar o laboratório."
-  value       = "O ALB e a task Fargate NAO sao desligados pelo End Lab: so a EC2 e, e aqui nao ha EC2. Rode 'terraform destroy' ao fim de cada sessao, ou eles seguem cobrando ~US$ 25/mes do orcamento do lab."
+  value       = "Preserve a stack e o novo estado local ao fim da sessao para inspecao e diagnostico. Execute 'terraform destroy' somente sob pedido explicito posterior, usando esse mesmo estado. Enquanto provisionados, o ALB e a task Fargate continuam gerando custo."
 }
 
 output "api_url_https" {

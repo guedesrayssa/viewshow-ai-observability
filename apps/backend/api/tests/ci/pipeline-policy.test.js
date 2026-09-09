@@ -15,6 +15,14 @@ const deployReadme = fs.readFileSync(
   path.resolve(__dirname, "../../deploy/README.md"),
   "utf8",
 );
+const amplifyGuide = fs.readFileSync(
+  path.resolve(__dirname, "../../../../../artefatos/sprint2/ci-cd-amplify.md"),
+  "utf8",
+);
+const renderTaskDefinitionFixture = fs.readFileSync(
+  path.resolve(__dirname, "render-task-definition.test.js"),
+  "utf8",
+);
 
 function topLevelBlock(name, source = pipeline) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -132,7 +140,7 @@ test("pipeline conservatively cancels obsolete pre-deploy work", () => {
   assert.match(topLevelBlock("deploy_backend_ecs"), /interruptible: false/);
   assert.match(
     topLevelBlock("deploy_backend_ecs"),
-    /resource_group: monitoracao-api-service/,
+    /resource_group: g05-s3-api-service/,
   );
 });
 
@@ -141,6 +149,108 @@ test("institutional runner connects to DinD without an unavailable TLS certifica
   assert.match(pipeline, /^  DOCKER_TLS_CERTDIR: ""$/m);
   assert.doesNotMatch(pipeline, /^  DOCKER_TLS_VERIFY:/m);
   assert.doesNotMatch(pipeline, /^  DOCKER_CERT_PATH:/m);
+});
+
+test("task-definition rendering fixture uses the isolated deployment identities", () => {
+  for (const expectedValue of [
+    "g05-s3-api-task",
+    "g05-s3-api",
+    "/ecs/g05-s3-api",
+    "example.invalid/g05-s3-api:abc123",
+  ]) {
+    assert.match(renderTaskDefinitionFixture, new RegExp(expectedValue));
+  }
+  assert.doesNotMatch(
+    renderTaskDefinitionFixture,
+    new RegExp(["monitoracao", "api"].join("-") + "|data-" + "ingestion"),
+  );
+});
+
+test("deployment bindings target only the isolated Sprint 3 stack", () => {
+  const variables = topLevelBlock("variables");
+
+  for (const [name, value] of Object.entries({
+    AWS_ACCOUNT_ID: "248880318395",
+    AWS_DEFAULT_REGION: "us-east-1",
+    ECR_REPOSITORY: "g05-s3-api",
+    ECS_CLUSTER: "g05-s3-cluster",
+    ECS_SERVICE: "g05-s3-api-service",
+    ECS_TASK_FAMILY: "g05-s3-api-task",
+    ECS_CONTAINER_NAME: "g05-s3-api",
+    ALB_NAME: "g05-s3-alb",
+  })) {
+    assert.match(variables, new RegExp(`^  ${name}: "${value}"$`, "m"));
+  }
+});
+
+test("Amplify publication targets only the isolated production app branch", () => {
+  const variables = topLevelBlock("variables");
+  assert.match(variables, /^  AMPLIFY_APP_NAME: "g05-s3-painel"$/m);
+  assert.match(variables, /^  AMPLIFY_BRANCH: "producao"$/m);
+  assert.doesNotMatch(pipeline, /AMPLIFY_APP_ID|AMPLIFY_DEFAULT_DOMAIN/);
+  assert.match(
+    topLevelBlock(".publicar"),
+    /^    - \.\/deploy\/deploy-amplify\.sh out$/m,
+  );
+
+  for (const jobName of ["publicar:staging", "publicar:producao"]) {
+    const job = topLevelBlock(jobName);
+    assert.doesNotMatch(job, /AMPLIFY_BRANCH:\s*(?:develop|main)/);
+    assert.match(job, /^  resource_group: g05-s3-amplify-producao$/m);
+    assert.match(job, /^  environment:\n    name: aws-lab$/m);
+    assert.doesNotMatch(job, /^\s+url:/m);
+  }
+});
+
+test("Amplify deployment guide does not require opaque app identifiers", () => {
+  assert.doesNotMatch(amplifyGuide, /AMPLIFY_APP_ID|AMPLIFY_DEFAULT_DOMAIN/);
+  assert.doesNotMatch(amplifyGuide, /<app-id>/);
+  assert.match(amplifyGuide, /\.\/deploy\/deploy-amplify\.sh out/);
+  assert.match(amplifyGuide, /g05-s3-painel/);
+  assert.match(amplifyGuide, /producao/);
+});
+
+test("Amplify guide uses only the scoped current credential-renewal flow", () => {
+  assert.doesNotMatch(
+    amplifyGuide,
+    /apps\/frontend\/deploy\/credenciais-gitlab\.sh/,
+  );
+  for (const variableName of [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+  ]) {
+    assert.match(
+      amplifyGuide,
+      new RegExp("\\| `" + variableName + "` \\| `aws-lab` \\|"),
+    );
+  }
+  assert.match(amplifyGuide, /protegidas[\s\S]*mascaradas[\s\S]*ocultas[\s\S]*raw/i);
+  assert.match(
+    amplifyGuide,
+    /scripts\/sync-aws-gitlab-credentials\.sh --dry-run --allow-unprotected-develop/,
+  );
+  assert.match(
+    amplifyGuide,
+    /scripts\/sync-aws-gitlab-credentials\.sh --allow-unprotected-develop/,
+  );
+  assert.match(amplifyGuide, /environment[\s\S]*aws-lab/i);
+});
+
+test("Amplify guide explains the current federated-auth limitation", () => {
+  const authSection = /## Limitação conhecida: login não funciona em produção([\s\S]*)$/m.exec(
+    amplifyGuide,
+  )?.[1];
+
+  assert.ok(authSection, "current authentication limitation section must exist");
+  assert.match(authSection, /API Gateway[\s\S]*HTTPS/i);
+  assert.match(authSection, /same-origin/i);
+  assert.match(authSection, /503[\s\S]*FEATURE_UNAVAILABLE/);
+  assert.match(authSection, /adaptador federado/i);
+  assert.doesNotMatch(
+    authSection,
+    /EC2|sem TLS|mixed content|origem HTTP|colocar a API atrás de TLS/i,
+  );
 });
 
 test("backend changes include the complete modular API and operational scripts", () => {

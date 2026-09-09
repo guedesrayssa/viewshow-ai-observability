@@ -14,6 +14,16 @@ data "aws_subnets" "default" {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
   }
+
+  filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
+
+  filter {
+    name   = "map-public-ip-on-launch"
+    values = ["true"]
+  }
 }
 
 // O ALB exige subnets em pelo menos duas zonas de disponibilidade. A default
@@ -24,6 +34,11 @@ data "aws_subnet" "default" {
 }
 
 check "subnets_alb" {
+  assert {
+    condition     = length(data.aws_subnets.default.ids) >= 2
+    error_message = "A VPC default precisa ter pelo menos duas subnets públicas default-for-AZ para o ALB."
+  }
+
   assert {
     condition = length(distinct([
       for subnet in data.aws_subnet.default : subnet.availability_zone

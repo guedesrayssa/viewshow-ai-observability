@@ -4,12 +4,12 @@ set +x
 
 readonly account_id="248880318395"
 readonly region="us-east-1"
-readonly repository="monitoracao-api"
-readonly cluster="data-ingestion-cluster"
-readonly service="monitoracao-api-service"
-readonly task_family="monitoracao-api-task"
-readonly container_name="monitoracao-api-container"
-readonly alb_name="data-ingestion-alb"
+readonly repository="g05-s3-api"
+readonly cluster="g05-s3-cluster"
+readonly service="g05-s3-api-service"
+readonly task_family="g05-s3-api-task"
+readonly container_name="g05-s3-api"
+readonly alb_name="g05-s3-alb"
 
 required_variables=(
   AWS_ACCOUNT_ID AWS_DEFAULT_REGION ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE

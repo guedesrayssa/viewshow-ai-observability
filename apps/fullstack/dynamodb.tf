@@ -8,7 +8,7 @@
 // apps/backend/api/src/modules/dashboard/adapters/dynamodb-dashboard-read-repository.ts
 
 resource "aws_dynamodb_table" "operacional" {
-  name         = var.tabela_operacional
+  name         = local.tabela_operacional
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "pk"
   range_key    = "sk"
@@ -51,7 +51,7 @@ resource "aws_dynamodb_table" "operacional" {
 }
 
 resource "aws_dynamodb_table" "golden_set" {
-  name         = var.tabela_golden_set
+  name         = local.tabela_golden_set
   billing_mode = "PAY_PER_REQUEST"
 
   // Chave simples, sem sort key e sem GSI: o acesso é sempre GetItem por

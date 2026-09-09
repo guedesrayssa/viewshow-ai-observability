@@ -8,7 +8,7 @@
 // mesma da Tabela 7 de backend-sprint-2.md.
 
 resource "aws_lb" "principal" {
-  name               = var.nome_alb
+  name               = local.nome_alb
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -23,7 +23,7 @@ resource "aws_lb" "principal" {
 }
 
 resource "aws_lb_target_group" "api" {
-  name     = var.nome_target_group
+  name     = local.nome_target_group
   port     = 3000
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id

@@ -18,7 +18,7 @@
 // conteúdo misto uma página HTTPS chamando uma API em HTTP.
 
 resource "aws_apigatewayv2_api" "tls" {
-  name          = "${var.nome_servico}-tls"
+  name          = local.nome_api_gateway
   protocol_type = "HTTP"
   description   = "Terminacao TLS para o ALB da API operacional"
 

@@ -4,7 +4,7 @@
 // GitLab.com e CodeCommit, e o GitLab do Inteli é auto-hospedado.
 
 resource "aws_amplify_app" "painel" {
-  name     = var.nome_app_amplify
+  name     = local.nome_app_amplify
   platform = "WEB"
 
   // ---------------------------------------------------------------------------
