@@ -26,6 +26,7 @@ ports, com um adaptador de cada lado.
 | `src/domain/evidence.ts` | Entrada da investigação: incidente, evidência, caso curado |
 | `src/prompts/rca-v1.ts` | Prompt versionado, com bloco de dados delimitado |
 | `src/application/investigate.ts` | Orquestração: gate → curado → modelo → validação |
+| `src/adapters/llm/ollama-provider.ts` | Provider real; roda sem AWS |
 | `src/adapters/llm/fake-provider.ts` | Duplo determinístico, só para teste |
 | `src/ports/llm-provider.ts` | Fronteira com o modelo de linguagem |
 | `src/ports/agentic-diagnosis.ts` | Como o backend aciona esta camada |
@@ -73,6 +74,19 @@ encaixe é um adaptador e não uma renegociação de contrato. `requestDiagnosis
 devolve `"accepted"`, não o diagnóstico: o acionamento é assíncrono por
 construção e nada bloqueia esperando o LLM.
 
+## Providers
+
+`ollama` é o provider real desta fase, por necessidade e não por preferência:
+Bedrock está bloqueado na conta do AWS Academy. Num acionamento assíncrono a
+latência de um modelo local deixa de pesar, porque ninguém espera na tela.
+
+O adaptador nunca devolve sucesso duvidoso — HTTP de erro, corpo que não é
+JSON, conteúdo vazio e tempo limite viram exceção, que a orquestração traduz em
+`failed`. Um adaptador que engolisse isso faria o diagnóstico quebrar mais
+tarde, em outro lugar, com mensagem que não aponta para a causa.
+
+`fake` existe só para teste e a composição deve recusá-lo fora de teste.
+
 ## Rodar
 
 ```bash
@@ -80,7 +94,9 @@ npm install
 npm run verify   # typecheck + testes
 ```
 
-Sem AWS, sem rede, sem banco.
+Sem AWS, sem rede, sem banco. Os testes de integração sobem um servidor HTTP
+local que fala o protocolo do Ollama, então o caminho de rede é exercitado de
+verdade — o único faz-de-conta é o modelo.
 
 ## Fontes
 

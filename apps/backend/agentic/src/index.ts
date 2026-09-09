@@ -13,3 +13,4 @@ export * from "./adapters/llm/fake-provider.js";
 export * from "./domain/evidence.js";
 export * from "./prompts/rca-v1.js";
 export * from "./application/investigate.js";
+export * from "./adapters/llm/ollama-provider.js";
