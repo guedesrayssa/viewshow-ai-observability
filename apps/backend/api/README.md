@@ -1,17 +1,18 @@
-# API Gateway/BFF
+# API (monólito modular)
 
 Única entrada pública do painel. Expõe `/health`, `/metrics`, `/auth/*` e
-`/api/v1/*`; valida a borda, aplica CORS/headers/rate limit, propaga request e
-trace context e chama serviços internos via HTTP com timeout, abort, retry
-limitado para GET e circuit breaker simples.
+`/api/v1/*`; valida a borda, aplica CORS/headers/rate limit e propaga request e
+trace context.
 
-O gateway não importa implementações internas e não possui adapter DynamoDB.
+Um único processo Express. A lógica de domínio vive em módulos internos sob
+`src/modules/` (`auth`, `incidents`, `dashboard`), cada um com suas camadas
+`application` / `adapters` / `ports` / `domain`. Os módulos são chamados em
+processo — não há servidores HTTP internos nem supervisor.
 
 ```bash
 npm run build
-INTERNAL_AUTH_TOKEN=... INCIDENTS_SERVICE_URL=http://127.0.0.1:3001 \
-DASHBOARD_QUERY_SERVICE_URL=http://127.0.0.1:3002 \
-IDENTITY_SERVICE_URL=http://127.0.0.1:3003 npm start
+AUTH_COOKIE_SECRET=... CURSOR_SECRET=... \
+OPERATIONAL_TABLE_NAME=... AWS_REGION=us-east-1 npm start
 ```
 
 Contratos: [`contracts/openapi/public.openapi.json`](contracts/openapi/public.openapi.json)

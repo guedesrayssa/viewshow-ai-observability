@@ -3,12 +3,12 @@ import { incidentsQuerySchema, ServiceError } from "@view-show/contracts";
 import {
   IncidentUseCases,
   UnavailableReviewFeedbackPort,
-} from "../incidents-service/src/application/incident-use-cases.js";
-import { CursorCodec } from "../incidents-service/src/domain/cursor.js";
+} from "../src/modules/incidents/application/incident-use-cases.js";
+import { CursorCodec } from "../src/modules/incidents/domain/cursor.js";
 import type {
   IncidentRepository,
   ReviewWrite,
-} from "../incidents-service/src/ports/incident-repository.js";
+} from "../src/modules/incidents/ports/incident-repository.js";
 
 const now = new Date("2026-01-01T12:00:00Z");
 const items = Array.from({ length: 4 }, (_, index) => ({

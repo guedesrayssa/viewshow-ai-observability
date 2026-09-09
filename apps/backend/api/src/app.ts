@@ -7,53 +7,46 @@ import express, {
 import helmet from "helmet";
 import {
   ServiceError,
-  authenticatedIdentitySchema,
   assertNoPhysicalFields,
   createLogger,
-  diagnosisDataSchema,
   errorEnvelope,
-  eventsDataRuntimeSchema,
   eventsQuerySchema,
-  incidentsDataSchema,
   incidentsQuerySchema,
-  monitoringProjectionSchema,
   monitoringQuerySchema,
   opaqueIdSchema,
-  overviewProjectionSchema,
   overviewQuerySchema,
   requestId,
-  reviewDataRuntimeSchema,
   reviewBodySchema,
   successEnvelope,
   validationError,
+  type AuthenticatedIdentity,
 } from "@view-show/contracts";
 import { z } from "zod";
-import type { GatewayConfig } from "./config.js";
-import {
-  ServiceClient,
-  type FullServiceResponse,
-} from "./infrastructure/service-client.js";
+import type { ApiConfig } from "./config.js";
+import type { AuthModule } from "./modules/auth/index.js";
+import { parseCookie } from "./modules/auth/index.js";
+import type { DashboardQueries } from "./modules/dashboard/index.js";
+import type { IncidentUseCases } from "./modules/incidents/index.js";
 import { Metrics } from "./observability/metrics.js";
 
-const logger = createLogger("api-gateway");
+const logger = createLogger("api");
+
+const loginSchema = z
+  .object({ email: z.email(), password: z.string().min(1).max(1024) })
+  .strict();
+
+export interface AppDependencies {
+  readonly config: ApiConfig;
+  readonly incidents: IncidentUseCases;
+  readonly dashboard: DashboardQueries;
+  readonly auth: AuthModule;
+}
 
 function requestIdentifier(request: Request): string {
   const candidate = request.header("x-request-id");
   return candidate && /^[A-Za-z0-9_.:-]{1,128}$/.test(candidate)
     ? candidate
     : requestId();
-}
-
-function queryPath(
-  path: string,
-  query: Readonly<Record<string, unknown>>,
-): string {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined) search.set(key, String(value));
-  }
-  const suffix = search.toString();
-  return suffix ? `${path}?${suffix}` : path;
 }
 
 function rateLimiter(limit: number): express.RequestHandler {
@@ -80,34 +73,24 @@ function rateLimiter(limit: number): express.RequestHandler {
   };
 }
 
-function forward(response: Response, upstream: FullServiceResponse): void {
-  const cookie = upstream.headers.get("set-cookie");
-  if (cookie) response.setHeader("set-cookie", cookie);
-  if (upstream.status === 204) {
-    response.status(204).end();
-    return;
-  }
-  response.status(upstream.status).json(upstream.body);
-}
-
-export function createApp(config: GatewayConfig) {
+export function createApp(deps: AppDependencies) {
+  const { config, incidents, dashboard, auth } = deps;
   const app = express();
-  const metrics = new Metrics("api-gateway");
-  const incidents = new ServiceClient(
-    config.services.incidents,
-    config.internalToken,
-    config.timeoutMs,
-  );
-  const dashboard = new ServiceClient(
-    config.services.dashboard,
-    config.internalToken,
-    config.timeoutMs,
-  );
-  const identity = new ServiceClient(
-    config.services.identity,
-    config.internalToken,
-    config.timeoutMs,
-  );
+  const metrics = new Metrics("api");
+  const sessionCookieSecure = auth.nodeEnv === "production";
+
+  function issueSession(
+    response: Response,
+    identity: AuthenticatedIdentity,
+  ): void {
+    response.cookie("session", auth.sessions.issue(identity), {
+      httpOnly: true,
+      secure: sessionCookieSecure,
+      sameSite: "lax",
+      maxAge: 8 * 60 * 60 * 1000,
+      path: "/",
+    });
+  }
 
   app.disable("x-powered-by");
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -153,51 +136,77 @@ export function createApp(config: GatewayConfig) {
   }
   app.use(rateLimiter(180));
 
-  const authProxy =
-    (method: "GET" | "POST", path: string) =>
-    async (request: Request, response: Response, next: NextFunction) => {
-      try {
-        const cookie = request.header("cookie");
-        const upstream = await identity.request({
-          method,
-          path: `/internal/v1/auth/${path}`,
-          requestId: response.locals.requestId as string,
-          ...(cookie ? { cookie } : {}),
-          ...(method === "POST" ? { body: request.body as unknown } : {}),
-        });
-        forward(response, upstream);
-      } catch (error) {
-        next(error);
-      }
-    };
-  app.post("/auth/login", authProxy("POST", "login"));
-  app.post("/auth/register", authProxy("POST", "register"));
-  app.post("/auth/recover", authProxy("POST", "recover"));
-  app.post("/auth/logout", authProxy("POST", "logout"));
-  app.get("/auth/sso", authProxy("GET", "sso"));
-  app.get("/auth/session", async (request, response, next) => {
+  app.post("/auth/login", async (request, response, next) => {
     try {
-      const cookie = request.header("cookie");
-      const upstream = await identity.request({
-        path: "/internal/v1/session",
-        requestId: response.locals.requestId as string,
-        ...(cookie ? { cookie } : {}),
+      const parsed = loginSchema.safeParse(request.body);
+      if (!parsed.success) throw validationError(parsed.error);
+      const identity = await auth.useCases.login(
+        parsed.data.email,
+        parsed.data.password,
+      );
+      issueSession(response, identity);
+      response.json({
+        status: "ok",
+        name: identity.name,
+        role: identity.role,
       });
-      forward(response, upstream);
     } catch (error) {
       next(error);
     }
+  });
+
+  app.post("/auth/logout", (_request, response) => {
+    response.clearCookie("session", {
+      httpOnly: true,
+      secure: sessionCookieSecure,
+      sameSite: "lax",
+      path: "/",
+    });
+    response.status(204).end();
+  });
+
+  app.post("/auth/register", (_request, _response, next) => {
+    try {
+      auth.useCases.unavailable("Cadastro local");
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.post("/auth/recover", (_request, _response, next) => {
+    try {
+      auth.useCases.unavailable("Recuperação de senha local");
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.get("/auth/sso", (_request, _response, next) => {
+    try {
+      auth.useCases.unavailable("SSO");
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/auth/session", (request, response, next) => {
+    const identity = auth.sessions.verify(
+      parseCookie(request.header("cookie"), "session"),
+    );
+    if (!identity)
+      return next(
+        new ServiceError(
+          401,
+          "UNAUTHENTICATED",
+          "Sessão inválida, ausente ou expirada.",
+        ),
+      );
+    response.json({ identity });
   });
 
   app.get("/api/v1/dashboard/overview", async (request, response, next) => {
     try {
       const parsed = overviewQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
-      const result = await dashboard.get(
-        queryPath("/internal/v1/dashboard/overview", parsed.data),
-        response.locals.requestId as string,
-        overviewProjectionSchema,
-      );
+      const result = await dashboard.overview(parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
@@ -211,11 +220,7 @@ export function createApp(config: GatewayConfig) {
     try {
       const parsed = incidentsQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
-      const result = await incidents.get(
-        queryPath("/internal/v1/incidents", parsed.data),
-        response.locals.requestId as string,
-        incidentsDataSchema,
-      );
+      const result = await incidents.list(parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
@@ -230,11 +235,7 @@ export function createApp(config: GatewayConfig) {
     async (request, response, next) => {
       try {
         const incidentId = opaqueIdSchema.parse(request.params.incidentId);
-        const result = await incidents.get(
-          `/internal/v1/incidents/${encodeURIComponent(incidentId)}/diagnosis`,
-          response.locals.requestId as string,
-          diagnosisDataSchema,
-        );
+        const result = await incidents.diagnosis(incidentId);
         assertNoPhysicalFields(result.data);
         response.json(
           successEnvelope(result, response.locals.requestId as string),
@@ -252,14 +253,7 @@ export function createApp(config: GatewayConfig) {
         const incidentId = opaqueIdSchema.parse(request.params.incidentId);
         const parsed = eventsQuerySchema.safeParse(request.query);
         if (!parsed.success) throw validationError(parsed.error);
-        const result = await incidents.get(
-          queryPath(
-            `/internal/v1/incidents/${encodeURIComponent(incidentId)}/events`,
-            parsed.data,
-          ),
-          response.locals.requestId as string,
-          eventsDataRuntimeSchema,
-        );
+        const result = await incidents.events(incidentId, parsed.data.limit);
         assertNoPhysicalFields(result.data);
         response.json(
           successEnvelope(result, response.locals.requestId as string),
@@ -272,19 +266,11 @@ export function createApp(config: GatewayConfig) {
 
   app.get(
     "/api/v1/incidents/:incidentId/events/:eventId",
-    async (request, response, next) => {
+    (request, response, next) => {
       try {
-        const incidentId = opaqueIdSchema.parse(request.params.incidentId);
-        const eventId = opaqueIdSchema.parse(request.params.eventId);
-        const result = await incidents.get(
-          `/internal/v1/incidents/${encodeURIComponent(incidentId)}/events/${encodeURIComponent(eventId)}`,
-          response.locals.requestId as string,
-          z.record(z.string(), z.unknown()),
-        );
-        assertNoPhysicalFields(result.data);
-        response.json(
-          successEnvelope(result, response.locals.requestId as string),
-        );
+        opaqueIdSchema.parse(request.params.incidentId);
+        opaqueIdSchema.parse(request.params.eventId);
+        incidents.event();
       } catch (error) {
         next(error);
       }
@@ -299,37 +285,22 @@ export function createApp(config: GatewayConfig) {
         const hypothesisId = opaqueIdSchema.parse(request.params.hypothesisId);
         const parsed = reviewBodySchema.safeParse(request.body);
         if (!parsed.success) throw validationError(parsed.error);
-        const cookie = request.header("cookie");
-        const session = await identity.request({
-          path: "/internal/v1/session",
-          requestId: response.locals.requestId as string,
-          ...(cookie ? { cookie } : {}),
-        });
-        const identityBody =
-          session.body !== null &&
-          typeof session.body === "object" &&
-          "identity" in session.body
-            ? session.body.identity
-            : null;
-        const actorResult = authenticatedIdentitySchema.safeParse(identityBody);
-        if (!actorResult.success)
+        const actor = auth.sessions.verify(
+          parseCookie(request.header("cookie"), "session"),
+        );
+        if (!actor)
           throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
-        const actor = actorResult.data;
         if (actor.role !== "engineer" && actor.role !== "admin")
           throw new ServiceError(
             403,
             "FORBIDDEN",
             "O usuário não pode revisar hipóteses.",
           );
-        const result = await incidents.mutate(
-          {
-            method: "PATCH",
-            path: `/internal/v1/incidents/${encodeURIComponent(incidentId)}/hypotheses/${encodeURIComponent(hypothesisId)}/review`,
-            requestId: response.locals.requestId as string,
-            reviewerId: actor.id,
-            body: parsed.data,
-          },
-          reviewDataRuntimeSchema,
+        const result = await incidents.review(
+          incidentId,
+          hypothesisId,
+          parsed.data,
+          actor.id,
         );
         assertNoPhysicalFields(result.data);
         response.json(
@@ -345,11 +316,7 @@ export function createApp(config: GatewayConfig) {
     try {
       const parsed = monitoringQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
-      const result = await dashboard.get(
-        queryPath("/internal/v1/monitoring/overview", parsed.data),
-        response.locals.requestId as string,
-        monitoringProjectionSchema,
-      );
+      const result = await dashboard.monitoring(parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
@@ -372,11 +339,7 @@ export function createApp(config: GatewayConfig) {
       const serviceError =
         error instanceof ServiceError
           ? error
-          : new ServiceError(
-              500,
-              "INTERNAL_ERROR",
-              "Falha interna no gateway.",
-            );
+          : new ServiceError(500, "INTERNAL_ERROR", "Falha interna na API.");
       if (!(error instanceof ServiceError))
         logger.error("unhandled request error", {
           request_id: response.locals.requestId,

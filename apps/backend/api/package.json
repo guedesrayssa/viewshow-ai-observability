@@ -1,5 +1,5 @@
 {
-  "name": "@view-show/gateway",
+  "name": "@view-show/api",
   "version": "2.0.0",
   "private": true,
   "type": "module",
@@ -7,28 +7,20 @@
     "node": ">=22 <23"
   },
   "workspaces": [
-    "contracts",
-    "incidents-service",
-    "dashboard-query-service",
-    "identity-service",
-    "runtime-compat"
+    "contracts"
   ],
   "scripts": {
     "clean": "node scripts/clean.mjs",
     "build": "tsc -b tsconfig.workspaces.json",
     "typecheck": "tsc -b tsconfig.workspaces.json --pretty false",
     "lint": "node scripts/lint.mjs && tsc -b tsconfig.workspaces.json --pretty false",
-    "format:check": "prettier --check \"{src,contracts,incidents-service,dashboard-query-service,identity-service,runtime-compat,tests}/**/*.{ts,json,yaml,md}\"",
+    "format:check": "prettier --check \"{src,contracts,tests}/**/*.{ts,json,yaml,md}\"",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ci-policy": "node --test --test-concurrency=1 \"tests/ci/*.test.js\"",
     "verify": "npm run lint && npm run test && npm run build",
     "start": "node dist/index.js",
-    "start:compat": "node runtime-compat/dist/index.js",
-    "start:incidents": "node incidents-service/dist/index.js",
-    "start:dashboard-query": "node dashboard-query-service/dist/index.js",
-    "start:identity": "node identity-service/dist/index.js",
-    "dev": "npm run build && npm run start:compat"
+    "dev": "npm run build && npm run start"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.1128.0",

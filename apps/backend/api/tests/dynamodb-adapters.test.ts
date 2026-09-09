@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { DynamoIncidentRepository } from "../incidents-service/src/adapters/dynamodb-incident-repository.js";
+import { DynamoIncidentRepository } from "../src/modules/incidents/adapters/dynamodb-incident-repository.js";
 
 describe("DynamoDB adapters", () => {
   it("consumes successive query pages without exposing LastEvaluatedKey", async () => {
@@ -66,8 +66,8 @@ describe("DynamoDB adapters", () => {
   it("contains no Scan command in request-path TypeScript", async () => {
     const sources = await Promise.all(
       [
-        "../incidents-service/src/adapters/dynamodb-incident-repository.ts",
-        "../dashboard-query-service/src/adapters/dynamodb-dashboard-read-repository.ts",
+        "../src/modules/incidents/adapters/dynamodb-incident-repository.ts",
+        "../src/modules/dashboard/adapters/dynamodb-dashboard-read-repository.ts",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     );
     expect(sources.join("\n")).not.toMatch(/ScanCommand|\.scan\s*\(/);

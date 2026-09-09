@@ -16,12 +16,9 @@
         { "name": "PORT", "value": "3000" },
         { "name": "AWS_REGION", "value": "us-east-1" },
         { "name": "OPERATIONAL_TABLE_NAME", "value": "monitoracao-operacional" },
-        { "name": "GOLDEN_SET_TABLE_NAME", "value": "monitoracao-golden-set" },
-        { "name": "BEDROCK_ENABLED", "value": "false" },
-        { "name": "BEDROCK_MODEL_ID", "value": "anthropic.claude-3-haiku-20240307-v1:0" },
-        { "name": "AUTH_USER_EMAIL", "value": "demo@globoplay.com" },
-        { "name": "AUTH_USER_PASSWORD", "value": "demo123" },
+        { "name": "MONITORING_SOURCES", "value": "argus" },
         { "name": "AUTH_COOKIE_SECRET", "value": "REPLACE_BEFORE_DEPLOY_openssl_rand_hex_32" },
+        { "name": "CURSOR_SECRET", "value": "REPLACE_BEFORE_DEPLOY_openssl_rand_hex_32" },
         { "name": "FRONTEND_ORIGIN", "value": "http://localhost:3001" }
       ],
       "logConfiguration": {

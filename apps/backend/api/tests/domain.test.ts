@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ServiceError } from "@view-show/contracts";
-import { CursorCodec } from "../incidents-service/src/domain/cursor.js";
+import { CursorCodec } from "../src/modules/incidents/domain/cursor.js";
 import {
   latestHypothesis,
   toDiagnosisData,
   toIncidentDto,
-} from "../incidents-service/src/domain/incident.js";
-import { SessionCodec } from "../identity-service/src/domain/session.js";
+} from "../src/modules/incidents/domain/incident.js";
+import { SessionCodec } from "../src/modules/auth/domain/session.js";
 
 const incident = {
   itemType: "incident",

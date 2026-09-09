@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { extname, join } from "node:path";
 
-const roots = ["src", "contracts/src", "incidents-service/src", "dashboard-query-service/src", "identity-service/src", "runtime-compat/src"];
+const roots = ["src", "contracts/src"];
 const violations = [];
 
 async function inspect(path) {

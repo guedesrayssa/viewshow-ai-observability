@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { DashboardQueries } from "../dashboard-query-service/src/application/dashboard-queries.js";
-import type { DashboardReadRepository } from "../dashboard-query-service/src/ports/dashboard-read-repository.js";
+import { DashboardQueries } from "../src/modules/dashboard/application/dashboard-queries.js";
+import type { DashboardReadRepository } from "../src/modules/dashboard/ports/dashboard-read-repository.js";
 
 const now = new Date("2026-01-01T12:00:00Z");
 

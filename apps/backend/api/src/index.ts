@@ -6,20 +6,37 @@ import {
 } from "@view-show/contracts";
 import { loadConfig } from "./config.js";
 
-startTelemetry("api-gateway");
-const [{ createApp }] = await Promise.all([import("./app.js")]);
+startTelemetry("api");
+const [
+  { createApp },
+  { createAuthModule },
+  { createIncidentsModule },
+  { createDashboardModule },
+] = await Promise.all([
+  import("./app.js"),
+  import("./modules/auth/index.js"),
+  import("./modules/incidents/index.js"),
+  import("./modules/dashboard/index.js"),
+]);
 const config = loadConfig();
-const logger = createLogger("api-gateway");
-const server = createServer(createApp(config));
+const logger = createLogger("api");
+const server = createServer(
+  createApp({
+    config,
+    auth: createAuthModule(),
+    incidents: createIncidentsModule(),
+    dashboard: createDashboardModule(),
+  }),
+);
 
 server.listen(config.port, config.host, () =>
-  logger.info("gateway started", { host: config.host, port: config.port }),
+  logger.info("api started", { host: config.host, port: config.port }),
 );
 let closing = false;
 async function shutdown(signal: string) {
   if (closing) return;
   closing = true;
-  logger.info("gateway stopping", { signal });
+  logger.info("api stopping", { signal });
   const closeResult = await new Promise<Error | null>((resolve) =>
     server.close((error) => resolve(error ?? null)),
   );

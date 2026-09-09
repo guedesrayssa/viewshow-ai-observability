@@ -28,7 +28,7 @@ test("Dockerfile defines a reproducible non-root Node 22 runtime", () => {
   assert.match(dockerfile, /^USER node$/m);
   assert.match(dockerfile, /^HEALTHCHECK /m);
   assert.match(dockerfile, /^ENTRYPOINT \["dumb-init", "--"\]$/m);
-  assert.match(dockerfile, /^CMD \["node", "runtime-compat\/dist\/index\.js"\]$/m);
+  assert.match(dockerfile, /^CMD \["node", "dist\/index\.js"\]$/m);
   assert.doesNotMatch(dockerfile, /^COPY \. \.$/m);
 });
 

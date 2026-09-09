@@ -6,9 +6,6 @@ const schema = z
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    IDENTITY_HOST: z.string().default("127.0.0.1"),
-    IDENTITY_PORT: z.coerce.number().int().min(1).max(65_535).default(3003),
-    INTERNAL_AUTH_TOKEN: z.string().min(24),
     AUTH_COOKIE_SECRET: z.string().min(32),
     IDENTITY_DEV_AUTH_ENABLED: z.enum(["true", "false"]).default("false"),
     IDENTITY_DEV_EMAIL: optionalText,
@@ -24,9 +21,6 @@ const schema = z
 
 export interface IdentityConfig {
   readonly nodeEnv: "development" | "test" | "production";
-  readonly host: string;
-  readonly port: number;
-  readonly internalToken: string;
   readonly cookieSecret: string;
   readonly devAuth:
     | false
@@ -67,9 +61,6 @@ export function loadConfig(
   }
   return {
     nodeEnv: value.NODE_ENV,
-    host: value.IDENTITY_HOST,
-    port: value.IDENTITY_PORT,
-    internalToken: value.INTERNAL_AUTH_TOKEN,
     cookieSecret: value.AUTH_COOKIE_SECRET,
     devAuth,
     oidc:
