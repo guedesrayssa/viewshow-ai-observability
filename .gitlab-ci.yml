@@ -10,7 +10,12 @@ stages:
   - publicar
 
 .mudou-backend: &backend_changes
-  - apps/backend/**/*
+  - apps/backend/api/src/**/*
+  - apps/backend/api/tests/**/*
+  - apps/backend/api/package.json
+  - apps/backend/api/package-lock.json
+  - apps/backend/api/Dockerfile
+  - apps/backend/api/.dockerignore
   - scripts/ci/**/*
   - scripts/sync-aws-gitlab-credentials.sh
   - .gitlab-ci.yml
@@ -64,12 +69,7 @@ validate_backend:
     - node --version
     - npm --version
     - npm ci --prefer-offline --no-audit --fund=false
-    - npm run format:check
-    - npm run lint
-    - npm run typecheck
     - npm test
-    - npm run test:ci-policy
-    - npm run build
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *backend_changes
@@ -204,7 +204,11 @@ tipos:
   rules:
     - changes: *mudou-frontend
 
-testes_frontend:
+# Os testes usam jsdom e dublês de leitura (`vi.fn`), não a aplicação
+# compilada: rodam em `validar`, ao lado de lint e tipos, sem depender do
+# build. `npm test` é `vitest run`, que sai diferente de zero se algum caso
+# quebrar — e aí o pipeline falha.
+testes-frontend:
   extends: .node
   stage: validar
   script:
