@@ -63,6 +63,7 @@ validate_observability_iac:
   image: docker:27.4.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a
   script:
     - docker compose -f apps/fullstack/docker-compose.observability.yml config --quiet
+    - AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder docker compose -f apps/fullstack/observability/aws/docker-compose.yml config --quiet
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *iac_changes

@@ -39,3 +39,10 @@ check "subnets_alb" {
 data "aws_iam_role" "lab" {
   name = "LabRole"
 }
+
+// Perfil preexistente do Learner Lab. Dá à EC2 acesso às APIs da AWS sem
+// gravar credenciais temporárias no disco e permite abrir o Grafana via SSM.
+data "aws_iam_instance_profile" "lab" {
+  count = var.observabilidade_habilitada ? 1 : 0
+  name  = "LabInstanceProfile"
+}

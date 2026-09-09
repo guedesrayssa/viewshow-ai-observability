@@ -39,10 +39,36 @@ output "comando_seed" {
 
 output "aviso_custo" {
   description = "Leia antes de fechar o laboratório."
-  value       = "O ALB e a task Fargate NAO sao desligados pelo End Lab: so a EC2 e, e aqui nao ha EC2. Rode 'terraform destroy' ao fim de cada sessao, ou eles seguem cobrando ~US$ 25/mes do orcamento do lab."
+  value       = "O End Lab para a EC2 de observabilidade, mas o EBS, o ALB e a task Fargate continuam cobrando. Rode 'terraform destroy' ao fim de cada sessao se nao precisar preservar o ambiente."
 }
 
 output "api_url_https" {
   description = "Endereço HTTPS da API, via API Gateway. É para onde o Amplify repassa /api, /auth e /health."
   value       = aws_apigatewayv2_stage.default.invoke_url
+}
+
+output "grafana_acesso" {
+  description = "Acesso ao Grafana. Por padrão use o túnel SSM; com grafana_cidr_acesso definido, use a URL direta."
+  value = var.observabilidade_habilitada ? {
+    usuario    = "admin"
+    url_direta = var.grafana_cidr_acesso == null ? null : "http://${aws_instance.observabilidade[0].public_dns}:3000"
+    tunel_ssm  = "aws ssm start-session --target ${aws_instance.observabilidade[0].id} --document-name AWS-StartPortForwardingSession --parameters portNumber=3000,localPortNumber=3002 --region ${var.regiao}"
+    url_tunel  = "http://localhost:3002"
+  } : null
+}
+
+output "grafana_senha" {
+  description = "Senha do usuário admin do Grafana."
+  value       = var.observabilidade_habilitada ? random_password.grafana[0].result : null
+  sensitive   = true
+}
+
+output "observabilidade_instancia_id" {
+  description = "ID da EC2 que hospeda Grafana, Prometheus, Loki e Tempo."
+  value       = var.observabilidade_habilitada ? aws_instance.observabilidade[0].id : null
+}
+
+output "comando_status_observabilidade" {
+  description = "Abre uma sessão SSM na EC2 para verificar cloud-init e os containers."
+  value       = var.observabilidade_habilitada ? "aws ssm start-session --target ${aws_instance.observabilidade[0].id} --region ${var.regiao}" : null
 }

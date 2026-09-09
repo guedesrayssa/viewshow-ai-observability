@@ -139,3 +139,46 @@ variable "retencao_logs_dias" {
   type        = number
   default     = 7
 }
+
+variable "observabilidade_habilitada" {
+  description = "Cria a stack Grafana, Prometheus, Loki e Tempo em uma EC2."
+  type        = bool
+  default     = true
+}
+
+variable "nome_observabilidade" {
+  description = "Nome da instância e do security group da stack LGTM."
+  type        = string
+  default     = "view-show-observabilidade"
+}
+
+variable "tipo_instancia_observabilidade" {
+  description = "Tipo da EC2 da stack. t3.medium fornece 4 GiB para os quatro componentes LGTM."
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "disco_observabilidade_gib" {
+  description = "Tamanho do volume gp3 que guarda métricas, logs, traces e dados do Grafana."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.disco_observabilidade_gib >= 20
+    error_message = "A stack de observabilidade precisa de pelo menos 20 GiB."
+  }
+}
+
+variable "grafana_cidr_acesso" {
+  description = "CIDR autorizado a abrir o Grafana em :3000. null mantém a porta privada e exige túnel SSM (recomendado)."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.grafana_cidr_acesso == null || (
+      can(cidrnetmask(var.grafana_cidr_acesso)) && var.grafana_cidr_acesso != "0.0.0.0/0"
+    )
+    error_message = "grafana_cidr_acesso deve ser null ou um CIDR IPv4 restrito; 0.0.0.0/0 não é permitido."
+  }
+}

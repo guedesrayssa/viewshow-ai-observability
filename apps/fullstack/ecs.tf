@@ -78,6 +78,8 @@ resource "aws_ecs_task_definition" "api" {
         { name = "AUTH_USER_EMAIL", value = var.auth_email },
         { name = "AUTH_USER_PASSWORD", value = var.auth_senha },
         { name = "AUTH_COOKIE_SECRET", value = random_password.cookie.result },
+        { name = "OTEL_SERVICE_NAME", value = "view-show-api" },
+        { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
 
         // O painel chega pelo Amplify, que repassa /api, /auth e /health para
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da

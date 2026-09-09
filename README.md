@@ -80,7 +80,7 @@ fixture sanitizado e notebooks, está em
 | --- | --- |
 | `/artefatos` | Documentação: requisitos, arquitetura do backend, análise financeira, roteiro de implantação na AWS, relatório de testes e a coleção do Postman |
 | `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
-| `/apps/fullstack` | Toda a IaC: Terraform da stack AWS, Docker Compose da observabilidade local, configurações e runbooks |
+| `/apps/fullstack` | Toda a IaC: Terraform da aplicação e da observabilidade Grafana na AWS, Docker Compose local, configurações e runbooks |
 | `/apps/backend` | API operacional em Node.js/Express |
 | `/apps/frontend` | Painel definitivo em Next.js |
 | `/assets` | Imagens e logos usados na documentação |

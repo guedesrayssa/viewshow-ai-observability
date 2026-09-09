@@ -25,14 +25,16 @@ arquitetura.
 | Target group (health check em `/health`) | `monitoracao-api-tg` | `alb.tf` |
 | Security group do serviço | `monitoracao-api-sg` | `network.tf` |
 | Log group | `/ecs/monitoracao-api` | `ecs.tf` |
+| Observabilidade LGTM | EC2 `view-show-observabilidade` | `observability-aws.tf` |
 | Tabelas DynamoDB | `monitoracao-operacional`, `monitoracao-golden-set` | `dynamodb.tf` |
 | App Amplify (deploy manual por zip) | `g05-painel` | `amplify.tf` |
 | API Gateway (só terminação TLS) | `monitoracao-api-service-tls` | `apigateway.tf` |
 
-O mesmo diretório contém a infraestrutura declarativa local de observabilidade:
+O mesmo diretório contém a infraestrutura declarativa de observabilidade.
 `docker-compose.observability.yml` provisiona Grafana, Prometheus, Loki e Tempo
-com as configurações de `observability/`. Essa stack não é criada pelo
-Terraform e não consome recursos AWS.
+localmente; `observability-aws.tf` leva os mesmos quatro componentes para uma
+EC2 e provisiona CloudWatch como quarto data source do Grafana. O acesso AWS é
+privado por padrão e feito com um túnel do Session Manager.
 
 Os documentos específicos de métricas, logs e traces ficam em
 [`../observability/documentation/`](../observability/documentation/README.md).
@@ -52,11 +54,12 @@ Os documentos específicos de métricas, logs e traces ficam em
 | `dynamodb.tf` | Tabelas operacional e golden set, GSI e TTL |
 | `amplify.tf` | App/branch Amplify, build, ZIP e publicação do frontend |
 | `seed.tf` | Seed idempotente acionado após a criação das tabelas |
+| `observability-aws.tf` | EC2, rede e bootstrap da stack Grafana na AWS |
 | `outputs.tf` | URLs, nomes, comando de logs, seed e aviso de custo |
 | `scripts/` | Publicação portável da imagem Docker e do ZIP do Amplify |
 | `.terraform.lock.hcl` | Versões e hashes exatos dos providers |
 | `docker-compose.observability.yml` | Stack local Grafana, Prometheus, Loki e Tempo |
-| `observability/` | Configuração declarativa e documentação da stack LGTM |
+| `observability/` | Configuração local e AWS, dashboard e runbook da stack LGTM |
 | `.gitignore` | Estado, providers, variáveis locais e artefatos gerados |
 
 O estado local (`*.tfstate`), o diretório `.terraform/` e o ZIP intermediário
@@ -70,10 +73,10 @@ compartilhado, use backend remoto criptografado, controle de acesso e locking.
 O Terraform também constrói e publica a imagem no ECR, compila e publica o
 painel no Amplify, e semeia as tabelas — tudo dentro do `apply`.
 
-## Observabilidade local declarativa
+## Observabilidade declarativa
 
-A stack LGTM fica no mesmo domínio de IaC, mas tem ciclo de vida independente
-dos recursos AWS. A partir de `apps/fullstack`:
+A stack LGTM local fica no mesmo domínio de IaC, mas tem ciclo de vida
+independente dos recursos AWS. A partir de `apps/fullstack`:
 
 ```bash
 docker compose -f docker-compose.observability.yml config --quiet
@@ -84,6 +87,11 @@ docker compose -f docker-compose.observability.yml down -v   # remove volumes
 
 Portas, retenção, credenciais locais, data sources e limitações estão em
 [`../observability/README.md`](../observability/README.md).
+
+Na AWS, o mesmo `terraform apply` da stack fullstack cria a EC2 de
+observabilidade. Consulte o runbook acima para abrir o túnel SSM, obter a senha,
+acompanhar o `cloud-init`, habilitar opcionalmente acesso por CIDR e entender o
+ciclo de vida dos dados.
 
 ## Duas diferenças em relação à conta compartilhada, e por quê
 
@@ -311,11 +319,10 @@ terraform apply -replace=terraform_data.painel
 
 ## Custo — leia antes de fechar o laboratório
 
-O "End Lab" do AWS Academy **para instâncias EC2, e só elas**. Aqui não há EC2:
-o ALB, a task Fargate e o API Gateway **continuam rodando e cobrando** depois que
-você fecha o notebook. São cerca de **US$ 25/mês**, contra um orçamento total de
-US$ 100 — e o indicador de gasto do lab atrasa até 8 horas, então você descobre
-tarde.
+O "End Lab" do AWS Academy para a EC2 de observabilidade, mas não remove seu
+volume EBS. O ALB, a task Fargate e o API Gateway também **continuam rodando e
+cobrando** depois que você fecha o notebook. O indicador de gasto do lab atrasa,
+então remova a infraestrutura quando não precisar preservar o ambiente.
 
 ```bash
 terraform destroy    # ao fim de cada sessão, sem exceção
@@ -342,6 +349,10 @@ ALB não têm estado "parado". Reaplicar custa os mesmos 8-15 minutos.
 | `semear_dados` | `true` | Roda `seed.js` no apply |
 | `bedrock_habilitado` | `false` | Mantenha desligado: o lab não dá acesso ao Bedrock |
 | `retencao_logs_dias` | `7` | Retenção do log group |
+| `observabilidade_habilitada` | `true` | Cria a stack LGTM em EC2 |
+| `tipo_instancia_observabilidade` | `t3.medium` | 4 GiB para os quatro componentes |
+| `disco_observabilidade_gib` | `30` | Disco gp3 dos volumes Docker |
+| `grafana_cidr_acesso` | `null` | Sem porta pública; acesso por túnel SSM |
 
 `AUTH_COOKIE_SECRET` não é variável: é gerado por `random_password` a cada
 criação da stack, então nunca passa pelo Git. O Terraform injeta o valor na task
