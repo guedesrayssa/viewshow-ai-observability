@@ -15,3 +15,5 @@ export * from "./prompts/rca-v1.js";
 export * from "./application/investigate.js";
 export * from "./adapters/llm/ollama-provider.js";
 export * from "./contracts/analysis-event.js";
+export * from "./adapters/llm/bedrock-provider.js";
+export * from "./bootstrap/llm-provider-factory.js";

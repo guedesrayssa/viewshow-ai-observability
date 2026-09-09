@@ -27,7 +27,9 @@ ports, com um adaptador de cada lado.
 | `src/domain/evidence.ts` | Entrada da investigação: incidente, evidência, caso curado |
 | `src/prompts/rca-v1.ts` | Prompt versionado, com bloco de dados delimitado |
 | `src/application/investigate.ts` | Orquestração: gate → curado → modelo → validação |
+| `src/bootstrap/llm-provider-factory.ts` | Seleção do provider na inicialização |
 | `src/adapters/llm/ollama-provider.ts` | Provider real; roda sem AWS |
+| `src/adapters/llm/bedrock-provider.ts` | Provider de produção, API Converse |
 | `src/adapters/llm/fake-provider.ts` | Duplo determinístico, só para teste |
 | `src/ports/llm-provider.ts` | Fronteira com o modelo de linguagem |
 | `src/ports/agentic-diagnosis.ts` | Como o backend aciona esta camada |
@@ -91,7 +93,28 @@ JSON, conteúdo vazio e tempo limite viram exceção, que a orquestração tradu
 `failed`. Um adaptador que engolisse isso faria o diagnóstico quebrar mais
 tarde, em outro lugar, com mensagem que não aponta para a causa.
 
-`fake` existe só para teste e a composição deve recusá-lo fora de teste.
+`bedrock` usa a API Converse, e não `InvokeModel`: o código anterior montava
+`anthropic_version` na mão, o que prendia a camada a modelos Anthropic. **O SDK
+da AWS não é dependência deste pacote** — o adaptador recebe uma função
+`converse` com interface estreita, e quem integra faz a ligação:
+
+```ts
+const client = new BedrockRuntimeClient({ region, maxAttempts: 4 });
+const provider = createLlmProvider({
+  kind: "bedrock",
+  modelId,
+  environment: process.env.NODE_ENV ?? "development",
+  converse: (input) => client.send(new ConverseCommand(input)),
+});
+```
+
+Assim o núcleo continua sem dependência de runtime, e não se carrega um SDK
+inteiro por um provider que hoje está bloqueado na conta do AWS Academy.
+
+`fake` só é construído com `environment === "test"`; em qualquer outro a
+fábrica lança. Um duplo determinístico que vaze para produção não quebra — ele
+responde, e a tela mostra um diagnóstico inventado com aparência de real. É a
+pior falha possível aqui, e recusar na largada é a defesa mais barata.
 
 ## Rodar
 
