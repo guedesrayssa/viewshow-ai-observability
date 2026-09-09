@@ -72,7 +72,7 @@ painéis.
 
 O laboratório reprodutível de exploração do dump MySQL, incluindo setup local,
 fixture sanitizado e notebooks, está em
-[artefatos/extras/analysis/README.md](artefatos/extras/analysis/README.md).
+[`argus_algoritmo.ipynb`](artefatos/extras/notebooks/argus_algoritmo.ipynb).
 
 ## Estrutura de pastas
 
@@ -80,7 +80,9 @@ fixture sanitizado e notebooks, está em
 | --- | --- |
 | `/artefatos` | Documentação: requisitos, arquitetura do backend, análise financeira, roteiro de implantação na AWS, relatório de testes e a coleção do Postman |
 | `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
-| `/apps/infra` | Terraform que reproduz a arquitetura da Sprint 2 — ECS Fargate, ALB, ECR, Amplify e DynamoDB — num AWS Academy Learner Lab individual, com um `terraform apply` |
+| `/apps/fullstack` | Toda a IaC: Terraform da stack AWS, Docker Compose da observabilidade local, configurações e runbooks |
+| `/apps/backend` | API operacional em Node.js/Express |
+| `/apps/frontend` | Painel definitivo em Next.js |
 | `/assets` | Imagens e logos usados na documentação |
 | `/slides` | Apresentações das sprints |
 
@@ -88,14 +90,15 @@ fixture sanitizado e notebooks, está em
 /
 ├── README.md
 ├── .gitignore
-├── apps/basica/
-│   ├── backend/
-│   │   ├── app/{controllers,domain,repositories,services}/
-│   │   ├── scripts/
-│   │   └── tests/
-│   ├── frontend/{index.html, app.js, api.js, config.js, styles.css, fonts/}
-│   └── deploy/{telemetria.service, deploy-frontend.sh}
-├── artefatos/{mvp-inicial.md, backend.md, requisitos.md, deploy-aws.md, ...}
+├── apps/
+│   ├── backend/api/                    API operacional Express
+│   ├── frontend/                       painel Next.js
+│   ├── fullstack/                      Terraform e observabilidade declarativa
+│   │   ├── documentation/              arquitetura e runbook da IaC
+│   │   ├── observability/              configurações Grafana/Loki/Prometheus/Tempo
+│   │   └── docker-compose.observability.yml
+│   └── basica/                         MVP legado da Sprint 1
+├── artefatos/{sprint1,sprint2,sprint3,arquitetura,contratos,postman}/
 ├── assets/
 └── slides/
 ```
@@ -133,7 +136,8 @@ altere `API_BASE_URL` em `apps/basica/frontend/config.js` — é o único arquiv
 entre ambientes.
 
 Sem configuração adicional a API guarda os dados em memória, e eles somem ao reiniciar.
-Para persistir no DynamoDB, veja [`artefatos/backend.md`](artefatos/backend.md).
+Para persistir no DynamoDB, veja
+[`artefatos/sprint1/backend.md`](artefatos/sprint1/backend.md).
 
 ### Testes
 
@@ -153,7 +157,7 @@ npx newman run artefatos/postman/telemetria-globoplay.postman_collection.json \
 ```
 
 Os resultados estão consolidados no
-[relatório de testes do MVP inicial](artefatos/mvp-inicial.md).
+[relatório de testes do MVP inicial](artefatos/sprint1/mvp-inicial.md).
 
 ### GitHub Codespaces
 
@@ -171,7 +175,7 @@ painel publicado como site estático em um bucket **S3**.
 
 O passo a passo completo — criação da instância, Elastic IP, provisionamento da tabela,
 serviço do systemd, bucket, CORS e verificação final — está em
-[`artefatos/deploy-aws.md`](artefatos/deploy-aws.md).
+[`artefatos/sprint2/deploy-aws.md`](artefatos/sprint2/deploy-aws.md).
 
 Resumo dos comandos, com a infraestrutura já criada:
 
@@ -194,13 +198,13 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
 ## Provisionamento automatizado (Terraform, Learner Lab individual)
 
 Além do runbook manual acima — que sobe a stack da Sprint 1 (`apps/basica`) —
-o diretório [`apps/infra`](apps/infra) reproduz a **arquitetura da Sprint 2**
+o diretório [`apps/fullstack`](apps/fullstack) reproduz a **arquitetura da Sprint 2**
 (painel Next.js no Amplify, API operacional em ECS Fargate atrás de um ALB,
 imagem no ECR e as duas tabelas DynamoDB) dentro do próprio AWS Academy Learner
 Lab de quem está rodando, com um único comando:
 
 ```bash
-cd apps/infra
+cd apps/fullstack
 terraform init
 terraform apply
 ```
@@ -219,20 +223,20 @@ ao fim de cada sessão, ou eles seguem cobrando do orçamento do laboratório.
 
 Detalhes de pré-requisitos, credenciais do lab, variáveis, [como encontrar o
 link do deploy depois de fechar o
-terminal](apps/infra/README.md#como-encontrar-o-link-do-deploy), o que fazer
+terminal](apps/fullstack/documentation/infraestrutura-integracao.md#como-encontrar-o-link-do-deploy), o que fazer
 entre sessões e uma tabela de "se der erro, é isto" estão em
-[`apps/infra/README.md`](apps/infra/README.md).
+[`infraestrutura-integracao.md`](apps/fullstack/documentation/infraestrutura-integracao.md).
 
 ---
 
 ## Documentação adicional
 
-- [Relatório de testes do MVP inicial](artefatos/mvp-inicial.md)
-- [Arquitetura e endpoints do backend](artefatos/backend.md)
-- [Especificação de requisitos](artefatos/requisitos.md)
-- [Roteiro de implantação na AWS](artefatos/deploy-aws.md)
-- [CI/CD do painel no AWS Amplify](artefatos/ci-cd-amplify.md)
-- [Análise financeira](artefatos/analise_financeira.md)
+- [Relatório de testes do MVP inicial](artefatos/sprint1/mvp-inicial.md)
+- [Arquitetura e endpoints do backend](artefatos/sprint1/backend.md)
+- [Especificação de requisitos](artefatos/sprint1/requisitos.md)
+- [Roteiro de implantação na AWS](artefatos/sprint2/deploy-aws.md)
+- [CI/CD do painel no AWS Amplify](artefatos/sprint2/ci-cd-amplify.md)
+- [Arquitetura e análise de custos](artefatos/sprint2/arquitetura-inicial.md)
 
 ---
 

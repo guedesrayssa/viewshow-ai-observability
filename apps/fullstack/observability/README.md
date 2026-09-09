@@ -1,19 +1,19 @@
 # Pilha de observabilidade local
 
 Ambiente de desenvolvimento com Grafana, Prometheus, Loki e Tempo, subido por
-`docker-compose.observability.yml` na raiz do repositório. Serve para instrumentar
+`apps/fullstack/docker-compose.observability.yml`. Serve para instrumentar
 a API do View Show localmente antes de levar métricas, logs e traces para a AWS.
 
 ## Subir e derrubar
 
 ```bash
 # a partir da raiz do repositório
-docker compose -f docker-compose.observability.yml up -d
-docker compose -f docker-compose.observability.yml ps
-docker compose -f docker-compose.observability.yml logs -f grafana
+docker compose -f apps/fullstack/docker-compose.observability.yml up -d
+docker compose -f apps/fullstack/docker-compose.observability.yml ps
+docker compose -f apps/fullstack/docker-compose.observability.yml logs -f grafana
 
-docker compose -f docker-compose.observability.yml down      # preserva os volumes
-docker compose -f docker-compose.observability.yml down -v   # apaga os dados
+docker compose -f apps/fullstack/docker-compose.observability.yml down      # preserva os volumes
+docker compose -f apps/fullstack/docker-compose.observability.yml down -v   # apaga os dados
 ```
 
 Grafana em <http://localhost:3002>, usuário `admin` e senha `admin` por padrão.
@@ -37,7 +37,7 @@ Todas as portas podem ser sobrescritas por variáveis de ambiente
 ## Arquivos
 
 ```
-apps/observability/
+apps/fullstack/observability/
 ├── grafana/provisioning/datasources/datasources.yml   data sources automáticos
 ├── loki/loki-config.yml                               Loki monolítico, disco local
 ├── prometheus/prometheus.yml                          alvos e intervalo de coleta

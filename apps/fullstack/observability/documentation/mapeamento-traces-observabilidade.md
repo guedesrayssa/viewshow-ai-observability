@@ -77,7 +77,7 @@
 ├──────────────────────────────────────┬──────────────────────────────────────┤
 │ O QUE JÁ EXISTE                      │ O QUE VAI SER IMPLEMENTADO           │
 ├──────────────────────────────────────┼──────────────────────────────────────┤
-│ • apps/observability:                │ • apps/backend/api:                  │
+│ • apps/fullstack/observability:      │ • apps/backend/api:                  │
 │   - Tempo 3.0.3 com receptores OTLP  │   - SDK OpenTelemetry para Node.     │
 │     em 4317 (gRPC) e 4318 (HTTP).    │   - Instrumentação automática de     │
 │   - live_store com blocos de 30s.    │     Express, HTTP e AWS SDK v3.      │
@@ -149,7 +149,7 @@ flowchart TD
         MYSQL[("Argus MySQL")]
     end
 
-    subgraph OBS["apps/observability"]
+    subgraph OBS["apps/fullstack/observability"]
         TEMPO["Tempo (:4318 OTLP/HTTP)"]
         PROM["Prometheus (:9090)"]
         LOKI["Loki (:3100)"]
@@ -671,7 +671,7 @@ with tracer.start_as_current_span("ingestion.run", links=[link], ...):
 | Armazenamento | Disco local (`/var/tempo/blocks`) | `storage.trace.backend: local` |
 
 > [!WARNING]
-> A retenção de traces (168 h) é **idêntica** à do Loki e menor que a do Prometheus (15 dias). Isso é intencional e está documentado no `README.md` de `apps/observability`, mas tem uma consequência a antecipar: um alerta de métrica disparado com mais de 7 dias de idade aponta para um exemplar cujo trace já foi expurgado. Em investigação retroativa, a métrica sobrevive e o trace não.
+> A retenção de traces (168 h) é **idêntica** à do Loki e menor que a do Prometheus (15 dias). Isso é intencional e está documentado no `README.md` de `apps/fullstack/observability`, mas tem uma consequência a antecipar: um alerta de métrica disparado com mais de 7 dias de idade aponta para um exemplar cujo trace já foi expurgado. Em investigação retroativa, a métrica sobrevive e o trace não.
 
 &emsp; **Estimativa de volume da API:** um trace de `POST /:id/diagnose` completo tem aproximadamente 12 spans; um `GET /api/v1/dashboard/summary` tem cerca de 28 (25 `Query` mais os internos). A 50 requisições por segundo com amostragem de 10% em produção, o volume fica na casa de poucas centenas de spans por segundo, confortável para uma instância monolítica do Tempo em disco local durante o desenvolvimento. O `local-blocks`, necessário para TraceQL de métricas, é o processador que mais consome disco e pode ser removido de `processors` se o espaço apertar.
 
@@ -780,7 +780,7 @@ with tracer.start_as_current_span("ingestion.run", links=[link], ...):
 
 ### Passo 1: Habilitar CORS no receptor OTLP do Tempo (apenas desenvolvimento)
 
-&emsp; Em `apps/observability/tempo/tempo.yml`, no receptor HTTP:
+&emsp; Em `apps/fullstack/observability/tempo/tempo.yml`, no receptor HTTP:
 
 ```yaml
 distributor:
@@ -801,7 +801,7 @@ distributor:
               - "*"
 ```
 
-&emsp; Reiniciar apenas o Tempo: `docker compose -f docker-compose.observability.yml restart tempo`.
+&emsp; Reiniciar apenas o Tempo: `docker compose -f apps/fullstack/docker-compose.observability.yml restart tempo`.
 
 ### Passo 2: Instrumentar a API com o SDK do OpenTelemetry
 
@@ -978,7 +978,7 @@ finally:
 
 ```bash
 # 1. Subir a pilha e a API instrumentada
-docker compose -f docker-compose.observability.yml up -d
+docker compose -f apps/fullstack/docker-compose.observability.yml up -d
 cd apps/backend/api && npm run dev
 
 # 2. Gerar um trace com profundidade real

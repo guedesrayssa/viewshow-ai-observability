@@ -27,7 +27,7 @@ Backend Node:
 - apps/backend/api/src/orchestrator
 - apps/backend/api/src/agent
 - apps/backend/api/scripts/seed.js
-- apps/backend/api/deploy/task-definition.json
+- apps/fullstack/ecs.tf
 - artefatos/decisoes.md
 - artefatos/backend-sprint-2.md
 

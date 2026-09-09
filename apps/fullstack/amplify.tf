@@ -64,15 +64,28 @@ locals {
   frontend_dir = "${path.module}/../frontend"
   painel_url   = "https://${aws_amplify_branch.principal.branch_name}.${aws_amplify_app.painel.default_domain}"
 
-  // Só o que entra no build. node_modules e .next ficam de fora.
-  hash_frontend = sha1(join("", [
-    filesha1("${local.frontend_dir}/package.json"),
-    filesha1("${local.frontend_dir}/package-lock.json"),
-    filesha1("${local.frontend_dir}/next.config.ts"),
-    sha1(join("", [for f in fileset(local.frontend_dir, "app/**") : filesha1("${local.frontend_dir}/${f}")])),
-    sha1(join("", [for f in fileset(local.frontend_dir, "components/**") : filesha1("${local.frontend_dir}/${f}")])),
-    sha1(join("", [for f in fileset(local.frontend_dir, "lib/**") : filesha1("${local.frontend_dir}/${f}")])),
-    sha1(join("", [for f in fileset(local.frontend_dir, "hooks/**") : filesha1("${local.frontend_dir}/${f}")])),
+  // Todos os arquivos versionados que podem alterar o bundle. Diretórios de
+  // build, dependências, documentação, testes e arquivos .env locais ficam de
+  // fora deliberadamente.
+  frontend_build_files = setunion(
+    fileset(local.frontend_dir, "app/**"),
+    fileset(local.frontend_dir, "components/**"),
+    fileset(local.frontend_dir, "hooks/**"),
+    fileset(local.frontend_dir, "lib/**"),
+    fileset(local.frontend_dir, "public/**"),
+    toset([
+      "next-env.d.ts",
+      "next.config.ts",
+      "package-lock.json",
+      "package.json",
+      "postcss.config.mjs",
+      "tsconfig.json",
+    ]),
+  )
+
+  hash_frontend = sha256(join("", [
+    for f in sort(tolist(local.frontend_build_files)) :
+    "${f}:${filesha256("${local.frontend_dir}/${f}")}"
   ]))
 }
 
@@ -137,5 +150,12 @@ resource "terraform_data" "painel" {
       REGIAO = var.regiao
       ZIP    = abspath(data.archive_file.painel.output_path)
     }
+  }
+
+  lifecycle {
+    replace_triggered_by = [
+      aws_amplify_app.painel,
+      aws_amplify_branch.principal,
+    ]
   }
 }
