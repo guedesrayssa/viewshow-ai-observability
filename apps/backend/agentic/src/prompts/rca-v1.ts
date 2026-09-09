@@ -12,15 +12,17 @@
  * (response-validation.ts); isto aqui é a primeira barreira, não a última.
  */
 
-import type { EvidenceItem, IncidentContext } from "../domain/evidence.js";
 import type { MlSignal } from "../domain/ml-result.js";
 import { relativeMargin } from "../domain/ml-result.js";
+import type { PromptTemplate, UserPromptInput } from "./types.js";
+
+export type { UserPromptInput };
 
 export const PROMPT_VERSION = "rca-v1";
 
 /** Delimitador improvável de aparecer em log de produção por acidente. */
-const INICIO_DADOS = "<<<DADOS_DE_EVIDENCIA>>>";
-const FIM_DADOS = "<<<FIM_DADOS_DE_EVIDENCIA>>>";
+export const INICIO_DADOS = "<<<DADOS_DE_EVIDENCIA>>>";
+export const FIM_DADOS = "<<<FIM_DADOS_DE_EVIDENCIA>>>";
 
 export function buildSystemPrompt(): string {
   return [
@@ -78,12 +80,6 @@ function describeSignal(signal: MlSignal): string {
   return linhas.join("\n");
 }
 
-export interface UserPromptInput {
-  readonly incident: IncidentContext;
-  readonly evidence: readonly EvidenceItem[];
-  readonly signal: MlSignal;
-}
-
 export function buildUserPrompt({ incident, evidence, signal }: UserPromptInput): string {
   const contexto = [
     `Componente: ${incident.component}`,
@@ -120,3 +116,10 @@ export function buildUserPrompt({ incident, evidence, signal }: UserPromptInput)
     FIM_DADOS,
   ].join("\n");
 }
+
+/** Template completo da v1, para seleção em tempo de composição. */
+export const rcaV1: PromptTemplate = {
+  version: PROMPT_VERSION,
+  buildSystemPrompt,
+  buildUserPrompt,
+};

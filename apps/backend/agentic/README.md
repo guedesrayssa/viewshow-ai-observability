@@ -116,6 +116,28 @@ fábrica lança. Um duplo determinístico que vaze para produção não quebra �
 responde, e a tela mostra um diagnóstico inventado com aparência de real. É a
 pior falha possível aqui, e recusar na largada é a defesa mais barata.
 
+## Avaliação com modelo real
+
+Os testes automatizados provam que o código faz o que foi escrito. O avaliador
+responde outra pergunta, que nenhum duplo consegue: um modelo de verdade,
+recebendo o nosso prompt, produz diagnóstico utilizável — e obedece às regras
+quando o dado tenta subvertê-las?
+
+```bash
+ollama serve                       # noutro terminal
+ollama pull llama3.1
+OLLAMA_MODEL=llama3.1 npm run eval:ollama
+```
+
+Cinco casos: incidente claro, **injeção de prompt plantada na evidência**,
+evidência fraca, previsão preventiva e caso sem evidência. O relatório mostra
+status, hipóteses, confiança e latência de cada um, e confere por fora que
+nenhuma evidência inexistente chegou ao resultado.
+
+No caso da injeção, o modelo obedecer não é falha do sistema: a hipótese é
+descartada e aparece como `UNKNOWN_EVIDENCE`. Falha seria um identificador
+inventado chegar ao diagnóstico entregue.
+
 ## Rodar
 
 ```bash

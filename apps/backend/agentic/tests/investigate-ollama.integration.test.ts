@@ -97,7 +97,7 @@ test("pipeline completo sobre HTTP real produz diagnóstico pronto", async (t) =
   assert.equal(resultado.source, "llm");
   assert.equal(resultado.model?.provider, "ollama");
   assert.equal(resultado.model?.modelId, "llama3.1");
-  assert.equal(resultado.model?.promptVersion, "rca-v1");
+  assert.equal(resultado.model?.promptVersion, "rca-v2");
   assert.equal(resultado.hypotheses.length, 1);
   assert.deepEqual(resultado.hypotheses[0]?.supportingEvidenceIds, ["ev_01", "ev_02"]);
   assert.deepEqual(resultado.reasons, []);

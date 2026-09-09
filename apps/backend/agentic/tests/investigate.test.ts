@@ -55,7 +55,7 @@ test("caminho feliz produz diagnóstico pronto com procedência do modelo", asyn
   const resultado = await investigate(entrada(), deps({ hypotheses: [HIPOTESE] }));
   assert.equal(resultado.status, "ready");
   assert.equal(resultado.source, "llm");
-  assert.equal(resultado.model?.promptVersion, "rca-v1");
+  assert.equal(resultado.model?.promptVersion, "rca-v2");
   assert.equal(resultado.hypotheses.length, 1);
   assert.equal(resultado.diagnosisId, "diag_01");
 });

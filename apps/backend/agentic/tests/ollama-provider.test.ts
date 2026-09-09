@@ -95,6 +95,34 @@ test("conteúdo vazio lança em vez de virar diagnóstico sem texto", async () =
   await assert.rejects(() => provider.generate(PEDIDO), /sem conteúdo/);
 });
 
+test("conteúdo vazio informa o done_reason — sem ele o erro obriga a adivinhar", async () => {
+  const { fn } = fakeFetch(respostaOk({ message: { content: "" }, done_reason: "length", eval_count: 2500 }));
+  const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });
+  await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
+    const msg = (erro as Error).message;
+    assert.match(msg, /done_reason: length/);
+    assert.match(msg, /tokens gerados: 2500/);
+    assert.match(msg, /aumente maxTokens/);
+    return true;
+  });
+});
+
+test("conteúdo vazio com raciocínio separado aponta o campo thinking", async () => {
+  // Modelo de raciocínio pode gastar todo o orçamento em `message.thinking` e
+  // não emitir conteúdo. O erro precisa dizer isso, senão parece falha de rede.
+  const { fn } = fakeFetch(
+    respostaOk({ message: { content: "", thinking: "hmm, deixa eu pensar..." }, done_reason: "length" }),
+  );
+  const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });
+  await assert.rejects(() => provider.generate(PEDIDO), /raciocínio em .message.thinking./);
+});
+
+test("done_reason ausente aparece como undefined em vez de sumir", async () => {
+  const { fn } = fakeFetch(respostaOk({ message: { content: "" } }));
+  const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });
+  await assert.rejects(() => provider.generate(PEDIDO), /done_reason: undefined/);
+});
+
 test("resposta sem `message` lança", async () => {
   const { fn } = fakeFetch(respostaOk({ done_reason: "stop" }));
   const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });

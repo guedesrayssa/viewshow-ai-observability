@@ -110,7 +110,7 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
       }
 
       const envelope = corpo as {
-        message?: { content?: unknown };
+        message?: { content?: unknown; thinking?: unknown };
         done_reason?: unknown;
         prompt_eval_count?: unknown;
         eval_count?: unknown;
@@ -118,7 +118,22 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
       const texto = envelope.message?.content;
 
       if (typeof texto !== "string" || texto.trim() === "") {
-        throw new OllamaError("Ollama respondeu sem conteúdo em `message.content`.");
+        // O motivo da parada é o que distingue as causas possíveis, e sem ele
+        // o erro obriga a adivinhar: "length" significa orçamento de tokens
+        // esgotado (aumentar maxTokens), qualquer outro aponta para outro
+        // problema. Modelos de raciocínio ainda gastam esse orçamento num
+        // campo `thinking` separado, que não é o conteúdo da resposta.
+        const pensou =
+          typeof envelope.message?.thinking === "string" && envelope.message.thinking.trim() !== "";
+        const gerados = typeof envelope.eval_count === "number" ? envelope.eval_count : "?";
+        throw new OllamaError(
+          `Ollama respondeu sem conteúdo em \`message.content\` ` +
+            `(done_reason: ${String(envelope.done_reason)}, tokens gerados: ${gerados}` +
+            `${pensou ? ", com raciocínio em `message.thinking`" : ""}).` +
+            (envelope.done_reason === "length"
+              ? " Orçamento de tokens esgotado antes da resposta: aumente maxTokens."
+              : ""),
+        );
       }
 
       return {

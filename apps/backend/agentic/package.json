@@ -13,7 +13,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test --test-concurrency=1 dist/tests/",
-    "verify": "npm run typecheck && npm run test"
+    "verify": "npm run typecheck && npm run test",
+    "eval:ollama": "npm run build && node dist/scripts/eval-ollama.js"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",

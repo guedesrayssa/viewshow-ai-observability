@@ -15,7 +15,8 @@
 import { evaluateQuality, DEFAULT_POLICY, type GatePolicy } from "../domain/quality-gate.js";
 import { parseDiagnosisResponse } from "../domain/response-validation.js";
 import { lowConfidenceWarning, rankByConfidence, DEFAULT_CONFIDENCE_FLOOR } from "../domain/outcome.js";
-import { buildSystemPrompt, buildUserPrompt, PROMPT_VERSION } from "../prompts/rca-v1.js";
+import { rcaV2 } from "../prompts/rca-v2.js";
+import type { PromptTemplate } from "../prompts/types.js";
 import type { Diagnosis, InvestigationTrigger, Reason } from "../domain/diagnosis.js";
 import type { EvidenceItem, GoldenCase, IncidentContext } from "../domain/evidence.js";
 import type { MlSignal } from "../domain/ml-result.js";
@@ -51,6 +52,14 @@ export interface InvestigationDeps {
   readonly newDiagnosisId: () => string;
   readonly policy?: GatePolicy;
   readonly confidenceFloor?: number;
+  /**
+   * Versão do prompt. Padrão v2 desde 09/09/2026, com base na comparação
+   * medida em artefatos/sprint3/avaliacao-modelos-camada-agentica.md: a regra
+   * de teto de confiança para ausência de diagnóstico derrubou de 0,80 para
+   * 0,20 uma afirmação de "variação normal" que passaria pelo piso como
+   * diagnóstico firme. A v1 continua disponível para comparação.
+   */
+  readonly prompt?: PromptTemplate;
 }
 
 /** Campos comuns a todos os desfechos, para nenhum caminho esquecer um deles. */
@@ -127,11 +136,13 @@ export async function investigate(
   // 3. Chamada ao modelo. Qualquer erro daqui é `failed`: o sistema não
   //    funcionou, e é essa distinção — contra `pending`, que é decisão
   //    deliberada de não investigar — que decide o alarme.
+  const prompt = deps.prompt ?? rcaV2;
+
   let resposta;
   try {
     resposta = await deps.llm.generate({
-      systemPrompt: buildSystemPrompt(),
-      userPrompt: buildUserPrompt({
+      systemPrompt: prompt.buildSystemPrompt(),
+      userPrompt: prompt.buildUserPrompt({
         incident: input.incident,
         evidence: input.evidence,
         signal: input.signal,
@@ -151,7 +162,7 @@ export async function investigate(
   const modelo = {
     provider: resposta.provider,
     modelId: resposta.modelId,
-    promptVersion: PROMPT_VERSION,
+    promptVersion: prompt.version,
   };
 
   // 4. Validação. Resposta que não sobrevive é falha do sistema, não silêncio
