@@ -1,0 +1,400 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "View Show Operational API",
+    "version": "1.0.0",
+    "description": "Public gateway contract. DynamoDB physical fields are never public."
+  },
+  "servers": [{ "url": "/" }],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Cheap liveness check",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["status"],
+                  "properties": { "status": { "const": "ok" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "metrics",
+        "responses": {
+          "200": {
+            "description": "Prometheus metrics",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session issued",
+            "headers": { "Set-Cookie": { "schema": { "type": "string" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "register",
+        "responses": { "503": { "$ref": "#/components/responses/Error" } }
+      }
+    },
+    "/auth/recover": {
+      "post": {
+        "operationId": "recover",
+        "responses": { "503": { "$ref": "#/components/responses/Error" } }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "responses": { "204": { "description": "Session cleared" } }
+      }
+    },
+    "/auth/sso": {
+      "get": {
+        "operationId": "sso",
+        "responses": { "503": { "$ref": "#/components/responses/Error" } }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "operationId": "session",
+        "responses": {
+          "200": { "description": "Authenticated identity" },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/dashboard/overview": {
+      "get": {
+        "operationId": "dashboardOverview",
+        "parameters": [
+          { "$ref": "#/components/parameters/Window" },
+          { "$ref": "#/components/parameters/DeviceType" },
+          { "$ref": "#/components/parameters/Region" },
+          { "$ref": "#/components/parameters/AppVersion" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/incidents": {
+      "get": {
+        "operationId": "listIncidents",
+        "parameters": [
+          { "$ref": "#/components/parameters/Window" },
+          { "$ref": "#/components/parameters/DeviceType" },
+          { "$ref": "#/components/parameters/Region" },
+          { "$ref": "#/components/parameters/AppVersion" },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string", "maxLength": 4096 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/incidents/{incidentId}/diagnosis": {
+      "get": {
+        "operationId": "getDiagnosis",
+        "parameters": [{ "$ref": "#/components/parameters/IncidentId" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/incidents/{incidentId}/hypotheses/{hypothesisId}/review": {
+      "patch": {
+        "operationId": "reviewHypothesis",
+        "parameters": [
+          { "$ref": "#/components/parameters/IncidentId" },
+          { "$ref": "#/components/parameters/HypothesisId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReviewRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "409": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/incidents/{incidentId}/events": {
+      "get": {
+        "operationId": "listIncidentEvents",
+        "parameters": [
+          { "$ref": "#/components/parameters/IncidentId" },
+          { "$ref": "#/components/parameters/Window" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/incidents/{incidentId}/events/{eventId}": {
+      "get": {
+        "operationId": "getIncidentEvent",
+        "description": "Returns 503 until an individual-event source is configured.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IncidentId" },
+          { "$ref": "#/components/parameters/EventId" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/monitoring/overview": {
+      "get": {
+        "operationId": "monitoringOverview",
+        "parameters": [
+          { "$ref": "#/components/parameters/Window" },
+          { "name": "source", "in": "query", "schema": { "type": "string" } },
+          { "name": "worker", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "flowMetric",
+            "in": "query",
+            "schema": {
+              "enum": ["ingestion_rate", "processing_latency", "queue_depth"],
+              "default": "processing_latency"
+            }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Window": {
+        "name": "window",
+        "in": "query",
+        "schema": { "enum": ["15m", "30m", "1h", "6h", "24h"] }
+      },
+      "DeviceType": {
+        "name": "deviceType",
+        "in": "query",
+        "schema": { "type": "string" }
+      },
+      "Region": {
+        "name": "region",
+        "in": "query",
+        "schema": { "type": "string" }
+      },
+      "AppVersion": {
+        "name": "appVersion",
+        "in": "query",
+        "schema": { "type": "string" }
+      },
+      "IncidentId": {
+        "name": "incidentId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+      },
+      "HypothesisId": {
+        "name": "hypothesisId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+      },
+      "EventId": {
+        "name": "eventId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Contract envelope",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/SuccessEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "description": "Stable error envelope",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorEnvelope" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Warning": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "Freshness": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "observedThrough", "lagSeconds", "state"],
+        "properties": {
+          "source": { "type": "string" },
+          "observedThrough": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "lagSeconds": { "type": ["number", "null"], "minimum": 0 },
+          "state": { "enum": ["fresh", "delayed", "partial", "unavailable"] }
+        }
+      },
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "schemaVersion",
+          "generatedAt",
+          "window",
+          "partial",
+          "refreshAfterSeconds",
+          "freshness",
+          "warnings"
+        ],
+        "properties": {
+          "requestId": { "type": "string" },
+          "schemaVersion": { "const": "1.0" },
+          "generatedAt": { "type": "string", "format": "date-time" },
+          "window": { "type": ["object", "null"] },
+          "partial": { "type": "boolean" },
+          "refreshAfterSeconds": { "type": ["integer", "null"], "minimum": 1 },
+          "freshness": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Freshness" }
+          },
+          "warnings": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Warning" }
+          }
+        }
+      },
+      "SuccessEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {},
+          "meta": { "$ref": "#/components/schemas/Meta" }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message", "requestId"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "requestId": { "type": "string" },
+              "fields": { "type": "array" },
+              "details": { "type": "object" }
+            }
+          }
+        }
+      },
+      "ReviewRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "expectedVersion"],
+        "properties": {
+          "status": { "enum": ["confirmed", "refuted", "inconclusive"] },
+          "note": { "type": ["string", "null"], "maxLength": 1000 },
+          "expectedVersion": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

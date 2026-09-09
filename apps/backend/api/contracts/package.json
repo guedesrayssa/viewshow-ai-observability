@@ -1,0 +1,17 @@
+{
+  "name": "@view-show/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@opentelemetry/auto-instrumentations-node": "0.80.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/sdk-node": "0.222.0",
+    "zod": "4.5.4"
+  }
+}
