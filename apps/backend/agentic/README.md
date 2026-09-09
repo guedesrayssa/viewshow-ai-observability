@@ -21,6 +21,9 @@ ports, com um adaptador de cada lado.
 | `src/domain/ml-result.ts` | Contrato de saída dos modelos, derivado do notebook |
 | `src/domain/diagnosis.ts` | Estados, hipóteses ranqueadas, motivos de diferimento |
 | `src/domain/quality-gate.ts` | Decide se os dados sustentam investigação |
+| `src/domain/response-validation.ts` | Interpreta e ancora a resposta do modelo |
+| `src/domain/outcome.ts` | Piso de confiança e ordenação por confiança |
+| `src/adapters/llm/fake-provider.ts` | Duplo determinístico, só para teste |
 | `src/ports/llm-provider.ts` | Fronteira com o modelo de linguagem |
 | `src/ports/agentic-diagnosis.ts` | Como o backend aciona esta camada |
 
@@ -36,6 +39,13 @@ detectores, porque mede cada um contra a própria régua.
 antes de chamar o LLM, o segundo depois. Com falso positivo de 63% a 71% nos
 detectores, fundir os dois significa pagar inferência em dois terços dos
 disparos para escrever "não sei".
+
+**A ancoragem em evidência é a defesa contra injeção de prompt.** Evidência vem
+de log e alerta, sistemas que o time não controla, e um texto plantado ali pode
+convencer o modelo a afirmar qualquer coisa. O que ele não consegue é citar um
+identificador de evidência que não exista no pacote carregado. Hipótese que
+cita evidência inventada é descartada, e o descarte é reportado mesmo quando as
+outras passam — senão a injeção parcial some no caminho de sucesso.
 
 **O score do detector e a confiança do agente nunca se misturam.** Um mede quão
 anômalo o sinal é; o outro, quanto o agente acredita naquela explicação. Ficam
