@@ -97,8 +97,6 @@ terraform apply
   ├─ roda  npm run build                  compila o painel
   ├─ monta archive_file                   zipa out/
   ├─ roda  scripts/publicar-painel.mjs    envia o zip ao Amplify
-  │
-  └─ roda  npm run seed                   popula as tabelas
 ```
 
 E o caminho de uma requisição no navegador:
@@ -141,7 +139,7 @@ funcionar no Linux de uma pessoa e no Windows de outra.
 |---|---|---|
 | Terraform ≥ 1.7 | rodar isto | `winget install HashiCorp.Terraform` |
 | Docker, com o daemon ativo | construir a imagem da API | Docker Desktop |
-| Node 18+ e `npm` | compilar o painel, rodar o seed e os dois scripts | `winget install OpenJS.NodeJS` |
+| Node 18+ e `npm` | compilar o painel e rodar os dois scripts de publicação | `winget install OpenJS.NodeJS` |
 | AWS CLI | credenciais e chamadas ao Amplify | `winget install Amazon.AWSCLI` |
 
 Só isso. Não precisa de `zip`, `curl`, `bash`, WSL nem Git Bash: o zip é montado
@@ -226,13 +224,11 @@ Amplify é novo. Ela é estável enquanto a stack existir.
 terraform output api_url_https   # a API por HTTPS, para Postman
 terraform output api_url         # o ALB direto, em HTTP
 terraform output comando_logs    # acompanha o log da API
-terraform output comando_seed    # repovoa as tabelas
 ```
 
-Se o painel abrir vazio, rode o seed de novo: o `pk` de cada item é um bucket de
-hora calculado na semeadura, e o dashboard consulta uma janela de 24 h — dado
-com mais de ~25 h some da tela mesmo continuando na tabela. Foi o que aconteceu
-em [`testes-desempenho.md`](../../artefatos/sprint2/testes-desempenho.md).
+O Terraform cria a infraestrutura, mas não injeta dados sintéticos diretamente
+no DynamoDB. Os dados operacionais devem chegar pelo fluxo de ingestão definido
+pela arquitetura da aplicação.
 
 ## Custo — leia antes de fechar o laboratório
 
@@ -264,7 +260,6 @@ ALB não têm estado "parado". Reaplicar custa os mesmos 8-15 minutos.
 | `quantidade_tasks` | `1` | Tasks simultâneas |
 | `auth_email` / `auth_senha` | `demo@globoplay.com` / `demo123` | Login do painel |
 | `permitir_dado_exemplo` | `true` | Telas que dependem da API de telemetria (fora do escopo) mostram exemplo rotulado em vez de "indisponível" |
-| `semear_dados` | `true` | Roda `seed.js` no apply |
 | `bedrock_habilitado` | `false` | Mantenha desligado: o lab não dá acesso ao Bedrock |
 | `retencao_logs_dias` | `7` | Retenção do log group |
 
@@ -300,7 +295,7 @@ task, e não há fila nem agendador. Provisioná-los seria decoração.
 | `Cannot pull container image` | Imagem não chegou ao ECR | Confira se o daemon do Docker está ativo |
 | `ResourceInUseException` na tabela | Tabela já criada à mão | `terraform import aws_dynamodb_table.operacional monitoracao-operacional` |
 | `exec format error` no log da task | Imagem construída em ARM (Mac M1/M2) | O `--platform linux/amd64` já está no `ecr.tf`; confira se foi alterado |
-| Painel abre, dado não vem | Seed fora da janela de 24 h | `terraform output comando_seed` e rode |
+| Painel abre, dado não vem | A ingestão não publicou itens na janela consultada | Verifique a saúde da API e o fluxo de ingestão |
 | `next/font: Failed to fetch Poppins` | Build sem saída para o Google | Libere `fonts.googleapis.com` |
 
 ## Verificação

@@ -128,12 +128,6 @@ variable "permitir_dado_exemplo" {
   default     = true
 }
 
-variable "semear_dados" {
-  description = "Roda apps/backend/api/scripts/seed.js depois de criar as tabelas, para o painel não abrir vazio."
-  type        = bool
-  default     = true
-}
-
 variable "retencao_logs_dias" {
   description = "Retenção do log group do ECS."
   type        = number
