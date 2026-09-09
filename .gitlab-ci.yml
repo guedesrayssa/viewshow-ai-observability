@@ -10,12 +10,7 @@ stages:
   - publicar
 
 .mudou-backend: &backend_changes
-  - apps/backend/api/src/**/*
-  - apps/backend/api/tests/**/*
-  - apps/backend/api/package.json
-  - apps/backend/api/package-lock.json
-  - apps/backend/api/Dockerfile
-  - apps/backend/api/.dockerignore
+  - apps/backend/**/*
   - scripts/ci/**/*
   - scripts/sync-aws-gitlab-credentials.sh
   - .gitlab-ci.yml

@@ -11,10 +11,12 @@
   ],
   "scripts": {
     "clean": "node scripts/clean.mjs",
+    "build:contracts": "npm run build --workspace @view-show/contracts",
     "build": "tsc -b tsconfig.workspaces.json",
     "typecheck": "tsc -b tsconfig.workspaces.json --pretty false",
     "lint": "node scripts/lint.mjs && tsc -b tsconfig.workspaces.json --pretty false",
     "format:check": "prettier --check \"{src,contracts,tests}/**/*.{ts,json,yaml,md}\"",
+    "pretest": "npm run build:contracts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ci-policy": "node --test --test-concurrency=1 \"tests/ci/*.test.js\"",
