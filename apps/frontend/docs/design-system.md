@@ -291,7 +291,7 @@ const incidents = useResource(
 ```
 
 Cada tela declara o endpoint que vai servi-la (`lib/data/endpoints.ts`, espelhando as
-rotas de `apps/basica/backend`), como converter a resposta e o que mostrar enquanto a
+rotas públicas do gateway), como converter a resposta e o que mostrar enquanto a
 API não responde. Ligar o backend é preencher `NEXT_PUBLIC_API_BASE_URL` e escrever o
 `map` — nenhum componente muda.
 
