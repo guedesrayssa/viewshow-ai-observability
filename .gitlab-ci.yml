@@ -195,7 +195,7 @@ tipos:
   extends: .node
   stage: validar
   script:
-    - npx tsc --noEmit
+    - npm run typecheck
   rules:
     - changes: *mudou-frontend
 
