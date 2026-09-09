@@ -39,10 +39,15 @@ episódio sem teto, distância de Mahalanobis e buffer ratio previsto. Cada sina
 carrega o próprio limiar; `relativeMargin()` é a única comparação válida entre
 detectores, porque mede cada um contra a própria régua.
 
-**`deferred` e `inconclusive` são estados distintos.** O primeiro é decidido
-antes de chamar o LLM, o segundo depois. Com falso positivo de 63% a 71% nos
-detectores, fundir os dois significa pagar inferência em dois terços dos
-disparos para escrever "não sei".
+**Diferir é decisão, não silêncio.** O gate reprova antes de chamar o modelo e
+o diagnóstico fica `pending` com os motivos anexados. Com falso positivo de 63%
+a 71% nos detectores, investigar tudo significaria pagar inferência em dois
+terços dos disparos para escrever "não sei".
+
+**A máquina não declara inconclusivo.** Quando o modelo responde e nada alcança
+o piso de confiança, as hipóteses fracas ainda vão para revisão, com a ressalva
+`BELOW_CONFIDENCE_FLOOR`. Por `analise-e-ia.md` §9, inconclusivo é veredito de
+pessoa sobre uma hipótese, não estado do diagnóstico.
 
 **A ancoragem em evidência é a defesa contra injeção de prompt.** Evidência vem
 de log e alerta, sistemas que o time não controla, e um texto plantado ali pode
@@ -98,10 +103,25 @@ Sem AWS, sem rede, sem banco. Os testes de integração sobem um servidor HTTP
 local que fala o protocolo do Ollama, então o caminho de rede é exercitado de
 verdade — o único faz-de-conta é o modelo.
 
+## Vocabulário
+
+`artefatos/arquitetura/analise-e-ia.md` v1.1 é a fonte normativa da orquestração
+do diagnóstico, e o vocabulário daqui segue o dela: os estados são `pending`,
+`processing`, `ready` e `failed` (§10); os gatilhos são `ANOMALY_DETECTION`,
+`QOE_FORECAST` e `REANALYSIS_REQUESTED` (§3); toda execução carrega o
+`datasetVersion` recebido no evento (§8), que é o que permite reproduzir uma
+análise depois.
+
+Esse documento também já supera a ADR-004 num ponto: §11 determina que uma
+indisponibilidade do modelo **não produz hipótese artificial**. O fallback por
+template que a ADR-004 exigia está proibido — falha do provider vira `failed`.
+
 ## Fontes
 
 - `artefatos/extras/notebooks/argus_algoritmo.ipynb` — detectores, calibração e
   os números de recall e falso positivo citados acima
 - Fluxograma do parceiro — gate de qualidade, diferimento e as duas entradas
   (preventiva e reativa)
+- `artefatos/arquitetura/analise-e-ia.md` v1.1 — **fonte normativa** do fluxo,
+  do contrato da fila e dos estados
 - `artefatos/sprint3/modelagem.md` — modelo de domínio vigente

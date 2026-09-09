@@ -23,7 +23,8 @@ const EVIDENCIA = [
 function entrada(overrides: Partial<InvestigationInput> = {}): InvestigationInput {
   return {
     incidentId: "inc-001",
-    trigger: "reactive",
+    datasetVersion: "dsv_teste",
+    trigger: "ANOMALY_DETECTION",
     signal: SINAL,
     incident: { component: "Playback", services: ["search-api"] },
     evidence: EVIDENCIA,
@@ -59,23 +60,23 @@ test("caminho feliz produz diagnóstico pronto com procedência do modelo", asyn
   assert.equal(resultado.diagnosisId, "diag_01");
 });
 
-test("gate reprovado difere ANTES de chamar o modelo", async () => {
+test("gate reprovado deixa pendente ANTES de chamar o modelo", async () => {
   const provider = createFakeProvider({ hypotheses: [HIPOTESE] });
   const resultado = await investigate(
     entrada({ evidence: [] }),
     { ...deps(), llm: provider },
   );
-  assert.equal(resultado.status, "deferred");
+  assert.equal(resultado.status, "pending");
   // O ponto econômico da camada: sem evidência, nenhuma inferência é paga.
   assert.equal(provider.calls.length, 0);
   assert.ok(resultado.reasons.some((r) => r.code === "NO_EVIDENCE"));
 });
 
-test("margem fina difere sem gastar inferência", async () => {
+test("margem fina deixa pendente sem gastar inferência", async () => {
   const provider = createFakeProvider({ hypotheses: [HIPOTESE] });
   const rasteiro = { ...SINAL, score: 4.1 };
   const resultado = await investigate(entrada({ signal: rasteiro }), { ...deps(), llm: provider });
-  assert.equal(resultado.status, "deferred");
+  assert.equal(resultado.status, "pending");
   assert.equal(provider.calls.length, 0);
 });
 
@@ -116,14 +117,25 @@ test("resposta truncada vira failed com a procedência preservada", async () => 
   assert.equal(resultado.model?.provider, "fake");
 });
 
-test("nada acima do piso é inconclusive, e não falha", async () => {
+test("nada acima do piso vira ressalva, não estado — quem conclui é a pessoa", async () => {
   const resultado = await investigate(
     entrada(),
     deps({ hypotheses: [{ ...HIPOTESE, confidence: 0.2 }] }),
   );
-  assert.equal(resultado.status, "inconclusive");
-  // Distinção que decide o alarme: funcionou, e não tinha o que dizer.
+  // A hipótese fraca ainda vai para revisão humana, com o aviso anexado.
+  assert.equal(resultado.status, "ready");
   assert.equal(resultado.hypotheses.length, 1);
+  assert.deepEqual(resultado.reasons.map((r) => r.code), ["BELOW_CONFIDENCE_FLOOR"]);
+});
+
+test("hipótese nasce pendente de revisão humana", async () => {
+  const resultado = await investigate(entrada(), deps({ hypotheses: [HIPOTESE] }));
+  assert.equal(resultado.hypotheses[0]?.reviewStatus, "pending");
+});
+
+test("a versão do dataset atravessa a execução inteira", async () => {
+  const resultado = await investigate(entrada(), deps({ hypotheses: [HIPOTESE] }));
+  assert.equal(resultado.datasetVersion, "dsv_teste");
 });
 
 test("hipóteses saem ordenadas por confiança, não pela ordem do modelo", async () => {
@@ -154,18 +166,19 @@ test("evidência inventada é descartada e o descarte fica registrado", async ()
 test("caminho preventivo funciona sem incidente", async () => {
   const previsao: MlSignal = {
     detector: "qoe-forecast",
-    scale: "qoe-bufferratio",
-    score: 0.12,
-    threshold: { value: 0.08, origin: "train-percentile", percentile: 90 },
-    model: { name: "rf-qoe-1h", version: "2026.09.01" },
+    scale: "qoe-risk",
+    score: 0.81,
+    threshold: { value: 0.7, origin: "train-percentile", percentile: 90 },
+    model: { name: "qoe-forecast", version: "2026.09.1" },
     observedAt: "2026-09-08T12:00:00Z",
-    signalId: "sinal-42",
-    horizonHours: 1,
+    predictedValue: 0.083,
+    riskLevel: "ELEVATED",
+    targetWindow: { start: "2026-09-08T13:00:00Z", end: "2026-09-08T14:00:00Z" },
   };
   const resultado = await investigate(
     entrada({
       incidentId: null,
-      trigger: "preventive",
+      trigger: "QOE_FORECAST",
       signal: previsao,
       quality: { history: { days: 7, points: 480 }, entities: { scoped: 0, observed: 0 }, signalAgeMinutes: 5 },
     }),
@@ -173,7 +186,7 @@ test("caminho preventivo funciona sem incidente", async () => {
   );
   assert.equal(resultado.status, "ready");
   assert.equal(resultado.incidentId, null);
-  assert.equal(resultado.trigger, "preventive");
+  assert.equal(resultado.trigger, "QOE_FORECAST");
 });
 
 test("o prompt entrega a evidência dentro do bloco delimitado", async () => {

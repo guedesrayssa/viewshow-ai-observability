@@ -43,7 +43,8 @@ const SINAL: MlSignal = {
 
 const ENTRADA = {
   incidentId: "inc-001",
-  trigger: "reactive" as const,
+  trigger: "ANOMALY_DETECTION" as const,
+  datasetVersion: "dsv_teste",
   signal: SINAL,
   incident: { component: "Playback", services: ["search-api"] },
   evidence: [
@@ -138,10 +139,10 @@ test("servidor fora do ar vira failed com motivo de provider", async () => {
   assert.deepEqual(resultado.reasons.map((r) => r.code), ["PROVIDER_ERROR"]);
 });
 
-test("gate reprovado não abre conexão nenhuma", async () => {
+test("gate reprovado não abre conexão nenhuma (fica pendente)", async () => {
   // Aponta para uma porta fechada de propósito: se o gate falhasse em barrar,
   // o teste quebraria com erro de conexão em vez de passar.
   const resultado = await investigate({ ...ENTRADA, evidence: [] }, deps("http://127.0.0.1:1"));
-  assert.equal(resultado.status, "deferred");
+  assert.equal(resultado.status, "pending");
   assert.ok(resultado.reasons.some((r) => r.code === "NO_EVIDENCE"));
 });

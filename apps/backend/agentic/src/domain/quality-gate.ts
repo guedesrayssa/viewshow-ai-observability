@@ -13,7 +13,7 @@
  */
 
 import { exceedsThreshold, relativeMargin, type MlSignal } from "./ml-result.js";
-import type { DeferralReason } from "./diagnosis.js";
+import type { Reason } from "./diagnosis.js";
 
 export type GateReasonCode =
   /** Sem evidência, o agente só consegue repetir o enunciado do incidente. */
@@ -80,7 +80,7 @@ export const DEFAULT_POLICY: GatePolicy = {
 
 export type GateVerdict =
   | { readonly ok: true }
-  | { readonly ok: false; readonly reasons: readonly DeferralReason[] };
+  | { readonly ok: false; readonly reasons: readonly Reason[] };
 
 /**
  * Avalia se os dados sustentam uma investigação.
@@ -93,7 +93,7 @@ export function evaluateQuality(
   input: GateInput,
   policy: GatePolicy = DEFAULT_POLICY,
 ): GateVerdict {
-  const reasons: DeferralReason[] = [];
+  const reasons: Reason[] = [];
 
   if (input.evidenceCount < policy.minEvidence) {
     reasons.push({

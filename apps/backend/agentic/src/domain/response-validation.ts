@@ -203,6 +203,8 @@ export function parseDiagnosisResponse(
       supportingEvidenceIds: apoio,
       contradictingEvidenceIds: contra,
       missingEvidence: faltante,
+      // Nasce sempre pendente: só a revisão humana muda isto (analise-e-ia.md §9).
+      reviewStatus: "pending",
     });
   });
 

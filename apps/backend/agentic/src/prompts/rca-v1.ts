@@ -70,7 +70,10 @@ function describeSignal(signal: MlSignal): string {
   } else if (signal.detector === "multivariate-mahalanobis") {
     linhas.push(`Séries observadas simultaneamente: ${signal.dimensions}`);
   } else {
-    linhas.push(`Previsão para ${signal.horizonHours}h à frente do sinal ${signal.signalId}`);
+    linhas.push(
+      `Risco ${signal.riskLevel}: valor previsto ${signal.predictedValue} para a janela ` +
+        `${signal.targetWindow.start} a ${signal.targetWindow.end}`,
+    );
   }
   return linhas.join("\n");
 }

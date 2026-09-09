@@ -21,8 +21,8 @@ export type ScoreScale =
   | "episode-score"
   /** Distância multivariada com encolhimento Ledoit-Wolf (seção 12). */
   | "mahalanobis"
-  /** Buffer ratio previsto para a próxima hora (seção 11). Contínuo. */
-  | "qoe-bufferratio";
+  /** Risco previsto de degradação, normalizado de 0 a 1 (analise-e-ia.md §7). */
+  | "qoe-risk";
 
 /**
  * De onde saiu o limiar. Um percentil do treino não é um número mágico, e
@@ -80,14 +80,21 @@ export interface MultivariateSignal extends BaseSignal {
 
 /**
  * Previsão de degradação de QoE. Caminho preventivo: não há incidente ainda,
- * então o alvo é o sinal, não um incidentId (seção 11).
+ * então o alvo é a janela, não um incidentId.
+ *
+ * Formato conforme analise-e-ia.md §7. Aqui `score` é o `riskScore`, que é
+ * normalizado de 0 a 1 — diferente dos detectores de anomalia, cujas escalas
+ * não são. É por isso que o limiar viaja junto de todo sinal: quem consome
+ * nunca precisa saber qual caso é qual.
  */
 export interface QoeForecastSignal extends BaseSignal {
   readonly detector: "qoe-forecast";
-  readonly scale: "qoe-bufferratio";
-  readonly signalId: string;
-  /** Horizonte da previsão. O modelo do notebook prevê 1 h à frente. */
-  readonly horizonHours: number;
+  readonly scale: "qoe-risk";
+  /** Valor previsto da métrica, na unidade original (ex.: buffer ratio). */
+  readonly predictedValue: number;
+  readonly riskLevel: "NORMAL" | "ELEVATED" | "HIGH";
+  /** Janela para a qual o risco foi previsto. */
+  readonly targetWindow: { readonly start: string; readonly end: string };
 }
 
 export type MlSignal = UnivariateSignal | MultivariateSignal | QoeForecastSignal;

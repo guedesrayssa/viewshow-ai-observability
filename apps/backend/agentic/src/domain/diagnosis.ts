@@ -1,45 +1,57 @@
 /**
  * Modelo de diagnóstico da camada agêntica.
  *
- * Reúne três fontes que não concordavam entre si:
- *  - o fluxograma do parceiro, que tem um caminho "diagnóstico pendente" e
- *    duas entradas (preventiva e reativa);
- *  - a especificação do serviço de RCA, que tem hipóteses ranqueadas,
- *    ancoragem em evidências e a distinção entre falhar e não concluir;
- *  - o notebook de ML, que mostra por que "confiança" e "score de anomalia"
- *    são coisas diferentes e não podem ser fundidas.
+ * O vocabulário aqui segue `artefatos/arquitetura/analise-e-ia.md` v1.1, que se
+ * declara fonte normativa da orquestração do diagnóstico. Onde este módulo
+ * tinha nome próprio para a mesma coisa, o nome do documento prevalece — dois
+ * vocabulários para um conceito custam mais do que qualquer ganho de precisão.
  */
 
 import type { MlSignal } from "./ml-result.js";
 
 /**
- * Estados possíveis. `deferred` e `inconclusive` NÃO são sinônimos, e a
- * diferença é de custo: `deferred` é decidido ANTES de chamar o LLM, porque os
- * dados não sustentam investigação; `inconclusive` é decidido DEPOIS, porque o
- * LLM respondeu e nada atingiu o piso. Com falso positivo de 63% a 71% nos
- * detectores, tratar os dois como o mesmo estado significa pagar inferência em
- * cerca de dois terços dos disparos para escrever "não sei".
+ * Estados do diagnóstico (analise-e-ia.md §10).
  *
- * `failed` é o único que deve gerar alarme: significa que o sistema não
- * funcionou, e não que ele funcionou e não tinha o que dizer.
+ * `pending` cobre tanto "aguardando processamento" quanto "dados
+ * insuficientes": é onde cai o diferimento decidido pelo gate de qualidade, e
+ * os motivos ficam em `reasons`.
+ *
+ * Não existe estado "inconclusivo" aqui de propósito. Inconclusivo é decisão
+ * HUMANA sobre uma hipótese (§9), não veredito da máquina: quando o modelo
+ * responde e nada convence, as hipóteses fracas ainda vão para revisão, com um
+ * aviso. Quem declara que não deu para concluir é a pessoa que olhou.
  */
-export type DiagnosisStatus =
-  | "not_started"
-  | "processing"
-  | "deferred"
-  | "ready"
-  | "inconclusive"
-  | "failed";
+export type DiagnosisStatus = "pending" | "processing" | "ready" | "failed";
+
+/**
+ * Estado da revisão humana de uma hipótese (§9). Resultado da IA nasce
+ * `pending`, e a interface precisa deixar claro que a causa ainda não foi
+ * confirmada. `confirmed` e `refuted` são finais; `inconclusive` admite nova
+ * revisão.
+ */
+export type HypothesisReviewStatus = "pending" | "confirmed" | "refuted" | "inconclusive";
 
 /** Quem produziu o diagnóstico. Um caso curado não tem modelo por trás. */
 export type DiagnosisSource = "golden-set" | "llm";
 
-/** O que motivou a investigação. Espelha as duas entradas do fluxograma. */
+/** Tipos de evento da fila de análise (§3 e §4). */
 export type InvestigationTrigger =
-  /** Detector acusou anomalia sobre um incidente já materializado. */
-  | "reactive"
-  /** Previsão de degradação: ainda não há incidente, só risco. */
-  | "preventive";
+  /** Janela de 15 min: anomalia efetivamente observada. */
+  | "ANOMALY_DETECTION"
+  /** Janela horária: risco previsto para a hora seguinte, ainda sem incidente. */
+  | "QOE_FORECAST"
+  /** Reexecução pedida por uma pessoa. Não altera a execução anterior. */
+  | "REANALYSIS_REQUESTED";
+
+/**
+ * Motivo estruturado. Código para decidir, texto para ler. Serve ao
+ * diferimento, à falha e ao aviso de confiança baixa — a forma é a mesma, e um
+ * campo só evita que metade dos consumidores esqueça de olhar o outro.
+ */
+export interface Reason {
+  readonly code: string;
+  readonly detail: string;
+}
 
 export interface Hypothesis {
   readonly id: string;
@@ -48,59 +60,44 @@ export interface Hypothesis {
   readonly title: string;
   readonly explanation: string;
   /**
-   * Confiança do agente na hipótese, de 0 a 1. É valor DO AGENTE e nunca deve
-   * ser preenchido com o score do detector: um mede quão anômalo o sinal é, o
-   * outro mede quanto o agente acredita nesta explicação para aquele sinal.
+   * Confiança do agente na hipótese, de 0 a 1. Nunca preenchida com o score do
+   * detector: um mede quão anômalo é o sinal, o outro quanto o agente acredita
+   * nesta explicação para aquele sinal.
    */
   readonly confidence: number;
   /**
-   * Evidências que sustentam a hipótese. Toda id aqui precisa existir no
-   * pacote carregado — é essa checagem, e não a instrução no prompt, que
-   * impede o modelo de citar evidência inventada.
+   * Evidências de apoio. Toda id precisa existir no pacote carregado — é essa
+   * checagem, e não a instrução no prompt, que impede evidência inventada.
    */
   readonly supportingEvidenceIds: readonly string[];
-  /** Evidências que contradizem. Um agente honesto às vezes tem alguma. */
   readonly contradictingEvidenceIds: readonly string[];
-  /** O que faltou olhar. Vira fila de coleta, não enfeite de relatório. */
   readonly missingEvidence: readonly string[];
+  /** Sempre `pending` ao nascer: só a revisão humana muda isto (§9). */
+  readonly reviewStatus: HypothesisReviewStatus;
 }
-
-/**
- * Motivo estruturado. Código para decidir, texto para ler.
- *
- * Serve tanto ao diferimento quanto à falha: em `deferred` explica por que não
- * valeu a pena investigar, em `failed` explica o que quebrou. São situações
- * diferentes, mas a forma do motivo é a mesma, e um campo só evita que metade
- * dos consumidores esqueça de olhar o outro.
- */
-export interface Reason {
-  readonly code: string;
-  readonly detail: string;
-}
-
-/** Nome histórico, mantido por clareza no gate. */
-export type DeferralReason = Reason;
 
 export interface Diagnosis {
   readonly diagnosisId: string;
-  /** Ausente no caminho preventivo: previsão de risco não tem incidente. */
+  /** Nulo em `QOE_FORECAST`: previsão de risco não é incidente observado (§3). */
   readonly incidentId: string | null;
   readonly trigger: InvestigationTrigger;
   readonly status: DiagnosisStatus;
   /**
-   * O sinal que disparou tudo, copiado sem alteração. Preservar o score do
-   * detector separado da confiança do agente é o que permite auditar depois
-   * se o agente concordou ou discordou do modelo.
+   * Versão do conjunto de dados usada na execução (§8). Preservada durante toda
+   * a execução mesmo que outra seja ativada em paralelo — é o que permite
+   * reproduzir e comparar uma análise depois.
    */
+  readonly datasetVersion: string;
+  /** O sinal que disparou, copiado sem alteração. */
   readonly signal: MlSignal;
-  /** Vazio em `deferred` e `failed`; vazio também em `inconclusive` quando nada sobrou. */
+  /** Vazio em `pending` e `failed`. */
   readonly hypotheses: readonly Hypothesis[];
   /**
-   * Motivos do diferimento em `deferred`, da quebra em `failed`, e as hipóteses
-   * descartadas quando a resposta teve aproveitamento parcial. Vazio nos demais.
+   * Motivos do diferimento em `pending`, da quebra em `failed`, hipóteses
+   * descartadas e aviso de confiança baixa em `ready`. Vazio quando não há o
+   * que ressalvar.
    */
   readonly reasons: readonly Reason[];
-  /** Ausente quando source é "golden-set": nenhum modelo produziu o resultado. */
   readonly source: DiagnosisSource | null;
   readonly model: { readonly provider: string; readonly modelId: string; readonly promptVersion: string } | null;
   readonly createdAt: string;

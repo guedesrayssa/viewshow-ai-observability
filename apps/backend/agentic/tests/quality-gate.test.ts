@@ -59,13 +59,14 @@ test("difere quando nenhuma entidade observada pertence ao serviço do incidente
 test("previsão de QoE não é reprovada por falta de escopo: ela não tem entidades", () => {
   const previsao: MlSignal = {
     detector: "qoe-forecast",
-    scale: "qoe-bufferratio",
-    score: 0.12,
-    threshold: { value: 0.08, origin: "train-percentile", percentile: 90 },
-    model: { name: "rf-qoe-1h", version: "2026.09.01" },
+    scale: "qoe-risk",
+    score: 0.81,
+    threshold: { value: 0.7, origin: "train-percentile", percentile: 90 },
+    model: { name: "qoe-forecast", version: "2026.09.1" },
     observedAt: "2026-09-08T12:00:00Z",
-    signalId: "sinal-42",
-    horizonHours: 1,
+    predictedValue: 0.083,
+    riskLevel: "ELEVATED",
+    targetWindow: { start: "2026-09-08T13:00:00Z", end: "2026-09-08T14:00:00Z" },
   };
   const veredito = evaluateQuality(
     entradaBoa({ signal: previsao, entities: { scoped: 0, observed: 0 } }),

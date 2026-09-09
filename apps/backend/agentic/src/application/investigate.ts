@@ -14,7 +14,7 @@
 
 import { evaluateQuality, DEFAULT_POLICY, type GatePolicy } from "../domain/quality-gate.js";
 import { parseDiagnosisResponse } from "../domain/response-validation.js";
-import { classifyOutcome, rankByConfidence, DEFAULT_CONFIDENCE_FLOOR } from "../domain/outcome.js";
+import { lowConfidenceWarning, rankByConfidence, DEFAULT_CONFIDENCE_FLOOR } from "../domain/outcome.js";
 import { buildSystemPrompt, buildUserPrompt, PROMPT_VERSION } from "../prompts/rca-v1.js";
 import type { Diagnosis, InvestigationTrigger, Reason } from "../domain/diagnosis.js";
 import type { EvidenceItem, GoldenCase, IncidentContext } from "../domain/evidence.js";
@@ -22,9 +22,11 @@ import type { MlSignal } from "../domain/ml-result.js";
 import type { LlmProvider } from "../ports/llm-provider.js";
 
 export interface InvestigationInput {
-  /** Nulo no caminho preventivo: previsão de risco não tem incidente ainda. */
+  /** Nulo em QOE_FORECAST: previsão de risco não é incidente observado. */
   readonly incidentId: string | null;
   readonly trigger: InvestigationTrigger;
+  /** Versão do dataset recebida no evento, preservada por toda a execução. */
+  readonly datasetVersion: string;
   readonly signal: MlSignal;
   readonly incident: IncidentContext;
   readonly evidence: readonly EvidenceItem[];
@@ -57,6 +59,7 @@ function base(input: InvestigationInput, deps: InvestigationDeps) {
     diagnosisId: deps.newDiagnosisId(),
     incidentId: input.incidentId,
     trigger: input.trigger,
+    datasetVersion: input.datasetVersion,
     signal: input.signal,
     createdAt: deps.now().toISOString(),
   };
@@ -82,7 +85,9 @@ export async function investigate(
   if (!veredito.ok) {
     return {
       ...base(input, deps),
-      status: "deferred",
+      // `pending` cobre "dados insuficientes" (analise-e-ia.md §10); o porquê
+      // fica em `reasons`, então diferir não vira silêncio.
+      status: "pending",
       hypotheses: [],
       reasons: veredito.reasons,
       source: null,
@@ -110,6 +115,7 @@ export async function investigate(
           supportingEvidenceIds: [],
           contradictingEvidenceIds: [],
           missingEvidence: [],
+          reviewStatus: "pending",
         },
       ],
       reasons: [],
@@ -118,8 +124,9 @@ export async function investigate(
     };
   }
 
-  // 3. Chamada ao modelo. Qualquer erro daqui é `failed`, não `inconclusive`:
-  //    o sistema não funcionou, e essa é a distinção que decide o alarme.
+  // 3. Chamada ao modelo. Qualquer erro daqui é `failed`: o sistema não
+  //    funcionou, e é essa distinção — contra `pending`, que é decisão
+  //    deliberada de não investigar — que decide o alarme.
   let resposta;
   try {
     resposta = await deps.llm.generate({
@@ -165,16 +172,20 @@ export async function investigate(
     };
   }
 
-  // 5. Ordena por confiança e decide se há algo firme o bastante para mostrar.
+  // 5. Ordena por confiança e entrega para revisão humana. O status é sempre
+  //    `ready`: hipótese fraca não é escondida nem declarada inconclusiva pela
+  //    máquina — quem decide que não deu para concluir é a pessoa que olhou
+  //    (analise-e-ia.md §9). O que a máquina faz é anexar a ressalva.
+  //
   //    Os descartes viajam junto mesmo no sucesso: hipótese citando evidência
   //    inventada é indício de injeção, e não pode sumir por ter havido outra boa.
   const hypotheses = rankByConfidence(validada.hypotheses);
-  const status = classifyOutcome(hypotheses, deps.confidenceFloor ?? DEFAULT_CONFIDENCE_FLOOR);
-  const reasons: readonly Reason[] = validada.discarded;
+  const aviso = lowConfidenceWarning(hypotheses, deps.confidenceFloor ?? DEFAULT_CONFIDENCE_FLOOR);
+  const reasons: readonly Reason[] = aviso ? [...validada.discarded, aviso] : validada.discarded;
 
   return {
     ...base(input, deps),
-    status,
+    status: "ready",
     hypotheses,
     reasons,
     source: "llm",
