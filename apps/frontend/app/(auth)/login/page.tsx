@@ -2,10 +2,7 @@
  * page.tsx
  * Tela de login do View Show.
  *
- * Controla o acesso à plataforma e identifica a pessoa usuária por credenciais
- * corporativas, conforme a seção 5.1 do entendimento de UX. Oferece entrada por
- * e-mail e senha, recuperação de senha e entrada por SSO Globo, e informa a
- * restrição de domínio antes do envio.
+ * Inicia o acesso pelo provedor corporativo de identidade.
  */
 
 import type { Metadata } from "next";

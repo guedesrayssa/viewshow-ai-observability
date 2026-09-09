@@ -3,10 +3,8 @@ export const ENDPOINTS = {
   health: "/health",
   auth: {
     login: "/auth/login",
-    register: "/auth/register",
-    recover: "/auth/recover",
+    callback: "/auth/callback",
     logout: "/auth/logout",
-    sso: "/auth/sso",
     session: "/auth/session",
   },
   dashboardOverview: "/api/v1/dashboard/overview",

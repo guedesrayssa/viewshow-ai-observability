@@ -110,6 +110,30 @@ describe("incident use cases", () => {
     expect(result.quality.warnings[0]?.code).toBe("AGENTIC_RESULT_UNAVAILABLE");
   });
 
+  it("fails closed when reanalysis cannot find an incident or publish its request", async () => {
+    const missing = new IncidentUseCases(
+      repository({
+        bundle: vi.fn(async () => ({ incident: null, children: [] })),
+      }),
+      new CursorCodec("g".repeat(32)),
+      new UnavailableReviewFeedbackPort(),
+      () => now,
+    );
+    const unavailable = new IncidentUseCases(
+      repository(),
+      new CursorCodec("h".repeat(32)),
+      new UnavailableReviewFeedbackPort(),
+      () => now,
+    );
+
+    await expect(
+      missing.reanalyze("inc_missing", "rea_key", "usr_1"),
+    ).rejects.toMatchObject({ status: 404, code: "RESOURCE_NOT_FOUND" });
+    await expect(
+      unavailable.reanalyze("inc_0", "rea_key", "usr_1"),
+    ).rejects.toMatchObject({ status: 503, code: "FEATURE_UNAVAILABLE" });
+  });
+
   it("uses optimistic review version and defers unavailable feedback", async () => {
     const writeReview = vi.fn(async (write: ReviewWrite) => ({
       ...write.key,

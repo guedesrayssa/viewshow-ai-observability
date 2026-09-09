@@ -19,6 +19,8 @@
     "pretest": "npm run build:contracts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "node scripts/live-e2e-runtime.mjs && npm run build && RUN_LIVE_E2E=true vitest run tests/live-api.e2e.test.ts",
+    "test:e2e-local": "bash ../../../scripts/ci/test-live-api-local.sh",
     "test:ci-policy": "node --test --test-concurrency=1 \"tests/ci/*.test.js\"",
     "verify": "npm run lint && npm run test && npm run build",
     "start": "node dist/index.js",
@@ -43,6 +45,7 @@
     "@types/node": "^22.18.3",
     "prettier": "^3.6.2",
     "typescript": "7.0.2",
-    "vitest": "5.0.0"
+    "vitest": "5.0.0",
+    "yaml": "2.9.0"
   }
 }

@@ -39,48 +39,47 @@
       }
     },
     "/auth/login": {
-      "post": {
-        "operationId": "login",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["email", "password"],
-                "properties": {
-                  "email": { "type": "string", "format": "email" },
-                  "password": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 1024
-                  }
-                }
-              }
-            }
-          }
-        },
+      "get": {
+        "operationId": "beginLogin",
         "responses": {
-          "200": {
-            "description": "Session issued",
-            "headers": { "Set-Cookie": { "schema": { "type": "string" } } }
+          "302": {
+            "description": "Redirect to the configured identity provider",
+            "headers": {
+              "Location": { "schema": { "type": "string", "format": "uri" } }
+            }
           },
-          "401": { "$ref": "#/components/responses/Error" },
           "503": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/auth/register": {
-      "post": {
-        "operationId": "register",
-        "responses": { "503": { "$ref": "#/components/responses/Error" } }
-      }
-    },
-    "/auth/recover": {
-      "post": {
-        "operationId": "recover",
-        "responses": { "503": { "$ref": "#/components/responses/Error" } }
+    "/auth/callback": {
+      "get": {
+        "operationId": "completeLogin",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 1024 }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Session issued and redirect to the overview",
+            "headers": {
+              "Location": { "schema": { "type": "string" } },
+              "Set-Cookie": { "schema": { "type": "string" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
       }
     },
     "/auth/logout": {
@@ -89,17 +88,31 @@
         "responses": { "204": { "description": "Session cleared" } }
       }
     },
-    "/auth/sso": {
-      "get": {
-        "operationId": "sso",
-        "responses": { "503": { "$ref": "#/components/responses/Error" } }
-      }
-    },
     "/auth/session": {
       "get": {
         "operationId": "session",
+        "security": [{ "sessionCookie": [] }],
         "responses": {
-          "200": { "description": "Authenticated identity" },
+          "200": {
+            "description": "Authenticated session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/SuccessEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuthenticatedSession"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/Error" }
         }
       }
@@ -159,7 +172,32 @@
         "parameters": [{ "$ref": "#/components/parameters/IncidentId" }],
         "responses": {
           "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
           "404": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/incidents/{incidentId}/reanalyze": {
+      "post": {
+        "operationId": "reanalyzeIncident",
+        "description": "Requests a manual reanalysis when a publisher is configured. The current deployment returns FEATURE_UNAVAILABLE.",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/IncidentId" },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        ],
+        "responses": {
+          "202": { "description": "Reanalysis request accepted" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "409": { "$ref": "#/components/responses/Error" },
           "503": { "$ref": "#/components/responses/Error" }
         }
       }
@@ -167,6 +205,7 @@
     "/api/v1/incidents/{incidentId}/hypotheses/{hypothesisId}/review": {
       "patch": {
         "operationId": "reviewHypothesis",
+        "security": [{ "sessionCookie": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/IncidentId" },
           { "$ref": "#/components/parameters/HypothesisId" }
@@ -198,6 +237,7 @@
         ],
         "responses": {
           "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
           "404": { "$ref": "#/components/responses/Error" },
           "422": { "$ref": "#/components/responses/Error" },
           "503": { "$ref": "#/components/responses/Error" }
@@ -214,7 +254,122 @@
         ],
         "responses": {
           "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
           "404": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/imports": {
+      "post": {
+        "operationId": "startImport",
+        "description": "Starts an import when upload and ingestion infrastructure is configured. The current deployment returns FEATURE_UNAVAILABLE.",
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StartImportRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Import metadata accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/SuccessEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ImportStartData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/imports/{importId}/complete": {
+      "post": {
+        "operationId": "completeImport",
+        "description": "Completes a multipart import when ingestion infrastructure is configured. The current deployment returns FEATURE_UNAVAILABLE.",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/ImportId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CompleteImportRequest" }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Import completion accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/SuccessEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ImportCompleteData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/imports/{importId}": {
+      "get": {
+        "operationId": "getImport",
+        "description": "Returns import metadata and state when ingestion infrastructure is configured. The current deployment returns FEATURE_UNAVAILABLE.",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/ImportId" }],
+        "responses": {
+          "200": {
+            "description": "Import metadata and state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/SuccessEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ImportStatusData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
           "503": { "$ref": "#/components/responses/Error" }
         }
       }
@@ -283,6 +438,19 @@
         "in": "path",
         "required": true,
         "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+      },
+      "ImportId": {
+        "name": "importId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session"
       }
     },
     "responses": {
@@ -366,6 +534,24 @@
           "meta": { "$ref": "#/components/schemas/Meta" }
         }
       },
+      "AuthenticatedSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["authenticated", "user"],
+        "properties": {
+          "authenticated": { "const": true },
+          "user": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "email"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": ["string", "null"] },
+              "email": { "type": "string", "format": "email" }
+            }
+          }
+        }
+      },
       "ErrorEnvelope": {
         "type": "object",
         "additionalProperties": false,
@@ -393,6 +579,96 @@
           "status": { "enum": ["confirmed", "refuted", "inconclusive"] },
           "note": { "type": ["string", "null"], "maxLength": 1000 },
           "expectedVersion": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "StartImportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fileName", "sizeBytes", "sha256", "partCount"],
+        "properties": {
+          "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5497558138880
+          },
+          "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+          "partCount": { "type": "integer", "minimum": 1, "maximum": 10000 }
+        }
+      },
+      "CompleteImportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["parts"],
+        "properties": {
+          "parts": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10000,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["partNumber", "etag"],
+              "properties": {
+                "partNumber": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "etag": { "type": "string", "minLength": 1, "maxLength": 1024 }
+              }
+            }
+          }
+        }
+      },
+      "ImportStartData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "fileName", "sizeBytes", "sha256", "partCount"],
+        "properties": {
+          "id": { "type": "string" },
+          "fileName": { "type": "string" },
+          "sizeBytes": { "type": "integer" },
+          "sha256": { "type": "string" },
+          "partCount": { "type": "integer" }
+        }
+      },
+      "ImportCompleteData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["queued"] }
+        }
+      },
+      "ImportStatusData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fileName",
+          "sizeBytes",
+          "sha256",
+          "partCount",
+          "status"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "fileName": { "type": "string" },
+          "sizeBytes": { "type": "integer" },
+          "sha256": { "type": "string" },
+          "partCount": { "type": "integer" },
+          "status": {
+            "enum": [
+              "created",
+              "uploading",
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ]
+          }
         }
       }
     }

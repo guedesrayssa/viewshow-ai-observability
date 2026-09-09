@@ -10,7 +10,12 @@ export function createDashboardModule(
 ): DashboardQueries {
   const config = loadConfig(environment);
   return new DashboardQueries(
-    new DynamoDashboardReadRepository(config.region, config.tableName),
+    new DynamoDashboardReadRepository(
+      config.region,
+      config.tableName,
+      undefined,
+      config.endpoint,
+    ),
     config.monitoringSources,
   );
 }

@@ -28,6 +28,15 @@ export interface ReviewFeedbackPort {
   }): Promise<"accepted" | "unavailable">;
 }
 
+export interface ReanalysisPublisherPort {
+  publish(request: {
+    incidentId: string;
+    idempotencyKey: string;
+    requestedBy: string;
+    reason: "MANUAL_REQUEST";
+  }): Promise<"accepted" | "unavailable">;
+}
+
 /** Reserved consumer boundary for the future agentic PR; never invoked here. */
 export interface AgenticDiagnosisPort {
   requestDiagnosis(incidentId: string): Promise<"accepted" | "unavailable">;

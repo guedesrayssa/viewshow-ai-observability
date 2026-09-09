@@ -22,6 +22,7 @@ import {
 } from "../domain/incident.js";
 import type {
   IncidentRepository,
+  ReanalysisPublisherPort,
   ReviewFeedbackPort,
 } from "../ports/incident-repository.js";
 
@@ -186,6 +187,7 @@ export class IncidentUseCases {
     private readonly cursor: CursorCodec,
     private readonly feedback: ReviewFeedbackPort,
     private readonly clock: () => Date = () => new Date(),
+    private readonly reanalysis: ReanalysisPublisherPort = new UnavailableReanalysisPublisherPort(),
   ) {}
 
   async list(query: IncidentsQuery): Promise<InternalResponse<IncidentsData>> {
@@ -420,6 +422,32 @@ export class IncidentUseCases {
     );
   }
 
+  async reanalyze(
+    incidentId: string,
+    idempotencyKey: string,
+    requestedBy: string,
+  ): Promise<void> {
+    const bundle = await this.repository.bundle(incidentId);
+    if (!bundle.incident)
+      throw new ServiceError(
+        404,
+        "RESOURCE_NOT_FOUND",
+        "Incidente não encontrado.",
+      );
+    const published = await this.reanalysis.publish({
+      incidentId,
+      idempotencyKey,
+      requestedBy,
+      reason: "MANUAL_REQUEST",
+    });
+    if (published === "unavailable")
+      throw new ServiceError(
+        503,
+        "FEATURE_UNAVAILABLE",
+        "A reanálise manual não está disponível.",
+      );
+  }
+
   async review(
     incidentId: string,
     selectedHypothesisId: string,
@@ -546,6 +574,12 @@ export class IncidentUseCases {
 }
 
 export class UnavailableReviewFeedbackPort implements ReviewFeedbackPort {
+  async publish(): Promise<"unavailable"> {
+    return "unavailable";
+  }
+}
+
+export class UnavailableReanalysisPublisherPort implements ReanalysisPublisherPort {
   async publish(): Promise<"unavailable"> {
     return "unavailable";
   }

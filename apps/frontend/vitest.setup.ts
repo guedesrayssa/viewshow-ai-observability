@@ -24,18 +24,30 @@ class NoopObserver {
   }
 }
 
-vi.stubGlobal("ResizeObserver", NoopObserver);
-vi.stubGlobal("IntersectionObserver", NoopObserver);
+Object.defineProperty(globalThis, "ResizeObserver", {
+  configurable: true,
+  writable: true,
+  value: NoopObserver,
+});
+Object.defineProperty(globalThis, "IntersectionObserver", {
+  configurable: true,
+  writable: true,
+  value: NoopObserver,
+});
 
 HTMLElement.prototype.scrollIntoView = vi.fn();
 
-vi.stubGlobal("matchMedia", (query: string) => ({
-  matches: false,
-  media: query,
-  onchange: null,
-  addListener: () => {},
-  removeListener: () => {},
-  addEventListener: () => {},
-  removeEventListener: () => {},
-  dispatchEvent: () => false,
-}));
+Object.defineProperty(globalThis, "matchMedia", {
+  configurable: true,
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});

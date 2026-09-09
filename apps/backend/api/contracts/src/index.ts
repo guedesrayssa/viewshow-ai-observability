@@ -274,7 +274,52 @@ export const reviewBodySchema = z
   .strict();
 export type ReviewBody = z.infer<typeof reviewBodySchema>;
 
+export const startImportBodySchema = z
+  .object({
+    fileName: z.string().trim().min(1).max(255),
+    sizeBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(5 * 1024 ** 4),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/i),
+    partCount: z.number().int().min(1).max(10_000),
+  })
+  .strict();
+export type StartImportBody = z.infer<typeof startImportBodySchema>;
+
+export const completeImportBodySchema = z
+  .object({
+    parts: z
+      .array(
+        z
+          .object({
+            partNumber: z.number().int().min(1).max(10_000),
+            etag: z.string().trim().min(1).max(1024),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(10_000),
+  })
+  .strict()
+  .refine(
+    ({ parts }) =>
+      new Set(parts.map(({ partNumber }) => partNumber)).size === parts.length,
+    { message: "partNumber não pode se repetir." },
+  );
+export type CompleteImportBody = z.infer<typeof completeImportBodySchema>;
+
 export const opaqueIdSchema = z.string().trim().min(1).max(256);
+
+export const idempotencyKeySchema = z.string().trim().min(1).max(128);
+
+export const authCallbackQuerySchema = z
+  .object({
+    code: z.string().trim().min(1).max(4096),
+    state: z.string().trim().min(1).max(1024),
+  })
+  .strict();
 
 export const measurementSchema = z
   .object({

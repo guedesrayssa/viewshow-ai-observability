@@ -20,12 +20,19 @@ export class DynamoIncidentRepository implements IncidentRepository {
     region: string,
     private readonly tableName: string,
     client?: DynamoDBDocumentClient,
+    endpoint?: string,
   ) {
     this.client =
       client ??
-      DynamoDBDocumentClient.from(new DynamoDBClient({ region }), {
-        marshallOptions: { removeUndefinedValues: true },
-      });
+      DynamoDBDocumentClient.from(
+        new DynamoDBClient({
+          region,
+          ...(endpoint ? { endpoint } : {}),
+        }),
+        {
+          marshallOptions: { removeUndefinedValues: true },
+        },
+      );
   }
 
   private async queryAll(

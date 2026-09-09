@@ -2,9 +2,59 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { DynamoDashboardReadRepository } from "../src/modules/dashboard/adapters/dynamodb-dashboard-read-repository.js";
+import { createDashboardModule } from "../src/modules/dashboard/index.js";
 import { DynamoIncidentRepository } from "../src/modules/incidents/adapters/dynamodb-incident-repository.js";
+import { createIncidentsModule } from "../src/modules/incidents/index.js";
+
+const dynamoClientInputs = vi.hoisted(
+  () => [] as Array<Record<string, unknown>>,
+);
+
+vi.mock("@aws-sdk/client-dynamodb", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@aws-sdk/client-dynamodb")>();
+  return {
+    ...actual,
+    DynamoDBClient: class extends actual.DynamoDBClient {
+      constructor(
+        input: ConstructorParameters<typeof actual.DynamoDBClient>[0],
+      ) {
+        dynamoClientInputs.push(input as Record<string, unknown>);
+        super(input);
+      }
+    },
+  };
+});
 
 describe("DynamoDB adapters", () => {
+  it("passes an explicit local endpoint from each module factory to the SDK client", () => {
+    dynamoClientInputs.length = 0;
+    const endpoint = "http://127.0.0.1:18000";
+
+    createDashboardModule({ DYNAMODB_ENDPOINT: endpoint });
+    createIncidentsModule({
+      DYNAMODB_ENDPOINT: endpoint,
+      CURSOR_SECRET: "c".repeat(32),
+    });
+
+    expect(dynamoClientInputs).toEqual([
+      { region: "us-east-1", endpoint },
+      { region: "us-east-1", endpoint },
+    ]);
+  });
+
+  it("does not add endpoint or local credentials when local DynamoDB is not configured", () => {
+    dynamoClientInputs.length = 0;
+
+    createDashboardModule({});
+    createIncidentsModule({ CURSOR_SECRET: "c".repeat(32) });
+
+    expect(dynamoClientInputs).toEqual([
+      { region: "us-east-1" },
+      { region: "us-east-1" },
+    ]);
+  });
+
   it("queries the current UTC day for a sub-day overview window", async () => {
     const send = vi.fn(async () => ({ Items: [] }));
     const client = { send } as unknown as DynamoDBDocumentClient;

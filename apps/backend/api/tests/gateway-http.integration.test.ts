@@ -1,4 +1,4 @@
-import { createServer, type Server } from "node:http";
+import { createServer, request as httpRequest, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import type express from "express";
 import { afterEach, describe, expect, it } from "vitest";
@@ -6,6 +6,8 @@ import { createApp } from "../src/app.ts";
 import { createAuthModule } from "../src/modules/auth/index.ts";
 import { DashboardQueries } from "../src/modules/dashboard/application/dashboard-queries.ts";
 import type { DashboardReadRepository } from "../src/modules/dashboard/ports/dashboard-read-repository.ts";
+import { ImportUseCases } from "../src/modules/imports/application/import-use-cases.ts";
+import type { ImportControlPort } from "../src/modules/imports/ports/import-control.ts";
 import {
   IncidentUseCases,
   UnavailableReviewFeedbackPort,
@@ -22,6 +24,46 @@ async function listen(app: express.Express): Promise<string> {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address() as AddressInfo;
   return `http://127.0.0.1:${address.port}`;
+}
+
+async function requestRawPath(
+  url: string,
+  path: string,
+  currentRequestId: string,
+): Promise<{
+  readonly status: number;
+  readonly requestId: string | string[] | undefined;
+  readonly body: unknown;
+}> {
+  const target = new URL(url);
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(
+      {
+        hostname: target.hostname,
+        port: target.port,
+        path,
+        headers: { "x-request-id": currentRequestId },
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.once("error", reject);
+        response.once("end", () => {
+          try {
+            resolve({
+              status: response.statusCode ?? 0,
+              requestId: response.headers["x-request-id"],
+              body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
+            });
+          } catch (error) {
+            reject(error);
+          }
+        });
+      },
+    );
+    request.once("error", reject);
+    request.end();
+  });
 }
 
 afterEach(async () => {
@@ -53,6 +95,7 @@ function buildApp(
     readonly dashboard?: DashboardReadRepository;
     readonly frontendOrigins?: readonly string[];
     readonly metricsEnabled?: boolean;
+    readonly imports?: ImportControlPort;
   } = {},
 ) {
   const incidents = new IncidentUseCases(
@@ -81,11 +124,66 @@ function buildApp(
     },
     incidents,
     dashboard,
+    imports: new ImportUseCases(
+      overrides.imports ?? {
+        async start() {
+          return "unavailable";
+        },
+        async complete() {
+          return "unavailable";
+        },
+        async get() {
+          return "unavailable";
+        },
+      },
+    ),
     auth: createAuthModule({ AUTH_COOKIE_SECRET: secret, NODE_ENV: "test" }),
   });
 }
 
 describe("api monolith over HTTP", () => {
+  it("returns authenticated session details through the public success envelope", async () => {
+    const auth = createAuthModule({
+      AUTH_COOKIE_SECRET: secret,
+      NODE_ENV: "test",
+    });
+    const session = auth.sessions.issue({
+      id: "usr_1",
+      email: "engineer@example.test",
+      name: "Engineer",
+      role: "engineer",
+    });
+    const url = await listen(buildApp());
+    const response = await fetch(`${url}/auth/session`, {
+      headers: { cookie: `session=${session}`, "x-request-id": "req_session" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      data: {
+        authenticated: true,
+        user: {
+          id: "usr_1",
+          name: "Engineer",
+          email: "engineer@example.test",
+        },
+      },
+      meta: { requestId: "req_session" },
+    });
+  });
+
+  it("exposes only the federated authentication routes", async () => {
+    const url = await listen(buildApp());
+    expect((await fetch(`${url}/auth/login`)).status).toBe(503);
+    expect((await fetch(`${url}/auth/callback`)).status).toBe(400);
+    expect(
+      (await fetch(`${url}/auth/callback?code=code_1&state=state_1`)).status,
+    ).toBe(503);
+    expect((await fetch(`${url}/auth/login`, { method: "POST" })).status).toBe(
+      404,
+    );
+  });
+
   it("calls a module in-process, wraps quality metadata, and keeps physical fields private", async () => {
     const url = await listen(buildApp());
     const response = await fetch(`${url}/api/v1/incidents?window=30m`, {
@@ -136,6 +234,128 @@ describe("api monolith over HTTP", () => {
     expect(await metrics.text()).toContain("http_requests_total");
   });
 
+  it("assigns the request id before CORS and JSON parsing can fail", async () => {
+    const url = await listen(
+      buildApp({ frontendOrigins: ["http://allowed.test"] }),
+    );
+
+    const forbidden = await fetch(`${url}/api/v1/incidents`, {
+      headers: {
+        origin: "http://forbidden.test",
+        "x-request-id": "req_forbidden_origin",
+      },
+    });
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.headers.get("x-request-id")).toBe("req_forbidden_origin");
+    expect(await forbidden.json()).toMatchObject({
+      error: {
+        code: "FORBIDDEN",
+        requestId: "req_forbidden_origin",
+      },
+    });
+
+    const malformedJson = await fetch(`${url}/api/v1/imports`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-request-id": "req_malformed_json",
+      },
+      body: '{"fileName":',
+    });
+    expect(malformedJson.status).toBe(400);
+    expect(malformedJson.headers.get("x-request-id")).toBe(
+      "req_malformed_json",
+    );
+    expect(await malformedJson.json()).toMatchObject({
+      error: {
+        code: "VALIDATION_ERROR",
+        requestId: "req_malformed_json",
+      },
+    });
+  });
+
+  it("returns validation envelopes for every invalid incident path id", async () => {
+    const invalidId = "x".repeat(257);
+    const url = await listen(buildApp());
+    const requests: readonly [string, RequestInit?][] = [
+      [`/api/v1/incidents/${invalidId}/diagnosis`],
+      [`/api/v1/incidents/${invalidId}/events`],
+      [`/api/v1/incidents/inc_1/events/${invalidId}`],
+      [
+        `/api/v1/incidents/${invalidId}/hypotheses/hyp_1/review`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "confirmed", expectedVersion: 0 }),
+        },
+      ],
+      [
+        `/api/v1/incidents/inc_1/hypotheses/${invalidId}/review`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "confirmed", expectedVersion: 0 }),
+        },
+      ],
+    ];
+
+    for (const [path, init] of requests) {
+      const response = await fetch(`${url}${path}`, init);
+      expect(response.status, path).toBe(400);
+      expect(await response.json(), path).toMatchObject({
+        error: { code: "VALIDATION_ERROR" },
+      });
+    }
+  });
+
+  it("returns validation envelopes when Express cannot decode route parameters", async () => {
+    const url = await listen(buildApp());
+
+    for (const [path, currentRequestId] of [
+      ["/api/v1/incidents/%/diagnosis", "req_bad_incident_encoding"],
+      ["/api/v1/incidents/inc_1/events/%", "req_bad_event_encoding"],
+      ["/api/v1/imports/%", "req_bad_import_encoding"],
+    ] as const) {
+      const response = await requestRawPath(url, path, currentRequestId);
+      expect(response.status, path).toBe(400);
+      expect(response.requestId, path).toBe(currentRequestId);
+      expect(response.body, path).toMatchObject({
+        error: {
+          code: "VALIDATION_ERROR",
+          requestId: currentRequestId,
+        },
+      });
+    }
+  });
+
+  it("treats malformed cookie encoding as an invalid session", async () => {
+    const url = await listen(buildApp());
+
+    for (const [path, init] of [
+      ["/auth/session", undefined],
+      [
+        "/api/v1/incidents/inc_1/hypotheses/hyp_1/review",
+        {
+          method: "PATCH",
+          headers: {
+            cookie: "session=%",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ status: "confirmed", expectedVersion: 0 }),
+        },
+      ],
+    ] satisfies readonly [string, RequestInit | undefined][]) {
+      const response = await fetch(`${url}${path}`, {
+        ...init,
+        headers: { ...init?.headers, cookie: "session=%" },
+      });
+      expect(response.status, path).toBe(401);
+      expect(await response.json(), path).toMatchObject({
+        error: { code: "UNAUTHENTICATED" },
+      });
+    }
+  });
+
   it("surfaces a module DATA_UNAVAILABLE as a 503 envelope", async () => {
     const url = await listen(
       buildApp({ frontendOrigins: [], metricsEnabled: false }),
@@ -146,5 +366,231 @@ describe("api monolith over HTTP", () => {
       "error.code",
       "DATA_UNAVAILABLE",
     );
+  });
+
+  it("validates and authenticates import routes before calling the unavailable control", async () => {
+    let calls = 0;
+    const control: ImportControlPort = {
+      async start() {
+        calls += 1;
+        return "unavailable";
+      },
+      async complete() {
+        calls += 1;
+        return "unavailable";
+      },
+      async get() {
+        calls += 1;
+        return "unavailable";
+      },
+    };
+    const auth = createAuthModule({
+      AUTH_COOKIE_SECRET: secret,
+      NODE_ENV: "test",
+    });
+    const session = auth.sessions.issue({
+      id: "usr_e2e",
+      email: "engineer@example.test",
+      name: "Engineer",
+      role: "engineer",
+    });
+    const headers = { cookie: `session=${encodeURIComponent(session)}` };
+    const url = await listen(buildApp({ imports: control }));
+    const start = {
+      fileName: "argus.sql.gz",
+      sizeBytes: 1024,
+      sha256: "a".repeat(64),
+      partCount: 1,
+    };
+
+    expect(
+      (await fetch(`${url}/api/v1/imports`, { method: "POST" })).status,
+    ).toBe(400);
+    expect(calls).toBe(0);
+    expect(
+      (
+        await fetch(`${url}/api/v1/imports`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(start),
+        })
+      ).status,
+    ).toBe(401);
+    expect(calls).toBe(0);
+    expect(
+      (
+        await fetch(`${url}/api/v1/imports`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json" },
+          body: JSON.stringify({ ...start, sha256: "invalid" }),
+        })
+      ).status,
+    ).toBe(400);
+    expect(calls).toBe(0);
+    const started = await fetch(`${url}/api/v1/imports`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify(start),
+    });
+    expect(started.status).toBe(503);
+    expect(await started.json()).toMatchObject({
+      error: { code: "FEATURE_UNAVAILABLE" },
+    });
+    expect(calls).toBe(1);
+
+    const duplicateParts = await fetch(`${url}/api/v1/imports/imp_1/complete`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({
+        parts: [
+          { partNumber: 1, etag: "etag-1" },
+          { partNumber: 1, etag: "etag-2" },
+        ],
+      }),
+    });
+    expect(duplicateParts.status).toBe(400);
+    expect(calls).toBe(1);
+    expect(
+      (
+        await fetch(`${url}/api/v1/imports/imp_1/complete`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json" },
+          body: JSON.stringify({ parts: [{ partNumber: 1, etag: "etag-1" }] }),
+        })
+      ).status,
+    ).toBe(503);
+    expect(calls).toBe(2);
+    expect(
+      (await fetch(`${url}/api/v1/imports/imp_1`, { headers })).status,
+    ).toBe(503);
+    expect(calls).toBe(3);
+  });
+
+  it("validates authenticated reanalysis requests and fails closed without a publisher", async () => {
+    const auth = createAuthModule({
+      AUTH_COOKIE_SECRET: secret,
+      NODE_ENV: "test",
+    });
+    const session = auth.sessions.issue({
+      id: "usr_1",
+      email: "engineer@example.test",
+      name: "Engineer",
+      role: "engineer",
+    });
+    const headers = {
+      cookie: `session=${encodeURIComponent(session)}`,
+      "idempotency-key": "rea_key",
+    };
+    const url = await listen(
+      buildApp({
+        incidents: {
+          ...emptyIncidentRepository,
+          async bundle(incidentId) {
+            return {
+              incident:
+                incidentId === "inc_known"
+                  ? {
+                      itemType: "incident",
+                      id: "inc_known",
+                      title: "Known incident",
+                      priority: "P1",
+                      status: "investigating",
+                      startedAt: "2026-01-01T12:00:00Z",
+                    }
+                  : null,
+              children: [],
+            };
+          },
+        },
+      }),
+    );
+
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/${"x".repeat(257)}/reanalyze`, {
+          method: "POST",
+          headers: { "idempotency-key": "rea_key" },
+        })
+      ).status,
+    ).toBe(400);
+
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_known/reanalyze`, {
+          method: "POST",
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_known/reanalyze`, {
+          method: "POST",
+          headers: { "idempotency-key": "x".repeat(129) },
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_known/reanalyze`, {
+          method: "POST",
+          headers: { "idempotency-key": "rea_key" },
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_known/reanalyze`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json" },
+          body: JSON.stringify({ unexpected: true }),
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_known/reanalyze`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "text/plain" },
+          body: "reanalysis requested",
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_known/reanalyze`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/jsonx" },
+          body: "reanalysis requested",
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_known/reanalyze`, {
+          method: "POST",
+          headers: {
+            ...headers,
+            "content-type": "application/json-patch+json",
+          },
+          body: "reanalysis requested",
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await fetch(`${url}/api/v1/incidents/inc_missing/reanalyze`, {
+          method: "POST",
+          headers,
+        })
+      ).status,
+    ).toBe(404);
+    const unavailable = await fetch(
+      `${url}/api/v1/incidents/inc_known/reanalyze`,
+      { method: "POST", headers },
+    );
+    expect(unavailable.status).toBe(503);
+    expect(await unavailable.json()).toMatchObject({
+      error: { code: "FEATURE_UNAVAILABLE" },
+    });
   });
 });

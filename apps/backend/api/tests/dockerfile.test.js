@@ -8,6 +8,10 @@ const smokeHelper = fs.readFileSync(
   path.resolve(__dirname, "../../../../scripts/ci/smoke-container.sh"),
   "utf8",
 );
+const liveE2eHelperPath = path.resolve(
+  __dirname,
+  "../../../../scripts/ci/test-live-api-local.sh",
+);
 
 test("Dockerfile defines a reproducible non-root Node 22 runtime", () => {
   assert.match(
@@ -40,4 +44,19 @@ test("smoke helper requires an exact HTTP 200 health response", () => {
 test("smoke helper supplies every secret required to bootstrap the API", () => {
   assert.match(smokeHelper, /--env AUTH_COOKIE_SECRET=/);
   assert.match(smokeHelper, /--env CURSOR_SECRET=/);
+});
+
+test("live E2E helper pins DynamoDB Local and guarantees container cleanup", () => {
+  assert.equal(
+    fs.existsSync(liveE2eHelperPath),
+    true,
+    "the DynamoDB Local E2E runner must exist",
+  );
+  const helper = fs.readFileSync(liveE2eHelperPath, "utf8");
+  const images = helper.match(/amazon\/dynamodb-local:[^\s"']+/g) ?? [];
+  assert.deepEqual(images, [
+    "amazon/dynamodb-local:2.6.1@sha256:990211fe3cbb507c52512522b5e71538802f086393f5b0d009d03a18c8bc04a6",
+  ]);
+  assert.match(helper, /cleanup\(\)\s*\{[\s\S]*docker rm -f/);
+  assert.match(helper, /^trap cleanup EXIT$/m);
 });
