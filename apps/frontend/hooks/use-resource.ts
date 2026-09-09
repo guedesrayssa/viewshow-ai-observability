@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Availability, DataSource, Resource } from "@/lib/data/client";
+import type { GatewayMeta } from "@/lib/data/client";
 import type { Warning } from "@/lib/data/warnings";
 
 /** Estado da leitura. */
@@ -32,6 +33,9 @@ export type UseResourceResult<T> = {
   fetchedAt?: Date;
   /** Motivo da queda para o conjunto de exemplo, quando houve uma. */
   fallbackReason?: string;
+  requestId?: string;
+  refreshAfterSeconds?: number | null;
+  freshness?: GatewayMeta["freshness"];
   /** Número de leituras concluídas. Serve de semente ao dado de exemplo. */
   revision: number;
   refresh: () => void;
@@ -73,6 +77,9 @@ export function useResource<T>(
     warnings: Warning[];
     fetchedAt?: Date;
     fallbackReason?: string;
+    requestId?: string;
+    refreshAfterSeconds?: number | null;
+    freshness?: GatewayMeta["freshness"];
   }>({ status: "loading", warnings: [] });
 
   const [refreshing, setRefreshing] = useState(false);
@@ -108,6 +115,9 @@ export function useResource<T>(
           warnings: resource.warnings,
           fetchedAt: resource.fetchedAt,
           fallbackReason: resource.fallbackReason,
+          requestId: resource.requestId,
+          refreshAfterSeconds: resource.refreshAfterSeconds,
+          freshness: resource.freshness,
         });
       },
       (error: unknown) => {

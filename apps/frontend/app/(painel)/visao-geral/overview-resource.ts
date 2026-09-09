@@ -1,26 +1,4 @@
-/**
- * @file overview-resource.ts
- * Leitura dos dados da Visão Geral.
- *
- * A tela junta duas APIs porque nenhuma delas responde sozinha o que ela
- * pergunta: a medição bruta — erros por minuto, tempo de início, sessões
- * afetadas e a série no tempo — vem da API de telemetria; a lista de
- * incidentes recentes vem da API operacional, que é a única que sabe o que é
- * um incidente.
- *
- * A telemetria é a dependência dura: sem ela não há Visão Geral. A operacional
- * é secundária — se ela não responde, a lista de incidentes fica vazia com um
- * aviso, e o resto da tela continua sendo medição de verdade.
- */
-
-import {
-  apiGet,
-  composeResource,
-  jitter,
-  type Resource,
-} from "@/lib/data/client";
-import { ENDPOINTS } from "@/lib/data/endpoints";
-import { WARNINGS } from "@/lib/data/warnings";
+/** Adapts the gateway overview contract to the existing, unchanged screen. */
 import {
   EXPERIENCE_HEALTH_SERIES,
   INCIDENTS,
@@ -29,9 +7,10 @@ import {
   type IncidentData,
   type StatCardData,
 } from "@/lib/dashboard-data";
+import { jitter, loadResource, type Resource } from "@/lib/data/client";
+import { ENDPOINTS } from "@/lib/data/endpoints";
 import { formatCompact } from "@/lib/format";
 
-/** Recorte pedido pela barra de filtros. */
 export type OverviewFilters = {
   timeRange: string;
   device: string;
@@ -39,184 +18,133 @@ export type OverviewFilters = {
   appVersion: string;
 };
 
-/** Tudo o que a Visão Geral desenha em uma leitura. */
 export type OverviewData = {
   stats: StatCardData[];
   series: ExperiencePoint[];
-  /** `null` enquanto não houver linha de base publicada. */
   baseline: number | null;
-  /** `null` enquanto não houver detecção de anomalia na origem. */
   anomalyRange: [number, number] | null;
   peakIndex: number;
   incidents: IncidentData[];
 };
 
-/* -------------------------------------------------------------------------
- * Formatos das respostas, como as APIs os publicam hoje.
- *
- * Estão escritos aqui, ao lado da conversão, porque é isto que muda quando o
- * contrato do dashboard for implementado: os tipos de domínio acima seguem
- * iguais.
- * ---------------------------------------------------------------------- */
-
-/** `GET /v1/analytics/realtime/overview` na API de telemetria. */
-export type RealtimeOverviewResponse = {
-  ccu: number;
-  active_sessions: number;
-  events: { total: number; per_minute: number };
-  errors: {
-    total: number;
-    fatal: number;
-    per_minute: number;
-    rate: number | null;
-  };
-  generated_at: string;
-};
-
-/** Bloco de métricas de QoE, repetido no agregado e em cada ponto da série. */
-export type QoeMetricsBlock = {
-  events: number;
-  sessions: number;
-  playback_hours: number;
-  startup_time_ms: {
-    samples: number;
-    p50: number | null;
-    p95: number | null;
-    average: number | null;
-  };
-  rebuffer: { rate: number | null; count: number };
-  average_bitrate_kbps: number | null;
-};
-
-/** `GET /v1/analytics/qoe/metrics`. */
-export type QoeMetricsResponse = { metrics: QoeMetricsBlock };
-
-/** `GET /v1/analytics/qoe/timeseries`. */
-export type QoeTimeseriesResponse = {
-  interval_seconds: number;
-  points: { start: string; end: string; metrics: QoeMetricsBlock }[];
-};
-
-/** `GET /v1/analytics/errors/summary`. */
-export type ErrorsSummaryResponse = {
-  summary: {
-    total_errors: number;
-    fatal_errors: number;
-    unique_error_codes: number;
-    affected_sessions: number;
-    total_sessions: number;
-    error_rate: number | null;
-    crash_free_rate: number | null;
-  };
-};
-
-/** Incidente como a API operacional o devolve hoje. */
-export type IncidentResponse = {
-  id: string;
-  title: string;
-  sessions?: string;
-  timeAgo?: string;
-  status?: string;
-  statusLabel?: string;
-  devices?: number;
-  startedMinutesAgo?: number;
-};
-
-/** `GET /api/v1/incidents`. */
-export type IncidentsResponse = { incidents: IncidentResponse[] };
-
-/**
- * Remove repetições do mesmo incidente, ficando com a ocorrência mais recente.
- * Execuções distintas do seed gravaram o mesmo `id` em baldes de horas
- * diferentes, e a rota devolve todos.
- */
-function dedupeById(incidents: IncidentResponse[]): IncidentResponse[] {
-  const byId = new Map<string, IncidentResponse>();
-
-  for (const incident of incidents) {
-    const current = byId.get(incident.id);
-    if (
-      !current ||
-      (incident.startedMinutesAgo ?? Infinity) <
-        (current.startedMinutesAgo ?? Infinity)
-    ) {
-      byId.set(incident.id, incident);
-    }
-  }
-
-  return [...byId.values()];
+/** Preserves the chart formatter hook while honoring the errors/minute contract. */
+export function formatRebufferRate(value: number): string {
+  return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}/min`;
 }
 
-/** Tons de incidente que a Visão Geral sabe desenhar. */
-const INCIDENT_STATUSES = new Set(["critical", "warning", "success", "info"]);
+type Measurement = { status: "measured" | "estimated" | "unknown" };
+type Kpi = {
+  key: string;
+  value: number | null;
+  unit: string;
+  status: "healthy" | "warning" | "critical" | "unknown";
+  comparison: { changeRatio: number; direction: "up" | "down" | "stable" } | null;
+  shareOfObservedSessions?: number;
+  measurement: Measurement;
+};
 
-/** Rótulo do eixo a partir do início do intervalo, no fuso de quem lê. */
-function toClockLabel(iso: string): string {
+export type OverviewResponse = {
+  kpis: Kpi[];
+  experienceHealth: {
+    baselineValue: number | null;
+    points: Array<{ timestamp: string; value: number }>;
+    anomalyWindows: Array<{ from: string; to: string; peakTimestamp: string }>;
+  };
+  recentIncidents: Array<{
+    id: string;
+    title: string;
+    priority: "P1" | "P2" | "P3" | "P4";
+    status: string;
+    startedAt: string;
+    affectedSessions: { value: number | null; measurement: Measurement };
+  }>;
+};
+
+const toneByPriority: Record<"P1" | "P2" | "P3" | "P4", IncidentData["status"]> = {
+  P1: "critical",
+  P2: "warning",
+  P3: "info",
+  P4: "success",
+};
+
+const labels: Record<string, string> = {
+  errors_per_minute: "Erros por minuto",
+  latency_p95: "Latência p95",
+  affected_sessions: "Sessões afetadas",
+};
+
+function toClock(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? iso
     : date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Escreve a taxa de travamento como percentual, com duas casas. */
-export function formatRebufferRate(value: number): string {
-  return `${(value * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+function since(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  return minutes < 60 ? `há ${minutes} min` : `há ${Math.floor(minutes / 60)} h`;
 }
 
-/** Índice do maior ponto da série. Zero quando a série está vazia. */
-function peakOf(series: ExperiencePoint[]): number {
-  return series.reduce(
-    (best, point, index, all) => (point.value > all[best].value ? index : best),
-    0,
-  );
+function deltaOf(kpi: Kpi): string {
+  if (!kpi.comparison) return "";
+  const signal = kpi.comparison.direction === "up" ? "+" : kpi.comparison.direction === "down" ? "−" : "";
+  return `${signal}${Math.abs(kpi.comparison.changeRatio * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. base`;
 }
 
-/**
- * Projeta o incidente da API no que o cartão da Visão Geral desenha.
- *
- * A rota devolve o item como ele está guardado, com as chaves físicas da
- * tabela junto. Copiar campo a campo é o que impede `pk`, `sk` e `ttl` de
- * chegarem à tela.
- */
-function toIncidentCard(incident: IncidentResponse): IncidentData {
-  const status = INCIDENT_STATUSES.has(incident.status ?? "")
-    ? (incident.status as IncidentData["status"])
-    : "info";
-
+export function mapOverview(response: OverviewResponse): OverviewData {
+  const stats = response.kpis.slice(0, 3).map((kpi, index): StatCardData => ({
+    ...(STATS[index] ?? STATS[0]),
+    id: kpi.key,
+    label: labels[kpi.key] ?? kpi.key,
+    value: kpi.measurement.status === "unknown" ? null : kpi.value,
+    unit: kpi.unit === "milliseconds" ? " ms" : kpi.unit === "errors_per_minute" ? "/min" : "",
+    delta: deltaOf(kpi),
+    accent: kpi.status === "critical" ? "critical" : kpi.status === "warning" ? "warning" : "info",
+  }));
+  const series = response.experienceHealth.points.map((point) => ({
+    label: toClock(point.timestamp),
+    value: point.value,
+  }));
+  const anomaly = response.experienceHealth.anomalyWindows[0];
+  const anomalyRange: [number, number] | null = anomaly
+    ? [
+        Math.max(0, response.experienceHealth.points.findIndex((point) => point.timestamp >= anomaly.from)),
+        Math.max(0, response.experienceHealth.points.findIndex((point) => point.timestamp >= anomaly.to)),
+      ]
+    : null;
+  const peakTimestamp = anomaly?.peakTimestamp;
+  const peakIndex = peakTimestamp
+    ? Math.max(0, response.experienceHealth.points.findIndex((point) => point.timestamp === peakTimestamp))
+    : series.reduce((best, point, index, all) => (point.value > (all[best]?.value ?? -Infinity) ? index : best), 0);
   return {
-    id: incident.id,
-    title: incident.title,
-    sessions:
-      incident.sessions ??
-      (incident.devices === undefined
-        ? "sem contagem"
-        : `${formatCompact(incident.devices)} dispositivos`),
-    timeAgo:
-      incident.timeAgo ??
-      (incident.startedMinutesAgo === undefined
-        ? ""
-        : `há ${incident.startedMinutesAgo} min`),
-    status,
-    statusLabel: incident.statusLabel ?? "Ativo",
+    stats,
+    series,
+    baseline: response.experienceHealth.baselineValue,
+    anomalyRange,
+    peakIndex,
+    incidents: response.recentIncidents.map((incident) => ({
+      id: incident.id,
+      title: incident.title,
+      sessions:
+        incident.affectedSessions.value === null || incident.affectedSessions.measurement.status === "unknown"
+          ? "sem contagem"
+          : `${formatCompact(incident.affectedSessions.value)} sessões`,
+      timeAgo: since(incident.startedAt),
+      status: toneByPriority[incident.priority],
+      statusLabel: incident.status,
+    })),
   };
 }
 
-/** Conjunto de exemplo, com leve variação a cada atualização. */
 function exampleOverview(revision: number): OverviewData {
   return {
     stats: STATS.map((stat, index) => ({
       ...stat,
-      value:
-        revision === 0 || stat.value === null
-          ? stat.value
-          : Math.round(jitter(stat.value, revision * 10 + index, 0.05)),
+      value: revision === 0 || stat.value === null ? stat.value : Math.round(jitter(stat.value, revision * 10 + index, 0.05)),
     })),
     series: EXPERIENCE_HEALTH_SERIES.map((point, index) => ({
       ...point,
-      value:
-        revision === 0
-          ? point.value
-          : Math.round(jitter(point.value, revision * 100 + index, 0.08)),
+      value: revision === 0 ? point.value : Math.round(jitter(point.value, revision * 100 + index, 0.08)),
     })),
     baseline: 100,
     anomalyRange: [6, 8],
@@ -225,122 +153,20 @@ function exampleOverview(revision: number): OverviewData {
   };
 }
 
-/**
- * Lê o estado do ecossistema para o recorte selecionado.
- *
- * @param filters - Recorte da barra de filtros.
- * @param revision - Número da leitura, usado só pelo conjunto de exemplo.
- *
- * @example
- * const overview = useResource((revision) => fetchOverview(filters, revision), [filters]);
- */
-export function fetchOverview(
-  filters: OverviewFilters,
-  revision = 0,
-): Promise<Resource<OverviewData>> {
-  const window = filters.timeRange;
+function optional(value: string): string | undefined {
+  return value === "all" ? undefined : value;
+}
 
-  return composeResource<OverviewData>({
-    targets: ["telemetria"],
-    // A linha de base e a detecção de anomalia não existem em nenhuma das duas
-    // APIs. Declarar isso é o que permite ao gráfico não desenhar uma
-    // referência que ninguém publicou.
-    warnings: [WARNINGS.semLinhaDeBase],
-    read: async (warn) => {
-      const [realtime, qoe, errors, timeseries] = await Promise.all([
-        apiGet<RealtimeOverviewResponse>(
-          "telemetria",
-          ENDPOINTS.telemetria.realtimeOverview,
-          { window },
-        ),
-        apiGet<QoeMetricsResponse>("telemetria", ENDPOINTS.telemetria.qoeMetrics, {
-          window,
-        }),
-        apiGet<ErrorsSummaryResponse>(
-          "telemetria",
-          ENDPOINTS.telemetria.errorsSummary,
-          { window },
-        ),
-        apiGet<QoeTimeseriesResponse>(
-          "telemetria",
-          ENDPOINTS.telemetria.qoeTimeseries,
-          { window },
-        ),
-      ]);
-
-      // A lista de incidentes é secundária: a Visão Geral continua respondendo
-      // sem ela, só sem a coluna da direita. A janela é própria, de 24 horas —
-      // "incidentes recentes" é a fila do plantão, e ela não deve esvaziar
-      // porque a telemetria está recortada em meia hora.
-      let incidents: IncidentData[] = [];
-      try {
-        const response = await apiGet<IncidentsResponse>(
-          "operacional",
-          ENDPOINTS.operacional.incidents,
-          { window: "1440" },
-        );
-        incidents = dedupeById(response.incidents)
-          .slice(0, 4)
-          .map(toIncidentCard);
-      } catch {
-        warn(WARNINGS.operacionalIndisponivel);
-      }
-
-      const series: ExperiencePoint[] = timeseries.points.map((point) => ({
-        label: toClockLabel(point.start),
-        value: point.metrics.rebuffer.rate ?? 0,
-      }));
-
-      if (qoe.metrics.startup_time_ms.p95 === null) warn(WARNINGS.metricaSemFonte);
-
-      return {
-        stats: [
-          {
-            ...STATS[0],
-            label: "Erros por minuto",
-            value: realtime.errors.per_minute,
-            format: "integer",
-            unit: "/min",
-            delta: `${realtime.errors.total} na janela`,
-          },
-          {
-            ...STATS[1],
-            // A grandeza medida é o tempo até a reprodução começar, não a
-            // latência de rede: o rótulo antigo prometia outra coisa.
-            label: "Tempo de início (p95)",
-            value: qoe.metrics.startup_time_ms.p95,
-            format: "integer",
-            unit: " ms",
-            delta: `${qoe.metrics.startup_time_ms.samples} amostras`,
-          },
-          {
-            ...STATS[2],
-            label: "Sessões afetadas",
-            value: errors.summary.affected_sessions,
-            format: "compact",
-            delta: `de ${formatCompact(errors.summary.total_sessions)} observadas`,
-          },
-          {
-            id: "active-sessions",
-            label: "Sessões ativas",
-            value: realtime.active_sessions,
-            format: "compact",
-            unit: "",
-            // O CCU conta só quem mandou heartbeat nos últimos 2 minutos; as
-            // sessões ativas contam a janela toda. Os dois juntos dizem o
-            // tamanho do agora e o tamanho do recorte.
-            delta: `${formatCompact(realtime.ccu)} simultâneas agora`,
-            accent: "info",
-            deltaTone: "neutral",
-          },
-        ],
-        series,
-        baseline: null,
-        anomalyRange: null,
-        peakIndex: peakOf(series),
-        incidents,
-      };
+export function fetchOverview(filters: OverviewFilters, revision = 0): Promise<Resource<OverviewData>> {
+  return loadResource<OverviewResponse, OverviewData>({
+    path: ENDPOINTS.dashboardOverview,
+    params: {
+      window: filters.timeRange,
+      deviceType: optional(filters.device),
+      region: optional(filters.region),
+      appVersion: optional(filters.appVersion),
     },
+    map: mapOverview,
     fallback: () => exampleOverview(revision),
   });
 }

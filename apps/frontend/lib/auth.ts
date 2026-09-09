@@ -14,27 +14,13 @@
  */
 
 /** Domínios corporativos, usados no exemplo de preenchimento e no SSO. */
+import { ALLOW_EXAMPLE_DATA } from "@/lib/data/mode";
+import { ENDPOINTS } from "@/lib/data/endpoints";
+import { gatewayUrl, isApiConfigured } from "@/lib/data/client";
+
 export const CORPORATE_DOMAINS = ["globo.com"] as const;
 
 /** Endereço bruto da API que intermedia a conversa com o provedor de identidade. */
-const CONFIGURED_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-
-/**
- * Endereço efetivo da API, resolvendo o valor especial `"/"` para a origem
- * atual do navegador.
- *
- * `"/"` significa "mesma origem do painel" (ver `lib/data/client.ts`, onde a
- * mesma resolução existe para as leituras de dado). Sem isto, montar a URL por
- * interpolação de string produziria `"//auth/login"` — um endereço
- * protocol-relative que funciona por acidente, não por design.
- */
-const API_BASE_URL =
-  CONFIGURED_API_BASE_URL === "/"
-    ? typeof window === "undefined"
-      ? "http://localhost"
-      : window.location.origin
-    : CONFIGURED_API_BASE_URL;
-
 /** Formato mínimo de e-mail: algo, arroba, domínio com ponto e sem espaços. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -127,12 +113,17 @@ export async function signIn({
   email,
   password,
 }: Credentials): Promise<SignInResult> {
-  if (!API_BASE_URL) {
-    return { ok: true, demo: true };
+  if (!isApiConfigured()) {
+    return ALLOW_EXAMPLE_DATA
+      ? { ok: true, demo: true }
+      : {
+          ok: false,
+          message: "O serviço de autenticação não está configurado neste ambiente.",
+        };
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(gatewayUrl(ENDPOINTS.auth.login), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // A sessão volta como cookie assinado pelo provedor: o token não passa
@@ -205,7 +196,7 @@ export async function signUp({
   email,
   password,
 }: SignUpData): Promise<SignUpResult> {
-  if (!API_BASE_URL) {
+  if (!isApiConfigured()) {
     return {
       ok: false,
       message:
@@ -214,7 +205,7 @@ export async function signUp({
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await fetch(gatewayUrl(ENDPOINTS.auth.register), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -270,6 +261,6 @@ export async function signUp({
  * @returns URL de redirecionamento, ou `undefined` quando a API não está configurada.
  */
 export function ssoEntryPoint(): string | undefined {
-  if (!API_BASE_URL) return undefined;
-  return `${API_BASE_URL}/auth/sso`;
+  if (!isApiConfigured()) return undefined;
+  return gatewayUrl(ENDPOINTS.auth.sso);
 }
