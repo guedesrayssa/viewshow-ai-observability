@@ -12,7 +12,7 @@ resource "aws_ecr_repository" "api" {
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
-    scan_on_push = false
+    scan_on_push = true
   }
 
   // Sem isto, terraform destroy falha enquanto houver imagem no repositório —
@@ -75,4 +75,5 @@ resource "terraform_data" "imagem" {
       CONTEXTO = abspath(local.api_dir)
     }
   }
+
 }

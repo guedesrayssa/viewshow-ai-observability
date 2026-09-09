@@ -23,6 +23,15 @@ data "aws_subnet" "default" {
   id       = each.value
 }
 
+check "subnets_alb" {
+  assert {
+    condition = length(distinct([
+      for subnet in data.aws_subnet.default : subnet.availability_zone
+    ])) >= 2
+    error_message = "A VPC default precisa ter subnets em pelo menos duas zonas de disponibilidade para o ALB."
+  }
+}
+
 // LabRole é a única role utilizável no AWS Academy: iam:CreateRole devolve
 // AccessDenied (registrado em artefatos/sprint2/backend-sprint-2.md, seção 8.1).
 // Ela serve tanto como execution role quanto como task role.

@@ -9,8 +9,7 @@
 crash.log
 crash.*.log
 
-# Chave privada SSH gerada pelo apply (ver keypair.tf). Nunca sai da máquina
-# de quem aplicou.
+# Chaves privadas locais nunca saem da máquina de quem aplicou.
 *.pem
 
 # Artefatos intermediários do archive_file (zips gerados a cada apply).

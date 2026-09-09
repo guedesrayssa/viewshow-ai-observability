@@ -1,14 +1,9 @@
-# Mapeamento de Métricas de Monitoramento e Observabilidade — View Show
+# Mapeamento de métricas e observabilidade
 
-&emsp; **Escopo Exclusivo:** `apps/frontend` (Dashboard Next.js) e `apps/backend` (API Express & Ingestion Service)  
-&emsp; **Parceiro:** Grupo Globo (Globoplay) — CCMD7  
-&emsp; **Turma / Grupo:** Inteli · Módulo 7 · Grupo 05  
-&emsp; **Sprint:** 3  
-&emsp; **Data:** Setembro de 2026  
-&emsp; **Ambiente e Região:** Pilha Local Grafana LGTM & AWS Fargate (`us-east-1`)  
-&emsp; **Branch de Referência:** `docs/metrics`
+Este artefato passou a ter uma única fonte canônica junto da infraestrutura
+de observabilidade, evitando três cópias divergentes no repositório:
 
----
+[Consultar o mapeamento de métricas](../../apps/fullstack/observability/documentation/mapeamento-metricas-observabilidade.md).
 
 ## Sumário
 

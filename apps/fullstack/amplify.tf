@@ -145,4 +145,11 @@ resource "terraform_data" "painel" {
       ZIP    = abspath(data.archive_file.painel.output_path)
     }
   }
+
+  lifecycle {
+    replace_triggered_by = [
+      aws_amplify_app.painel,
+      aws_amplify_branch.principal,
+    ]
+  }
 }

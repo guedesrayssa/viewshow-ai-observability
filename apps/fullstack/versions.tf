@@ -1,9 +1,8 @@
-# Versões travadas: um Terraform ou provider mais novo publicado entre a
-# entrega e a correção deste projeto não deve mudar o comportamento por baixo
-# dos pés de quem está reproduzindo a demonstração.
+# Faixas de compatibilidade do Terraform e dos providers. As versões exatas dos
+# providers são registradas no .terraform.lock.hcl versionado.
 
 terraform {
-  required_version = ">= 1.7.0"
+  required_version = ">= 1.7.0, < 2.0.0"
 
   required_providers {
     aws = {
