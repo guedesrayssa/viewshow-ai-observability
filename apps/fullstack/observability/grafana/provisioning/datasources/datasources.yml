@@ -54,13 +54,15 @@ datasources:
         - name: TraceID
           matcherType: label
           matcherRegex: trace_id
-          url: "${__value.raw}"
+          # $$ escapa a expansão de variável do provisionador do Grafana; o
+          # resultado armazenado no data source é o template ${__value.raw}.
+          url: "$${__value.raw}"
           datasourceUid: tempo
           urlDisplayLabel: Ver trace
         - name: TraceIDJson
           matcherType: regex
           matcherRegex: '"trace_id"\s*:\s*"(\w+)"'
-          url: "${__value.raw}"
+          url: "$${__value.raw}"
           datasourceUid: tempo
           urlDisplayLabel: Ver trace
 

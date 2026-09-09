@@ -4,7 +4,8 @@ Este diretório centraliza a infraestrutura como código do View Show:
 
 - Terraform da stack AWS atualmente implementada — API TypeScript em ECS,
   ingresso, frontend no Amplify e duas tabelas DynamoDB;
-- Docker Compose e configurações da observabilidade local;
+- Docker Compose e configurações da observabilidade local ou, mediante opt-in,
+  em uma EC2 isolada na AWS;
 - scripts auxiliares de publicação usados pelo Terraform.
 
 Integrações sem runtime no repositório (Cognito, ingestão, data lake, filas e
@@ -15,7 +16,7 @@ permanecem visíveis como estados vazios, parciais ou indisponíveis.
 
 A documentação canônica de arquitetura, configuração e operação está em
 [`documentation/infraestrutura-integracao.md`](documentation/infraestrutura-integracao.md).
-Para a stack LGTM local, consulte também
+Para as stacks LGTM local e AWS, consulte também
 [`observability/README.md`](observability/README.md).
 
 ## Validação local
@@ -26,6 +27,8 @@ terraform fmt -check -recursive
 terraform init -backend=false -input=false
 terraform validate
 docker compose -f docker-compose.observability.yml config --quiet
+AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder \
+  docker compose -f observability/aws/docker-compose.yml config --quiet
 ```
 
 Para revisar uma implantação isolada na conta-alvo, salve o plano e informe
