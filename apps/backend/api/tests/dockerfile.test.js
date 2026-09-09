@@ -36,3 +36,8 @@ test("smoke helper requires an exact HTTP 200 health response", () => {
   assert.match(smokeHelper, /response\.status\s*!==\s*200/);
   assert.doesNotMatch(smokeHelper, /response\.ok/);
 });
+
+test("smoke helper supplies every secret required to bootstrap the API", () => {
+  assert.match(smokeHelper, /--env AUTH_COOKIE_SECRET=/);
+  assert.match(smokeHelper, /--env CURSOR_SECRET=/);
+});

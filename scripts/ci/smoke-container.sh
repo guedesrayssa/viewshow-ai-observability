@@ -20,6 +20,7 @@ trap cleanup EXIT
 docker run --detach --name "$container_name" \
   --env NODE_ENV=test \
   --env AUTH_COOKIE_SECRET=ci-smoke-cookie-secret-at-least-32-bytes \
+  --env CURSOR_SECRET=ci-smoke-cursor-secret-at-least-32-bytes \
   "$image" >/dev/null
 
 for ((attempt = 1; attempt <= attempts; attempt += 1)); do
