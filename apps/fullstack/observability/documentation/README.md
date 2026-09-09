@@ -41,7 +41,7 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
   em `datasources.yml` transformam qualquer `trace_id` em link para o Tempo, o
   que produziria links quebrados. Em log e em span o nome é reservado ao
   OpenTelemetry, e o agrupador de domínio se chama `incidentId`.
-- **A pilha não tem coletor de logs.** O `docker-compose.observability.yml` sobe
+- **A pilha não tem coletor de logs.** O `apps/fullstack/docker-compose.observability.yml` sobe
   Grafana, Prometheus, Loki e Tempo, mas nenhum Promtail, Alloy ou driver de log
   do Docker. Hoje nada leva uma linha até a porta 3100.
 - **O painel é exportação estática.** `output: "export"` em `next.config.ts`
@@ -54,12 +54,11 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
 
 | Caminho | Papel |
 |---|---|
-| [`apps/observability/README.md`](../README.md) | Como subir a pilha, portas, data sources provisionados e limites do ambiente local. |
-| [`docker-compose.observability.yml`](../../../docker-compose.observability.yml) | Definição dos quatro serviços da pilha. |
-| [`apps/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; o bloco `view-show-api` está pronto e comentado. |
-| [`apps/observability/loki/loki-config.yml`](../loki/loki-config.yml) | Retenção de 168h e `allow_structured_metadata`. |
-| [`apps/observability/tempo/tempo.yml`](../tempo/tempo.yml) | Receptores OTLP e `metrics_generator`. |
-| [`apps/observability/grafana/provisioning/datasources/datasources.yml`](../grafana/provisioning/datasources/datasources.yml) | As quatro correlações entre os sinais. |
-| [`artefatos/arquitetura/data-ingestion-service-architecture.md`](../../../artefatos/arquitetura/data-ingestion-service-architecture.md) | Estados de run, leases, projeções e a seção 23, que fixa o requisito de log do batch. |
-| [`artefatos/contratos/argus-dynamodb-ingestion-contract.md`](../../../artefatos/contratos/argus-dynamodb-ingestion-contract.md) | Datasets, envelope canônico, hashes e a regra de sanitização de erros. |
-| [`artefatos/contratos/dashboard-api-contract.md`](../../../artefatos/contratos/dashboard-api-contract.md) | Catálogo de endpoints, envelope de erro e `requestId`. |
+| [`apps/fullstack/observability/README.md`](../README.md) | Como subir a pilha, portas, data sources provisionados e limites do ambiente local. |
+| [`apps/fullstack/docker-compose.observability.yml`](../../docker-compose.observability.yml) | Definição dos quatro serviços da pilha. |
+| [`apps/fullstack/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; a API já expõe `GET /metrics`, e o bloco `view-show-api` fica comentado porque a composição não inicia a API. |
+| [`apps/fullstack/observability/loki/loki-config.yml`](../loki/loki-config.yml) | Retenção de 168h e `allow_structured_metadata`. |
+| [`apps/fullstack/observability/tempo/tempo.yml`](../tempo/tempo.yml) | Receptores OTLP e `metrics_generator`. |
+| [`apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml`](../grafana/provisioning/datasources/datasources.yml) | As quatro correlações entre os sinais. |
+| [`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md) | Fluxo de ingestão, estados de run, datasets, envelope canônico, persistência e sanitização de erros. |
+| [`artefatos/arquitetura/api-dashboard.md`](../../../../artefatos/arquitetura/api-dashboard.md) | Catálogo de endpoints, envelopes públicos e `requestId`. |

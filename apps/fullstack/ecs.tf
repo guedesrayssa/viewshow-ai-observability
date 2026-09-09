@@ -21,9 +21,8 @@ resource "aws_ecs_cluster_capacity_providers" "principal" {
   }
 }
 
-// O task-definition.json versionado já traz awslogs-create-group=true, mas
-// criando o grupo aqui a retenção fica controlada — do contrário o padrão é
-// "nunca expira", e log acumulado é custo silencioso num orçamento de US$ 100.
+// O grupo é declarado aqui para manter a retenção sob controle; sem isso, o
+// padrão "nunca expira" acumularia custo silencioso no orçamento do laboratório.
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${var.nome_repositorio_ecr}"
   retention_in_days = var.retencao_logs_dias
@@ -33,12 +32,14 @@ resource "aws_cloudwatch_log_group" "api" {
   }
 }
 
-// AUTH_COOKIE_SECRET assina o cookie de sessão (src/auth/session.js). O valor
-// versionado no task-definition.json é um placeholder, e o código cai
-// silenciosamente para "troque-este-segredo-em-producao" se a variável faltar —
-// o que deixaria qualquer pessoa com o repositório forjar uma sessão. Gerado
-// aqui, o segredo nunca passa pelo git.
-resource "random_password" "cookie" {
+// Segredos independentes para assinar sessões e cursores opacos. A API exige
+// ambos no startup; valores gerados pelo Terraform não passam pelo git.
+resource "random_password" "auth_cookie_secret" {
+  length  = 64
+  special = false
+}
+
+resource "random_password" "cursor_secret" {
   length  = 64
   special = false
 }
@@ -51,8 +52,7 @@ resource "aws_ecs_task_definition" "api" {
   memory                   = var.memoria_task
 
   // LabRole nos dois papéis: é a única role disponível no AWS Academy
-  // (backend-sprint-2.md, seção 8.1), e é o que o task-definition.json
-  // versionado já fazia.
+  // (backend-sprint-2.md, seção 8.1).
   execution_role_arn = data.aws_iam_role.lab.arn
   task_role_arn      = data.aws_iam_role.lab.arn
 
@@ -76,9 +76,8 @@ resource "aws_ecs_task_definition" "api" {
         { name = "GOLDEN_SET_TABLE_NAME", value = aws_dynamodb_table.golden_set.name },
         { name = "BEDROCK_ENABLED", value = tostring(var.bedrock_habilitado) },
         { name = "BEDROCK_MODEL_ID", value = "anthropic.claude-3-haiku-20240307-v1:0" },
-        { name = "AUTH_USER_EMAIL", value = var.auth_email },
-        { name = "AUTH_USER_PASSWORD", value = var.auth_senha },
-        { name = "AUTH_COOKIE_SECRET", value = random_password.cookie.result },
+        { name = "AUTH_COOKIE_SECRET", value = random_password.auth_cookie_secret.result },
+        { name = "CURSOR_SECRET", value = random_password.cursor_secret.result },
 
         // O painel chega pelo Amplify, que repassa /api, /auth e /health para
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da

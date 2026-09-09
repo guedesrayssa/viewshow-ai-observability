@@ -1,12 +1,13 @@
-# Mapeamento de Métricas de Monitoramento e Observabilidade — View Show
+# Mapeamento de Métricas de Monitoramento e Observabilidade da Plataforma View Show
 
 &emsp; **Escopo Exclusivo:** `apps/frontend` (Dashboard Next.js) e `apps/backend` (API Express & Ingestion Service)  
-&emsp; **Parceiro:** Grupo Globo (Globoplay) — CCMD7  
+&emsp; **Parceiro:** Grupo Globo (Globoplay) · CCMD7  
 &emsp; **Turma / Grupo:** Inteli · Módulo 7 · Grupo 05  
 &emsp; **Sprint:** 3  
 &emsp; **Data:** Setembro de 2026  
 &emsp; **Ambiente e Região:** Pilha Local Grafana LGTM & AWS Fargate (`us-east-1`)  
-&emsp; **Branch de Referência:** `docs/metrics`
+&emsp; **Sinal Coberto:** Métricas (destino: Prometheus, porta `9090`)  
+&emsp; **Documento Irmão:** [Mapeamento de Logs](./mapeamento-logs-observabilidade.md) e [Mapeamento de Traces](./mapeamento-traces-observabilidade.md)
 
 ---
 
@@ -88,7 +89,7 @@
 │     bedrockService (com fallback).   │   - Endpoints do novo contrato:      │
 │   - Persistência DynamoDB com GSI    │     /overview, /events, /monitoring. │
 │     trace-index e PAY_PER_REQUEST.   │ • apps/backend/ingestion-data:       │
-│ • apps/observability (LGTM Stack):   │   - Implementação das portas e CLI de│
+│ • apps/fullstack/observability (LGTM Stack):   │   - Implementação das portas e CLI de│
 │   - Docker Compose com Grafana       │     sincronização periódica (15 min).│
 │     (3002), Prometheus (9090),       │   - Checkpoints e locks via DynamoDB.│
 │     Loki (3100) e Tempo (3200/4318). │   - Métricas de execução batch.      │
@@ -123,7 +124,7 @@ flowchart TD
         ING_HEALTH["Checkpoints · Frescor (Source Lag) · Leases / Locks · Rejeições"]
     end
 
-    subgraph OBS["apps/observability (Pilha Grafana LGTM)"]
+    subgraph OBS["apps/fullstack/observability (Pilha Grafana LGTM)"]
         PROM["Prometheus (:9090)"]
         TEMPO["Grafana Tempo (:3200, :4317, :4318)"]
         LOKI["Grafana Loki (:3100)"]
@@ -275,7 +276,7 @@ Buckets recomendados para o histograma de latência:
 > [!WARNING]
 > As métricas `bedrock_*` são **condicionais à disponibilidade do serviço na
 > conta de deploy**. O AWS Academy Learner Lab usado pelo projeto não concede
-> acesso ao Bedrock; por isso `apps/infra/variables.tf` mantém
+> acesso ao Bedrock; por isso `apps/fullstack/variables.tf` mantém
 > `bedrock_habilitado=false` e a API responde com a explicação por template.
 > Não basta alterar `BEDROCK_ENABLED`: antes é necessário confirmar permissão
 > de conta, modelo e região. Os riscos R4 e R6 de
@@ -387,7 +388,7 @@ Buckets recomendados para o histograma de latência:
 
 ## 7. Roteiro Prático de Instrumentação na Pilha Grafana LGTM
 
-&emsp; Para colocar este levantamento em operação na pilha local existente em `apps/observability`, deve-se executar:
+&emsp; Para colocar este levantamento em operação na pilha local existente em `apps/fullstack/observability`, deve-se executar:
 
 ### Passo 0: Coletar e enviar RUM no `apps/frontend`
 
@@ -442,21 +443,18 @@ Buckets recomendados para o histograma de latência:
    e criar um teste de contrato do endpoint cobrindo payload válido, nome fora
    da allowlist, corpo excedente e origem CORS não autorizada.
 
-### Passo 1: Instrumentar `apps/backend/api` com Prometheus
-1. Instalar a biblioteca no backend:
-   ```bash
-   cd apps/backend/api
-   npm install prom-client@15
-   ```
-2. Criar o módulo de métricas (`src/metrics.js`) inicializando `collectDefaultMetrics()` e registrando as métricas RED (`http_requests_total`, `http_request_duration_seconds`).
-3. Registrar o endpoint no Express:
-   ```javascript
-   app.get("/metrics", async (req, res) => {
-     res.set("Content-Type", register.contentType);
-     res.end(await register.metrics());
-   });
-   ```
-4. Em `apps/observability/prometheus/prometheus.yml`, descomentar o alvo `view-show-api` apontando para `host.docker.internal:3000`.
+### Passo 1: Coletar as métricas já expostas por `apps/backend/api`
+
+1. A API já expõe `GET /metrics` por meio de
+   `src/observability/metrics.ts` e registra as métricas RED. Confirme que
+   `METRICS_ENABLED=true` (valor padrão) ao iniciar o processo.
+2. Com a API rodando no host, habilite o alvo `view-show-api` em
+   `apps/fullstack/observability/prometheus/prometheus.yml`, apontado para
+   `host.docker.internal:3000`. O bloco permanece comentado por padrão porque a
+   composição de observabilidade não inicia a API e, nesse caso, o alvo ficaria
+   permanentemente `down`.
+3. Verifique o alvo em `http://localhost:9090/targets` e consulte as séries
+   `http_requests_total` e `http_request_duration_seconds`.
 
 ### Passo 2: Instrumentar Rastreamento OTLP com Tempo
 1. Instalar `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node` e `@opentelemetry/exporter-trace-otlp-http`.
@@ -477,10 +475,10 @@ Buckets recomendados para o histograma de latência:
      "duration_ms": 142
    }
    ```
-2. O Loki correlacionará o `trace_id` com o Tempo via derived field configurado em `apps/observability/grafana/provisioning/datasources/datasources.yml`.
+2. O Loki correlacionará o `trace_id` com o Tempo via derived field configurado em `apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml`.
 
 ### Passo 4: Dashboards Declarativos no Grafana
-1. Criar `apps/observability/grafana/provisioning/dashboards/dashboards.yml`.
+1. Criar `apps/fullstack/observability/grafana/provisioning/dashboards/dashboards.yml`.
 2. Provisionar três painéis:
    - **Painel 1: Performance da API (RED + Node.js + DynamoDB):** Vazão req/s, latência p95 (meta 2s), erros 5xx, event loop lag e RCU consumidos.
    - **Painel 2: QoE Globoplay (Dados do Frontend):** Taxa de erros por minuto, startup time p95, sessões afetadas, buffer ratio e mapa de calor por UF.

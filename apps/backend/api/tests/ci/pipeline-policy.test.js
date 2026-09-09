@@ -26,6 +26,16 @@ function topLevelBlock(name, source = pipeline) {
   return next === -1 ? remainder : remainder.slice(0, next);
 }
 
+function jobPropertyBlock(name, job) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`^  ${escapedName}:[^\\n]*(?:\\n|$)`, "m").exec(job);
+  const start = match?.index ?? -1;
+  assert.notEqual(start, -1, `missing job property ${name}`);
+  const remainder = job.slice(start + match[0].length);
+  const next = remainder.search(/^  [^\s#][^:\n]*:[^\n]*(?:\n|$)/m);
+  return next === -1 ? remainder : remainder.slice(0, next);
+}
+
 function executorReferences(source = pipeline) {
   return [
     ...[...source.matchAll(/^[ \t]+image:[ \t]+(\S+)[ \t]*$/gm)].map(
@@ -40,6 +50,43 @@ function executorReferences(source = pipeline) {
       (match) => match[1],
     ),
   ];
+}
+
+function assertBackendValidationIsLocalOnly(job) {
+  assert.match(
+    job,
+    /^  services:\n    - name: amazon\/dynamodb-local:2\.6\.1@sha256:1856c05cc66a0e49dc1099e483ad2851477eeebe2135250ac11a1d1227db54b1\n      alias: dynamodb$/m,
+  );
+  assert.match(
+    job,
+    /^  variables:\n    AWS_ACCESS_KEY_ID: "local"\n    AWS_SECRET_ACCESS_KEY: "local"\n    AWS_REGION: "us-east-1"\n    DYNAMODB_ENDPOINT: "http:\/\/dynamodb:8000"$/m,
+  );
+  assert.match(job, /^    - npm run test:e2e$/m);
+  const script = jobPropertyBlock("script", job);
+  assert.ok(script, "validate_backend must declare a script");
+  const regularSuite = script.indexOf("    - npm test\n");
+  const policySuite = script.indexOf("    - npm run test:ci-policy\n");
+  const liveSuite = script.indexOf("    - npm run test:e2e\n");
+  assert.ok(
+    regularSuite !== -1 &&
+      policySuite > regularSuite &&
+      liveSuite > policySuite,
+    "npm test, npm run test:ci-policy, and npm run test:e2e must run in that order",
+  );
+  assert.doesNotMatch(
+    job,
+    /environment:|sync-aws-gitlab-credentials|publish-backend-image|deploy-ecs|\baws\s/,
+  );
+  assert.doesNotMatch(
+    job,
+    /AWS_SESSION_TOKEN|AWS_PROFILE|AWS_WEB_IDENTITY_TOKEN_FILE|AWS_ROLE_ARN/,
+  );
+  const normalizedScript = script.replace(/\\\r?\n[ \t]*/g, " ");
+  assert.doesNotMatch(
+    normalizedScript,
+    /docker\s+(?:push\b|buildx\s+build\b[^\n]*--push\b)|npm\s+publish\b|(?:terraform|tofu)\s+(?:apply|destroy|import|taint|untaint|force-unlock|state\s+(?:mv|rm|push))\b|pulumi\s+(?:up|destroy|import|state\s+delete)\b|kubectl\s+(?:apply|create|delete|patch|replace|rollout|scale|set)\b|helm\s+(?:install|upgrade|uninstall|rollback)\b|\b(?:deploy|publish)\b/i,
+    "validate_backend must not publish, deploy, or mutate infrastructure",
+  );
 }
 
 test("topLevelBlock ignores similarly named hidden templates", () => {
@@ -66,7 +113,7 @@ test("executorReferences includes scalar, object, and service images", () => {
     "object_job:",
     "  image:",
     "    name: amazon/aws-cli:2@sha256:object",
-    "    entrypoint: [\"\"]",
+    '    entrypoint: [""]',
     "  services:",
     "    - name: docker:27-dind@sha256:service",
     "",
@@ -83,7 +130,10 @@ test("pipeline conservatively cancels obsolete pre-deploy work", () => {
   assert.match(pipeline, /auto_cancel:\n\s+on_new_commit: conservative/);
   assert.doesNotMatch(pipeline, /on_new_commit: interruptible/);
   assert.match(topLevelBlock("deploy_backend_ecs"), /interruptible: false/);
-  assert.match(topLevelBlock("deploy_backend_ecs"), /resource_group: monitoracao-api-service/);
+  assert.match(
+    topLevelBlock("deploy_backend_ecs"),
+    /resource_group: monitoracao-api-service/,
+  );
 });
 
 test("institutional runner connects to DinD without an unavailable TLS certificate volume", () => {
@@ -128,6 +178,125 @@ test("backend validation installs the exact jq test dependency", () => {
   );
 });
 
+test("backend validation exercises the live API only against pinned DynamoDB Local", () => {
+  const job = topLevelBlock("validate_backend");
+  assert.doesNotThrow(() => assertBackendValidationIsLocalOnly(job));
+});
+
+test("backend validation rejects live E2E before the regular suite", () => {
+  const job = topLevelBlock("validate_backend");
+  const reordered = job.replace(
+    "    - npm test\n    - npm run test:ci-policy\n    - npm run test:e2e",
+    "    - npm run test:e2e\n    - npm test\n    - npm run test:ci-policy",
+  );
+  assert.notEqual(reordered, job);
+  assert.throws(
+    () => assertBackendValidationIsLocalOnly(reordered),
+    /must run in that order/,
+  );
+});
+
+test("backend validation rejects the CI policy suite after live E2E", () => {
+  const job = topLevelBlock("validate_backend");
+  const ordered = job.includes("    - npm run test:ci-policy\n")
+    ? job
+    : job.replace(
+        "    - npm test\n    - npm run test:e2e",
+        "    - npm test\n    - npm run test:ci-policy\n    - npm run test:e2e",
+      );
+  const reordered = ordered.replace(
+    "    - npm test\n    - npm run test:ci-policy\n    - npm run test:e2e",
+    "    - npm test\n    - npm run test:e2e\n    - npm run test:ci-policy",
+  );
+  assert.notEqual(reordered, ordered);
+  assert.throws(
+    () => assertBackendValidationIsLocalOnly(reordered),
+    /must run in that order/,
+  );
+});
+
+for (const [category, command] of [
+  ["Docker publication", "docker push registry.example.test/api:ci"],
+  ["package publication", "npm publish"],
+  ["mutable Terraform", "terraform apply -auto-approve"],
+  ["mutable Kubernetes", "kubectl apply -f deployment.yaml"],
+  ["Helm deployment", "helm upgrade --install api ./chart"],
+]) {
+  test(`backend validation rejects ${category} commands`, () => {
+    const job = topLevelBlock("validate_backend");
+    const mutated = job.replace(
+      "    - npm run test:e2e",
+      `    - npm run test:e2e\n    - ${command}`,
+    );
+    assert.notEqual(mutated, job);
+    assert.throws(
+      () => assertBackendValidationIsLocalOnly(mutated),
+      /must not publish, deploy, or mutate infrastructure/,
+    );
+  });
+}
+
+test("backend validation inspects commands inside multiline script entries", () => {
+  const job = topLevelBlock("validate_backend");
+  const mutated = job.replace(
+    "    - npm run test:e2e",
+    [
+      "    - npm run test:e2e",
+      "    - |",
+      "      docker push registry.example.test/api:ci",
+    ].join("\n"),
+  );
+  assert.notEqual(mutated, job);
+  assert.throws(
+    () => assertBackendValidationIsLocalOnly(mutated),
+    /must not publish, deploy, or mutate infrastructure/,
+  );
+});
+
+test("backend validation does not stop inspecting a multiline entry at a blank line", () => {
+  const job = topLevelBlock("validate_backend");
+  const mutated = job.replace(
+    "    - npm run test:e2e",
+    [
+      "    - npm run test:e2e",
+      "    - |",
+      "      printf '%s\\n' validating",
+      "",
+      "      docker push registry.example.test/api:ci",
+    ].join("\n"),
+  );
+  assert.notEqual(mutated, job);
+  assert.throws(
+    () => assertBackendValidationIsLocalOnly(mutated),
+    /must not publish, deploy, or mutate infrastructure/,
+  );
+});
+
+for (const [category, commandLines] of [
+  [
+    "split Docker push",
+    ["      docker \\", "        push registry.example.test/api:ci"],
+  ],
+  [
+    "split Buildx publication",
+    ["      docker buildx build \\", "        --push ."],
+  ],
+  ["split package publication", ["      npm \\", "        publish"]],
+]) {
+  test(`backend validation rejects ${category} commands`, () => {
+    const job = topLevelBlock("validate_backend");
+    const mutated = job.replace(
+      "    - npm run test:e2e",
+      ["    - npm run test:e2e", "    - |", ...commandLines].join("\n"),
+    );
+    assert.notEqual(mutated, job);
+    assert.throws(
+      () => assertBackendValidationIsLocalOnly(mutated),
+      /must not publish, deploy, or mutate infrastructure/,
+    );
+  });
+}
+
 test("develop publication is protected, digest-producing, and isolated from MR rules", () => {
   const job = topLevelBlock("publish_backend_image");
   assert.match(job, /^  tags:\n    - inteli-gitlab-runner-prd$/m);
@@ -136,7 +305,10 @@ test("develop publication is protected, digest-producing, and isolated from MR r
   assert.match(job, /environment:\n\s+name: aws-lab\n\s+action: prepare/);
   assert.match(job, /bash scripts\/ci\/publish-backend-image\.sh/);
   assert.match(job, /\. backend-image\.env/);
-  assert.match(job, /smoke-container\.sh "\$\{AWS_ACCOUNT_ID\}.*@\$\{BACKEND_IMAGE_DIGEST\}"/);
+  assert.match(
+    job,
+    /smoke-container\.sh "\$\{AWS_ACCOUNT_ID\}.*@\$\{BACKEND_IMAGE_DIGEST\}"/,
+  );
   assert.doesNotMatch(job, /smoke-container\.sh .*:\$\{CI_COMMIT_SHA\}/);
   assert.match(
     job,
@@ -146,7 +318,10 @@ test("develop publication is protected, digest-producing, and isolated from MR r
 
 test("deploy requires the publication dotenv artifact and keeps aws-lab scope", () => {
   const job = topLevelBlock("deploy_backend_ecs");
-  assert.match(job, /needs:\n\s+- job: publish_backend_image\n\s+artifacts: true/);
+  assert.match(
+    job,
+    /needs:\n\s+- job: publish_backend_image\n\s+artifacts: true/,
+  );
   assert.match(job, /^  tags:\n    - inteli-gitlab-runner-prd$/m);
   assert.match(job, /environment:\n\s+name: aws-lab/);
   assert.doesNotMatch(job, /validate_backend_container/);
@@ -160,7 +335,10 @@ test("portable ignore policy excludes all Superpowers workflow artifacts", () =>
 test("deployment guide documents the institutional runner and temporary unprotected-develop renewal", () => {
   assert.match(deployReadme, /runner compartilhado/i);
   assert.match(deployReadme, /inteli-gitlab-runner-prd/);
-  assert.doesNotMatch(deployReadme, /backend-(docker-ephemeral|deploy-protected)/);
+  assert.doesNotMatch(
+    deployReadme,
+    /backend-(docker-ephemeral|deploy-protected)/,
+  );
   assert.match(
     deployReadme,
     /scripts\/sync-aws-gitlab-credentials\.sh --dry-run --allow-unprotected-develop/,
@@ -169,7 +347,10 @@ test("deployment guide documents the institutional runner and temporary unprotec
     deployReadme,
     /scripts\/sync-aws-gitlab-credentials\.sh --allow-unprotected-develop/,
   );
-  assert.doesNotMatch(deployReadme, /aws configure export-credentials|printenv/i);
+  assert.doesNotMatch(
+    deployReadme,
+    /aws configure export-credentials|printenv/i,
+  );
 });
 
 test("every backend CI executor and Docker service uses a tag plus immutable digest", () => {
@@ -177,7 +358,10 @@ test("every backend CI executor and Docker service uses a tag plus immutable dig
     topLevelBlock("validate_backend"),
     /image: node:22\.22\.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94/,
   );
-  for (const jobName of ["validate_backend_container", "publish_backend_image"]) {
+  for (const jobName of [
+    "validate_backend_container",
+    "publish_backend_image",
+  ]) {
     const job = topLevelBlock(jobName);
     assert.match(
       job,
@@ -208,11 +392,17 @@ test("every backend CI executor and Docker service uses a tag plus immutable dig
 });
 
 test("both Docker jobs pin the inner BuildKit driver image", () => {
-  const pinnedBuildKit = "moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552";
-  for (const jobName of ["validate_backend_container", "publish_backend_image"]) {
+  const pinnedBuildKit =
+    "moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552";
+  for (const jobName of [
+    "validate_backend_container",
+    "publish_backend_image",
+  ]) {
     assert.match(
       topLevelBlock(jobName),
-      new RegExp(`docker buildx create --name ci-builder --driver docker-container --driver-opt image=${pinnedBuildKit} --use`),
+      new RegExp(
+        `docker buildx create --name ci-builder --driver docker-container --driver-opt image=${pinnedBuildKit} --use`,
+      ),
     );
   }
 });

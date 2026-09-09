@@ -11,10 +11,10 @@ resource "aws_amplify_app" "painel" {
   // As três regras abaixo são o que faz o login funcionar.
   //
   // ci-cd-amplify.md registra como limitação conhecida que "enquanto a API
-  // responder em http://<ip> (sem TLS)" o login não funciona em produção. A
-  // causa são duas linhas em src/routes/auth.js: o cookie de sessão sai com
-  // secure=true (NODE_ENV=production está cravado no Dockerfile) e
-  // sameSite=lax. Painel em HTTPS no Amplify e API em HTTP no ALB são sites
+  // responder em http://<ip> (sem TLS)" a sessão não funciona em produção. A
+  // configuração atual em apps/backend/api/src/app.ts emite o cookie com
+  // secure=true quando NODE_ENV=production e sameSite=lax. Painel em HTTPS no
+  // Amplify e API em HTTP no ALB são sites
   // diferentes e esquemas diferentes: o navegador bloqueia a chamada por
   // conteúdo misto antes de sair, e mesmo que passasse, sameSite=lax não
   // anexaria o cookie.
@@ -23,26 +23,26 @@ resource "aws_amplify_app" "painel" {
   // /health para o ALB (via API Gateway, porque o Amplify exige alvo
   // HTTPS e o ALB não tem certificado — ver apigateway.tf), o navegador vê tudo saindo de uma origem só, em HTTPS:
   // conteúdo misto desaparece, CORS desaparece, sameSite=lax volta a valer e
-  // secure=true passa a ser verdade. Nada disso exige tocar no código da
-  // aplicação nem trocar a arquitetura — só usa uma capacidade do Amplify que
-  // já estava disponível.
+  // secure=true passa a ser aplicável. A identidade continua fail-closed até
+  // existir um adaptador corporativo real; estas regras preservam a sessão
+  // same-origin para quando ele for integrado.
   // ---------------------------------------------------------------------------
 
   custom_rule {
     source = "/api/<*>"
-    target = "https://${replace(aws_apigatewayv2_stage.default.invoke_url, "https://", "")}/api/<*>"
+    target = "${local.api_gateway_base_url}/api/<*>"
     status = "200"
   }
 
   custom_rule {
     source = "/auth/<*>"
-    target = "https://${replace(aws_apigatewayv2_stage.default.invoke_url, "https://", "")}/auth/<*>"
+    target = "${local.api_gateway_base_url}/auth/<*>"
     status = "200"
   }
 
   custom_rule {
     source = "/health"
-    target = "https://${replace(aws_apigatewayv2_stage.default.invoke_url, "https://", "")}/health"
+    target = "${local.api_gateway_base_url}/health"
     status = "200"
   }
 
@@ -61,18 +61,29 @@ resource "aws_amplify_branch" "principal" {
 }
 
 locals {
-  frontend_dir = "${path.module}/../frontend"
-  painel_url   = "https://${aws_amplify_branch.principal.branch_name}.${aws_amplify_app.painel.default_domain}"
+  frontend_dir         = "${path.module}/../frontend"
+  painel_url           = "https://${aws_amplify_branch.principal.branch_name}.${aws_amplify_app.painel.default_domain}"
+  api_gateway_base_url = trimsuffix(aws_apigatewayv2_stage.default.invoke_url, "/")
 
-  // Só o que entra no build. node_modules e .next ficam de fora.
+  // Manifesto determinístico de tudo que o build de produção consome.
+  // node_modules, .next, out, testes e documentação ficam de fora.
+  arquivos_build_frontend = sort(concat(
+    [
+      "next.config.ts",
+      "package-lock.json",
+      "package.json",
+      "postcss.config.mjs",
+      "tsconfig.json",
+    ],
+    tolist(fileset(local.frontend_dir, "app/**")),
+    tolist(fileset(local.frontend_dir, "components/**")),
+    tolist(fileset(local.frontend_dir, "hooks/**")),
+    tolist(fileset(local.frontend_dir, "lib/**")),
+    tolist(fileset(local.frontend_dir, "public/**")),
+  ))
+
   hash_frontend = sha1(join("", [
-    filesha1("${local.frontend_dir}/package.json"),
-    filesha1("${local.frontend_dir}/package-lock.json"),
-    filesha1("${local.frontend_dir}/next.config.ts"),
-    sha1(join("", [for f in fileset(local.frontend_dir, "app/**") : filesha1("${local.frontend_dir}/${f}")])),
-    sha1(join("", [for f in fileset(local.frontend_dir, "components/**") : filesha1("${local.frontend_dir}/${f}")])),
-    sha1(join("", [for f in fileset(local.frontend_dir, "lib/**") : filesha1("${local.frontend_dir}/${f}")])),
-    sha1(join("", [for f in fileset(local.frontend_dir, "hooks/**") : filesha1("${local.frontend_dir}/${f}")])),
+    for arquivo in local.arquivos_build_frontend : "${arquivo}:${filesha1("${local.frontend_dir}/${arquivo}")}\n"
   ]))
 }
 
@@ -88,10 +99,7 @@ locals {
 // resolver "/" para window.location.origin no navegador, cada endereço novo de
 // API exigiria recompilar o painel inteiro.
 resource "terraform_data" "build_painel" {
-  triggers_replace = [
-    local.hash_frontend,
-    var.permitir_dado_exemplo,
-  ]
+  triggers_replace = [local.hash_frontend]
 
   // `&&` encadeia igual no sh e no cmd, e as variáveis vão pelo bloco
   // `environment` em vez do prefixo `VAR=valor`, que é sintaxe só de shell
@@ -106,7 +114,6 @@ resource "terraform_data" "build_painel" {
       // que compila precisa alcançar o Google.
       NEXT_PUBLIC_API_BASE_URL           = "/"
       NEXT_PUBLIC_TELEMETRY_API_BASE_URL = "/"
-      NEXT_PUBLIC_ALLOW_EXAMPLE_DATA     = var.permitir_dado_exemplo ? "true" : "false"
     }
   }
 }

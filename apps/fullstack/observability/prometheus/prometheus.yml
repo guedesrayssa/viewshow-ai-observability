@@ -37,9 +37,9 @@ scrape_configs:
         labels:
           component: observabilidade
 
-  # API do View Show rodando no host (npm run dev em apps/backend/api).
-  # Habilite este bloco assim que a API expuser um endpoint /metrics no formato
-  # Prometheus; enquanto ela não expuser, o alvo apareceria permanentemente como
+  # A API já expõe GET /metrics no formato Prometheus quando METRICS_ENABLED=true
+  # (valor padrão). O alvo fica comentado porque esta composição não inicia a
+  # API; habilite-o enquanto ela estiver rodando no host, ou ele aparecerá como
   # "down" em http://localhost:9090/targets.
   #
   # - job_name: view-show-api

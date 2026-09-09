@@ -1,8 +1,9 @@
 # Deploy integrado do frontend
 
 O painel continua sendo exportado estaticamente e publicado no Amplify. A
-infraestrutura em `apps/infra` é a fonte de verdade operacional e não foi
-alterada nesta refatoração.
+infraestrutura em [`apps/fullstack`](../../fullstack) é a fonte de verdade
+operacional; seu documento canônico é a
+[integração fullstack](../../fullstack/documentation/infraestrutura-integracao.md).
 
 ```text
 navegador -> Amplify (mesma origem)
@@ -44,10 +45,17 @@ inventado pelo backend.
 
 ## Autenticação nesta fase
 
-As variáveis históricas de e-mail/senha da task não são consumidas pelo módulo
-de autenticação. Login local é proibido em produção. Até um provider OIDC/SSO
-corporativo ser configurado, `/auth/login`, cadastro, recuperação e SSO falham
-fechado com `FEATURE_UNAVAILABLE`. Isso é uma pendência externa explícita.
+O frontend usa somente a superfície federada: `GET /auth/session`,
+`GET /auth/login`, `GET /auth/callback` e `POST /auth/logout`. Não existe fluxo
+público de e-mail e senha. Até o adaptador Cognito/OIDC corporativo estar
+disponível, login e callback falham fechado com `503 FEATURE_UNAVAILABLE`; uma
+sessão ausente retorna `401 UNAUTHENTICATED`. Isso é uma pendência externa
+explícita, sem autenticação simulada em produção.
+
+As rotas de importação e reanálise já fazem validação de borda e autenticação,
+mas seus adaptadores de S3/ingestão e publicação SQS estão definidos como
+indisponíveis. Uma chamada autenticada recebe `503 FEATURE_UNAVAILABLE`, sem
+fabricar job ou mensagem.
 
 ## Compatibilidade AWS
 
@@ -55,9 +63,13 @@ Foram preservados ECR, cluster, ECS Service, task family, nome do container,
 porta 3000, ALB, API Gateway, Amplify, CloudWatch e tabelas DynamoDB. O runtime
 inicia um único processo Express, organizado internamente em módulos.
 
-O GitLab CI constrói o contexto `apps/backend/api` e executa smoke de health e
-de `/auth/register`, cuja resposta 503 controlada comprova que a API falha
-fechado sem fabricar um provider.
+O job `validate_backend` do GitLab CI usa DynamoDB Local como serviço, com
+`DYNAMODB_ENDPOINT=http://dynamodb:8000` e credenciais dummy, e executa
+`npm run test:e2e` depois da suíte regular. Localmente, a mesma superfície viva
+é exercitada por `npm run test:e2e-local` em `apps/backend/api`. Os testes de
+contrato cobrem a paridade entre manifesto, OpenAPI e rotas Express. O E2E vivo
+cobre leituras e revisão no DynamoDB, autenticação federada e os limites
+fail-closed de importação e publicação SQS sem acessar a AWS.
 
 Para custos do Learner Lab, revise o plano antes de aplicar ou destruir. Esta
 entrega não executa deploy, `terraform apply` ou `terraform destroy`.

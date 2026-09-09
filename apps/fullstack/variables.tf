@@ -86,13 +86,13 @@ variable "tabela_golden_set" {
 }
 
 variable "cpu_task" {
-  description = "CPU da task Fargate, em unidades de 1024. Igual ao task-definition.json versionado."
+  description = "CPU da task Fargate, em unidades de 1024."
   type        = string
   default     = "256"
 }
 
 variable "memoria_task" {
-  description = "Memória da task Fargate, em MiB. Igual ao task-definition.json versionado."
+  description = "Memória da task Fargate, em MiB."
   type        = string
   default     = "512"
 }
@@ -103,29 +103,10 @@ variable "quantidade_tasks" {
   default     = 1
 }
 
-variable "auth_email" {
-  description = "Usuário fixo de demonstração aceito pelo login."
-  type        = string
-  default     = "demo@globoplay.com"
-}
-
-variable "auth_senha" {
-  description = "Senha do usuário fixo. O padrão é o mesmo do repositório; troque para qualquer coisa que não seja demonstração."
-  type        = string
-  default     = "demo123"
-  sensitive   = true
-}
-
 variable "bedrock_habilitado" {
   description = "Liga a explicação em linguagem natural via Bedrock. Mantenha desligado: o Learner Lab não dá acesso ao Bedrock, e o código já cai para explicação por template."
   type        = bool
   default     = false
-}
-
-variable "permitir_dado_exemplo" {
-  description = "Deixa o painel cair para o conjunto de exemplo quando uma leitura falha, rotulando isso na interface. As telas que dependem da API de telemetria (Flask), fora do escopo desta infra, só têm conteúdo com isto ligado."
-  type        = bool
-  default     = true
 }
 
 variable "retencao_logs_dias" {

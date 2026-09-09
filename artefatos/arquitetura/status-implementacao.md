@@ -22,10 +22,11 @@ para implementação incompleta, **Implementado** para código compatível e
 | --- | --- | --- | --- |
 | Backend operacional | Testado | monólito modular TypeScript/Express em `apps/backend/api/src` | ampliar integrações históricas e assíncronas |
 | Frontend operacional | Parcial | telas em `apps/frontend/app/(painel)` consomem a API operacional | upload, importação e SSO corporativo |
-| Autenticação federada | Parcial | sessão assinada e provedor configurável/fail-closed | Cognito federado e callback OIDC |
+| Autenticação federada | Testado | rotas federadas, sessão assinada e provider fail-closed cobertos no E2E local | disponibilizar o adaptador Cognito/OIDC |
+| Importação de dump | Testado | rotas e validação cobertas; adaptador S3/ingestão falha fechado | disponibilizar upload e tarefa de ingestão |
 | Serviço de ingestão | Definido | placeholder em `apps/backend/ingestion-data` | implementar tarefa Python e projeções |
 | Arquivo S3/Glue/Athena | Definido | contratos aprovados | provisionar e implementar roteamento histórico |
-| SQS e Worker de Análise | Definido | contratos aprovados e placeholder `apps/backend/agentic` | implementar fila, DLQ, consumidor e modelos |
+| SQS e Worker de Análise | Definido | contrato de publicação fail-closed testado e placeholder `apps/backend/agentic` | disponibilizar fila, DLQ, consumidor e modelos |
 | Revisão de hipótese | Testado | atualização condicional e autorização no módulo `incidents` | integração com o Worker e conjunto real |
 | Infraestrutura AWS | Parcial | API em ECS, DynamoDB, ingresso e CI/CD existentes | recursos de ingestão, análise, histórico e identidade |
 | Observabilidade | Parcial | request ID, logs, métricas RED e OpenTelemetry na API | correlação ponta a ponta e alarmes dos workers |
@@ -45,12 +46,16 @@ separado, APIs HTTP internas ou supervisor multiprocesso.
 | revisão com `hypothesisId` e `expectedVersion` | autorização e atualização condicional | Testado |
 | eventos correlacionados | agregado quando disponível; evento individual declara indisponibilidade | Parcial |
 | `GET /monitoring/overview` | leitura de projeção com frescor e parcialidade | Testado |
-| importação de dump e reanálise assíncrona | rotas e integrações ausentes | Definido |
-| autenticação Cognito/SSO | sessão local segura e falha fechada sem provider | Parcial |
+| importação de dump | rotas registradas, entrada/autorização validadas e adaptador indisponível | Testado |
+| reanálise assíncrona | rota validada e publicação SQS indisponível/fail-closed | Testado |
+| autenticação Cognito/SSO | login, callback, sessão e logout federados; provider indisponível/fail-closed | Testado |
 
 Os endpoints validam path, query e body, devolvem envelope público, preservam
 `null` versus zero e não expõem `pk`, `sk`, TTL ou cursor físico. Filtros para
 os quais ainda não existe projeção são rejeitados com 422; não são ignorados.
+A paridade entre manifesto, OpenAPI e rotas Express é testada. O E2E vivo com
+DynamoDB Local cobre a superfície HTTP, persistência de revisão e os limites
+fail-closed sem credenciais AWS reais.
 
 ## 4. Frontend
 
@@ -61,8 +66,8 @@ a mesma janela e a mesma procedência. Os filtros dimensionais continuam
 desabilitados enquanto o backend só publica a projeção global.
 
 Não há dependência ativa da API Flask de telemetria na Visão Geral. Permanecem
-pendentes o upload multipart, acompanhamento de `ImportJob`, autenticação
-federada e integrações cuja fonte de dados ainda não foi publicada.
+pendentes o upload multipart, acompanhamento de `ImportJob`, o adaptador
+Cognito/OIDC e integrações cuja fonte de dados ainda não foi publicada.
 
 ## 5. Ingestão, histórico e análise
 
@@ -75,6 +80,8 @@ esses componentes, não à API operacional.
 
 O Terraform não semeia dados sintéticos no DynamoDB. A API lê projeções
 publicadas pelo fluxo de ingestão e declara ausência de forma explícita.
+Os contratos de importação e publicação de reanálise existem na API, mas seus
+adaptadores permanecem indisponíveis e retornam `FEATURE_UNAVAILABLE`.
 
 ## 6. Infraestrutura e segurança
 
@@ -82,6 +89,11 @@ A branch preserva o pipeline, a imagem e a task da API existentes. Ainda
 precisam ser provisionados ou confirmados: conectividade com o ARGUS, task e
 Scheduler de ingestão, S3/Glue/Athena, SQS/DLQ, Worker de Análise, Cognito e os
 alarmes ponta a ponta.
+
+O job de validação do backend executa a suíte regular e o E2E vivo contra
+DynamoDB Local por `DYNAMODB_ENDPOINT=http://dynamodb:8000`, usando somente
+credenciais dummy. A variante local é `npm run test:e2e-local`; nenhuma delas
+requer acesso a recursos AWS.
 
 Nenhuma implementação depende de credencial compartilhada no código. A
 atualização temporária do profile e das variáveis do Learner Lab é uma atividade

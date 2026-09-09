@@ -37,7 +37,7 @@ resource "aws_lb_target_group" "api" {
     matcher = "200"
 
     // GET /health responde sem tocar em DynamoDB nem em Bedrock
-    // (src/routes/health.js), então pode ser agressivo sem custo.
+    // (apps/backend/api/src/app.ts), então pode ser agressivo sem custo.
     interval            = 15
     timeout             = 5
     healthy_threshold   = 2

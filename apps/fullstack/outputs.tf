@@ -8,12 +8,6 @@ output "api_url" {
   value       = "http://${aws_lb.principal.dns_name}"
 }
 
-output "credenciais_demo" {
-  description = "Usuário aceito pelo login do painel."
-  value       = "${var.auth_email} / ${var.auth_senha}"
-  sensitive   = true
-}
-
 output "tabelas_dynamodb" {
   description = "Tabelas criadas."
   value = {
@@ -23,7 +17,7 @@ output "tabelas_dynamodb" {
 }
 
 output "imagem_ecr" {
-  description = "Imagem publicada no ECR e rodando na task."
+  description = "URI da imagem referenciada pela task ECS."
   value       = local.uri_imagem
 }
 

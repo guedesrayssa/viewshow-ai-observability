@@ -24,17 +24,29 @@ resource "aws_ecr_repository" "api" {
   }
 }
 
-// Só o código que entra na imagem: o Dockerfile copia package*.json e src.
-// Mudou qualquer um desses, a imagem é reconstruída; mudou um teste ou um
-// README, não é.
+// Manifesto determinístico de tudo que afeta o build da imagem. Além do
+// Dockerfile e do .dockerignore, cobre cada origem de COPY usada no estágio de
+// build. Testes, scripts de desenvolvimento e saídas dist continuam de fora.
 locals {
   api_dir = "${path.module}/../backend/api"
 
+  arquivos_build_api = sort(concat(
+    [
+      ".dockerignore",
+      "Dockerfile",
+      "package-lock.json",
+      "package.json",
+    ],
+    [
+      for arquivo in fileset(local.api_dir, "contracts/**") : arquivo
+      if !strcontains(arquivo, "/dist/") && !endswith(arquivo, ".tsbuildinfo")
+    ],
+    tolist(fileset(local.api_dir, "src/**")),
+    tolist(fileset(local.api_dir, "tsconfig*.json")),
+  ))
+
   hash_imagem = sha1(join("", [
-    filesha1("${local.api_dir}/Dockerfile"),
-    filesha1("${local.api_dir}/package.json"),
-    filesha1("${local.api_dir}/package-lock.json"),
-    sha1(join("", [for f in fileset("${local.api_dir}/src", "**") : filesha1("${local.api_dir}/src/${f}")])),
+    for arquivo in local.arquivos_build_api : "${arquivo}:${filesha1("${local.api_dir}/${arquivo}")}\n"
   ]))
 
   tag_imagem = substr(local.hash_imagem, 0, 12)
@@ -43,6 +55,10 @@ locals {
 
 resource "terraform_data" "imagem" {
   triggers_replace = [local.hash_imagem]
+
+  lifecycle {
+    replace_triggered_by = [aws_ecr_repository.api]
+  }
 
   // O trabalho vive em scripts/publicar-imagem.mjs, e não num comando embutido
   // aqui, para rodar igual em Linux, macOS e Windows: `node arquivo.mjs` é a

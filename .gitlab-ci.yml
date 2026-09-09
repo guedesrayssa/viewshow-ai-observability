@@ -19,6 +19,10 @@ stages:
   - apps/frontend/**/*
   - .gitlab-ci.yml
 
+.mudou-iac: &iac_changes
+  - apps/fullstack/**/*
+  - .gitlab-ci.yml
+
 workflow:
   auto_cancel:
     on_new_commit: conservative
@@ -30,6 +34,32 @@ workflow:
 
 default:
   interruptible: true
+
+validate_fullstack_iac:
+  stage: validar
+  image:
+    name: hashicorp/terraform:1.15.9@sha256:fd5debae63188975d6febc6aa5bd1a982a588f55e4a4ddb7de28be923f250456
+    entrypoint: [""]
+  script:
+    - terraform -chdir=apps/fullstack fmt -check -recursive
+    - terraform -chdir=apps/fullstack init -backend=false -input=false
+    - terraform -chdir=apps/fullstack validate
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *iac_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *iac_changes
+
+validate_observability_iac:
+  stage: validar
+  image: docker:27.4.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a
+  script:
+    - docker compose -f apps/fullstack/docker-compose.observability.yml config --quiet
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *iac_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *iac_changes
 
 variables:
   AWS_ACCOUNT_ID: "248880318395"
@@ -48,6 +78,14 @@ variables:
 validate_backend:
   stage: validar
   image: node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
+  services:
+    - name: amazon/dynamodb-local:2.6.1@sha256:1856c05cc66a0e49dc1099e483ad2851477eeebe2135250ac11a1d1227db54b1
+      alias: dynamodb
+  variables:
+    AWS_ACCESS_KEY_ID: "local"
+    AWS_SECRET_ACCESS_KEY: "local"
+    AWS_REGION: "us-east-1"
+    DYNAMODB_ENDPOINT: "http://dynamodb:8000"
   cache:
     key:
       files:
@@ -65,6 +103,8 @@ validate_backend:
     - npm --version
     - npm ci --prefer-offline --no-audit --fund=false
     - npm test
+    - npm run test:ci-policy
+    - npm run test:e2e
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *backend_changes

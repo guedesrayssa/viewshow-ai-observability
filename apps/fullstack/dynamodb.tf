@@ -2,9 +2,10 @@
 //
 // Nenhum código do repositório cria estas tabelas — elas foram criadas à mão no
 // console durante a Sprint 2. Este arquivo é a primeira definição executável
-// delas, e o esquema abaixo foi derivado do código que lê e escreve:
-// apps/backend/api/src/db/keys.js (convenção de chaves) e
-// apps/backend/api/src/services/*.js (padrões de acesso).
+// delas, e o esquema abaixo acompanha os adaptadores TypeScript que acessam a
+// tabela operacional:
+// apps/backend/api/src/modules/incidents/adapters/dynamodb-incident-repository.ts
+// apps/backend/api/src/modules/dashboard/adapters/dynamodb-dashboard-read-repository.ts
 
 resource "aws_dynamodb_table" "operacional" {
   name         = var.tabela_operacional
@@ -27,11 +28,10 @@ resource "aws_dynamodb_table" "operacional" {
     type = "S"
   }
 
-  // Projeção ALL não é preferência: src/routes/incidents.js serializa o item
-  // vindo do Query no índice direto para a resposta HTTP, e
-  // src/services/evidenceService.js remonta a chave {pk, sk} da tabela base a
-  // partir de um item vindo do índice. Com projeção parcial, as duas coisas
-  // quebram.
+  // Projeção ALL não é preferência: o adaptador TypeScript de incidentes
+  // consulta o bundle completo pelo trace-index, converte os itens em DTOs e
+  // preserva {pk, sk} para a atualização condicional de revisões. Uma projeção
+  // parcial quebraria essas operações.
   global_secondary_index {
     name            = "trace-index"
     hash_key        = "trace_id"
@@ -55,8 +55,8 @@ resource "aws_dynamodb_table" "golden_set" {
   billing_mode = "PAY_PER_REQUEST"
 
   // Chave simples, sem sort key e sem GSI: o acesso é sempre GetItem por
-  // assinatura determinística "<component>#<deviceType>#<region>"
-  // (src/services/goldenSetService.js).
+  // assinatura determinística "<component>#<deviceType>#<region>". A API
+  // TypeScript atual não possui adaptador operacional para esta tabela.
   hash_key = "case_id"
 
   attribute {
