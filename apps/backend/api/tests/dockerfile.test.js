@@ -20,10 +20,15 @@ test("Dockerfile defines a reproducible non-root Node 22 runtime", () => {
   );
   assert.match(dockerfile, /apt-get install -y --no-install-recommends dumb-init=1\.2\.5-2/);
   assert.doesNotMatch(dockerfile, /apt-get install -y --no-install-recommends dumb-init(?:\s|\\)/);
-  assert.match(dockerfile, /RUN npm ci --omit=dev/);
+  assert.match(dockerfile, /^FROM node:22\.22\.0-bookworm-slim@sha256:[a-f0-9]{64} AS build$/m);
+  assert.match(dockerfile, /RUN npm ci/);
+  assert.match(dockerfile, /RUN npm run build/);
+  assert.match(dockerfile, /npm run build && npm prune --omit=dev/);
+  assert.match(dockerfile, /COPY --from=build --chown=node:node \/app/);
   assert.match(dockerfile, /^USER node$/m);
   assert.match(dockerfile, /^HEALTHCHECK /m);
   assert.match(dockerfile, /^ENTRYPOINT \["dumb-init", "--"\]$/m);
+  assert.match(dockerfile, /^CMD \["node", "runtime-compat\/dist\/index\.js"\]$/m);
   assert.doesNotMatch(dockerfile, /^COPY \. \.$/m);
 });
 

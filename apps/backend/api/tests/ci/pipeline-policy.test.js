@@ -93,17 +93,10 @@ test("institutional runner connects to DinD without an unavailable TLS certifica
   assert.doesNotMatch(pipeline, /^  DOCKER_CERT_PATH:/m);
 });
 
-test("backend changes exclude deploy documentation and snapshots", () => {
+test("backend changes include every microservice workspace and operational script", () => {
   const backendChanges = topLevelBlock(".mudou-backend");
-  assert.match(backendChanges, /apps\/backend\/api\/src\/\*\*\/\*/);
-  assert.match(backendChanges, /apps\/backend\/api\/tests\/\*\*\/\*/);
-  assert.match(backendChanges, /apps\/backend\/api\/package\.json/);
-  assert.match(backendChanges, /apps\/backend\/api\/package-lock\.json/);
-  assert.match(backendChanges, /apps\/backend\/api\/Dockerfile/);
-  assert.match(backendChanges, /apps\/backend\/api\/\.dockerignore/);
+  assert.match(backendChanges, /apps\/backend\/\*\*\/\*/);
   assert.match(backendChanges, /scripts\/ci\/\*\*\/\*/);
-  assert.doesNotMatch(backendChanges, /apps\/backend\/api\/\*\*\/\*/);
-  assert.doesNotMatch(backendChanges, /apps\/backend\/api\/deploy/);
   assert.doesNotMatch(backendChanges, /docs\/superpowers/);
 });
 

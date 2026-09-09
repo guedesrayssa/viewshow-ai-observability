@@ -10,12 +10,7 @@ stages:
   - publicar
 
 .mudou-backend: &backend_changes
-  - apps/backend/api/src/**/*
-  - apps/backend/api/tests/**/*
-  - apps/backend/api/package.json
-  - apps/backend/api/package-lock.json
-  - apps/backend/api/Dockerfile
-  - apps/backend/api/.dockerignore
+  - apps/backend/**/*
   - scripts/ci/**/*
   - scripts/sync-aws-gitlab-credentials.sh
   - .gitlab-ci.yml
@@ -69,7 +64,12 @@ validate_backend:
     - node --version
     - npm --version
     - npm ci --prefer-offline --no-audit --fund=false
+    - npm run format:check
+    - npm run lint
+    - npm run typecheck
     - npm test
+    - npm run test:ci-policy
+    - npm run build
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *backend_changes
@@ -201,6 +201,14 @@ tipos:
   stage: validar
   script:
     - npx tsc --noEmit
+  rules:
+    - changes: *mudou-frontend
+
+testes_frontend:
+  extends: .node
+  stage: validar
+  script:
+    - npm test
   rules:
     - changes: *mudou-frontend
 

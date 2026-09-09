@@ -32,7 +32,7 @@ set -euo pipefail
 printf 'docker:%s\n' "$*" >>"$CALL_LOG"
 if [[ "$*" == "image inspect $EXPECTED_IMAGE --format {{.Architecture}}" ]]; then
   printf '%s\n' "$ARCHITECTURE"
-elif [[ "$1" == "run" && "$2" == "--detach" && "$3" == "--name" && "$5" == "$EXPECTED_IMAGE" && "$#" == "5" ]]; then
+elif [[ "$1" == "run" && "$2" == "--detach" && "$3" == "--name" && "$5" == "--env" && "$6" == "NODE_ENV=test" && "$7" == "--env" && "$8" == "AUTH_COOKIE_SECRET=ci-smoke-cookie-secret-at-least-32-bytes" && "$9" == "$EXPECTED_IMAGE" && "$#" == "9" ]]; then
   printf '%s' "$4" >"$NAME_FILE"
   echo fixture-container-id
 elif [[ "$1" == "inspect" && "$2" == "--format" && "$3" == "{{.State.Health.Status}}" && "$4" == "$(cat "$NAME_FILE")" ]]; then
@@ -40,9 +40,11 @@ elif [[ "$1" == "inspect" && "$2" == "--format" && "$3" == "{{.State.Health.Stat
 elif [[ "$1" == "inspect" && "$2" == "--format" && "$3" == "{{.Config.User}}" && "$4" == "$(cat "$NAME_FILE")" ]]; then
   printf '%s\n' "$CONFIGURED_USER"
 elif [[ "$1" == "exec" && "$2" == "$(cat "$NAME_FILE")" && "$3" == "node" && "$4" == "-e" && "$#" == "5" ]]; then
-  if [[ "$5" == *"signal:AbortSignal.timeout(5000)"* ]]; then
+  if [[ "$5" == *"/health"* && "$5" == *"signal:AbortSignal.timeout(5000)"* ]]; then
     if [[ "$HANG_HEALTH_BODY" == "true" ]]; then exit 28; fi
     printf '%s' "$HEALTH_BODY"
+  elif [[ "$5" == *"/auth/register"* && "$5" == *"signal:AbortSignal.timeout(5000)"* ]]; then
+    printf '%s' '{"status":503,"body":{"error":{"code":"FEATURE_UNAVAILABLE","requestId":"req_test"}}}'
   elif [[ "$HANG_HEALTH_BODY" == "true" ]]; then
     sleep 1
     printf '%s' "$HEALTH_BODY"
@@ -85,6 +87,7 @@ test("container smoke accepts exactly one expected health JSON document", () => 
   const { result, calls } = runSmoke();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /container health check passed/);
+  assert.match(calls, /--env NODE_ENV=test --env AUTH_COOKIE_SECRET=/);
   assert.match(calls, /docker:rm -f/);
 });
 
