@@ -24,6 +24,10 @@ stages:
   - apps/frontend/**/*
   - .gitlab-ci.yml
 
+.mudou-iac: &iac_changes
+  - apps/fullstack/**/*
+  - .gitlab-ci.yml
+
 workflow:
   auto_cancel:
     on_new_commit: conservative
@@ -35,6 +39,35 @@ workflow:
 
 default:
   interruptible: true
+
+validate_fullstack_iac:
+  stage: validar
+  image:
+    name: hashicorp/terraform:1.15.9@sha256:fd5debae63188975d6febc6aa5bd1a982a588f55e4a4ddb7de28be923f250456
+    entrypoint: [""]
+  before_script:
+    - cd apps/fullstack
+  script:
+    - terraform version
+    - terraform fmt -check -recursive
+    - terraform init -backend=false -input=false
+    - terraform validate
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *iac_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *iac_changes
+
+validate_observability_iac:
+  stage: validar
+  image: docker:27.4.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a
+  script:
+    - docker compose -f apps/fullstack/docker-compose.observability.yml config --quiet
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *iac_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *iac_changes
 
 variables:
   AWS_ACCOUNT_ID: "248880318395"

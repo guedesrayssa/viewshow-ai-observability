@@ -10,7 +10,7 @@ dados **como ela de fato é**.
 - **Método:** leitura de `src/app.js`, `src/routes/*.js`, `src/services/*.js`,
   `src/db/*.js`, `src/middleware/requireAuth.js`, `src/auth/session.js`,
   `src/orchestrator/index.js`, `src/agent/index.js`, `scripts/seed.js`,
-  `scripts/reset.js` e `apps/infra/dynamodb.tf` (definição executável das tabelas).
+  `scripts/reset.js` e `apps/fullstack/dynamodb.tf` (definição executável das tabelas).
 - **Não houve alteração de código.** Este é um documento de levantamento.
 
 > **Mudança de schema entre `899691c` e `a06f8f3`.** Depois da primeira leitura, o
@@ -23,8 +23,8 @@ dados **como ela de fato é**.
 > não migrados. Ver §1.2 e §4, item **L**.
 
 > Referências de contrato-alvo (para contraste, não é o que está implementado):
-> `artefatos/contratos/dashboard-api-contract.md` e
-> `artefatos/contratos/dashboard-api-gap-analysis.md`.
+> `artefatos/arquitetura/api-dashboard.md` e
+> `artefatos/arquitetura/status-implementacao.md`.
 
 ---
 
@@ -37,7 +37,7 @@ dados **como ela de fato é**.
 | `monitoracao-operacional` | `OPERATIONAL_TABLE_NAME` | `pk` (S, HASH) + `sk` (S, RANGE) | `trace-index`: HASH `trace_id` (S), RANGE `sk` (S), projeção **ALL** | atributo `ttl` (epoch s), habilitado |
 | `monitoracao-golden-set` | `GOLDEN_SET_TABLE_NAME` | `case_id` (S, HASH) — **sem sort key** | nenhum | nenhum |
 
-Fonte do esquema: `apps/infra/dynamodb.tf` (as tabelas foram criadas à mão no
+Fonte do esquema: `apps/fullstack/dynamodb.tf` (as tabelas foram criadas à mão no
 console na Sprint 2; o Terraform é a primeira definição executável, derivada do
 código que lê/escreve).
 
@@ -766,7 +766,7 @@ próprio item positivo mais um filtro em `findMatchingCase`.
 **simples** `case_id`, **sem sort key** (`dynamodb.tf`): um positivo e um negativo
 para a mesma assinatura colidiriam no mesmo item. Guardar negativos exige `case_id`
 composto (ex.: `<assinatura>#REFUTED#<seqHipótese>`) **ou** uma sort key — ou seja,
-alterar `apps/infra/dynamodb.tf` e a convenção de chaves. O ideal seria
+alterar `apps/fullstack/dynamodb.tf` e a convenção de chaves. O ideal seria
 `src/db/keys.js` passar a conhecer a família de chaves do golden set (hoje não
 conhece nada dela).
 

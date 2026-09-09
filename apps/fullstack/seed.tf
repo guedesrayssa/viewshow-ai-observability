@@ -30,9 +30,23 @@ resource "terraform_data" "seed" {
     working_dir = "${path.module}/../backend/api"
 
     environment = {
-      AWS_REGION             = var.regiao
-      OPERATIONAL_TABLE_NAME = aws_dynamodb_table.operacional.name
-      GOLDEN_SET_TABLE_NAME  = aws_dynamodb_table.golden_set.name
+      // Evita que um .env ou shell configurado para DynamoDB Local/credenciais
+      // antigas se sobreponha ao profile temporário do Learner Lab.
+      AWS_ACCESS_KEY_ID         = ""
+      AWS_SECRET_ACCESS_KEY     = ""
+      AWS_SESSION_TOKEN         = ""
+      AWS_ENDPOINT_URL          = ""
+      AWS_ENDPOINT_URL_DYNAMODB = ""
+      AWS_REGION                = var.regiao
+      OPERATIONAL_TABLE_NAME    = aws_dynamodb_table.operacional.name
+      GOLDEN_SET_TABLE_NAME     = aws_dynamodb_table.golden_set.name
     }
+  }
+
+  lifecycle {
+    replace_triggered_by = [
+      aws_dynamodb_table.operacional,
+      aws_dynamodb_table.golden_set,
+    ]
   }
 }
