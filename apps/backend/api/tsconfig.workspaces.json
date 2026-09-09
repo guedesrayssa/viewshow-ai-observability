@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./contracts" },
+    { "path": "./incidents-service" },
+    { "path": "./dashboard-query-service" },
+    { "path": "./identity-service" },
+    { "path": "./runtime-compat" },
+    { "path": "./tsconfig.json" }
+  ]
+}
