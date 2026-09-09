@@ -23,8 +23,8 @@ dados **como ela de fato é**.
 > não migrados. Ver §1.2 e §4, item **L**.
 
 > Referências de contrato-alvo (para contraste, não é o que está implementado):
-> `artefatos/contratos/dashboard-api-contract.md` e
-> `artefatos/contratos/dashboard-api-gap-analysis.md`.
+> `artefatos/arquitetura/api-dashboard.md` e
+> `artefatos/arquitetura/status-implementacao.md`.
 
 ---
 

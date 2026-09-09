@@ -60,6 +60,5 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
 | [`apps/fullstack/observability/loki/loki-config.yml`](../loki/loki-config.yml) | Retenção de 168h e `allow_structured_metadata`. |
 | [`apps/fullstack/observability/tempo/tempo.yml`](../tempo/tempo.yml) | Receptores OTLP e `metrics_generator`. |
 | [`apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml`](../grafana/provisioning/datasources/datasources.yml) | As quatro correlações entre os sinais. |
-| [`artefatos/arquitetura/data-ingestion-service-architecture.md`](../../../../artefatos/arquitetura/data-ingestion-service-architecture.md) | Estados de run, leases, projeções e a seção 23, que fixa o requisito de log do batch. |
-| [`artefatos/contratos/argus-dynamodb-ingestion-contract.md`](../../../../artefatos/contratos/argus-dynamodb-ingestion-contract.md) | Datasets, envelope canônico, hashes e a regra de sanitização de erros. |
-| [`artefatos/contratos/dashboard-api-contract.md`](../../../../artefatos/contratos/dashboard-api-contract.md) | Catálogo de endpoints, envelope de erro e `requestId`. |
+| [`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md) | Serviço batch, estados de run, leases, projeções, datasets, envelope canônico, hashes e sanitização de erros. |
+| [`artefatos/arquitetura/api-dashboard.md`](../../../../artefatos/arquitetura/api-dashboard.md) | Catálogo de endpoints, envelope de erro e `requestId`. |

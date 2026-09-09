@@ -58,7 +58,7 @@
 
 1. **`apps/frontend`:** Painel em **Next.js 16 (App Router)** e **React 19**, compilado como **exportação estática** (`output: "export"` em `apps/frontend/next.config.ts`). Isso muda radicalmente o modelo de log do frontend e é tratado na seção [4.1](#41-restrição-de-arquitetura-exportação-estática).
 2. **`apps/backend/api`:** API HTTP em **Node.js (Express 5)**, com rotas de autenticação, incidentes, golden set, ML e dashboard, acesso ao **Amazon DynamoDB** e integração opcional com o **Amazon Bedrock**.
-3. **`apps/backend/ingestion-data`:** Serviço batch em **Python** (arquitetura hexagonal), ainda **não implementado no repositório**, especificado em [`artefatos/arquitetura/data-ingestion-service-architecture.md`](../../../../artefatos/arquitetura/data-ingestion-service-architecture.md) e [`artefatos/contratos/argus-dynamodb-ingestion-contract.md`](../../../../artefatos/contratos/argus-dynamodb-ingestion-contract.md).
+3. **`apps/backend/ingestion-data`:** Serviço batch em **Python** (arquitetura hexagonal), ainda **não implementado no repositório**, especificado em [`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md).
 
 > [!IMPORTANT]
 > O MVP básico da Sprint 1 (`apps/basica`, API Flask e frontend estático) está fora deste levantamento, exceto por uma menção: `apps/frontend/lib/data/client.ts` ainda aponta a base `telemetria` para essa API. Enquanto essa dependência existir, as falhas de leitura de telemetria aparecerão nos logs do navegador descritos na seção [4.2](#42-catálogo-de-eventos-de-log-do-navegador).
@@ -366,7 +366,7 @@ derivedFields:
 &emsp; O contrato de ingestão já define a regra para os erros persistidos, e ela é estendida aqui a **toda** linha de log:
 
 > Não contêm payload completo, PII, segredo, DSN ou stack trace com parâmetros.
-> ([`argus-dynamodb-ingestion-contract.md`, seção 14](../../../../artefatos/contratos/argus-dynamodb-ingestion-contract.md))
+> ([`ingestao-e-dados.md`, seção 14](../../../../artefatos/arquitetura/ingestao-e-dados.md#14-erros-e-qualidade))
 
 | Dado | Tratamento | Onde Aparece Hoje |
 |:---|:---|:---|

@@ -231,6 +231,7 @@ entre sessões e uma tabela de "se der erro, é isto" estão em
 
 ## Documentação adicional
 
+- [Arquitetura-alvo e contratos técnicos do View Show](artefatos/arquitetura/README.md)
 - [Relatório de testes do MVP inicial](artefatos/sprint1/mvp-inicial.md)
 - [Arquitetura e endpoints do backend](artefatos/sprint1/backend.md)
 - [Especificação de requisitos](artefatos/sprint1/requisitos.md)
