@@ -10,3 +10,6 @@ export * from "./domain/outcome.js";
 export * from "./ports/llm-provider.js";
 export * from "./ports/agentic-diagnosis.js";
 export * from "./adapters/llm/fake-provider.js";
+export * from "./domain/evidence.js";
+export * from "./prompts/rca-v1.js";
+export * from "./application/investigate.js";

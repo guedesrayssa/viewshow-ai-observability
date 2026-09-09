@@ -23,6 +23,9 @@ ports, com um adaptador de cada lado.
 | `src/domain/quality-gate.ts` | Decide se os dados sustentam investigação |
 | `src/domain/response-validation.ts` | Interpreta e ancora a resposta do modelo |
 | `src/domain/outcome.ts` | Piso de confiança e ordenação por confiança |
+| `src/domain/evidence.ts` | Entrada da investigação: incidente, evidência, caso curado |
+| `src/prompts/rca-v1.ts` | Prompt versionado, com bloco de dados delimitado |
+| `src/application/investigate.ts` | Orquestração: gate → curado → modelo → validação |
 | `src/adapters/llm/fake-provider.ts` | Duplo determinístico, só para teste |
 | `src/ports/llm-provider.ts` | Fronteira com o modelo de linguagem |
 | `src/ports/agentic-diagnosis.ts` | Como o backend aciona esta camada |
@@ -51,6 +54,16 @@ outras passam — senão a injeção parcial some no caminho de sucesso.
 anômalo o sinal é; o outro, quanto o agente acredita naquela explicação. Ficam
 em campos separados, e é isso que permite auditar depois se o agente concordou
 com o modelo.
+
+## A camada não lê nem escreve
+
+`investigate()` recebe o pacote pronto e devolve o diagnóstico. Não toca banco,
+nem através de port. Enquanto as duas branches divergem, persistência é
+justamente a parte que ainda vai mudar — um adaptador em cada backend faz
+`ler → investigate → gravar`, e esta função sobrevive aos dois.
+
+O efeito colateral é bom: a camada inteira é testável com um único duplo, o do
+modelo de linguagem. Sem banco, sem fila, sem rede.
 
 ## Integração
 

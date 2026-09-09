@@ -65,11 +65,21 @@ export interface Hypothesis {
   readonly missingEvidence: readonly string[];
 }
 
-/** Por que o diagnóstico não foi tentado. Sempre acompanha `deferred`. */
-export interface DeferralReason {
+/**
+ * Motivo estruturado. Código para decidir, texto para ler.
+ *
+ * Serve tanto ao diferimento quanto à falha: em `deferred` explica por que não
+ * valeu a pena investigar, em `failed` explica o que quebrou. São situações
+ * diferentes, mas a forma do motivo é a mesma, e um campo só evita que metade
+ * dos consumidores esqueça de olhar o outro.
+ */
+export interface Reason {
   readonly code: string;
   readonly detail: string;
 }
+
+/** Nome histórico, mantido por clareza no gate. */
+export type DeferralReason = Reason;
 
 export interface Diagnosis {
   readonly diagnosisId: string;
@@ -83,10 +93,13 @@ export interface Diagnosis {
    * se o agente concordou ou discordou do modelo.
    */
   readonly signal: MlSignal;
-  /** Vazio em `deferred`, `failed` e `inconclusive`. */
+  /** Vazio em `deferred` e `failed`; vazio também em `inconclusive` quando nada sobrou. */
   readonly hypotheses: readonly Hypothesis[];
-  /** Presente apenas em `deferred`. */
-  readonly deferralReasons: readonly DeferralReason[];
+  /**
+   * Motivos do diferimento em `deferred`, da quebra em `failed`, e as hipóteses
+   * descartadas quando a resposta teve aproveitamento parcial. Vazio nos demais.
+   */
+  readonly reasons: readonly Reason[];
   /** Ausente quando source é "golden-set": nenhum modelo produziu o resultado. */
   readonly source: DiagnosisSource | null;
   readonly model: { readonly provider: string; readonly modelId: string; readonly promptVersion: string } | null;
