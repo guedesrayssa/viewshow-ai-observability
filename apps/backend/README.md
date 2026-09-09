@@ -1,33 +1,31 @@
 # Backend operacional
 
-O backend é um conjunto de quatro aplicações Node independentes. Para manter o
-contexto Docker que o Terraform atual fixa em `apps/backend/api`, os workspaces
-executáveis vivem abaixo dessa pasta nesta fase. Essa localização não muda as
-fronteiras: cada aplicação possui package, configuração, porta, bootstrap,
-health check e processo próprios, e integra-se somente por HTTP.
+O backend operacional é uma única aplicação Node.js 22 com Express 5 e código
+fonte integralmente em TypeScript. Ela roda como um processo no ECS/Fargate e
+expõe `/health`, `/metrics`, `/auth/*` e `/api/v1/*`.
 
-## Serviços
+## Organização
 
-| Workspace | Porta | Responsabilidade |
-| --- | ---: | --- |
-| `api/` | 3000 | Gateway/BFF público, segurança de borda, auth proxy, envelopes e RED metrics. |
-| `api/incidents-service/` | 3001 | Incidentes, diagnóstico persistido, eventos disponíveis e revisão otimista. |
-| `api/dashboard-query-service/` | 3002 | Read models `VIEW#...`, freshness, cobertura e capacidades. |
-| `api/identity-service/` | 3003 | Sessão assinada e provedor de identidade configurável/fail-closed. |
-| `api/runtime-compat/` | — | Supervisor dos quatro processos na task ECS atual. |
-| `api/contracts/` | — | Schemas/DTOs/OpenAPI sem regra de domínio. |
-
-`ingestion-data/` e `agentic/` são placeholders sem servidor, worker ou lógica.
-
-## Fluxo e dependências
+O código executável fica em `api/src` e segue um monólito modular:
 
 ```text
-route -> application use case -> domain policy -> port -> adapter
+api/src/
+├── app.ts                    composição HTTP e middleware
+├── index.ts                  bootstrap e encerramento do processo
+├── modules/
+│   ├── auth/                 sessão e provedor de identidade
+│   ├── dashboard/            overview e monitoramento
+│   └── incidents/            incidentes, diagnóstico, eventos e revisão
+└── observability/            métricas e telemetria
 ```
 
-O gateway não acessa DynamoDB. Incident Service e Dashboard Query Service não
-compartilham repositories. Identity não valida senha local em produção. A
-camada agêntica congelada permanece fora do build TypeScript e do runtime.
+Cada módulo separa aplicação, domínio, portas e adaptadores. A comunicação entre
+módulos acontece em processo; não existem APIs HTTP internas, supervisor ou
+microsserviços aninhados. `api/contracts` concentra schemas, DTOs e o contrato
+OpenAPI público, sem regra de domínio.
+
+`ingestion-data/` e `agentic/` são limites reservados para componentes futuros
+descritos em `artefatos/arquitetura`; não fazem parte do build ou do runtime.
 
 ## Comandos
 
@@ -35,32 +33,34 @@ Execute em `apps/backend/api`:
 
 ```bash
 npm ci
+npm run format:check
 npm run lint
-npm run typecheck
 npm test
+npm run test:ci-policy
 npm run build
-npm run start:incidents
-npm run start:dashboard-query
-npm run start:identity
 npm start
-npm run start:compat
 ```
 
-Configuração obrigatória comum: `INTERNAL_AUTH_TOKEN` (24+ caracteres). Incident
-Service também exige `CURSOR_SECRET` (32+); Identity exige
-`AUTH_COOKIE_SECRET` (32+). O supervisor gera segredos efêmeros somente fora de
-produção. Em produção, o cookie secret precisa vir do ambiente.
+O `pretest` compila `api/contracts`, portanto uma instalação limpa consegue
+resolver `@view-show/contracts` sem depender de artefatos deixados por outro
+comando.
 
-## Persistência
+## Configuração e persistência
 
-Nenhum recurso AWS novo é criado. Os adapters usam apenas `Query` e atualização
-condicional na tabela operacional existente. Chaves físicas e
-`LastEvaluatedKey` ficam dentro dos adapters; o cursor público é autenticado e
-opaco. Projeção ausente retorna 503 ou resposta parcial explícita.
+`AUTH_COOKIE_SECRET` e `CURSOR_SECRET` exigem pelo menos 32 caracteres. O login
+de desenvolvimento só é habilitado com `IDENTITY_DEV_AUTH_ENABLED=true` e é
+recusado em produção. Sem provedor corporativo, autenticação e SSO falham
+fechado.
 
-## Deploy compatível
+Os adaptadores consultam a tabela operacional com `Query`; `Scan` é proibido no
+caminho da API. Chaves físicas e `LastEvaluatedKey` não atravessam o contrato
+público. Projeções ausentes resultam em indisponibilidade ou parcialidade
+explícita, sem inventar dados.
 
-A imagem multi-stage usa Node 22.22.0, compila para `dist`, remove dependências
-de desenvolvimento e roda como `node` sob `dumb-init`. O supervisor inicia
-quatro processos e encerra o container se um essencial morrer. A separação em
-containers/ECS Services futuros não requer mudança de contrato.
+## Deploy
+
+A imagem multi-stage compila TypeScript para `dist`, remove dependências de
+desenvolvimento e inicia `node dist/index.js` sob `dumb-init`. A infraestrutura
+existente preserva um container e uma porta (`3000`). As credenciais temporárias
+do Learner Lab são responsabilidade do ambiente do pipeline e não ficam no
+código.

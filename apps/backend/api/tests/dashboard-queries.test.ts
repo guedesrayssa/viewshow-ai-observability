@@ -4,35 +4,38 @@ import type { DashboardReadRepository } from "../src/modules/dashboard/ports/das
 
 const now = new Date("2026-01-01T12:00:00Z");
 
-describe("dashboard query service", () => {
+describe("dashboard queries module", () => {
   it.each([
     { deviceType: "smart-tv" },
     { region: "sudeste" },
     { appVersion: "4.2.1" },
     { search: "buffering" },
-  ])("rejects an overview filter without a real projection: %o", async (filter) => {
-    const latestOverview = vi.fn(async () => ({
-      data: { kpis: [] },
-      observedThrough: null,
-      coverageRatio: null,
-      source: "argus",
-    }));
-    const repository: DashboardReadRepository = {
-      latestOverview,
-      latestMonitoring: vi.fn(async () => null),
-    };
+  ])(
+    "rejects an overview filter without a real projection: %o",
+    async (filter) => {
+      const latestOverview = vi.fn(async () => ({
+        data: { kpis: [] },
+        observedThrough: null,
+        coverageRatio: null,
+        source: "argus",
+      }));
+      const repository: DashboardReadRepository = {
+        latestOverview,
+        latestMonitoring: vi.fn(async () => null),
+      };
 
-    await expect(
-      new DashboardQueries(repository, ["argus"], () => now).overview({
-        window: "30m",
-        ...filter,
-      }),
-    ).rejects.toMatchObject({
-      status: 422,
-      code: "UNSUPPORTED_FILTER_COMBINATION",
-    });
-    expect(latestOverview).not.toHaveBeenCalled();
-  });
+      await expect(
+        new DashboardQueries(repository, ["argus"], () => now).overview({
+          window: "30m",
+          ...filter,
+        }),
+      ).rejects.toMatchObject({
+        status: 422,
+        code: "UNSUPPORTED_FILTER_COMBINATION",
+      });
+      expect(latestOverview).not.toHaveBeenCalled();
+    },
+  );
 
   it("limits recent incidents from the overview projection", async () => {
     const repository: DashboardReadRepository = {

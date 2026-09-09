@@ -1,9 +1,7 @@
-# Contratos compartilhados
+# Contratos da API
 
-Pacote mínimo com Zod, DTOs, envelopes, erros, request IDs e bootstrap de
-observabilidade. Não contém entidade, repository ou use case de serviço.
+Pacote TypeScript com schemas Zod, DTOs, envelopes, erros, request IDs e
+bootstrap de observabilidade. Não contém entidade, repository ou caso de uso.
 
 - `openapi/public.openapi.json`: contrato público OpenAPI 3.1.
-- `openapi/internal.openapi.json`: contratos HTTP internos versionados.
-
-Breaking changes exigem nova versão de schema e coordenação com o frontend.
+  Breaking changes exigem nova versão de schema e coordenação com o frontend.

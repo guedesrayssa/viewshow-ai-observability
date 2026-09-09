@@ -1,4 +1,4 @@
-/** Public, versioned routes exposed by the single API gateway. */
+/** Rotas públicas versionadas expostas pela API operacional. */
 export const ENDPOINTS = {
   health: "/health",
   auth: {

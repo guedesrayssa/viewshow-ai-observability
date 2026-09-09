@@ -7,8 +7,7 @@ alterada nesta refatoração.
 ```text
 navegador -> Amplify (mesma origem)
           -> API Gateway AWS -> ALB -> ECS :3000
-                                      |
-                                      +-> supervisor multiprocesso
+                                      -> API TypeScript/Express
 ```
 
 O build recebe somente:
@@ -26,7 +25,7 @@ O Amplify encaminha `/api/*`, `/auth/*` e `/health` ao ingresso atual. Cookies
 cd apps/frontend
 npm ci
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm test
 npm run build
 test -f out/index.html
@@ -45,8 +44,8 @@ inventado pelo backend.
 
 ## Autenticação nesta fase
 
-As variáveis históricas de e-mail/senha da task não são consumidas pelo novo
-Identity Service. Login local é proibido em produção. Até um provider OIDC/SSO
+As variáveis históricas de e-mail/senha da task não são consumidas pelo módulo
+de autenticação. Login local é proibido em produção. Até um provider OIDC/SSO
 corporativo ser configurado, `/auth/login`, cadastro, recuperação e SSO falham
 fechado com `FEATURE_UNAVAILABLE`. Isso é uma pendência externa explícita.
 
@@ -54,12 +53,11 @@ fechado com `FEATURE_UNAVAILABLE`. Isso é uma pendência externa explícita.
 
 Foram preservados ECR, cluster, ECS Service, task family, nome do container,
 porta 3000, ALB, API Gateway, Amplify, CloudWatch e tabelas DynamoDB. O runtime
-inicia quatro processos no mesmo container por limitação do laboratório; só o
-gateway fica público.
+inicia um único processo Express, organizado internamente em módulos.
 
 O GitLab CI constrói o contexto `apps/backend/api` e executa smoke de health e
-de `/auth/register`, cuja resposta 503 controlada comprova gateway → Identity
-sem fabricar um provider.
+de `/auth/register`, cuja resposta 503 controlada comprova que a API falha
+fechado sem fabricar um provider.
 
 Para custos do Learner Lab, revise o plano antes de aplicar ou destruir. Esta
 entrega não executa deploy, `terraform apply` ou `terraform destroy`.

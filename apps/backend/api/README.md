@@ -15,5 +15,4 @@ AUTH_COOKIE_SECRET=... CURSOR_SECRET=... \
 OPERATIONAL_TABLE_NAME=... AWS_REGION=us-east-1 npm start
 ```
 
-Contratos: [`contracts/openapi/public.openapi.json`](contracts/openapi/public.openapi.json)
-e [`contracts/openapi/internal.openapi.json`](contracts/openapi/internal.openapi.json).
+Contrato público: [`contracts/openapi/public.openapi.json`](contracts/openapi/public.openapi.json).

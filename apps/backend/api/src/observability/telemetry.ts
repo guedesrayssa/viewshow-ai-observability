@@ -7,7 +7,7 @@ let sdk: NodeSDK | null = null;
 export function startTelemetry(): void {
   if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) return;
   sdk = new NodeSDK({
-    serviceName: process.env.OTEL_SERVICE_NAME ?? "api-gateway",
+    serviceName: process.env.OTEL_SERVICE_NAME ?? "view-show-api",
     traceExporter: new OTLPTraceExporter({
       url: `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace(/\/$/, "")}/v1/traces`,
     }),

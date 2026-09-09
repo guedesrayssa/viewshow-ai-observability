@@ -13,7 +13,6 @@ async function inspect(path) {
       if (/\bany\b/.test(source)) violations.push(`${candidate}: explicit any is forbidden`);
       if (/console\.(log|warn|error)\(/.test(source)) violations.push(`${candidate}: use the structured logger`);
       if (/\bScan(Command)?\b/.test(source)) violations.push(`${candidate}: DynamoDB Scan is forbidden in request paths`);
-      if (/from\s+["'][^"']*(incidents-service|dashboard-query-service|identity-service)\/src/.test(source)) violations.push(`${candidate}: service implementation import is forbidden`);
     }
   }
 }

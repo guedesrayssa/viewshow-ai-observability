@@ -114,7 +114,9 @@ describe("api monolith over HTTP", () => {
   });
 
   it("returns cheap health, stable validation, CORS, dependency errors, and metrics", async () => {
-    const url = await listen(buildApp({ frontendOrigins: ["http://allowed.test"] }));
+    const url = await listen(
+      buildApp({ frontendOrigins: ["http://allowed.test"] }),
+    );
     expect(await (await fetch(`${url}/health`)).json()).toEqual({
       status: "ok",
     });
@@ -135,7 +137,9 @@ describe("api monolith over HTTP", () => {
   });
 
   it("surfaces a module DATA_UNAVAILABLE as a 503 envelope", async () => {
-    const url = await listen(buildApp({ frontendOrigins: [], metricsEnabled: false }));
+    const url = await listen(
+      buildApp({ frontendOrigins: [], metricsEnabled: false }),
+    );
     const response = await fetch(`${url}/api/v1/dashboard/overview`);
     expect(response.status).toBe(503);
     expect(await response.json()).toHaveProperty(
