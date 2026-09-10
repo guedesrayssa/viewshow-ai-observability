@@ -36,3 +36,5 @@ validada, porém a publicação na SQS está indisponível. Ambas respondem
 `503 FEATURE_UNAVAILABLE` após autenticação válida, sem simulação ou fallback.
 
 Contrato público: [`contracts/openapi/public.openapi.json`](contracts/openapi/public.openapi.json).
+
+Testes de carga (k6): [`loadtest/README.md`](loadtest/README.md).
