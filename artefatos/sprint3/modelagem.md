@@ -10,8 +10,7 @@
 4. [Diagrama de classes](#4-diagrama-de-classes)
 5. [Diagramas de sequência](#5-diagramas-de-sequência)
 6. [Rastreabilidade da modelagem](#6-rastreabilidade-da-modelagem)
-7. [Validação e consistência](#7-validação-e-consistência)
-8. [Referências](#8-referências)
+7. [Referências](#7-referências)
 
 ---
 
@@ -2456,5 +2455,3 @@ Fonte: Material produzido pelos autores (2026).
 LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto orientados a objetos e ao desenvolvimento iterativo*. 3. ed. Porto Alegre: Bookman, 2007. E-book. Disponível em: https://integrada.minhabiblioteca.com.br/reader/books/9788577800476. Acesso em: 6 set. 2026.
 
 OBJECT MANAGEMENT GROUP. *OMG Unified Modeling Language (OMG UML)*. Version 2.5.1. 2017. Disponível em: https://www.omg.org/spec/UML/2.5.1. Acesso em: 6 set. 2026.
-
-GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de Frontend Globoplay*. 2026. Disponível em: [requisitos.md](../sprint1/requisitos.md).

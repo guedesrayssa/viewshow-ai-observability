@@ -1,0 +1,17 @@
+# Estado do Terraform: contém IDs de recursos reais e, dependendo do provider,
+# pode conter segredo em texto plano. Nunca commitado — cada aluno tem o seu,
+# local, referente ao próprio Learner Lab.
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# Chaves privadas locais nunca saem da máquina de quem aplicou.
+*.pem
+
+# Artefatos intermediários do archive_file (zips gerados a cada apply).
+.terraform-artifacts/
+*.tfplan

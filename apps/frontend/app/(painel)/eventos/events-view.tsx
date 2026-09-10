@@ -12,6 +12,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { EventsChart } from "@/app/(painel)/eventos/events-chart";
 import {
@@ -55,6 +56,7 @@ const DEFAULT_FILTERS = {
 };
 
 export function EventsView() {
+  const incidentId = useSearchParams().get("incidente") ?? "";
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<EventCategory | "all">("all");
   const [period, setPeriod] = useState<PeriodKey | "all">(DEFAULT_FILTERS.period);
@@ -67,13 +69,13 @@ export function EventsView() {
   const [volumePeriod, setVolumePeriod] = useState<VolumePeriodKey>("30");
 
   const events = useResource(
-    () => fetchEvents({ period, category, deviceType, region, appVersion, source }),
-    [period, category, deviceType, region, appVersion, source],
+    () => fetchEvents({ incidentId, period, category, deviceType, region, appVersion, source }),
+    [incidentId, period, category, deviceType, region, appVersion, source],
   );
 
   const volume = useResource(
-    (revision) => fetchEventVolume(volumePeriod, revision),
-    [volumePeriod],
+    (revision) => fetchEventVolume(incidentId, volumePeriod, revision),
+    [incidentId, volumePeriod],
   );
 
   const hasActiveFilters =

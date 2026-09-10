@@ -11,17 +11,16 @@
  * ou devolvesse outro shape, o hook não sairia de "loading" e a tela ficaria
  * presa no espaço reservado.
  *
- * As duas APIs precisam estar apontadas por variável de ambiente, senão
+ * A API operacional precisa estar apontada por variável de ambiente, senão
  * `composeResource` curto-circuita em `API_NOT_CONFIGURED` antes de chamar
- * `read` e o `catch` nunca é exercitado. `API_BASES` é lido uma única vez, na
- * carga do módulo, então o stub vai em `vi.hoisted`, que roda antes dos imports.
+ * `read` e o `catch` nunca é exercitado. A base é lida uma única vez na carga
+ * do módulo, então o stub vai em `vi.hoisted`, que roda antes dos imports.
  */
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 vi.hoisted(() => {
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
-  vi.stubEnv("NEXT_PUBLIC_TELEMETRY_API_BASE_URL", "http://telemetria.test");
   // O padrão já é proibido, mas deixa explícito: sem conjunto de exemplo, a
   // falha vira estado de indisponível, não número.
   vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
@@ -43,18 +42,16 @@ afterAll(() => {
 type Bloco = { value: number };
 
 describe("composeResource — captura da falha na origem", () => {
-  it("enxerga as duas APIs como configuradas neste ambiente de teste", () => {
+  it("enxerga a API operacional configurada neste ambiente de teste", () => {
     // Guarda: sem isto os testes abaixo passariam por curto-circuito em
     // API_NOT_CONFIGURED, sem nunca entrar no `try/catch` do `read`.
-    expect(isApiConfigured("operacional")).toBe(true);
-    expect(isApiConfigured("telemetria")).toBe(true);
+    expect(isApiConfigured()).toBe(true);
   });
 
   it("resolve — não rejeita — quando `read` lança, e devolve um recurso sem dado", async () => {
     const promise = composeResource<Bloco>({
-      targets: ["operacional"],
       read: async () => {
-        throw new ApiError("A API respondeu 503 em /api/v1/dashboard/summary.", 503);
+        throw new ApiError("A API respondeu 503 em /api/v1/dashboard/overview.", 503);
       },
     });
 
@@ -69,7 +66,6 @@ describe("composeResource — captura da falha na origem", () => {
 
   it("captura rejeição de promise, não só `throw` síncrono", async () => {
     const resource = await composeResource<Bloco>({
-      targets: ["operacional"],
       read: () => Promise.reject(new ApiError("A API não respondeu em 8s.")),
     });
 
@@ -80,7 +76,6 @@ describe("composeResource — captura da falha na origem", () => {
 
   it("carrega o aviso READ_FAILED com a mensagem do erro real e o registra em fallbackReason", async () => {
     const resource = await composeResource<Bloco>({
-      targets: ["operacional"],
       read: async () => {
         throw new Error("conexão recusada");
       },
@@ -96,7 +91,6 @@ describe("composeResource — captura da falha na origem", () => {
 
   it("cai para a mensagem padrão de READ_FAILED quando o que foi lançado não é um Error", async () => {
     const resource = await composeResource<Bloco>({
-      targets: ["operacional"],
       read: () => Promise.reject("explodiu sem ser Error"),
     });
 
@@ -109,7 +103,6 @@ describe("composeResource — captura da falha na origem", () => {
 
   it("preserva os avisos declarados na leitura ao lado do READ_FAILED", async () => {
     const resource = await composeResource<Bloco>({
-      targets: ["telemetria"],
       warnings: [WARNINGS.semLinhaDeBase],
       read: async () => {
         throw new ApiError("timeout");
@@ -131,7 +124,6 @@ describe("composeResource — captura da falha na origem", () => {
     ["JSON malformado (SyntaxError)", new SyntaxError("Unexpected end of JSON input")],
   ])("normaliza para indisponível seja qual for a falha: %s", async (_label, erro) => {
     const resource = await composeResource<Bloco>({
-      targets: ["operacional"],
       read: async () => {
         throw erro;
       },
@@ -155,10 +147,9 @@ describe("loadResource + apiGet — falhas reais de transporte", () => {
     vi.stubGlobal("fetch", vi.fn(impl));
   }
 
-  async function lerResumo() {
+  async function lerOverview() {
     return loadResource<{ stats: [] }, { stats: [] }>({
-      target: "operacional",
-      path: "/api/v1/dashboard/summary",
+      path: "/api/v1/dashboard/overview",
       map: (response) => response,
     });
   }
@@ -166,7 +157,7 @@ describe("loadResource + apiGet — falhas reais de transporte", () => {
   it("queda de rede — fetch rejeita com TypeError — vira recurso indisponível", async () => {
     comFetch(() => Promise.reject(new TypeError("Failed to fetch")));
 
-    const resource = await lerResumo();
+    const resource = await lerOverview();
 
     expect(resource.source).toBe("indisponivel");
     expect(resource.availability).toBe("unavailable");
@@ -186,7 +177,7 @@ describe("loadResource + apiGet — falhas reais de transporte", () => {
       } as unknown as Response),
     );
 
-    const resource = await lerResumo();
+    const resource = await lerOverview();
 
     expect(resource.source).toBe("indisponivel");
     expect(resource.availability).toBe("unavailable");
@@ -207,7 +198,7 @@ describe("loadResource + apiGet — falhas reais de transporte", () => {
       } as unknown as Response),
     );
 
-    const resource = await lerResumo();
+    const resource = await lerOverview();
 
     expect(resource.source).toBe("indisponivel");
     expect(resource.availability).toBe("unavailable");

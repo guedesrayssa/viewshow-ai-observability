@@ -22,4 +22,5 @@
  * backend, e quem liga sabe que ligou.
  */
 export const ALLOW_EXAMPLE_DATA =
+  process.env.NODE_ENV !== "production" &&
   process.env.NEXT_PUBLIC_ALLOW_EXAMPLE_DATA === "true";

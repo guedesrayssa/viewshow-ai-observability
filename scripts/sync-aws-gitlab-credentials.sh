@@ -169,18 +169,18 @@ unset identity_json account caller_arn
 
 ecr_repository="$(aws --profile "$profile" ecr describe-repositories \
   --region "$region" \
-  --repository-names monitoracao-api \
+  --repository-names g05-s3-api \
   --query 'repositories[0].repositoryName' \
   --output text)"
-if [[ "$ecr_repository" != "monitoracao-api" ]]; then
+if [[ "$ecr_repository" != "g05-s3-api" ]]; then
   fail "unexpected ECR repository result"
 fi
 unset ecr_repository
 
 ecs_result="$(aws --profile "$profile" ecs describe-services \
   --region "$region" \
-  --cluster data-ingestion-cluster \
-  --services monitoracao-api-service \
+  --cluster g05-s3-cluster \
+  --services g05-s3-api-service \
   --query '[services[0].status, length(failures)]' \
   --output text)"
 if [[ "$ecs_result" != $'ACTIVE\t0' ]]; then

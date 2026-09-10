@@ -2,7 +2,7 @@
  * Teste de desempenho da API de consulta do View Show.
  *
  * Alvo: a API agêntica/de consulta em ECS Fargate (0,25 vCPU · 0,5 GB, conforme
- * apps/backend/api/deploy/task-definition.json). NÃO é a API de ingestão do
+ * apps/fullstack/ecs.tf). NÃO é a API de ingestão do
  * MVP da Sprint 1 — esta API não expõe endpoint de ingestão.
  *
  * SLA: RNF14 — "o dashboard e as APIs de consulta devem retornar os resultados
@@ -24,7 +24,7 @@
  *
  * Este arquivo só simula tráfego (requisições, checks, thresholds nativos do
  * k6). Coleta de métricas de servidor (CPU, RCU, logs) é responsabilidade da
- * pilha de observabilidade local (docker-compose.observability.yml — Grafana
+ * pilha de observabilidade local (apps/fullstack/docker-compose.observability.yml — Grafana
  * LGTM), não deste script.
  *
  * Verificação de controle de acesso (RNF04): script separado, auth-check.js —
