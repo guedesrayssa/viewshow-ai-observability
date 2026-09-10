@@ -1,38 +1,30 @@
-/**
- * @file events-resource.ts
- * Leitura dos dados da tela de Eventos.
- *
- * O único número real desta tela é o volume por intervalo, que vem da série de
- * QoE da API de telemetria: cada ponto traz a contagem de eventos do bucket.
- *
- * A lista de eventos individuais não tem fonte. Nenhuma das duas APIs expõe as
- * seis categorias, e a auditoria do contrato registrou que os agregados da
- * origem não reconstroem um evento individual — não há como derivá-los sem
- * inventar. Em ambiente com exemplo permitido, a tabela mostra o conjunto de
- * demonstração com o selo dizendo isso; em produção, a leitura declara
- * indisponibilidade e a tela desenha o estado vazio com o motivo.
- */
-
+/** Incident-scoped events data from the public gateway contract. */
 import {
   CATEGORY_STATS,
   EVENTS,
   VOLUME_DATASETS,
   type CategoryStat,
   type CorrelatedEvent,
+  type EventCategory,
   type VolumePeriodKey,
   type VolumeSeries,
 } from "@/app/(painel)/eventos/events-data";
-import {
-  composeResource,
-  jitter,
-  loadResource,
-  type Resource,
-} from "@/lib/data/client";
+import { jitter, loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
-import { WARNINGS } from "@/lib/data/warnings";
 
-/** Recorte pedido pelos filtros da tela. */
+function incidentRequired<T>(): Promise<Resource<T>> {
+  const message = "Escolha um incidente antes de consultar eventos.";
+  return Promise.resolve({
+    source: "indisponivel",
+    availability: "unavailable",
+    warnings: [{ code: "INCIDENT_REQUIRED", message }],
+    fetchedAt: new Date(),
+    fallbackReason: message,
+  });
+}
+
 export type EventsQuery = {
+  incidentId: string;
   period: string;
   category: string;
   deviceType: string;
@@ -41,28 +33,97 @@ export type EventsQuery = {
   source: string;
 };
 
-/** Eventos e contagens por tipo de uma leitura. */
-export type EventsData = {
-  events: CorrelatedEvent[];
-  /** Totais das abas por tipo, no recorte lido. */
-  categories: CategoryStat[];
+export type EventsData = { events: CorrelatedEvent[]; categories: CategoryStat[] };
+
+type EventItem = {
+  id: string;
+  timestamp: string;
+  category: EventCategory;
+  source: { name: string };
+  entity: string;
+  summary: string;
+  quality: { status: string; label?: string };
+  dimensions: { deviceType?: string; region?: string; appVersion?: string };
+  normalized: { metric: string; value: string; tags: string[] };
+  raw: { available: boolean; snippet?: string };
 };
 
-/** Série de QoE da API de telemetria; só a contagem de eventos interessa aqui. */
-export type QoeTimeseriesResponse = {
-  interval_seconds: number;
-  points: { start: string; metrics: { events: number } }[];
+type EventsResponse = {
+  categoryStats: Array<{ key: EventCategory | "all"; name: string; total: number }>;
+  volumeSeries: {
+    points: Array<{ timestamp: string; value: number }>;
+    anomalyWindows?: Array<{ from: string; to: string }>;
+  } | null;
+  items: EventItem[];
 };
 
-/** Rótulo do eixo a partir do início do intervalo, no fuso de quem lê. */
-function toClockLabel(iso: string): string {
+function optional(value: string): string | undefined {
+  return value === "all" ? undefined : value;
+}
+
+function windowOf(minutes: string): string {
+  return ({ "30": "30m", "60": "1h", "360": "6h", "1440": "24h", all: "24h" } as Record<string, string>)[minutes] ?? minutes;
+}
+
+function toClock(iso: string, seconds = false): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? iso
-    : date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    : date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: seconds ? "2-digit" : undefined });
 }
 
-/** Marcas redondas do eixo: zero, o teto e o meio. */
+function toEvent(item: EventItem): CorrelatedEvent {
+  const occurred = new Date(item.timestamp);
+  return {
+    id: item.id,
+    time: toClock(item.timestamp, true),
+    minutesAgo: Math.max(0, Math.round((Date.now() - occurred.getTime()) / 60_000)),
+    category: item.category,
+    source: item.source.name,
+    entity: item.entity,
+    summary: item.summary,
+    quality: {
+      label: item.quality.label ?? item.quality.status,
+      tone: item.quality.status === "verified" ? "success" : item.quality.status === "unavailable" ? "critical" : "warning",
+    },
+    deviceType: item.dimensions.deviceType ?? "—",
+    region: item.dimensions.region ?? "—",
+    appVersion: item.dimensions.appVersion ?? "—",
+    detail: {
+      metric: item.normalized.metric,
+      timestamp: item.timestamp,
+      tags: item.normalized.tags,
+      value: item.normalized.value,
+      rawAvailable: item.raw.available,
+      ...(item.raw.snippet ? { rawSnippet: item.raw.snippet } : {}),
+    },
+  };
+}
+
+export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
+  if (!query.incidentId) return incidentRequired();
+  return loadResource<EventsResponse, EventsData>({
+    path: ENDPOINTS.events(query.incidentId),
+    params: {
+      window: windowOf(query.period),
+      category: optional(query.category),
+      deviceType: optional(query.deviceType),
+      region: optional(query.region),
+      appVersion: optional(query.appVersion),
+      source: optional(query.source),
+    },
+    map: (response) => ({
+      events: response.items.map(toEvent),
+      categories: response.categoryStats.map((item) => ({
+        key: item.key,
+        label: item.name,
+        total: item.total.toLocaleString("pt-BR"),
+      })),
+    }),
+    fallback: () => ({ events: EVENTS, categories: CATEGORY_STATS }),
+  });
+}
+
 function axisFor(values: number[]): { axisMax: number; axisTicks: number[] } {
   const top = Math.max(...values, 1);
   const magnitude = 10 ** Math.floor(Math.log10(top));
@@ -70,67 +131,32 @@ function axisFor(values: number[]): { axisMax: number; axisTicks: number[] } {
   return { axisMax, axisTicks: [0, axisMax / 2, axisMax] };
 }
 
-/**
- * Lê os eventos correlacionados ao recorte.
- *
- * Não há fonte de eventos individuais nesta fase, e a leitura diz isso em vez
- * de consultar uma rota que não existe.
- *
- * @example
- * const events = useResource(() => fetchEvents(query), [query]);
- */
-export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
-  void query;
-
-  return composeResource<EventsData>({
-    targets: ["telemetria"],
-    warnings: [WARNINGS.eventosIndividuais],
-    read: async () => ({ events: [], categories: [] }),
-    // A lista de exemplo é estável: são registros identificados, e mexer nos
-    // valores deles daria a impressão de eventos diferentes a cada leitura.
-    fallback: () => ({ events: EVENTS, categories: CATEGORY_STATS }),
-  });
-}
-
-/**
- * Lê o volume temporal de eventos da janela selecionada.
- *
- * @param period - Janela do gráfico de volume, em minutos.
- */
 export function fetchEventVolume(
+  incidentId: string,
   period: VolumePeriodKey,
   revision = 0,
 ): Promise<Resource<VolumeSeries>> {
-  return loadResource<QoeTimeseriesResponse, VolumeSeries>({
-    target: "telemetria",
-    path: ENDPOINTS.telemetria.qoeTimeseries,
-    params: { window: `${period}m` },
+  if (!incidentId) return incidentRequired();
+  return loadResource<EventsResponse, VolumeSeries>({
+    path: ENDPOINTS.events(incidentId),
+    params: { window: windowOf(period) },
     map: (response) => {
-      const values = response.points.map((point) => point.metrics.events);
-
+      if (!response.volumeSeries) throw new Error("O agregado temporal de eventos não está disponível para este incidente.");
+      const values = response.volumeSeries.points.map((point) => point.value);
+      const peakIndex = values.reduce((best, value, index, all) => (value > (all[best] ?? -Infinity) ? index : best), 0);
       return {
-        times: response.points.map((point) => toClockLabel(point.start)),
+        times: response.volumeSeries.points.map((point) => toClock(point.timestamp)),
         values,
-        peakIndex: values.reduce(
-          (best, value, index, all) => (value > all[best] ? index : best),
-          0,
-        ),
-        // A origem não detecta anomalia: sem janela destacada.
+        peakIndex,
         anomalyRange: null,
         ...axisFor(values),
       };
     },
     fallback: () => {
       const series = VOLUME_DATASETS[period];
-
       return {
         ...series,
-        values:
-          revision === 0
-            ? series.values
-            : series.values.map((value, index) =>
-                Math.round(jitter(value, revision * 60 + index, 0.08)),
-              ),
+        values: revision === 0 ? series.values : series.values.map((value, index) => Math.round(jitter(value, revision * 60 + index, 0.08))),
       };
     },
   });

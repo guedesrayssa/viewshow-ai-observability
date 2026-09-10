@@ -1,431 +1,212 @@
-# Infraestrutura e integração fullstack — View Show
+# Infraestrutura e integração fullstack
 
-Este documento é a fonte canônica da infraestrutura como código (IaC) da
-solução fullstack. Todos os comandos deste guia devem ser executados a partir
-de `apps/fullstack`.
+Este módulo Terraform descreve a stack AWS que corresponde ao software
+implementado hoje no repositório. A configuração pode ser validada localmente,
+mas esta entrega não executou `terraform plan`, `terraform apply`, publicação ou
+teste end-to-end em recursos AWS.
 
-Terraform que reproduz a arquitetura entregue na Sprint 2 — ECS Fargate, ALB,
-ECR, Amplify e DynamoDB — dentro do Learner Lab individual de cada pessoa, com
-um `terraform apply`.
+## Escopo atual
 
-Os nomes dos recursos são os mesmos da Tabela 7 de
-[`artefatos/sprint2/backend-sprint-2.md`](../../../artefatos/sprint2/backend-sprint-2.md),
-para que o que sobe aqui seja conferível linha a linha contra a documentação da
-arquitetura.
-
-## Escopo e recursos AWS
-
-| Recurso | Nome | Arquivo |
+| Componente | Responsabilidade | Arquivo |
 |---|---|---|
-| Repositório ECR | `monitoracao-api` | `ecr.tf` |
-| Cluster ECS | `data-ingestion-cluster` | `ecs.tf` |
-| Task definition (Fargate, 256/512) | `monitoracao-api-task` | `ecs.tf` |
-| Serviço ECS | `monitoracao-api-service` | `ecs.tf` |
-| Application Load Balancer | `data-ingestion-alb` | `alb.tf` |
-| Target group (health check em `/health`) | `monitoracao-api-tg` | `alb.tf` |
-| Security group do serviço | `monitoracao-api-sg` | `network.tf` |
-| Log group | `/ecs/monitoracao-api` | `ecs.tf` |
-| Observabilidade LGTM | EC2 `view-show-observabilidade` | `observability-aws.tf` |
-| Tabelas DynamoDB | `monitoracao-operacional`, `monitoracao-golden-set` | `dynamodb.tf` |
-| App Amplify (deploy manual por zip) | `g05-painel` | `amplify.tf` |
-| API Gateway (só terminação TLS) | `monitoracao-api-service-tls` | `apigateway.tf` |
+| ECR | Repositório da imagem da API | `ecr.tf` |
+| ECS Fargate | Cluster, task e serviço da API TypeScript | `ecs.tf` |
+| CloudWatch Logs | Logs do container com retenção controlada | `ecs.tf` |
+| ALB | Entrada HTTP e health check em `/health` | `alb.tf` |
+| API Gateway | Terminação HTTPS para o proxy do Amplify | `apigateway.tf` |
+| Amplify | Export estático do frontend e proxy same-origin | `amplify.tf` |
+| DynamoDB | Tabelas operacional e golden set | `dynamodb.tf` |
 
-O mesmo diretório contém a infraestrutura declarativa de observabilidade.
-`docker-compose.observability.yml` provisiona Grafana, Prometheus, Loki e Tempo
-localmente; `observability-aws.tf` leva os mesmos quatro componentes para uma
-EC2 e provisiona CloudWatch como quarto data source do Grafana. O acesso AWS é
-privado por padrão e feito com um túnel do Session Manager.
+O módulo usa a VPC default e a `LabRole` disponíveis no AWS Academy. Ele também
+contém automações locais para construir e publicar a imagem da API e o export
+do frontend durante uma aplicação deliberada da stack.
 
-Os documentos específicos de métricas, logs e traces ficam em
-[`../observability/documentation/`](../observability/documentation/README.md).
+O fluxo previsto é:
 
-## Estrutura do módulo
+```text
+navegador -> Amplify (HTTPS) -> API Gateway (HTTPS) -> ALB (HTTP)
+                                                        -> ECS :3000
+                                                           -> DynamoDB
+```
 
-| Caminho | Responsabilidade |
+Esta infraestrutura não declara Cognito, ingestion jobs, data lake, S3, Glue,
+Athena, SQS, EventBridge ou workers de análise. Esses runtimes e adaptadores não
+estão implementados no repositório e, portanto, não são apresentados como
+operacionais.
+
+## Contrato do runtime
+
+A task da API recebe porta, região, nomes das duas tabelas, origem do frontend e
+a configuração opcional do Bedrock. O Terraform também gera dois valores
+criptográficos independentes de 64 caracteres: um assina cookies de sessão e o
+outro assina cursores opacos de paginação. Eles são enviados diretamente ao
+container, não são versionados e não são publicados como outputs.
+
+O runtime correspondente está em:
+
+- `apps/backend/api/src/app.ts`, para rotas HTTP e atributos do cookie;
+- `apps/backend/api/src/modules/auth/domain/session.ts`, para sessões assinadas;
+- `apps/backend/api/src/modules/incidents/domain/cursor.ts`, para cursores;
+- `apps/backend/api/src/modules/auth/adapters/configured-identity-provider.ts`,
+  para a fronteira do provedor de identidade.
+
+Não existe login público por e-mail e senha. `GET /auth/login` e
+`GET /auth/callback` representam o contrato federado e retornam
+`503 FEATURE_UNAVAILABLE` enquanto não houver um adaptador corporativo real.
+Isso é comportamento fail-closed: a ausência do provedor não cria usuário nem
+sessão simulada.
+
+As rotas de importação e reanálise seguem o mesmo princípio. Sem os adaptadores
+de ingestão e publicação ainda não implementados, requisições autenticadas
+recebem `503 FEATURE_UNAVAILABLE` em vez de jobs ou mensagens fictícias.
+
+## Build e caminhos de origem
+
+O contexto da imagem é `apps/backend/api`. O Dockerfile compila a API
+TypeScript e seu pacote local `contracts`, e a imagem final executa
+`dist/index.js`. O frontend é lido de `apps/frontend` e exportado estaticamente
+para `out/`.
+
+O export do Amplify é um build de produção e nunca habilita o conjunto local de
+exemplos. Quando uma fonte não responde, o painel preserva o contrato
+fail-closed e apresenta o estado vazio, parcial ou indisponível correspondente.
+
+Os scripts auxiliares ficam em `apps/fullstack/scripts`:
+
+| Script | Ação quando a stack é aplicada deliberadamente |
 |---|---|
-| `versions.tf` | Versões do Terraform, providers AWS/Random/Archive e tags padrão |
-| `variables.tf` | Parâmetros de região, nomes, capacidade, autenticação e seed |
-| `data.tf` | VPC/subnets default e `LabRole` fornecidos pelo Learner Lab |
-| `network.tf` | Security groups do ALB e do serviço ECS |
-| `alb.tf` | ALB público, target group e health check `/health` |
-| `apigateway.tf` | API Gateway HTTP como terminação TLS para o proxy do Amplify |
-| `ecr.tf` | Repositório ECR, hash da imagem e publicação via Node.js |
-| `ecs.tf` | Cluster, logs, task definition e serviço Fargate |
-| `dynamodb.tf` | Tabelas operacional e golden set, GSI e TTL |
-| `amplify.tf` | App/branch Amplify, build, ZIP e publicação do frontend |
-| `seed.tf` | Seed idempotente acionado após a criação das tabelas |
-| `observability-aws.tf` | EC2, rede e bootstrap da stack Grafana na AWS |
-| `outputs.tf` | URLs, nomes, comando de logs, seed e aviso de custo |
-| `scripts/` | Publicação portável da imagem Docker e do ZIP do Amplify |
-| `.terraform.lock.hcl` | Versões e hashes exatos dos providers |
-| `docker-compose.observability.yml` | Stack local Grafana, Prometheus, Loki e Tempo |
-| `observability/` | Configuração local e AWS, dashboard e runbook da stack LGTM |
-| `.gitignore` | Estado, providers, variáveis locais e artefatos gerados |
+| `publicar-imagem.mjs` | Constrói a imagem `linux/amd64` e a envia ao ECR |
+| `publicar-painel.mjs` | Envia o arquivo do export estático ao Amplify |
 
-O estado local (`*.tfstate`), o diretório `.terraform/` e o ZIP intermediário
-não fazem parte do commit. O arquivo de lock é versionado para que todos usem
-os mesmos providers. Nunca copie estado ou credenciais para a documentação ou
-para o Git.
-
-O state local é aceitável somente para o Learner Lab individual. Em um ambiente
-compartilhado, use backend remoto criptografado, controle de acesso e locking.
-
-O Terraform também constrói e publica a imagem no ECR, compila e publica o
-painel no Amplify, e semeia as tabelas — tudo dentro do `apply`.
-
-## Observabilidade declarativa
-
-A stack LGTM local fica no mesmo domínio de IaC, mas tem ciclo de vida
-independente dos recursos AWS. A partir de `apps/fullstack`:
-
-```bash
-docker compose -f docker-compose.observability.yml config --quiet
-docker compose -f docker-compose.observability.yml up -d
-docker compose -f docker-compose.observability.yml down      # preserva volumes
-docker compose -f docker-compose.observability.yml down -v   # remove volumes
-```
-
-Portas, retenção, credenciais locais, data sources e limitações estão em
-[`../observability/README.md`](../observability/README.md).
-
-Na AWS, o mesmo `terraform apply` da stack fullstack cria a EC2 de
-observabilidade. Consulte o runbook acima para abrir o túnel SSM, obter a senha,
-acompanhar o `cloud-init`, habilitar opcionalmente acesso por CIDR e entender o
-ciclo de vida dos dados.
-
-## Duas diferenças em relação à conta compartilhada, e por quê
-
-**O cluster e o ALB são criados aqui.** Na conta da entrega eles já existiam,
-provisionados para o job de ingestão (BigQuery → DynamoDB), e a API foi
-pendurada no ALB como uma regra de listener de prioridade 10, preservando a ação
-padrão que servia o job. Esse job não faz parte deste repositório, então num lab
-novo não há o que preservar: o ALB é criado do zero e sua ação padrão já aponta
-para a API.
-
-**Existe um API Gateway que não está no diagrama.** Ele não serve tráfego de
-negócio nenhum — é só terminação TLS na frente do ALB. A razão está na próxima
-seção.
-
-## Por que o login funciona aqui e não funcionava antes
-
-[`ci-cd-amplify.md`](../../../artefatos/sprint2/ci-cd-amplify.md) registra como
-limitação conhecida que o login não funciona em produção. A causa são duas
-linhas em `apps/backend/api/src/routes/auth.js`:
-
-```js
-secure: process.env.NODE_ENV === "production",   // o Dockerfile crava production
-sameSite: "lax",
-```
-
-Com o painel em HTTPS no Amplify e a API em HTTP no ALB, são **sites
-diferentes** e **esquemas diferentes**. O navegador bloqueia a chamada por
-conteúdo misto antes mesmo de sair; e se passasse, `sameSite=lax` não anexaria o
-cookie. Não é um bug de código — é o desenho de duas origens que não fecha.
-
-A correção é de infraestrutura, não de aplicação: o Amplify repassa `/api`,
-`/auth` e `/health` para a API (`custom_rule` com status 200, em `amplify.tf`).
-Do ponto de vista do navegador tudo sai de **uma origem só, em HTTPS**. Conteúdo
-misto some, CORS some, `sameSite=lax` volta a valer e `secure=true` passa a ser
-verdade.
-
-Falta um degrau: o Amplify **recusa alvo HTTP** numa regra de proxy (`HTTP URLs
-cannot be used in custom rules`), e o ALB não fala HTTPS sem certificado — que
-exigiria um domínio próprio, que o laboratório não dá. O caminho natural seria
-CloudFront, mas ele é **negado no AWS Academy** (`cloudfront:CreateDistribution`
-→ `AccessDenied`, testado nesta conta). O API Gateway é permitido e entrega
-exatamente o que falta: HTTPS com certificado válido da AWS em
-`*.execute-api.amazonaws.com`, sem domínio nenhum.
-
-A cadeia final:
-
-```
-navegador → Amplify (HTTPS) ─┬─ estáticos: painel Next.js
-                             └─ /api,/auth,/health → API Gateway (HTTPS)
-                                                       → ALB (HTTP)
-                                                         → Fargate :3000
-                                                           → DynamoDB
-```
-
-## Como funciona
-
-O `terraform apply` faz tudo numa passada:
-
-```
-terraform apply
-  │
-  ├─ cria  ECR, DynamoDB x2, ALB, target group, security groups, cluster ECS
-  │
-  ├─ roda  scripts/publicar-imagem.mjs   constroi a API e envia ao ECR
-  │
-  ├─ cria  task definition + servico ECS  (puxa a imagem do ECR)
-  │
-  ├─ roda  npm run build                  compila o painel
-  ├─ monta archive_file                   zipa out/
-  ├─ roda  scripts/publicar-painel.mjs    envia o zip ao Amplify
-  │
-  └─ roda  npm run seed                   popula as tabelas
-```
-
-E o caminho de uma requisição no navegador:
-
-```
-navegador -> Amplify (HTTPS) -+- paginas do painel
-                              +- /api, /auth, /health
-                                    -> API Gateway (HTTPS)
-                                       -> ALB (HTTP)
-                                          -> Fargate :3000
-                                             -> DynamoDB
-```
-
-Antes do plano, o Terraform verifica se as subnets da VPC default cobrem pelo
-menos duas zonas de disponibilidade, requisito do ALB. O módulo não cria nem
-adota subnets; uma conta sem essa topologia precisa ser preparada antes do
-deploy.
-
-### Os dois scripts em `scripts/`
-
-O Terraform não sabe construir imagem Docker nem publicar no Amplify — essas
-duas etapas precisam de comandos. Elas vivem em scripts Node, e não em comandos
-de shell embutidos no `.tf`, por um motivo específico: **rodar igual no Windows**.
-
-| Script | O que faz |
-|---|---|
-| `publicar-imagem.mjs` | Autentica no ECR, `docker build --platform linux/amd64`, `docker push` |
-| `publicar-painel.mjs` | Envia o zip do painel ao Amplify e espera a publicação terminar |
-
-`node arquivo.mjs` é a mesma linha nos três sistemas; um script de shell não é.
-Onde deu para evitar script, foi evitado:
-
-- o **zip** é `archive_file`, nativo do Terraform, em vez do utilitário `zip`
-- o **envio** usa `fetch`, embutido no Node 18+, em vez de `curl`
-- as **variáveis** vão pelo bloco `environment` do provisioner, em vez de
-  `VAR=valor comando`, que é sintaxe só de shell POSIX
-- os comandos encadeiam com `&&`, que funciona igual no `cmd` e no `sh`
-
-Se você mexer nesses arquivos, mantenha essa regra — é o que faz a mesma pasta
-funcionar no Linux de uma pessoa e no Windows de outra.
+Nenhum desses scripts é executado por `terraform init` ou `terraform validate`.
 
 ## Pré-requisitos
 
-| | Para quê | Windows |
-|---|---|---|
-| Terraform ≥ 1.7 | rodar isto | `winget install HashiCorp.Terraform` |
-| Docker, com o daemon ativo | construir a imagem da API | Docker Desktop |
-| Node 18+ e `npm` | compilar o painel, rodar o seed e os dois scripts | `winget install OpenJS.NodeJS` |
-| AWS CLI | credenciais e chamadas ao Amplify | `winget install Amazon.AWSCLI` |
+Para validar localmente, instale Terraform 1.7 ou superior e Docker com o
+plugin Compose. Para uma aplicação deliberada também são necessários Node.js
+22 com `npm`, o daemon do Docker ativo, a AWS CLI e uma sessão válida do AWS
+Academy. Selecione o profile temporário do laboratório por `AWS_PROFILE`; não
+grave chaves em arquivos versionados.
 
-Só isso. Não precisa de `zip`, `curl`, `bash`, WSL nem Git Bash: o zip é montado
-pelo próprio Terraform e o envio usa o `fetch` embutido no Node.
+O build do painel precisa de acesso a `fonts.googleapis.com`, pois
+`next/font/google` baixa as fontes e as incorpora ao export estático.
 
-O build do painel precisa de saída para `fonts.googleapis.com`: `app/layout.tsx`
-usa `next/font/google`. As fontes acabam self-hosted no bundle, mas a máquina
-que compila precisa alcançar o Google.
+## Validação local segura
 
-### Credenciais do Learner Lab
-
-No AWS Academy: **AWS Details → AWS CLI**, copie o bloco e cole no arquivo de
-credenciais — `~/.aws/credentials` no Linux e no macOS,
-`C:\Users\<seu-usuario>\.aws\credentials` no Windows. São três linhas, e
-`aws configure` **não pergunta a terceira**, então tem que ser colado à mão:
-
-```ini
-[g05-lab]
-aws_access_key_id=ASIA...
-aws_secret_access_key=...
-aws_session_token=...
-```
+Da raiz do repositório:
 
 ```bash
-export AWS_PROFILE=g05-lab          # Linux/macOS
-$env:AWS_PROFILE = "g05-lab"        # Windows/PowerShell
+terraform -chdir=apps/fullstack init -backend=false -input=false
+terraform -chdir=apps/fullstack fmt -check -recursive
+terraform -chdir=apps/fullstack validate
+docker compose -f apps/fullstack/docker-compose.observability.yml config --quiet
 ```
 
-As credenciais expiram junto com a sessão de 4 h. Se o apply falhar com
-`ExpiredToken`, recopie o bloco e rode de novo — o Terraform retoma de onde
-parou.
+Essa sequência baixa os providers declarados quando necessário e valida
+sintaxe, referências e configuração do Compose. Ela não consulta o estado da
+stack, não cria recursos e não demonstra compatibilidade de permissões com uma
+conta AWS específica.
 
-## Uso
+A API compilada é validada separadamente contra DynamoDB Local:
 
 ```bash
-cd apps/fullstack
-terraform init
-terraform plan       # confira a lista antes de aplicar
-terraform apply
+cd apps/backend/api
+npm run test:e2e-local
 ```
 
-Leva de **8 a 15 minutos**. O que mais demora é o ALB ficar `active` (~3 min), o
-serviço ECS estabilizar atrás do health check e a publicação no Amplify.
+Esse teste sobe um DynamoDB Local fixado por digest, compila a API e exercita a
+superfície HTTP real sem herdar credenciais ou profiles AWS.
 
-Sem Terraform instalado, o binário é um arquivo só, sem `apt`, `brew` nem
-administrador:
+## Estado local isolado e teardown
+
+Esta entrega só aceita `deployment_namespace=g05-s3` e o provider só permite a
+conta AWS `248880318395`. O estado legado é de outra conta e não pode ser
+adotado por esta stack; copiar, importar ou migrar esse estado faria o Terraform
+associar recursos fora do namespace isolado.
+
+Antes de qualquer mutação remota, inicialize o diretório e revise o plano com o
+namespace obrigatório:
 
 ```bash
-mkdir -p ~/.local/bin
-curl -fsSL -o terraform.zip \
-  https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_$(uname -s | tr A-Z a-z)_amd64.zip
-unzip -o -q terraform.zip -d ~/.local/bin && rm terraform.zip
-terraform version
+terraform -chdir=apps/fullstack init -backend=false -input=false
+terraform -chdir=apps/fullstack plan -out=g05-s3.tfplan \
+  -var='deployment_namespace=g05-s3'
+# Forma geral: terraform show -json <saved plan> | node scripts/ci/validate-terraform-create-plan.mjs
+terraform show -json apps/fullstack/g05-s3.tfplan | node scripts/ci/validate-terraform-create-plan.mjs
+terraform -chdir=apps/fullstack apply -input=false g05-s3.tfplan
 ```
 
-No Windows, baixe o `.zip` da mesma página e extraia `terraform.exe` para uma
-pasta do `PATH`, ou use `winget install HashiCorp.Terraform`.
+O gate aceita somente o plano de criação isolado previsto para esta stack. Só
+depois de ele aceitar o JSON é permitido aplicar exatamente esse mesmo plano
+salvo, sem regenerá-lo entre o gate e o `apply`.
+
+Uma aplicação deliberada cria um novo estado local em `apps/fullstack`. Esse
+novo estado local é necessário para o teardown posterior: preserve-o até que a
+remoção da stack isolada esteja concluída. Não o substitua por estado legado.
+
+## Aplicação remota
+
+Uma aplicação futura exige sessão válida no AWS Academy, Docker, Node.js e
+Terraform. Antes de qualquer mutação remota, gere o plano salvo, passe-o pelo
+gate local e revise as permissões da `LabRole`. Esta entrega não realizou essa
+etapa e não afirma que recursos já existam na AWS.
+
+ALB, Fargate e API Gateway continuam gerando custo enquanto provisionados. A
+stack e o estado devem ser preservados para inspeção e diagnóstico. Execute o
+teardown somente após um pedido explícito posterior e usando o mesmo estado.
 
 ## Como encontrar o link do deploy
 
-O `apply` termina imprimindo a URL em `Outputs:`:
-
-```
-painel_url = "https://producao.d1j02paz2xgg2z.amplifyapp.com"
-```
-
-Para recuperar depois, de dentro de `apps/fullstack`:
+Depois de um `apply` deliberado, o output `painel_url` contém o endereço HTTPS
+do painel. Ele pode ser consultado novamente, sem depender da saída do terminal
+original, a partir do novo estado local isolado:
 
 ```bash
-terraform output painel_url
-terraform output -raw painel_url    # sem aspas, para colar ou usar em script
+terraform -chdir=apps/fullstack output -raw painel_url
 ```
 
-Entre com `demo@globoplay.com` / `demo123` (`terraform output credenciais_demo`).
-
-Atenção: **a URL muda a cada `terraform destroy` + `apply`**, porque o `appId` do
-Amplify é novo. Ela é estável enquanto a stack existir.
-
-## Depois do apply
-
-```bash
-terraform output api_url_https   # a API por HTTPS, para Postman
-terraform output api_url         # o ALB direto, em HTTP
-terraform output comando_logs    # acompanha o log da API
-terraform output comando_seed    # repovoa as tabelas
-```
-
-Se o painel abrir vazio, rode o seed de novo: o `pk` de cada item é um bucket de
-hora calculado na semeadura, e o dashboard consulta uma janela de 24 h — dado
-com mais de ~25 h some da tela mesmo continuando na tabela. Foi o que aconteceu
-em [`testes-desempenho.md`](../../../artefatos/sprint2/testes-desempenho.md).
-
-### Drift dos artefatos publicados
-
-A imagem no ECR e o deployment manual do Amplify são efeitos de provisioners.
-O Terraform detecta mudanças nos arquivos de build por hash e também republica
-quando ECR, app ou branch são substituídos. Porém, se alguém apagar apenas o
-artefato fora do Terraform, o state não detecta essa ausência. Force a
-republicação sem recriar a stack:
-
-```bash
-terraform apply -replace=terraform_data.imagem
-terraform apply -replace=terraform_data.painel
-```
-
-## Custo — leia antes de fechar o laboratório
-
-O "End Lab" do AWS Academy para a EC2 de observabilidade, mas não remove seu
-volume EBS. O ALB, a task Fargate e o API Gateway também **continuam rodando e
-cobrando** depois que você fecha o notebook. O indicador de gasto do lab atrasa,
-então remova a infraestrutura quando não precisar preservar o ambiente.
-
-```bash
-terraform destroy    # ao fim de cada sessão, sem exceção
-```
-
-Isso é consequência direta da arquitetura, não desta implementação: Fargate e
-ALB não têm estado "parado". Reaplicar custa os mesmos 8-15 minutos.
+O output `api_url_https` mostra o endpoint HTTPS da API Gateway. Esses comandos
+leem o estado local; não criam nem alteram recursos.
 
 ## Variáveis
 
-| Variável | Padrão | Para quê |
+| Variável | Padrão | Uso |
 |---|---|---|
-| `regiao` | `us-east-1` | O lab só permite `us-east-1` e `us-west-2` |
-| `nome_cluster` | `data-ingestion-cluster` | Nome do cluster ECS |
-| `nome_alb` | `data-ingestion-alb` | Nome do ALB |
-| `nome_servico` | `monitoracao-api-service` | Serviço ECS |
-| `nome_repositorio_ecr` | `monitoracao-api` | Repositório da imagem |
-| `nome_app_amplify` | `g05-painel` | App do Amplify |
-| `branch_amplify` | `producao` | Vira o subdomínio da URL |
-| `cpu_task` / `memoria_task` | `256` / `512` | Capacidade econômica para o laboratório |
-| `quantidade_tasks` | `1` | Tasks simultâneas |
-| `auth_email` / `auth_senha` | `demo@globoplay.com` / `demo123` | Login do painel |
-| `permitir_dado_exemplo` | `true` | Telas que dependem da API de telemetria (fora do escopo) mostram exemplo rotulado em vez de "indisponível" |
-| `semear_dados` | `true` | Roda `seed.js` no apply |
-| `bedrock_habilitado` | `false` | Mantenha desligado: o lab não dá acesso ao Bedrock |
+| `regiao` | `us-east-1` | Região permitida pelo Learner Lab |
+| `deployment_namespace` | sem padrão; deve ser `g05-s3` | Origem obrigatória dos nomes isolados |
+| `branch_amplify` | `producao` | Branch hospedada no Amplify |
+| `cpu_task` / `memoria_task` | `256` / `512` | Capacidade da task Fargate |
+| `quantidade_tasks` | `1` | Réplicas do serviço |
+| `bedrock_habilitado` | `false` | Explicação opcional via Bedrock |
 | `retencao_logs_dias` | `7` | Retenção do log group |
-| `observabilidade_habilitada` | `true` | Cria a stack LGTM em EC2 |
-| `tipo_instancia_observabilidade` | `t3.medium` | 4 GiB para os quatro componentes |
-| `disco_observabilidade_gib` | `30` | Disco gp3 dos volumes Docker |
-| `grafana_cidr_acesso` | `null` | Sem porta pública; acesso por túnel SSM |
+| `observabilidade_habilitada` | `false` | Opt-in para Grafana, Prometheus, Loki e Tempo em EC2 |
+| `tipo_instancia_observabilidade` | `t3.medium` | Capacidade da EC2 opcional |
+| `disco_observabilidade_gib` | `30` | Volume gp3 criptografado da observabilidade |
+| `grafana_cidr_acesso` | `null` | Mantém o Grafana privado e acessível por túnel SSM |
 
-`AUTH_COOKIE_SECRET` não é variável: é gerado por `random_password` a cada
-criação da stack, então nunca passa pelo Git. O Terraform injeta o valor na task
-definition; não existe uma segunda definição estática do ECS para divergir de
-`ecs.tf` ou carregar segredos de exemplo.
+Os nomes efetivos são derivados de `g05-s3`: ECR `g05-s3-api`, cluster ECS
+`g05-s3-cluster`, serviço `g05-s3-api-service`, task family
+`g05-s3-api-task`, container `g05-s3-api`, ALB `g05-s3-alb`, target group
+`g05-s3-api-tg`, security group da API `g05-s3-api-sg`, Amplify
+`g05-s3-painel`, tabelas `g05-s3-operacional` e `g05-s3-golden-set`.
+Quando habilitada, a instância de observabilidade usa o nome
+`g05-s3-observabilidade`; seu security group e a telemetria da API derivam do
+mesmo namespace. A opção fica desligada por padrão para evitar custo acidental.
 
-Marcar uma variável ou output como `sensitive` apenas oculta sua exibição
-normal no terminal. `auth_senha` e `AUTH_COOKIE_SECRET` permanecem no state e
-na task definition do ECS; usuários autorizados a consultar esses locais podem
-ler os valores. Essa decisão é exclusiva do laboratório. Em produção, use um
-gerenciador de segredos e uma task role de privilégio mínimo.
+## Outputs não sensíveis
 
-## O que este Terraform não cobre
+O módulo publica endereços, nomes de tabelas, URI da imagem, comandos de
+operação e aviso de custo. Valores usados para assinatura de sessão e paginação
+não aparecem em outputs. Quando a observabilidade é habilitada, a senha gerada
+do Grafana aparece somente no output sensível `grafana_senha` e no state local.
 
-**A API de telemetria (Flask, `apps/basica/backend`).** Quatro das seis telas do
-painel leem dela: `/eventos` e `/monitoramento` inteiras, 5 dos 6 blocos de
-`/visao-geral` e 2 de 6 de `/evidencias`. Ela não tem pipeline nem nunca foi
-implantada junto da API operacional. Com `permitir_dado_exemplo = true`, essas
-telas mostram o conjunto de exemplo **rotulado como exemplo** na interface, em
-vez de "indisponível" — comportamento previsto no próprio código
-(`apps/frontend/lib/data/mode.ts`). As telas servidas pela API operacional
-(`/incidentes`, `/evidencias`) mostram dado real do DynamoDB.
+## Troubleshooting
 
-**O job de ingestão** (BigQuery → DynamoDB) que deu nome ao cluster e ao ALB. O
-código dele não está neste repositório.
-
-**Cognito, Secrets Manager, SQS e EventBridge**, que aparecem como decisões em
-`arquitetura-inicial.md`. Nenhum tem uso no código: a autenticação é um cookie
-HMAC próprio (`src/auth/session.js`), os segredos são variáveis de ambiente da
-task, e não há fila nem agendador. Provisioná-los seria decoração.
-
-## Se o apply falhar
-
-| Erro | Causa | Conserto |
-|---|---|---|
-| `ExpiredToken` | Sessão do lab expirou | Recopie as credenciais e rode de novo |
-| `Cannot pull container image` | Imagem não chegou ao ECR | Confira se o daemon do Docker está ativo |
-| `ResourceInUseException` na tabela | Tabela já criada à mão | `terraform import aws_dynamodb_table.operacional monitoracao-operacional` |
-| `exec format error` no log da task | Imagem construída em ARM (Mac M1/M2) | O `--platform linux/amd64` já está no `ecr.tf`; confira se foi alterado |
-| Painel abre, dado não vem | Seed fora da janela de 24 h | `terraform output comando_seed` e rode |
-| `next/font: Failed to fetch Poppins` | Build sem saída para o Google | Libere `fonts.googleapis.com` |
-
-## Validação contínua
-
-Mudanças em `apps/fullstack/**` acionam no GitLab CI:
-
-- `terraform fmt -check -recursive`, inicialização sem backend e
-  `terraform validate`;
-- validação estrutural do Docker Compose de observabilidade.
-
-O pipeline não executa `terraform plan` nem `apply`, pois as credenciais do
-Learner Lab são temporárias. O plano continua sendo uma etapa local e deve ser
-revisado antes de qualquer alteração na AWS.
-
-## Verificação
-
-Depois do apply, esta sequência prova a cadeia inteira:
-
-```bash
-P=$(terraform output -raw painel_url)
-
-curl -s "$P/health"                                     # {"status":"ok"} via proxy do Amplify
-curl -s -o /dev/null -w '%{http_code}\n' "$P/login/"    # 200
-
-# login devolve cookie Secure/SameSite=Lax
-curl -s -i -X POST "$P/auth/login" -H 'Content-Type: application/json' \
-  -d '{"email":"demo@globoplay.com","password":"demo123"}' | grep -i set-cookie
-
-# dado real do DynamoDB
-curl -s "$P/api/v1/dashboard/summary"
-
-# rota protegida sem cookie deve dar 401
-curl -s -o /dev/null -w '%{http_code}\n' -X PATCH \
-  "$P/api/v1/incidents/falhas-reproducao-tvs-lg/hypothesis/review" \
-  -H 'Content-Type: application/json' -d '{"status":"confirmed"}'
-```
+| Sintoma | Verificação |
+|---|---|
+| `Cannot pull container image` | Confirme que a publicação da imagem terminou e que a task usa a URI esperada |
+| `exec format error` | Preserve o build da imagem para `linux/amd64` |
+| Health check falha | Confirme a resposta exata `{"status":"ok"}` em `/health` e leia os logs do container |
+| Painel abre sem dados | Verifique a saúde da API e a presença de itens nas tabelas; a IaC não inventa seed |
+| Login ou callback retorna 503 | Estado esperado até a integração de um provedor federado real |
+| Importação ou reanálise retorna 503 | Estado esperado até os adaptadores correspondentes serem implementados |

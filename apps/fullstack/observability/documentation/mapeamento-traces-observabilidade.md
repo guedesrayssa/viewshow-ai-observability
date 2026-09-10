@@ -77,7 +77,7 @@
 ├──────────────────────────────────────┬──────────────────────────────────────┤
 │ O QUE JÁ EXISTE                      │ O QUE VAI SER IMPLEMENTADO           │
 ├──────────────────────────────────────┼──────────────────────────────────────┤
-│ • apps/fullstack/observability:      │ • apps/backend/api:                  │
+│ • apps/fullstack/observability:                │ • apps/backend/api:                  │
 │   - Tempo 3.0.3 com receptores OTLP  │   - SDK OpenTelemetry para Node.     │
 │     em 4317 (gRPC) e 4318 (HTTP).    │   - Instrumentação automática de     │
 │   - live_store com blocos de 30s.    │     Express, HTTP e AWS SDK v3.      │

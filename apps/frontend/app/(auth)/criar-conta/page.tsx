@@ -1,22 +1,20 @@
 /**
  * page.tsx
- * Tela de criação de conta do View Show.
- *
- * Abre com a mesma identidade da tela de login — símbolo, letreiro e título —
- * para que os dois caminhos de entrada sejam lidos como a mesma porta. O
- * formulário fica em componente próprio porque precisa de estado no cliente.
+ * Orienta pessoas sem conta local para a entrada corporativa.
  */
 
 import type { Metadata } from "next";
 
-import { RegisterForm } from "@/app/(auth)/criar-conta/register-form";
+import Link from "next/link";
+
+import { Alert } from "@/components/ui/alert";
 import { LogoMark } from "@/components/ui/logo";
 import { Wordmark } from "@/components/ui/wordmark";
 
 export const metadata: Metadata = {
-  title: "Criar conta",
+  title: "Acesso corporativo",
   description:
-    "Crie a sua conta no View Show para acompanhar a telemetria de frontend do Globoplay.",
+    "Entre no View Show com a sua conta corporativa Globo.",
 };
 
 export default function CriarContaPage() {
@@ -30,10 +28,20 @@ export default function CriarContaPage() {
         className="mt-6 animate-rise text-h1 text-ink"
         style={{ animationDelay: "760ms" }}
       >
-        Criar conta
+        Acesso corporativo
       </h1>
 
-      <RegisterForm className="mt-8 w-full animate-rise" />
+      <Alert tone="info" className="mt-8 w-full animate-rise">
+        O acesso ao View Show é feito com a conta corporativa Globo. Se você
+        precisa de acesso, procure o suporte interno de TI.
+      </Alert>
+
+      <Link
+        href="/login"
+        className="mt-8 rounded-field text-body-sm font-medium text-ink-brand underline-offset-4 hover:underline"
+      >
+        Ir para o login
+      </Link>
     </div>
   );
 }

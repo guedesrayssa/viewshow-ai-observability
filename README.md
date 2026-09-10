@@ -72,7 +72,7 @@ painéis.
 
 O laboratório reprodutível de exploração do dump MySQL, incluindo setup local,
 fixture sanitizado e notebooks, está em
-[`argus_algoritmo.ipynb`](artefatos/extras/notebooks/argus_algoritmo.ipynb).
+[artefatos/extras/notebooks/argus_algoritmo.ipynb](artefatos/extras/notebooks/argus_algoritmo.ipynb).
 
 ## Estrutura de pastas
 
@@ -80,9 +80,9 @@ fixture sanitizado e notebooks, está em
 | --- | --- |
 | `/artefatos` | Documentação: requisitos, arquitetura do backend, análise financeira, roteiro de implantação na AWS, relatório de testes e a coleção do Postman |
 | `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
-| `/apps/fullstack` | Toda a IaC: Terraform da aplicação e da observabilidade Grafana na AWS, Docker Compose local, configurações e runbooks |
-| `/apps/backend` | API operacional em Node.js/Express |
+| `/apps/backend` | API operacional modular em TypeScript/Express |
 | `/apps/frontend` | Painel definitivo em Next.js |
+| `/apps/fullstack` | IaC da stack AWS e da observabilidade local ou opcional em EC2, com documentação e scripts auxiliares |
 | `/assets` | Imagens e logos usados na documentação |
 | `/slides` | Apresentações das sprints |
 
@@ -98,7 +98,7 @@ fixture sanitizado e notebooks, está em
 │   │   ├── observability/              configurações Grafana/Loki/Prometheus/Tempo
 │   │   └── docker-compose.observability.yml
 │   └── basica/                         MVP legado da Sprint 1
-├── artefatos/{sprint1,sprint2,sprint3,arquitetura,contratos,postman}/
+├── artefatos/sprint{1,2,3}/             documentação organizada por sprint
 ├── assets/
 └── slides/
 ```
@@ -136,8 +136,8 @@ altere `API_BASE_URL` em `apps/basica/frontend/config.js` — é o único arquiv
 entre ambientes.
 
 Sem configuração adicional a API guarda os dados em memória, e eles somem ao reiniciar.
-Para persistir no DynamoDB, veja
-[`artefatos/sprint1/backend.md`](artefatos/sprint1/backend.md).
+Para persistir no DynamoDB, veja a
+[documentação do backend da Sprint 1](artefatos/sprint1/backend.md).
 
 ### Testes
 
@@ -198,33 +198,45 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
 ## Provisionamento automatizado (Terraform, Learner Lab individual)
 
 Além do runbook manual acima — que sobe a stack da Sprint 1 (`apps/basica`) —
-o diretório [`apps/fullstack`](apps/fullstack) reproduz a **arquitetura da Sprint 2**
-(painel Next.js no Amplify, API operacional em ECS Fargate atrás de um ALB,
-imagem no ECR e as duas tabelas DynamoDB) dentro do próprio AWS Academy Learner
-Lab de quem está rodando, com um único comando:
+o diretório [`apps/fullstack`](apps/fullstack) centraliza a IaC da stack AWS
+atual (painel Next.js no Amplify, API operacional em ECS Fargate atrás de um
+ALB, imagem no ECR e duas tabelas DynamoDB) e a observabilidade local.
+
+Pré-requisitos para uma aplicação deliberada: **Terraform 1.7+**, **Docker**
+com o daemon ativo, **Node.js 22 + npm** e **AWS CLI**, além de uma sessão válida
+do AWS Academy. O estado legado pertence a outra conta e não pode ser adotado,
+copiado, importado ou migrado para esta stack. A implantação isolada cria um
+novo estado local em `apps/fullstack`; preserve-o, pois ele é necessário para
+diagnóstico e para um teardown posterior explicitamente solicitado.
 
 ```bash
-cd apps/fullstack
-terraform init
-terraform apply
+terraform -chdir=apps/fullstack init -backend=false -input=false
+mkdir -p apps/fullstack/.terraform-artifacts
+terraform -chdir=apps/fullstack plan \
+  -input=false \
+  -var='deployment_namespace=g05-s3' \
+  -out=.terraform-artifacts/g05-s3.tfplan
+terraform -chdir=apps/fullstack show -json \
+  .terraform-artifacts/g05-s3.tfplan | \
+  node scripts/ci/validate-terraform-create-plan.mjs
+terraform -chdir=apps/fullstack apply \
+  -input=false \
+  .terraform-artifacts/g05-s3.tfplan
 ```
 
-De 8 a 15 minutos depois, `terraform output painel_url` devolve o endereço do
-painel já com dado: o mesmo `apply` constrói e publica a imagem no ECR, compila
-e publica o painel no Amplify e semeia as tabelas. Pré-requisitos locais:
-Terraform, Docker e Node.
+O `apply` usa exatamente o plano salvo que foi convertido para JSON e aceito
+pelo gate create-only; não gere outro plano entre a validação e a aplicação.
 
-Duas coisas que valem saber antes de rodar. O login, registrado como quebrado em
-[`ci-cd-amplify.md`](artefatos/sprint2/ci-cd-amplify.md), **funciona aqui** — o
-Amplify repassa `/api`, `/auth` e `/health` para a API, o que coloca painel e API
-na mesma origem e faz o cookie de sessão voltar a valer. E, ao contrário da EC2,
-**o ALB e o Fargate não são desligados pelo "End Lab"**: rode `terraform destroy`
-ao fim de cada sessão, ou eles seguem cobrando do orçamento do laboratório.
+O contrato público atual usa somente autenticação federada. Enquanto não houver
+um adaptador de identidade real, login e callback falham fechado com
+`503 FEATURE_UNAVAILABLE`; não existe login de demonstração por e-mail e senha.
+Esta entrega valida a configuração localmente e não afirma que um `apply` foi
+executado na AWS.
 
-Detalhes de pré-requisitos, credenciais do lab, variáveis, [como encontrar o
+Detalhes de pré-requisitos, preservação segura do estado local, variáveis, [como encontrar o
 link do deploy depois de fechar o
-terminal](apps/fullstack/documentation/infraestrutura-integracao.md#como-encontrar-o-link-do-deploy), o que fazer
-entre sessões e uma tabela de "se der erro, é isto" estão em
+terminal](apps/fullstack/documentation/infraestrutura-integracao.md#como-encontrar-o-link-do-deploy)
+e uma tabela de troubleshooting estão em
 [`infraestrutura-integracao.md`](apps/fullstack/documentation/infraestrutura-integracao.md).
 
 ---
@@ -233,11 +245,11 @@ entre sessões e uma tabela de "se der erro, é isto" estão em
 
 - [Arquitetura-alvo e contratos técnicos do View Show](artefatos/arquitetura/README.md)
 - [Relatório de testes do MVP inicial](artefatos/sprint1/mvp-inicial.md)
-- [Arquitetura e endpoints do backend](artefatos/sprint1/backend.md)
+- [Arquitetura do backend da Sprint 1](artefatos/sprint1/backend.md)
 - [Especificação de requisitos](artefatos/sprint1/requisitos.md)
 - [Roteiro de implantação na AWS](artefatos/sprint2/deploy-aws.md)
 - [CI/CD do painel no AWS Amplify](artefatos/sprint2/ci-cd-amplify.md)
-- [Arquitetura e análise de custos](artefatos/sprint2/arquitetura-inicial.md)
+- [Análise financeira](artefatos/sprint1/entendimento_negocio.md#4-análise-financeira)
 
 ---
 

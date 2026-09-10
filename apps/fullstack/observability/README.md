@@ -196,10 +196,12 @@ Os alvos de coleta ficam em <http://localhost:9090/targets>. Por padrão o
 Prometheus coleta a cada 15 segundos e observa apenas a própria pilha
 (Prometheus, Grafana, Loki e Tempo).
 
-## Próximo passo: instrumentar a API
+## Coletar as métricas da API
 
-O `prometheus.yml` já tem o bloco do alvo `view-show-api` pronto, comentado.
-Descomente assim que `apps/backend/api` expuser `/metrics` no formato Prometheus.
+`apps/backend/api` já expõe `GET /metrics` no formato Prometheus quando
+`METRICS_ENABLED=true` (o padrão). O `prometheus.yml` mantém o alvo
+`view-show-api` comentado porque esta composição não inicia a API. Descomente o
+bloco enquanto a API estiver rodando no host; sem ela, o alvo ficará `down`.
 Para enviar traces da API rodando no host, aponte o exportador OTLP para
 `http://localhost:4318` (HTTP) ou `localhost:4317` (gRPC).
 

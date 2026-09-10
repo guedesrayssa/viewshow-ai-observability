@@ -89,7 +89,7 @@
 │     bedrockService (com fallback).   │   - Endpoints do novo contrato:      │
 │   - Persistência DynamoDB com GSI    │     /overview, /events, /monitoring. │
 │     trace-index e PAY_PER_REQUEST.   │ • apps/backend/ingestion-data:       │
-│ • apps/fullstack/observability:      │   - Implementação das portas e CLI de│
+│ • apps/fullstack/observability (LGTM Stack):   │   - Implementação das portas e CLI de│
 │   - Docker Compose com Grafana       │     sincronização periódica (15 min).│
 │     (3002), Prometheus (9090),       │   - Checkpoints e locks via DynamoDB.│
 │     Loki (3100) e Tempo (3200/4318). │   - Métricas de execução batch.      │
@@ -443,21 +443,18 @@ Buckets recomendados para o histograma de latência:
    e criar um teste de contrato do endpoint cobrindo payload válido, nome fora
    da allowlist, corpo excedente e origem CORS não autorizada.
 
-### Passo 1: Instrumentar `apps/backend/api` com Prometheus
-1. Instalar a biblioteca no backend:
-   ```bash
-   cd apps/backend/api
-   npm install prom-client@15
-   ```
-2. Criar o módulo de métricas (`src/metrics.js`) inicializando `collectDefaultMetrics()` e registrando as métricas RED (`http_requests_total`, `http_request_duration_seconds`).
-3. Registrar o endpoint no Express:
-   ```javascript
-   app.get("/metrics", async (req, res) => {
-     res.set("Content-Type", register.contentType);
-     res.end(await register.metrics());
-   });
-   ```
-4. Em `apps/fullstack/observability/prometheus/prometheus.yml`, descomentar o alvo `view-show-api` apontando para `host.docker.internal:3000`.
+### Passo 1: Coletar as métricas já expostas por `apps/backend/api`
+
+1. A API já expõe `GET /metrics` por meio de
+   `src/observability/metrics.ts` e registra as métricas RED. Confirme que
+   `METRICS_ENABLED=true` (valor padrão) ao iniciar o processo.
+2. Com a API rodando no host, habilite o alvo `view-show-api` em
+   `apps/fullstack/observability/prometheus/prometheus.yml`, apontado para
+   `host.docker.internal:3000`. O bloco permanece comentado por padrão porque a
+   composição de observabilidade não inicia a API e, nesse caso, o alvo ficaria
+   permanentemente `down`.
+3. Verifique o alvo em `http://localhost:9090/targets` e consulte as séries
+   `http_requests_total` e `http_request_duration_seconds`.
 
 ### Passo 2: Instrumentar Rastreamento OTLP com Tempo
 1. Instalar `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node` e `@opentelemetry/exporter-trace-otlp-http`.

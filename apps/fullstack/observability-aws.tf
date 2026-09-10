@@ -18,7 +18,7 @@ resource "random_password" "grafana" {
 
 resource "aws_security_group" "observabilidade" {
   count       = var.observabilidade_habilitada ? 1 : 0
-  name        = "${var.nome_observabilidade}-sg"
+  name        = "${local.nome_observabilidade}-sg"
   description = "Grafana via SSM; OTLP somente a partir da API ECS"
   vpc_id      = data.aws_vpc.default.id
 
@@ -50,8 +50,8 @@ resource "aws_security_group" "observabilidade" {
 resource "aws_security_group_rule" "otlp_api" {
   count                    = var.observabilidade_habilitada ? 1 : 0
   type                     = "ingress"
-  description              = "OTLP gRPC e HTTP enviados pela API no ECS"
-  from_port                = 4317
+  description              = "OTLP HTTP enviado pela API no ECS"
+  from_port                = 4318
   to_port                  = 4318
   protocol                 = "tcp"
   security_group_id        = aws_security_group.observabilidade[0].id
@@ -64,8 +64,8 @@ locals {
     {
       account_id        = data.aws_caller_identity.atual.account_id
       aws_region        = var.regiao
-      cluster_name      = var.nome_cluster
-      service_name      = var.nome_servico
+      cluster_name      = local.nome_cluster
+      service_name      = local.nome_servico
       load_balancer     = aws_lb.principal.arn_suffix
       target_group      = aws_lb_target_group.api.arn_suffix
       operational_table = aws_dynamodb_table.operacional.name
@@ -119,7 +119,7 @@ resource "aws_instance" "observabilidade" {
   }
 
   tags = {
-    Name    = var.nome_observabilidade
+    Name    = local.nome_observabilidade
     Projeto = "view-show"
     Camada  = "observabilidade"
   }

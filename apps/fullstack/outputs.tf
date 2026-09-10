@@ -3,15 +3,14 @@ output "painel_url" {
   value       = local.painel_url
 }
 
+output "deployment_namespace" {
+  description = "Namespace isolado que identifica todos os recursos desta stack."
+  value       = var.deployment_namespace
+}
+
 output "api_url" {
   description = "Endereço direto do ALB. Serve para curl e Postman; o navegador deve usar painel_url, porque uma página HTTPS não pode chamar uma API em HTTP."
   value       = "http://${aws_lb.principal.dns_name}"
-}
-
-output "credenciais_demo" {
-  description = "Usuário aceito pelo login do painel."
-  value       = "${var.auth_email} / ${var.auth_senha}"
-  sensitive   = true
 }
 
 output "tabelas_dynamodb" {
@@ -23,7 +22,7 @@ output "tabelas_dynamodb" {
 }
 
 output "imagem_ecr" {
-  description = "Imagem publicada no ECR e rodando na task."
+  description = "URI da imagem referenciada pela task ECS."
   value       = local.uri_imagem
 }
 
@@ -32,14 +31,9 @@ output "comando_logs" {
   value       = "aws logs tail ${aws_cloudwatch_log_group.api.name} --follow --region ${var.regiao}"
 }
 
-output "comando_seed" {
-  description = "Repovoa as tabelas sem precisar de um apply inteiro. Rode de novo se o painel abrir vazio: o dado sai da janela de 24 h."
-  value       = "cd ../backend/api && AWS_REGION=${var.regiao} OPERATIONAL_TABLE_NAME=${aws_dynamodb_table.operacional.name} GOLDEN_SET_TABLE_NAME=${aws_dynamodb_table.golden_set.name} npm run seed"
-}
-
 output "aviso_custo" {
   description = "Leia antes de fechar o laboratório."
-  value       = "O End Lab para a EC2 de observabilidade, mas o EBS, o ALB e a task Fargate continuam cobrando. Rode 'terraform destroy' ao fim de cada sessao se nao precisar preservar o ambiente."
+  value       = "Preserve a stack e o novo estado local ao fim da sessao para inspecao e diagnostico. Execute 'terraform destroy' somente sob pedido explicito posterior, usando esse mesmo estado. Enquanto provisionados, o ALB e a task Fargate continuam gerando custo."
 }
 
 output "api_url_https" {
@@ -48,7 +42,7 @@ output "api_url_https" {
 }
 
 output "grafana_acesso" {
-  description = "Acesso ao Grafana. Por padrão use o túnel SSM; com grafana_cidr_acesso definido, use a URL direta."
+  description = "Acesso ao Grafana quando a observabilidade estiver habilitada. Por padrão, use o túnel SSM."
   value = var.observabilidade_habilitada ? {
     usuario    = "admin"
     url_direta = var.grafana_cidr_acesso == null ? null : "http://${aws_instance.observabilidade[0].public_dns}:3000"
@@ -58,7 +52,7 @@ output "grafana_acesso" {
 }
 
 output "grafana_senha" {
-  description = "Senha do usuário admin do Grafana."
+  description = "Senha gerada para o usuário admin do Grafana."
   value       = var.observabilidade_habilitada ? random_password.grafana[0].result : null
   sensitive   = true
 }
@@ -69,6 +63,6 @@ output "observabilidade_instancia_id" {
 }
 
 output "comando_status_observabilidade" {
-  description = "Abre uma sessão SSM na EC2 para verificar cloud-init e os containers."
+  description = "Abre uma sessão SSM na EC2 para verificar cloud-init e containers."
   value       = var.observabilidade_habilitada ? "aws ssm start-session --target ${aws_instance.observabilidade[0].id} --region ${var.regiao}" : null
 }
