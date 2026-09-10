@@ -18,7 +18,7 @@ export type Warning = {
 };
 
 export const WARNINGS = {
-  /** Nenhuma das duas APIs foi apontada por variável de ambiente. */
+  /** A API operacional não foi apontada por variável de ambiente. */
   apiNaoConfigurada: {
     code: "API_NOT_CONFIGURED",
     message: "Nenhuma API de telemetria configurada neste ambiente.",

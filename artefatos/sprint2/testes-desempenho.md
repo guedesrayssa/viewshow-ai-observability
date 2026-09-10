@@ -6,6 +6,15 @@
 > Todos os números foram **medidos em ambiente real**, não estimados. Onde há
 > projeção, está marcada como tal.
 
+> **Atualização de 6 de setembro de 2026:** as medições deste documento são o
+> baseline histórico do schema v1, anterior à correção. A branch agora separa
+> `INCIDENT#`, `EVIDENCE#` e `HYPOTHESIS#` e mantém leitura compatível com dados
+> legados. Ainda não houve nova rodada pesada da API de consulta na AWS; não se
+> deve apresentar os números abaixo como desempenho atual pós-correção. A nova
+> evidência local de 10 mil eventos/minuto e falhas controladas da API de
+> ingestão está em
+> [`testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md`](./testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md).
+
 ## Sumário
 
 1. [Resumo executivo](#1-resumo-executivo)
@@ -435,9 +444,10 @@ uma conclusão confiante e falsa.
 do que o resultado devolvido justificaria. A explicação está em como os registros
 são identificados no banco.
 
-### 8.1 A chave que não separa nada
+### 8.1 A chave que não separava os tipos no schema v1
 
-&emsp; Cada registro tem uma chave de ordenação (`sk`). No código atual:
+&emsp; Cada registro tem uma chave de ordenação (`sk`). Na versão medida durante
+a rodada original:
 
 ```
 Incidente   →  INCIDENT#<id>
@@ -458,6 +468,12 @@ transferidas pela rede, convertidas em objetos na memória — e descartadas.
 &emsp; O povoamento quantifica o desperdício: **2.341 registros para 300
 incidentes**. Uma consulta de 24 horas lê cerca de 2.300 registros para devolver
 291. **Aproximadamente 87% de todo o trabalho é jogado fora.**
+
+&emsp; **Estado atual da branch:** novos registros filhos usam os prefixos
+`EVIDENCE#` e `HYPOTHESIS#`. A leitura reconhece tanto esses prefixos quanto o
+formato legado, evitando que uma publicação torne bundles v1 vazios ou faça
+filhos aparecerem como incidentes. A confirmação quantitativa do ganho requer
+repetir `load`, `breakpoint`, `estresse`, `spike` e `soak` após novo seed/deploy.
 
 ### 8.2 A cadeia completa, com cada elo medido
 
@@ -489,7 +505,7 @@ sistema em produção real, com meses de histórico, produziria respostas de meg
 
 | # | Correção | Esforço | Ganho estimado |
 | --- | --- | --- | --- |
-| **1** | **Separar os prefixos das chaves**: usar `EVIDENCE#…` e `HYPOTHESIS#…` em vez de `INCIDENT#…` para os registros filhos | 2 linhas de código + repovoar a base | ~8× menos leitura e menos processamento |
+| **1** | **Separar os prefixos das chaves**: usar `EVIDENCE#…` e `HYPOTHESIS#…` em vez de `INCIDENT#…` para os registros filhos | **Implementado**, com leitura compatível v1/v2; ganho ainda precisa ser medido após deploy | ~8× menos leitura e menos processamento (projeção) |
 | **2** | **Paginar** a rota de listagem (limite de itens + marcador de continuação) | médio | coloca teto no tamanho da resposta |
 | **3** | **Aumentar a capacidade** da instância acima de 0,25 vCPU | configuração | ganho proporcional, mas ver ressalva abaixo |
 
@@ -545,7 +561,8 @@ identificada e permanece como item de investigação.
 | Script de teste | [`artefatos/testes-carga/k6/consultas.js`](./testes-carga/k6/consultas.js) |
 | Povoamento de carga | [`artefatos/testes-carga/seed-carga.js`](./testes-carga/seed-carga.js) |
 | Roteiro de execução | [`artefatos/testes-carga/README.md`](./testes-carga/README.md) |
-| Resumos exportados | `artefatos/testes-carga/resumo-*.json` |
+| Resumos da rodada original | Não foram versionados; as capturas e métricas consolidadas acima são a evidência disponível |
+| Resumos locais de ingestão desta branch | [`testes-carga/resultados/`](./testes-carga/resultados/) |
 
 ```bash
 # 1. povoar a base (com credencial AWS configurada)
@@ -556,23 +573,24 @@ k6 run -e BASE_URL=<endereço> -e MODE=smoke consultas.js
 k6 run -e BASE_URL=<endereço> -e MODE=load --summary-export=resumo-load.json consultas.js
 ```
 
-&emsp; O povoamento aceita a variável `KEY_SCHEME=v2`, que grava com os prefixos
-corrigidos da recomendação 1. Isso permite **medir o ganho sem republicar a
-aplicação**, porque a consulta que está no ar passa a encontrar apenas incidentes.
-É prova de conceito — a correção definitiva exige alterar o código e reconstruir a
-imagem do contêiner.
+&emsp; O povoamento usa `KEY_SCHEME=v2` por padrão e grava os prefixos corrigidos.
+`KEY_SCHEME=v1` permanece somente para uma comparação controlada. A correção já
+está no código; medir a versão corrigida na AWS ainda exige construir/publicar a
+imagem, limpar e repovoar apenas os itens de incidente e repetir a bateria.
 
 ---
 
-### Conclusão
+### Conclusão da rodada legada
 
-&emsp; A API **não atende ao requisito RNF14** sob a carga pretendida, e a
-distância não é pequena: a capacidade medida é de **cerca de 4 requisições por
-segundo**, contra as 137 do alvo — um fator de aproximadamente **34 vezes**.
+&emsp; Na versão legada medida, a API **não atendeu ao requisito RNF14** sob a
+carga pretendida, e a distância não foi pequena: a capacidade medida foi de
+**cerca de 4 requisições por segundo**, contra as 137 do alvo — um fator de
+aproximadamente **34 vezes**.
 
-&emsp; A causa, no entanto, não é dimensionamento. É uma condição de busca que faz
-cada consulta ler oito vezes mais dados do que devolve, somada a respostas sem
-limite de tamanho. **São dois defeitos de código, revelados por medição.**
+&emsp; A causa, no entanto, não foi dimensionamento. Era uma condição de busca que
+fazia cada consulta ler oito vezes mais dados do que devolvia, somada a respostas
+sem limite de tamanho. **Foram dois defeitos de código revelados por medição; o
+primeiro foi corrigido nesta branch e o segundo permanece pendente.**
 
 &emsp; Vale sublinhar o motivo pelo qual não haviam sido percebidos antes: as duas
 rotas **funcionam e devolvem o resultado correto**. Nenhum teste funcional as

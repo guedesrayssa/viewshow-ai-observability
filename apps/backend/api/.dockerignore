@@ -7,3 +7,6 @@ coverage
 tests
 deploy
 scripts
+**/dist
+*.tsbuildinfo
+.npm-cache

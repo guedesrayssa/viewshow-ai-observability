@@ -12,8 +12,9 @@
  *   - assinaturas que batem na golden set em ~60% dos casos, para /diagnose
  *     exercitar tanto o atalho determinístico quanto o fallback do agente.
  *
- * COLOQUE EM: apps/backend/api/scripts/seed-carga.js  (branch feat/backend-2)
- * USO:        node scripts/seed-carga.js
+ * Fonte canônica: artefatos/sprint2/testes-carga/seed-carga.js. Mantenha a
+ * cópia em apps/backend/api/scripts/ sincronizada.
+ * USO: node scripts/seed-carga.js (a partir de apps/backend/api)
  *
  * Variáveis:
  *   INCIDENTS_PER_HOUR  padrão 12
@@ -22,7 +23,6 @@
  */
 
 require("dotenv").config({ quiet: true });
-const path = require("path");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, BatchWriteCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 
@@ -45,27 +45,33 @@ const { hourBucket, incidentSk } = keys;
 
 /**
  * KEY_SCHEME controla o prefixo dos itens filhos — é o que o teste de carga
- * mediu como causa raiz.
+ * mediu como causa raiz (testes-desempenho.md, §8).
  *
- *   v1 (padrão, = produção):  INCIDENT#<id>#EVIDENCE#001
- *       Todos os sk começam com "INCIDENT#", então a Query de listIncidents
- *       (begins_with(sk, "INCIDENT#")) traz evidências e hipóteses junto e o
- *       Node descarta ~87% em JavaScript.
+ *   v2 (padrão — CORRIGIDO, é o que src/db/keys.js gera hoje em produção):
+ *       EVIDENCE#<id>#001 / HYPOTHESIS#<id>#0000000001. Chama keys.js direto,
+ *       então nunca diverge do que a API realmente grava.
  *
- *   v2 (corrigido):           EVIDENCE#<id>#001
- *       O prefixo passa a discriminar. A MESMA Query em produção passa a casar
- *       só com incidentes — dá para medir o ganho sem redeployar a API.
+ *   v1 (legado — só para reproduzir o baseline ANTIGO numa rodada dedicada de
+ *       comparação "antes/depois"): INCIDENT#<id>#EVIDENCE#001. Todos os sk
+ *       compartilhavam o prefixo "INCIDENT#", e a Query de listIncidents
+ *       trazia evidências e hipóteses junto, descartando ~87% em memória.
+ *       A API continua lendo v1 corretamente durante a transição, mas a
+ *       listagem ainda paga o custo de ler e filtrar os filhos legados.
+ *       Use este modo apenas para comparar RCU e latência com o baseline.
  */
-const KEY_SCHEME = process.env.KEY_SCHEME || "v1";
+const KEY_SCHEME = process.env.KEY_SCHEME || "v2";
+if (!["v1", "v2"].includes(KEY_SCHEME)) {
+  throw new Error(`KEY_SCHEME inválido: ${KEY_SCHEME}. Use v1 ou v2.`);
+}
 
 const evidenceSk = (id, seq) =>
-  KEY_SCHEME === "v2"
-    ? `EVIDENCE#${id}#${String(seq).padStart(3, "0")}`
+  KEY_SCHEME === "v1"
+    ? `INCIDENT#${id}#EVIDENCE#${String(seq).padStart(3, "0")}`
     : keys.evidenceSk(id, seq);
 
 const hypothesisSk = (id, seq) =>
-  KEY_SCHEME === "v2"
-    ? `HYPOTHESIS#${id}#${String(seq).padStart(10, "0")}`
+  KEY_SCHEME === "v1"
+    ? `INCIDENT#${id}#HYPOTHESIS#${String(seq).padStart(10, "0")}`
     : keys.hypothesisSk(id, seq);
 
 const REGION = process.env.AWS_REGION || "us-east-1";
@@ -203,15 +209,51 @@ function buildGoldenSet() {
 
 /* ---------- limpeza ---------- */
 
-/** Remove tudo da tabela operacional. Necessário para um antes/depois limpo:
- *  os itens do esquema antigo continuariam nos mesmos buckets de hora e
- *  seriam lidos pela Query, mascarando o ganho. */
-async function limparTabela(tableName) {
+const MAX_BATCH_ATTEMPTS = 8;
+
+function esperarBackoff(tentativa) {
+  const exponencial = Math.min(100 * 2 ** tentativa, 5000);
+  const jitter = Math.floor(Math.random() * 100);
+  return new Promise((resolve) => setTimeout(resolve, exponencial + jitter));
+}
+
+/** Envia até 25 operações, repetindo somente UnprocessedItems. */
+async function enviarLoteComRetry(
+  tableName,
+  requests,
+  { documentClient = client, wait = esperarBackoff, maxAttempts = MAX_BATCH_ATTEMPTS } = {},
+) {
+  let pendentes = { [tableName]: requests };
+
+  for (let tentativa = 0; tentativa < maxAttempts; tentativa += 1) {
+    const resposta = await documentClient.send(new BatchWriteCommand({ RequestItems: pendentes }));
+    const restantes = resposta.UnprocessedItems?.[tableName] || [];
+    if (restantes.length === 0) return;
+
+    if (tentativa === maxAttempts - 1) {
+      throw new Error(
+        `${restantes.length} operações em ${tableName} continuaram não processadas ` +
+        `após ${maxAttempts} tentativas`,
+      );
+    }
+
+    pendentes = { [tableName]: restantes };
+    await wait(tentativa);
+  }
+}
+
+/** Remove apenas dados de incidentes da tabela operacional. Contas USER# e
+ *  outros domínios compartilhados são preservados. A limpeza é necessária
+ *  para o benchmark não misturar os schemas v1 e v2. */
+async function limparTabela(
+  tableName,
+  { documentClient = client, wait = esperarBackoff, maxAttempts = MAX_BATCH_ATTEMPTS } = {},
+) {
   let chaveInicial;
   let removidos = 0;
 
   do {
-    const pagina = await client.send(
+    const pagina = await documentClient.send(
       new ScanCommand({
         TableName: tableName,
         ProjectionExpression: "pk, sk",
@@ -219,16 +261,13 @@ async function limparTabela(tableName) {
       }),
     );
 
-    const itens = pagina.Items || [];
+    const itens = (pagina.Items || []).filter(
+      ({ pk }) => typeof pk === "string" && pk.startsWith("INC#"),
+    );
     for (let i = 0; i < itens.length; i += 25) {
       const lote = itens.slice(i, i + 25);
-      await client.send(
-        new BatchWriteCommand({
-          RequestItems: {
-            [tableName]: lote.map(({ pk, sk }) => ({ DeleteRequest: { Key: { pk, sk } } })),
-          },
-        }),
-      );
+      const requests = lote.map(({ pk, sk }) => ({ DeleteRequest: { Key: { pk, sk } } }));
+      await enviarLoteComRetry(tableName, requests, { documentClient, wait, maxAttempts });
       removidos += lote.length;
     }
 
@@ -243,15 +282,10 @@ async function limparTabela(tableName) {
 async function batchWrite(tableName, items) {
   for (let i = 0; i < items.length; i += 25) {
     const lote = items.slice(i, i + 25);
-    let pendentes = { [tableName]: lote.map((Item) => ({ PutRequest: { Item } })) };
-
-    for (let tentativa = 0; tentativa < 6; tentativa += 1) {
-      const resposta = await client.send(new BatchWriteCommand({ RequestItems: pendentes }));
-      const naoProcessados = resposta.UnprocessedItems || {};
-      if (!naoProcessados[tableName] || naoProcessados[tableName].length === 0) break;
-      pendentes = naoProcessados;
-      await new Promise((r) => setTimeout(r, 2 ** tentativa * 100)); // backoff
-    }
+    await enviarLoteComRetry(
+      tableName,
+      lote.map((Item) => ({ PutRequest: { Item } })),
+    );
   }
 }
 
@@ -293,7 +327,11 @@ async function main() {
   console.log("    Rode o teste logo em seguida: window=15m só encontra dado por ~1 h.");
 }
 
-main().catch((error) => {
-  console.error("Falha ao semear:", error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("Falha ao semear:", error);
+    process.exit(1);
+  });
+}
+
+module.exports = { enviarLoteComRetry, limparTabela };

@@ -1,0 +1,101 @@
+# Provisionamento automático dos data sources do Grafana.
+#
+# O Grafana lê este arquivo a cada subida do container e sincroniza os data
+# sources com o que está declarado aqui. Alterações feitas pela interface web em
+# um data source provisionado são sobrescritas na próxima subida: edite este
+# arquivo, não a interface.
+#
+# Os endereços usam os nomes dos serviços do docker-compose.observability.yml,
+# resolvidos pelo DNS interno da rede view-show-observability. Por isso a porta
+# do Grafana aqui é 3000 (a porta interna) e não 3002 (a publicada no host).
+
+apiVersion: 1
+
+# Remove data sources de execuções anteriores que tenham sido renomeados.
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+  - name: Loki
+    orgId: 1
+  - name: Tempo
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    orgId: 1
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      # Deve espelhar o scrape_interval de observability/prometheus/prometheus.yml.
+      timeInterval: 15s
+      manageAlerts: true
+      # Permite pular de um exemplar da métrica direto para o trace no Tempo.
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+          urlDisplayLabel: Ver trace
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    orgId: 1
+    editable: false
+    jsonData:
+      maxLines: 1000
+      # Transforma o trace_id encontrado na linha de log em link para o Tempo.
+      derivedFields:
+        - name: TraceID
+          matcherType: label
+          matcherRegex: trace_id
+          # $$ escapa a expansão de variável do provisionador do Grafana; o
+          # resultado armazenado no data source é o template ${__value.raw}.
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: Ver trace
+        - name: TraceIDJson
+          matcherType: regex
+          matcherRegex: '"trace_id"\s*:\s*"(\w+)"'
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: Ver trace
+
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    orgId: 1
+    editable: false
+    jsonData:
+      # Do span para os logs correlacionados no Loki.
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: -1h
+        spanEndTimeShift: 1h
+        filterByTraceID: true
+        filterBySpanID: false
+        tags:
+          - key: service.name
+            value: service_name
+      # Do span para as métricas RED geradas pelo metrics_generator do Tempo.
+      tracesToMetrics:
+        datasourceUid: prometheus
+        spanStartTimeShift: -1h
+        spanEndTimeShift: 1h
+        tags:
+          - key: service.name
+            value: service
+      # Mapa de serviços, alimentado pelo processador service-graphs do Tempo.
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      streamingEnabled:
+        search: true

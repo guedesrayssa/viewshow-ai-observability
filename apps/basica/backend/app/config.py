@@ -29,6 +29,14 @@ class Config:
     # Teto de registros do backend em memória.
     TELEMETRY_MAX_RECORDS = 200_000
 
+    # Injeção de falhas para testes de resiliência. Desabilitada por padrão e
+    # protegida por token para nunca transformar um header público em controle
+    # de produção. O atraso simula o tempo consumido por uma dependência antes
+    # de declarar timeout.
+    LOAD_TEST_FAULTS_ENABLED = os.getenv("LOAD_TEST_FAULTS_ENABLED", "0") == "1"
+    LOAD_TEST_FAULT_TOKEN = os.getenv("LOAD_TEST_FAULT_TOKEN", "")
+    LOAD_TEST_TIMEOUT_DELAY_MS = int(os.getenv("LOAD_TEST_TIMEOUT_DELAY_MS", "250"))
+
     # DynamoDB. A região e as credenciais seguem a cadeia padrão da AWS
     # (variáveis de ambiente, perfil ou role da instância).
     DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE", "telemetry")
