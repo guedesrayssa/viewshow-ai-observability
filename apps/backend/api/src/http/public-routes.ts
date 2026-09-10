@@ -13,6 +13,11 @@ export const PUBLIC_ROUTES = {
     openapi: "/auth/session",
   },
   authLogin: { method: "get", express: "/auth/login", openapi: "/auth/login" },
+  authPasswordLogin: {
+    method: "post",
+    express: "/auth/login",
+    openapi: "/auth/login",
+  },
   authCallback: {
     method: "get",
     express: "/auth/callback",
