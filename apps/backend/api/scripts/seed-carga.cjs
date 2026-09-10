@@ -62,6 +62,9 @@ const hypothesisSk = (id, seq) => `HYPOTHESIS#${id}#${String(seq).padStart(10, "
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const OPERATIONAL_TABLE = process.env.OPERATIONAL_TABLE_NAME || "monitoracao-operacional";
+// Mesma env var usada pela API (ex.: apps/backend/api/src/modules/dashboard/config.ts)
+// para apontar ao DynamoDB Local. Sem isso o cliente sempre resolve a AWS real.
+const ENDPOINT = process.env.DYNAMODB_ENDPOINT || undefined;
 
 const INCIDENTS_PER_HOUR = Number(process.env.INCIDENTS_PER_HOUR || 12);
 const HOURS_BACK = Number(process.env.HOURS_BACK || 25);
@@ -81,7 +84,9 @@ const MONITORING_SOURCES = (process.env.MONITORING_SOURCES || "argus")
 // aos incidentes (ver aviso no fim de main()).
 const VIEW_SNAPSHOT_AGES_MINUTES = [5, 20, 45, 300, 1200];
 
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }));
+const client = DynamoDBDocumentClient.from(
+  new DynamoDBClient({ region: REGION, ...(ENDPOINT ? { endpoint: ENDPOINT } : {}) }),
+);
 
 const TTL_SECONDS_FROM_NOW = 30 * 24 * 60 * 60;
 const ttl = () => Math.floor(Date.now() / 1000) + TTL_SECONDS_FROM_NOW;

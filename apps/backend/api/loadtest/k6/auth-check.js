@@ -31,13 +31,16 @@
  */
 
 import http from "k6/http";
-import { check } from "k6";
+import { check, sleep } from "k6";
 import { forgeSessionCookie, requestIdHeader } from "./lib/session.js";
 
 const BASE_URL = __ENV.BASE_URL;
 if (!BASE_URL) throw new Error("Faltou -e BASE_URL=http://<host>:3000");
 
 export const options = {
+  // setupTimeout > 61s: setup() pode esperar uma janela inteira do rate
+  // limiter (ver probe abaixo) antes de seguir.
+  setupTimeout: "90s",
   scenarios: {
     verificacao: { executor: "shared-iterations", vus: 1, iterations: 1, maxDuration: "1m" },
   },
@@ -54,10 +57,24 @@ export function setup() {
   // O GET autenticado torna a inexistência uma pré-condição comprovada, não
   // uma suposição baseada no formato dos IDs do seed.
   const nonexistentId = `auth-check-ausente-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
-  const probe = http.get(
-    `${BASE_URL}/api/v1/incidents/${encodeURIComponent(nonexistentId)}/diagnosis`,
-    { headers: { Cookie: `session=${validCookie}` } },
-  );
+  const probeUrl = `${BASE_URL}/api/v1/incidents/${encodeURIComponent(nonexistentId)}/diagnosis`;
+  const probeParams = { headers: { Cookie: `session=${validCookie}` } };
+  let probe = http.get(probeUrl, probeParams);
+  if (probe.status === 429) {
+    // O rate limiter (180 req/min por IP, src/app.ts) é uma janela de 60s
+    // que pode ter sobrado de um run anterior contra o mesmo BASE_URL
+    // (confirmado rodando smoke + auth-check em sequência local). Uma
+    // única espera cobre o pior caso e evita reprovar por um motivo que
+    // não tem nada a ver com o script em si.
+    sleep(61);
+    probe = http.get(probeUrl, probeParams);
+  }
+  if (probe.status === 429) {
+    throw new Error(
+      "Rate limiter (180 req/min por IP) ainda ativo após esperar 61s — " +
+        "confira se outro processo está gerando tráfego contra o mesmo BASE_URL.",
+    );
+  }
   if (probe.status !== 404) {
     throw new Error(
       `Não foi possível garantir um ID inexistente: GET autenticado retornou HTTP ${probe.status}.`,
@@ -147,7 +164,13 @@ function rotas(id) {
 function chamar(rota, cookieHeader) {
   const params = {
     headers: {
-      "Content-Type": "application/json",
+      // Content-Type só quando há corpo de verdade: express.json() (global,
+      // src/app.ts) engata em QUALQUER request Content-Type: application/json
+      // e resolve req.body para {} mesmo sem bytes — em rotas sem corpo
+      // (reanalyze) isso quebra a validação z.undefined() da rota com 400
+      // VALIDATION_ERROR antes mesmo de checar sessão, mascarando o sinal de
+      // RNF04. Confirmado rodando contra a API local.
+      ...(rota.body ? { "Content-Type": "application/json" } : {}),
       ...requestIdHeader("k6-authcheck"),
       ...(rota.headers || {}),
       ...(cookieHeader ? { Cookie: cookieHeader } : {}),

@@ -103,11 +103,21 @@ export function requestIdHeader(prefix = "k6") {
 /**
  * Monta os headers de uma chamada autenticada. `prefix` rotula a origem no
  * X-Request-Id (ver requestIdHeader) — cada script chama com o próprio nome
- * para facilitar filtragem na stack de observabilidade.
+ * para facilitar filtragem na stack de observabilidade. Inclui
+ * Content-Type: application/json — necessário para POSTs com corpo (ex.:
+ * ingestao-batch.js) serem parseados por express.json() (global, src/app.ts);
+ * sem ele o corpo chega como undefined e a rota reprova a validação do
+ * schema antes de qualquer lógica de negócio. Confirmado rodando localmente
+ * contra POST /api/v1/imports (sem isto, 400 VALIDATION_ERROR em vez do 503
+ * FEATURE_UNAVAILABLE esperado). Inofensivo em GETs, que não têm corpo.
  */
 export function authParams(cookie, tags = {}, prefix = "k6") {
   return {
-    headers: { Cookie: `session=${cookie}`, ...requestIdHeader(prefix) },
+    headers: {
+      Cookie: `session=${cookie}`,
+      "Content-Type": "application/json",
+      ...requestIdHeader(prefix),
+    },
     tags,
   };
 }
