@@ -20,12 +20,19 @@ export class DynamoIncidentRepository implements IncidentRepository {
     region: string,
     private readonly tableName: string,
     client?: DynamoDBDocumentClient,
+    endpoint?: string,
   ) {
     this.client =
       client ??
-      DynamoDBDocumentClient.from(new DynamoDBClient({ region }), {
-        marshallOptions: { removeUndefinedValues: true },
-      });
+      DynamoDBDocumentClient.from(
+        new DynamoDBClient({
+          region,
+          ...(endpoint ? { endpoint } : {}),
+        }),
+        {
+          marshallOptions: { removeUndefinedValues: true },
+        },
+      );
   }
 
   private async queryAll(
@@ -49,18 +56,22 @@ export class DynamoIncidentRepository implements IncidentRepository {
 
   async listBetween(from: Date, to: Date): Promise<readonly PhysicalItem[]> {
     const partitions: { readonly pk: string; readonly prefix?: string }[] = [];
+    const firstHour = new Date(from);
+    firstHour.setUTCMinutes(0, 0, 0);
     const hour = new Date(to);
     hour.setUTCMinutes(0, 0, 0);
-    while (hour >= from) {
+    while (hour >= firstHour) {
       partitions.push({
         pk: `INC#${hour.toISOString().slice(0, 13)}`,
         prefix: "INCIDENT#",
       });
       hour.setUTCHours(hour.getUTCHours() - 1);
     }
+    const firstDay = new Date(from);
+    firstDay.setUTCHours(0, 0, 0, 0);
     const day = new Date(to);
     day.setUTCHours(0, 0, 0, 0);
-    while (day >= from) {
+    while (day >= firstDay) {
       partitions.push({
         pk: `VIEW#INCIDENTS#DAY#${day.toISOString().slice(0, 10).replaceAll("-", "")}`,
       });

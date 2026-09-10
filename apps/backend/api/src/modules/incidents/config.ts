@@ -10,6 +10,7 @@ const schema = z
       .string()
       .min(1)
       .default("monitoracao-operacional"),
+    DYNAMODB_ENDPOINT: z.url().optional(),
     CURSOR_SECRET: z.string().min(32),
   })
   .passthrough();
@@ -18,6 +19,7 @@ export type IncidentsConfig = {
   readonly nodeEnv: "development" | "test" | "production";
   readonly region: string;
   readonly tableName: string;
+  readonly endpoint: string | undefined;
   readonly cursorSecret: string;
 };
 
@@ -29,6 +31,7 @@ export function loadConfig(
     nodeEnv: value.NODE_ENV,
     region: value.AWS_REGION,
     tableName: value.OPERATIONAL_TABLE_NAME,
+    endpoint: value.DYNAMODB_ENDPOINT,
     cursorSecret: value.CURSOR_SECRET,
   };
 }

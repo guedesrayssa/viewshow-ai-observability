@@ -12,14 +12,14 @@ export interface AuthModule {
   readonly nodeEnv: "development" | "test" | "production";
 }
 
-/** Builds the auth module (password dev-adapter + signed sessions) for in-process use. */
+/** Builds the auth module (federated identity boundary + signed sessions) for in-process use. */
 export function createAuthModule(
   environment: NodeJS.ProcessEnv = process.env,
 ): AuthModule {
   const config = loadConfig(environment);
-  const provider = new ConfiguredIdentityProvider(config);
+  const provider = new ConfiguredIdentityProvider();
   return {
-    useCases: new IdentityUseCases(provider, config.devAuth !== false),
+    useCases: new IdentityUseCases(provider),
     sessions: new SessionCodec(config.cookieSecret),
     nodeEnv: config.nodeEnv,
   };

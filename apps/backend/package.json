@@ -2,12 +2,12 @@
   "name": "@view-show/backend",
   "version": "2.0.0",
   "private": true,
-  "description": "Entrada de conveniência para o workspace operacional preservado em api/ por compatibilidade com o deploy existente.",
+  "description": "Entrada de conveniência para a API TypeScript/Express em api/.",
   "scripts": {
     "build": "npm --prefix api run build",
     "lint": "npm --prefix api run lint",
     "test": "npm --prefix api run test",
     "typecheck": "npm --prefix api run typecheck",
-    "start": "npm --prefix api run start:compat"
+    "start": "npm --prefix api start"
   }
 }

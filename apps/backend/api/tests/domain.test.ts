@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ServiceError } from "@view-show/contracts";
 import { CursorCodec } from "../src/modules/incidents/domain/cursor.js";
 import {
@@ -7,6 +7,8 @@ import {
   toIncidentDto,
 } from "../src/modules/incidents/domain/incident.js";
 import { SessionCodec } from "../src/modules/auth/domain/session.js";
+import { IdentityUseCases } from "../src/modules/auth/application/identity-use-cases.js";
+import type { IdentityProviderPort } from "../src/modules/auth/ports/identity-provider.js";
 
 const incident = {
   itemType: "incident",
@@ -20,6 +22,51 @@ const incident = {
 };
 
 describe("domain values", () => {
+  it("returns the authorization URL and completed identity from its provider", async () => {
+    const provider: IdentityProviderPort = {
+      async beginAuthorization() {
+        return "https://identity.example.test/authorize";
+      },
+      async completeAuthorization(code, state) {
+        if (code !== "code_1" || state !== "state_1") return null;
+        return {
+          id: "usr_1",
+          email: "engineer@example.test",
+          name: "Engineer",
+          role: "engineer",
+        };
+      },
+    };
+    const useCases = new IdentityUseCases(provider);
+
+    await expect(useCases.beginLogin()).resolves.toBe(
+      "https://identity.example.test/authorize",
+    );
+    await expect(
+      useCases.completeLogin("code_1", "state_1"),
+    ).resolves.toMatchObject({
+      id: "usr_1",
+      email: "engineer@example.test",
+    });
+  });
+
+  it("reports the federated provider as unavailable when it has no authorization flow", async () => {
+    const provider: IdentityProviderPort = {
+      beginAuthorization: vi.fn(async () => null),
+      completeAuthorization: vi.fn(async () => null),
+    };
+
+    await expect(
+      new IdentityUseCases(provider).beginLogin(),
+    ).rejects.toMatchObject({
+      status: 503,
+      code: "FEATURE_UNAVAILABLE",
+    });
+    await expect(
+      new IdentityUseCases(provider).completeLogin("code_1", "state_1"),
+    ).rejects.toMatchObject({ status: 503, code: "FEATURE_UNAVAILABLE" });
+  });
+
   it("encrypts cursors and binds them to filters", () => {
     const codec = new CursorCodec("a".repeat(32));
     const cursor = codec.encode(20, "filter-a");

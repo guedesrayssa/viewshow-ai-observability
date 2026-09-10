@@ -12,11 +12,13 @@ const [
   { createAuthModule },
   { createIncidentsModule },
   { createDashboardModule },
+  { createImportsModule },
 ] = await Promise.all([
   import("./app.js"),
   import("./modules/auth/index.js"),
   import("./modules/incidents/index.js"),
   import("./modules/dashboard/index.js"),
+  import("./modules/imports/index.js"),
 ]);
 const config = loadConfig();
 const logger = createLogger("api");
@@ -26,6 +28,7 @@ const server = createServer(
     auth: createAuthModule(),
     incidents: createIncidentsModule(),
     dashboard: createDashboardModule(),
+    imports: createImportsModule(),
   }),
 );
 

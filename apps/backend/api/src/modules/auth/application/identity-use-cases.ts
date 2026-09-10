@@ -2,29 +2,28 @@ import { ServiceError, type AuthenticatedIdentity } from "@view-show/contracts";
 import type { IdentityProviderPort } from "../ports/identity-provider.js";
 
 export class IdentityUseCases {
-  constructor(
-    private readonly provider: IdentityProviderPort,
-    private readonly passwordLoginAvailable: boolean,
-  ) {}
+  constructor(private readonly provider: IdentityProviderPort) {}
 
-  async login(email: string, password: string): Promise<AuthenticatedIdentity> {
-    if (!this.passwordLoginAvailable)
-      throw new ServiceError(
-        503,
-        "FEATURE_UNAVAILABLE",
-        "O provedor corporativo de identidade não está configurado.",
-      );
-    const identity = await this.provider.authenticatePassword(email, password);
-    if (!identity)
-      throw new ServiceError(401, "UNAUTHENTICATED", "Credenciais inválidas.");
+  async beginLogin(): Promise<string> {
+    const authorizationUrl = await this.provider.beginAuthorization();
+    if (!authorizationUrl) this.providerUnavailable();
+    return authorizationUrl;
+  }
+
+  async completeLogin(
+    code: string,
+    state: string,
+  ): Promise<AuthenticatedIdentity> {
+    const identity = await this.provider.completeAuthorization(code, state);
+    if (!identity) this.providerUnavailable();
     return identity;
   }
 
-  unavailable(feature: string): never {
+  private providerUnavailable(): never {
     throw new ServiceError(
       503,
       "FEATURE_UNAVAILABLE",
-      `${feature} requer um provedor corporativo configurado.`,
+      "O provedor corporativo de identidade não está configurado.",
     );
   }
 }

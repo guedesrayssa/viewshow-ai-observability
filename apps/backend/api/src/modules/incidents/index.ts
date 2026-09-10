@@ -1,6 +1,7 @@
 import { DynamoIncidentRepository } from "./adapters/dynamodb-incident-repository.js";
 import {
   IncidentUseCases,
+  UnavailableReanalysisPublisherPort,
   UnavailableReviewFeedbackPort,
 } from "./application/incident-use-cases.js";
 import { loadConfig } from "./config.js";
@@ -16,10 +17,14 @@ export function createIncidentsModule(
   const repository = new DynamoIncidentRepository(
     config.region,
     config.tableName,
+    undefined,
+    config.endpoint,
   );
   return new IncidentUseCases(
     repository,
     new CursorCodec(config.cursorSecret),
     new UnavailableReviewFeedbackPort(),
+    undefined,
+    new UnavailableReanalysisPublisherPort(),
   );
 }

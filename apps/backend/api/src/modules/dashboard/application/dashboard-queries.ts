@@ -13,9 +13,11 @@ import type {
 
 type OverviewQuery = {
   readonly window: "15m" | "30m" | "1h" | "6h" | "24h";
+  readonly search?: string | undefined;
   readonly deviceType?: string | undefined;
   readonly region?: string | undefined;
   readonly appVersion?: string | undefined;
+  readonly incidentLimit?: number | undefined;
 };
 type MonitoringQuery = {
   readonly window: "15m" | "30m" | "1h" | "6h";
@@ -72,16 +74,17 @@ export class DashboardQueries {
   async overview(
     query: OverviewQuery,
   ): Promise<InternalResponse<PublicProjection>> {
-    const dimensions = [
+    const unsupportedFilters = [
+      query.search ? "search" : null,
       query.deviceType ? "deviceType" : null,
       query.region ? "region" : null,
       query.appVersion ? "appVersion" : null,
     ].filter(Boolean);
-    if (dimensions.length > 1)
+    if (unsupportedFilters.length > 0)
       throw new ServiceError(
         422,
         "UNSUPPORTED_FILTER_COMBINATION",
-        "A origem atual não permite combinar estes filtros.",
+        "A projeção atual não sustenta os filtros solicitados.",
       );
     const window = resolveWindow(query.window, this.clock());
     const read = await this.repository.latestOverview(
@@ -94,8 +97,16 @@ export class DashboardQueries {
         "DATA_UNAVAILABLE",
         "A projeção de visão geral ainda não foi publicada pela ingestão.",
       );
-    assertNoPhysicalFields(read.data);
-    return { data: read.data, quality: quality(read, window, []) };
+    const recentIncidents = read.data.recentIncidents;
+    const data =
+      Array.isArray(recentIncidents) && query.incidentLimit !== undefined
+        ? {
+            ...read.data,
+            recentIncidents: recentIncidents.slice(0, query.incidentLimit),
+          }
+        : read.data;
+    assertNoPhysicalFields(data);
+    return { data, quality: quality(read, window, []) };
   }
 
   async monitoring(

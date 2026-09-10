@@ -86,8 +86,12 @@ export function parseCookie(
   for (const pair of header.split(";")) {
     const separator = pair.indexOf("=");
     if (separator < 1) continue;
-    if (decodeURIComponent(pair.slice(0, separator).trim()) === name)
-      return decodeURIComponent(pair.slice(separator + 1).trim());
+    try {
+      if (decodeURIComponent(pair.slice(0, separator).trim()) === name)
+        return decodeURIComponent(pair.slice(separator + 1).trim());
+    } catch {
+      continue;
+    }
   }
   return undefined;
 }
