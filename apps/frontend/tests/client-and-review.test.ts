@@ -18,6 +18,36 @@ const meta = {
 };
 
 describe("gateway client", () => {
+  it("starts federated authentication at the operational login endpoint", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
+    const { beginAuthentication } = await import("@/lib/auth");
+
+    expect(beginAuthentication()).toEqual({
+      kind: "redirect",
+      url: "http://operacional.test/auth/login",
+    });
+  });
+
+  it("starts a demo session when examples are explicitly enabled without an API", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "true");
+    const { beginAuthentication } = await import("@/lib/auth");
+
+    expect(beginAuthentication()).toEqual({ kind: "demo" });
+  });
+
+  it("reports authentication as unavailable without an API or demo mode", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
+    const { AUTH_UNAVAILABLE_MESSAGE, beginAuthentication } = await import("@/lib/auth");
+
+    expect(beginAuthentication()).toEqual({
+      kind: "unavailable",
+      message: AUTH_UNAVAILABLE_MESSAGE,
+    });
+  });
+
   it("supports the same-origin path prefix used by the existing ingress", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "/api-operacional");
     vi.stubGlobal("window", { location: { origin: "http://dashboard.test" } });

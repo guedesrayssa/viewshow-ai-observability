@@ -3,9 +3,8 @@
  * Preparação comum dos testes de componente.
  *
  * jsdom não implementa `matchMedia` nem os observadores que os cartões do
- * painel usam para se medir e animar a entrada. Sem estes stubs, o primeiro
- * render derruba a árvore: `useMediaQuery` chama `window.matchMedia`, e um
- * `useEffect` instancia `ResizeObserver`.
+ * painel usam para se medir e animar a entrada. Também não oferece
+ * `scrollIntoView`, usado pelo seletor para manter a opção ativa visível.
  */
 
 import "@testing-library/jest-dom/vitest";
@@ -25,16 +24,30 @@ class NoopObserver {
   }
 }
 
-vi.stubGlobal("ResizeObserver", NoopObserver);
-vi.stubGlobal("IntersectionObserver", NoopObserver);
+Object.defineProperty(globalThis, "ResizeObserver", {
+  configurable: true,
+  writable: true,
+  value: NoopObserver,
+});
+Object.defineProperty(globalThis, "IntersectionObserver", {
+  configurable: true,
+  writable: true,
+  value: NoopObserver,
+});
 
-vi.stubGlobal("matchMedia", (query: string) => ({
-  matches: false,
-  media: query,
-  onchange: null,
-  addListener: () => {},
-  removeListener: () => {},
-  addEventListener: () => {},
-  removeEventListener: () => {},
-  dispatchEvent: () => false,
-}));
+HTMLElement.prototype.scrollIntoView = vi.fn();
+
+Object.defineProperty(globalThis, "matchMedia", {
+  configurable: true,
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});

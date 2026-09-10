@@ -28,7 +28,7 @@ export type OverviewData = {
 };
 
 /** Preserves the chart formatter hook while honoring the errors/minute contract. */
-export function formatRebufferRate(value: number): string {
+export function formatErrorsPerMinute(value: number): string {
   return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}/min`;
 }
 
@@ -153,18 +153,11 @@ function exampleOverview(revision: number): OverviewData {
   };
 }
 
-function optional(value: string): string | undefined {
-  return value === "all" ? undefined : value;
-}
-
 export function fetchOverview(filters: OverviewFilters, revision = 0): Promise<Resource<OverviewData>> {
   return loadResource<OverviewResponse, OverviewData>({
     path: ENDPOINTS.dashboardOverview,
     params: {
       window: filters.timeRange,
-      deviceType: optional(filters.device),
-      region: optional(filters.region),
-      appVersion: optional(filters.appVersion),
     },
     map: mapOverview,
     fallback: () => exampleOverview(revision),
