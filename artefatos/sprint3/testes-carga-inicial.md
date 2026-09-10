@@ -22,7 +22,7 @@
 
 &emsp; Este artefato cobre a suíte de testes de carga k6 de `apps/backend/api`,
 implementada em
-[`apps/backend/api/loadtest/`](../apps/backend/api/loadtest/README.md). Ele
+[`apps/backend/api/loadtest/`](../../apps/backend/api/loadtest/README.md). Ele
 descreve o estado final da implementação — não o histórico de decisões que
 levou a ela. Duas seções ficam deliberadamente como estrutura a preencher:
 
@@ -40,7 +40,7 @@ levou a ela. Duas seções ficam deliberadamente como estrutura a preencher:
 ## 1. Requisitos não funcionais e planos de teste (revisados)
 
 &emsp; Os requisitos não funcionais abaixo foram definidos na Sprint 1
-([`sprint1/requisitos.md`](sprint1/requisitos.md), Tabela 3) com um plano de
+([`sprint1/requisitos.md`](../sprint1/requisitos.md), Tabela 3) com um plano de
 teste genérico, anterior a qualquer implementação. Esta seção revisa esse
 plano para o contrato hoje implementado em `apps/backend/api`, mapeando cada
 requisito ao script/cenário k6 que o valida.
@@ -62,7 +62,7 @@ alcançar `COMPLETED` dentro do prazo.
 &emsp; Esse cenário (10 mil eventos/minuto, fila cheia, timeout) já foi
 implementado e validado uma vez, contra a arquitetura anterior do projeto
 (API Flask de ingestão, `apps/basica`, hoje descontinuada) — evidência em
-[`sprint2/testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md`](sprint2/testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md).
+[`sprint2/testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md`](../sprint2/testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md).
 Os números daquela rodada não se aplicam à arquitetura atual (serviço, dados
 e contrato diferentes); ficam citados aqui só como precedente de que o
 cenário é executável e já passou uma vez, sob a arquitetura anterior.
@@ -85,7 +85,7 @@ RNF07 (FCP do frontend), RNF08 (F1-score do modelo de ML), RNF10
 (usabilidade), RNF11 (normalização multi-formato), RNF12 (cobertura de
 testes em CI), RNF13 (janela de contexto do ML) e RNF15 (tempo de alerta),
 assim como RIE01/RIE02 e RESTR01/RESTR02, têm planos de validação próprios
-já definidos em [`sprint1/requisitos.md`](sprint1/requisitos.md) §4–5, por
+já definidos em [`sprint1/requisitos.md`](../sprint1/requisitos.md) §4–5, por
 inspeção, CI ou execução manual — não por teste de carga k6. Não são
 revisados aqui.
 
@@ -94,9 +94,9 @@ revisados aqui.
 ## 2. Cenários de carga implementados
 
 &emsp; Implementação completa em
-[`apps/backend/api/loadtest/k6/`](../apps/backend/api/loadtest/k6/); detalhes
+[`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/); detalhes
 operacionais (variáveis, autenticação, gotchas) em
-[`loadtest/README.md`](../apps/backend/api/loadtest/README.md).
+[`loadtest/README.md`](../../apps/backend/api/loadtest/README.md).
 
 ### 2.1 `consultas.js` — desempenho de consulta (RNF14, RNF09)
 
@@ -140,7 +140,7 @@ configurado.
 
 ### 2.4 Seed de carga
 
-&emsp; [`apps/backend/api/scripts/seed-carga.cjs`](../apps/backend/api/scripts/seed-carga.cjs)
+&emsp; [`apps/backend/api/scripts/seed-carga.cjs`](../../apps/backend/api/scripts/seed-carga.cjs)
 popula 300 incidentes (≈2.500 itens, incluindo evidências e hipóteses)
 distribuídos pelas últimas 25 horas, mais snapshots de `dashboard/overview` e
 `monitoring/overview` em idades variadas.
@@ -161,7 +161,7 @@ distribuídos pelas últimas 25 horas, mais snapshots de `dashboard/overview` e
 | Data da execução | *(preencher)* |
 | `BASE_URL` | *(preencher — local, EC2, ALB?)* |
 | Capacidade do serviço (vCPU/memória) | *(preencher)* |
-| Origem do gerador de carga | *(preencher — mesma região da API é recomendado, ver §4.4 de [`sprint2/testes-desempenho.md`](sprint2/testes-desempenho.md))* |
+| Origem do gerador de carga | *(preencher — mesma região da API é recomendado, ver §4.4 de [`sprint2/testes-desempenho.md`](../sprint2/testes-desempenho.md))* |
 | Versão do k6 | *(preencher)* |
 | `INCIDENT_COUNT` / seed usado | *(preencher)* |
 
@@ -231,7 +231,7 @@ corretamente o estado fail-closed em vez de simular sucesso.
 > a preencher por essa frente do grupo. A pilha existente
 > (`apps/fullstack/observability/` — Prometheus, Loki, Tempo) já expõe o que
 > as subseções abaixo pedem; ver
-> [`loadtest/README.md`](../apps/backend/api/loadtest/README.md#observabilidade)
+> [`loadtest/README.md`](../../apps/backend/api/loadtest/README.md#observabilidade)
 > para o que já está disponível hoje sem trabalho adicional.
 
 ### 4.1 Latência
@@ -285,10 +285,10 @@ deve ser anexado como evidência ao preencher a Seção 3.
 
 ## Referências
 
-- [Requisitos e planos de teste da Sprint 1](sprint1/requisitos.md)
-- [Relatório de desempenho — arquitetura anterior](sprint2/testes-desempenho.md)
-- [Resultados de ingestão — arquitetura anterior](sprint2/testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md)
-- [Implementação da suíte k6](../apps/backend/api/loadtest/README.md)
-- [Pilha de observabilidade (Grafana LGTM)](../apps/fullstack/observability/README.md)
-- [Visão geral da arquitetura](arquitetura/visao-geral.md)
-- [Ingestão e dados](arquitetura/ingestao-e-dados.md)
+- [Requisitos e planos de teste da Sprint 1](../sprint1/requisitos.md)
+- [Relatório de desempenho — arquitetura anterior](../sprint2/testes-desempenho.md)
+- [Resultados de ingestão — arquitetura anterior](../sprint2/testes-carga/RESULTADOS-INGESTAO-RESILIENCIA.md)
+- [Implementação da suíte k6](../../apps/backend/api/loadtest/README.md)
+- [Pilha de observabilidade (Grafana LGTM)](../../apps/fullstack/observability/README.md)
+- [Visão geral da arquitetura](../arquitetura/visao-geral.md)
+- [Ingestão e dados](../arquitetura/ingestao-e-dados.md)
