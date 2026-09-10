@@ -770,6 +770,10 @@ const observabilityValidationCommands = [
     "Docker Compose configuration validation",
     /^docker compose (?:-f|--file) (?:apps\/fullstack\/)?docker-compose\.observability\.yml config(?: --quiet)?$/,
   ],
+  [
+    "AWS observability Docker Compose configuration validation",
+    /^AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder docker compose (?:-f|--file) (?:apps\/fullstack\/)?observability\/aws\/docker-compose\.yml config(?: --quiet)?$/,
+  ],
 ];
 
 test("infrastructure is consolidated under apps/fullstack", () => {
@@ -863,6 +867,91 @@ test("fullstack Terraform fails closed to the isolated Sprint 3 namespace and ac
   assert.match(names, /nome_api_gateway\s*=\s*"\$\{local\.nome_servico\}-tls"/);
   assert.doesNotMatch(activeTerraform, /var\.nome_/);
   assert.doesNotMatch(activeTerraform, /variable "nome_/);
+});
+
+test("AWS observability stays opt-in and inside the isolated namespace", () => {
+  const variables = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "variables.tf")),
+  );
+  const names = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "names.tf")),
+  );
+  const observability = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "observability-aws.tf")),
+  );
+  const ecs = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "ecs.tf")),
+  );
+  const outputs = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "outputs.tf")),
+  );
+
+  const enabledBlock = /variable "observabilidade_habilitada"\s*\{([\s\S]*?)^\}/m.exec(
+    variables,
+  )?.[1];
+  assert.ok(enabledBlock, "observabilidade_habilitada must be declared");
+  assert.match(enabledBlock, /type\s*=\s*bool/);
+  assert.match(enabledBlock, /default\s*=\s*false/);
+  assert.doesNotMatch(variables, /variable "nome_observabilidade"/);
+  assert.match(
+    names,
+    /nome_observabilidade\s*=\s*"\$\{var\.deployment_namespace\}-observabilidade"/,
+  );
+
+  const gatedBlocks = [
+    'data "aws_ssm_parameter" "amazon_linux_2023"',
+    'resource "random_password" "grafana"',
+    'resource "aws_security_group" "observabilidade"',
+    'resource "aws_security_group_rule" "otlp_api"',
+    'resource "aws_instance" "observabilidade"',
+  ];
+  for (const block of gatedBlocks) {
+    const blockIndex = observability.indexOf(block);
+    assert.notEqual(blockIndex, -1, `${block} must exist`);
+    const openBrace = observability.indexOf("{", blockIndex + block.length);
+    const body = balancedContent(observability, openBrace, "{", "}");
+    assert.ok(body, `${block} must be balanced`);
+    assert.match(
+      body.content,
+      /count\s*=\s*var\.observabilidade_habilitada\s*\?\s*1\s*:\s*0/,
+      `${block} must be disabled with the opt-in flag`,
+    );
+  }
+
+  assert.match(observability, /name\s*=\s*"\$\{local\.nome_observabilidade\}-sg"/);
+  assert.match(observability, /Name\s*=\s*local\.nome_observabilidade/);
+  assert.doesNotMatch(observability, /var\.nome_/);
+  assert.match(
+    ecs,
+    /OTEL_SERVICE_NAME"?,\s*value\s*=\s*local\.nome_container/,
+  );
+  assert.match(
+    ecs,
+    /var\.observabilidade_habilitada\s*\?\s*"http:\/\/\$\{aws_instance\.observabilidade\[0\]\.private_ip\}:4318"\s*:\s*""/,
+  );
+  assert.doesNotMatch(ecs, /AUTH_USER_(?:EMAIL|PASSWORD)/);
+
+  for (const outputName of [
+    "grafana_acesso",
+    "grafana_senha",
+    "observabilidade_instancia_id",
+    "comando_status_observabilidade",
+  ]) {
+    const block = new RegExp(
+      `output "${outputName}"\\s*\\{([\\s\\S]*?)^\\}`,
+      "m",
+    ).exec(outputs)?.[1];
+    assert.ok(block, `${outputName} must exist`);
+    assert.match(
+      block,
+      /var\.observabilidade_habilitada[\s\S]*:\s*null/,
+      `${outputName} must be null while observability is disabled`,
+    );
+  }
+  const passwordOutput = /output "grafana_senha"\s*\{([\s\S]*?)^\}/m.exec(
+    outputs,
+  )?.[1];
+  assert.match(passwordOutput, /sensitive\s*=\s*true/);
 });
 
 test("fullstack Terraform accepts only us-east-1", () => {

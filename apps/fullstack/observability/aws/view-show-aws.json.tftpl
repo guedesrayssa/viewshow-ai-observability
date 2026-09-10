@@ -1,0 +1,79 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "ServiceName": "${service_name}"}, "metricName": "CPUUtilization", "namespace": "AWS/ECS", "period": "60", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Average"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "ServiceName": "${service_name}"}, "metricName": "MemoryUtilization", "namespace": "AWS/ECS", "period": "60", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Average"}
+      ],
+      "title": "ECS — CPU e memória",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"LoadBalancer": "${load_balancer}", "TargetGroup": "${target_group}"}, "metricName": "TargetResponseTime", "namespace": "AWS/ApplicationELB", "period": "60", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "p95"}
+      ],
+      "title": "ALB — latência p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"LoadBalancer": "${load_balancer}"}, "metricName": "RequestCount", "namespace": "AWS/ApplicationELB", "period": "60", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"LoadBalancer": "${load_balancer}"}, "metricName": "HTTPCode_Target_5XX_Count", "namespace": "AWS/ApplicationELB", "period": "60", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Sum"}
+      ],
+      "title": "ALB — requisições e respostas 5xx",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"TableName": "${operational_table}"}, "metricName": "ReadThrottleEvents", "namespace": "AWS/DynamoDB", "period": "60", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"TableName": "${operational_table}"}, "metricName": "WriteThrottleEvents", "namespace": "AWS/DynamoDB", "period": "60", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Sum"}
+      ],
+      "title": "DynamoDB — throttling",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16},
+      "id": 5,
+      "options": {"enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
+      "targets": [
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "fields @timestamp, @message | sort @timestamp desc | limit 100", "logGroups": [{"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${log_group}:*", "name": "${log_group}"}], "queryMode": "Logs", "refId": "A", "region": "${aws_region}"}
+      ],
+      "title": "API — logs recentes",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["view-show", "aws"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "View Show — AWS",
+  "uid": "view-show-aws",
+  "version": 1
+}

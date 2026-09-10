@@ -82,7 +82,7 @@ fixture sanitizado e notebooks, está em
 | `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
 | `/apps/backend` | API operacional modular em TypeScript/Express |
 | `/apps/frontend` | Painel definitivo em Next.js |
-| `/apps/fullstack` | IaC da stack AWS atual e da observabilidade local, com documentação e scripts auxiliares |
+| `/apps/fullstack` | IaC da stack AWS e da observabilidade local ou opcional em EC2, com documentação e scripts auxiliares |
 | `/assets` | Imagens e logos usados na documentação |
 | `/slides` | Apresentações das sprints |
 

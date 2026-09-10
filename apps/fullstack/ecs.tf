@@ -78,6 +78,8 @@ resource "aws_ecs_task_definition" "api" {
         { name = "BEDROCK_MODEL_ID", value = "anthropic.claude-3-haiku-20240307-v1:0" },
         { name = "AUTH_COOKIE_SECRET", value = random_password.auth_cookie_secret.result },
         { name = "CURSOR_SECRET", value = random_password.cursor_secret.result },
+        { name = "OTEL_SERVICE_NAME", value = local.nome_container },
+        { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
 
         // O painel chega pelo Amplify, que repassa /api, /auth e /health para
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da

@@ -10,6 +10,7 @@ locals {
   nome_app_amplify     = "${var.deployment_namespace}-painel"
   tabela_operacional   = "${var.deployment_namespace}-operacional"
   tabela_golden_set    = "${var.deployment_namespace}-golden-set"
+  nome_observabilidade = "${var.deployment_namespace}-observabilidade"
 
   nome_log_group   = "/ecs/${local.nome_repositorio_ecr}"
   nome_api_gateway = "${local.nome_servico}-tls"

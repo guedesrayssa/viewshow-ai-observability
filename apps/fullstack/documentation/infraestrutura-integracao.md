@@ -179,18 +179,26 @@ leem o estado local; não criam nem alteram recursos.
 | `quantidade_tasks` | `1` | Réplicas do serviço |
 | `bedrock_habilitado` | `false` | Explicação opcional via Bedrock |
 | `retencao_logs_dias` | `7` | Retenção do log group |
+| `observabilidade_habilitada` | `false` | Opt-in para Grafana, Prometheus, Loki e Tempo em EC2 |
+| `tipo_instancia_observabilidade` | `t3.medium` | Capacidade da EC2 opcional |
+| `disco_observabilidade_gib` | `30` | Volume gp3 criptografado da observabilidade |
+| `grafana_cidr_acesso` | `null` | Mantém o Grafana privado e acessível por túnel SSM |
 
 Os nomes efetivos são derivados de `g05-s3`: ECR `g05-s3-api`, cluster ECS
 `g05-s3-cluster`, serviço `g05-s3-api-service`, task family
 `g05-s3-api-task`, container `g05-s3-api`, ALB `g05-s3-alb`, target group
 `g05-s3-api-tg`, security group da API `g05-s3-api-sg`, Amplify
 `g05-s3-painel`, tabelas `g05-s3-operacional` e `g05-s3-golden-set`.
+Quando habilitada, a instância de observabilidade usa o nome
+`g05-s3-observabilidade`; seu security group e a telemetria da API derivam do
+mesmo namespace. A opção fica desligada por padrão para evitar custo acidental.
 
 ## Outputs não sensíveis
 
-O módulo publica somente endereços, nomes de tabelas, URI da imagem, comando de
-consulta de logs e aviso de custo. Valores usados para assinatura de sessão e
-paginação não aparecem em outputs nem na documentação.
+O módulo publica endereços, nomes de tabelas, URI da imagem, comandos de
+operação e aviso de custo. Valores usados para assinatura de sessão e paginação
+não aparecem em outputs. Quando a observabilidade é habilitada, a senha gerada
+do Grafana aparece somente no output sensível `grafana_senha` e no state local.
 
 ## Troubleshooting
 
