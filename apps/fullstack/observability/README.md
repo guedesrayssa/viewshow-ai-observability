@@ -35,21 +35,23 @@ Para trocar, exporte `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD` antes de su
 | 3200 | Tempo | API de consulta de traces, usada pelo Grafana |
 | 4317 | Tempo | Recepção de traces via OTLP/gRPC |
 | 4318 | Tempo | Recepção de traces via OTLP/HTTP |
+| 4320 | Alloy | Recepção OTLP/HTTP de métricas e traces dos workers Python |
 
 O Alloy descobre os containers pelo socket do Docker, persiste as posições de
-leitura em um volume e envia os logs ao Loki; ele não publica uma porta no host.
-A API também pode enviar seu JSON estruturado diretamente ao Loki definindo
-`LOKI_PUSH_URL`.
+leitura e envia os logs ao Loki. Em `:4320`, também recebe OTLP/HTTP dos workers,
+converte métricas para remote write no Prometheus e encaminha traces ao Tempo.
+A API e os workers também podem enviar JSON estruturado diretamente ao Loki
+definindo `LOKI_PUSH_URL`.
 
 Todas as portas podem ser sobrescritas por variáveis de ambiente
 (`GRAFANA_PORT`, `PROMETHEUS_PORT`, `LOKI_PORT`, `TEMPO_HTTP_PORT`,
-`TEMPO_OTLP_GRPC_PORT`, `TEMPO_OTLP_HTTP_PORT`).
+`TEMPO_OTLP_GRPC_PORT`, `TEMPO_OTLP_HTTP_PORT`, `ALLOY_OTLP_HTTP_PORT`).
 
 ## Arquivos
 
 ```
 apps/fullstack/observability/
-├── alloy/config.alloy                                 descoberta Docker e envio de logs
+├── alloy/config.alloy                                 logs e gateway OTLP dos workers
 ├── grafana/provisioning/datasources/datasources.yml   data sources automáticos
 ├── grafana/provisioning/dashboards/                   dashboards versionados
 ├── loki/loki-config.yml                               Loki monolítico, disco local
@@ -166,10 +168,19 @@ estável.
 | Prometheus | Auto-observação da stack e scrape de `/metrics` da API pelo ALB |
 | Loki | Logs dos containers da stack via Alloy e JSON correlacionado da API; CloudWatch permanece habilitado |
 | Tempo | Receptor OTLP/HTTP privado em `:4318`, restrito ao security group da API |
+| Alloy | Receptor OTLP/HTTP privado em `:4320` para métricas e traces dos workers |
 
 O Terraform injeta `OTEL_SERVICE_NAME=g05-s3-api` e o endereço privado do Tempo
 na task ECS somente quando o opt-in está ativo. A API TypeScript já inicializa o
 SDK OpenTelemetry quando esse endpoint existe.
+
+Os futuros tasks de ingestão e análise devem reutilizar o security group da
+aplicação e definir `OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
+`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes em
+`apps/backend/ingestion-data` e `apps/backend/agentic` já implementam o contrato,
+mas não existem tasks ou entrypoints desses workers nesta entrega.
+Para logs em ECS, defina também `LOKI_PUSH_URL` com
+`terraform output -raw observabilidade_loki_push_url`.
 
 ### Operação e custo no Learner Lab
 
@@ -201,6 +212,20 @@ saudável. Na AWS, o alvo `view-show-api` aponta para o ALB criado pelo Terrafor
 `METRICS_ENABLED=true` (o padrão), e o alvo `view-show-api` já está habilitado.
 Para enviar traces da API rodando no host, aponte o exportador OTLP para
 `http://localhost:4318` (HTTP) ou `localhost:4317` (gRPC).
+
+## Coletar métricas dos workers Python
+
+Os serviços de ingestão e análise usam OTLP/HTTP em vez de expor um servidor
+Prometheus dentro de processos batch. Com a stack local no ar:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4320
+export OTEL_SERVICE_NAME=view-show-ingestion # ou view-show-agentic
+```
+
+O Alloy preserva `service.name` como label `service_name`. Como esses dois
+diretórios ainda não contêm lógica de negócio, painéis e alertas permanecem sem
+séries até que um entrypoint real chame os hooks de observabilidade.
 
 ## Limites da implantação
 

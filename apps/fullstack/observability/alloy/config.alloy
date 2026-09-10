@@ -30,3 +30,42 @@ loki.write "default" {
     url = "http://loki:3100/loki/api/v1/push"
   }
 }
+
+// OTLP gateway for application workers. Metrics are translated to Prometheus
+// remote write and traces are forwarded to Tempo. Resource attributes become
+// labels, including service_name, service_version and deployment_environment_name.
+otelcol.receiver.otlp "workers" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.workers.input]
+    traces  = [otelcol.processor.batch.workers.input]
+  }
+}
+
+otelcol.processor.batch "workers" {
+  output {
+    metrics = [otelcol.exporter.prometheus.workers.input]
+    traces  = [otelcol.exporter.otlphttp.tempo.input]
+  }
+}
+
+otelcol.exporter.prometheus "workers" {
+  forward_to                       = [prometheus.remote_write.local.receiver]
+  add_metric_suffixes              = false
+  resource_to_telemetry_conversion = true
+}
+
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+otelcol.exporter.otlphttp "tempo" {
+  client {
+    endpoint = "http://tempo:4318"
+  }
+}

@@ -42,6 +42,12 @@ export class Metrics {
     labelNames: ["service_name", "method", "route"],
     registers: [this.registry],
   });
+  private readonly hypothesisReviews = new Counter({
+    name: "hypothesis_review_submissions_total",
+    help: "Submitted operator verdicts for incident hypotheses",
+    labelNames: ["service_name", "verdict"],
+    registers: [this.registry],
+  });
   private readonly rumHistograms: ReadonlyMap<string, Histogram<string>> =
     new Map(
       (
@@ -165,5 +171,14 @@ export class Metrics {
     this.rumHistograms
       .get(name)
       ?.observe({ ...labels, rating: rating ?? "unknown" }, value);
+  }
+
+  observeHypothesisReview(
+    verdict: "confirmed" | "refuted" | "inconclusive",
+  ): void {
+    this.hypothesisReviews.inc({
+      service_name: this.serviceName,
+      verdict,
+    });
   }
 }

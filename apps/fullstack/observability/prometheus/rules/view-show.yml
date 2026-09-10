@@ -47,3 +47,39 @@ groups:
         annotations:
           summary: Frontend LCP p95 is in the poor range
           runbook: apps/fullstack/observability/docs/runbooks/frontend-web-vitals.md
+  - name: view-show-workers
+    rules:
+      - alert: ViewShowIngestionRunSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, command) (rate(ingestion_pipeline_run_duration_seconds_bucket[15m]))
+          ) > 120
+        for: 15m
+        labels:
+          severity: warning
+          service: view-show-ingestion
+        annotations:
+          summary: Ingestion run p95 duration is above two minutes
+          runbook: apps/fullstack/observability/docs/runbooks/ingestion-run-slow.md
+      - alert: ViewShowAgenticHighFailureRate
+        expr: |
+          sum(rate(analysis_messages_total{status="failure"}[10m]))
+          /
+          clamp_min(sum(rate(analysis_messages_total[10m])), 0.001)
+          > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          service: view-show-agentic
+        annotations:
+          summary: Analysis worker failure ratio is above five percent
+          runbook: apps/fullstack/observability/docs/runbooks/agentic-high-failure-rate.md
+      - alert: ViewShowAgenticDlqNotEmpty
+        expr: sqs_dead_letter_queue_messages > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: view-show-agentic
+        annotations:
+          summary: Analysis worker dead-letter queue contains messages
+          runbook: apps/fullstack/observability/docs/runbooks/agentic-high-failure-rate.md

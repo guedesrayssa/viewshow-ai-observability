@@ -19,7 +19,7 @@ resource "random_password" "grafana" {
 resource "aws_security_group" "observabilidade" {
   count       = var.observabilidade_habilitada ? 1 : 0
   name        = "${local.nome_observabilidade}-sg"
-  description = "Grafana via SSM; OTLP somente a partir da API ECS"
+  description = "Grafana via SSM; telemetria somente a partir dos servicos ECS"
   vpc_id      = data.aws_vpc.default.id
 
   dynamic "ingress" {
@@ -69,6 +69,17 @@ resource "aws_security_group_rule" "loki_api" {
   source_security_group_id = aws_security_group.servico.id
 }
 
+resource "aws_security_group_rule" "otlp_workers" {
+  count                    = var.observabilidade_habilitada ? 1 : 0
+  type                     = "ingress"
+  description              = "OTLP HTTP enviado pelos workers no ECS ao Alloy"
+  from_port                = 4320
+  to_port                  = 4320
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.observabilidade[0].id
+  source_security_group_id = aws_security_group.servico.id
+}
+
 locals {
   dashboard_observabilidade = var.observabilidade_habilitada ? templatefile(
     "${path.module}/observability/aws/view-show-aws.json.tftpl",
@@ -95,9 +106,9 @@ resource "aws_instance" "observabilidade" {
   iam_instance_profile        = data.aws_iam_instance_profile.lab[0].name
 
   user_data = templatefile("${path.module}/observability/aws/user-data.sh.tftpl", {
-    aws_region                 = var.regiao
-    grafana_password_base64    = base64encode(random_password.grafana[0].result)
-    compose_gzip               = base64gzip(file("${path.module}/observability/aws/docker-compose.yml"))
+    aws_region              = var.regiao
+    grafana_password_base64 = base64encode(random_password.grafana[0].result)
+    compose_gzip            = base64gzip(file("${path.module}/observability/aws/docker-compose.yml"))
     prometheus_gzip = base64gzip(replace(
       file("${path.module}/observability/aws/prometheus.yml"),
       "__API_TARGET__",

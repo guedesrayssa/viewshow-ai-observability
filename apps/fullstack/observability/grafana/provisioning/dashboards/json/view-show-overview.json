@@ -114,8 +114,13 @@
         "sortOrder": "Descending",
         "wrapLogMessage": true
       },
-      "targets": [{ "expr": "{service_name=~\".*api\"} | json", "refId": "A" }],
-      "title": "Correlated API logs",
+      "targets": [
+        {
+          "expr": "{service_name=~\".*api|view-show-ingestion|view-show-agentic\"} | json",
+          "refId": "A"
+        }
+      ],
+      "title": "Correlated application logs",
       "type": "logs"
     },
     {
@@ -131,6 +136,111 @@
       ],
       "title": "Firing alerts",
       "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "rows/s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 26 },
+      "id": 9,
+      "targets": [
+        {
+          "expr": "sum by (source_dataset) (rate(ingestion_records_read_total[5m]))",
+          "legendFormat": "read {{source_dataset}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (source_dataset) (rate(ingestion_records_written_total[5m]))",
+          "legendFormat": "written {{source_dataset}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Ingestion throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 26 },
+      "id": 10,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, command) (rate(ingestion_pipeline_run_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{command}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Ingestion run duration p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 26 },
+      "id": 11,
+      "targets": [
+        {
+          "expr": "sum by (source_dataset, reason) (increase(ingestion_records_rejected_total[15m]))",
+          "legendFormat": "rejected {{source_dataset}} / {{reason}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (source_dataset) (increase(ingestion_schema_drift_total[15m]))",
+          "legendFormat": "schema drift {{source_dataset}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Ingestion quality failures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 34 },
+      "id": 12,
+      "targets": [
+        {
+          "expr": "sum by (event_type, status) (rate(analysis_messages_total[5m]))",
+          "legendFormat": "{{event_type}} / {{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Analysis worker outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 34 },
+      "id": 13,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, model_id) (rate(bedrock_invocation_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{model_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Bedrock invocation latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 34 },
+      "id": 14,
+      "targets": [
+        {
+          "expr": "sqs_queue_depth_messages",
+          "legendFormat": "queue",
+          "refId": "A"
+        },
+        {
+          "expr": "sqs_dead_letter_queue_messages",
+          "legendFormat": "DLQ",
+          "refId": "B"
+        }
+      ],
+      "title": "Analysis queue depth",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
@@ -141,5 +251,5 @@
   "timezone": "browser",
   "title": "View Show — Application Observability",
   "uid": "view-show-observability",
-  "version": 1
+  "version": 2
 }

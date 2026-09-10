@@ -12,6 +12,19 @@ Os três compartilham a mesma matriz de requisitos (RNF01 a RNF15) e as mesmas
 decisões de arquitetura (ADR-002, ADR-004 e ADR-005), cada um pelo ângulo do seu
 sinal.
 
+## Estado da implementação
+
+A API e o frontend emitem sua telemetria em seus runtimes atuais. As fronteiras
+Python de ingestão e análise já oferecem fachadas OpenTelemetry testadas, com
+Python 3.13 e OpenTelemetry 1.44, e o Alloy recebe seu OTLP/HTTP em `:4320`,
+enviando métricas ao Prometheus e traces ao Tempo. Os dashboards, alertas e
+runbooks dos dois serviços também estão provisionados.
+
+Isso não cria lógica de ingestão ou análise: esses diretórios ainda não possuem
+entrypoints de negócio. Portanto, as séries `ingestion_*`, `analysis_*` e
+`bedrock_*` só aparecem quando os futuros workers chamarem as fachadas já
+disponíveis.
+
 ## Ordem de leitura sugerida
 
 1. **Métricas**, para o vocabulário de indicadores e a matriz de requisitos.

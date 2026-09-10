@@ -370,6 +370,7 @@ export function createApp(deps: AppDependencies) {
         parsed.data,
         actor.id,
       );
+      metrics.observeHypothesisReview(parsed.data.status);
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
