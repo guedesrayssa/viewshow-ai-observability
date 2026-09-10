@@ -1,8 +1,6 @@
 /**
- * Seed de CARGA para monitoracao-operacional.
- *
- * Diferente de scripts/seed.js (4 incidentes fixos, para o frontend ter dado
- * plausível), este existe para que o teste de desempenho meça algo real:
+ * Seed de CARGA para monitoracao-operacional. Usado pela suíte k6 em
+ * apps/backend/api/loadtest/ para medir algo real, não vazio:
  *
  *   - volume suficiente para a resposta de /api/v1/incidents ter tamanho de
  *     produção;
@@ -10,46 +8,19 @@
  *     varre, para que window=15m, 1h e 24h exerçam caminhos diferentes;
  *   - IDs ordinais e determinísticos (inc-000001 …), para o k6 sortear alvos
  *     sem precisar ler um manifesto;
- *   - a maioria dos incidentes já com hipótese registrada, para
- *     /diagnosis exercitar tanto o caminho "pronto" quanto o
- *     "not_started" (ver AGENTIC_RESULT_UNAVAILABLE em incident-use-cases.ts).
+ *   - a maioria dos incidentes já com hipótese registrada, para /diagnosis
+ *     exercitar tanto o caminho "pronto" quanto o "not_started";
+ *   - snapshots de projeção para dashboard/overview e monitoring/overview
+ *     (pk `VIEW#OVERVIEW#GLOBAL#<YYYYMMDD>` / `VIEW#MONITORING#<fonte>#<YYYYMMDD>`,
+ *     sk `T#<epochMs>`, item `{ publicData, observedThrough, coverageRatio,
+ *     source }`), em várias idades para cobrir os presets de window de 15m a
+ *     24h — ver `buildViewItems()`. Envelhecem como o resto do seed; fora da
+ *     janela pedida, as duas rotas respondem 503 `DATA_UNAVAILABLE` (esperado,
+ *     não falha do teste — `consultas.js`/`auth-check.js` toleram 200 ou 503).
  *
- * CORREÇÃO (2026-09): este script dependia de um módulo `src/db/keys.js` que
- * não existe mais desde o refactor que colapsou os microsserviços num
- * monólito modular (apps/backend/api/src/modules/incidents/...) — rodá-lo
- * sem esta correção falha com "Não encontrei src/db/keys.js". As chaves
- * abaixo foram realinhadas lendo diretamente
- * apps/backend/api/src/modules/incidents/adapters/dynamodb-incident-repository.ts
- * (pk = `INC#<hora ISO>`, sk com prefixo próprio por tipo de item) e
- * apps/backend/api/src/modules/incidents/domain/incident.ts (`status()` só
- * aceita critical/warning/success como atalho, ou os cinco status
- * canônicos). O conjunto de referência (golden set) também foi removido
- * daqui: nada no código atual de apps/backend/api o lê mais — era usado pelo
- * orquestrador/agente legado, hoje congelado em apps/backend/agentic
- * (ver README daquela pasta). Mantê-lo só custaria escritas sem uso.
- *
- * ADIÇÃO (2026-09): dashboard/overview e monitoring/overview NÃO dependem da
- * Ingestão futura para responder — o formato de projeção lido por
- * dynamodb-dashboard-read-repository.ts já existe hoje:
- *   pk: VIEW#OVERVIEW#GLOBAL#<YYYYMMDD>       sk: T#<epochMs>
- *   pk: VIEW#MONITORING#<fonte>#<YYYYMMDD>    sk: T#<epochMs>
- *   Item: { publicData: {...}, observedThrough, coverageRatio, source }
- * Este script agora grava algumas dessas projeções (várias idades, para
- * cobrir os presets de window de 15m a 24h — ver buildViewItems()). Sem essa
- * seed (ou depois que os itens "envelhecem" fora da janela pedida), as duas
- * rotas voltam a responder 503 DATA_UNAVAILABLE — estado real e esperado,
- * não falha do teste (consultas.js e auth-check.js já toleram "200 ou 503"
- * nessas duas rotas por causa disso).
- *
- * Este é o arquivo canônico e executável (precisa estar em
- * apps/backend/api/scripts/ para rodar a partir do projeto da API). Extensão
- * `.cjs` (não `.js`) de propósito: package.json declara `"type": "module"`,
- * então um `.js` aqui seria carregado como ESM e `require`/`module.exports`
- * quebrariam com "require is not defined in ES module scope". Cópia
- * versionada para o relatório de carga:
- * artefatos/sprint3/testes-carga/seed-carga.js — mantenha as duas em
- * sincronia manual (a cópia pode ficar `.js` porque não há `package.json`
- * acima dela até a raiz do repositório, então o Node já trata como CommonJS).
+ * Extensão `.cjs` (não `.js`) de propósito: `package.json` declara
+ * `"type": "module"`, então um `.js` aqui seria carregado como ESM e
+ * `require`/`module.exports` quebrariam.
  *
  * USO: node scripts/seed-carga.cjs (a partir de apps/backend/api)
  *
