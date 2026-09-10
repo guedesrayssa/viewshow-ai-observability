@@ -6,7 +6,7 @@
 // ficam em CannotPullContainerError.
 
 resource "aws_ecr_repository" "api" {
-  name = var.nome_repositorio_ecr
+  name = local.nome_repositorio_ecr
 
   // Mutável porque o pipeline reaproveita a tag de cache do buildx.
   image_tag_mutability = "MUTABLE"

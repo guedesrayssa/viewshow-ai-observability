@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const repoRoot = path.resolve(__dirname, "../../../../..");
 const script = path.join(repoRoot, "scripts/ci/smoke-container.sh");
-const image = "monitoracao-api:test";
+const image = "g05-s3-api:test";
 
 function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
@@ -91,6 +91,7 @@ test("container smoke accepts health and a fail-closed federated login", () => {
     calls,
     /--env NODE_ENV=test --env AUTH_COOKIE_SECRET=.* --env CURSOR_SECRET=/,
   );
+  assert.match(calls, /docker:run --detach --name g05-s3-api-smoke-/);
   assert.match(calls, /\/auth\/login/);
   assert.match(calls, /docker:rm -f/);
 });

@@ -3,7 +3,7 @@
 // SG do ALB". A porta 3000 nunca fica exposta à internet.
 
 resource "aws_security_group" "alb" {
-  name        = "${var.nome_alb}-sg"
+  name        = "${local.nome_alb}-sg"
   description = "Entrada publica na porta 80 do ALB"
   vpc_id      = data.aws_vpc.default.id
 
@@ -29,7 +29,7 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_security_group" "servico" {
-  name        = var.nome_security_group
+  name        = local.nome_security_group
   description = "Porta do container liberada apenas a partir do SG do ALB"
   vpc_id      = data.aws_vpc.default.id
 

@@ -32,7 +32,7 @@ function metadata(entries, ndjson = false) {
 function runSynchronizer({
   account = "248880318395",
   callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
-  ecrResult = "monitoracao-api",
+  ecrResult = "g05-s3-api",
   ecsResult = "ACTIVE\t0",
   variableMetadata = "[]",
   failWriteAttempt = 0,
@@ -79,9 +79,9 @@ elif [[ "$*" == "configure get services --profile default" ]]; then
   printf '%s\\n' "$CONFIGURED_SERVICES"
 elif [[ "$*" == "--profile default sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\\n' "$FAKE_ACCOUNT" "$CALLER_ARN"
-elif [[ "$*" == "--profile default ecr describe-repositories --region us-east-1 --repository-names monitoracao-api --query repositories[0].repositoryName --output text" ]]; then
+elif [[ "$*" == "--profile default ecr describe-repositories --region us-east-1 --repository-names g05-s3-api --query repositories[0].repositoryName --output text" ]]; then
   printf '%s\\n' "$FAKE_ECR_RESULT"
-elif [[ "$*" == "--profile default ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query [services[0].status, length(failures)] --output text" ]]; then
+elif [[ "$*" == "--profile default ecs describe-services --region us-east-1 --cluster g05-s3-cluster --services g05-s3-api-service --query [services[0].status, length(failures)] --output text" ]]; then
   printf '%b\\n' "$FAKE_ECS_RESULT"
 elif [[ "$*" == "configure export-credentials --profile default --format process" ]]; then
   printf '%s\\n' '{"Version":1,"AccessKeyId":"fixture-access","SecretAccessKey":"fixture-secret","SessionToken":"fixture-session"}'

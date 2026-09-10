@@ -117,54 +117,49 @@ npm run test:e2e-local
 Esse teste sobe um DynamoDB Local fixado por digest, compila a API e exercita a
 superfície HTTP real sem herdar credenciais ou profiles AWS.
 
-## Migração segura do estado local
+## Estado local isolado e teardown
 
-Esta seção se aplica somente a quem executou Terraform no antigo diretório
-`apps/infra` e ainda mantém ali um `terraform.tfstate` local. A mudança do
-diretório não altera os endereços dos recursos no estado, mas o Terraform no
-novo diretório não encontra automaticamente o arquivo antigo. **Não execute
-`terraform apply` com um estado novo ou vazio**: isso pode propor a criação de
-recursos que já existem.
+Esta entrega só aceita `deployment_namespace=g05-s3` e o provider só permite a
+conta AWS `248880318395`. O estado legado é de outra conta e não pode ser
+adotado por esta stack; copiar, importar ou migrar esse estado faria o Terraform
+associar recursos fora do namespace isolado.
 
-Com nenhum processo Terraform em execução, a partir da raiz do repositório:
+Antes de qualquer mutação remota, inicialize o diretório e revise o plano com o
+namespace obrigatório:
 
 ```bash
-test -f apps/infra/terraform.tfstate
-test ! -e apps/infra/terraform.tfstate.pre-fullstack
-test ! -e apps/fullstack/terraform.tfstate
-cp -p apps/infra/terraform.tfstate apps/infra/terraform.tfstate.pre-fullstack
 terraform -chdir=apps/fullstack init -backend=false -input=false
-cp -p apps/infra/terraform.tfstate apps/fullstack/terraform.tfstate
-terraform -chdir=apps/fullstack state list
+terraform -chdir=apps/fullstack plan -out=g05-s3.tfplan \
+  -var='deployment_namespace=g05-s3'
+# Forma geral: terraform show -json <saved plan> | node scripts/ci/validate-terraform-create-plan.mjs
+terraform show -json apps/fullstack/g05-s3.tfplan | node scripts/ci/validate-terraform-create-plan.mjs
+terraform -chdir=apps/fullstack apply -input=false g05-s3.tfplan
 ```
 
-O primeiro `cp` é uma cópia de segurança preservada no local antigo; o segundo
-adota a mesma linhagem e o mesmo serial no novo diretório. Não copie a pasta
-`.terraform`, não use `terraform state mv` e não apague o estado ou a cópia
-antiga nesta etapa. Se `apps/fullstack/terraform.tfstate` já existir, pare e
-compare os estados em vez de sobrescrevê-lo.
+O gate aceita somente o plano de criação isolado previsto para esta stack. Só
+depois de ele aceitar o JSON é permitido aplicar exatamente esse mesmo plano
+salvo, sem regenerá-lo entre o gate e o `apply`.
 
-Depois, gere e revise um plano no novo diretório. Ele não deve propor recriar
-todos os recursos já registrados. Somente após essa revisão prossiga com uma
-aplicação deliberada. Este repositório documenta o procedimento, mas não moveu
-nenhum estado local e não executou `plan` ou `apply` nesta entrega.
+Uma aplicação deliberada cria um novo estado local em `apps/fullstack`. Esse
+novo estado local é necessário para o teardown posterior: preserve-o até que a
+remoção da stack isolada esteja concluída. Não o substitua por estado legado.
 
 ## Aplicação remota
 
 Uma aplicação futura exige sessão válida no AWS Academy, Docker, Node.js e
-Terraform. Antes de qualquer mutação remota, revise o plano do Terraform e as
-permissões da `LabRole`. Esta entrega não realizou essa etapa e não afirma que
-recursos já existam na AWS.
+Terraform. Antes de qualquer mutação remota, gere o plano salvo, passe-o pelo
+gate local e revise as permissões da `LabRole`. Esta entrega não realizou essa
+etapa e não afirma que recursos já existam na AWS.
 
 ALB, Fargate e API Gateway continuam gerando custo enquanto provisionados. A
-remoção dos recursos deve fazer parte do procedimento operacional de quem
-decidir aplicar a stack.
+stack e o estado devem ser preservados para inspeção e diagnóstico. Execute o
+teardown somente após um pedido explícito posterior e usando o mesmo estado.
 
 ## Como encontrar o link do deploy
 
 Depois de um `apply` deliberado, o output `painel_url` contém o endereço HTTPS
 do painel. Ele pode ser consultado novamente, sem depender da saída do terminal
-original, a partir do estado adotado no diretório atual:
+original, a partir do novo estado local isolado:
 
 ```bash
 terraform -chdir=apps/fullstack output -raw painel_url
@@ -178,20 +173,18 @@ leem o estado local; não criam nem alteram recursos.
 | Variável | Padrão | Uso |
 |---|---|---|
 | `regiao` | `us-east-1` | Região permitida pelo Learner Lab |
-| `nome_cluster` | `data-ingestion-cluster` | Cluster ECS |
-| `nome_alb` | `data-ingestion-alb` | ALB público |
-| `nome_servico` | `monitoracao-api-service` | Serviço ECS |
-| `nome_task_definition` | `monitoracao-api-task` | Família da task |
-| `nome_container` | `monitoracao-api-container` | Container atendido pelo target group |
-| `nome_repositorio_ecr` | `monitoracao-api` | Repositório da imagem |
-| `nome_app_amplify` | `g05-painel` | Aplicação do painel |
+| `deployment_namespace` | sem padrão; deve ser `g05-s3` | Origem obrigatória dos nomes isolados |
 | `branch_amplify` | `producao` | Branch hospedada no Amplify |
-| `tabela_operacional` | `monitoracao-operacional` | Read/write model operacional |
-| `tabela_golden_set` | `monitoracao-golden-set` | Casos curados |
 | `cpu_task` / `memoria_task` | `256` / `512` | Capacidade da task Fargate |
 | `quantidade_tasks` | `1` | Réplicas do serviço |
 | `bedrock_habilitado` | `false` | Explicação opcional via Bedrock |
 | `retencao_logs_dias` | `7` | Retenção do log group |
+
+Os nomes efetivos são derivados de `g05-s3`: ECR `g05-s3-api`, cluster ECS
+`g05-s3-cluster`, serviço `g05-s3-api-service`, task family
+`g05-s3-api-task`, container `g05-s3-api`, ALB `g05-s3-alb`, target group
+`g05-s3-api-tg`, security group da API `g05-s3-api-sg`, Amplify
+`g05-s3-painel`, tabelas `g05-s3-operacional` e `g05-s3-golden-set`.
 
 ## Outputs não sensíveis
 

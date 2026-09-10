@@ -204,16 +204,28 @@ ALB, imagem no ECR e duas tabelas DynamoDB) e a observabilidade local.
 
 Pré-requisitos para uma aplicação deliberada: **Terraform 1.7+**, **Docker**
 com o daemon ativo, **Node.js 22 + npm** e **AWS CLI**, além de uma sessão válida
-do AWS Academy. Quem já usava `apps/infra` deve seguir primeiro a seção de
-migração do estado local no guia abaixo; aplicar a partir de um estado vazio
-pode tentar recriar recursos existentes.
+do AWS Academy. O estado legado pertence a outra conta e não pode ser adotado,
+copiado, importado ou migrado para esta stack. A implantação isolada cria um
+novo estado local em `apps/fullstack`; preserve-o, pois ele é necessário para
+diagnóstico e para um teardown posterior explicitamente solicitado.
 
 ```bash
-cd apps/fullstack
-terraform init
-terraform plan
-terraform apply
+terraform -chdir=apps/fullstack init -backend=false -input=false
+mkdir -p apps/fullstack/.terraform-artifacts
+terraform -chdir=apps/fullstack plan \
+  -input=false \
+  -var='deployment_namespace=g05-s3' \
+  -out=.terraform-artifacts/g05-s3.tfplan
+terraform -chdir=apps/fullstack show -json \
+  .terraform-artifacts/g05-s3.tfplan | \
+  node scripts/ci/validate-terraform-create-plan.mjs
+terraform -chdir=apps/fullstack apply \
+  -input=false \
+  .terraform-artifacts/g05-s3.tfplan
 ```
+
+O `apply` usa exatamente o plano salvo que foi convertido para JSON e aceito
+pelo gate create-only; não gere outro plano entre a validação e a aplicação.
 
 O contrato público atual usa somente autenticação federada. Enquanto não houver
 um adaptador de identidade real, login e callback falham fechado com
@@ -221,7 +233,7 @@ um adaptador de identidade real, login e callback falham fechado com
 Esta entrega valida a configuração localmente e não afirma que um `apply` foi
 executado na AWS.
 
-Detalhes de pré-requisitos, migração segura do estado local, variáveis, [como encontrar o
+Detalhes de pré-requisitos, preservação segura do estado local, variáveis, [como encontrar o
 link do deploy depois de fechar o
 terminal](apps/fullstack/documentation/infraestrutura-integracao.md#como-encontrar-o-link-do-deploy)
 e uma tabela de troubleshooting estão em

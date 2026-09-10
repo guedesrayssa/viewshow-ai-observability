@@ -21,11 +21,13 @@ terraform {
 }
 
 provider "aws" {
-  region = var.regiao
+  region              = var.regiao
+  allowed_account_ids = ["248880318395"]
 
   default_tags {
     tags = {
       Projeto   = "view-show"
+      Stack     = "g05-sprint3-entrega"
       ManagedBy = "terraform"
     }
   }

@@ -1,5 +1,5 @@
 resource "aws_ecs_cluster" "principal" {
-  name = var.nome_cluster
+  name = local.nome_cluster
 
   setting {
     name  = "containerInsights"
@@ -24,7 +24,7 @@ resource "aws_ecs_cluster_capacity_providers" "principal" {
 // O grupo é declarado aqui para manter a retenção sob controle; sem isso, o
 // padrão "nunca expira" acumularia custo silencioso no orçamento do laboratório.
 resource "aws_cloudwatch_log_group" "api" {
-  name              = "/ecs/${var.nome_repositorio_ecr}"
+  name              = local.nome_log_group
   retention_in_days = var.retencao_logs_dias
 
   tags = {
@@ -45,7 +45,7 @@ resource "random_password" "cursor_secret" {
 }
 
 resource "aws_ecs_task_definition" "api" {
-  family                   = var.nome_task_definition
+  family                   = local.nome_task_definition
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = var.cpu_task
@@ -58,7 +58,7 @@ resource "aws_ecs_task_definition" "api" {
 
   container_definitions = jsonencode([
     {
-      name      = var.nome_container
+      name      = local.nome_container
       image     = local.uri_imagem
       essential = true
 
@@ -102,7 +102,7 @@ resource "aws_ecs_task_definition" "api" {
 }
 
 resource "aws_ecs_service" "api" {
-  name            = var.nome_servico
+  name            = local.nome_servico
   cluster         = aws_ecs_cluster.principal.id
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = var.quantidade_tasks
@@ -120,7 +120,7 @@ resource "aws_ecs_service" "api" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.api.arn
-    container_name   = var.nome_container
+    container_name   = local.nome_container
     container_port   = 3000
   }
 
