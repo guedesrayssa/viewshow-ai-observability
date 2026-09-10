@@ -85,6 +85,27 @@ done
 
 ## Subir na AWS
 
+### Somente observabilidade no Learner Lab
+
+Quando a aplicação completa ainda não estiver provisionada, use o script
+isolado abaixo no AWS CloudShell. Ele cria apenas a EC2 com Grafana, Prometheus,
+Loki e Tempo; não cria ECS, ALB, DynamoDB ou Amplify.
+
+```bash
+cd apps/fullstack/observability/aws
+export GRAFANA_CIDR_ACESSO="SEU_IP_PUBLICO/32"
+chmod +x deploy-learner-lab.sh
+./deploy-learner-lab.sh
+```
+
+A execução reaproveita uma instância existente chamada
+`view-show-observabilidade`. A senha inicial fica em
+`~/.view-show-grafana-admin-password`, com acesso restrito ao usuário do
+CloudShell. O script só imprime a URL depois de validar a saúde do Grafana via
+SSM.
+
+### Aplicação completa com Terraform
+
 Pré-requisitos: Terraform, Docker, Node, AWS CLI, Session Manager plugin e uma
 sessão válida do AWS Academy. As credenciais temporárias são as mesmas usadas
 pela infraestrutura fullstack.
