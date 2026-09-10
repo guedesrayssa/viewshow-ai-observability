@@ -85,6 +85,27 @@ done
 
 ## Subir na AWS
 
+### Somente observabilidade no Learner Lab
+
+Quando a aplicação completa ainda não estiver provisionada, use o script
+isolado abaixo no AWS CloudShell. Ele cria apenas a EC2 com Grafana, Prometheus,
+Loki e Tempo; não cria ECS, ALB, DynamoDB ou Amplify.
+
+```bash
+cd apps/fullstack/observability/aws
+export GRAFANA_CIDR_ACESSO="SEU_IP_PUBLICO/32"
+chmod +x deploy-learner-lab.sh
+./deploy-learner-lab.sh
+```
+
+A execução reaproveita uma instância existente chamada
+`view-show-observabilidade`. A senha inicial fica em
+`~/.view-show-grafana-admin-password`, com acesso restrito ao usuário do
+CloudShell. O script só imprime a URL depois de validar a saúde do Grafana via
+SSM.
+
+### Aplicação completa com Terraform
+
 Pré-requisitos: Terraform, Docker, Node, AWS CLI, Session Manager plugin e uma
 sessão válida do AWS Academy. As credenciais temporárias são as mesmas usadas
 pela infraestrutura fullstack.
@@ -93,16 +114,11 @@ pela infraestrutura fullstack.
 cd apps/fullstack
 aws sts get-caller-identity
 terraform init
-terraform plan \
-  -var='deployment_namespace=g05-s3' \
-  -var='observabilidade_habilitada=true' \
-  -out=g05-s3-observabilidade.tfplan
-terraform apply g05-s3-observabilidade.tfplan
+terraform plan
+terraform apply
 ```
 
-Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
-na AWS. O plano acima cria uma EC2 `g05-s3-observabilidade` do tipo `t3.medium`
-com 30 GiB de gp3 criptografado, instala o
+O `apply` cria uma EC2 `t3.medium` com 30 GiB de gp3 criptografado, instala o
 Docker Compose e inicia os quatro componentes. Não é necessário clonar o
 repositório na instância: os arquivos versionados são compactados e enviados
 pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
@@ -137,10 +153,7 @@ Se SSM não estiver disponível na conta, restrinja o acesso direto ao seu IP;
 jamais use `0.0.0.0/0` para o Grafana:
 
 ```bash
-terraform apply \
-  -var='deployment_namespace=g05-s3' \
-  -var='observabilidade_habilitada=true' \
-  -var='grafana_cidr_acesso=203.0.113.10/32'
+terraform apply -var='grafana_cidr_acesso=203.0.113.10/32'
 terraform output grafana_acesso
 ```
 
@@ -153,14 +166,14 @@ estável.
 
 | Data source | Estado depois do apply |
 | --- | --- |
-| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/g05-s3-api` disponíveis imediatamente |
-| Prometheus | Auto-observação da stack; a API expõe `/metrics`, mas o scrape remoto exige uma regra de rede deliberada |
+| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/monitoracao-api` disponíveis imediatamente |
+| Prometheus | Auto-observação da stack; a API ainda precisa expor `/metrics` |
 | Loki | Pronto para ingestão; os logs atuais da API permanecem no CloudWatch |
-| Tempo | Receptor OTLP/HTTP privado em `:4318`, restrito ao security group da API |
+| Tempo | Receptor OTLP privado em `:4317/:4318`; a API ainda precisa do SDK OpenTelemetry |
 
-O Terraform injeta `OTEL_SERVICE_NAME=g05-s3-api` e o endereço privado do Tempo
-na task ECS somente quando o opt-in está ativo. A API TypeScript já inicializa o
-SDK OpenTelemetry quando esse endpoint existe.
+O Terraform já injeta `OTEL_SERVICE_NAME=view-show-api` e o endereço privado do
+Tempo na task ECS. Essas variáveis não geram traces sozinhas: passam a valer
+assim que a instrumentação OpenTelemetry for adicionada ao processo Node.
 
 ### Operação e custo no Learner Lab
 
@@ -172,9 +185,7 @@ enquanto a EC2 estiver parada.
 Para remover a stack inteira e seus dados:
 
 ```bash
-terraform destroy \
-  -var='deployment_namespace=g05-s3' \
-  -var='observabilidade_habilitada=true'
+terraform destroy
 ```
 
 Uma alteração nos arquivos de configuração recria a EC2 para reaplicar o
