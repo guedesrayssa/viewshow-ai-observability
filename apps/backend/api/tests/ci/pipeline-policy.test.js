@@ -100,6 +100,42 @@ test("backend changes include every microservice workspace and operational scrip
   assert.doesNotMatch(backendChanges, /docs\/superpowers/);
 });
 
+test("fullstack changes trigger both IaC validations", () => {
+  const iacChanges = topLevelBlock(".mudou-iac");
+  assert.match(iacChanges, /apps\/fullstack\/\*\*\/\*/);
+
+  for (const jobName of ["validate_fullstack_iac", "validate_observability_iac"]) {
+    const job = topLevelBlock(jobName);
+    assert.match(job, /CI_PIPELINE_SOURCE == "merge_request_event"/);
+    assert.match(job, /CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"/);
+    assert.match(job, /CI_PIPELINE_SOURCE == "push"/);
+    assert.match(job, /CI_COMMIT_BRANCH == "develop"/);
+    assert.match(job, /changes: \*iac_changes/);
+  }
+});
+
+test("IaC validation uses immutable executors and read-only checks", () => {
+  const terraformJob = topLevelBlock("validate_fullstack_iac");
+  assert.match(
+    terraformJob,
+    /name: hashicorp\/terraform:1\.15\.9@sha256:fd5debae63188975d6febc6aa5bd1a982a588f55e4a4ddb7de28be923f250456/,
+  );
+  assert.match(terraformJob, /terraform fmt -check -recursive/);
+  assert.match(terraformJob, /terraform init -backend=false -input=false/);
+  assert.match(terraformJob, /terraform validate/);
+  assert.doesNotMatch(terraformJob, /terraform (plan|apply|destroy)/);
+
+  const observabilityJob = topLevelBlock("validate_observability_iac");
+  assert.match(
+    observabilityJob,
+    /image: docker:27\.4\.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a/,
+  );
+  assert.match(
+    observabilityJob,
+    /docker compose -f apps\/fullstack\/docker-compose\.observability\.yml config --quiet/,
+  );
+});
+
 test("merge requests validate containers without protected AWS scope", () => {
   const job = topLevelBlock("validate_backend_container");
   assert.match(job, /^  tags:\n    - inteli-gitlab-runner-prd$/m);

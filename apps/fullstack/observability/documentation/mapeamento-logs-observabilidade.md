@@ -58,7 +58,7 @@
 
 1. **`apps/frontend`:** Painel em **Next.js 16 (App Router)** e **React 19**, compilado como **exportação estática** (`output: "export"` em `apps/frontend/next.config.ts`). Isso muda radicalmente o modelo de log do frontend e é tratado na seção [4.1](#41-restrição-de-arquitetura-exportação-estática).
 2. **`apps/backend/api`:** API HTTP em **Node.js (Express 5)**, com rotas de autenticação, incidentes, golden set, ML e dashboard, acesso ao **Amazon DynamoDB** e integração opcional com o **Amazon Bedrock**.
-3. **`apps/backend/ingestion-data`:** Serviço batch em **Python** (arquitetura hexagonal), ainda **não implementado no repositório**, especificado em [`artefatos/arquitetura/data-ingestion-service-architecture.md`](../../../artefatos/arquitetura/data-ingestion-service-architecture.md) e [`artefatos/contratos/argus-dynamodb-ingestion-contract.md`](../../../artefatos/contratos/argus-dynamodb-ingestion-contract.md).
+3. **`apps/backend/ingestion-data`:** Serviço batch em **Python** (arquitetura hexagonal), ainda **não implementado no repositório**, especificado em [`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md).
 
 > [!IMPORTANT]
 > O MVP básico da Sprint 1 (`apps/basica`, API Flask e frontend estático) está fora deste levantamento, exceto por uma menção: `apps/frontend/lib/data/client.ts` ainda aponta a base `telemetria` para essa API. Enquanto essa dependência existir, as falhas de leitura de telemetria aparecerão nos logs do navegador descritos na seção [4.2](#42-catálogo-de-eventos-de-log-do-navegador).
@@ -108,7 +108,7 @@
 │     livre (tabela acima).            │     service_name e trace_id.         │
 │   - Envelope de erro HTTP com        │   - Middleware de log de acesso.     │
 │     message, já padronizado.         │   - requestId propagado ao envelope  │
-│ • apps/observability:                │     de erro do contrato da API.      │
+│ • apps/fullstack/observability:      │     de erro do contrato da API.      │
 │   - Loki 3.7.7 na porta 3100.        │   - Redação de senha, cookie e       │
 │   - Retenção de 168h e compactor     │     e-mail antes da serialização.    │
 │     com retention_enabled.           │ • apps/frontend:                     │
@@ -118,7 +118,7 @@
 │                                      │ • apps/backend/ingestion-data:       │
 │                                      │   - Log JSON por run, fonte e etapa. │
 │                                      │   - runId, watermark e contagens.    │
-│                                      │ • apps/observability:                │
+│                                      │ • apps/fullstack/observability:      │
 │                                      │   - Coletor de logs (Grafana Alloy). │
 └──────────────────────────────────────┴──────────────────────────────────────┘
 ```
@@ -126,7 +126,7 @@
 ### 1.4 Lacuna Estrutural: A Pilha Não Tem Coletor de Logs
 
 > [!WARNING]
-> O `docker-compose.observability.yml` sobe **Grafana, Prometheus, Loki e Tempo**, mas **nenhum agente de coleta de logs**. Não há Promtail, não há Grafana Alloy e não há driver de log do Docker apontando para o Loki. Hoje, mesmo que a API passasse a emitir JSON perfeito em `stdout`, **nada levaria essa linha até a porta 3100**.
+> O `apps/fullstack/docker-compose.observability.yml` sobe **Grafana, Prometheus, Loki e Tempo**, mas **nenhum agente de coleta de logs**. Não há Promtail, não há Grafana Alloy e não há driver de log do Docker apontando para o Loki. Hoje, mesmo que a API passasse a emitir JSON perfeito em `stdout`, **nada levaria essa linha até a porta 3100**.
 
 &emsp; Existem dois caminhos para fechar essa lacuna, e a escolha muda o que precisa ser escrito na aplicação:
 
@@ -169,7 +169,7 @@ flowchart TD
         CWL["CloudWatch /ecs (AWS Fargate)"]
     end
 
-    subgraph OBS["apps/observability (Pilha Grafana LGTM)"]
+    subgraph OBS["apps/fullstack/observability (Pilha Grafana LGTM)"]
         LOKI["Loki (:3100) · retenção 168h"]
         TEMPO["Tempo (:3200) · traces"]
         PROM["Prometheus (:9090) · métricas"]
@@ -204,7 +204,7 @@ flowchart TD
 ```
 
 > [!NOTE]
-> As setas entre Loki, Tempo e Prometheus não são fluxo de dados: são as correlações **já provisionadas** em `apps/observability/grafana/provisioning/datasources/datasources.yml`. Elas funcionam sozinhas assim que os campos da seção [3.1](#31-campos-obrigatórios-do-envelope) estiverem presentes.
+> As setas entre Loki, Tempo e Prometheus não são fluxo de dados: são as correlações **já provisionadas** em `apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml`. Elas funcionam sozinhas assim que os campos da seção [3.1](#31-campos-obrigatórios-do-envelope) estiverem presentes.
 
 ---
 
@@ -298,7 +298,7 @@ flowchart TD
 
 &emsp; Esta é a decisão de maior impacto no custo e no desempenho da consulta. O Loki indexa **rótulos** (labels); cada combinação distinta de valores de rótulo cria um **stream** separado, com seus próprios chunks em disco. Rótulo de alta cardinalidade destrói o Loki.
 
-&emsp; O `apps/observability/loki/loki-config.yml` já habilita `allow_structured_metadata: true`, o que dá o lugar certo para os campos de alta cardinalidade sem transformá-los em rótulo.
+&emsp; O `apps/fullstack/observability/loki/loki-config.yml` já habilita `allow_structured_metadata: true`, o que dá o lugar certo para os campos de alta cardinalidade sem transformá-los em rótulo.
 
 | Categoria | Campos | Onde Vive | Justificativa |
 |:---|:---|:---|:---|
@@ -366,7 +366,7 @@ derivedFields:
 &emsp; O contrato de ingestão já define a regra para os erros persistidos, e ela é estendida aqui a **toda** linha de log:
 
 > Não contêm payload completo, PII, segredo, DSN ou stack trace com parâmetros.
-> ([`argus-dynamodb-ingestion-contract.md`, seção 14](../../../artefatos/contratos/argus-dynamodb-ingestion-contract.md))
+> ([`ingestao-e-dados.md`, seção 14](../../../../artefatos/arquitetura/ingestao-e-dados.md#14-erros-e-qualidade))
 
 | Dado | Tratamento | Onde Aparece Hoje |
 |:---|:---|:---|
@@ -650,7 +650,7 @@ module.exports = pino({
 | Retenção de erros de ingestão | 90 dias | Contrato de ingestão, itens `ERROR#<sequence>` |
 
 > [!WARNING]
-> `auth_enabled: false` e armazenamento em disco local com fator de replicação 1 são adequados ao ambiente de desenvolvimento e **inadequados a produção**, como o próprio `README.md` de `apps/observability` declara. Nenhum endpoint do Loki pode ser exposto fora da rede `view-show-observability`, e o envio de logs do navegador (seção [4.1](#41-restrição-de-arquitetura-exportação-estática)) precisa obrigatoriamente passar pela API, nunca direto.
+> `auth_enabled: false` e armazenamento em disco local com fator de replicação 1 são adequados ao ambiente de desenvolvimento e **inadequados a produção**, como o próprio `README.md` de `apps/fullstack/observability` declara. Nenhum endpoint do Loki pode ser exposto fora da rede `view-show-observability`, e o envio de logs do navegador (seção [4.1](#41-restrição-de-arquitetura-exportação-estática)) precisa obrigatoriamente passar pela API, nunca direto.
 
 &emsp; **Estimativa de volume da API:** com log de acesso em `info` e uma linha por requisição de aproximadamente 600 bytes, 50 requisições por segundo produzem cerca de 2,6 GB por dia antes da compressão. Nos 7 dias de retenção local, aproximadamente 18 GB, o que é aceitável em disco de desenvolvimento mas justifica manter `GET /health` em `debug` e não promover nenhum campo de alta cardinalidade a rótulo.
 
@@ -762,7 +762,7 @@ sum by (reason) (
 
 ### Passo 1: Adicionar o coletor de logs à pilha
 
-&emsp; Criar `apps/observability/alloy/config.alloy`, lendo os contêineres do Docker e enviando ao Loki:
+&emsp; Criar `apps/fullstack/observability/alloy/config.alloy`, lendo os contêineres do Docker e enviando ao Loki:
 
 ```alloy
 discovery.docker "containers" {
@@ -801,7 +801,7 @@ loki.write "default" {
 }
 ```
 
-&emsp; E o serviço correspondente em `docker-compose.observability.yml`:
+&emsp; E o serviço correspondente em `apps/fullstack/docker-compose.observability.yml`:
 
 ```yaml
   alloy:
@@ -813,7 +813,7 @@ loki.write "default" {
       - --server.http.listen-addr=0.0.0.0:12345
       - /etc/alloy/config.alloy
     volumes:
-      - ./apps/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - loki
@@ -906,7 +906,7 @@ mixin() {
 
 ```bash
 # 1. Subir a pilha com o novo coletor
-docker compose -f docker-compose.observability.yml up -d
+docker compose -f apps/fullstack/docker-compose.observability.yml up -d
 
 # 2. Gerar tráfego na API
 curl -s "http://localhost:3000/api/v1/incidents?window=1h" > /dev/null

@@ -1,15 +1,19 @@
-# Infraestrutura — View Show num AWS Academy Learner Lab
+# Infraestrutura e integração fullstack — View Show
+
+Este documento é a fonte canônica da infraestrutura como código (IaC) da
+solução fullstack. Todos os comandos deste guia devem ser executados a partir
+de `apps/fullstack`.
 
 Terraform que reproduz a arquitetura entregue na Sprint 2 — ECS Fargate, ALB,
 ECR, Amplify e DynamoDB — dentro do Learner Lab individual de cada pessoa, com
 um `terraform apply`.
 
 Os nomes dos recursos são os mesmos da Tabela 7 de
-[`artefatos/sprint2/backend-sprint-2.md`](../../artefatos/sprint2/backend-sprint-2.md),
+[`artefatos/sprint2/backend-sprint-2.md`](../../../artefatos/sprint2/backend-sprint-2.md),
 para que o que sobe aqui seja conferível linha a linha contra a documentação da
 arquitetura.
 
-## O que sobe
+## Escopo e recursos AWS
 
 | Recurso | Nome | Arquivo |
 |---|---|---|
@@ -25,10 +29,63 @@ arquitetura.
 | App Amplify (deploy manual por zip) | `g05-painel` | `amplify.tf` |
 | API Gateway (só terminação TLS) | `monitoracao-api-service-tls` | `apigateway.tf` |
 
+O mesmo diretório contém a infraestrutura declarativa local de observabilidade:
+`docker-compose.observability.yml` provisiona Grafana, Prometheus, Loki e Tempo
+com as configurações de `observability/`. Essa stack não é criada pelo
+Terraform e não consome recursos AWS.
+
+Os documentos específicos de métricas, logs e traces ficam em
+[`../observability/documentation/`](../observability/documentation/README.md).
+
+## Estrutura do módulo
+
+| Caminho | Responsabilidade |
+|---|---|
+| `versions.tf` | Versões do Terraform, providers AWS/Random/Archive e tags padrão |
+| `variables.tf` | Parâmetros de região, nomes, capacidade, autenticação e seed |
+| `data.tf` | VPC/subnets default e `LabRole` fornecidos pelo Learner Lab |
+| `network.tf` | Security groups do ALB e do serviço ECS |
+| `alb.tf` | ALB público, target group e health check `/health` |
+| `apigateway.tf` | API Gateway HTTP como terminação TLS para o proxy do Amplify |
+| `ecr.tf` | Repositório ECR, hash da imagem e publicação via Node.js |
+| `ecs.tf` | Cluster, logs, task definition e serviço Fargate |
+| `dynamodb.tf` | Tabelas operacional e golden set, GSI e TTL |
+| `amplify.tf` | App/branch Amplify, build, ZIP e publicação do frontend |
+| `seed.tf` | Seed idempotente acionado após a criação das tabelas |
+| `outputs.tf` | URLs, nomes, comando de logs, seed e aviso de custo |
+| `scripts/` | Publicação portável da imagem Docker e do ZIP do Amplify |
+| `.terraform.lock.hcl` | Versões e hashes exatos dos providers |
+| `docker-compose.observability.yml` | Stack local Grafana, Prometheus, Loki e Tempo |
+| `observability/` | Configuração declarativa e documentação da stack LGTM |
+| `.gitignore` | Estado, providers, variáveis locais e artefatos gerados |
+
+O estado local (`*.tfstate`), o diretório `.terraform/` e o ZIP intermediário
+não fazem parte do commit. O arquivo de lock é versionado para que todos usem
+os mesmos providers. Nunca copie estado ou credenciais para a documentação ou
+para o Git.
+
+O state local é aceitável somente para o Learner Lab individual. Em um ambiente
+compartilhado, use backend remoto criptografado, controle de acesso e locking.
+
 O Terraform também constrói e publica a imagem no ECR, compila e publica o
 painel no Amplify, e semeia as tabelas — tudo dentro do `apply`.
 
-### Duas diferenças em relação à conta compartilhada, e por quê
+## Observabilidade local declarativa
+
+A stack LGTM fica no mesmo domínio de IaC, mas tem ciclo de vida independente
+dos recursos AWS. A partir de `apps/fullstack`:
+
+```bash
+docker compose -f docker-compose.observability.yml config --quiet
+docker compose -f docker-compose.observability.yml up -d
+docker compose -f docker-compose.observability.yml down      # preserva volumes
+docker compose -f docker-compose.observability.yml down -v   # remove volumes
+```
+
+Portas, retenção, credenciais locais, data sources e limitações estão em
+[`../observability/README.md`](../observability/README.md).
+
+## Duas diferenças em relação à conta compartilhada, e por quê
 
 **O cluster e o ALB são criados aqui.** Na conta da entrega eles já existiam,
 provisionados para o job de ingestão (BigQuery → DynamoDB), e a API foi
@@ -43,7 +100,7 @@ seção.
 
 ## Por que o login funciona aqui e não funcionava antes
 
-[`ci-cd-amplify.md`](../../artefatos/sprint2/ci-cd-amplify.md) registra como
+[`ci-cd-amplify.md`](../../../artefatos/sprint2/ci-cd-amplify.md) registra como
 limitação conhecida que o login não funciona em produção. A causa são duas
 linhas em `apps/backend/api/src/routes/auth.js`:
 
@@ -112,6 +169,11 @@ navegador -> Amplify (HTTPS) -+- paginas do painel
                                              -> DynamoDB
 ```
 
+Antes do plano, o Terraform verifica se as subnets da VPC default cobrem pelo
+menos duas zonas de disponibilidade, requisito do ALB. O módulo não cria nem
+adota subnets; uma conta sem essa topologia precisa ser preparada antes do
+deploy.
+
 ### Os dois scripts em `scripts/`
 
 O Terraform não sabe construir imagem Docker nem publicar no Amplify — essas
@@ -177,7 +239,7 @@ parou.
 ## Uso
 
 ```bash
-cd apps/infra
+cd apps/fullstack
 terraform init
 terraform plan       # confira a lista antes de aplicar
 terraform apply
@@ -208,7 +270,7 @@ O `apply` termina imprimindo a URL em `Outputs:`:
 painel_url = "https://producao.d1j02paz2xgg2z.amplifyapp.com"
 ```
 
-Para recuperar depois, de dentro de `apps/infra`:
+Para recuperar depois, de dentro de `apps/fullstack`:
 
 ```bash
 terraform output painel_url
@@ -232,7 +294,20 @@ terraform output comando_seed    # repovoa as tabelas
 Se o painel abrir vazio, rode o seed de novo: o `pk` de cada item é um bucket de
 hora calculado na semeadura, e o dashboard consulta uma janela de 24 h — dado
 com mais de ~25 h some da tela mesmo continuando na tabela. Foi o que aconteceu
-em [`testes-desempenho.md`](../../artefatos/sprint2/testes-desempenho.md).
+em [`testes-desempenho.md`](../../../artefatos/sprint2/testes-desempenho.md).
+
+### Drift dos artefatos publicados
+
+A imagem no ECR e o deployment manual do Amplify são efeitos de provisioners.
+O Terraform detecta mudanças nos arquivos de build por hash e também republica
+quando ECR, app ou branch são substituídos. Porém, se alguém apagar apenas o
+artefato fora do Terraform, o state não detecta essa ausência. Force a
+republicação sem recriar a stack:
+
+```bash
+terraform apply -replace=terraform_data.imagem
+terraform apply -replace=terraform_data.painel
+```
 
 ## Custo — leia antes de fechar o laboratório
 
@@ -260,7 +335,7 @@ ALB não têm estado "parado". Reaplicar custa os mesmos 8-15 minutos.
 | `nome_repositorio_ecr` | `monitoracao-api` | Repositório da imagem |
 | `nome_app_amplify` | `g05-painel` | App do Amplify |
 | `branch_amplify` | `producao` | Vira o subdomínio da URL |
-| `cpu_task` / `memoria_task` | `256` / `512` | Igual ao `task-definition.json` |
+| `cpu_task` / `memoria_task` | `256` / `512` | Capacidade econômica para o laboratório |
 | `quantidade_tasks` | `1` | Tasks simultâneas |
 | `auth_email` / `auth_senha` | `demo@globoplay.com` / `demo123` | Login do painel |
 | `permitir_dado_exemplo` | `true` | Telas que dependem da API de telemetria (fora do escopo) mostram exemplo rotulado em vez de "indisponível" |
@@ -268,10 +343,16 @@ ALB não têm estado "parado". Reaplicar custa os mesmos 8-15 minutos.
 | `bedrock_habilitado` | `false` | Mantenha desligado: o lab não dá acesso ao Bedrock |
 | `retencao_logs_dias` | `7` | Retenção do log group |
 
-`AUTH_COOKIE_SECRET` não é variável: é gerado por `random_password` a cada apply,
-então nunca passa pelo git. O `task-definition.json` versionado traz um
-placeholder, e o código cai em silêncio para um valor conhecido se a variável
-faltar — o que deixaria qualquer pessoa com o repositório forjar uma sessão.
+`AUTH_COOKIE_SECRET` não é variável: é gerado por `random_password` a cada
+criação da stack, então nunca passa pelo Git. O Terraform injeta o valor na task
+definition; não existe uma segunda definição estática do ECS para divergir de
+`ecs.tf` ou carregar segredos de exemplo.
+
+Marcar uma variável ou output como `sensitive` apenas oculta sua exibição
+normal no terminal. `auth_senha` e `AUTH_COOKIE_SECRET` permanecem no state e
+na task definition do ECS; usuários autorizados a consultar esses locais podem
+ler os valores. Essa decisão é exclusiva do laboratório. Em produção, use um
+gerenciador de segredos e uma task role de privilégio mínimo.
 
 ## O que este Terraform não cobre
 
@@ -302,6 +383,18 @@ task, e não há fila nem agendador. Provisioná-los seria decoração.
 | `exec format error` no log da task | Imagem construída em ARM (Mac M1/M2) | O `--platform linux/amd64` já está no `ecr.tf`; confira se foi alterado |
 | Painel abre, dado não vem | Seed fora da janela de 24 h | `terraform output comando_seed` e rode |
 | `next/font: Failed to fetch Poppins` | Build sem saída para o Google | Libere `fonts.googleapis.com` |
+
+## Validação contínua
+
+Mudanças em `apps/fullstack/**` acionam no GitLab CI:
+
+- `terraform fmt -check -recursive`, inicialização sem backend e
+  `terraform validate`;
+- validação estrutural do Docker Compose de observabilidade.
+
+O pipeline não executa `terraform plan` nem `apply`, pois as credenciais do
+Learner Lab são temporárias. O plano continua sendo uma etapa local e deve ser
+revisado antes de qualquer alteração na AWS.
 
 ## Verificação
 

@@ -42,13 +42,13 @@ Consequências para quem for rodar esta rodada:
   telemetria a **10.000 eventos/minuto** e mede as fases de fila cheia, timeout
   e recuperação. Ele mira a API Flask, não a API Node das consultas.
 - **Métricas de servidor** (CPU, RCU, logs) passaram a ser responsabilidade da
-  pilha de observabilidade local (`docker-compose.observability.yml` —
+  pilha de observabilidade local (`apps/fullstack/docker-compose.observability.yml` —
   Grafana/Prometheus/Loki/Tempo), mantida por outra pessoa do time. A seção
   "Leitura do servidor" abaixo é o roteiro manual original (CloudWatch) e
   permanece válida como referência, mas não é mais o único caminho.
 - Esta pasta testa a cadeia **API/DynamoDB diretamente pelo ALB**. A cadeia de
   produção ganhou dois saltos desde esta rodada (API Gateway para TLS + proxy
-  do Amplify — ver `apps/infra/apigateway.tf` e `amplify.tf`). Rodar também
+  do Amplify — ver `apps/fullstack/apigateway.tf` e `amplify.tf`). Rodar também
   contra o domínio do Amplify (`BASE_URL=https://<dominio-amplify>`) mede algo
   diferente do ALB direto e ainda não tem baseline próprio.
 
@@ -73,7 +73,7 @@ cluster `data-ingestion-cluster`.
 
 ## Dimensionamento real da API
 
-Da `apps/backend/api/deploy/task-definition.json`:
+Da definição atual em `apps/fullstack/ecs.tf`:
 
 ```json
 "cpu": "256", "memory": "512"     // 0,25 vCPU · 0,5 GB
@@ -273,7 +273,7 @@ precisa das duas leituras lado a lado.
    o teste **não** exercita hot-spotting.
 3. **`BEDROCK_ENABLED=false`.** O `/diagnose` não chama LLM de verdade; a
    latência medida é do caminho determinístico, não da camada agêntica real.
-   `apps/infra/variables.tf` registra que o Learner Lab usado neste projeto
+   `apps/fullstack/variables.tf` registra que o Learner Lab usado neste projeto
    não dá acesso ao Bedrock — não é só uma configuração desligada por escolha.
 4. **O p(95) de 2 s vem do RNF14**, que fala de "busca filtrada" no dashboard.
    Se o parceiro quiser um SLA específico para esta API, o número muda.

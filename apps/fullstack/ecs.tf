@@ -21,9 +21,9 @@ resource "aws_ecs_cluster_capacity_providers" "principal" {
   }
 }
 
-// O task-definition.json versionado já traz awslogs-create-group=true, mas
-// criando o grupo aqui a retenção fica controlada — do contrário o padrão é
-// "nunca expira", e log acumulado é custo silencioso num orçamento de US$ 100.
+// O grupo é criado explicitamente para controlar a retenção. Se o driver
+// awslogs o criasse implicitamente, o padrão seria "nunca expira", e logs
+// acumulados seriam um custo silencioso no orçamento do laboratório.
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${var.nome_repositorio_ecr}"
   retention_in_days = var.retencao_logs_dias
@@ -33,11 +33,10 @@ resource "aws_cloudwatch_log_group" "api" {
   }
 }
 
-// AUTH_COOKIE_SECRET assina o cookie de sessão (src/auth/session.js). O valor
-// versionado no task-definition.json é um placeholder, e o código cai
-// silenciosamente para "troque-este-segredo-em-producao" se a variável faltar —
-// o que deixaria qualquer pessoa com o repositório forjar uma sessão. Gerado
-// aqui, o segredo nunca passa pelo git.
+// AUTH_COOKIE_SECRET assina o cookie de sessão (src/auth/session.js). O código
+// usa um valor conhecido como fallback se a variável faltar, o que deixaria
+// qualquer pessoa com o repositório forjar uma sessão. Gerado aqui, o segredo
+// nunca passa pelo Git.
 resource "random_password" "cookie" {
   length  = 64
   special = false
@@ -51,8 +50,8 @@ resource "aws_ecs_task_definition" "api" {
   memory                   = var.memoria_task
 
   // LabRole nos dois papéis: é a única role disponível no AWS Academy
-  // (backend-sprint-2.md, seção 8.1), e é o que o task-definition.json
-  // versionado já fazia.
+  // (backend-sprint-2.md, seção 8.1) e preserva o desenho da implantação
+  // manual anterior.
   execution_role_arn = data.aws_iam_role.lab.arn
   task_role_arn      = data.aws_iam_role.lab.arn
 

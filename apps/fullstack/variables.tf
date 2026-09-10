@@ -86,13 +86,13 @@ variable "tabela_golden_set" {
 }
 
 variable "cpu_task" {
-  description = "CPU da task Fargate, em unidades de 1024. Igual ao task-definition.json versionado."
+  description = "CPU da task Fargate, em unidades de 1024."
   type        = string
   default     = "256"
 }
 
 variable "memoria_task" {
-  description = "Memória da task Fargate, em MiB. Igual ao task-definition.json versionado."
+  description = "Memória da task Fargate, em MiB."
   type        = string
   default     = "512"
 }

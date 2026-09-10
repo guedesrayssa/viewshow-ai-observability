@@ -12,7 +12,7 @@ resource "aws_ecr_repository" "api" {
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
-    scan_on_push = false
+    scan_on_push = true
   }
 
   // Sem isto, terraform destroy falha enquanto houver imagem no repositório —
@@ -30,11 +30,19 @@ resource "aws_ecr_repository" "api" {
 locals {
   api_dir = "${path.module}/../backend/api"
 
-  hash_imagem = sha1(join("", [
-    filesha1("${local.api_dir}/Dockerfile"),
-    filesha1("${local.api_dir}/package.json"),
-    filesha1("${local.api_dir}/package-lock.json"),
-    sha1(join("", [for f in fileset("${local.api_dir}/src", "**") : filesha1("${local.api_dir}/src/${f}")])),
+  api_build_files = setunion(
+    fileset(local.api_dir, "src/**"),
+    toset([
+      ".dockerignore",
+      "Dockerfile",
+      "package-lock.json",
+      "package.json",
+    ]),
+  )
+
+  hash_imagem = sha256(join("", [
+    for f in sort(tolist(local.api_build_files)) :
+    "${f}:${filesha256("${local.api_dir}/${f}")}"
   ]))
 
   tag_imagem = substr(local.hash_imagem, 0, 12)
@@ -58,5 +66,9 @@ resource "terraform_data" "imagem" {
       TAG      = local.tag_imagem
       CONTEXTO = abspath(local.api_dir)
     }
+  }
+
+  lifecycle {
+    replace_triggered_by = [aws_ecr_repository.api]
   }
 }
