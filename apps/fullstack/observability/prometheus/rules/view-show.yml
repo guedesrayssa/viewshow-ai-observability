@@ -1,0 +1,49 @@
+groups:
+  - name: view-show-api
+    rules:
+      - alert: ViewShowApiTargetDown
+        expr: up{job="view-show-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: view-show-api
+        annotations:
+          summary: View Show API metrics target is unavailable
+          runbook: apps/fullstack/observability/docs/runbooks/api-target-down.md
+      - alert: ViewShowApiHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="view-show-api",status_code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(http_requests_total{job="view-show-api"}[5m])), 0.001)
+          > 0.001
+        for: 5m
+        labels:
+          severity: critical
+          service: view-show-api
+        annotations:
+          summary: View Show API 5xx ratio is above the 99.9% availability objective
+          runbook: apps/fullstack/observability/docs/runbooks/api-high-error-rate.md
+      - alert: ViewShowIncidentQuerySlow
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{job="view-show-api",route="/api/v1/incidents"}[5m]))
+          ) > 2
+        for: 5m
+        labels:
+          severity: critical
+          service: view-show-api
+        annotations:
+          summary: Incident query p95 latency is above two seconds
+          runbook: apps/fullstack/observability/docs/runbooks/api-slow-incidents.md
+      - alert: ViewShowFrontendLcpPoor
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(frontend_web_vitals_lcp_seconds_bucket[15m]))
+          ) > 4
+        for: 15m
+        labels:
+          severity: warning
+          service: view-show-frontend
+        annotations:
+          summary: Frontend LCP p95 is in the poor range
+          runbook: apps/fullstack/observability/docs/runbooks/frontend-web-vitals.md

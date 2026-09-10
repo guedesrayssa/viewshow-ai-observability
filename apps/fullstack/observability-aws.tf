@@ -58,6 +58,17 @@ resource "aws_security_group_rule" "otlp_api" {
   source_security_group_id = aws_security_group.servico.id
 }
 
+resource "aws_security_group_rule" "loki_api" {
+  count                    = var.observabilidade_habilitada ? 1 : 0
+  type                     = "ingress"
+  description              = "Logs estruturados enviados pela API no ECS"
+  from_port                = 3100
+  to_port                  = 3100
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.observabilidade[0].id
+  source_security_group_id = aws_security_group.servico.id
+}
+
 locals {
   dashboard_observabilidade = var.observabilidade_habilitada ? templatefile(
     "${path.module}/observability/aws/view-show-aws.json.tftpl",
@@ -87,13 +98,20 @@ resource "aws_instance" "observabilidade" {
     aws_region                 = var.regiao
     grafana_password_base64    = base64encode(random_password.grafana[0].result)
     compose_gzip               = base64gzip(file("${path.module}/observability/aws/docker-compose.yml"))
-    prometheus_gzip            = base64gzip(file("${path.module}/observability/aws/prometheus.yml"))
+    prometheus_gzip = base64gzip(replace(
+      file("${path.module}/observability/aws/prometheus.yml"),
+      "__API_TARGET__",
+      "${aws_lb.principal.dns_name}:80"
+    ))
+    prometheus_rules_gzip      = base64gzip(file("${path.module}/observability/prometheus/rules/view-show.yml"))
+    alloy_gzip                 = base64gzip(file("${path.module}/observability/alloy/config.alloy"))
     loki_gzip                  = base64gzip(file("${path.module}/observability/loki/loki-config.yml"))
     tempo_gzip                 = base64gzip(file("${path.module}/observability/tempo/tempo.yml"))
     datasources_gzip           = base64gzip(file("${path.module}/observability/grafana/provisioning/datasources/datasources.yml"))
     cloudwatch_datasource_gzip = base64gzip(file("${path.module}/observability/aws/cloudwatch-datasource.yml"))
     dashboard_provider_gzip    = base64gzip(file("${path.module}/observability/aws/dashboard-provider.yml"))
     dashboard_gzip             = base64gzip(local.dashboard_observabilidade)
+    application_dashboard_gzip = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-overview.json"))
   })
 
   // Uma mudança nas configurações recria a instância para que o cloud-init

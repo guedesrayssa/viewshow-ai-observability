@@ -448,11 +448,10 @@ Buckets recomendados para o histograma de latência:
 1. A API já expõe `GET /metrics` por meio de
    `src/observability/metrics.ts` e registra as métricas RED. Confirme que
    `METRICS_ENABLED=true` (valor padrão) ao iniciar o processo.
-2. Com a API rodando no host, habilite o alvo `view-show-api` em
-   `apps/fullstack/observability/prometheus/prometheus.yml`, apontado para
-   `host.docker.internal:3000`. O bloco permanece comentado por padrão porque a
-   composição de observabilidade não inicia a API e, nesse caso, o alvo ficaria
-   permanentemente `down`.
+2. O alvo `view-show-api` em
+   `apps/fullstack/observability/prometheus/prometheus.yml` já aponta para
+   `host.docker.internal:3000`. Inicie a API junto à composição; caso contrário,
+   o alvo e o alerta `ViewShowApiTargetDown` permanecerão ativos.
 3. Verifique o alvo em `http://localhost:9090/targets` e consulte as séries
    `http_requests_total` e `http_request_duration_seconds`.
 

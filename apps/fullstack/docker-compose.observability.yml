@@ -67,9 +67,12 @@ services:
       - --web.enable-remote-write-receiver
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     networks:
       - observability
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:9090/-/healthy || exit 1"]
       interval: 15s
@@ -91,6 +94,20 @@ services:
       - observability
     # Sem healthcheck: a imagem do Loki é distroless e não traz shell nem cliente
     # HTTP para sondar /ready. Verifique com: curl http://localhost:3100/ready
+
+  alloy:
+    image: grafana/alloy:v1.10.2
+    container_name: vs-alloy
+    restart: unless-stopped
+    command: run --storage.path=/var/lib/alloy/data --disable-reporting /etc/alloy/config.alloy
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    depends_on:
+      - loki
+    networks:
+      - observability
 
   tempo:
     image: grafana/tempo:3.0.3
@@ -114,6 +131,7 @@ volumes:
   prometheus-data:
   loki-data:
   tempo-data:
+  alloy-data:
 
 networks:
   observability:

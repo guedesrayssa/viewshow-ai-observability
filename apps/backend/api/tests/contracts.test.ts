@@ -1,16 +1,19 @@
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { trace, TraceFlags } from "@opentelemetry/api";
 import {
   ServiceError,
   assertNoPhysicalFields,
   authCallbackQuerySchema,
   completeImportBodySchema,
+  createLogger,
   errorEnvelope,
   incidentsQuerySchema,
   responseMetaSchema,
   reviewBodySchema,
+  rumTelemetrySchema,
   startImportBodySchema,
   successEnvelope,
 } from "@view-show/contracts";
@@ -43,6 +46,7 @@ const architectureOperations = [
   "POST /api/v1/incidents/{incidentId}/reanalyze",
   "GET /health",
   "GET /metrics",
+  "POST /api/v1/telemetry/rum",
 ].sort();
 const openApiHttpMethods = new Set([
   "get",
@@ -150,6 +154,66 @@ describe("versioned contracts", () => {
         unexpected: "value",
       }),
     ).toThrow();
+  });
+
+  it("bounds and normalizes untrusted browser telemetry", () => {
+    const parsed = rumTelemetrySchema.parse({
+      schemaVersion: 1,
+      name: "frontend_web_vitals_lcp_seconds",
+      value: 2.5,
+      unit: "seconds",
+      path: "/unbounded-cardinality-value",
+      occurredAt: "2026-09-10T12:00:00.000Z",
+    });
+    expect(parsed.path).toBe("/other");
+    expect(() =>
+      rumTelemetrySchema.parse({
+        schemaVersion: 1,
+        name: "frontend_client_errors_total",
+        value: 1000,
+        unit: "count",
+        path: "/",
+        occurredAt: "2026-09-10T12:00:00.000Z",
+      }),
+    ).toThrow();
+  });
+
+  it("correlates structured logs with the active trace and redacts secrets", () => {
+    let output = "";
+    const originalWrite = process.stdout.write;
+    const activeSpan = vi.spyOn(trace, "getActiveSpan").mockReturnValue({
+      spanContext: () => ({
+        traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+        spanId: "00f067aa0ba902b7",
+        traceFlags: TraceFlags.SAMPLED,
+      }),
+    } as never);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      output += String(chunk);
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      createLogger("api").info("correlated", {
+        request_id: "req_test",
+        token: "must-not-leak",
+        service_name: "forged-service",
+        trace_id: "forged-trace",
+        level: "error",
+        message: "forged-message",
+      });
+    } finally {
+      process.stdout.write = originalWrite;
+      activeSpan.mockRestore();
+    }
+    expect(JSON.parse(output)).toMatchObject({
+      service_name: "api",
+      trace_id: "4bf92f3577b34da6a3ce929d0e0e4736",
+      span_id: "00f067aa0ba902b7",
+      request_id: "req_test",
+      token: "[REDACTED]",
+      level: "info",
+      message: "correlated",
+    });
   });
 
   it("validates temporal queries and optimistic review input", () => {
@@ -292,6 +356,7 @@ describe("versioned contracts", () => {
       "/api/v1/imports/{importId}",
       "/health",
       "/metrics",
+      "/api/v1/telemetry/rum",
     ])
       expect(document.paths).toHaveProperty(path);
     const reanalysis = document.paths[

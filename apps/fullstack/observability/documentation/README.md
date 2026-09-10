@@ -41,9 +41,9 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
   em `datasources.yml` transformam qualquer `trace_id` em link para o Tempo, o
   que produziria links quebrados. Em log e em span o nome é reservado ao
   OpenTelemetry, e o agrupador de domínio se chama `incidentId`.
-- **A pilha não tem coletor de logs.** O `apps/fullstack/docker-compose.observability.yml` sobe
-  Grafana, Prometheus, Loki e Tempo, mas nenhum Promtail, Alloy ou driver de log
-  do Docker. Hoje nada leva uma linha até a porta 3100.
+- **A pilha tem coleta de logs.** O Alloy descobre containers locais e envia
+  stdout/stderr ao Loki. Na AWS, a API preserva o envio para CloudWatch e também
+  publica o JSON estruturado no endpoint privado do Loki.
 - **O painel é exportação estática.** `output: "export"` em `next.config.ts`
   significa que não há servidor Next em produção. Log e trace do frontend nascem
   no navegador e precisam de um endpoint de recepção na API, porque nem o Loki
@@ -55,8 +55,8 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
 | Caminho | Papel |
 |---|---|
 | [`apps/fullstack/observability/README.md`](../README.md) | Como subir a pilha, portas, data sources provisionados e limites do ambiente local. |
-| [`apps/fullstack/docker-compose.observability.yml`](../../docker-compose.observability.yml) | Definição dos quatro serviços da pilha. |
-| [`apps/fullstack/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; a API já expõe `GET /metrics`, e o bloco `view-show-api` fica comentado porque a composição não inicia a API. |
+| [`apps/fullstack/docker-compose.observability.yml`](../../docker-compose.observability.yml) | Definição dos cinco serviços da pilha. |
+| [`apps/fullstack/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; a API expõe `GET /metrics` e o alvo `view-show-api` é coletado a cada 15 segundos. |
 | [`apps/fullstack/observability/loki/loki-config.yml`](../loki/loki-config.yml) | Retenção de 168h e `allow_structured_metadata`. |
 | [`apps/fullstack/observability/tempo/tempo.yml`](../tempo/tempo.yml) | Receptores OTLP e `metrics_generator`. |
 | [`apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml`](../grafana/provisioning/datasources/datasources.yml) | As quatro correlações entre os sinais. |

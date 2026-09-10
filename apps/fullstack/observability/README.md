@@ -1,6 +1,6 @@
 # Pilha de observabilidade Grafana
 
-Ambiente de desenvolvimento com Grafana, Prometheus, Loki e Tempo, subido por
+Ambiente de desenvolvimento com Grafana, Prometheus, Loki, Tempo e Alloy, subido por
 `apps/fullstack/docker-compose.observability.yml`. Serve para instrumentar
 a API do View Show localmente antes de levar métricas, logs e traces para a AWS.
 
@@ -36,6 +36,11 @@ Para trocar, exporte `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD` antes de su
 | 4317 | Tempo | Recepção de traces via OTLP/gRPC |
 | 4318 | Tempo | Recepção de traces via OTLP/HTTP |
 
+O Alloy descobre os containers pelo socket do Docker, persiste as posições de
+leitura em um volume e envia os logs ao Loki; ele não publica uma porta no host.
+A API também pode enviar seu JSON estruturado diretamente ao Loki definindo
+`LOKI_PUSH_URL`.
+
 Todas as portas podem ser sobrescritas por variáveis de ambiente
 (`GRAFANA_PORT`, `PROMETHEUS_PORT`, `LOKI_PORT`, `TEMPO_HTTP_PORT`,
 `TEMPO_OTLP_GRPC_PORT`, `TEMPO_OTLP_HTTP_PORT`).
@@ -44,7 +49,9 @@ Todas as portas podem ser sobrescritas por variáveis de ambiente
 
 ```
 apps/fullstack/observability/
+├── alloy/config.alloy                                 descoberta Docker e envio de logs
 ├── grafana/provisioning/datasources/datasources.yml   data sources automáticos
+├── grafana/provisioning/dashboards/                   dashboards versionados
 ├── loki/loki-config.yml                               Loki monolítico, disco local
 ├── prometheus/prometheus.yml                          alvos e intervalo de coleta
 └── tempo/tempo.yml                                    receptores OTLP e metrics_generator
@@ -103,7 +110,7 @@ terraform apply g05-s3-observabilidade.tfplan
 Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
 na AWS. O plano acima cria uma EC2 `g05-s3-observabilidade` do tipo `t3.medium`
 com 30 GiB de gp3 criptografado, instala o
-Docker Compose e inicia os quatro componentes. Não é necessário clonar o
+Docker Compose e inicia os cinco componentes. Não é necessário clonar o
 repositório na instância: os arquivos versionados são compactados e enviados
 pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
 `running`.
@@ -123,8 +130,10 @@ aws ssm start-session \
 ```
 
 Enquanto a sessão estiver aberta, acesse <http://localhost:3002> com o usuário
-`admin` e a senha impressa pelo segundo comando. O dashboard provisionado fica
-em **Dashboards → View Show → View Show — AWS**.
+`admin` e a senha impressa pelo segundo comando. Os dashboards provisionados
+ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
+gerenciados e **View Show — Application Observability** cobre RED, Web Vitals,
+logs correlacionados e alertas da aplicação.
 
 Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
 
@@ -154,8 +163,8 @@ estável.
 | Data source | Estado depois do apply |
 | --- | --- |
 | CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/g05-s3-api` disponíveis imediatamente |
-| Prometheus | Auto-observação da stack; a API expõe `/metrics`, mas o scrape remoto exige uma regra de rede deliberada |
-| Loki | Pronto para ingestão; os logs atuais da API permanecem no CloudWatch |
+| Prometheus | Auto-observação da stack e scrape de `/metrics` da API pelo ALB |
+| Loki | Logs dos containers da stack via Alloy e JSON correlacionado da API; CloudWatch permanece habilitado |
 | Tempo | Receptor OTLP/HTTP privado em `:4318`, restrito ao security group da API |
 
 O Terraform injeta `OTEL_SERVICE_NAME=g05-s3-api` e o endereço privado do Tempo
@@ -181,16 +190,15 @@ Uma alteração nos arquivos de configuração recria a EC2 para reaplicar o
 `cloud-init`; por isso, neste ambiente de laboratório, os dados históricos dos
 volumes Docker são descartados nessa troca.
 
-Os alvos de coleta ficam em <http://localhost:9090/targets>. Por padrão o
-Prometheus coleta a cada 15 segundos e observa apenas a própria pilha
-(Prometheus, Grafana, Loki e Tempo).
+Na pilha local, os alvos de coleta ficam em
+<http://localhost:9090/targets>. O Prometheus coleta a cada 15 segundos a própria
+pilha e a API em `host.docker.internal:3000`. Inicie a API para manter esse alvo
+saudável. Na AWS, o alvo `view-show-api` aponta para o ALB criado pelo Terraform.
 
 ## Coletar as métricas da API
 
 `apps/backend/api` já expõe `GET /metrics` no formato Prometheus quando
-`METRICS_ENABLED=true` (o padrão). O `prometheus.yml` mantém o alvo
-`view-show-api` comentado porque esta composição não inicia a API. Descomente o
-bloco enquanto a API estiver rodando no host; sem ela, o alvo ficará `down`.
+`METRICS_ENABLED=true` (o padrão), e o alvo `view-show-api` já está habilitado.
 Para enviar traces da API rodando no host, aponte o exportador OTLP para
 `http://localhost:4318` (HTTP) ou `localhost:4317` (gRPC).
 

@@ -110,5 +110,8 @@ describe("human review", () => {
     expect(result).toMatchObject({ ok: false, needsSignIn: false });
     expect(requests[1]?.url).toContain("/incidents/inc_1/hypotheses/hyp_7/review");
     expect(JSON.parse(String(requests[1]?.init?.body))).toEqual({ status: "confirmed", expectedVersion: 7 });
+    expect(
+      requests.some(({ url }) => url.includes("/api/v1/telemetry/rum")),
+    ).toBe(true);
   });
 });
