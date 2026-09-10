@@ -34,23 +34,30 @@
  * aviso no handleSummary).
  *
  * DADO: dashboard/overview e monitoring/overview leem projeções
- * (VIEW#OVERVIEW#.../VIEW#MONITORING#...) que só a Ingestão publica — e a
- * Ingestão ainda não existe (apps/backend/ingestion-data). Por isso os dois
- * endpoints são tratados como "200 ou 503" — 503 (DATA_UNAVAILABLE) é o
- * estado real e esperado enquanto a Ingestão não roda, não uma falha deste
- * teste. GET /incidents e seus detalhes leem itens físicos e SÃO
- * populáveis por scripts/seed-carga.js — por isso continuam exigindo 200.
+ * (VIEW#OVERVIEW#.../VIEW#MONITORING#...). seed-carga.js já grava algumas
+ * dessas projeções (idade variada, para cobrir vários presets de window),
+ * mas elas ENVELHECEM da mesma forma que os incidentes — rode o teste logo
+ * após semear. Por isso os dois endpoints continuam tratados como "200 ou
+ * 503": 503 (DATA_UNAVAILABLE) é o estado esperado quando a janela pedida já
+ * não alcança nenhuma projeção semeada, não uma falha deste teste. GET
+ * /incidents e seus detalhes leem itens físicos e SÃO populáveis por
+ * scripts/seed-carga.cjs — por isso continuam exigindo 200.
+ *
+ * AUTENTICAÇÃO MUDOU: não existe mais POST /auth/login (login federado via
+ * Cognito/OIDC, hoje 503 FEATURE_UNAVAILABLE). `lib/session.js` forja o
+ * cookie de sessão localmente — exige `-e AUTH_COOKIE_SECRET=<mesmo segredo
+ * do processo da API sob teste>` (ver cabeçalho daquele arquivo).
  *
  * USO:
- *   (cd apps/backend/api && node scripts/seed-carga.js)   # ver README.md
- *   k6 run -e BASE_URL=http://localhost:3000 -e MODE=smoke consultas.js
- *   k6 run -e BASE_URL=... -e MODE=load consultas.js   # grava resumo-load.json (ver handleSummary)
+ *   (cd apps/backend/api && node scripts/seed-carga.cjs)   # ver README.md
+ *   k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<32+ chars> -e MODE=smoke consultas.js
+ *   k6 run -e BASE_URL=... -e AUTH_COOKIE_SECRET=... -e MODE=load consultas.js   # grava resumo-load.json (ver handleSummary)
  */
 
 import http from "k6/http";
 import { check } from "k6";
 import { Counter, Trend } from "k6/metrics";
-import { login, authParams } from "./lib/session.js";
+import { forgeSessionCookie, authParams } from "./lib/session.js";
 
 const BASE_URL = __ENV.BASE_URL;
 const MODE = __ENV.MODE || "smoke";
@@ -67,7 +74,7 @@ if (!Number.isInteger(INCIDENT_COUNT) || INCIDENT_COUNT <= 0) {
   throw new Error("INCIDENT_COUNT deve ser um inteiro positivo");
 }
 
-/** IDs são ordinais determinísticos gerados por scripts/seed-carga.js. */
+/** IDs são ordinais determinísticos gerados por scripts/seed-carga.cjs. */
 function incidentId() {
   const n = 1 + Math.floor(Math.random() * INCIDENT_COUNT);
   return `inc-${String(n).padStart(6, "0")}`;
@@ -190,7 +197,7 @@ export const options = {
 /* ------------------------------- setup -------------------------------- */
 
 export function setup() {
-  const cookie = login(BASE_URL);
+  const cookie = forgeSessionCookie({ role: "engineer" });
   return { cookie };
 }
 

@@ -28,22 +28,48 @@
  * orquestrador/agente legado, hoje congelado em apps/backend/agentic
  * (ver README daquela pasta). Mantê-lo só custaria escritas sem uso.
  *
- * Cópia versionada para o relatório de carga:
- * artefatos/sprint3/testes-carga/seed-carga.js. Mantenha as duas em sincronia
- * manual — este arquivo precisa estar em apps/backend/api/scripts/ para ser
- * executado a partir do projeto da API.
+ * ADIÇÃO (2026-09): dashboard/overview e monitoring/overview NÃO dependem da
+ * Ingestão futura para responder — o formato de projeção lido por
+ * dynamodb-dashboard-read-repository.ts já existe hoje:
+ *   pk: VIEW#OVERVIEW#GLOBAL#<YYYYMMDD>       sk: T#<epochMs>
+ *   pk: VIEW#MONITORING#<fonte>#<YYYYMMDD>    sk: T#<epochMs>
+ *   Item: { publicData: {...}, observedThrough, coverageRatio, source }
+ * Este script agora grava algumas dessas projeções (várias idades, para
+ * cobrir os presets de window de 15m a 24h — ver buildViewItems()). Sem essa
+ * seed (ou depois que os itens "envelhecem" fora da janela pedida), as duas
+ * rotas voltam a responder 503 DATA_UNAVAILABLE — estado real e esperado,
+ * não falha do teste (consultas.js e auth-check.js já toleram "200 ou 503"
+ * nessas duas rotas por causa disso).
  *
- * USO: node scripts/seed-carga.js (a partir de apps/backend/api)
+ * Este é a cópia versionada para o relatório de carga. O arquivo canônico e
+ * executável vive em apps/backend/api/scripts/seed-carga.cjs — mantenha as
+ * duas em sincronia manual. Extensão `.cjs` por lá (não `.js`): aquele
+ * package.json declara `"type": "module"`, então um `.js` seria carregado
+ * como ESM e `require`/`module.exports` quebrariam. Aqui não há esse
+ * problema porque não existe nenhum `package.json` entre esta pasta e a raiz
+ * do repositório, então o Node já trata `.js` como CommonJS.
+ *
+ * USO: node ../../../apps/backend/api/scripts/seed-carga.cjs (canônico) ou,
+ * a partir daqui, `node seed-carga.js` só para gerar o mesmo resultado
+ * localmente sem depender do checkout de apps/backend/api.
  *
  * Variáveis:
  *   OPERATIONAL_TABLE_NAME  padrão monitoracao-operacional (mesma da API)
  *   INCIDENTS_PER_HOUR      padrão 12
  *   HOURS_BACK              padrão 25   (cobre window=24h, que varre até 25 buckets)
  *   EVIDENCE_MIN/MAX        padrão 4/8
- *   CLEAN=1                 remove itens de incidentes (pk=INC#...) antes de semear
+ *   MONITORING_SOURCES      padrão argus (mesma env var e default da API)
+ *   CLEAN=1                 remove itens de incidentes e projeções (pk=INC#.../VIEW#...) antes de semear
  */
 
-require("dotenv").config({ quiet: true });
+// dotenv não é dependência de apps/backend/api (só AWS SDK/zod/express) —
+// carregar .env é conveniência opcional para quem tiver o pacote global ou
+// instalado à parte, nunca um requisito para rodar o seed.
+try {
+  require("dotenv").config({ quiet: true });
+} catch {
+  /* sem dotenv instalado: segue lendo apenas process.env já exportado */
+}
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, BatchWriteCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 
@@ -70,6 +96,19 @@ const INCIDENTS_PER_HOUR = Number(process.env.INCIDENTS_PER_HOUR || 12);
 const HOURS_BACK = Number(process.env.HOURS_BACK || 25);
 const EVIDENCE_MIN = Number(process.env.EVIDENCE_MIN || 4);
 const EVIDENCE_MAX = Number(process.env.EVIDENCE_MAX || 8);
+
+// Mesma env var e default de apps/backend/api/src/modules/dashboard/config.ts.
+const MONITORING_SOURCES = (process.env.MONITORING_SOURCES || "argus")
+  .split(",")
+  .map((source) => source.trim())
+  .filter(Boolean);
+
+// Idades (minutos) dos snapshots VIEW# gravados por buildViewItems(). Cobrem
+// os presets de window da API (15m/30m/1h/6h/24h): cada preset só encontra
+// dado se algum snapshot tiver idade menor que ele NO MOMENTO DA CONSULTA —
+// como a idade é fixada na hora do seed, esses snapshots envelhecem igual
+// aos incidentes (ver aviso no fim de main()).
+const VIEW_SNAPSHOT_AGES_MINUTES = [5, 20, 45, 300, 1200];
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }));
 
@@ -176,6 +215,157 @@ function buildItems(incident) {
   return items;
 }
 
+/* ---------- projeções VIEW#OVERVIEW / VIEW#MONITORING ---------- */
+
+const viewDayBucket = (date) => date.toISOString().slice(0, 10).replaceAll("-", "");
+const viewSk = (date) => `T#${date.getTime()}`;
+
+function measurementNow(now, coverageRatio = 1) {
+  return {
+    status: "measured",
+    source: "seed-carga",
+    coverageRatio,
+    observedThrough: now.toISOString(),
+  };
+}
+
+/** Formato espelha overviewProjectionSchema (contracts/src/index.ts), mas
+ *  não é validado em runtime por DashboardQueries.overview() — só precisa
+ *  não conter campos físicos (pk/sk/ttl/gsi*, ver assertNoPhysicalFields). */
+function buildOverviewProjection(now) {
+  return {
+    capabilities: {
+      filtering: {
+        status: "partial",
+        supportedDimensions: ["deviceType", "region", "appVersion"],
+        supportedFilterSets: [[], ["deviceType"], ["region"], ["appVersion"]],
+      },
+    },
+    kpis: [
+      {
+        key: "active_sessions",
+        value: 128000,
+        unit: "sessions",
+        status: "healthy",
+        comparison: { baselineValue: 121000, absoluteChange: 7000, changeRatio: 0.058, direction: "up" },
+        measurement: measurementNow(now),
+      },
+      {
+        key: "error_rate",
+        value: 0.4,
+        unit: "percent",
+        status: "warning",
+        comparison: { baselineValue: 0.3, absoluteChange: 0.1, changeRatio: 0.33, direction: "up" },
+        measurement: measurementNow(now),
+      },
+    ],
+    experienceHealth: {
+      metric: "errors_per_minute",
+      unit: "errors_per_minute",
+      bucketSeconds: 900,
+      baselineValue: 12,
+      measurement: measurementNow(now),
+      points: [0, 1, 2, 3].map((i) => ({
+        timestamp: new Date(now.getTime() - (3 - i) * 15 * 60 * 1000).toISOString(),
+        value: 10 + i,
+      })),
+      anomalyWindows: [],
+    },
+    recentIncidents: [],
+    facets: {},
+  };
+}
+
+/** Formato espelha monitoringProjectionSchema. Mesma observação de runtime
+ *  da função acima. */
+function buildMonitoringProjection(source, now) {
+  const kpi = (value, unit, status) => ({ value, unit, status, measurement: measurementNow(now) });
+  return {
+    capabilities: {
+      sourceQuality: { status: "available" },
+      pipelineRuntime: {
+        status: "available",
+        metrics: {
+          ingestionRate: "available",
+          processingLatencyP95: "available",
+          queueDepth: "unavailable",
+          deadLetterQueue: "available",
+        },
+        reason: null,
+      },
+      geographicMetrics: { status: "available", granularity: "state" },
+      filtering: { status: "partial", supportedDimensions: [], supportedFilterSets: [[]] },
+    },
+    kpis: {
+      ingestionRate: kpi(9800, "events_per_minute", "healthy"),
+      processingLatencyP95: kpi(1200, "ms", "healthy"),
+      queueDepth: kpi(0, "messages", "unknown"),
+      deadLetterQueue: kpi(0, "messages", "healthy"),
+    },
+    flow: {
+      metric: "processing_latency",
+      unit: "ms",
+      bucketSeconds: 900,
+      measurement: measurementNow(now),
+      target: null,
+      series: [],
+      peak: null,
+    },
+    sources: [
+      {
+        id: source,
+        name: source,
+        type: "batch",
+        workers: [`${source}-worker-1`],
+        lastRunAt: now.toISOString(),
+        lastSuccessfulRunAt: now.toISOString(),
+        observedThrough: now.toISOString(),
+        lagSeconds: 60,
+        state: "stable",
+        records: { read: 15000, written: 14950, rejected: 50, measurement: measurementNow(now) },
+        coverage: { value: 0.99, unit: "ratio", measurement: measurementNow(now) },
+      },
+    ],
+    geography: { granularity: "state", metrics: [], areas: [] },
+    facets: {},
+  };
+}
+
+/** Um snapshot por idade em VIEW_SNAPSHOT_AGES_MINUTES, para overview (fonte
+ *  GLOBAL) e para cada fonte de MONITORING_SOURCES — assim window=15m,
+ *  30m/1h/6h/24h encontram algum item recente o bastante logo após a seed. */
+function buildViewItems(referenceNow) {
+  const items = [];
+  for (const minutesAgo of VIEW_SNAPSHOT_AGES_MINUTES) {
+    const at = new Date(referenceNow.getTime() - minutesAgo * 60 * 1000);
+    const day = viewDayBucket(at);
+    const sk = viewSk(at);
+
+    items.push({
+      pk: `VIEW#OVERVIEW#GLOBAL#${day}`,
+      sk,
+      publicData: buildOverviewProjection(at),
+      observedThrough: at.toISOString(),
+      coverageRatio: 0.97,
+      source: "argus",
+      ttl: ttl(),
+    });
+
+    for (const source of MONITORING_SOURCES) {
+      items.push({
+        pk: `VIEW#MONITORING#${source}#${day}`,
+        sk,
+        publicData: buildMonitoringProjection(source, at),
+        observedThrough: at.toISOString(),
+        coverageRatio: 0.95,
+        source,
+        ttl: ttl(),
+      });
+    }
+  }
+  return items;
+}
+
 /* ---------- limpeza ---------- */
 
 const MAX_BATCH_ATTEMPTS = 8;
@@ -211,8 +401,9 @@ async function enviarLoteComRetry(
   }
 }
 
-/** Remove apenas dados de incidentes da tabela operacional. Outros domínios
- *  compartilhados (ex.: contas de usuário) são preservados. */
+/** Remove apenas os dados que este script escreve (incidentes + projeções de
+ *  overview/monitoring). Outros domínios compartilhados (ex.: contas de
+ *  usuário) são preservados. */
 async function limparTabela(
   tableName,
   { documentClient = client, wait = esperarBackoff, maxAttempts = MAX_BATCH_ATTEMPTS } = {},
@@ -230,7 +421,7 @@ async function limparTabela(
     );
 
     const itens = (pagina.Items || []).filter(
-      ({ pk }) => typeof pk === "string" && pk.startsWith("INC#"),
+      ({ pk }) => typeof pk === "string" && (pk.startsWith("INC#") || pk.startsWith("VIEW#")),
     );
     for (let i = 0; i < itens.length; i += 25) {
       const lote = itens.slice(i, i + 25);
@@ -282,13 +473,24 @@ async function main() {
   await batchWrite(OPERATIONAL_TABLE, itens);
   console.log(`  ${itens.length} itens gravados (incidentes + evidências + hipóteses).`);
 
+  const now = new Date();
+  const viewItens = buildViewItems(now);
+  await batchWrite(OPERATIONAL_TABLE, viewItens);
+  console.log(
+    `  ${viewItens.length} itens de projeção gravados para /dashboard/overview e ` +
+      `/monitoring/overview (fontes: ${MONITORING_SOURCES.join(", ")}).`,
+  );
+
   console.log("\nPronto. Para o k6:");
   console.log(`  INCIDENT_COUNT=${total}`);
   console.log("\n⚠️  Os buckets são relativos ao INSTANTE do seed.");
   console.log("    Rode o teste logo em seguida: window=15m só encontra dado por ~1 h.");
-  console.log("\nLembrete: /api/v1/dashboard/overview e /api/v1/monitoring/overview NÃO são");
-  console.log("populados por este seed — dependem de uma projeção que só a Ingestão publica");
-  console.log("(ainda não implementada). Eles responderão 503 DATA_UNAVAILABLE, e é esperado.");
+  console.log("\n⚠️  /api/v1/dashboard/overview e /api/v1/monitoring/overview também envelhecem:");
+  console.log(
+    `    snapshots gravados com ${VIEW_SNAPSHOT_AGES_MINUTES.join("/")} min de idade cobrem os presets`,
+  );
+  console.log("    de window de 15m a 24h só por um tempo depois do seed — passado isso, voltam a");
+  console.log("    responder 503 DATA_UNAVAILABLE (estado real e esperado, não falha do teste).");
 }
 
 if (require.main === module) {
@@ -298,4 +500,14 @@ if (require.main === module) {
   });
 }
 
-module.exports = { enviarLoteComRetry, limparTabela, hourBucket, incidentSk, evidenceSk, hypothesisSk };
+module.exports = {
+  enviarLoteComRetry,
+  limparTabela,
+  hourBucket,
+  incidentSk,
+  evidenceSk,
+  hypothesisSk,
+  buildViewItems,
+  buildOverviewProjection,
+  buildMonitoringProjection,
+};

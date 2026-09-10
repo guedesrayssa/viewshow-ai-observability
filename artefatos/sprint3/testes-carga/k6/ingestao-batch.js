@@ -10,17 +10,36 @@
  * abaixo caso os nomes finais divirjam do que está assumido aqui.
  *
  * ============================== POR QUE NÃO RODA HOJE ==============================
+ * MUDOU (2026-09): as rotas HTTP de import JÁ EXISTEM em src/app.ts (POST
+ * /api/v1/imports, POST /api/v1/imports/:id/complete, GET /api/v1/imports/:id
+ * — ver public-routes.ts), mas o adaptador por trás delas
+ * (`UnavailableImportControl` em src/modules/imports/adapters/) é fail-closed
+ * por construção: toda chamada autenticada e com corpo válido responde
+ * incondicionalmente 503 FEATURE_UNAVAILABLE ("a importação requer S3 e uma
+ * tarefa de ingestão configurados"), documentado em apps/backend/README.md.
+ * Isso é DELIBERADO, não um 404 de rota inexistente como antes do backend
+ * ganhar esse contrato — setup() abaixo agora prova isso contra o BASE_URL de
+ * verdade (503 FEATURE_UNAVAILABLE) antes de rodar qualquer cenário: se a
+ * rota ainda não existir (404) ou já tiver saído do estado fail-closed
+ * (qualquer outra resposta), o script para com uma mensagem clara em vez de
+ * fingir medir alguma coisa.
+ *
+ * ACHADO A LEMBRAR (não é escopo do k6, não corrigir aqui): os três handlers
+ * de import em src/app.ts nunca chamam response.json()/.end() no caminho de
+ * SUCESSO — hoje invisível porque o adaptador sempre lança antes de chegar
+ * lá. No dia em que o adaptador real (S3 + tarefa de ingestão) resolver sem
+ * lançar, a requisição vai ficar pendurada sem resposta. Se este script
+ * passar a dar TIMEOUT em vez de 202/200 quando o probe abaixo parar de ver
+ * 503, esse é o primeiro lugar a olhar antes de assumir que o k6 quebrou.
+ *
  * A arquitetura aprovada (visao-geral.md, ingestao-e-dados.md) define a
  * Ingestão como uma tarefa ECS Fargate SEM porta HTTP: ela lê o ARGUS/MySQL
  * (ou um dump restaurado) via comandos `sync`/`backfill`, nunca por um POST
  * de eventos. O único ponto de entrada HTTP previsto é o Backend disparando
  * essa tarefa (D9: browser sobe o dump pro S3 → Backend inicia RunTask →
- * ImportJob acompanhado até COMPLETED/FAILED). Nenhuma dessas rotas existe em
- * src/app.ts hoje, e dashboard-queries.ts já assume explicitamente que "o
- * pipeline batch atual não possui fila" (rejeita flowMetric=queue_depth com
- * 422). setup() abaixo comprova isso contra o BASE_URL de verdade antes de
- * rodar qualquer cenário: se o endpoint de import ainda não existir, o
- * script para com uma mensagem clara em vez de fingir medir alguma coisa.
+ * ImportJob acompanhado até COMPLETED/FAILED). dashboard-queries.ts já
+ * assume explicitamente que "o pipeline batch atual não possui fila"
+ * (rejeita flowMetric=queue_depth com 422).
  *
  * ============================== O QUE CADA CENÁRIO VAI MEDIR ==============================
  * O requisito é 10.000 eventos/min por 15 min = 150.000 eventos por janela.
@@ -42,20 +61,25 @@
  *     (t2-t0) — do recebimento até a disponibilidade para consulta.
  *
  * ============================== SUPOSIÇÕES A REVISAR QUANDO O CONTRATO EXISTIR ==============================
- * Os paths abaixo são a leitura mais direta de D9/visao-geral.md, não um
- * contrato publicado — ajuste ENDPOINTS.* (ou as flags -e) quando a rota
- * real existir em apps/backend/api/contracts/openapi/.
+ * O request de POST /imports já segue o contrato real publicado
+ * (startImportBodySchema em contracts/src/index.ts: fileName, sizeBytes,
+ * sha256, partCount) — isso não é mais suposição. O que continua sendo
+ * suposição é a FORMA de uma resposta bem-sucedida (202 com data.importId,
+ * polling por data.status em GET /imports/:id) — nenhuma dessas formas foi
+ * publicada ainda, porque o adaptador nunca chega a produzir uma resposta de
+ * sucesso hoje. Ajuste as funções triggerImport()/waitForCompletion() quando
+ * o adaptador real existir e a forma da resposta for conhecida.
  *
- * USO (quando a Ingestão existir):
- *   k6 run -e BASE_URL=http://localhost:3000 -e MODE=drenagem ingestao-batch.js
- *   k6 run -e BASE_URL=... -e MODE=acumulo -e BACKLOG_BATCHES=3 ingestao-batch.js
- *   k6 run -e BASE_URL=... -e MODE=frescor ingestao-batch.js
+ * USO (quando o adaptador de import sair do estado fail-closed):
+ *   k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<32+ chars> -e MODE=drenagem ingestao-batch.js
+ *   k6 run -e BASE_URL=... -e AUTH_COOKIE_SECRET=... -e MODE=acumulo -e BACKLOG_BATCHES=3 ingestao-batch.js
+ *   k6 run -e BASE_URL=... -e AUTH_COOKIE_SECRET=... -e MODE=frescor ingestao-batch.js
  */
 
 import http from "k6/http";
 import { check, sleep } from "k6";
 import { Trend, Counter } from "k6/metrics";
-import { login, authParams } from "./lib/session.js";
+import { forgeSessionCookie, authParams } from "./lib/session.js";
 
 const BASE_URL = __ENV.BASE_URL;
 const MODE = __ENV.MODE || "drenagem";
@@ -103,46 +127,65 @@ export const options = {
   },
 };
 
+/** Corpo válido de POST /imports (startImportBodySchema) para uso no probe e
+ *  em cada disparo — sha256 fake de 64 hex chars só para passar a validação. */
+function importBody(label) {
+  return {
+    fileName: `k6-${label}.ndjson`,
+    sizeBytes: BATCH_SIZE * 200, // estimativa; não é validado além de positivo
+    sha256: "0".repeat(64),
+    partCount: 1,
+  };
+}
+
 /**
- * Confirma que o endpoint de import existe antes de gastar qualquer carga.
- * 404 RESOURCE_NOT_FOUND do middleware genérico de rota (src/app.ts) = rota
- * ainda não implementada → aborta com mensagem clara. Qualquer outra
- * resposta (400 de validação, 401, 202...) prova que a rota já existe.
+ * Confirma o estado real do endpoint de import antes de gastar qualquer
+ * carga. A rota EXISTE hoje (ao contrário do que uma versão anterior deste
+ * script assumia), mas o adaptador (UnavailableImportControl) é fail-closed
+ * incondicional: 503 FEATURE_UNAVAILABLE é o resultado esperado enquanto S3 e
+ * a tarefa de ingestão não forem configurados — o script aborta com mensagem
+ * clara nesse caso. 404 significa que a rota mudou de novo (contrato
+ * divergente deste script). Qualquer outra resposta indica que o adaptador
+ * saiu do estado fail-closed — hora de revisar as suposições no cabeçalho.
  */
 function probeImportEndpoint(cookie) {
   const res = http.post(
     `${BASE_URL}${ENDPOINTS.importTrigger}`,
-    JSON.stringify({ probe: true }),
+    JSON.stringify(importBody("probe")),
     authParams(cookie, { name: "probe import endpoint" }),
   );
   let code = null;
   try { code = res.json("error.code"); } catch { /* corpo não é o envelope de erro */ }
-  if (res.status === 404 && code === "RESOURCE_NOT_FOUND") {
+  if (res.status === 503 && code === "FEATURE_UNAVAILABLE") {
     throw new Error(
-      `${ENDPOINTS.importTrigger} ainda não existe (HTTP 404 RESOURCE_NOT_FOUND). ` +
-        "Isso é esperado: apps/backend/ingestion-data e a rota de importação do " +
-        "Backend (D9, artefatos/arquitetura/visao-geral.md) ainda não foram " +
-        "implementados por quem está com essa frente. Este script fica pronto " +
-        "para quando existirem — nada a fazer aqui até lá.",
+      `${ENDPOINTS.importTrigger} existe mas está fail-closed (503 FEATURE_UNAVAILABLE: ` +
+        '"a importação requer S3 e uma tarefa de ingestão configurados"). ' +
+        "Isso é deliberado (UnavailableImportControl em src/modules/imports/adapters/, " +
+        "ver apps/backend/README.md) até o adaptador real ser configurado. Este script " +
+        "fica pronto para quando isso acontecer — nada a fazer aqui até lá.",
+    );
+  }
+  if (res.status === 404) {
+    throw new Error(
+      `${ENDPOINTS.importTrigger} respondeu 404 — a rota pode ter mudado de novo. ` +
+        "Confira apps/backend/api/src/http/public-routes.ts antes de assumir que este " +
+        "script está desatualizado por outro motivo.",
     );
   }
 }
 
 export function setup() {
-  const cookie = login(BASE_URL);
+  const cookie = forgeSessionCookie({ role: "engineer" });
   probeImportEndpoint(cookie);
   return { cookie };
 }
 
-/** Dispara uma janela de importação. Ajuste o corpo quando o contrato existir. */
+/** Dispara uma janela de importação. Ajuste o corpo quando a forma real da
+ *  resposta de sucesso for conhecida (ver nota no cabeçalho do arquivo). */
 function triggerImport(cookie, label) {
   return http.post(
     `${BASE_URL}${ENDPOINTS.importTrigger}`,
-    JSON.stringify({
-      windowMinutes: WINDOW_MINUTES,
-      expectedEventCount: BATCH_SIZE,
-      label,
-    }),
+    JSON.stringify(importBody(label)),
     authParams(cookie, { name: "POST /imports", label }),
   );
 }

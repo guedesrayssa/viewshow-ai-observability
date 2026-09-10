@@ -5,7 +5,11 @@
 #       MODOS="smoke load breakpoint" ./rodadas.sh   # bateria menor
 #
 # Antes de rodar, semeie o ambiente da API (a partir de apps/backend/api):
-#   CLEAN=1 node scripts/seed-carga.js
+#   CLEAN=1 node scripts/seed-carga.cjs
+#
+# Exige AUTH_COOKIE_SECRET no ambiente (mesmo segredo do processo da API sob
+# teste, 32+ chars) — lib/session.js forja o cookie de sessão com ele, já que
+# POST /auth/login não existe mais (ver README.md).
 #
 # Espera a API drenar entre as rodadas: depois de saturar, ela leva minutos
 # para voltar, e medir em cima do backlog contamina a rodada seguinte.
@@ -13,6 +17,7 @@
 set -u
 
 BASE="${BASE_URL:?informe BASE_URL=http://<host>:3000}"
+SECRET="${AUTH_COOKIE_SECRET:?informe AUTH_COOKIE_SECRET=<mesmo segredo do processo da API sob teste>}"
 MODOS="${MODOS:-smoke load breakpoint estresse spike soak}"
 
 if ! command -v k6 >/dev/null 2>&1; then
@@ -53,7 +58,7 @@ for modo in $MODOS; do
 
   esperar_api
   echo "──────── $modo ────────"
-  if ! k6 run -e BASE_URL="$BASE" -e MODE="$modo" consultas.js; then
+  if ! k6 run -e BASE_URL="$BASE" -e AUTH_COOKIE_SECRET="$SECRET" -e MODE="$modo" consultas.js; then
     status=1
     echo "aviso: $modo terminou com falha; a bateria continuará." >&2
   fi
