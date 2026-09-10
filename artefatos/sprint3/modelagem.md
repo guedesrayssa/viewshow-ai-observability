@@ -10,8 +10,7 @@
 4. [Diagrama de classes](#4-diagrama-de-classes)
 5. [Diagramas de sequência](#5-diagramas-de-sequência)
 6. [Rastreabilidade da modelagem](#6-rastreabilidade-da-modelagem)
-7. [Validação e consistência](#7-validação-e-consistência)
-8. [Referências](#8-referências)
+7. [Referências](#7-referências)
 
 ---
 
@@ -1902,63 +1901,8 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 7. Validação e consistência
-
-### 7.1 Lista de verificação
-
-#### Casos de uso
-
-- [x] Todos os atores possuem objetivos claros.
-- [x] Todos os casos de uso do diagrama possuem descrição textual.
-- [x] Cada descrição segue as seções do formato completo de Larman.
-- [x] Os fluxos básicos terminam nas pós-condições declaradas.
-- [x] Os fluxos alternativos identificam o passo de origem ou o encerramento.
-- [x] As relações representadas possuem semântica compatível com a UML.
-- [x] Os casos de uso estão ligados a requisitos existentes.
-
-#### Diagrama de classes
-
-- [ ] As classes representam conceitos ou componentes relevantes.
-- [ ] Atributos e operações possuem tipos.
-- [ ] Associações possuem multiplicidades.
-- [ ] Composição, agregação, herança e dependência foram usadas corretamente.
-- [ ] As classes mencionadas nos diagramas de sequência existem no diagrama.
-- [ ] O diagrama é consistente com a arquitetura-alvo do View Show.
-
-#### Diagramas de sequência
-
-- [x] Cada diagrama referencia um caso de uso e um fluxo específico.
-- [x] As mensagens aparecem em ordem temporal.
-- [x] Chamadas síncronas, assíncronas e retornos estão diferenciados.
-- [x] Alternativas e exceções usam fragmentos combinados.
-- [x] Participantes correspondem a atores, interfaces, serviços ou classes da arquitetura-alvo.
-- [x] O resultado final corresponde às pós-condições do caso de uso.
-
-### 7.2 Questões de modelagem em aberto
-
-| ID | Questão | Casos de uso relacionados |
-| --- | --- | --- |
-| Q-01 | Definição das informações obrigatórias em cada formato de exportação e das telas que preservam os filtros. | UC-01 |
-| Q-02 | Definição do protocolo de federação e dos perfis corporativos que determinam as permissões de acesso. | UC-02 |
-| Q-03 | Definição dos critérios de revisão das hipóteses e dos dados obrigatórios para registrar uma causa alternativa. | UC-03, UC-04 |
-| Q-04 | Definição da amostra mínima e dos critérios de comparabilidade para análises temporais e de segmentos. | UC-05, UC-06 |
-| Q-05 | Definição dos limites que caracterizam atraso, cobertura parcial e indisponibilidade das fontes de telemetria. | UC-07 |
-
-### 7.3 Consistência entre os artefatos
-
-| Relação verificada | Critério de consistência |
-| --- | --- |
-| Casos de uso e requisitos | Cada comportamento está associado a requisitos funcionais, não funcionais, interfaces ou restrições existentes. |
-| Atores e entendimento do usuário | Os papéis e seus objetivos correspondem às personas, jornadas e telas definidas para o View Show. |
-| Casos de uso e diagrama de classes | As entidades e os serviços representam os conceitos necessários às pós-condições dos casos de uso. |
-| Casos de uso e diagramas de sequência | As interações realizam os fluxos básicos e alternativos sem alterar o objetivo ou as garantias declaradas. |
-
----
-
-## 8. Referências
+## 7. Referências
 
 LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto orientados a objetos e ao desenvolvimento iterativo*. 3. ed. Porto Alegre: Bookman, 2007. E-book. Disponível em: https://integrada.minhabiblioteca.com.br/reader/books/9788577800476. Acesso em: 6 set. 2026.
 
 OBJECT MANAGEMENT GROUP. *OMG Unified Modeling Language (OMG UML)*. Version 2.5.1. 2017. Disponível em: https://www.omg.org/spec/UML/2.5.1. Acesso em: 6 set. 2026.
-
-GRUPO 05 — OS BIG BROTHERS. *Especificação de requisitos: Monitoramento de Frontend Globoplay*. 2026. Disponível em: [requisitos.md](../sprint1/requisitos.md).
