@@ -35,17 +35,17 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
       "id": 3,
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"view-show-api\",status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"view-show-api\"}[5m])), 0.001)",
-          "legendFormat": "5xx ratio",
+          "expr": "sum(rate(http_requests_failed_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "HTTP errors/s",
           "refId": "A"
         }
       ],
-      "title": "API server-error ratio",
+      "title": "API errors per second",
       "type": "timeseries"
     },
     {
@@ -241,6 +241,21 @@
       ],
       "title": "Analysis queue depth",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 42 },
+      "id": 15,
+      "targets": [
+        {
+          "expr": "sum(rate(view_show_process_cpu_user_seconds_total{job=\"view-show-api\"}[5m])) + sum(rate(view_show_process_cpu_system_seconds_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "CPU cores used",
+          "refId": "A"
+        }
+      ],
+      "title": "API CPU usage",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
@@ -251,5 +266,5 @@
   "timezone": "browser",
   "title": "View Show — Application Observability",
   "uid": "view-show-observability",
-  "version": 2
+  "version": 3
 }
