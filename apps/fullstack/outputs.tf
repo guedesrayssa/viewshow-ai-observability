@@ -3,15 +3,14 @@ output "painel_url" {
   value       = local.painel_url
 }
 
+output "deployment_namespace" {
+  description = "Namespace isolado que identifica todos os recursos desta stack."
+  value       = var.deployment_namespace
+}
+
 output "api_url" {
   description = "Endereço direto do ALB. Serve para curl e Postman; o navegador deve usar painel_url, porque uma página HTTPS não pode chamar uma API em HTTP."
   value       = "http://${aws_lb.principal.dns_name}"
-}
-
-output "credenciais_demo" {
-  description = "Usuário aceito pelo login do painel."
-  value       = "${var.auth_email} / ${var.auth_senha}"
-  sensitive   = true
 }
 
 output "tabelas_dynamodb" {
@@ -23,7 +22,7 @@ output "tabelas_dynamodb" {
 }
 
 output "imagem_ecr" {
-  description = "Imagem publicada no ECR e rodando na task."
+  description = "URI da imagem referenciada pela task ECS."
   value       = local.uri_imagem
 }
 
@@ -32,14 +31,9 @@ output "comando_logs" {
   value       = "aws logs tail ${aws_cloudwatch_log_group.api.name} --follow --region ${var.regiao}"
 }
 
-output "comando_seed" {
-  description = "Repovoa as tabelas sem precisar de um apply inteiro. Rode de novo se o painel abrir vazio: o dado sai da janela de 24 h."
-  value       = "cd ../backend/api && AWS_REGION=${var.regiao} OPERATIONAL_TABLE_NAME=${aws_dynamodb_table.operacional.name} GOLDEN_SET_TABLE_NAME=${aws_dynamodb_table.golden_set.name} npm run seed"
-}
-
 output "aviso_custo" {
   description = "Leia antes de fechar o laboratório."
-  value       = "O ALB e a task Fargate NAO sao desligados pelo End Lab: so a EC2 e, e aqui nao ha EC2. Rode 'terraform destroy' ao fim de cada sessao, ou eles seguem cobrando ~US$ 25/mes do orcamento do lab."
+  value       = "Preserve a stack e o novo estado local ao fim da sessao para inspecao e diagnostico. Execute 'terraform destroy' somente sob pedido explicito posterior, usando esse mesmo estado. Enquanto provisionados, o ALB e a task Fargate continuam gerando custo."
 }
 
 output "api_url_https" {

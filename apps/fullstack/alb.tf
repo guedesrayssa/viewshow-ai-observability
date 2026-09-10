@@ -8,7 +8,7 @@
 // mesma da Tabela 7 de backend-sprint-2.md.
 
 resource "aws_lb" "principal" {
-  name               = var.nome_alb
+  name               = local.nome_alb
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -23,7 +23,7 @@ resource "aws_lb" "principal" {
 }
 
 resource "aws_lb_target_group" "api" {
-  name     = var.nome_target_group
+  name     = local.nome_target_group
   port     = 3000
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
@@ -37,7 +37,7 @@ resource "aws_lb_target_group" "api" {
     matcher = "200"
 
     // GET /health responde sem tocar em DynamoDB nem em Bedrock
-    // (src/routes/health.js), então pode ser agressivo sem custo.
+    // (apps/backend/api/src/app.ts), então pode ser agressivo sem custo.
     interval            = 15
     timeout             = 5
     healthy_threshold   = 2
