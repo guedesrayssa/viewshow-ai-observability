@@ -277,7 +277,7 @@ quem está na sessão melhor do que um símbolo genérico de pessoa.
 ## 7. Dados na tela
 
 Nenhum número exibido vem direto de um módulo de exemplo. Toda medição passa por
-`lib/data/client.ts`, que decide entre a API de telemetria e o conjunto de exemplo, e
+`lib/data/client.ts`, que decide entre a API operacional e o conjunto de exemplo, e
 chega ao componente pelo hook `useResource` (`hooks/use-resource.ts`). Os módulos
 `*-data.ts` guardam os tipos, os rótulos e as opções de filtro — e o conjunto de exemplo
 que o recurso usa como reserva.
@@ -305,7 +305,7 @@ Os quatro estados são obrigatórios na tela:
 | Sem leitura | `Alert` explicando a falha, com a ação de atualizar disponível |
 
 **A procedência fica visível.** `DataStatus` mostra em texto se o número veio da
-telemetria ("Telemetria ao vivo") ou do conjunto de exemplo ("Dados de exemplo"), e há
+API ("Telemetria ao vivo") ou do conjunto de exemplo ("Dados de exemplo"), e há
 quanto tempo foi lido. Um número na tela nunca se apresenta como medição quando não é.
 
 ## 8. Gráficos

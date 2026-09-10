@@ -108,7 +108,7 @@
 │     livre (tabela acima).            │     service_name e trace_id.         │
 │   - Envelope de erro HTTP com        │   - Middleware de log de acesso.     │
 │     message, já padronizado.         │   - requestId propagado ao envelope  │
-│ • apps/fullstack/observability:      │     de erro do contrato da API.      │
+│ • apps/fullstack/observability:                │     de erro do contrato da API.      │
 │   - Loki 3.7.7 na porta 3100.        │   - Redação de senha, cookie e       │
 │   - Retenção de 168h e compactor     │     e-mail antes da serialização.    │
 │     com retention_enabled.           │ • apps/frontend:                     │
@@ -118,7 +118,7 @@
 │                                      │ • apps/backend/ingestion-data:       │
 │                                      │   - Log JSON por run, fonte e etapa. │
 │                                      │   - runId, watermark e contagens.    │
-│                                      │ • apps/fullstack/observability:      │
+│                                      │ • apps/fullstack/observability:                │
 │                                      │   - Coletor de logs (Grafana Alloy). │
 └──────────────────────────────────────┴──────────────────────────────────────┘
 ```
@@ -813,7 +813,7 @@ loki.write "default" {
       - --server.http.listen-addr=0.0.0.0:12345
       - /etc/alloy/config.alloy
     volumes:
-      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./apps/fullstack/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - loki
