@@ -79,14 +79,14 @@ export function EvidenceView() {
   const [bufferingPeriod, setBufferingPeriod] = useState<BufferingPeriodKey>("120");
 
   const evidence = useResource(
-    (revision) => fetchEvidence(incidentId ?? "", revision),
+    () => fetchEvidence(incidentId ?? ""),
     [incidentId],
     { enabled: incidentId !== null },
   );
 
   const buffering = useResource(
-    (revision) => fetchBuffering(bufferingPeriod, revision),
-    [bufferingPeriod],
+    (revision) => fetchBuffering(incidentId ?? "", bufferingPeriod, revision),
+    [incidentId, bufferingPeriod],
     { enabled: incidentId !== null },
   );
 

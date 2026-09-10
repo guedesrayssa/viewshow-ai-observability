@@ -7,9 +7,9 @@ const { spawnSync } = require("node:child_process");
 
 const repoRoot = path.resolve(__dirname, "../../../../..");
 const script = path.join(repoRoot, "scripts/ci/deploy-ecs.sh");
-const oldArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/monitoracao-api-task:1";
-const newArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/monitoracao-api-task:2";
-const albArn = "arn:aws:elasticloadbalancing:us-east-1:248880318395:loadbalancer/app/data-ingestion-alb/456";
+const oldArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/g05-s3-api-task:1";
+const newArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/g05-s3-api-task:2";
+const albArn = "arn:aws:elasticloadbalancing:us-east-1:248880318395:loadbalancer/app/g05-s3-alb/456";
 const listenerArn = `${albArn.replace("loadbalancer", "listener")}/listener-1`;
 const commitSha = "abc123def456abc123def456abc123def456abcd";
 const imageDigest = `sha256:${"b".repeat(64)}`;
@@ -46,7 +46,7 @@ function runDeploy({
   artifactSymlink = false,
   serviceStatus = "ACTIVE",
   controllerType = "ECS",
-  taskFamily = "monitoracao-api-task",
+  taskFamily = "g05-s3-api-task",
   taskStatus = "ACTIVE",
   taskDeleteRequestedAt = null,
   lateTaskOverrides = {},
@@ -100,7 +100,7 @@ function runDeploy({
   } else {
     fs.writeFileSync(artifact, artifactContent ?? `BACKEND_IMAGE_DIGEST=${expectedImageDigest}\n`);
   }
-  const targetContainer = { name: "monitoracao-api-container", image: "old:v1" };
+  const targetContainer = { name: "g05-s3-api", image: "old:v1" };
   const containerDefinitions = {
     correct: [targetContainer],
     missing: [{ name: "sidecar", image: "sidecar:v1" }],
@@ -135,7 +135,7 @@ function runDeploy({
     deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: oldArn }],
     loadBalancers: [{
       targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
-      containerName: "monitoracao-api-container",
+      containerName: "g05-s3-api",
       containerPort: 3000,
     }],
     ...serviceOverrides,
@@ -229,7 +229,7 @@ call="$*"
 printf 'aws:%s\\n' "$call" >>"$CALL_LOG"
 if [[ "$call" == "sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\\n' "$ACTUAL_ACCOUNT" "$CALLER_ARN"
-elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service --query services[0] --output json" ]]; then
+elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster g05-s3-cluster --services g05-s3-api-service --query services[0] --output json" ]]; then
   service_read_count=$(( $(cat "$SERVICE_READ_COUNT_FILE") + 1 ))
   printf '%s' "$service_read_count" >"$SERVICE_READ_COUNT_FILE"
   if [[ "$service_read_count" == "1" ]]; then
@@ -242,7 +242,7 @@ elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster data-inge
   else
     cat "$ROLLBACK_SERVICE_FIXTURE"
   fi
-elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
+elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name g05-s3-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
   printf '{"digest":"%s","mediaType":"%s"}\n' "$LIVE_IMAGE_DIGEST" "$LIVE_IMAGE_MEDIA_TYPE"
 elif [[ "$call" == "ecs describe-task-definition --region us-east-1 --task-definition $OLD_ARN --query taskDefinition --output json" ]]; then
   task_read_count=$(( $(cat "$TASK_READ_COUNT_FILE") + 1 ))
@@ -258,7 +258,7 @@ elif [[ "$call" == "elbv2 describe-target-groups --region us-east-1 --target-gro
   else
     echo '{"TargetGroupArn":null,"LoadBalancerArns":[]}'
   fi
-elif [[ "$call" == "elbv2 describe-load-balancers --region us-east-1 --names data-ingestion-alb --query LoadBalancers[0] --output json" ]]; then
+elif [[ "$call" == "elbv2 describe-load-balancers --region us-east-1 --names g05-s3-alb --query LoadBalancers[0] --output json" ]]; then
   cat "$ALB_FIXTURE"
 elif [[ "$call" == "elbv2 describe-listeners --region us-east-1 --load-balancer-arn $ALB_ARN --query Listeners --output json" ]]; then
   cat "$LISTENERS_FIXTURE"
@@ -275,21 +275,21 @@ elif [[ "$1" == "ecs" && "$2" == "register-task-definition" ]]; then
       || { echo "unexpected register arguments: $call" >&2; exit 2; }
     input_json="\${6#file://}"
     jq -e --arg image "$EXPECTED_IMAGE" --arg container "$EXPECTED_CONTAINER" '
-      .family == "monitoracao-api-task"
+      .family == "g05-s3-api-task"
       and ([.containerDefinitions[] | select(.name == $container and .image == $image and .healthCheck.command[0] == "CMD-SHELL")] | length == 1)
     ' "$input_json" >/dev/null
     echo "$NEW_ARN"
-elif [[ "$call" == "ecs update-service --region us-east-1 --cluster data-ingestion-cluster --service monitoracao-api-service --task-definition $NEW_ARN --deployment-configuration deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100" ]]; then
+elif [[ "$call" == "ecs update-service --region us-east-1 --cluster g05-s3-cluster --service g05-s3-api-service --task-definition $NEW_ARN --deployment-configuration deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100" ]]; then
     task_definition="$NEW_ARN"
     printf '%s' "$task_definition" >"$STATE_FILE"
     if [[ "$FAIL_UPDATE_AFTER_MUTATION" == "true" ]]; then exit 4; fi
     echo '{}'
-elif [[ "$call" == "ecs update-service --region us-east-1 --cluster data-ingestion-cluster --service monitoracao-api-service --task-definition $OLD_ARN" ]]; then
+elif [[ "$call" == "ecs update-service --region us-east-1 --cluster g05-s3-cluster --service g05-s3-api-service --task-definition $OLD_ARN" ]]; then
     task_definition="$OLD_ARN"
     if [[ "$FAIL_ROLLBACK_UPDATE" == "true" && "$task_definition" == "$OLD_ARN" ]]; then exit 5; fi
     printf '%s' "$task_definition" >"$STATE_FILE"
     echo '{}'
-elif [[ "$call" == "ecs wait services-stable --region us-east-1 --cluster data-ingestion-cluster --services monitoracao-api-service" ]]; then
+elif [[ "$call" == "ecs wait services-stable --region us-east-1 --cluster g05-s3-cluster --services g05-s3-api-service" ]]; then
     waiter_count=$(( $(cat "$WAITER_COUNT_FILE") + 1 ))
     printf '%s' "$waiter_count" >"$WAITER_COUNT_FILE"
     if [[ "$FAIL_FORWARD_WAITER" == "true" && "$waiter_count" == "2" ]]; then
@@ -380,8 +380,8 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       ALB_ARN: albArn,
       LISTENER_ARN: listenerArn,
       TARGET_GROUP_ALB_ARN: targetGroupAlbArn,
-      EXPECTED_IMAGE: `248880318395.dkr.ecr.us-east-1.amazonaws.com/monitoracao-api@${expectedImageDigest}`,
-      EXPECTED_CONTAINER: "monitoracao-api-container",
+      EXPECTED_IMAGE: `248880318395.dkr.ecr.us-east-1.amazonaws.com/g05-s3-api@${expectedImageDigest}`,
+      EXPECTED_CONTAINER: "g05-s3-api",
       EXPECTED_SHA: commitSha,
       LIVE_IMAGE_DIGEST: liveImageDigest,
       LIVE_IMAGE_MEDIA_TYPE: liveImageMediaType,
@@ -394,12 +394,12 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       LATE_REMOTE_HEAD: lateRemoteHead,
       AWS_ACCOUNT_ID: "248880318395",
       AWS_DEFAULT_REGION: "us-east-1",
-      ECR_REPOSITORY: "monitoracao-api",
-      ECS_CLUSTER: "data-ingestion-cluster",
-      ECS_SERVICE: "monitoracao-api-service",
-      ECS_TASK_FAMILY: "monitoracao-api-task",
-      ECS_CONTAINER_NAME: "monitoracao-api-container",
-      ALB_NAME: "data-ingestion-alb",
+      ECR_REPOSITORY: "g05-s3-api",
+      ECS_CLUSTER: "g05-s3-cluster",
+      ECS_SERVICE: "g05-s3-api-service",
+      ECS_TASK_FAMILY: "g05-s3-api-task",
+      ECS_CONTAINER_NAME: "g05-s3-api",
+      ALB_NAME: "g05-s3-alb",
       CI_COMMIT_SHA: commitSha,
       BACKEND_IMAGE_DIGEST: expectedImageDigest,
       WAITER_TERM_GRACE_ATTEMPTS: "2",
@@ -952,7 +952,7 @@ test("develop advancing during preflight aborts immediately before mutation", ()
 });
 
 test("external deployment changing the rollback baseline aborts before registration", () => {
-  const externalArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/monitoracao-api-task:99";
+  const externalArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/g05-s3-api-task:99";
   const { result, calls } = runDeploy({
     lateServiceOverrides: {
       taskDefinition: externalArn,
@@ -1001,7 +1001,7 @@ test("rollback stable-predicate failure preserves the original waiter status", (
 for (const [name, loadBalancer] of [
   ["target group", {
     targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999",
-    containerName: "monitoracao-api-container",
+    containerName: "g05-s3-api",
     containerPort: 3000,
   }],
   ["container name", {
@@ -1011,7 +1011,7 @@ for (const [name, loadBalancer] of [
   }],
   ["container port", {
     targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
-    containerName: "monitoracao-api-container",
+    containerName: "g05-s3-api",
     containerPort: 3001,
   }],
 ]) {

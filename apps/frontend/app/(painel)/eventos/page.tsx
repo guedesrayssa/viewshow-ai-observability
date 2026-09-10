@@ -8,8 +8,10 @@
  */
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { EventsView } from "@/app/(painel)/eventos/events-view";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "Eventos",
@@ -18,5 +20,9 @@ export const metadata: Metadata = {
 };
 
 export default function EventosPage() {
-  return <EventsView />;
+  return (
+    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+      <EventsView />
+    </Suspense>
+  );
 }

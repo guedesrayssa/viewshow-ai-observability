@@ -56,9 +56,9 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
 |---|---|
 | [`apps/fullstack/observability/README.md`](../README.md) | Como subir a pilha, portas, data sources provisionados e limites do ambiente local. |
 | [`apps/fullstack/docker-compose.observability.yml`](../../docker-compose.observability.yml) | Definição dos quatro serviços da pilha. |
-| [`apps/fullstack/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; o bloco `view-show-api` está pronto e comentado. |
+| [`apps/fullstack/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; a API já expõe `GET /metrics`, e o bloco `view-show-api` fica comentado porque a composição não inicia a API. |
 | [`apps/fullstack/observability/loki/loki-config.yml`](../loki/loki-config.yml) | Retenção de 168h e `allow_structured_metadata`. |
 | [`apps/fullstack/observability/tempo/tempo.yml`](../tempo/tempo.yml) | Receptores OTLP e `metrics_generator`. |
 | [`apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml`](../grafana/provisioning/datasources/datasources.yml) | As quatro correlações entre os sinais. |
-| [`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md) | Serviço batch, estados de run, leases, projeções, datasets, envelope canônico, hashes e sanitização de erros. |
-| [`artefatos/arquitetura/api-dashboard.md`](../../../../artefatos/arquitetura/api-dashboard.md) | Catálogo de endpoints, envelope de erro e `requestId`. |
+| [`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md) | Fluxo de ingestão, estados de run, datasets, envelope canônico, persistência e sanitização de erros. |
+| [`artefatos/arquitetura/api-dashboard.md`](../../../../artefatos/arquitetura/api-dashboard.md) | Catálogo de endpoints, envelopes públicos e `requestId`. |

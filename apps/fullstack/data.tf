@@ -14,6 +14,16 @@ data "aws_subnets" "default" {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
   }
+
+  filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
+
+  filter {
+    name   = "map-public-ip-on-launch"
+    values = ["true"]
+  }
 }
 
 // O ALB exige subnets em pelo menos duas zonas de disponibilidade. A default
@@ -25,6 +35,11 @@ data "aws_subnet" "default" {
 
 check "subnets_alb" {
   assert {
+    condition     = length(data.aws_subnets.default.ids) >= 2
+    error_message = "A VPC default precisa ter pelo menos duas subnets públicas default-for-AZ para o ALB."
+  }
+
+  assert {
     condition = length(distinct([
       for subnet in data.aws_subnet.default : subnet.availability_zone
     ])) >= 2
@@ -33,9 +48,15 @@ check "subnets_alb" {
 }
 
 // LabRole é a única role utilizável no AWS Academy: iam:CreateRole devolve
-// AccessDenied (testado e registrado em artefatos/sprint2/backend-sprint-2.md,
-// seção 8.1). Ela serve tanto como execution role quanto como task role, como
-// já ocorria na implantação manual anterior.
+// AccessDenied (registrado em artefatos/sprint2/backend-sprint-2.md, seção 8.1).
+// Ela serve tanto como execution role quanto como task role.
 data "aws_iam_role" "lab" {
   name = "LabRole"
+}
+
+// Perfil preexistente do Learner Lab. Dá à EC2 acesso às APIs da AWS sem
+// gravar credenciais temporárias no disco e permite abrir o Grafana via SSM.
+data "aws_iam_instance_profile" "lab" {
+  count = var.observabilidade_habilitada ? 1 : 0
+  name  = "LabInstanceProfile"
 }

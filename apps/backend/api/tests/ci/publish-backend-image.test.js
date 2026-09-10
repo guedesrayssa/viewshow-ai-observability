@@ -69,7 +69,7 @@ if [[ "$*" == "sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\n' "$ACTUAL_ACCOUNT" "$CALLER_ARN"
 elif [[ "$*" == "ecr get-login-password --region us-east-1" ]]; then
   printf 'fixture-password'
-elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name monitoracao-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
+elif [[ "$*" == "ecr describe-images --region us-east-1 --repository-name g05-s3-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
   count="$(<"$DESCRIBE_COUNT_FILE")"
   count=$((count + 1))
   printf '%s' "$count" >"$DESCRIBE_COUNT_FILE"
@@ -98,8 +98,8 @@ fi
 set -euo pipefail
 printf 'docker:%s\n' "$*" >>"$CALL_LOG"
 registry="248880318395.dkr.ecr.us-east-1.amazonaws.com"
-tagged_image="$registry/monitoracao-api:$EXPECTED_SHA"
-cache="$registry/monitoracao-api:buildcache"
+tagged_image="$registry/g05-s3-api:$EXPECTED_SHA"
+cache="$registry/g05-s3-api:buildcache"
 identity_format='{{.Id}} {{json .RootFS.Layers}}'
 revision_format='{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 platform_format='{{.Os}}/{{.Architecture}}'
@@ -123,15 +123,15 @@ elif [[ "$1" == "buildx" && "$2" == "build" ]]; then
   fi
 elif [[ "$*" == "push $tagged_image" ]]; then
   printf 'layer: pushed\n%s: digest: %s size: 1234\n' "$EXPECTED_SHA" "$PUSH_DIGEST"
-elif [[ "$1" == "pull" && "$2" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ ]]; then
+elif [[ "$1" == "pull" && "$2" =~ ^$registry/g05-s3-api@sha256:[0-9a-f]{64}$ ]]; then
   :
 elif [[ "$1" == "image" && "$2" == "inspect" && "$3" == "$LOCAL_IMAGE_ID" && "$4" == "--format" && "$5" == "$identity_format" ]]; then
   printf '%s\n' "$LOCAL_IDENTITY"
-elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$identity_format" ]]; then
+elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/g05-s3-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$identity_format" ]]; then
   printf '%s\n' "$REMOTE_IDENTITY"
-elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$revision_format" ]]; then
+elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/g05-s3-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$revision_format" ]]; then
   printf '%s\n' "$IMAGE_REVISION"
-elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/monitoracao-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$platform_format" ]]; then
+elif [[ "$1" == "image" && "$2" == "inspect" && "$3" =~ ^$registry/g05-s3-api@sha256:[0-9a-f]{64}$ && "$4" == "--format" && "$5" == "$platform_format" ]]; then
   printf '%s\n' "$REMOTE_PLATFORM"
 else
   echo "unexpected docker call: $*" >&2
@@ -173,7 +173,7 @@ fi
       EXPECTED_SHA: commitSha,
       AWS_ACCOUNT_ID: "248880318395",
       AWS_DEFAULT_REGION: "us-east-1",
-      ECR_REPOSITORY: "monitoracao-api",
+      ECR_REPOSITORY: "g05-s3-api",
       CI_COMMIT_SHA: commitSha,
       BACKEND_IMAGE_ENV_FILE: dotenv,
       ...envOverrides,
@@ -196,9 +196,9 @@ test("absent SHA tag builds, checks again, pushes once, and validates only the d
   assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:buildx build")).length, 1);
   assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:push")).length, 1);
   assert.equal(calls.split("\n").filter((line) => line.includes("ecr describe-images")).length, 3);
-  assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
-  assert.match(calls, new RegExp(`docker:image inspect .*monitoracao-api@${digest}`));
-  assert.doesNotMatch(calls, new RegExp(`docker:(pull|image inspect) .*monitoracao-api:${commitSha}`));
+  assert.match(calls, new RegExp(`docker:pull .*g05-s3-api@${digest}`));
+  assert.match(calls, new RegExp(`docker:image inspect .*g05-s3-api@${digest}`));
+  assert.doesNotMatch(calls, new RegExp(`docker:(pull|image inspect) .*g05-s3-api:${commitSha}`));
 });
 
 test("Buildx iidfile without a trailing newline is accepted", () => {
@@ -215,7 +215,7 @@ test("identical existing SHA tag is reused without a push", () => {
   assert.equal(calls.split("\n").filter((line) => line.startsWith("docker:buildx build")).length, 1);
   assert.doesNotMatch(calls, /docker:push/);
   assert.ok(calls.indexOf("docker:buildx build") < calls.indexOf("ecr describe-images"));
-  assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
+  assert.match(calls, new RegExp(`docker:pull .*g05-s3-api@${digest}`));
 });
 
 test("single-platform OCI image manifest is accepted", () => {
@@ -278,7 +278,7 @@ test("SHA tag appearing before push is reused only after exact identity verifica
   assert.equal(result.status, 0, result.stderr);
   assert.equal(dotenv, `BACKEND_IMAGE_DIGEST=${digest}\n`);
   assert.doesNotMatch(calls, /docker:push/);
-  assert.match(calls, new RegExp(`docker:pull .*monitoracao-api@${digest}`));
+  assert.match(calls, new RegExp(`docker:pull .*g05-s3-api@${digest}`));
 });
 
 test("ECR tag race after push prevents artifact creation", () => {

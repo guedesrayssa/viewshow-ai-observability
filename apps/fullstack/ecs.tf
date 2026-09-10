@@ -1,5 +1,5 @@
 resource "aws_ecs_cluster" "principal" {
-  name = var.nome_cluster
+  name = local.nome_cluster
 
   setting {
     name  = "containerInsights"
@@ -21,11 +21,10 @@ resource "aws_ecs_cluster_capacity_providers" "principal" {
   }
 }
 
-// O grupo é criado explicitamente para controlar a retenção. Se o driver
-// awslogs o criasse implicitamente, o padrão seria "nunca expira", e logs
-// acumulados seriam um custo silencioso no orçamento do laboratório.
+// O grupo é declarado aqui para manter a retenção sob controle; sem isso, o
+// padrão "nunca expira" acumularia custo silencioso no orçamento do laboratório.
 resource "aws_cloudwatch_log_group" "api" {
-  name              = "/ecs/${var.nome_repositorio_ecr}"
+  name              = local.nome_log_group
   retention_in_days = var.retencao_logs_dias
 
   tags = {
@@ -33,31 +32,33 @@ resource "aws_cloudwatch_log_group" "api" {
   }
 }
 
-// AUTH_COOKIE_SECRET assina o cookie de sessão (src/auth/session.js). O código
-// usa um valor conhecido como fallback se a variável faltar, o que deixaria
-// qualquer pessoa com o repositório forjar uma sessão. Gerado aqui, o segredo
-// nunca passa pelo Git.
-resource "random_password" "cookie" {
+// Segredos independentes para assinar sessões e cursores opacos. A API exige
+// ambos no startup; valores gerados pelo Terraform não passam pelo git.
+resource "random_password" "auth_cookie_secret" {
+  length  = 64
+  special = false
+}
+
+resource "random_password" "cursor_secret" {
   length  = 64
   special = false
 }
 
 resource "aws_ecs_task_definition" "api" {
-  family                   = var.nome_task_definition
+  family                   = local.nome_task_definition
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = var.cpu_task
   memory                   = var.memoria_task
 
   // LabRole nos dois papéis: é a única role disponível no AWS Academy
-  // (backend-sprint-2.md, seção 8.1) e preserva o desenho da implantação
-  // manual anterior.
+  // (backend-sprint-2.md, seção 8.1).
   execution_role_arn = data.aws_iam_role.lab.arn
   task_role_arn      = data.aws_iam_role.lab.arn
 
   container_definitions = jsonencode([
     {
-      name      = var.nome_container
+      name      = local.nome_container
       image     = local.uri_imagem
       essential = true
 
@@ -75,9 +76,10 @@ resource "aws_ecs_task_definition" "api" {
         { name = "GOLDEN_SET_TABLE_NAME", value = aws_dynamodb_table.golden_set.name },
         { name = "BEDROCK_ENABLED", value = tostring(var.bedrock_habilitado) },
         { name = "BEDROCK_MODEL_ID", value = "anthropic.claude-3-haiku-20240307-v1:0" },
-        { name = "AUTH_USER_EMAIL", value = var.auth_email },
-        { name = "AUTH_USER_PASSWORD", value = var.auth_senha },
-        { name = "AUTH_COOKIE_SECRET", value = random_password.cookie.result },
+        { name = "AUTH_COOKIE_SECRET", value = random_password.auth_cookie_secret.result },
+        { name = "CURSOR_SECRET", value = random_password.cursor_secret.result },
+        { name = "OTEL_SERVICE_NAME", value = local.nome_container },
+        { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
 
         // O painel chega pelo Amplify, que repassa /api, /auth e /health para
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da
@@ -102,7 +104,7 @@ resource "aws_ecs_task_definition" "api" {
 }
 
 resource "aws_ecs_service" "api" {
-  name            = var.nome_servico
+  name            = local.nome_servico
   cluster         = aws_ecs_cluster.principal.id
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = var.quantidade_tasks
@@ -120,7 +122,7 @@ resource "aws_ecs_service" "api" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.api.arn
-    container_name   = var.nome_container
+    container_name   = local.nome_container
     container_port   = 3000
   }
 

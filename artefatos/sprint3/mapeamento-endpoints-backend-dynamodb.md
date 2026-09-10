@@ -1,8 +1,14 @@
 # Mapeamento de endpoints do backend × DynamoDB
 
-Levantamento de **como a API opera hoje**, lido do código — não da documentação.
-Objetivo: confirmar se as leituras estão corretas e registrar a arquitetura de
-dados **como ela de fato é**.
+> **Snapshot histórico:** este levantamento registra a implementação JavaScript
+> observada nos commits indicados abaixo. Ele não descreve o runtime TypeScript
+> atual nem o contrato federado vigente; consulte `apps/backend/api/README.md` e
+> `apps/fullstack/documentation/infraestrutura-integracao.md` para o estado
+> corrente.
+
+O objetivo deste registro era confirmar as leituras e documentar a arquitetura
+de dados daquele recorte de código, sem reinterpretá-la a partir dos contratos
+alvo.
 
 - **Escopo:** `apps/backend/api/src` no branch `develop` (commit `a06f8f3`).
 - **Data do levantamento:** 2026-09-03 (primeira leitura sobre `899691c`);
@@ -28,7 +34,7 @@ dados **como ela de fato é**.
 
 ---
 
-## 1. Arquitetura de dados como ela é hoje
+## 1. Arquitetura de dados no snapshot
 
 ### 1.1 Tabelas
 

@@ -9,6 +9,7 @@
 
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
+import type { ReactNode } from "react";
 
 import { AccountProvider } from "@/components/account/account-provider";
 import { InlineScript } from "@/components/inline-script";
@@ -46,7 +47,7 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // `data-theme` nasce claro e é corrigido pelo script abaixo ainda durante
     // a leitura do HTML; `suppressHydrationWarning` faz o React aceitar o valor
