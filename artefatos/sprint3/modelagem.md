@@ -120,7 +120,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <strong>Diagrama 1: Casos de uso do View Show</strong>
 
-![Diagrama de casos de uso do View Show](../assets/modelagem/casos-de-uso.png)
+![Diagrama de casos de uso do View Show](/assets/modelagem/casos-de-uso.png)
 
 Fonte: Material produzido pelos autores (2026).
 
