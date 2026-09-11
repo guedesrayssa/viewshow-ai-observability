@@ -70,6 +70,7 @@ resource "aws_ecs_task_definition" "api" {
       ]
 
       environment = [
+        { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3000" },
         { name = "AWS_REGION", value = var.regiao },
         { name = "OPERATIONAL_TABLE_NAME", value = aws_dynamodb_table.operacional.name },
@@ -79,8 +80,20 @@ resource "aws_ecs_task_definition" "api" {
         { name = "AUTH_COOKIE_SECRET", value = random_password.auth_cookie_secret.result },
         { name = "CURSOR_SECRET", value = random_password.cursor_secret.result },
         { name = "RATE_LIMIT_PER_MINUTE", value = tostring(var.rate_limit_por_minuto) },
+
+        // Cognito: a task autentica POST /auth/login contra este User Pool pelo
+        // fluxo USER_PASSWORD_AUTH. O client é confidencial, então o secret vai
+        // junto. Mesmo tratamento em texto plano dos dois segredos acima: nascem
+        // no Terraform, entram só na task e nunca passam pelo git.
+        { name = "COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.principal.id },
+        { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.backend.id },
+        { name = "COGNITO_CLIENT_SECRET", value = aws_cognito_user_pool_client.backend.client_secret },
+
         { name = "OTEL_SERVICE_NAME", value = local.nome_container },
+        { name = "OTEL_DEPLOYMENT_ENVIRONMENT", value = "aws" },
+        { name = "OTEL_RESOURCE_ATTRIBUTES", value = "deployment.environment=aws,service.version=${local.tag_imagem},cloud.region=${var.regiao}" },
         { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
+        { name = "LOKI_PUSH_URL", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:3100/loki/api/v1/push" : "" },
 
         // O painel chega pelo Amplify, que repassa /api, /auth e /health para
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da

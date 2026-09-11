@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 
 import { AccountProvider } from "@/components/account/account-provider";
 import { InlineScript } from "@/components/inline-script";
+import { RumReporter } from "@/components/observability/rum-reporter";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <InlineScript html={THEME_BOOTSTRAP_SCRIPT} />
       </head>
       <body className="min-h-full flex flex-col">
+        <RumReporter />
         <ThemeProvider>
           <AccountProvider>{children}</AccountProvider>
         </ThemeProvider>

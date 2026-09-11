@@ -38,6 +38,72 @@
         }
       }
     },
+    "/api/v1/telemetry/rum": {
+      "post": {
+        "operationId": "collectRumTelemetry",
+        "description": "Accepts allowlisted, low-cardinality browser telemetry.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "schemaVersion",
+                  "name",
+                  "value",
+                  "unit",
+                  "path",
+                  "occurredAt"
+                ],
+                "properties": {
+                  "schemaVersion": { "const": 1 },
+                  "name": {
+                    "enum": [
+                      "frontend_web_vitals_fcp_seconds",
+                      "frontend_web_vitals_lcp_seconds",
+                      "frontend_web_vitals_inp_ms",
+                      "frontend_web_vitals_cls",
+                      "frontend_client_errors_total",
+                      "frontend_api_fetch_errors_total",
+                      "operator_clicks_to_root_cause"
+                    ]
+                  },
+                  "value": { "type": "number", "minimum": 0 },
+                  "unit": {
+                    "enum": ["seconds", "milliseconds", "score", "count"]
+                  },
+                  "metricId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/[A-Za-z0-9/_-]*$",
+                    "maxLength": 256
+                  },
+                  "navigationType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "occurredAt": { "type": "string", "format": "date-time" },
+                  "rating": { "enum": ["good", "needs-improvement", "poor"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Telemetry accepted" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "429": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
     "/auth/login": {
       "get": {
         "operationId": "beginLogin",
@@ -48,6 +114,70 @@
               "Location": { "schema": { "type": "string", "format": "uri" } }
             }
           },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "post": {
+        "operationId": "passwordLogin",
+        "description": "Direct username/password login against the Cognito user pool (USER_PASSWORD_AUTH, server-side). Issues the signed session cookie and returns the ID token. Returns FEATURE_UNAVAILABLE when the identity provider is not configured.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string", "minLength": 1, "maxLength": 320 },
+                  "password": { "type": "string", "minLength": 1, "maxLength": 256 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/SuccessEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["token", "tokenType", "expiresInSeconds", "user"],
+                          "properties": {
+                            "token": { "type": "string" },
+                            "tokenType": { "type": "string" },
+                            "expiresInSeconds": { "type": "integer" },
+                            "user": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["id", "name", "email", "role"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "name": { "type": ["string", "null"] },
+                                "email": { "type": "string", "format": "email" },
+                                "role": { "type": "string", "enum": ["viewer", "engineer", "admin"] }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "429": { "$ref": "#/components/responses/Error" },
           "503": { "$ref": "#/components/responses/Error" }
         }
       }

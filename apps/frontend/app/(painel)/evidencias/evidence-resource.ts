@@ -16,8 +16,14 @@ import {
   type EvidenceSource,
   type ReviewStatus,
 } from "@/app/(painel)/evidencias/evidence-data";
-import { gatewayUrl, jitter, loadResource, type Resource } from "@/lib/data/client";
+import {
+  gatewayUrl,
+  jitter,
+  loadResource,
+  type Resource,
+} from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
+import { reportRum } from "@/lib/rum";
 
 type DiagnosisResponse = {
   incident: {
@@ -26,7 +32,12 @@ type DiagnosisResponse = {
     priority: string;
     status: string;
     startedAt: string;
-    impact: { affectedDevices: { value: number | null; measurement: { status: string } } };
+    impact: {
+      affectedDevices: {
+        value: number | null;
+        measurement: { status: string };
+      };
+    };
     primaryComponent: { id: string; name: string } | null;
   };
   diagnosis: {
@@ -61,7 +72,10 @@ type BufferingContract = {
   marker?: { timestamp: string; label: string } | null;
 };
 
-const reviewTargets = new Map<string, { hypothesisId: string; expectedVersion: number }>();
+const reviewTargets = new Map<
+  string,
+  { hypothesisId: string; expectedVersion: number }
+>();
 
 function exampleEvidence(): EvidenceData {
   return {
@@ -84,24 +98,39 @@ function toClock(iso: string): string {
     : date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function toEvidence(item: DiagnosisResponse["evidence"][number]): EvidenceSource {
+function toEvidence(
+  item: DiagnosisResponse["evidence"][number],
+): EvidenceSource {
   return {
     id: item.id,
     source: item.source.name,
     summary: item.statement,
-    strength: item.relation === "contradicts" ? "contra" : item.strength === "strong" ? "forte" : "neutra",
-    detail: [item.title, item.type, ...item.quality.flags].filter(Boolean).join(" · "),
+    strength:
+      item.relation === "contradicts"
+        ? "contra"
+        : item.strength === "strong"
+          ? "forte"
+          : "neutra",
+    detail: [item.title, item.type, ...item.quality.flags]
+      .filter(Boolean)
+      .join(" · "),
   };
 }
 
 function toData(response: DiagnosisResponse): EvidenceData {
   const devices = response.incident.impact.affectedDevices.value;
-  if (devices === null || response.incident.impact.affectedDevices.measurement.status === "unknown") {
-    throw new Error("O diagnóstico não possui contagem observada de dispositivos afetados.");
+  if (
+    devices === null ||
+    response.incident.impact.affectedDevices.measurement.status === "unknown"
+  ) {
+    throw new Error(
+      "O diagnóstico não possui contagem observada de dispositivos afetados.",
+    );
   }
-  const hypothesis = response.diagnosis.hypotheses.find(
-    (item) => item.id === response.diagnosis.primaryHypothesisId,
-  ) ?? response.diagnosis.hypotheses[0];
+  const hypothesis =
+    response.diagnosis.hypotheses.find(
+      (item) => item.id === response.diagnosis.primaryHypothesisId,
+    ) ?? response.diagnosis.hypotheses[0];
   if (hypothesis) {
     reviewTargets.set(response.incident.id, {
       hypothesisId: hypothesis.id,
@@ -111,7 +140,8 @@ function toData(response: DiagnosisResponse): EvidenceData {
     reviewTargets.delete(response.incident.id);
   }
   const reviewStatus: ReviewStatus =
-    hypothesis?.review.status === "confirmed" || hypothesis?.review.status === "refuted"
+    hypothesis?.review.status === "confirmed" ||
+    hypothesis?.review.status === "refuted"
       ? hypothesis.review.status
       : "pending";
   return {
@@ -119,7 +149,13 @@ function toData(response: DiagnosisResponse): EvidenceData {
     incident: {
       id: response.incident.id,
       title: response.incident.title,
-      startedMinutesAgo: Math.max(0, Math.round((Date.now() - new Date(response.incident.startedAt).getTime()) / 60_000)),
+      startedMinutesAgo: Math.max(
+        0,
+        Math.round(
+          (Date.now() - new Date(response.incident.startedAt).getTime()) /
+            60_000,
+        ),
+      ),
       severity: response.incident.priority,
       investigationStatus: response.incident.status,
       affectedDevices: devices,
@@ -141,7 +177,9 @@ function toData(response: DiagnosisResponse): EvidenceData {
   };
 }
 
-export function fetchEvidence(incidentId: string): Promise<Resource<EvidenceData>> {
+export function fetchEvidence(
+  incidentId: string,
+): Promise<Resource<EvidenceData>> {
   return loadResource<DiagnosisResponse, EvidenceData>({
     path: ENDPOINTS.diagnosis(incidentId),
     map: toData,
@@ -163,20 +201,37 @@ export function fetchBuffering(
     path: ENDPOINTS.diagnosis(incidentId),
     map: (response) => {
       const chart = response.charts.buffering;
-      if (!chart) throw new Error("A série de buffering não está disponível para este incidente.");
-      const points = chart.points.map((point) => ({ time: toClock(point.timestamp), value: point.value }));
+      if (!chart)
+        throw new Error(
+          "A série de buffering não está disponível para este incidente.",
+        );
+      const points = chart.points.map((point) => ({
+        time: toClock(point.timestamp),
+        value: point.value,
+      }));
       const markerIndex = chart.marker
-        ? points.findIndex((_, index) => chart.points[index]?.timestamp === chart.marker?.timestamp)
+        ? points.findIndex(
+            (_, index) =>
+              chart.points[index]?.timestamp === chart.marker?.timestamp,
+          )
         : -1;
       return {
         points,
-        marker: chart.marker && markerIndex >= 0 ? { index: markerIndex, label: chart.marker.label } : null,
+        marker:
+          chart.marker && markerIndex >= 0
+            ? { index: markerIndex, label: chart.marker.label }
+            : null,
       };
     },
     fallback: () => ({
       points: BUFFERING_DATASETS[period].map((point, index) => ({
         ...point,
-        value: revision === 0 ? point.value : Number(jitter(point.value, revision * 40 + index, 0.08).toFixed(1)),
+        value:
+          revision === 0
+            ? point.value
+            : Number(
+                jitter(point.value, revision * 40 + index, 0.08).toFixed(1),
+              ),
       })),
       marker: { index: DEPLOY_INDEX[period], label: DEPLOY_LABEL },
     }),
@@ -193,29 +248,67 @@ export async function reviewHypothesis(
 ): Promise<ReviewResult> {
   const target = reviewTargets.get(incidentId);
   if (!target) {
-    return { ok: false, needsSignIn: false, message: "A hipótese atual precisa ser recarregada antes da revisão." };
+    return {
+      ok: false,
+      needsSignIn: false,
+      message: "A hipótese atual precisa ser recarregada antes da revisão.",
+    };
   }
   try {
-    const response = await fetch(gatewayUrl(ENDPOINTS.review(incidentId, target.hypothesisId)), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ status, expectedVersion: target.expectedVersion }),
-    });
+    const response = await fetch(
+      gatewayUrl(ENDPOINTS.review(incidentId, target.hypothesisId)),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          status,
+          expectedVersion: target.expectedVersion,
+        }),
+      },
+    );
     if (response.ok) {
-      const body = (await response.json()) as { data: { review: { version: number } } };
-      reviewTargets.set(incidentId, { ...target, expectedVersion: body.data.review.version });
+      const body = (await response.json()) as {
+        data: { review: { version: number } };
+      };
+      reviewTargets.set(incidentId, {
+        ...target,
+        expectedVersion: body.data.review.version,
+      });
       return { ok: true, status };
     }
+    reportRum("frontend_api_fetch_errors_total", 1);
     if (response.status === 401 || response.status === 403) {
-      return { ok: false, needsSignIn: true, message: "Sua sessão expirou. Entre novamente para registrar a revisão." };
+      return {
+        ok: false,
+        needsSignIn: true,
+        message:
+          "Sua sessão expirou. Entre novamente para registrar a revisão.",
+      };
     }
     if (response.status === 409) {
-      return { ok: false, needsSignIn: false, message: "A hipótese foi revisada por outra sessão. Recarregue os dados." };
+      return {
+        ok: false,
+        needsSignIn: false,
+        message:
+          "A hipótese foi revisada por outra sessão. Recarregue os dados.",
+      };
     }
-    const body = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
-    return { ok: false, needsSignIn: false, message: body?.error?.message ?? "Não foi possível registrar a revisão agora." };
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    return {
+      ok: false,
+      needsSignIn: false,
+      message:
+        body?.error?.message ?? "Não foi possível registrar a revisão agora.",
+    };
   } catch {
-    return { ok: false, needsSignIn: false, message: "Não conseguimos falar com o gateway." };
+    reportRum("frontend_api_fetch_errors_total", 1);
+    return {
+      ok: false,
+      needsSignIn: false,
+      message: "Não conseguimos falar com o gateway.",
+    };
   }
 }

@@ -1,0 +1,270 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "requests",
+          "refId": "A"
+        }
+      ],
+      "title": "API request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{job=\"view-show-api\"}[5m])))",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "API latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_failed_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "HTTP errors/s",
+          "refId": "A"
+        }
+      ],
+      "title": "API errors per second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(frontend_web_vitals_lcp_seconds_bucket[15m])))",
+          "legendFormat": "LCP {{path}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Frontend LCP p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "sum(increase(frontend_client_errors_total[15m]))",
+          "legendFormat": "browser errors",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(frontend_api_fetch_errors_total[15m]))",
+          "legendFormat": "API failures",
+          "refId": "B"
+        }
+      ],
+      "title": "Frontend errors",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "view_show_process_resident_memory_bytes",
+          "legendFormat": "RSS",
+          "refId": "A"
+        },
+        {
+          "expr": "view_show_nodejs_heap_size_used_bytes",
+          "legendFormat": "heap",
+          "refId": "B"
+        }
+      ],
+      "title": "Node.js memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 16 },
+      "id": 7,
+      "options": {
+        "enableLogDetails": true,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{service_name=~\".*api|view-show-ingestion|view-show-agentic\"} | json",
+          "refId": "A"
+        }
+      ],
+      "title": "Correlated application logs",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 16 },
+      "id": 8,
+      "targets": [
+        {
+          "expr": "ALERTS{alertstate=\"firing\"}",
+          "legendFormat": "{{alertname}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Firing alerts",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "rows/s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 26 },
+      "id": 9,
+      "targets": [
+        {
+          "expr": "sum by (source_dataset) (rate(ingestion_records_read_total[5m]))",
+          "legendFormat": "read {{source_dataset}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (source_dataset) (rate(ingestion_records_written_total[5m]))",
+          "legendFormat": "written {{source_dataset}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Ingestion throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 26 },
+      "id": 10,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, command) (rate(ingestion_pipeline_run_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{command}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Ingestion run duration p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 26 },
+      "id": 11,
+      "targets": [
+        {
+          "expr": "sum by (source_dataset, reason) (increase(ingestion_records_rejected_total[15m]))",
+          "legendFormat": "rejected {{source_dataset}} / {{reason}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (source_dataset) (increase(ingestion_schema_drift_total[15m]))",
+          "legendFormat": "schema drift {{source_dataset}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Ingestion quality failures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 34 },
+      "id": 12,
+      "targets": [
+        {
+          "expr": "sum by (event_type, status) (rate(analysis_messages_total[5m]))",
+          "legendFormat": "{{event_type}} / {{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Analysis worker outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 34 },
+      "id": 13,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, model_id) (rate(bedrock_invocation_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{model_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Bedrock invocation latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 34 },
+      "id": 14,
+      "targets": [
+        {
+          "expr": "sqs_queue_depth_messages",
+          "legendFormat": "queue",
+          "refId": "A"
+        },
+        {
+          "expr": "sqs_dead_letter_queue_messages",
+          "legendFormat": "DLQ",
+          "refId": "B"
+        }
+      ],
+      "title": "Analysis queue depth",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 42 },
+      "id": 15,
+      "targets": [
+        {
+          "expr": "sum(rate(view_show_process_cpu_user_seconds_total{job=\"view-show-api\"}[5m])) + sum(rate(view_show_process_cpu_system_seconds_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "CPU cores used",
+          "refId": "A"
+        }
+      ],
+      "title": "API CPU usage",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["view-show", "observability"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "View Show — Application Observability",
+  "uid": "view-show-observability",
+  "version": 3
+}

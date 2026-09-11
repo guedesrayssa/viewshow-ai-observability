@@ -172,16 +172,32 @@ describe("api monolith over HTTP", () => {
     });
   });
 
-  it("exposes only the federated authentication routes", async () => {
+  it("exposes the federated routes and direct password login", async () => {
     const url = await listen(buildApp());
     expect((await fetch(`${url}/auth/login`)).status).toBe(503);
     expect((await fetch(`${url}/auth/callback`)).status).toBe(400);
     expect(
       (await fetch(`${url}/auth/callback?code=code_1&state=state_1`)).status,
     ).toBe(503);
+
+    // POST /auth/login existe: valida o corpo antes de tudo...
     expect((await fetch(`${url}/auth/login`, { method: "POST" })).status).toBe(
-      404,
+      400,
     );
+    // ...e falha fechada com 503 enquanto o provedor Cognito não está
+    // configurado no ambiente.
+    const attempt = await fetch(`${url}/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        username: "engineer@example.test",
+        password: "irrelevante",
+      }),
+    });
+    expect(attempt.status).toBe(503);
+    expect(await attempt.json()).toMatchObject({
+      error: { code: "FEATURE_UNAVAILABLE" },
+    });
   });
 
   it("calls a module in-process, wraps quality metadata, and keeps physical fields private", async () => {
@@ -256,7 +272,51 @@ describe("api monolith over HTTP", () => {
     ).toBe(403);
     const metrics = await fetch(`${url}/metrics`);
     expect(metrics.status).toBe(200);
-    expect(await metrics.text()).toContain("http_requests_total");
+    expect(await metrics.text()).toContain(
+      'http_requests_total{service_name="view-show-api"',
+    );
+
+    const rum = await fetch(`${url}/api/v1/telemetry/rum`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "http://allowed.test",
+      },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        name: "frontend_web_vitals_lcp_seconds",
+        value: 1.25,
+        unit: "seconds",
+        metricId: "v1-test",
+        path: "/incidentes",
+        navigationType: "navigate",
+        occurredAt: "2026-09-10T12:00:00.000Z",
+        rating: "good",
+      }),
+    });
+    expect(rum.status).toBe(202);
+    const updatedMetrics = await fetch(`${url}/metrics`);
+    const updatedMetricsBody = await updatedMetrics.text();
+    expect(updatedMetricsBody).toContain(
+      'frontend_web_vitals_lcp_seconds_count{service_name="view-show-frontend",path="/incidentes",rating="good"} 1',
+    );
+    expect(updatedMetricsBody).toContain(
+      'frontend_web_vitals_lcp_seconds_bucket{le="2.5",service_name="view-show-frontend",path="/incidentes",rating="good"} 1',
+    );
+
+    const invalidRum = await fetch(`${url}/api/v1/telemetry/rum`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        name: "arbitrary_metric",
+        value: 1,
+        unit: "count",
+        path: "/",
+        occurredAt: "2026-09-10T12:00:00.000Z",
+      }),
+    });
+    expect(invalidRum.status).toBe(400);
   });
 
   it("assigns the request id before CORS and JSON parsing can fail", async () => {

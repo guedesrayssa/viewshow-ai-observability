@@ -260,14 +260,14 @@ Buckets recomendados para o histograma de latência:
 
 | Métrica / Nome Técnico | Tipo | Unidade | Descrição / Diagnóstico |
 |:---|:---|:---|:---|
-| `nodejs_eventloop_lag_seconds` | Gauge | segundos | Atraso no ciclo de eventos. Valores > 0,1s indicam bloqueio síncrono da thread por parsing excessivo de JSON ou filtragem pesada em memória. |
-| `nodejs_gc_duration_seconds` | Histograma | segundos | Duração das coletas de lixo V8 (labels: `scavenge`, `mark-sweep-compact`). |
-| `process_cpu_user_seconds_total` | Contador | segundos | Segundos de CPU gastos em código de usuário. |
-| `process_cpu_system_seconds_total`| Contador | segundos | Segundos de CPU gastos em chamadas de sistema do kernel. |
-| `nodejs_heap_size_used_bytes` | Gauge | bytes | Memória Heap efetivamente alocada por objetos JavaScript. |
-| `nodejs_heap_size_total_bytes` | Gauge | bytes | Tamanho total reservado para a Heap V8. |
-| `process_resident_memory_bytes` | Gauge | bytes | Memória física residente ocupada pelo contêiner (RSS). |
-| `nodejs_active_handles` | Gauge | contagem | Sockets de rede e descritores de arquivos abertos. |
+| `view_show_nodejs_eventloop_lag_seconds` | Gauge | segundos | Atraso no ciclo de eventos. Valores > 0,1s indicam bloqueio síncrono da thread por parsing excessivo de JSON ou filtragem pesada em memória. |
+| `view_show_nodejs_gc_duration_seconds` | Histograma | segundos | Duração das coletas de lixo V8 (labels: `scavenge`, `mark-sweep-compact`). |
+| `view_show_process_cpu_user_seconds_total` | Contador | segundos | Segundos de CPU gastos em código de usuário. |
+| `view_show_process_cpu_system_seconds_total`| Contador | segundos | Segundos de CPU gastos em chamadas de sistema do kernel. |
+| `view_show_nodejs_heap_size_used_bytes` | Gauge | bytes | Memória Heap efetivamente alocada por objetos JavaScript. |
+| `view_show_nodejs_heap_size_total_bytes` | Gauge | bytes | Tamanho total reservado para a Heap V8. |
+| `view_show_process_resident_memory_bytes` | Gauge | bytes | Memória física residente ocupada pelo contêiner (RSS). |
+| `view_show_nodejs_active_handles` | Gauge | contagem | Sockets de rede e descritores de arquivos abertos. |
 
 ### 4.3 Métricas da Camada Agêntica, Orquestrador e Bedrock LLM
 
@@ -368,12 +368,12 @@ Buckets recomendados para o histograma de latência:
 
 | Requisito | Categoria | Descrição | Métrica Observada | Limiar de Alarme | Gravidade |
 |:---|:---|:---|:---|:---|:---|
-| **RNF01** | Capacidade | Escalar sob picos sem acúmulo de mensagens | `ingestion_records_rate_per_minute` / `process_cpu_user_seconds_total` | Taxa de CPU > 85% por mais de 5 min | Crítico |
+| **RNF01** | Capacidade | Escalar sob picos sem acúmulo de mensagens | `ingestion_records_rate_per_minute` / `view_show_process_cpu_user_seconds_total` | Taxa de CPU > 85% por mais de 5 min | Crítico |
 | **RNF02** | Tempo | Ponta a ponta entre captura e consulta ≤ 2 min | `ingestion_pipeline_run_duration_seconds` | `p95(duration) > 120s` em 2 execuções seguidas | Crítico |
 | **RNF03** | Tolerância a Falhas | Payload inválido isola mensagem sem parar lote | `ingestion_records_rejected_total` / `ingestion_runs_total{status="PARTIAL"}` | Falha que aborta o lote inteiro (`status="FAILED"`) | Alto |
 | **RNF04** | Segurança | Acesso exclusivo com domínio `@globo.com` | `http_requests_total{route="/auth/login", status_code="401\|403"}` | Tentativas inválidas > 20 req/min | Alto |
 | **RNF05** | Recursos | 30 dias em hot storage e expiração via TTL | `dynamodb_table_item_count` / registros TTL | Itens expirados há mais de 48h sem exclusão | Médio |
-| **RNF06** | Portabilidade | Contêiner Docker autônomo por variáveis de ambiente | `nodejs_heap_size_used_bytes` / falhas de boot | Falha de inicialização ou crash do contêiner | Crítico |
+| **RNF06** | Portabilidade | Contêiner Docker autônomo por variáveis de ambiente | `view_show_nodejs_heap_size_used_bytes` / falhas de boot | Falha de inicialização ou crash do contêiner | Crítico |
 | **RNF07** | Tempo | FCP do painel Next.js ≤ 30 segundos | `frontend_web_vitals_fcp_seconds` | `p95(FCP) > 30,0s` em auditorias web | Médio |
 | **RNF08** | Correção ML | Diagnóstico com F1-Score ≥ 80% | `ml_diagnosis_f1_score` | `F1_Score < 0.80` no conjunto holdout | Crítico |
 | **RNF09** | Disponibilidade | Disponibilidade do serviço da API ≥ 99,9% | `http_requests_failed_total{status_code=~"5.."}` | Taxa de erro 5xx > 0,1% em janela de 5 min | Crítico |
@@ -448,11 +448,10 @@ Buckets recomendados para o histograma de latência:
 1. A API já expõe `GET /metrics` por meio de
    `src/observability/metrics.ts` e registra as métricas RED. Confirme que
    `METRICS_ENABLED=true` (valor padrão) ao iniciar o processo.
-2. Com a API rodando no host, habilite o alvo `view-show-api` em
-   `apps/fullstack/observability/prometheus/prometheus.yml`, apontado para
-   `host.docker.internal:3000`. O bloco permanece comentado por padrão porque a
-   composição de observabilidade não inicia a API e, nesse caso, o alvo ficaria
-   permanentemente `down`.
+2. O alvo `view-show-api` em
+   `apps/fullstack/observability/prometheus/prometheus.yml` já aponta para
+   `host.docker.internal:3000`. Inicie a API junto à composição; caso contrário,
+   o alvo e o alerta `ViewShowApiTargetDown` permanecerão ativos.
 3. Verifique o alvo em `http://localhost:9090/targets` e consulte as séries
    `http_requests_total` e `http_request_duration_seconds`.
 

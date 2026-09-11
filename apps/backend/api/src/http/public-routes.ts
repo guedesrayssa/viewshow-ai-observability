@@ -7,12 +7,22 @@ type PublicRoute = Readonly<{
 export const PUBLIC_ROUTES = {
   health: { method: "get", express: "/health", openapi: "/health" },
   metrics: { method: "get", express: "/metrics", openapi: "/metrics" },
+  rumTelemetry: {
+    method: "post",
+    express: "/api/v1/telemetry/rum",
+    openapi: "/api/v1/telemetry/rum",
+  },
   authSession: {
     method: "get",
     express: "/auth/session",
     openapi: "/auth/session",
   },
   authLogin: { method: "get", express: "/auth/login", openapi: "/auth/login" },
+  authPasswordLogin: {
+    method: "post",
+    express: "/auth/login",
+    openapi: "/auth/login",
+  },
   authCallback: {
     method: "get",
     express: "/auth/callback",

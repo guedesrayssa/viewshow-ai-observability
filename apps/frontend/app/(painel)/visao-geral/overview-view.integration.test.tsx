@@ -67,11 +67,12 @@ afterAll(() => {
 
 describe("Visão Geral integrated with the gateway", () => {
   it("loads the complete screen with one canonical overview request", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify(successBody), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify(successBody), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -100,6 +101,14 @@ describe("Visão Geral integrated with the gateway", () => {
       screen.getByText("Incidentes recentes indisponíveis"),
     ).toBeInTheDocument();
     expect(container.querySelectorAll(".skeleton").length).toBe(0);
-    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    const requestedUrls = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.map(([input]) => String(input));
+    expect(
+      requestedUrls.filter((url) => url.includes("/api/v1/dashboard/overview")),
+    ).toHaveLength(1);
+    expect(
+      requestedUrls.filter((url) => url.includes("/api/v1/telemetry/rum")),
+    ).toHaveLength(1);
   });
 });

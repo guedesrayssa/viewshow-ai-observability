@@ -23,6 +23,17 @@ variable "deployment_namespace" {
   }
 }
 
+variable "aws_account_id" {
+  description = "Conta AWS onde esta stack pode ser aplicada. Sem padrão: cada pessoa (inclusive quem revisa) define a própria conta do Learner Lab em um terraform.tfvars local, não versionado. Mesmo padrão de deployment_namespace."
+  type        = string
+  nullable    = false
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "aws_account_id deve ser o número de 12 dígitos da conta AWS."
+  }
+}
+
 variable "branch_amplify" {
   description = "Branch do Amplify. Vira o subdomínio: https://<branch>.<appId>.amplifyapp.com"
   type        = string
@@ -66,13 +77,13 @@ variable "retencao_logs_dias" {
 }
 
 variable "observabilidade_habilitada" {
-  description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki e Tempo em uma EC2."
+  description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki, Tempo e Alloy em uma EC2."
   type        = bool
   default     = false
 }
 
 variable "tipo_instancia_observabilidade" {
-  description = "Tipo da EC2 da stack. t3.medium fornece 4 GiB para os quatro componentes LGTM."
+  description = "Tipo da EC2 da stack. t3.medium fornece 4 GiB para os cinco componentes de observabilidade."
   type        = string
   default     = "t3.medium"
 }
