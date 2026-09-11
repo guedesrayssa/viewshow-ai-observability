@@ -122,3 +122,31 @@ test("infrastructure guide documents implemented rubric substitutions", () => {
     /arquitetura-alvo[\s\S]*RDS Multi-AZ/i,
   );
 });
+
+test("infrastructure guide preserves the delivered video and ABNT table captions", () => {
+  const documentation = fs.readFileSync(integrationGuidePath, "utf8");
+  const legacyGuidePath = path.join(
+    fullstackPath,
+    "documentation/infraestrutura-integracao.md",
+  );
+
+  assert.equal(fs.existsSync(legacyGuidePath), false);
+  assert.match(
+    documentation,
+    /https:\/\/drive\.google\.com\/file\/d\/1962YkNJ1X2MjZvk6rEfJerdvEHx8yC9T\/view\?usp=sharing/,
+  );
+  assert.match(
+    documentation,
+    /<sup>Tabela 1: Componentes da infraestrutura e justificativas arquiteturais<\/sup>/,
+  );
+  assert.match(
+    documentation,
+    /<sup>Tabela 2: Etapas de provisionamento da infraestrutura na AWS<\/sup>/,
+  );
+  assert.equal(
+    documentation.match(
+      /<sup>Fonte: Material produzido pelos autores \(2026\)\.<\/sup>/g,
+    )?.length,
+    2,
+  );
+});

@@ -181,6 +181,12 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 3. Componentes e justificativas
 
+<div align="center">
+
+<sup>Tabela 1: Componentes da infraestrutura e justificativas arquiteturais</sup>
+
+</div>
+
 | Componente | Estado | Descrição e justificativa |
 | --- | --- | --- |
 | Terraform | Atual e alvo | Mantém a infraestrutura como código, possibilitando revisão por plano salvo, repetibilidade e rastreabilidade. |
@@ -199,6 +205,12 @@ Fonte: Material produzido pelos autores (2026).
 | Bedrock | Configurável; desativado padrão | O runtime possui integração opcional para apoio à geração de hipóteses, mas permanece desligada porque o Learner Lab não disponibiliza o serviço. |
 | ECR | Atual e alvo | Armazena imagens da API com tag derivada do conteúdo do build, permitindo rastrear a versão usada pela task definition. |
 | CloudWatch, Flow Logs e LGTM | Parcial atual; ampliado no alvo | O CloudWatch recebe logs da API; Flow Logs registram tráfego da VPC em S3 com retenção de 30 dias. A stack LGTM em EC2 privada permanece opcional e acessível por túnel SSM. |
+
+<div align="center">
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
 
 &emsp;O uso de Fargate substitui deliberadamente o requisito literal de EC2 Auto Scaling Group, e o DynamoDB substitui o RDS conforme a modelagem. A elasticidade da API já é implementada pelo ECS Service Auto Scaling; entretanto, o mínimo padrão de uma task e o NAT único priorizam custo e não comprovam alta disponibilidade integral. Essa divergência deve ser apresentada ao avaliador de forma explícita.
 
@@ -267,6 +279,12 @@ terraform plan \
 
 ### 4.2 Etapas de provisionamento
 
+<div align="center">
+
+<sup>Tabela 2: Etapas de provisionamento da infraestrutura na AWS</sup>
+
+</div>
+
 | Etapa | Situação | Recursos e ações | Critério de aceite |
 | --- | --- | --- | --- |
 | 1. Identidade | Atual | Selecionar o perfil AWS, executar `aws sts get-caller-identity` e confirmar a região. | Conta e região conferidas antes do plano. |
@@ -278,6 +296,12 @@ terraform plan \
 | 7. Frontend | Atual | Compilar o Next.js, publicar o pacote no Amplify e configurar rewrites para `/api/*`, `/auth/*` e `/health`. | Navegação e chamadas same-origin funcionais. |
 | 8. Telemetria da aplicação | Parcial | Enviar logs ao CloudWatch e, por opt-in, criar a EC2 privada com LGTM e acesso por túnel SSM. | Logs consultáveis; stack opcional acessível sem exposição pública. |
 | 9. Pipeline de dados | Alvo | Adicionar ingestão Fargate, EventBridge, SQS, DLQ, worker, S3 histórico, Glue e Athena. | Fluxo assíncrono e consultas históricas validados antes de serem apresentados como implementados. |
+
+<div align="center">
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
 
 &emsp;O autoescalonamento implementado aplica-se somente à API. Os padrões são mínimo `1`, máximo `4` e CPU-alvo de `50%`; podem ser alterados pelas variáveis `ecs_capacidade_minima`, `ecs_capacidade_maxima` e `ecs_cpu_alvo`. Para maior disponibilidade, a configuração recomendada para produção é mínimo `2` e `quantidade_tasks=2`, após validar a cota e o orçamento do laboratório.
 
@@ -313,7 +337,7 @@ terraform output flow_logs
 
 ## 5. Evidências e vídeos
 
-&emsp;Os links devem ser adicionados somente após a gravação e a conferência do conteúdo. Até esse momento, permanecem explicitamente pendentes.
+&emsp;O Vídeo 2 já está disponível e documenta a integração entre frontend e backend. O link do Vídeo 1 deve ser incluído após a gravação e a conferência das evidências de infraestrutura.
 
 ### 5.1 Vídeo 1 — infraestrutura provisionada (5 a 7 minutos)
 
@@ -328,10 +352,9 @@ terraform output flow_logs
 
 ### 5.2 Vídeo 2 — integração frontend e backend (2 a 4 minutos)
 
-**Link:** _Pendente de inclusão após a gravação._
+**Link:** [Assistir no Google Drive](https://drive.google.com/file/d/1962YkNJ1X2MjZvk6rEfJerdvEHx8yC9T/view?usp=sharing) · 2 min 40 s
 
-- abrir o frontend pelo endereço público e realizar login;
-- executar um fluxo funcional que consulte a API e leia dados persistidos;
-- correlacionar a requisição entre Amplify, API Gateway, ALB, API e DynamoDB por meio dos logs disponíveis;
-- validar `/health`, sessão e ausência de erros de CORS ou conteúdo misto;
-- demonstrar ingestão, fila e worker somente se esses módulos estiverem provisionados e integrados.
+&emsp;O vídeo demonstra a validação funcional da aplicação e a comunicação entre os serviços no ambiente implantado na AWS.
+
+- **Validação funcional:** apresentação da suíte automatizada com 70 testes que cobrem domínio, casos de uso, adaptadores de persistência e contrato HTTP, seguida das verificações de disponibilidade da API, recusa de escrita sem sessão e autenticação pelo Cognito.
+- **Comunicação entre serviços:** revisão de uma hipótese pela interface, com acompanhamento da mesma requisição no painel de rede do navegador, nos logs do contêiner ECS Fargate e na releitura do estado pela API. O diagnóstico passa de `pending` para `confirmed` e permanece após o recarregamento da página, evidenciando a persistência pelo fluxo Amplify → API Gateway → Application Load Balancer → ECS Fargate → DynamoDB.
