@@ -1,8 +1,8 @@
 # Arquitetura do View Show
 
 - **Status:** fonte oficial para desenvolvimento
-- **Versão:** 1.0
-- **Última atualização:** 06/09/2026
+- **Versão:** 1.1
+- **Última atualização:** 10/09/2026
 - **Responsáveis:** equipe do projeto
 
 ## Objetivo
@@ -16,7 +16,8 @@ A regra editorial é **uma decisão, um único lugar oficial**. Quando um arquiv
 1. [Visão geral](visao-geral.md): componentes, comunicação, AWS, segurança e decisões arquiteturais.
 2. [Diagramas de sequência](../sprint3/modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
 3. Documento específico da área em desenvolvimento.
-4. [Status de implementação](status-implementacao.md): cobertura atual, responsáveis, evidências e bloqueios.
+4. [Implementação](implementacao/README.md): como cada componente foi construído, o que a verificação mostrou e como rodar.
+5. [Status de implementação](status-implementacao.md): cobertura atual, responsáveis, evidências e bloqueios.
 
 ## Documentos
 
@@ -40,6 +41,10 @@ Funciona como índice técnico dos diagramas de sequência e reúne as invariant
 
 É a fonte normativa para autenticação, endpoints, parâmetros, requests, responses, paginação, erros, importação, reanálise e responsabilidades do frontend e do backend.
 
+### [Implementação](implementacao/README.md)
+
+Reúne o registro por componente do que está construído: estrutura do código, decisões tomadas na construção, resultado da verificação e instruções para rodar e validar. Não é fonte normativa — cada documento aponta para o contrato que o rege. Hoje cobre a [camada agêntica](implementacao/camada-agentica/camada-agentica.md).
+
 ### [Status de implementação](status-implementacao.md)
 
 Registra somente o que está definido, implementado, testado ou pendente. Ele não redefine contratos.
@@ -49,7 +54,7 @@ Registra somente o que está definido, implementado, testado ou pendente. Ele n�
 - **Frontend:** visão geral → API → fluxos de autenticação, importação, consulta e revisão → status.
 - **Backend:** visão geral → API → ingestão e dados para padrões de consulta → fluxos → status.
 - **Ingestão:** visão geral → ingestão e dados → fluxos DS-01A e DS-01B → análise e IA para o contrato da SQS → status.
-- **Análise e IA:** visão geral → análise e IA → ingestão e dados para entradas materializadas → fluxos DS-03A a DS-03C → status.
+- **Análise e IA:** visão geral → análise e IA → ingestão e dados para entradas materializadas → fluxos DS-03A a DS-03C → implementação da camada agêntica → status.
 - **Infraestrutura:** visão geral → seções de implantação, segurança e observabilidade de cada componente → status.
 
 ## Como alterar uma decisão
