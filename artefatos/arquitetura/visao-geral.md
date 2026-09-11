@@ -162,7 +162,7 @@ sequenceDiagram
     API-->>U: Resultado e revisão pendente
 ```
 
-Os diagramas completos, com alternativas e falhas, estão na [Seção 5 da modelagem](../sprint3/modelagem.md#5-diagramas-de-sequência); o [índice de fluxos](fluxos.md) relaciona cada cenário aos contratos técnicos aplicáveis.
+Os diagramas completos, com alternativas e falhas, estão na [Seção 5 da modelagem](../modelagem.md#5-diagramas-de-sequência); o [índice de fluxos](fluxos.md) relaciona cada cenário aos contratos técnicos aplicáveis.
 
 ## 6. Decisões arquiteturais
 
