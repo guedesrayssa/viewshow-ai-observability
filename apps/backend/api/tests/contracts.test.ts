@@ -31,6 +31,7 @@ import { CursorCodec } from "../src/modules/incidents/domain/cursor.ts";
 const architectureOperations = [
   "GET /auth/session",
   "GET /auth/login",
+  "POST /auth/login",
   "GET /auth/callback",
   "POST /auth/logout",
   "POST /api/v1/imports",

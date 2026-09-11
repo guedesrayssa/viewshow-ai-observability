@@ -8,11 +8,13 @@ Este diretório centraliza a infraestrutura como código do View Show:
   em uma EC2 isolada na AWS;
 - scripts auxiliares de publicação usados pelo Terraform.
 
-Integrações sem runtime no repositório (Cognito, ingestão, data lake, filas e
-workers) ficam explicitamente fora desta stack. A autenticação expõe apenas o
-contrato federado e falha fechado até existir um provedor corporativo real.
-O build de produção do painel nunca habilita dados de exemplo: falhas das APIs
-permanecem visíveis como estados vazios, parciais ou indisponíveis.
+O Cognito entrou nesta stack (`cognito.tf`) para sustentar o login por usuário e
+senha (`POST /auth/login`, fluxo `USER_PASSWORD_AUTH`). Ingestão, data lake, filas
+e workers seguem sem runtime no repositório e ficam fora da stack; o contrato
+federado (`GET /auth/login`, `/auth/callback`) permanece fail-closed até existir
+um provedor corporativo real. O build de produção do painel nunca habilita dados
+de exemplo: falhas das APIs permanecem visíveis como estados vazios, parciais ou
+indisponíveis.
 
 A documentação canônica de arquitetura, configuração e operação está em
 [`documentation/infraestrutura-integracao.md`](documentation/infraestrutura-integracao.md).
@@ -31,8 +33,21 @@ AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder \
   docker compose -f observability/aws/docker-compose.yml config --quiet
 ```
 
+`aws_account_id` é obrigatório e não tem padrão: cada pessoa (inclusive quem
+revisa) define a própria conta do Learner Lab em um
+`apps/fullstack/terraform.tfvars` local, que não é versionado (`*.tfvars` está no
+`.gitignore` deste diretório). É o mesmo padrão já usado para
+`deployment_namespace`. Exemplo:
+
+```hcl
+# apps/fullstack/terraform.tfvars
+aws_account_id       = "904529597192"
+deployment_namespace = "g05-s3"
+```
+
 Para revisar uma implantação isolada na conta-alvo, salve o plano e informe
-obrigatoriamente o namespace da Sprint 3:
+obrigatoriamente o namespace da Sprint 3 (o `aws_account_id` vem do
+`terraform.tfvars` acima, carregado automaticamente):
 
 ```bash
 terraform -chdir=apps/fullstack plan -out=g05-s3.tfplan \
