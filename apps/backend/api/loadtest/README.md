@@ -10,14 +10,14 @@ Este README cobre apenas o operacional — como rodar e o que esperar.
 
 ## Arquivos
 
-| Arquivo | Cobre | Roda hoje? |
-| --- | --- | --- |
-| `k6/consultas.js` | RNF14/RNF09 — `/api/v1/incidents` (lista, diagnóstico, eventos, paginação), `/dashboard/overview`, `/monitoring/overview` | Sim |
-| `k6/auth-check.js` | RNF04 — controle de acesso em todas as rotas, incluindo `auth/session`, `auth/login`, `auth/callback`, `auth/logout`, `reanalyze` e `imports*` | Sim |
-| `k6/ingestao-batch.js` | RNF01/RNF02/RNF03 — drenagem de 10k eventos/min, acúmulo (backlog), frescor ponta a ponta | Não — adaptador de import fail-closed por design (ver cabeçalho do script) |
-| `k6/rodadas.sh` | Bateria `smoke → load → breakpoint → estresse → spike → soak` de `consultas.js` | Sim |
-| `k6/lib/session.js` | Forja o cookie de sessão (HMAC) e o header `X-Request-Id`, compartilhado pelos três scripts | — |
-| [`../scripts/seed-carga.cjs`](../scripts/seed-carga.cjs) | Popula incidentes, evidências, hipóteses e projeções de overview/monitoring no DynamoDB | Sim |
+| Arquivo                                                  | Cobre                                                                                                                                          | Roda hoje?                                                                 |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `k6/consultas.js`                                        | RNF14/RNF09 — `/api/v1/incidents` (lista, diagnóstico, eventos, paginação), `/dashboard/overview`, `/monitoring/overview`                      | Sim                                                                        |
+| `k6/auth-check.js`                                       | RNF04 — controle de acesso em todas as rotas, incluindo `auth/session`, `auth/login`, `auth/callback`, `auth/logout`, `reanalyze` e `imports*` | Sim                                                                        |
+| `k6/ingestao-batch.js`                                   | RNF01/RNF02/RNF03 — drenagem de 10k eventos/min, acúmulo (backlog), frescor ponta a ponta                                                      | Não — adaptador de import fail-closed por design (ver cabeçalho do script) |
+| `k6/rodadas.sh`                                          | Bateria `smoke → load → breakpoint → estresse → spike → soak` de `consultas.js`                                                                | Sim                                                                        |
+| `k6/lib/session.js`                                      | Forja o cookie de sessão (HMAC) e o header `X-Request-Id`, compartilhado pelos três scripts                                                    | —                                                                          |
+| [`../scripts/seed-carga.cjs`](../scripts/seed-carga.cjs) | Popula incidentes, evidências, hipóteses e projeções de overview/monitoring no DynamoDB                                                        | Sim                                                                        |
 
 ## Autenticação
 

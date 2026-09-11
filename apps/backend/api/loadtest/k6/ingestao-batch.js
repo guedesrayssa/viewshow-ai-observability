@@ -15,7 +15,7 @@
  * A arquitetura aprovada define a Ingestão como uma tarefa ECS Fargate sem
  * porta HTTP (lê ARGUS/MySQL via `sync`/`backfill`); o único ponto de entrada
  * HTTP é o Backend disparando essa tarefa (upload do dump pro S3 → RunTask →
- * ImportJob acompanhado até COMPLETED/FAILED). `dashboard-queries.ts` já
+ * ImportJob acompanhado até completed/failed). `dashboard-queries.ts` já
  * assume que "o pipeline batch atual não possui fila" (rejeita
  * flowMetric=queue_depth com 422).
  *
@@ -31,7 +31,7 @@
  * não uma fila HTTP esvaziando):
  *   drenagem — dispara uma importação representando a janela de 150 mil
  *     eventos (EVENT_RATE × WINDOW_MINUTES) e mede o tempo até o ImportJob
- *     chegar a COMPLETED. Threshold: bem abaixo de WINDOW_MINUTES.
+ *     chegar a "completed". Threshold: bem abaixo de WINDOW_MINUTES.
  *   acumulo — dispara BACKLOG_BATCHES janelas em sequência rápida (2, 3 ou 4,
  *     via -e BACKLOG_BATCHES=N), simulando atraso represado ("fila cheia"
  *     nesta arquitetura), e mede o tempo até processar todas e alcançar o
@@ -41,14 +41,24 @@
  *     (`meta.freshness[].observedThrough`) avançar além de t0 (t2). Reporta
  *     ingestion_duration (t1-t0) e frescor ponta a ponta (t2-t0).
  * Timeout de dependência é modelado por `POLL_TIMEOUT_S`: se o ImportJob não
- * chegar a COMPLETED dentro da janela, o check de timeout reprova
+ * chegar a "completed" dentro da janela, o check de timeout reprova
  * explicitamente em vez de travar o run.
  *
- * SUPOSIÇÕES A REVISAR QUANDO O ADAPTADOR REAL EXISTIR: o request de POST
- * /imports já segue o contrato publicado (startImportBodySchema); a FORMA de
- * uma resposta bem-sucedida (202 com data.importId, polling por data.status)
- * continua sendo suposição, porque o adaptador nunca chega a produzi-la hoje.
- * Ajuste `triggerImport()`/`waitForCompletion()` quando isso for conhecido.
+ * FORMATO DA RESPOSTA: segue `apps/backend/api/contracts/openapi/
+ * public.openapi.json` à risca (achado de revisão: uma versão anterior deste
+ * script supunha 202/`data.importId`/status maiúsculo sem checar o contrato
+ * publicado) — POST /imports responde **201** com `data.id`; POST
+ * /imports/:id/complete responde **202** com `data.status: "queued"`; GET
+ * /imports/:id devolve `data.status` em **minúsculo**
+ * (`created|uploading|queued|processing|completed|failed`).
+ *
+ * O QUE CONTINUA SENDO STAND-IN: `ImportStartData` não expõe nenhuma URL
+ * pré-assinada de upload — não há, hoje, como um cliente real saber para
+ * onde mandar os bytes. `completeImport()` abaixo manda um `etag` fabricado
+ * só para bater com o schema de `CompleteImportRequest`; nenhum byte é
+ * enviado ao S3 de fato. Quando URLs de upload forem publicadas no contrato,
+ * ajuste `completeImport()` para fazer o PUT real de cada parte antes de
+ * completar.
  *
  * USO (quando o adaptador de import sair do estado fail-closed):
  *   k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<32+ chars> -e MODE=drenagem ingestao-batch.js
@@ -70,10 +80,11 @@ const BACKLOG_BATCHES = Number(__ENV.BACKLOG_BATCHES || 1);
 const POLL_INTERVAL_S = Number(__ENV.POLL_INTERVAL_S || 5);
 const POLL_TIMEOUT_S = Number(__ENV.POLL_TIMEOUT_S || WINDOW_MINUTES * 60 * 2);
 
-// Assumidos a partir de D9 (visao-geral.md) — troque aqui quando o contrato
-// real for publicado; nenhum outro trecho do script precisa mudar.
+// Paths conferidos contra contracts/openapi/public.openapi.json. As env vars
+// de override continuam disponíveis para quando/se o contrato mudar de novo.
 const ENDPOINTS = {
   importTrigger: __ENV.IMPORT_TRIGGER_PATH || "/api/v1/imports",
+  importComplete: (id) => `/api/v1/imports/${id}/complete`,
   importStatus: (id) => (__ENV.IMPORT_STATUS_PATH || "/api/v1/imports/:id").replace(":id", id),
   monitoring: __ENV.MONITORING_PATH || "/api/v1/monitoring/overview",
   overview: "/api/v1/dashboard/overview",
@@ -160,8 +171,7 @@ export function setup() {
   return { cookie };
 }
 
-/** Dispara uma janela de importação. Ajuste o corpo quando a forma real da
- *  resposta de sucesso for conhecida (ver nota no cabeçalho do arquivo). */
+/** Dispara uma janela de importação. POST /imports (StartImportRequest). */
 function triggerImport(cookie, label) {
   return http.post(
     `${BASE_URL}${ENDPOINTS.importTrigger}`,
@@ -170,15 +180,30 @@ function triggerImport(cookie, label) {
   );
 }
 
-/** Faz polling do ImportJob até COMPLETED/FAILED ou estourar POLL_TIMEOUT_S. */
+/** Completa o upload multipart (CompleteImportRequest) — etag fabricado, ver
+ *  nota "O QUE CONTINUA SENDO STAND-IN" no cabeçalho do arquivo. */
+function completeImport(cookie, importId, partCount, label) {
+  const parts = Array.from({ length: partCount }, (_, i) => ({
+    partNumber: i + 1,
+    etag: `k6-fake-etag-${i + 1}`,
+  }));
+  return http.post(
+    `${BASE_URL}${ENDPOINTS.importComplete(importId)}`,
+    JSON.stringify({ parts }),
+    authParams(cookie, { name: "POST /imports/:id/complete", label }, "k6-ingestao"),
+  );
+}
+
+/** Faz polling do ImportJob até status "completed"/"failed" (minúsculo, ver
+ *  ImportStatusData no OpenAPI) ou estourar POLL_TIMEOUT_S. */
 function waitForCompletion(cookie, importId, label) {
   const deadline = Date.now() + POLL_TIMEOUT_S * 1000;
   while (Date.now() < deadline) {
     const res = http.get(`${BASE_URL}${ENDPOINTS.importStatus(importId)}`, authParams(cookie, { name: "GET /imports/:id", label }, "k6-ingestao"));
     let status = null;
     try { status = res.json("data.status"); } catch { /* segue tentando */ }
-    if (status === "COMPLETED") return true;
-    if (status === "FAILED") {
+    if (status === "completed") return true;
+    if (status === "failed") {
       check(res, { [`${label}: ImportJob não deve falhar`]: () => false });
       return false;
     }
@@ -212,8 +237,12 @@ export default function (data) {
   if (MODE === "drenagem") {
     const t0 = Date.now();
     const disparo = triggerImport(data.cookie, "drenagem-unica");
-    check(disparo, { "drenagem: import aceito (202)": (r) => r.status === 202 });
-    const importId = (() => { try { return disparo.json("data.importId"); } catch { return null; } })();
+    check(disparo, { "drenagem: import aceito (201)": (r) => r.status === 201 });
+    const importId = (() => { try { return disparo.json("data.id"); } catch { return null; } })();
+    if (importId) {
+      const completou = completeImport(data.cookie, importId, importBody("drenagem-unica").partCount, "drenagem");
+      check(completou, { "drenagem: complete aceito (202)": (r) => r.status === 202 });
+    }
     const concluiu = importId && waitForCompletion(data.cookie, importId, "drenagem");
     if (concluiu) {
       const elapsedS = (Date.now() - t0) / 1000;
@@ -230,9 +259,15 @@ export default function (data) {
       disparos.push(triggerImport(data.cookie, `acumulo-lote-${i + 1}-de-${BACKLOG_BATCHES}`));
     }
     disparos.forEach((res, i) =>
-      check(res, { [`acumulo: lote ${i + 1}/${BACKLOG_BATCHES} aceito (202)`]: (r) => r.status === 202 }),
+      check(res, { [`acumulo: lote ${i + 1}/${BACKLOG_BATCHES} aceito (201)`]: (r) => r.status === 201 }),
     );
-    const ids = disparos.map((res) => { try { return res.json("data.importId"); } catch { return null; } });
+    const ids = disparos.map((res) => { try { return res.json("data.id"); } catch { return null; } });
+    ids.forEach((id, i) => {
+      if (!id) return;
+      const label = `acumulo-lote-${i + 1}`;
+      const completou = completeImport(data.cookie, id, importBody(label).partCount, label);
+      check(completou, { [`${label}: complete aceito (202)`]: (r) => r.status === 202 });
+    });
     const todasConcluiram = ids.every((id, i) => id && waitForCompletion(data.cookie, id, `acumulo-lote-${i + 1}`));
     if (todasConcluiram) {
       const elapsedS = (Date.now() - t0) / 1000;
@@ -247,8 +282,12 @@ export default function (data) {
   if (MODE === "frescor") {
     const t0 = Date.now();
     const disparo = triggerImport(data.cookie, "frescor-ponta-a-ponta");
-    check(disparo, { "frescor: import aceito (202)": (r) => r.status === 202 });
-    const importId = (() => { try { return disparo.json("data.importId"); } catch { return null; } })();
+    check(disparo, { "frescor: import aceito (201)": (r) => r.status === 201 });
+    const importId = (() => { try { return disparo.json("data.id"); } catch { return null; } })();
+    if (importId) {
+      const completou = completeImport(data.cookie, importId, importBody("frescor-ponta-a-ponta").partCount, "frescor");
+      check(completou, { "frescor: complete aceito (202)": (r) => r.status === 202 });
+    }
     const ingestaoConcluiu = importId && waitForCompletion(data.cookie, importId, "frescor");
     if (ingestaoConcluiu) {
       const disponivel = waitForFreshness(data.cookie, t0);

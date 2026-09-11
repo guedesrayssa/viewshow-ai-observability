@@ -14,7 +14,11 @@
  *     137 do RNF14 — não é bug deste script. Para medir capacidade real acima
  *     disso, rode distribuído (múltiplas origens) ou peça ao time de backend
  *     para ajustar o limite na janela do teste. 429s são contados em
- *     `rate_limited_total`, não descontados do resultado.
+ *     `rate_limited_total` e o threshold `rate_limited_rate` (load/soak)
+ *     REPROVA de propósito se mais da metade do tráfego for rate-limitado —
+ *     um run dominado por 429 não comprova RNF09/RNF14 na taxa alvo, então
+ *     não deixamos passar como se comprovasse. A latência (RNF14) e a vazão
+ *     (`load`) só contam respostas `status:200` pelo mesmo motivo.
  *   - `dashboard/overview`/`monitoring/overview` dependem de snapshots que
  *     `seed-carga.cjs` grava com idade variada; eles envelhecem, então ambos
  *     aceitam 200 ou 503 (`DATA_UNAVAILABLE`) como resultado válido.
@@ -34,7 +38,7 @@
 
 import http from "k6/http";
 import { check } from "k6";
-import { Counter, Trend } from "k6/metrics";
+import { Counter, Rate, Trend } from "k6/metrics";
 import { forgeSessionCookie, authParams } from "./lib/session.js";
 
 // 429 (rate limiter) e 503 (projeção ainda não publicada) são estados
@@ -73,6 +77,13 @@ const latenciaEvents = new Trend("vs_events_ms");
 const rateLimited = new Counter("rate_limited_total");
 const projecaoIndisponivel = new Counter("projecao_indisponivel_total");
 const paginaSeguinte = new Counter("pagina_seguinte_total");
+// Fração de requisições que voltaram 429. Achado de revisão: como os checks
+// e o http_req_failed toleram 429/503 (ver responseCallback acima), uma
+// rodada load/soak dominada por rate limit passaria os thresholds de
+// RNF09/RNF14 sem medir a API de verdade — só a velocidade do rate limiter.
+// Este Rate vira um threshold próprio abaixo especificamente para barrar
+// isso.
+const taxaRateLimit = new Rate("rate_limited_rate");
 
 /* ------------------------------ cenários ------------------------------ */
 
@@ -169,13 +180,28 @@ export const options = {
   thresholds: {
     ...(["load", "soak"].includes(MODE)
       ? {
-          http_req_duration: ["p(95)<2000"],
+          // Escopado a status:200 (k6 marca "status" como tag automática em
+          // toda métrica http_req_*) — RNF14 é sobre a latência de uma
+          // resposta de negócio de verdade, não a velocidade com que o rate
+          // limiter rejeita com 429. Sem esse escopo, uma rodada dominada
+          // por 429 mediria o rate limiter e ainda assim passaria.
+          "http_req_duration{status:200}": ["p(95)<2000"],
           http_req_failed: ["rate<0.01"],
           checks: ["rate>0.99"],
+          // Gate específico para RNF09/RNF14: se mais da metade do tráfego
+          // for rate-limitado, esta rodada NÃO comprova a API na taxa alvo
+          // — é o rate limiter (180 req/min por IP) sendo medido, não a API.
+          // Isto reprova de propósito num gerador único a 137 req/s (~3
+          // req/s reais por IP); só passa rodando distribuído (múltiplas
+          // origens) ou com o limite ajustado para a janela do teste — ver
+          // gotcha no topo do arquivo.
+          rate_limited_rate: ["rate<0.5"],
         }
       : {}),
     ...(MODE === "smoke" ? { http_req_failed: ["rate<0.01"], checks: ["rate==1"] } : {}),
-    ...(MODE === "load" ? { http_reqs: [`rate>${Math.floor(RATE * 0.95)}`] } : {}),
+    // Também escopado a status:200 pelo mesmo motivo: "vazão" composta de
+    // 429 não é vazão útil da API.
+    ...(MODE === "load" ? { "http_reqs{status:200}": [`rate>${Math.floor(RATE * 0.95)}`] } : {}),
   },
   // Sem isso o k6 agrega /incidents/inc-000001 e /incidents/inc-000002 como
   // URLs diferentes e o resumo vira ilegível.
@@ -201,7 +227,9 @@ function checaProjecao(res, rotulo) {
 }
 
 function contaRateLimit(res, rotulo) {
-  if (res.status === 429) rateLimited.add(1, { rota: rotulo });
+  const limitado = res.status === 429;
+  if (limitado) rateLimited.add(1, { rota: rotulo });
+  taxaRateLimit.add(limitado);
 }
 
 /** true se a resposta é o resultado de negócio esperado OU um 429 de rate
@@ -327,15 +355,23 @@ export default function (data) {
  */
 export function handleSummary(data) {
   const limitadas = data.metrics.rate_limited_total?.values?.count || 0;
+  const taxaLimitadas = data.metrics.rate_limited_rate?.values?.rate;
   const semProjecao = data.metrics.projecao_indisponivel_total?.values?.count || 0;
   const paginadas = data.metrics.pagina_seguinte_total?.values?.count || 0;
   const avisos = [];
   if (limitadas > 0) {
     avisos.push(
-      `⚠ ${limitadas} requisições receberam 429 RATE_LIMITED — o rate limit de ` +
-        "180 req/min por IP (src/app.ts) provavelmente tetou o throughput bem " +
+      `⚠ ${limitadas} requisições receberam 429 RATE_LIMITED (${((taxaLimitadas || 0) * 100).toFixed(1)}% do total) — ` +
+        "o rate limit de 180 req/min por IP (src/app.ts) provavelmente tetou o throughput bem " +
         "abaixo do RATE pedido. Ver aviso no topo de consultas.js.",
     );
+    if (["load", "soak"].includes(MODE) && (taxaLimitadas || 0) >= 0.5) {
+      avisos.push(
+        "✗ rate_limited_rate ≥ 50% — esta rodada NÃO comprova RNF09/RNF14 na taxa alvo " +
+          `(${RATE} req/s); mede principalmente o rate limiter. Rode distribuído ou com o ` +
+          "limite ajustado para medir a API de verdade.",
+      );
+    }
   }
   if (semProjecao > 0) {
     avisos.push(

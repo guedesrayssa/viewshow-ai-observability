@@ -42,7 +42,11 @@ try {
   /* sem dotenv instalado: segue lendo apenas process.env já exportado */
 }
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, BatchWriteCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  BatchWriteCommand,
+  ScanCommand,
+} = require("@aws-sdk/lib-dynamodb");
 
 /* ---------- esquema de chaves (espelha dynamodb-incident-repository.ts) --- */
 
@@ -57,14 +61,40 @@ function hourBucket(date) {
 // item do incidente em si não pode ter mais nenhum "#" depois do id
 // (^INCIDENT#[^#]+$), por isso incidentSk não recebe sequência.
 const incidentSk = (id) => `INCIDENT#${id}`;
-const evidenceSk = (id, seq) => `EVIDENCE#${id}#${String(seq).padStart(3, "0")}`;
-const hypothesisSk = (id, seq) => `HYPOTHESIS#${id}#${String(seq).padStart(10, "0")}`;
+const evidenceSk = (id, seq) =>
+  `EVIDENCE#${id}#${String(seq).padStart(3, "0")}`;
+const hypothesisSk = (id, seq) =>
+  `HYPOTHESIS#${id}#${String(seq).padStart(10, "0")}`;
 
 const REGION = process.env.AWS_REGION || "us-east-1";
-const OPERATIONAL_TABLE = process.env.OPERATIONAL_TABLE_NAME || "monitoracao-operacional";
+const OPERATIONAL_TABLE =
+  process.env.OPERATIONAL_TABLE_NAME || "monitoracao-operacional";
 // Mesma env var usada pela API (ex.: apps/backend/api/src/modules/dashboard/config.ts)
 // para apontar ao DynamoDB Local. Sem isso o cliente sempre resolve a AWS real.
 const ENDPOINT = process.env.DYNAMODB_ENDPOINT || undefined;
+
+/** Mesma validação de apps/backend/api/scripts/live-e2e-runtime.mjs
+ *  (requireDynamoDbEndpoint) — replicada aqui porque este arquivo é CommonJS
+ *  e aquele é ESM. Usada só para travar CLEAN=1 (ver main()); achado de
+ *  revisão: sem isso, CLEAN=1 apaga todo pk INC#/VIEW# em QUALQUER tabela
+ *  que as credenciais/endpoint ativos resolverem, inclusive AWS real se
+ *  DYNAMODB_ENDPOINT não estiver definido. */
+function pareceEndpointLocal(endpoint) {
+  if (!endpoint) return false;
+  let url;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:") return false;
+  const isLoopback =
+    url.hostname === "127.0.0.1" ||
+    url.hostname === "localhost" ||
+    url.hostname === "[::1]";
+  const isCiService = endpoint === "http://dynamodb:8000";
+  return isLoopback || isCiService;
+}
 
 const INCIDENTS_PER_HOUR = Number(process.env.INCIDENTS_PER_HOUR || 12);
 const HOURS_BACK = Number(process.env.HOURS_BACK || 25);
@@ -85,7 +115,10 @@ const MONITORING_SOURCES = (process.env.MONITORING_SOURCES || "argus")
 const VIEW_SNAPSHOT_AGES_MINUTES = [5, 20, 45, 300, 1200];
 
 const client = DynamoDBDocumentClient.from(
-  new DynamoDBClient({ region: REGION, ...(ENDPOINT ? { endpoint: ENDPOINT } : {}) }),
+  new DynamoDBClient({
+    region: REGION,
+    ...(ENDPOINT ? { endpoint: ENDPOINT } : {}),
+  }),
 );
 
 const TTL_SECONDS_FROM_NOW = 30 * 24 * 60 * 60;
@@ -93,9 +126,25 @@ const ttl = () => Math.floor(Date.now() / 1000) + TTL_SECONDS_FROM_NOW;
 
 /* ---------- dimensões, tiradas do vocabulário real do DATASET.md ---------- */
 
-const COMPONENTES = ["Player", "CDN", "DRM", "Identidade", "API GraphQL", "Origem", "Borda", "Redis"];
+const COMPONENTES = [
+  "Player",
+  "CDN",
+  "DRM",
+  "Identidade",
+  "API GraphQL",
+  "Origem",
+  "Borda",
+  "Redis",
+];
 const DEVICE_TYPES = ["Smart TV", "Mobile", "Web", "Multiplataforma"];
-const REGIOES = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul", "Nacional"];
+const REGIOES = [
+  "Norte",
+  "Nordeste",
+  "Centro-Oeste",
+  "Sudeste",
+  "Sul",
+  "Nacional",
+];
 const APP_VERSIONS = ["App 4.0.5", "App 4.1.8", "App 4.2.1", "App 4.3.0"];
 const URGENCIAS = ["P1", "P2", "P3", "P4"];
 // status() em domain/incident.ts só aceita os cinco status canônicos OU estes
@@ -108,7 +157,16 @@ const STATUS = [
   { status: "warning", statusLabel: "Atenção" },
   { status: "success", statusLabel: "Estável" },
 ];
-const FONTES = ["Player", "Youbora", "Fastly", "Prometheus", "New Relic", "Apollo", "RPaaS", "Cloud Armor"];
+const FONTES = [
+  "Player",
+  "Youbora",
+  "Fastly",
+  "Prometheus",
+  "New Relic",
+  "Apollo",
+  "RPaaS",
+  "Cloud Armor",
+];
 const FORCAS = ["forte", "média", "neutra", "contrária"];
 
 /** PRNG com semente fixa: duas execuções produzem a mesma base, o que torna
@@ -149,7 +207,9 @@ function buildIncident(ordinal, minutesAgo) {
 }
 
 function buildItems(incident) {
-  const bucket = hourBucket(new Date(Date.now() - incident.minutesAgo * 60 * 1000));
+  const bucket = hourBucket(
+    new Date(Date.now() - incident.minutesAgo * 60 * 1000),
+  );
   const base = { pk: bucket, trace_id: incident.id, ttl: ttl() };
   const items = [];
 
@@ -193,7 +253,8 @@ function buildItems(incident) {
 
 /* ---------- projeções VIEW#OVERVIEW / VIEW#MONITORING ---------- */
 
-const viewDayBucket = (date) => date.toISOString().slice(0, 10).replaceAll("-", "");
+const viewDayBucket = (date) =>
+  date.toISOString().slice(0, 10).replaceAll("-", "");
 const viewSk = (date) => `T#${date.getTime()}`;
 
 function measurementNow(now, coverageRatio = 1) {
@@ -223,7 +284,12 @@ function buildOverviewProjection(now) {
         value: 128000,
         unit: "sessions",
         status: "healthy",
-        comparison: { baselineValue: 121000, absoluteChange: 7000, changeRatio: 0.058, direction: "up" },
+        comparison: {
+          baselineValue: 121000,
+          absoluteChange: 7000,
+          changeRatio: 0.058,
+          direction: "up",
+        },
         measurement: measurementNow(now),
       },
       {
@@ -231,7 +297,12 @@ function buildOverviewProjection(now) {
         value: 0.4,
         unit: "percent",
         status: "warning",
-        comparison: { baselineValue: 0.3, absoluteChange: 0.1, changeRatio: 0.33, direction: "up" },
+        comparison: {
+          baselineValue: 0.3,
+          absoluteChange: 0.1,
+          changeRatio: 0.33,
+          direction: "up",
+        },
         measurement: measurementNow(now),
       },
     ],
@@ -242,7 +313,9 @@ function buildOverviewProjection(now) {
       baselineValue: 12,
       measurement: measurementNow(now),
       points: [0, 1, 2, 3].map((i) => ({
-        timestamp: new Date(now.getTime() - (3 - i) * 15 * 60 * 1000).toISOString(),
+        timestamp: new Date(
+          now.getTime() - (3 - i) * 15 * 60 * 1000,
+        ).toISOString(),
         value: 10 + i,
       })),
       anomalyWindows: [],
@@ -255,7 +328,12 @@ function buildOverviewProjection(now) {
 /** Formato espelha monitoringProjectionSchema. Mesma observação de runtime
  *  da função acima. */
 function buildMonitoringProjection(source, now) {
-  const kpi = (value, unit, status) => ({ value, unit, status, measurement: measurementNow(now) });
+  const kpi = (value, unit, status) => ({
+    value,
+    unit,
+    status,
+    measurement: measurementNow(now),
+  });
   return {
     capabilities: {
       sourceQuality: { status: "available" },
@@ -270,7 +348,11 @@ function buildMonitoringProjection(source, now) {
         reason: null,
       },
       geographicMetrics: { status: "available", granularity: "state" },
-      filtering: { status: "partial", supportedDimensions: [], supportedFilterSets: [[]] },
+      filtering: {
+        status: "partial",
+        supportedDimensions: [],
+        supportedFilterSets: [[]],
+      },
     },
     kpis: {
       ingestionRate: kpi(9800, "events_per_minute", "healthy"),
@@ -298,8 +380,17 @@ function buildMonitoringProjection(source, now) {
         observedThrough: now.toISOString(),
         lagSeconds: 60,
         state: "stable",
-        records: { read: 15000, written: 14950, rejected: 50, measurement: measurementNow(now) },
-        coverage: { value: 0.99, unit: "ratio", measurement: measurementNow(now) },
+        records: {
+          read: 15000,
+          written: 14950,
+          rejected: 50,
+          measurement: measurementNow(now),
+        },
+        coverage: {
+          value: 0.99,
+          unit: "ratio",
+          measurement: measurementNow(now),
+        },
       },
     ],
     geography: { granularity: "state", metrics: [], areas: [] },
@@ -356,19 +447,25 @@ function esperarBackoff(tentativa) {
 async function enviarLoteComRetry(
   tableName,
   requests,
-  { documentClient = client, wait = esperarBackoff, maxAttempts = MAX_BATCH_ATTEMPTS } = {},
+  {
+    documentClient = client,
+    wait = esperarBackoff,
+    maxAttempts = MAX_BATCH_ATTEMPTS,
+  } = {},
 ) {
   let pendentes = { [tableName]: requests };
 
   for (let tentativa = 0; tentativa < maxAttempts; tentativa += 1) {
-    const resposta = await documentClient.send(new BatchWriteCommand({ RequestItems: pendentes }));
+    const resposta = await documentClient.send(
+      new BatchWriteCommand({ RequestItems: pendentes }),
+    );
     const restantes = resposta.UnprocessedItems?.[tableName] || [];
     if (restantes.length === 0) return;
 
     if (tentativa === maxAttempts - 1) {
       throw new Error(
         `${restantes.length} operações em ${tableName} continuaram não processadas ` +
-        `após ${maxAttempts} tentativas`,
+          `após ${maxAttempts} tentativas`,
       );
     }
 
@@ -382,7 +479,11 @@ async function enviarLoteComRetry(
  *  usuário) são preservados. */
 async function limparTabela(
   tableName,
-  { documentClient = client, wait = esperarBackoff, maxAttempts = MAX_BATCH_ATTEMPTS } = {},
+  {
+    documentClient = client,
+    wait = esperarBackoff,
+    maxAttempts = MAX_BATCH_ATTEMPTS,
+  } = {},
 ) {
   let chaveInicial;
   let removidos = 0;
@@ -397,12 +498,20 @@ async function limparTabela(
     );
 
     const itens = (pagina.Items || []).filter(
-      ({ pk }) => typeof pk === "string" && (pk.startsWith("INC#") || pk.startsWith("VIEW#")),
+      ({ pk }) =>
+        typeof pk === "string" &&
+        (pk.startsWith("INC#") || pk.startsWith("VIEW#")),
     );
     for (let i = 0; i < itens.length; i += 25) {
       const lote = itens.slice(i, i + 25);
-      const requests = lote.map(({ pk, sk }) => ({ DeleteRequest: { Key: { pk, sk } } }));
-      await enviarLoteComRetry(tableName, requests, { documentClient, wait, maxAttempts });
+      const requests = lote.map(({ pk, sk }) => ({
+        DeleteRequest: { Key: { pk, sk } },
+      }));
+      await enviarLoteComRetry(tableName, requests, {
+        documentClient,
+        wait,
+        maxAttempts,
+      });
       removidos += lote.length;
     }
 
@@ -428,12 +537,24 @@ async function main() {
   const total = INCIDENTS_PER_HOUR * HOURS_BACK;
 
   if (process.env.CLEAN === "1") {
-    console.log(`Limpando ${OPERATIONAL_TABLE}…`);
+    if (!pareceEndpointLocal(ENDPOINT)) {
+      throw new Error(
+        "CLEAN=1 recusado: DYNAMODB_ENDPOINT precisa apontar para um endereço " +
+          "local (http://127.0.0.1:.../http://localhost:... ou http://dynamodb:8000 " +
+          `em CI) — valor atual: ${ENDPOINT ?? "(não definido — resolveria para a AWS real)"}. ` +
+          "Isso existe para não apagar itens de uma tabela remota por engano: CLEAN " +
+          "remove incondicionalmente todo item cujo pk comece com INC# ou VIEW# na " +
+          "tabela e no endpoint que as credenciais ativas resolverem.",
+      );
+    }
+    console.log(`Limpando ${OPERATIONAL_TABLE} em ${ENDPOINT}…`);
     const removidos = await limparTabela(OPERATIONAL_TABLE);
     console.log(`  ${removidos} itens removidos.`);
   }
 
-  console.log(`Gerando ${total} incidentes (${INCIDENTS_PER_HOUR}/hora × ${HOURS_BACK} h) em ${OPERATIONAL_TABLE}…`);
+  console.log(
+    `Gerando ${total} incidentes (${INCIDENTS_PER_HOUR}/hora × ${HOURS_BACK} h) em ${OPERATIONAL_TABLE}…`,
+  );
 
   const itens = [];
   let ordinal = 0;
@@ -447,7 +568,9 @@ async function main() {
   }
 
   await batchWrite(OPERATIONAL_TABLE, itens);
-  console.log(`  ${itens.length} itens gravados (incidentes + evidências + hipóteses).`);
+  console.log(
+    `  ${itens.length} itens gravados (incidentes + evidências + hipóteses).`,
+  );
 
   const now = new Date();
   const viewItens = buildViewItems(now);
@@ -460,13 +583,21 @@ async function main() {
   console.log("\nPronto. Para o k6:");
   console.log(`  INCIDENT_COUNT=${total}`);
   console.log("\n⚠️  Os buckets são relativos ao INSTANTE do seed.");
-  console.log("    Rode o teste logo em seguida: window=15m só encontra dado por ~1 h.");
-  console.log("\n⚠️  /api/v1/dashboard/overview e /api/v1/monitoring/overview também envelhecem:");
+  console.log(
+    "    Rode o teste logo em seguida: window=15m só encontra dado por ~1 h.",
+  );
+  console.log(
+    "\n⚠️  /api/v1/dashboard/overview e /api/v1/monitoring/overview também envelhecem:",
+  );
   console.log(
     `    snapshots gravados com ${VIEW_SNAPSHOT_AGES_MINUTES.join("/")} min de idade cobrem os presets`,
   );
-  console.log("    de window de 15m a 24h só por um tempo depois do seed — passado isso, voltam a");
-  console.log("    responder 503 DATA_UNAVAILABLE (estado real e esperado, não falha do teste).");
+  console.log(
+    "    de window de 15m a 24h só por um tempo depois do seed — passado isso, voltam a",
+  );
+  console.log(
+    "    responder 503 DATA_UNAVAILABLE (estado real e esperado, não falha do teste).",
+  );
 }
 
 if (require.main === module) {
