@@ -1,4 +1,4 @@
-# Modelagem do Sistema — View Show
+# Modelagem do Sistema
 
 > Este documento apresenta a modelagem estrutural e comportamental do View Show por meio de diagramas UML e descrições textuais. A modelagem foi construída com base nos requisitos funcionais, não funcionais e decisões arquiteturais do projeto.
 
@@ -78,7 +78,7 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 
 <div align="center">
 
-<strong>Tabela x: Atores do diagrama de casos de uso</strong>
+<strong>Tabela 1: Atores do diagrama de casos de uso</strong>
 
 </div>
 
@@ -102,7 +102,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela x: Catálogo dos casos de uso</strong>
+<strong>Tabela 2: Catálogo dos casos de uso</strong>
 
 </div>
 
@@ -126,11 +126,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.3 Diagrama
 
-&emsp;O Diagrama x sintetiza a fronteira funcional do View Show e as associações entre os atores e seus objetivos. Os pormenores de cada interação permanecem nas descrições textuais para que a representação visual conserve a função de oferecer uma visão geral do sistema.
+&emsp;O Diagrama 1 sintetiza a fronteira funcional do View Show e as associações entre os atores e seus objetivos. Os pormenores de cada interação permanecem nas descrições textuais para que a representação visual conserve a função de oferecer uma visão geral do sistema.
 
 <div align="center">
 
-<strong>Diagrama x: Casos de uso do View Show</strong>
+<strong>Diagrama 1: Casos de uso do View Show</strong>
 
 ![Diagrama de casos de uso do View Show](../../assets/modelagem/casos-de-uso.svg)
 
@@ -148,11 +148,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.5 Relações principais
 
-&emsp;A Tabela x apresenta as associações entre atores e casos de uso e as relações de generalização entre os perfis especializados e o Usuário corporativo. As associações identificam os objetivos iniciados por cada ator, enquanto as generalizações indicam o compartilhamento das capacidades comuns de acesso e consulta.
+&emsp;A Tabela 3 apresenta as associações entre atores e casos de uso e as relações de generalização entre os perfis especializados e o Usuário corporativo. As associações identificam os objetivos iniciados por cada ator, enquanto as generalizações indicam o compartilhamento das capacidades comuns de acesso e consulta.
 
 <div align="center">
 
-<strong>Tabela x: Relações representadas no diagrama</strong>
+<strong>Tabela 3: Relações representadas no diagrama</strong>
 
 </div>
 
@@ -797,7 +797,7 @@ Várias consultas ao dia, com acompanhamento prolongado durante incidentes e eve
 
 <div align="center">
 
-<strong>Diagrama x: Modelo de domínio do View Show</strong>
+<strong>Diagrama 2: Modelo de domínio do View Show</strong>
 
 </div>
 
@@ -1002,7 +1002,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: Serviços e fronteiras da arquitetura-alvo</strong>
+<strong>Diagrama 3: Serviços e fronteiras da arquitetura-alvo</strong>
 
 </div>
 
@@ -1302,11 +1302,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 5.1 Catálogo de diagramas de sequência
 
-&emsp;Os nove diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela x funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
+&emsp;Os nove diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela 4 funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
 
 <div align="center">
 
-<strong>Tabela x: Catálogo dos diagramas de sequência</strong>
+<strong>Tabela 4: Catálogo dos diagramas de sequência</strong>
 
 </div>
 
@@ -1346,7 +1346,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-01A — Sincronização dos dados do MySQL vivo do ARGUS</strong>
+<strong>Diagrama 4: DS-01A — Sincronização dos dados do MySQL vivo do ARGUS</strong>
 
 </div>
 
@@ -1456,7 +1456,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-01B — Importação assíncrona de um snapshot do ARGUS</strong>
+<strong>Diagrama 5: DS-01B — Importação assíncrona de um snapshot do ARGUS</strong>
 
 </div>
 
@@ -1622,7 +1622,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-02A — Autenticação federada e consulta do dashboard</strong>
+<strong>Diagrama 6: DS-02A — Autenticação federada e consulta do dashboard</strong>
 
 </div>
 
@@ -1709,7 +1709,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-02B — Revisão concorrente e promoção de hipótese ao conjunto de referência</strong>
+<strong>Diagrama 7: DS-02B — Revisão concorrente e promoção de hipótese ao conjunto de referência</strong>
 
 </div>
 
@@ -1829,7 +1829,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-02C — Avaliação da recuperação após correção</strong>
+<strong>Diagrama 8: DS-02C — Avaliação da recuperação após correção</strong>
 
 </div>
 
@@ -1905,7 +1905,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-03A — Previsão preventiva e validação da previsão anterior</strong>
+<strong>Diagrama 9: DS-03A — Previsão preventiva e validação da previsão anterior</strong>
 
 </div>
 
@@ -1999,7 +1999,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-03B — Detecção reativa e diagnóstico automático por IA</strong>
+<strong>Diagrama 10: DS-03B — Detecção reativa e diagnóstico automático por IA</strong>
 
 </div>
 
@@ -2094,7 +2094,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-03C — Recuperação de falhas, DLQ e reanálise</strong>
+<strong>Diagrama 11: DS-03C — Recuperação de falhas, DLQ e reanálise</strong>
 
 </div>
 
@@ -2174,11 +2174,11 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Os valores iniciais adotados para a fila foram reunidos na Tabela x. Eles delimitam o tempo concedido a cada processamento, o número de tentativas e o período disponível para uma recuperação manual.
+&emsp;Os valores iniciais adotados para a fila foram reunidos na Tabela 5. Eles delimitam o tempo concedido a cada processamento, o número de tentativas e o período disponível para uma recuperação manual.
 
 <div align="center">
 
-<strong>Tabela x: Parâmetros operacionais da fila de análise</strong>
+<strong>Tabela 5: Parâmetros operacionais da fila de análise</strong>
 
 </div>
 
@@ -2209,7 +2209,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama x: DS-04 — Visão geral ponta a ponta da plataforma View Show</strong>
+<strong>Diagrama 12: DS-04 — Visão geral ponta a ponta da plataforma View Show</strong>
 
 </div>
 
@@ -2313,11 +2313,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 5.7 Rastreabilidade interna
 
-&emsp;Para evitar que os processos técnicos sejam interpretados como casos de uso independentes, a Tabela x registra a natureza de cada relação. Ela também resume a principal decisão arquitetural demonstrada por cada diagrama.
+&emsp;Para evitar que os processos técnicos sejam interpretados como casos de uso independentes, a Tabela 6 registra a natureza de cada relação. Ela também resume a principal decisão arquitetural demonstrada por cada diagrama.
 
 <div align="center">
 
-<strong>Tabela x: Rastreabilidade dos diagramas de sequência</strong>
+<strong>Tabela 6: Rastreabilidade dos diagramas de sequência</strong>
 
 </div>
 
@@ -2347,7 +2347,7 @@ A rastreabilidade relaciona os casos de uso aos requisitos, às necessidades de 
 
 <div align="center">
 
-<strong>Tabela x: Rastreabilidade dos casos de uso</strong>
+<strong>Tabela 7: Rastreabilidade dos casos de uso</strong>
 
 </div>
 
@@ -2369,11 +2369,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 6.1 Conceitos da matriz e sua representação estrutural
 
-&emsp;Nem todo conceito citado na coluna "Elementos conceituais" da Tabela x corresponde a uma classe adicional do diagrama de classes: vários já são cobertos por classes existentes, por registros canônicos com contrato normativo em outro documento (Seção 4.1) ou por projeções calculadas em tempo de leitura. A Tabela x1 evita que essa ausência pareça uma omissão ao explicitar, para cada conceito, onde ele está representado ou por que permanece fora do modelo estrutural.
+&emsp;Nem todo conceito citado na coluna "Elementos conceituais" da Tabela 7 corresponde a uma classe adicional do diagrama de classes: vários já são cobertos por classes existentes, por registros canônicos com contrato normativo em outro documento (Seção 4.1) ou por projeções calculadas em tempo de leitura. A Tabela 8 evita que essa ausência pareça uma omissão ao explicitar, para cada conceito, onde ele está representado ou por que permanece fora do modelo estrutural.
 
 <div align="center">
 
-<strong>Tabela x1: Justificativa estrutural dos conceitos da matriz de rastreabilidade</strong>
+<strong>Tabela 8: Justificativa estrutural dos conceitos da matriz de rastreabilidade</strong>
 
 </div>
 
@@ -2397,60 +2397,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 7. Validação e consistência
-
-### 7.1 Lista de verificação
-
-#### Casos de uso
-
-- [x] Todos os atores possuem objetivos claros.
-- [x] Todos os casos de uso do diagrama possuem descrição textual.
-- [x] Cada descrição segue as seções do formato completo de Larman.
-- [x] Os fluxos básicos terminam nas pós-condições declaradas.
-- [x] Os fluxos alternativos identificam o passo de origem ou o encerramento.
-- [x] As relações representadas possuem semântica compatível com a UML.
-- [x] Os casos de uso estão ligados a requisitos existentes.
-
-#### Diagrama de classes
-
-- [x] As classes representam conceitos ou componentes relevantes.
-- [x] Atributos e operações possuem tipos.
-- [x] Associações possuem multiplicidades.
-- [x] Composição, agregação, herança e dependência foram usadas corretamente.
-- [x] As classes mencionadas nos diagramas de sequência existem no diagrama.
-- [x] O diagrama é consistente com a arquitetura-alvo do View Show.
-
-#### Diagramas de sequência
-
-- [x] Cada diagrama referencia um caso de uso e um fluxo específico.
-- [x] As mensagens aparecem em ordem temporal.
-- [x] Chamadas síncronas, assíncronas e retornos estão diferenciados.
-- [x] Alternativas e exceções usam fragmentos combinados.
-- [x] Participantes correspondem a atores, interfaces, serviços ou classes da arquitetura-alvo.
-- [x] O resultado final corresponde às pós-condições do caso de uso.
-
-### 7.2 Questões de modelagem em aberto
-
-| ID | Questão | Casos de uso relacionados |
-| --- | --- | --- |
-| Q-01 | Definição das informações obrigatórias em cada formato de exportação e das telas que preservam os filtros. | UC-01 |
-| Q-02 | Definição do protocolo de federação e dos perfis corporativos que determinam as permissões de acesso. | UC-02 |
-| Q-03 | Definição dos critérios de revisão das hipóteses e dos dados obrigatórios para registrar uma causa alternativa. | UC-03, UC-04 |
-| Q-04 | Definição da amostra mínima e dos critérios de comparabilidade para análises temporais e de segmentos. | UC-05, UC-06 |
-| Q-05 | Definição dos limites que caracterizam atraso, cobertura parcial e indisponibilidade das fontes de telemetria. | UC-07 |
-
-### 7.3 Consistência entre os artefatos
-
-| Relação verificada | Critério de consistência |
-| --- | --- |
-| Casos de uso e requisitos | Cada comportamento está associado a requisitos funcionais, não funcionais, interfaces ou restrições existentes. |
-| Atores e entendimento do usuário | Os papéis e seus objetivos correspondem às personas, jornadas e telas definidas para o View Show. |
-| Casos de uso e diagrama de classes | As entidades e os serviços representam os conceitos necessários às pós-condições dos casos de uso. |
-| Casos de uso e diagramas de sequência | As interações realizam os fluxos básicos e alternativos sem alterar o objetivo ou as garantias declaradas. |
-
----
-
-## 8. Referências
+## 7. Referências
 
 LARMAN, Craig. *Utilizando UML e padrões: uma introdução à análise e ao projeto orientados a objetos e ao desenvolvimento iterativo*. 3. ed. Porto Alegre: Bookman, 2007. E-book. Disponível em: https://integrada.minhabiblioteca.com.br/reader/books/9788577800476. Acesso em: 6 set. 2026.
 
