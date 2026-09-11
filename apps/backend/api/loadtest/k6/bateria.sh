@@ -7,7 +7,7 @@
 # k6, commit, ambiente e o resultado de cada threshold. Sem esse envelope não
 # há como conferir uma rodada depois — foi o que faltou nas rodadas em AWS do
 # commit 609b822, que por isso ficaram registradas como relato e não como
-# evidência (ver artefatos/testes-carga-inicial.md §8.7).
+# evidência (ver artefatos/sprint3/testes-carga-inicial.md §8.7).
 #
 # uso mínimo:
 #   BASE_URL=http://<alb-dns> AUTH_COOKIE_SECRET=<segredo> ./bateria.sh

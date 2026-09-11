@@ -5,7 +5,7 @@ por completo `apps/basica` (Flask legado, fora da arquitetura aprovada).
 
 Documentação do artefato de entrega (requisitos, plano de testes, resultados,
 observabilidade):
-[`artefatos/testes-carga-inicial.md`](../../../../artefatos/testes-carga-inicial.md).
+[`artefatos/sprint3/testes-carga-inicial.md`](../../../../artefatos/sprint3/testes-carga-inicial.md).
 Este README cobre apenas o operacional — como rodar e o que esperar.
 
 ## Arquivos
@@ -144,6 +144,6 @@ docker compose -f apps/fullstack/docker-compose.observability.yml up -d
 ## Documentos relacionados
 
 - [`apps/backend/api/README.md`](../README.md)
-- [Artefato de entrega — testes de carga](../../../../artefatos/testes-carga-inicial.md)
+- [Artefato de entrega — testes de carga e observabilidade](../../../../artefatos/sprint3/testes-carga-inicial.md)
 - [Pilha de observabilidade](../../../fullstack/observability/README.md)
 - [Suíte histórica (sprint2, contrato anterior)](../../../../artefatos/sprint2/testes-carga/README.md)

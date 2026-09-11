@@ -1,7 +1,7 @@
 # Evidências brutas — testes de carga e observabilidade, 11/09/2026
 
 Pasta de evidências da rodada consolidada em
-[`artefatos/testes-carga-inicial.md`](../../../artefatos/testes-carga-inicial.md).
+[`artefatos/sprint3/testes-carga-inicial.md`](../../../artefatos/sprint3/testes-carga-inicial.md).
 Nada aqui é template: cada `resumo-*.json` é a saída de `handleSummary()` de um
 `k6 run` real, e cada `metadados-*.json` registra o comando, as datas UTC de
 início e fim, a duração, o `exit code`, a versão do k6, o commit, o ambiente e o

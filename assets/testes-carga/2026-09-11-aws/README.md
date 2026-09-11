@@ -2,7 +2,7 @@
 
 &emsp; Primeira bateria da API TypeScript executada **na nuvem** com bruto
 versionado. Substitui o relato sem evidência de `609b822` (ver
-[`artefatos/testes-carga-inicial.md`](../../../artefatos/testes-carga-inicial.md) §8.7)
+[`artefatos/sprint3/testes-carga-inicial.md`](../../../artefatos/sprint3/testes-carga-inicial.md) §8.7)
 e é o contraste direto com o leito local de
 [`2026-09-11/`](../2026-09-11/README.md).
 
