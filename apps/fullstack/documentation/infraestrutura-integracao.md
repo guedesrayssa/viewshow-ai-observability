@@ -6,6 +6,34 @@ branch, a stack foi aplicada na conta do Learner Lab indicada por `aws_account_i
 (na sessão atual, `904529597192`): os recursos existem na AWS e os endereços
 saem em `terraform output` (`painel_url`, `api_url`, `api_url_https`).
 
+## Vídeos de demonstração
+
+### Vídeo 2 — Integração front-end e back-end
+
+[Assistir no Google Drive](https://drive.google.com/file/d/1962YkNJ1X2MjZvk6rEfJerdvEHx8yC9T/view?usp=sharing) · 2 min 40 s
+
+Demonstra a validação funcional da aplicação e a comunicação entre serviços no
+ambiente implantado na AWS:
+
+- **Validação funcional.** Suíte automatizada com 70 testes cobrindo domínio,
+  casos de uso, adaptadores de persistência e o contrato HTTP das rotas; em
+  seguida, verificações executadas contra a stack em execução — disponibilidade
+  da API, recusa de escrita sem sessão e autenticação pelo Cognito com o papel
+  correto na sessão.
+- **Comunicação entre serviços.** Revisão de uma hipótese pela interface, com a
+  mesma requisição acompanhada em três pontos: o painel de rede do navegador,
+  o log do container em ECS Fargate e a releitura do estado pela API. O
+  diagnóstico sai de `pending` para `confirmed` e permanece após o
+  recarregamento da página, evidenciando a persistência ponta a ponta pelo
+  caminho Amplify → API Gateway → Load Balancer → ECS Fargate → DynamoDB.
+
+### Vídeo 1 — Infraestrutura provisionada
+
+*(link pendente)*
+
+Apresentação da infraestrutura no console da AWS: rede e observabilidade,
+bastion host, auto scaling com balanceamento de carga, e banco de dados.
+
 ## Escopo atual
 
 | Componente | Responsabilidade | Arquivo |
