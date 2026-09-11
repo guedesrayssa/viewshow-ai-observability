@@ -809,7 +809,7 @@ test("infrastructure is consolidated under apps/fullstack", () => {
   );
 });
 
-test("fullstack Terraform fails closed to the isolated Sprint 3 namespace and account", () => {
+test("fullstack Terraform can plan from the active AWS profile without required input variables", () => {
   const variables = readIfPresent(path.join(fullstackPath, "variables.tf"));
   const names = readIfPresent(path.join(fullstackPath, "names.tf"));
   const versions = readIfPresent(path.join(fullstackPath, "versions.tf"));
@@ -821,18 +821,13 @@ test("fullstack Terraform fails closed to the isolated Sprint 3 namespace and ac
   const namespaceBlock = /variable "deployment_namespace"\s*\{([\s\S]*?)^\}/m.exec(
     variables,
   )?.[1];
-  const accountBlock = /variable "aws_account_id"\s*\{([\s\S]*?)^\}/m.exec(
-    variables,
-  )?.[1];
-
   assert.match(variables, /variable "deployment_namespace"/);
   assert.ok(namespaceBlock, "deployment_namespace must have a variable block");
-  assert.doesNotMatch(namespaceBlock, /default\s*=/);
+  assert.match(namespaceBlock, /default\s*=\s*"g05-s3"/);
   assert.match(namespaceBlock, /var\.deployment_namespace == "g05-s3"/);
-  assert.ok(accountBlock, "aws_account_id must have a variable block");
-  assert.doesNotMatch(accountBlock, /default\s*=/);
-  assert.match(accountBlock, /\^\[0-9\]\{12\}\$/);
-  assert.match(versions, /allowed_account_ids\s*=\s*\[var\.aws_account_id\]/);
+  assert.doesNotMatch(variables, /variable "aws_account_id"/);
+  assert.doesNotMatch(activeTerraform, /var\.aws_account_id/);
+  assert.doesNotMatch(versions, /allowed_account_ids\s*=/);
   assert.match(versions, /Stack\s*=\s*"g05-sprint3-entrega"/);
   assert.match(versions, /ManagedBy\s*=\s*"terraform"/);
 
@@ -909,7 +904,6 @@ test("AWS observability stays opt-in and inside the isolated namespace", () => {
   );
 
   const gatedBlocks = [
-    'data "aws_ssm_parameter" "amazon_linux_2023"',
     'resource "random_password" "grafana"',
     'resource "aws_security_group" "observabilidade"',
     'resource "aws_security_group_rule" "otlp_api"',
@@ -977,27 +971,25 @@ test("fullstack Terraform accepts only us-east-1", () => {
   assert.doesNotMatch(regionBlock, /us-west-2/);
 });
 
-test("default VPC discovery selects only public default-for-AZ subnets", () => {
+test("dedicated VPC requires two AZs and never discovers the default VPC", () => {
   const data = stripHclComments(
     readIfPresent(path.join(fullstackPath, "data.tf")),
+  );
+  const vpc = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "vpc.tf")),
   );
 
   assert.match(
     data,
-    /name\s*=\s*"default-for-az"[\s\S]*?values\s*=\s*\["true"\]/,
+    /data\s+"aws_availability_zones"\s+"disponiveis"[\s\S]*state\s*=\s*"available"/,
   );
   assert.match(
     data,
-    /name\s*=\s*"map-public-ip-on-launch"[\s\S]*?values\s*=\s*\["true"\]/,
+    /condition\s*=\s*length\(data\.aws_availability_zones\.disponiveis\.names\)\s*>=\s*2/,
   );
-  assert.match(
-    data,
-    /condition\s*=\s*length\(data\.aws_subnets\.default\.ids\)\s*>=\s*2/,
-  );
-  assert.match(
-    data,
-    /length\(distinct\([\s\S]*data\.aws_subnet\.default[\s\S]*availability_zone[\s\S]*\)\)\s*>=\s*2/,
-  );
+  assert.match(vpc, /resource\s+"aws_vpc"\s+"principal"/);
+  assert.match(vpc, /cidr_block\s*=\s*"10\.0\.0\.0\/16"/);
+  assert.doesNotMatch(data + vpc, /data\s+"aws_vpc"\s+"default"/);
 });
 
 test("cost output preserves the stack until an explicit destroy request", () => {

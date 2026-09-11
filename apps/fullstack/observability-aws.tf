@@ -5,11 +5,6 @@
 // próprio laboratório ao fim da sessão. O desenho é adequado para demonstração
 // e homologação; não oferece alta disponibilidade nem armazenamento distribuído.
 
-data "aws_ssm_parameter" "amazon_linux_2023" {
-  count = var.observabilidade_habilitada ? 1 : 0
-  name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
-}
-
 resource "random_password" "grafana" {
   count   = var.observabilidade_habilitada ? 1 : 0
   length  = 24
@@ -20,7 +15,7 @@ resource "aws_security_group" "observabilidade" {
   count       = var.observabilidade_habilitada ? 1 : 0
   name        = "${local.nome_observabilidade}-sg"
   description = "Grafana via SSM; telemetria somente a partir dos servicos ECS"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = aws_vpc.principal.id
 
   dynamic "ingress" {
     for_each = var.grafana_cidr_acesso == null ? [] : [var.grafana_cidr_acesso]
@@ -80,6 +75,17 @@ resource "aws_security_group_rule" "otlp_workers" {
   source_security_group_id = aws_security_group.servico.id
 }
 
+resource "aws_security_group_rule" "ssh_bastion_observabilidade" {
+  count                    = var.observabilidade_habilitada ? 1 : 0
+  type                     = "ingress"
+  description              = "SSH administrativo somente a partir do bastion"
+  from_port                = 22
+  to_port                  = 22
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.observabilidade[0].id
+  source_security_group_id = aws_security_group.bastion.id
+}
+
 locals {
   dashboard_observabilidade = var.observabilidade_habilitada ? templatefile(
     "${path.module}/observability/aws/view-show-aws.json.tftpl",
@@ -98,12 +104,12 @@ locals {
 
 resource "aws_instance" "observabilidade" {
   count                       = var.observabilidade_habilitada ? 1 : 0
-  ami                         = data.aws_ssm_parameter.amazon_linux_2023[0].value
+  ami                         = data.aws_ssm_parameter.amazon_linux_2023.value
   instance_type               = var.tipo_instancia_observabilidade
-  subnet_id                   = sort(data.aws_subnets.default.ids)[0]
-  associate_public_ip_address = true
+  subnet_id                   = aws_subnet.privada["a"].id
+  associate_public_ip_address = false
   vpc_security_group_ids      = [aws_security_group.observabilidade[0].id]
-  iam_instance_profile        = data.aws_iam_instance_profile.lab[0].name
+  iam_instance_profile        = data.aws_iam_instance_profile.lab.name
 
   user_data = templatefile("${path.module}/observability/aws/user-data.sh.tftpl", {
     aws_region              = var.regiao

@@ -95,7 +95,7 @@ resource "aws_cognito_user_pool_client" "backend" {
 // habilita o endpoint OIDC (issuer abaixo) para uma futura integração pelo
 // caminho já previsto em src/modules/auth/config.ts (OIDC_ISSUER_URL).
 resource "aws_cognito_user_pool_domain" "principal" {
-  domain       = "${var.deployment_namespace}-auth"
+  domain       = "${var.deployment_namespace}-${data.aws_caller_identity.atual.account_id}-auth"
   user_pool_id = aws_cognito_user_pool.principal.id
 }
 

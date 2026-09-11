@@ -21,8 +21,9 @@ terraform {
 }
 
 provider "aws" {
-  region              = var.regiao
-  allowed_account_ids = [var.aws_account_id]
+  // Usa a cadeia padrão de credenciais da AWS. Portanto, AWS_PROFILE seleciona
+  // o perfil tanto para o provider quanto para os scripts executados no apply.
+  region = var.regiao
 
   default_tags {
     tags = {
