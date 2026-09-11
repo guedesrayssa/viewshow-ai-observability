@@ -1,0 +1,24 @@
+{
+  "rotulo": "auth-check",
+  "comando": "k6 run -e BASE_URL=http://127.0.0.1:3000 -e AUTH_COOKIE_SECRET=<segredo> /Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/auth-check.js ",
+  "inicio_utc": "2026-09-11T05:31:08Z",
+  "fim_utc": "2026-09-11T05:31:08Z",
+  "duracao_s": 0,
+  "exit_code": 0,
+  "k6": "k6 v2.2.0 (commit/00a9a1b7f5, go1.26.5, darwin/arm64)",
+  "commit": "fb8b0af69f9831542535d44ddcb18a52188ce702",
+  "ambiente": {
+    "host": "macOS 25.6.0 arm64 (Darwin), gerador e API na mesma máquina",
+    "api": "node dist/index.js no host, sem contêiner e sem limite de vCPU",
+    "node": "v26.3.0",
+    "persistencia": "DynamoDB Local http://127.0.0.1:18000 (-inMemory -sharedDb)",
+    "base_url": "http://127.0.0.1:3000",
+    "rate_limit_por_minuto": 180,
+    "seed": "CLEAN=1 node scripts/seed-carga.cjs (300 incidentes, 2303+10 itens)"
+  },
+  "thresholds": {
+    "checks{objetivo:rnf04}: rate==1": "ok"
+  },
+  "stdout_final": "\n         /\\      Grafana   /‾‾/  \n    /\\  /  \\     |\\  __   /  /   \n   /  \\/    \\    | |/ /  /   ‾‾\\ \n  /          \\   |   (  |  (‾)  |\n / __________ \\  |_|\\_\\  \\_____/ \n\n\n     execution: local\n        script: /Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/auth-check.js\n        output: -\n\n     scenarios: (100.00%) 1 scenario, 1 max VUs, 1m30s max duration (incl. graceful stop):\n              * verificacao: 1 iterations shared among 1 VUs (maxDuration: 1m0s, gracefulStop: 30s)\n\nVerificação de controle de acesso (RNF04) — resumo\n\nAlvo: sem sessão/com cookie inválido → 401. Com sessão válida → status explícito da matriz.\nincident_event_detail não tem guarda de sessão nenhuma (rota-stub, sempre 503) — checada à parte, fora de 'objetivo:rnf04'.\nimport_start/import_complete/import_status são fail-closed por design (503 FEATURE_UNAVAILABLE) — não é bug.\nauth_session já cumpre o RNF04 hoje (contraste com as rotas de leitura, que ainda não cumprem).\nauth_login/auth_callback são fail-closed incondicionais (login federado não configurado) — não é RNF04, é feature desligada.\n\nDetalhe por checagem:\n  ✓ auth_login: 503 FEATURE_UNAVAILABLE (login federado ainda não configurado) (passou 1x, falhou 0x)\n  ✓ auth_callback: 503 FEATURE_UNAVAILABLE (login federado ainda não configurado) (passou 1x, falhou 0x)\n  ✓ auth_logout: 204 mesmo sem sessão (idempotente por design) (passou 1x, falhou 0x)\n  ✓ auth_session: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ auth_session: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ auth_session: autenticado retorna 200 (passou 1x, falhou 0x)\n  ✓ dashboard_overview: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ dashboard_overview: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ dashboard_overview: autenticado retorna 200 ou 503 (passou 1x, falhou 0x)\n  ✓ incidents_list: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ incidents_list: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ incidents_list: autenticado retorna 200 (passou 1x, falhou 0x)\n  ✓ incident_diagnosis: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ incident_diagnosis: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ incident_diagnosis: autenticado retorna 404 (passou 1x, falhou 0x)\n  ✓ incident_events: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ incident_events: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ incident_events: autenticado retorna 404 (passou 1x, falhou 0x)\n  ✓ incident_event_detail: sem guarda de sessão (responde 503 mesmo sem cookie) (passou 1x, falhou 0x)\n  ✓ monitoring_overview: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ monitoring_overview: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ monitoring_overview: autenticado retorna 200 ou 503 (passou 1x, falhou 0x)\n  ✓ hypothesis_review: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ hypothesis_review: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ hypothesis_review: autenticado retorna 404 (passou 1x, falhou 0x)\n  ✓ reanalyze: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ reanalyze: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ reanalyze: autenticado retorna 404 (passou 1x, falhou 0x)\n  ✓ import_start: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ import_start: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ import_start: autenticado retorna 503 (passou 1x, falhou 0x)\n  ✓ import_complete: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ import_complete: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ import_complete: autenticado retorna 503 (passou 1x, falhou 0x)\n  ✓ import_status: 401 sem cookie (passou 1x, falhou 0x)\n  ✓ import_status: 401 com cookie inválido (passou 1x, falhou 0x)\n  ✓ import_status: autenticado retorna 503 (passou 1x, falhou 0x)\n\nChecks: 37 passaram, 0 falharam.\n\nrunning (0m00.1s), 0/1 VUs, 1 complete and 0 interrupted iterations\nverificacao ✓ [ 100% ] 1 VUs  0m00.1s/1m0s  1/1 shared iters\n",
+  "stderr_final": ""
+}

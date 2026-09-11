@@ -21,7 +21,7 @@ terraform {
 }
 
 provider "aws" {
-  region              = var.regiao
+  region = var.regiao
   # AWS Academy Learner Lab: a conta rotaciona a cada novo lab. Por isso o ID
   # não é fixado aqui — defina `aws_account_id` em um terraform.tfvars local
   # (não versionado) e confirme a conta ativa com `aws sts get-caller-identity`

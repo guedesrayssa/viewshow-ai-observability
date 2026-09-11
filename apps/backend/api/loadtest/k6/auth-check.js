@@ -282,5 +282,21 @@ export function handleSummary(data) {
 
   const checks = data.metrics.checks?.values || { passes: 0, fails: 0 };
   linhas.push(`\nChecks: ${checks.passes} passaram, ${checks.fails} falharam.`);
-  return { stdout: linhas.join("\n") + "\n" };
+
+  // O k6 serializa setup() inteiro em `setup_data`, e aqui isso inclui o
+  // cookie de sessão assinado que setup() forjou. O resumo é anexado como
+  // evidência versionada do artefato de carga, então o cookie é substituído
+  // por um marcador: manter o valor gravaria uma credencial válida (8h de
+  // validade) no repositório. `nonexistentId` continua íntegro porque é só
+  // um identificador sintético, não um segredo.
+  const semCredenciais = {
+    ...data,
+    setup_data: data.setup_data
+      ? { ...data.setup_data, validCookie: "<redigido: cookie de sessão>" }
+      : data.setup_data,
+  };
+  return {
+    stdout: linhas.join("\n") + "\n",
+    "resumo-auth-check.json": JSON.stringify(semCredenciais, null, 2),
+  };
 }

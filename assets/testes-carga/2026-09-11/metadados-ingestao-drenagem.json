@@ -1,0 +1,26 @@
+{
+  "rotulo": "ingestao-drenagem",
+  "comando": "k6 run -e BASE_URL=http://127.0.0.1:3000 -e AUTH_COOKIE_SECRET=<segredo> -e MODE=drenagem /Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/ingestao-batch.js ",
+  "inicio_utc": "2026-09-11T05:56:46Z",
+  "fim_utc": "2026-09-11T05:56:46Z",
+  "duracao_s": 0,
+  "exit_code": 107,
+  "k6": "k6 v2.2.0 (commit/00a9a1b7f5, go1.26.5, darwin/arm64)",
+  "commit": "fb8b0af69f9831542535d44ddcb18a52188ce702",
+  "ambiente": {
+    "host": "macOS 25.6.0 arm64 (Darwin), gerador e API na mesma máquina",
+    "api": "node dist/index.js no host, sem contêiner e sem limite de vCPU",
+    "node": "v26.3.0",
+    "persistencia": "DynamoDB Local http://127.0.0.1:18000 (-inMemory -sharedDb)",
+    "base_url": "http://127.0.0.1:3000",
+    "rate_limit_por_minuto": 200000,
+    "seed": "CLEAN=1 node scripts/seed-carga.cjs (300 incidentes, 2303+10 itens)"
+  },
+  "thresholds": {
+    "checks: rate==1": "ok",
+    "ingestion_drain_seconds: p(100)<900": "ok",
+    "http_req_failed: rate<0.001": "reprovado"
+  },
+  "stdout_final": "\n         /\\      Grafana   /‾‾/  \n    /\\  /  \\     |\\  __   /  /   \n   /  \\/    \\    | |/ /  /   ‾‾\\ \n  /          \\   |   (  |  (‾)  |\n / __________ \\  |_|\\_\\  \\_____/ \n\n\n     execution: local\n        script: /Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/ingestao-batch.js\n        output: -\n\n     scenarios: (100.00%) 1 scenario, 1 max VUs, 31m30s max duration (incl. graceful stop):\n              * drenagem: 1 iterations shared among 1 VUs (maxDuration: 31m0s, gracefulStop: 30s)\n\nIngestão — modo drenagem · janela 15 min · 150000 eventos\n\nRun        [ 100% ] setup()\ndrenagem   [   0% ]\n",
+  "stderr_final": "time=\"2026-09-11T02:56:46-03:00\" level=error msg=\"Error: /api/v1/imports existe mas está fail-closed (503 FEATURE_UNAVAILABLE: \\\"a importação requer S3 e uma tarefa de ingestão configurados\\\"). Isso é deliberado (UnavailableImportControl em src/modules/imports/adapters/, ver apps/backend/README.md) até o adaptador real ser configurado. Este script fica pronto para quando isso acontecer — nada a fazer aqui até lá.\\n\\tat probeImportEndpoint (file:///Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/ingestao-batch.js:150:11(60))\\n\\tat setup (file:///Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/ingestao-batch.js:169:22(11))\\n\" hint=\"script exception\" source=stacktrace\n"
+}

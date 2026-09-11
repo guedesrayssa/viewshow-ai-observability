@@ -279,7 +279,7 @@ export default function (data) {
     ids.forEach((id, i) => {
       if (!id) return;
       const label = `acumulo-lote-${i + 1}`;
-      const upload = (() => { try { return disparo.json("data.upload"); } catch { return null; } })();
+      const upload = (() => { try { return disparos[i].json("data.upload"); } catch { return null; } })();
       const completou = completeImport(data.cookie, id, upload, label);
       check(completou, { [`${label}: complete aceito (202)`]: (r) => r.status === 202 });
     });
@@ -314,11 +314,19 @@ export default function (data) {
 }
 
 export function handleSummary(data) {
+  // Mesmo motivo de consultas.js/auth-check.js: `setup_data` carrega o cookie
+  // de sessão forjado, e este resumo é evidência versionada.
+  const semCredenciais = {
+    ...data,
+    setup_data: data.setup_data
+      ? { ...data.setup_data, cookie: "<redigido: cookie de sessão>" }
+      : data.setup_data,
+  };
   return {
     stdout:
       `Ingestão — modo ${MODE} · janela ${WINDOW_MINUTES} min · ${BATCH_SIZE} eventos` +
       (MODE === "acumulo" ? ` × ${BACKLOG_BATCHES} lotes` : "") +
       "\n",
-    [`resumo-ingestao-${MODE}.json`]: JSON.stringify(data, null, 2),
+    [`resumo-ingestao-${MODE}.json`]: JSON.stringify(semCredenciais, null, 2),
   };
 }

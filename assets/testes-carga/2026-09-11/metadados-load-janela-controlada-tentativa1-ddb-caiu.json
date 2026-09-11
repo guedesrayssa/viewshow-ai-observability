@@ -1,0 +1,28 @@
+{
+  "rotulo": "load-janela-controlada",
+  "comando": "k6 run -e BASE_URL=http://127.0.0.1:3000 -e AUTH_COOKIE_SECRET=<segredo> -e MODE=load /Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/consultas.js",
+  "inicio_utc": "2026-09-11T04:15:05Z",
+  "fim_utc": "2026-09-11T04:18:51Z",
+  "duracao_s": 226,
+  "exit_code": 99,
+  "k6": "k6 v2.2.0 (commit/00a9a1b7f5, go1.26.5, darwin/arm64)",
+  "commit": "183e01fdfc88221d8fc084f616585d4d0ee0993d",
+  "ambiente": {
+    "host": "macOS 25.6.0 arm64 (Darwin), gerador e API na mesma máquina",
+    "api": "node dist/index.js no host, sem contêiner e sem limite de vCPU",
+    "node": "v26.3.0",
+    "persistencia": "DynamoDB Local http://127.0.0.1:18000 (-inMemory -sharedDb)",
+    "base_url": "http://127.0.0.1:3000",
+    "rate_limit_por_minuto": 200000,
+    "seed": "CLEAN=1 node scripts/seed-carga.cjs (300 incidentes, 2303+10 itens)"
+  },
+  "thresholds": {
+    "http_req_failed: rate<0.001": "reprovado",
+    "rate_limited_rate: rate<0.001": "ok",
+    "http_reqs{status:200}: rate>130": "reprovado",
+    "checks: rate>0.99": "reprovado",
+    "http_req_duration{status:200}: p(95)<2000": "ok"
+  },
+  "stdout_final": "rupted iterations\nload   [  89% ] 000/100 VUs  3m20.0s/3m45s  137.00 iters/s\n\nrunning (3m21.0s), 001/100 VUs, 25629 complete and 0 interrupted iterations\nload   [  89% ] 001/100 VUs  3m21.0s/3m45s  137.00 iters/s\n\nrunning (3m22.0s), 000/100 VUs, 25767 complete and 0 interrupted iterations\nload   [  90% ] 000/100 VUs  3m22.0s/3m45s  137.00 iters/s\n\nrunning (3m23.0s), 000/100 VUs, 25904 complete and 0 interrupted iterations\nload   [  90% ] 000/100 VUs  3m23.0s/3m45s  137.00 iters/s\n\nrunning (3m24.0s), 001/100 VUs, 26040 complete and 0 interrupted iterations\nload   [  91% ] 001/100 VUs  3m24.0s/3m45s  137.00 iters/s\n\nrunning (3m25.0s), 000/100 VUs, 26178 complete and 0 interrupted iterations\nload   [  91% ] 000/100 VUs  3m25.0s/3m45s  137.00 iters/s\n\nrunning (3m26.0s), 001/100 VUs, 26314 complete and 0 interrupted iterations\nload   [  92% ] 001/100 VUs  3m26.0s/3m45s  137.00 iters/s\n\nrunning (3m27.0s), 001/100 VUs, 26451 complete and 0 interrupted iterations\nload   [  92% ] 001/100 VUs  3m27.0s/3m45s  137.00 iters/s\n\nrunning (3m28.0s), 000/100 VUs, 26589 complete and 0 interrupted iterations\nload   [  92% ] 000/100 VUs  3m28.0s/3m45s  137.00 iters/s\n\nrunning (3m29.0s), 001/100 VUs, 26725 complete and 0 interrupted iterations\nload   [  93% ] 001/100 VUs  3m29.0s/3m45s  137.00 iters/s\n\nrunning (3m30.0s), 000/100 VUs, 26863 complete and 0 interrupted iterations\nload   [  93% ] 000/100 VUs  3m30.0s/3m45s  137.00 iters/s\n\nrunning (3m31.0s), 000/100 VUs, 26995 complete and 0 interrupted iterations\nload   [  94% ] 000/100 VUs  3m31.0s/3m45s  128.00 iters/s\n\nrunning (3m32.0s), 000/100 VUs, 27119 complete and 0 interrupted iterations\nload   [  94% ] 000/100 VUs  3m32.0s/3m45s  118.83 iters/s\n\nrunning (3m33.0s), 001/100 VUs, 27232 complete and 0 interrupted iterations\nload   [  95% ] 001/100 VUs  3m33.0s/3m45s  109.72 iters/s\n\nrunning (3m34.0s), 000/100 VUs, 27338 complete and 0 interrupted iterations\nload   [  95% ] 000/100 VUs  3m34.0s/3m45s  100.60 iters/s\n\nrunning (3m35.0s), 000/100 VUs, 27434 complete and 0 interrupted iterations\nload   [  96% ] 000/100 VUs  3m35.0s/3m45s  091.47 iters/s\n\nrunning (3m36.0s), 000/100 VUs, 27521 complete and 0 interrupted iterations\nload   [  96% ] 000/100 VUs  3m36.0s/3m45s  082.32 iters/s\n\nrunning (3m37.0s), 000/100 VUs, 27599 complete and 0 interrupted iterations\nload   [  96% ] 000/100 VUs  3m37.0s/3m45s  073.16 iters/s\n\nrunning (3m38.0s), 000/100 VUs, 27667 complete and 0 interrupted iterations\nload   [  97% ] 000/100 VUs  3m38.0s/3m45s  064.11 iters/s\n\nrunning (3m39.0s), 000/100 VUs, 27727 complete and 0 interrupted iterations\nload   [  97% ] 000/100 VUs  3m39.0s/3m45s  054.90 iters/s\n\nrunning (3m40.0s), 001/100 VUs, 27776 complete and 0 interrupted iterations\nload   [  98% ] 001/100 VUs  3m40.0s/3m45s  045.83 iters/s\n\nrunning (3m41.0s), 000/100 VUs, 27818 complete and 0 interrupted iterations\nload   [  98% ] 000/100 VUs  3m41.0s/3m45s  036.77 iters/s\n\nrunning (3m42.0s), 001/100 VUs, 27850 complete and 0 interrupted iterations\nload   [  99% ] 001/100 VUs  3m42.0s/3m45s  027.37 iters/s\n\nrunning (3m43.0s), 000/100 VUs, 27873 complete and 0 interrupted iterations\nload   [  99% ] 000/100 VUs  3m43.0s/3m45s  018.63 iters/s\n\nrunning (3m44.0s), 000/100 VUs, 27887 complete and 0 interrupted iterations\nload   [ 100% ] 000/100 VUs  3m44.0s/3m45s  009.54 iters/s\nTeste de desempenho — API de consulta (View Show)\nModo: load · RATE alvo: 137 req/s\n\nℹ Cenário G seguiu o cursor para a página 2 em 650 iteração(ões) — 0 aqui indica que INCIDENT_COUNT/limit não geraram hasMore=true, não necessariamente um bug de paginação.\nℹ Cada requisição carregou X-Request-Id prefixado \"k6-consultas-load\", gravado em request_id no log JSON da API (src/app.ts) — filtrável na saída padrão do processo hoje; ver seção Observabilidade do README para Prometheus/Tempo.\n\nResumo completo: resumo-load.json\n\nrunning (3m44.7s), 000/100 VUs, 27892 complete and 0 interrupted iterations\nload ✗ [ 100% ] 000/100 VUs  3m44.7s/3m45s  004.13 iters/s\n",
+  "stderr_final": "time=\"2026-09-11T01:18:50-03:00\" level=error msg=\"thresholds on metrics 'checks, http_req_failed, http_reqs{status:200}' have been crossed\"\n"
+}
