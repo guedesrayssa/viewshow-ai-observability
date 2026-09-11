@@ -30,12 +30,12 @@ A modelagem utiliza diagramas UML e descrições textuais para representar:
 
 ### 1.2 Escopo da modelagem
 
-A modelagem de casos de uso contempla a aplicação web interna do View Show, utilizada por equipes do Globoplay para consultar telemetria, analisar incidentes, investigar falhas técnicas e acompanhar a qualidade da experiência (QoE). O recorte corresponde às telas de Login, Visão Geral, Incidentes, Evidências, Eventos e Monitoramento previstas para o MVP e para a Sprint 3.
+A modelagem de casos de uso contempla a aplicação web interna do View Show, utilizada por equipes do Globoplay para consultar telemetria, analisar incidentes, investigar falhas técnicas e acompanhar a qualidade da experiência (QoE). O recorte corresponde às telas de Login, Visão Geral, Incidentes, Evidências, Eventos e Monitoramento previstas para o MVP e para a Sprint 3. O recorte também contempla o ponto de entrada dos dados: a sincronização e a normalização dos registros do ARGUS (UC-08), iniciada por um ator técnico em vez de por um usuário final, pois RF01, RF02, RF03 e RIE02 definem um contrato observável que não pode ficar sem representação em nenhum caso de uso.
 
 Não fazem parte da modelagem de casos de uso:
 
-- a emissão de telemetria pelos frontends do Globoplay;
-- os processos internos de ingestão, enfileiramento, normalização e armazenamento;
+- a emissão de telemetria pelos frontends do Globoplay ao ARGUS, sistema interno da Globo fora da fronteira do View Show;
+- os processos internos de enfileiramento, publicação em fila e armazenamento posteriores à normalização (SQS, DLQ, Glue, Athena, S3);
 - a execução de correções, deploys ou rollbacks em produção.
 
 Esses elementos viabilizam o produto, mas não constituem objetivos iniciados diretamente pelos atores na interface. A observação da integridade dos dados de telemetria, por sua vez, integra o escopo funcional porque subsidia a avaliação da confiabilidade das análises apresentadas pelo View Show.
@@ -74,7 +74,7 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 
 ### 2.1 Atores
 
-&emsp;Um ator representa um papel exercido na interação com o sistema, e não uma pessoa específica. O papel **Usuário corporativo** foi definido como abstrato para concentrar as capacidades comuns de acesso e consulta. Analista de Atendimento Técnico N1, Engenheira de Software e Product Manager especializam esse papel e acrescentam objetivos próprios de suas responsabilidades. O provedor de identidade é mantido como ator secundário porque participa da troca de informações necessária à autenticação, embora esteja fora da fronteira do View Show.
+&emsp;Um ator representa um papel exercido na interação com o sistema, e não uma pessoa específica. O papel **Usuário corporativo** foi definido como abstrato para concentrar as capacidades comuns de acesso e consulta. Analista de Atendimento Técnico N1, Engenheira de Software e Product Manager especializam esse papel e acrescentam objetivos próprios de suas responsabilidades. O provedor de identidade é mantido como ator secundário porque participa da troca de informações necessária à autenticação, embora esteja fora da fronteira do View Show. O temporizador de sincronização (EventBridge) é um ator técnico e primário: ele, não um usuário final, inicia periodicamente a sincronização dos dados do ARGUS, que por sua vez é um ator secundário e externo — o sistema interno da Globo que já recebe a telemetria emitida pelos frontends do Globoplay, fora da fronteira do View Show.
 
 <div align="center">
 
@@ -89,6 +89,8 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 | AT-03 | Engenheira de Software | Especialização de AT-01 | Validar hipóteses, investigar falhas, avaliar recuperações e monitorar a telemetria. |
 | AT-04 | Product Manager | Especialização de AT-01 | Analisar QoE, priorizar problemas e avaliar resultados posteriores a correções. |
 | AT-05 | Provedor de identidade/SSO | Secundário | Autenticar a conta corporativa e devolver a identidade validada. |
+| AT-06 | Temporizador de sincronização (EventBridge) | Primário, técnico | Iniciar periodicamente a sincronização dos dados operacionais do ARGUS. |
+| AT-07 | ARGUS | Secundário, externo | Fornecer os dados operacionais já recebidos dos frontends do Globoplay, consumidos por leitura (MySQL) pelo Serviço de Ingestão. |
 
 <div align="center">
 
@@ -98,7 +100,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.2 Catálogo de casos de uso
 
-&emsp;O catálogo apresenta sete objetivos observáveis dos usuários do View Show. Cada caso de uso reúne as interações que conduzem a um resultado relevante para o ator principal, desde o acesso ao sistema até a análise de incidentes, a investigação técnica, a avaliação da qualidade da experiência e o acompanhamento da telemetria.
+&emsp;O catálogo apresenta oito objetivos observáveis dos atores do View Show. Cada caso de uso reúne as interações que conduzem a um resultado relevante para o ator principal, desde o acesso ao sistema até a análise de incidentes, a investigação técnica, a avaliação da qualidade da experiência, o acompanhamento da telemetria e a recepção dos eventos que alimentam essa telemetria.
 
 <div align="center">
 
@@ -115,6 +117,7 @@ Fonte: Material produzido pelos autores (2026).
 | UC-05 | Avaliar recuperação após correção | Engenheira de Software e Product Manager | RF07, RF08, RF09, RNF05, RNF14 |
 | UC-06 | Analisar qualidade da experiência | Product Manager | RF07, RF08, RF09, RNF05, RNF14, RNF15 |
 | UC-07 | Monitorar a telemetria | Engenheira de Software | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 |
+| UC-08 | Sincronizar e normalizar dados do ARGUS | Temporizador de sincronização (EventBridge) | RF01, RF02, RF03, RIE02 |
 
 <div align="center">
 
@@ -122,7 +125,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;A consulta ao dashboard abrange a aplicação de filtros e a exportação de resultados. A análise de incidentes compreende a priorização das ocorrências, a consulta das hipóteses e evidências e o registro da avaliação humana. A investigação técnica aprofunda a inspeção de eventos e as comparações entre recortes. Os demais casos tratam da avaliação posterior a correções, da análise agregada de QoE e da verificação da integridade das fontes e do processamento da telemetria.
+&emsp;A consulta ao dashboard abrange a aplicação de filtros e a exportação de resultados. A análise de incidentes compreende a priorização das ocorrências, a consulta das hipóteses e evidências e o registro da avaliação humana. A investigação técnica aprofunda a inspeção de eventos e as comparações entre recortes. Os demais casos tratam da avaliação posterior a correções, da análise agregada de QoE, da verificação da integridade das fontes e do processamento da telemetria e, por fim, da sincronização e normalização dos dados do ARGUS, que é o ponto de entrada de dados sobre o qual todos os demais casos de uso operam. Diferentemente dos demais, o UC-08 não é iniciado por um usuário final: seu ator principal é um temporizador técnico, o que o qualifica como subfunção de suporte, e não como objetivo de usuário (ver 3.8).
 
 ### 2.3 Diagrama
 
@@ -140,7 +143,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.4 Critérios de construção e leitura
 
-&emsp;A fronteira **Sistema View Show** contém as funcionalidades percebidas pelos atores durante o uso da aplicação. A emissão, a ingestão, o enfileiramento, a normalização e o armazenamento da telemetria são processos internos ou externos à interação direta dos usuários e, por isso, não são representados como casos de uso.
+&emsp;A fronteira **Sistema View Show** contém as funcionalidades percebidas pelos atores durante o uso da aplicação. A sincronização e a normalização dos dados do ARGUS constituem um objetivo observável, iniciado por um ator técnico (o temporizador de sincronização) em vez de por um usuário final; por isso, são representadas separadamente em UC-08, no nível de subfunção. A emissão de telemetria pelos frontends do Globoplay para o ARGUS ocorre fora da fronteira do View Show e não é modelada: o ARGUS é o ator que já recebeu essa telemetria e fornece os dados consumidos por UC-08. Já o enfileiramento, a publicação assíncrona e o armazenamento posteriores à normalização (SQS, DLQ, Glue, Athena, S3) são processos internos que não são iniciados por nenhum ator e, por isso, não são representados como caso de uso — eles aparecem apenas nos diagramas de sequência da Seção 5, como suporte técnico ao UC-08.
 
 &emsp;Operações como filtrar resultados, consultar evidências e comparar períodos são descritas nos fluxos dos casos de uso aos quais dão suporte. A avaliação de recuperação constitui um objetivo independente porque ocorre após uma intervenção externa e produz como resultado uma comparação entre janelas temporais equivalentes.
 
@@ -167,6 +170,9 @@ Fonte: Material produzido pelos autores (2026).
 | AT-04 | Associação | UC-05 | A Product Manager avalia os indicadores posteriores a uma correção. |
 | AT-04 | Associação | UC-06 | A Product Manager inicia a análise de QoE. |
 | AT-05 | Associação | UC-02 | O provedor externo participa da autenticação corporativa. |
+| AT-06 | Associação | UC-08 | O temporizador inicia periodicamente a sincronização dos dados do ARGUS. |
+| AT-07 | Associação | UC-08 | O ARGUS fornece os dados operacionais consumidos pela sincronização. |
+| AT-03 | Associação | UC-08 | A Engenheira de Software pode, no papel de operador de dados, importar manualmente um snapshot do ARGUS. |
 
 <div align="center">
 
@@ -770,9 +776,88 @@ Várias consultas ao dia, com acompanhamento prolongado durante incidentes e eve
 - Quais limites operacionais devem caracterizar atraso, cobertura parcial e indisponibilidade em cada fonte?
 - Qual granularidade temporal deve ser apresentada no histórico das métricas operacionais?
 
-### 3.8 Síntese das descrições
+### 3.8 UC-08 — Sincronizar e normalizar dados do ARGUS
 
-&emsp;As sete narrativas delimitam os objetivos dos atores e os resultados que o View Show deve oferecer. Os fluxos básicos descrevem os cenários de sucesso, enquanto os fluxos alternativos registram indisponibilidades, ausência de dados, amostras insuficientes e demais condições que modificam o percurso principal.
+&emsp;Este caso de uso descreve como o View Show obtém os dados que sustentam todos os demais objetivos do sistema. Periodicamente, o Serviço de Ingestão lê os registros operacionais do ARGUS — sistema interno da Globo que já recebe a telemetria emitida pelos frontends do Globoplay —, normaliza-os para o esquema interno padronizado e os disponibiliza às demais análises. Um operador de dados pode complementar essa sincronização com a importação manual de um snapshot do ARGUS, sem interromper o conjunto de dados vigente.
+
+#### Escopo
+
+Sistema View Show.
+
+#### Nível
+
+Subfunção (processo técnico de suporte, iniciado por um temporizador, não por um usuário final).
+
+#### Atores
+
+- **Ator principal:** Temporizador de sincronização (EventBridge).
+- **Atores secundários:** ARGUS (fonte dos dados operacionais) e Operador de dados — papel exercido por um Usuário corporativo com a permissão `data:import`, tipicamente a Engenheira de Software — no fluxo alternativo de importação manual de snapshot.
+
+#### Requisitos relacionados
+
+- **RF01 — Ingestão de eventos multiplataforma:** os registros já cobrem dispositivos e plataformas distintas porque o ARGUS os recebeu previamente de toda a base instalada do Globoplay.
+- **RF02 — Ingestão de eventos:** recebimento e armazenamento dos eventos publicados pelas aplicações frontend do Globoplay, realizado indiretamente pela leitura periódica do ARGUS.
+- **RF03 — Normalização dos dados:** normalização dos registros lidos do ARGUS, independentemente do protocolo ou formato de origem, para o formato padronizado interno antes da persistência.
+- **RIE02 — Frontends do Globoplay (Smart TV, mobile, web):** contrato original de uma API de ingestão que recebe eventos diretamente dos frontends; hoje satisfeito indiretamente, pois o ARGUS já implementa esse recebimento fora da fronteira do View Show (ver nota de substituição tecnológica abaixo).
+
+#### Interessados e interesses
+
+- **Engenharia:** dispor de dados normalizados, atualizados e auditáveis, com baixa necessidade de intervenção manual.
+- **Globo:** preservar a fidelidade dos dados do ARGUS na sincronização periódica, com uma via de reprocessamento por snapshot quando necessário.
+- **Demais atores do View Show:** dependem indiretamente deste caso de uso, pois todas as análises partem dos dados aqui sincronizados.
+
+#### Pré-condições
+
+- O ARGUS está acessível pela rede privada autorizada, ou um snapshot válido foi fornecido por um operador de dados.
+
+#### Pós-condições
+
+- **Em caso de sucesso:** os registros novos ou alterados do ARGUS estão normalizados, persistidos no DynamoDB (ou arquivados no S3 quando ultrapassam a janela quente) e as solicitações de análise correspondentes foram publicadas na fila.
+- **Garantia mínima:** nenhum evento é publicado na fila sem que seu registro tenha sido persistido antes; uma sincronização concorrente não corrompe o checkpoint nem duplica o processamento de uma mesma janela.
+
+#### Fluxo Básico
+
+1. O temporizador inicia a sincronização periódica.
+2. O sistema adquire um bloqueio temporário para a execução.
+3. O sistema obtém as credenciais do ARGUS e conecta-se pela rede privada.
+4. O sistema lê os registros do ARGUS a partir do último checkpoint.
+5. O sistema valida e normaliza cada registro para o esquema interno padronizado.
+6. O sistema persiste os registros novos ou alterados e atualiza o checkpoint.
+7. O sistema publica na fila as solicitações de análise decorrentes da janela sincronizada.
+8. O sistema libera o bloqueio e registra a execução.
+
+#### Fluxos alternativos
+
+- **1a. Importação manual de snapshot:** um operador de dados envia, pela interface, um snapshot do ARGUS. O sistema restaura o snapshot em um banco temporário isolado e segue a partir do passo 4 sobre esse snapshot, ativando a nova versão do conjunto de dados ao final sem interromper o conjunto vigente.
+- **2a. Bloqueio já adquirido por outra execução:** o sistema encerra a execução como ignorada e não altera checkpoint nem watermark. O fluxo termina.
+- **3a. Schema do ARGUS incompatível:** o sistema registra falha permanente e não avança checkpoint nem watermark. O fluxo termina.
+- **7a. Falha ao publicar um item na fila:** o item permanece pendente e é republicado pela execução seguinte com a mesma chave de idempotência.
+
+#### Requisitos especiais
+
+- Cobertura de plataformas heterogêneas preservada por herança do ARGUS, conforme RF01: o View Show não reprocessa o protocolo de origem do dispositivo, apenas os registros já recebidos.
+- Nenhuma publicação na fila ocorre para um registro que ainda não foi persistido, preservando a garantia comportamental de RIE02 (confirmação apenas após persistência) mesmo sem uma API de recebimento própria.
+- A importação manual de snapshot exige a permissão `data:import`.
+
+#### Lista de variantes
+
+- **1a. Origem da sincronização:** automática, pelo temporizador, ou manual, por snapshot enviado por um operador de dados.
+- **5a. Tipo de evento normalizado:** `request`, `vitals`, `screen_view`, `video_view`, `session` ou `error`.
+
+#### Frequência de ocorrência
+
+A cada 15 minutos, automaticamente; a importação manual ocorre sob demanda, tipicamente para reprocessamento ou recuperação.
+
+#### Problemas em aberto
+
+- Qual granularidade de erro deve ser reportada ao operador quando um snapshot falha na restauração?
+- O ARGUS deve continuar sendo a única fonte de dados, ou o View Show deverá, no futuro, expor uma API de recebimento direto dos frontends, como originalmente descrito em RIE02?
+
+> **Substituição tecnológica documentada.** RIE02, tal como redigido em [Especificação de requisitos §3](sprint1/requisitos.md), descreve uma API de ingestão que recebe eventos diretamente dos frontends do Globoplay e confirma o recebimento somente após a publicação na fila. A arquitetura-alvo aprovada em [Ingestão e dados](arquitetura/ingestao-e-dados.md) substitui esse contrato por um modelo de leitura periódica do ARGUS — sistema interno da Globo que já recebe essa telemetria antes do View Show, fora de sua fronteira. A garantia comportamental de RIE02 (nenhuma confirmação sem persistência prévia) é preservada pelo par checkpoint + outbox transacional do Serviço de Ingestão (DS-01A), mesmo sem uma API de recebimento própria dos frontends.
+
+### 3.9 Síntese das descrições
+
+&emsp;As oito narrativas delimitam os objetivos dos atores e os resultados que o View Show deve oferecer. Sete delas descrevem objetivos de usuário, no nível definido por Larman (2007) para casos de uso primários; a oitava (UC-08) descreve uma subfunção técnica, iniciada por um temporizador em vez de por um usuário final, mas necessária para que RF01, RF02, RF03 e RIE02 tenham representação explícita no modelo. Os fluxos básicos descrevem os cenários de sucesso, enquanto os fluxos alternativos registram indisponibilidades, ausência de dados, amostras insuficientes e demais condições que modificam o percurso principal.
 
 &emsp;A descrição em caixa-preta mantém o foco nas responsabilidades observáveis do sistema, conforme a abordagem de Larman (2007). Dessa forma, os casos de uso fornecem uma base comum para a análise dos requisitos, a definição das interações e a verificação posterior do comportamento esperado.
 
@@ -1358,8 +1443,8 @@ Fonte: Material produzido pelos autores (2026).
 
 | ID | Cenário | Casos de uso relacionados | Tipo de fluxo |
 | --- | --- | --- | --- |
-| DS-01A | Sincronização com o MySQL vivo | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico |
-| DS-01B | Importação de snapshot pela interface | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico/alternativo |
+| DS-01A | Sincronização com o MySQL vivo | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico |
+| DS-01B | Importação de snapshot pela interface | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico/alternativo |
 | DS-02A | Autenticação federada e consulta | UC-01, UC-02 | Básico |
 | DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-03, UC-04 | Concorrente |
 | DS-02C | Avaliação da recuperação após correção ⚠️ *(fluxo proposto, sem contrato de API formalizado)* | UC-05 | Básico/alternativo |
@@ -1384,7 +1469,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 5.3 Ingestão e disponibilização dos dados
 
-&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos fornecem os dados utilizados nos casos de uso UC-01, UC-03, UC-04, UC-06 e UC-07.
+&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos realizam a sincronização e a normalização descritas em UC-08 e fornecem os dados utilizados nos demais casos de uso, UC-01, UC-03, UC-04, UC-06 e UC-07.
 
 #### 5.3.1 DS-01A — Sincronização com o MySQL vivo
 
@@ -2373,8 +2458,8 @@ Fonte: Material produzido pelos autores (2026).
 
 | Diagrama | Casos de uso | Natureza da relação | Decisão principal |
 | --- | --- | --- | --- |
-| DS-01A | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico | Persistência operacional e arquivamento histórico da telemetria |
-| DS-01B | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico | Upload no S3, MySQL temporário no Fargate e ativação versionada |
+| DS-01A | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico | Persistência operacional e arquivamento histórico da telemetria |
+| DS-01B | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico | Upload no S3, MySQL temporário no Fargate e ativação versionada |
 | DS-02A | UC-01, UC-02 | Realização | SSO federado com Backend for Frontend |
 | DS-02B | UC-03, UC-04 | Realização | Concorrência otimista, auditoria e promoção transacional |
 | DS-02C | UC-05 | Realização | Comparação auditável de janelas equivalentes sem inferência indevida de causalidade |
@@ -2410,6 +2495,7 @@ A rastreabilidade relaciona os casos de uso aos requisitos, às necessidades de 
 | Avaliação posterior a uma correção | UC-05 | RF07, RF08, RF09, RNF05, RNF14 | [US-ENG-05](sprint1/entendimento_ux.md#us-eng-05---verificar-a-recuperação-após-uma-correção) e [US-PM-04](sprint1/entendimento_ux.md#us-pm-04---avaliar-a-evolução-após-uma-correção) | Incidente, marco temporal, janela de comparação e indicador | DS-02C |
 | Indicadores, segmentos e histórico de QoE | UC-06 | RF07, RF08, RF09, RNF05, RNF14, RNF15 | [US-PM-01 a US-PM-05](sprint1/entendimento_ux.md#34-user-stories-da-persona-3) | Indicador de QoE, segmento, série temporal e degradação | DS-01A, DS-01B, DS-03A, DS-03B, DS-04 |
 | Integridade da telemetria | UC-07 | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 | [US-ENG-06](sprint1/entendimento_ux.md#us-eng-06---monitorar-a-saúde-da-telemetria) e [tela de Monitoramento](sprint1/entendimento_ux.md#56-monitoramento-da-telemetria) | Fonte de telemetria, métrica operacional, cobertura e alerta | DS-01A, DS-01B, DS-03C |
+| Sincronização e normalização dos dados do ARGUS | UC-08 | RF01, RF02, RF03, RIE02 | Não modelado em [entendimento_ux.md](sprint1/entendimento_ux.md): o temporizador e o ARGUS são atores técnicos, sem persona de usuário associada | Registro do ARGUS, checkpoint, watermark e outbox | DS-01A, DS-01B |
 
 <div align="center">
 
