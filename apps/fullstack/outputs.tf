@@ -31,9 +31,48 @@ output "comando_logs" {
   value       = "aws logs tail ${aws_cloudwatch_log_group.api.name} --follow --region ${var.regiao}"
 }
 
+output "rede_vpc" {
+  description = "Identificadores da VPC e das sub-redes para conferência no console."
+  value = {
+    vpc_id            = aws_vpc.principal.id
+    subredes_publicas = { for chave, subnet in aws_subnet.publica : chave => subnet.id }
+    subredes_privadas = { for chave, subnet in aws_subnet.privada : chave => subnet.id }
+    nat_gateway_id    = aws_nat_gateway.principal.id
+  }
+}
+
+output "bastion_acesso" {
+  description = "Identificação e comandos de acesso ao bastion. SSH só aparece quando um CIDR administrativo foi autorizado."
+  value = {
+    instancia_id = aws_instance.bastion.id
+    ip_publico   = aws_instance.bastion.public_ip
+    sessao_ssm   = "aws ssm start-session --target ${aws_instance.bastion.id} --region ${var.regiao}"
+    ssh          = var.bastion_admin_cidr == null ? null : "ssh ec2-user@${aws_instance.bastion.public_ip}"
+  }
+}
+
+output "flow_logs" {
+  description = "Destino e identificador dos VPC Flow Logs."
+  value = {
+    flow_log_id = aws_flow_log.vpc.id
+    bucket      = local.nome_bucket_flow_logs
+    prefixo     = "vpc-flow-logs/AWSLogs/${data.aws_caller_identity.atual.account_id}"
+  }
+}
+
+output "ecs_auto_scaling" {
+  description = "Limites e alvo da política de escalonamento das tasks Fargate."
+  value = {
+    minimo   = aws_appautoscaling_target.api.min_capacity
+    maximo   = aws_appautoscaling_target.api.max_capacity
+    cpu_alvo = var.ecs_cpu_alvo
+    politica = aws_appautoscaling_policy.cpu_api.name
+  }
+}
+
 output "aviso_custo" {
   description = "Leia antes de fechar o laboratório."
-  value       = "Preserve a stack e o novo estado local ao fim da sessao para inspecao e diagnostico. Execute 'terraform destroy' somente sob pedido explicito posterior, usando esse mesmo estado. Enquanto provisionados, o ALB e a task Fargate continuam gerando custo."
+  value       = "Preserve a stack e o novo estado local ao fim da sessao para inspecao e diagnostico. Execute 'terraform destroy' somente sob pedido explicito posterior, usando esse mesmo estado. Enquanto provisionados, ALB, NAT Gateway, bastion, tasks Fargate e a EC2 opcional de observabilidade continuam gerando custo."
 }
 
 output "api_url_https" {

@@ -14,7 +14,7 @@ A regra editorial é **uma decisão, um único lugar oficial**. Quando um arquiv
 ## Ordem de leitura
 
 1. [Visão geral](visao-geral.md): componentes, comunicação, AWS, segurança e decisões arquiteturais.
-2. [Diagramas de sequência](../sprint3/modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
+2. [Diagramas de sequência](../modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
 3. Documento específico da área em desenvolvimento.
 4. [Implementação](implementacao/README.md): como cada componente foi construído, o que a verificação mostrou e como rodar.
 5. [Status de implementação](status-implementacao.md): cobertura atual, responsáveis, evidências e bloqueios.

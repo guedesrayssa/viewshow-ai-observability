@@ -18,6 +18,8 @@ actor "Analista de Atendimento\nTécnico N1" as N1
 actor "Engenheira de\nSoftware" as Engenharia
 actor "Product Manager" as PM
 actor "Provedor de\nidentidade / SSO" as SSO
+actor "Temporizador de\nsincronização (EventBridge)" as Temporizador
+actor "ARGUS" as Argus
 
 N1 --|> Usuario
 Engenharia --|> Usuario
@@ -31,6 +33,7 @@ rectangle "Sistema View Show" {
   usecase "UC-05\nAvaliar recuperação\napós correção" as UC05
   usecase "UC-06\nAnalisar qualidade\nda experiência" as UC06
   usecase "UC-07\nMonitorar a telemetria" as UC07
+  usecase "UC-08\nSincronizar e normalizar\ndados do ARGUS" as UC08
 }
 
 Usuario -- UC01
@@ -40,12 +43,16 @@ N1 -- UC03
 Engenharia -- UC04
 Engenharia -- UC05
 Engenharia -- UC07
+Engenharia -- UC08
 PM -- UC05
 PM -- UC06
+Temporizador -- UC08
+Argus -- UC08
 
 UC01 -[hidden]down- UC03
 UC03 -[hidden]down- UC04
 UC04 -[hidden]down- UC05
 UC05 -[hidden]right- UC06
 UC06 -[hidden]up- UC07
+UC07 -[hidden]down- UC08
 @enduml

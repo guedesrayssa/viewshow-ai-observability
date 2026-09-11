@@ -1,5 +1,5 @@
 // Os nomes de recursos desta entrega derivam de deployment_namespace em
-// names.tf. Isso impede uma aplicação acidental na stack legada compartilhada.
+// names.tf. O padrão mantém a aplicação isolada sem exigir argumentos no apply.
 
 variable "regiao" {
   description = "Região fixa da stack isolada no AWS Academy Learner Lab."
@@ -15,22 +15,12 @@ variable "regiao" {
 variable "deployment_namespace" {
   description = "Namespace isolado desta entrega da Sprint 3."
   type        = string
+  default     = "g05-s3"
   nullable    = false
 
   validation {
     condition     = var.deployment_namespace == "g05-s3"
     error_message = "Esta stack só pode ser aplicada com deployment_namespace=g05-s3."
-  }
-}
-
-variable "aws_account_id" {
-  description = "Conta AWS onde esta stack pode ser aplicada. Sem padrão: cada pessoa (inclusive quem revisa) define a própria conta do Learner Lab em um terraform.tfvars local, não versionado. Mesmo padrão de deployment_namespace."
-  type        = string
-  nullable    = false
-
-  validation {
-    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
-    error_message = "aws_account_id deve ser o número de 12 dígitos da conta AWS."
   }
 }
 
@@ -56,6 +46,54 @@ variable "quantidade_tasks" {
   description = "Tasks simultâneas no serviço."
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.quantidade_tasks >= 1 && var.quantidade_tasks <= 4
+    error_message = "quantidade_tasks deve ficar entre 1 e 4."
+  }
+}
+
+variable "ecs_capacidade_minima" {
+  description = "Quantidade mínima de tasks mantida pelo ECS Service Auto Scaling."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.ecs_capacidade_minima >= 1 && var.ecs_capacidade_minima <= 4
+    error_message = "ecs_capacidade_minima deve ficar entre 1 e 4."
+  }
+}
+
+variable "ecs_capacidade_maxima" {
+  description = "Quantidade máxima de tasks permitida pelo ECS Service Auto Scaling."
+  type        = number
+  default     = 4
+
+  validation {
+    condition     = var.ecs_capacidade_maxima >= 1 && var.ecs_capacidade_maxima <= 4
+    error_message = "ecs_capacidade_maxima deve ficar entre 1 e 4."
+  }
+}
+
+variable "ecs_cpu_alvo" {
+  description = "Percentual médio de CPU perseguido pela política target tracking."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.ecs_cpu_alvo >= 1 && var.ecs_cpu_alvo <= 100
+    error_message = "ecs_cpu_alvo deve ficar entre 1 e 100."
+  }
+}
+
+check "limites_escalonamento_ecs" {
+  assert {
+    condition = (
+      var.ecs_capacidade_minima <= var.quantidade_tasks &&
+      var.quantidade_tasks <= var.ecs_capacidade_maxima
+    )
+    error_message = "quantidade_tasks deve ficar entre as capacidades mínima e máxima do ECS."
+  }
 }
 
 variable "rate_limit_por_minuto" {
@@ -111,4 +149,30 @@ variable "grafana_cidr_acesso" {
     )
     error_message = "grafana_cidr_acesso deve ser null ou um CIDR IPv4 restrito; 0.0.0.0/0 não é permitido."
   }
+}
+
+variable "bastion_admin_cidr" {
+  description = "CIDR IPv4 autorizado a usar SSH no bastion; null mantém somente SSM."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.bastion_admin_cidr == null ? true : (
+      can(cidrhost(var.bastion_admin_cidr, 0)) && var.bastion_admin_cidr != "0.0.0.0/0"
+    )
+    error_message = "Use null para SSM ou um CIDR IPv4 restrito; 0.0.0.0/0 não é permitido."
+  }
+}
+
+variable "bastion_key_name" {
+  description = "Key pair existente no Learner Lab para o SSH opcional."
+  type        = string
+  default     = "vockey"
+}
+
+variable "tipo_instancia_bastion" {
+  description = "Tipo da EC2 administrativa; t3.micro é suficiente para o bastion."
+  type        = string
+  default     = "t3.micro"
 }

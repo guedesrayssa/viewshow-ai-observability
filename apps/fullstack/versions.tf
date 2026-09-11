@@ -21,12 +21,9 @@ terraform {
 }
 
 provider "aws" {
+  // Usa a cadeia padrão de credenciais da AWS. Portanto, AWS_PROFILE seleciona
+  // o perfil tanto para o provider quanto para os scripts executados no apply.
   region = var.regiao
-  # AWS Academy Learner Lab: a conta rotaciona a cada novo lab. Por isso o ID
-  # não é fixado aqui — defina `aws_account_id` em um terraform.tfvars local
-  # (não versionado) e confirme a conta ativa com `aws sts get-caller-identity`
-  # sempre que `terraform plan` recusar com "account ID not allowed".
-  allowed_account_ids = [var.aws_account_id]
 
   default_tags {
     tags = {

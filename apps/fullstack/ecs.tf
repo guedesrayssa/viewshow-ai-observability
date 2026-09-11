@@ -125,13 +125,9 @@ resource "aws_ecs_service" "api" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = data.aws_subnets.default.ids
-    security_groups = [aws_security_group.servico.id]
-
-    // Sem IP público a task não alcançaria o ECR para puxar a imagem, e a única
-    // alternativa seria NAT Gateway ou VPC endpoints. Ambos custam mais do que
-    // toda a demonstração.
-    assign_public_ip = true
+    subnets          = values(aws_subnet.privada)[*].id
+    security_groups  = [aws_security_group.servico.id]
+    assign_public_ip = false
   }
 
   load_balancer {
@@ -145,6 +141,10 @@ resource "aws_ecs_service" "api" {
   wait_for_steady_state = true
 
   health_check_grace_period_seconds = 30
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 
   depends_on = [
     aws_lb_listener.http,

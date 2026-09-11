@@ -11,36 +11,69 @@ const validatorPath = path.join(
 const maxPlanBytes = 20 * 1024 * 1024;
 const auxiliaryDataAddresses = [
   "data.archive_file.painel",
+  "data.aws_availability_zones.disponiveis",
   "data.aws_caller_identity.atual",
+  "data.aws_iam_instance_profile.lab",
   "data.aws_iam_role.lab",
   "data.aws_region.atual",
-  "data.aws_subnets.default",
-  "data.aws_vpc.default",
+  "data.aws_ssm_parameter.amazon_linux_2023",
 ];
 
 const expectedAddresses = [
   "aws_amplify_app.painel",
   "aws_amplify_branch.principal",
+  "aws_appautoscaling_policy.cpu_api",
+  "aws_appautoscaling_target.api",
   "aws_apigatewayv2_api.tls",
   "aws_apigatewayv2_integration.alb",
   "aws_apigatewayv2_route.proxy",
   "aws_apigatewayv2_stage.default",
   "aws_cloudwatch_log_group.api",
+  "aws_cognito_user_pool.principal",
+  "aws_cognito_user_pool_client.backend",
+  "aws_cognito_user_pool_domain.principal",
   "aws_dynamodb_table.golden_set",
   "aws_dynamodb_table.operacional",
   "aws_ecr_repository.api",
+  "aws_eip.nat",
   "aws_ecs_cluster.principal",
   "aws_ecs_cluster_capacity_providers.principal",
   "aws_ecs_service.api",
   "aws_ecs_task_definition.api",
+  "aws_flow_log.vpc",
+  "aws_instance.bastion",
+  "aws_internet_gateway.principal",
   "aws_lb.principal",
   "aws_lb_listener.http",
   "aws_lb_target_group.api",
+  "aws_nat_gateway.principal",
+  "aws_route.privada_internet",
+  "aws_route.publica_internet",
+  "aws_route_table.privada",
+  "aws_route_table.publica",
+  'aws_route_table_association.privada["a"]',
+  'aws_route_table_association.privada["b"]',
+  'aws_route_table_association.publica["a"]',
+  'aws_route_table_association.publica["b"]',
+  "aws_s3_bucket_lifecycle_configuration.flow_logs",
+  "aws_s3_bucket_ownership_controls.flow_logs",
+  "aws_s3_bucket_policy.flow_logs",
+  "aws_s3_bucket_public_access_block.flow_logs",
+  "aws_s3_bucket_server_side_encryption_configuration.flow_logs",
   "aws_security_group.alb",
+  "aws_security_group.bastion",
   "aws_security_group.servico",
+  'aws_subnet.privada["a"]',
+  'aws_subnet.privada["b"]',
+  'aws_subnet.publica["a"]',
+  'aws_subnet.publica["b"]',
+  "aws_vpc.principal",
+  "aws_vpc_endpoint.dynamodb",
+  "aws_vpc_endpoint.s3",
   "random_password.auth_cookie_secret",
   "random_password.cursor_secret",
   "terraform_data.build_painel",
+  "terraform_data.flow_logs_bucket",
   "terraform_data.imagem",
   "terraform_data.painel",
 ].sort();
@@ -93,7 +126,7 @@ test("accepts exactly the frozen fresh-stack create plan", () => {
   );
   assert.equal(
     lines.at(-1),
-    "create-only plan accepted: 24 resources; auxiliary data reads/no-ops: 0",
+    `create-only plan accepted: ${expectedAddresses.length} resources; auxiliary data reads/no-ops: 0`,
   );
   assert.match(result.stdout, /create/);
   assert.doesNotMatch(result.stdout, /do-not-print/);
@@ -120,19 +153,11 @@ test("rejects every action other than a single create", () => {
 });
 
 test("accepts only known auxiliary data reads and counts them without addresses", () => {
-  const dynamicSubnetAddress = 'data.aws_subnet.default["subnet-0a1b2c3d"]';
-  const auxiliaryChanges = [
-    ...auxiliaryDataAddresses.map((address) => ({
-      address,
-      mode: "data",
-      change: { actions: ["read"] },
-    })),
-    {
-      address: dynamicSubnetAddress,
-      mode: "data",
-      change: { actions: ["no-op"] },
-    },
-  ];
+  const auxiliaryChanges = auxiliaryDataAddresses.map((address) => ({
+    address,
+    mode: "data",
+    change: { actions: ["read"] },
+  }));
   const result = runValidator(
     JSON.stringify(
       createPlan({
@@ -147,13 +172,13 @@ test("accepts only known auxiliary data reads and counts them without addresses"
   assert.equal(result.status, 0);
   assert.match(
     result.stdout,
-    /create-only plan accepted: 24 resources; auxiliary data reads\/no-ops: 7/,
+    new RegExp(
+      `create-only plan accepted: ${expectedAddresses.length} resources; auxiliary data reads/no-ops: ${auxiliaryDataAddresses.length}`,
+    ),
   );
   assert.doesNotMatch(
     result.stdout,
-    new RegExp(
-      `${auxiliaryDataAddresses.join("|")}|data\\.aws_subnet\\.default`,
-    ),
+    new RegExp(auxiliaryDataAddresses.join("|")),
   );
 });
 

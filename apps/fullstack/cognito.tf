@@ -99,9 +99,9 @@ resource "aws_cognito_user_pool_domain" "principal" {
   // `${var.deployment_namespace}-auth` fixo, a primeira conta que aplicar toma
   // o nome e todas as outras falham com "Domain already associated with
   // another user pool" — inclusive entre contas do Learner Lab de pessoas
-  // diferentes, que é como o erro apareceu. O ID da conta no sufixo mantém o
-  // nome estável para quem aplica e livre de colisão entre contas.
-  domain       = "${var.deployment_namespace}-auth-${data.aws_caller_identity.atual.account_id}"
+  // diferentes, que é como o erro apareceu. O ID da conta mantém o nome estável
+  // para quem aplica e livre de colisão entre contas.
+  domain       = "${var.deployment_namespace}-${data.aws_caller_identity.atual.account_id}-auth"
   user_pool_id = aws_cognito_user_pool.principal.id
 }
 
