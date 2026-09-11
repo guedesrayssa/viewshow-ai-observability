@@ -1102,6 +1102,39 @@ classDiagram
         }
     }
 
+    namespace TiposAuxiliares {
+        class Sessao {
+            <<value object>>
+            +operador: Operador
+            +expiresAt: DateTime
+        }
+        class RedirectUrl {
+            <<value object>>
+            +url: String
+        }
+        class VisaoGeralDTO {
+            <<DTO>>
+            +indicadores: DimensionalMetricAggregate[]
+            +incidentesAbertos: Incidente[]
+        }
+        class IncidenteDTO {
+            <<DTO>>
+            +incidente: Incidente
+            +evidencias: Evidencia[]
+            +diagnostico: DiagnosticoDTO?
+        }
+        class DiagnosticoDTO {
+            <<DTO>>
+            +diagnostico: Diagnostico
+            +hipoteses: Hipotese[]
+        }
+        class MonitoringOverviewDTO {
+            <<DTO>>
+            +cobertura: DimensionalMetricAggregate[]
+            +degradacoes: String[]
+        }
+    }
+
     class Cognito {
         <<external>>
     }
@@ -1118,6 +1151,12 @@ classDiagram
         <<external>>
     }
 
+    AutenticacaoSessaoB ..> Sessao
+    AutenticacaoSessaoB ..> RedirectUrl
+    VisaoGeralIncidentesEventosB ..> VisaoGeralDTO
+    VisaoGeralIncidentesEventosB ..> IncidenteDTO
+    VisaoGeralIncidentesEventosB ..> DiagnosticoDTO
+    MonitoramentoB ..> MonitoringOverviewDTO
     AutenticacaoSessaoB ..> ServicoAutorizacao
     VisaoGeralIncidentesEventosB ..> ServicoAutorizacao
     RevisaoHipoteseB ..> ServicoAutorizacao
@@ -1162,6 +1201,8 @@ Fonte: Material produzido pelos autores (2026).
 &emsp;O orquestrador de análise (`Analysis Orchestrator`), o detector de anomalias, o modelo de previsão e o agente diagnóstico permanecem módulos internos do Worker de Análise, conforme a decisão D6 da [Visão geral da arquitetura](arquitetura/visao-geral.md#d6--orquestrador-dentro-do-worker-de-análise): eles não possuem repositório, API ou ciclo de implantação próprios nesta versão. O Worker consulta o Repositório do conjunto de referência apenas para leitura; somente o Serviço de Revisão, acionado pela fronteira de revisão do Backend, possui permissão de escrita nesse repositório (decisão D8).
 
 &emsp;Cada repositório é a única porta de acesso à sua área de persistência — o Repositório operacional concentra incidentes, evidências, diagnósticos, hipóteses, auditorias de revisão, avaliações de recuperação, previsões, `ImportJob` e o `Manifesto`; o Repositório do conjunto de referência isola os `GoldenCase` confirmados; o Repositório histórico encapsula as consultas ao Athena sobre o arquivo Parquet no S3. ARGUS, Cognito/SSO, Amazon Bedrock, a SQS de Análise e o ECS/Fargate são integrações externas ou serviços gerenciados pela AWS: aparecem como dependências da aplicação, não como classes de domínio.
+
+&emsp;O namespace **Tipos auxiliares** declara os tipos usados nas assinaturas das interfaces da API do Dashboard que não são entidades de domínio nem DTOs de persistência. `Sessao` e `RedirectUrl` são objetos de valor produzidos pelo fluxo de autenticação federada; `VisaoGeralDTO`, `IncidenteDTO`, `DiagnosticoDTO` e `MonitoringOverviewDTO` são objetos de transferência que agregam, para uma única resposta HTTP, entidades e objetos de valor já modelados na visão de domínio (4.2.1). `DimensionalMetricAggregate`, referenciado nessas assinaturas e no Repositório histórico, não é redeclarado aqui porque seu contrato completo já é normativo em [Ingestão e dados §9.2](arquitetura/ingestao-e-dados.md#92-dimensionalmetricaggregate); duplicá-lo nesta seção criaria duas fontes de verdade para o mesmo tipo.
 
 #### 4.2.3. Mapeamento de persistência
 
