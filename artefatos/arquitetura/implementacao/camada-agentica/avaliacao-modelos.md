@@ -4,10 +4,11 @@
 - **Data:** 09/09/2026
 - **Ambiente:** servidor da faculdade `opsrvbcc01`, GPU NVIDIA L4 (23 GB)
 - **Executor:** `apps/backend/agentic` → `npm run eval:ollama`
+- **Camada avaliada:** [`camada-agentica.md`](camada-agentica.md)
 
 ## 1. Por que esta medição existe
 
-&emsp; A camada agêntica tem 106 testes automatizados, e nenhum deles responde à
+&emsp; A camada agêntica tem 107 testes automatizados, e nenhum deles responde à
 pergunta que decide o produto: **um modelo de verdade, recebendo o nosso prompt,
 produz diagnóstico que um especialista de plantão usaria?** Teste automatizado
 prova que o código faz o que foi escrito. Só a execução contra um modelo real
@@ -90,7 +91,7 @@ preencher até cinco; a instrução foi ignorada. O `gemma4` foi parcimonioso.
 
 &emsp; Entre 29 e 134 segundos por caso, em GPU dedicada. Isso inviabiliza
 diagnóstico síncrono na tela e confirma a decisão de
-[`analise-e-ia.md`](../arquitetura/analise-e-ia.md) de acionar o agente por
+[`analise-e-ia.md`](../../analise-e-ia.md) de acionar o agente por
 fila. É medição, não estimativa.
 
 ### 4.5 Variância entre execuções
@@ -173,7 +174,7 @@ como diagnóstico firme, o que pesa mais do que a regressão do caso 4, que
 acrescenta ruído a uma lista sem invalidar a hipótese principal. A troca também
 torna o sistema menos dependente de qual modelo está disponível.
 
-## 6.4 Ações derivadas
+### 6.4 Ações derivadas
 
 | Ação | Situação |
 |:--|:--|
@@ -204,7 +205,7 @@ disponíveis no servidor e não foram avaliados.
 &emsp; **7.5 Sem verificação contra verdade conhecida.** Não há gabarito de
 causa raiz para os casos; a avaliação julga plausibilidade e calibração, não
 acerto. Medir acerto exige o conjunto de referência curado por humanos, que
-[`analise-e-ia.md`](../arquitetura/analise-e-ia.md) §10 prevê e que ainda está
+[`analise-e-ia.md`](../../analise-e-ia.md) §10 prevê e que ainda está
 vazio.
 
 ## 8. Como reproduzir
@@ -218,5 +219,11 @@ OLLAMA_MODEL=gemma4:12b npm run eval:ollama
 RCA_PROMPT=v2 OLLAMA_MODEL=gemma4:12b npm run eval:ollama
 ```
 
-&emsp; Parâmetros: `OLLAMA_MODEL`, `OLLAMA_BASE_URL`, `OLLAMA_MAX_TOKENS`
-(padrão 4000), `OLLAMA_TEMPERATURE` (padrão 0), `RCA_PROMPT` (`v1` ou `v2`).
+&emsp; Parâmetros: `OLLAMA_MODEL` (padrão `llama3.1`), `OLLAMA_BASE_URL`
+(padrão `http://localhost:11434`), `OLLAMA_MAX_TOKENS` (padrão 4000),
+`OLLAMA_TEMPERATURE` (padrão 0) e `RCA_PROMPT` (`v1` ou `v2`).
+
+&emsp; O avaliador cai em `v1` quando `RCA_PROMPT` não é informado, enquanto
+`investigate()` usa `v2` por padrão. Reproduzir a configuração que está em
+produção exige passar `RCA_PROMPT=v2` explicitamente — por isso as duas linhas
+acima, uma por versão de prompt.
