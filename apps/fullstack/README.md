@@ -2,8 +2,9 @@
 
 Este diretório centraliza a infraestrutura como código do View Show:
 
-- Terraform da stack AWS atualmente implementada — API TypeScript em ECS,
-  ingresso, frontend no Amplify e duas tabelas DynamoDB;
+- Terraform da stack AWS atualmente implementada — VPC dedicada, API TypeScript
+  privada em ECS/Fargate com autoescalonamento, ALB, bastion, Flow Logs,
+  frontend no Amplify e duas tabelas DynamoDB;
 - Docker Compose e configurações da observabilidade local ou, mediante opt-in,
   em uma EC2 isolada na AWS;
 - scripts auxiliares de publicação usados pelo Terraform.
@@ -16,56 +17,74 @@ um provedor corporativo real. O build de produção do painel nunca habilita dad
 de exemplo: falhas das APIs permanecem visíveis como estados vazios, parciais ou
 indisponíveis.
 
-A documentação canônica de arquitetura, configuração e operação está em
-[`documentation/infraestrutura-integracao.md`](documentation/infraestrutura-integracao.md).
+O artefato de entrega sobre arquitetura, configuração e operação está em
+[`artefatos/sprint3/infraestrutura-integracao.md`](../../artefatos/sprint3/infraestrutura-integracao.md).
 Para as stacks LGTM local e AWS, consulte também
 [`observability/README.md`](observability/README.md).
 
 ## Validação local
 
-```bash
-cd apps/fullstack
-terraform fmt -check -recursive
-terraform init -backend=false -input=false
-terraform validate
-docker compose -f docker-compose.observability.yml config --quiet
-AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder \
-  docker compose -f observability/aws/docker-compose.yml config --quiet
-```
-
-`aws_account_id` é obrigatório e não tem padrão: cada pessoa (inclusive quem
-revisa) define a própria conta do Learner Lab em um
-`apps/fullstack/terraform.tfvars` local, que não é versionado (`*.tfvars` está no
-`.gitignore` deste diretório). É o mesmo padrão já usado para
-`deployment_namespace`. Exemplo:
-
-```hcl
-# apps/fullstack/terraform.tfvars
-aws_account_id       = "904529597192"
-deployment_namespace = "g05-s3"
-```
-
-Para revisar uma implantação isolada na conta-alvo, salve o plano e informe
-obrigatoriamente o namespace da Sprint 3 (o `aws_account_id` vem do
-`terraform.tfvars` acima, carregado automaticamente):
+Pré-requisitos: Terraform 1.7+, Docker ativo, Node.js 22, npm, AWS CLI, uma sessão
+válida do AWS Academy e a key pair `vockey` em `us-east-1`. Se a sessão não
+estiver no perfil padrão, defina `AWS_PROFILE` antes dos comandos. Confirme a
+conta selecionada:
 
 ```bash
-terraform -chdir=apps/fullstack plan -out=g05-s3.tfplan \
-  -var='deployment_namespace=g05-s3'
+aws sts get-caller-identity --region us-east-1
+```
+
+O provider usa a cadeia padrão de credenciais da AWS. Não há variável
+`aws_account_id`; `deployment_namespace=g05-s3` e `regiao=us-east-1` já são os
+padrões validados. Da raiz do repositório, execute:
+
+```bash
+terraform -chdir=apps/fullstack init -backend=false -input=false
+terraform -chdir=apps/fullstack fmt -check -recursive
+terraform -chdir=apps/fullstack validate
+npm --prefix apps/backend/api run test:ci-policy
+```
+
+## Planejamento e aplicação
+
+Salve o plano dentro do diretório ignorado `.terraform-artifacts`, valide seu
+JSON no gate create-only e aplique exatamente o mesmo arquivo:
+
+```bash
+mkdir -p apps/fullstack/.terraform-artifacts
+terraform -chdir=apps/fullstack plan \
+  -input=false \
+  -out=.terraform-artifacts/g05-s3.tfplan
+
 # Forma geral: terraform show -json <saved plan> | node scripts/ci/validate-terraform-create-plan.mjs
-terraform show -json apps/fullstack/g05-s3.tfplan | node scripts/ci/validate-terraform-create-plan.mjs
-terraform -chdir=apps/fullstack apply -input=false g05-s3.tfplan
+terraform -chdir=apps/fullstack show -json \
+  .terraform-artifacts/g05-s3.tfplan | \
+  node scripts/ci/validate-terraform-create-plan.mjs
+
+terraform -chdir=apps/fullstack apply \
+  -input=false \
+  .terraform-artifacts/g05-s3.tfplan
 ```
 
 Só prossiga para um `apply` deliberado do plano salvo quando o gate aceitar o
-JSON. Aplique exatamente esse arquivo, sem gerar outro plano entre o gate e o
-`apply`. Isso mantém a revisão e a aplicação vinculadas ao mesmo artefato.
+JSON. Durante o `apply`, scripts locais publicam a imagem da API no ECR, o
+frontend no Amplify e criam o bucket privado dos Flow Logs; mantenha Docker,
+Node.js e AWS CLI disponíveis.
 
-Esses comandos validam a configuração localmente. Eles não executam deploy nem
-comprovam uma aplicação da stack na AWS. Os valores usados para assinar sessão
-e paginação são gerados separadamente pelo Terraform, injetados apenas na task
-da API e não expostos como outputs.
+O SSH no bastion fica desativado por padrão. Para uma gravação que exija SSH,
+gere um novo plano com `-var='bastion_admin_cidr=<IP-PUBLICO>/32'`; a validação
+rejeita `0.0.0.0/0`. O acesso recomendado continua sendo SSM.
 
 O estado legado pertence a outra conta e não pode ser adotado por esta stack.
 Uma aplicação deliberada deve criar e preservar o novo estado local, necessário
 para o teardown posterior dos recursos isolados.
+
+Depois do `apply`, consulte os endpoints e as evidências principais:
+
+```bash
+terraform -chdir=apps/fullstack output -raw painel_url
+terraform -chdir=apps/fullstack output -raw api_url_https
+terraform -chdir=apps/fullstack output rede_vpc
+terraform -chdir=apps/fullstack output bastion_acesso
+terraform -chdir=apps/fullstack output ecs_auto_scaling
+terraform -chdir=apps/fullstack output flow_logs
+```

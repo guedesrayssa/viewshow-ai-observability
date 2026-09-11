@@ -2,8 +2,8 @@
 
 O painel continua sendo exportado estaticamente e publicado no Amplify. A
 infraestrutura em [`apps/fullstack`](../../fullstack) é a fonte de verdade
-operacional; seu documento canônico é a
-[integração fullstack](../../fullstack/documentation/infraestrutura-integracao.md).
+operacional; o artefato de integração correspondente é a
+[integração fullstack](../../../artefatos/sprint3/infraestrutura-integracao.md).
 
 ```text
 navegador -> Amplify (mesma origem)

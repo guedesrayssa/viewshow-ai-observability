@@ -199,8 +199,9 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
 
 Além do runbook manual acima — que sobe a stack da Sprint 1 (`apps/basica`) —
 o diretório [`apps/fullstack`](apps/fullstack) centraliza a IaC da stack AWS
-atual (painel Next.js no Amplify, API operacional em ECS Fargate atrás de um
-ALB, imagem no ECR e duas tabelas DynamoDB) e a observabilidade local.
+atual (VPC dedicada, painel Next.js no Amplify, API privada em ECS Fargate com
+autoescalonamento, ALB, bastion, Flow Logs e duas tabelas DynamoDB) e a
+observabilidade local.
 
 Pré-requisitos para uma aplicação deliberada: **Terraform 1.7+**, **Docker**
 com o daemon ativo, **Node.js 22 + npm** e **AWS CLI**, além de uma sessão válida
@@ -210,11 +211,11 @@ novo estado local em `apps/fullstack`; preserve-o, pois ele é necessário para
 diagnóstico e para um teardown posterior explicitamente solicitado.
 
 ```bash
+aws sts get-caller-identity --region us-east-1
 terraform -chdir=apps/fullstack init -backend=false -input=false
 mkdir -p apps/fullstack/.terraform-artifacts
 terraform -chdir=apps/fullstack plan \
   -input=false \
-  -var='deployment_namespace=g05-s3' \
   -out=.terraform-artifacts/g05-s3.tfplan
 terraform -chdir=apps/fullstack show -json \
   .terraform-artifacts/g05-s3.tfplan | \
@@ -233,11 +234,11 @@ um adaptador de identidade real, login e callback falham fechado com
 Esta entrega valida a configuração localmente e não afirma que um `apply` foi
 executado na AWS.
 
-Detalhes de pré-requisitos, preservação segura do estado local, variáveis, [como encontrar o
-link do deploy depois de fechar o
-terminal](apps/fullstack/documentation/infraestrutura-integracao.md#como-encontrar-o-link-do-deploy)
-e uma tabela de troubleshooting estão em
-[`infraestrutura-integracao.md`](apps/fullstack/documentation/infraestrutura-integracao.md).
+Detalhes de pré-requisitos, preservação segura do estado local, arquitetura e
+[como encontrar o link do deploy depois de fechar o
+terminal](artefatos/sprint3/infraestrutura-integracao.md#44-como-encontrar-o-link-do-deploy)
+estão em
+[`infraestrutura-integracao.md`](artefatos/sprint3/infraestrutura-integracao.md).
 
 ---
 

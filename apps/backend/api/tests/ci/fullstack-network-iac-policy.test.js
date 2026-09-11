@@ -5,6 +5,10 @@ const path = require("node:path");
 
 const repositoryRoot = path.resolve(__dirname, "../../../../../");
 const fullstackPath = path.join(repositoryRoot, "apps/fullstack");
+const integrationGuidePath = path.join(
+  repositoryRoot,
+  "artefatos/sprint3/infraestrutura-integracao.md",
+);
 
 function read(name) {
   return fs.readFileSync(path.join(fullstackPath, name), "utf8");
@@ -101,10 +105,7 @@ test("Fargate service scales by CPU without Terraform fighting desired count", (
 });
 
 test("infrastructure guide documents implemented rubric substitutions", () => {
-  const documentation = fs.readFileSync(
-    path.join(fullstackPath, "documentation/infraestrutura-integracao.md"),
-    "utf8",
-  );
+  const documentation = fs.readFileSync(integrationGuidePath, "utf8");
 
   for (const phrase of [
     "ECS Service Auto Scaling",
@@ -112,7 +113,7 @@ test("infrastructure guide documents implemented rubric substitutions", () => {
     "um único NAT Gateway",
     "VPC Flow Logs",
     "bastion_admin_cidr",
-    "Roteiro do vídeo 1",
+    "Vídeo 1",
   ]) {
     assert.match(documentation, new RegExp(phrase, "i"));
   }

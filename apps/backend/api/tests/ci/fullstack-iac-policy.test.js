@@ -8,6 +8,10 @@ const repositoryRoot = path.resolve(__dirname, "../../../../../");
 const pipelinePath = path.join(repositoryRoot, ".gitlab-ci.yml");
 const fullstackPath = path.join(repositoryRoot, "apps/fullstack");
 const rootReadmePath = path.join(repositoryRoot, "README.md");
+const integrationGuidePath = path.join(
+  repositoryRoot,
+  "artefatos/sprint3/infraestrutura-integracao.md",
+);
 const pipeline = fs.readFileSync(pipelinePath, "utf8");
 
 function readIfPresent(filePath) {
@@ -320,6 +324,7 @@ function walkTextFiles(directory) {
     ".next",
     ".superpowers",
     ".terraform",
+    ".worktrees",
     "dist",
     "node_modules",
     "out",
@@ -1011,7 +1016,7 @@ test("root README applies only the saved plan accepted by the create-only gate",
   assert.match(readme, /novo estado local[\s\S]*preserv/i);
   assert.match(
     readme,
-    /terraform -chdir=apps\/fullstack plan \\\n+\s+-input=false \\\n+\s+-var='deployment_namespace=g05-s3' \\\n+\s+-out=\.terraform-artifacts\/g05-s3\.tfplan/,
+    /terraform -chdir=apps\/fullstack plan \\\n+\s+-input=false \\\n+\s+-out=\.terraform-artifacts\/g05-s3\.tfplan/,
   );
   assert.match(
     readme,
@@ -1032,9 +1037,7 @@ test("saved Terraform plans must pass the local create-plan gate before apply", 
   const validator = readIfPresent(validatorPath);
   const operationalGuidance = [
     readIfPresent(path.join(fullstackPath, "README.md")),
-    readIfPresent(
-      path.join(fullstackPath, "documentation/infraestrutura-integracao.md"),
-    ),
+    readIfPresent(integrationGuidePath),
   ].join("\n");
 
   assert.ok(fs.existsSync(validatorPath), "create-plan validator must exist");
@@ -1054,10 +1057,7 @@ test("active sources do not reference legacy infrastructure paths", () => {
         "",
       );
     }
-    if (
-      filePath ===
-      path.join(fullstackPath, "documentation/infraestrutura-integracao.md")
-    ) {
+    if (filePath === integrationGuidePath) {
       source = source.replace(
         /^## Migração segura do estado local$[\s\S]*?(?=^## )/m,
         "",
@@ -1074,9 +1074,12 @@ test("active sources do not reference legacy infrastructure paths", () => {
 });
 
 test("fullstack documentation local links resolve after consolidation", () => {
-  const documentation = walkTextFiles(fullstackPath).filter((filePath) =>
-    filePath.endsWith(".md"),
-  );
+  const documentation = [
+    ...walkTextFiles(fullstackPath).filter((filePath) =>
+      filePath.endsWith(".md"),
+    ),
+    integrationGuidePath,
+  ];
   const missing = [];
 
   for (const filePath of documentation) {
@@ -1110,14 +1113,12 @@ test("root README local links resolve after artifact relocation", () => {
     "root README must not contain broken local links",
   );
 
-  const integrationGuide = readIfPresent(
-    path.join(fullstackPath, "documentation/infraestrutura-integracao.md"),
-  );
+  const integrationGuide = readIfPresent(integrationGuidePath);
   assert.match(
     source,
-    /apps\/fullstack\/documentation\/infraestrutura-integracao\.md#como-encontrar-o-link-do-deploy/,
+    /artefatos\/sprint3\/infraestrutura-integracao\.md#44-como-encontrar-o-link-do-deploy/,
   );
-  assert.match(integrationGuide, /^## Como encontrar o link do deploy$/m);
+  assert.match(integrationGuide, /^### 4\.4 Como encontrar o link do deploy$/m);
 });
 
 test("Amplify proxy targets normalize the default-stage invoke URL", () => {
@@ -1212,19 +1213,18 @@ test("frontend fingerprint covers deterministic production build inputs", () => 
 });
 
 test("isolated deployment guide rejects legacy state and records teardown state", () => {
-  const guide = readIfPresent(
-    path.join(fullstackPath, "documentation/infraestrutura-integracao.md"),
-  );
+  const guide = readIfPresent(integrationGuidePath);
 
-  assert.match(guide, /^## Estado local isolado e teardown$/m);
+  assert.match(guide, /^### 4\.1 Pré-requisitos e estado Terraform$/m);
   assert.match(
     guide,
     /estado\s+legado[\s\S]*outra conta[\s\S]*não pode ser[\s\S]*adotado/i,
   );
   assert.match(guide, /novo estado local[\s\S]*necessário[\s\S]*teardown/i);
+  assert.match(guide, /mkdir -p apps\/fullstack\/\.terraform-artifacts/);
   assert.match(
     guide,
-    /terraform -chdir=apps\/fullstack plan -out=g05-s3\.tfplan \\\n+  -var='deployment_namespace=g05-s3'/,
+    /terraform -chdir=apps\/fullstack plan \\\n+  -input=false \\\n+  -out=\.terraform-artifacts\/g05-s3\.tfplan/,
   );
 });
 
@@ -1273,9 +1273,9 @@ test("production IaC does not expose the development-only example-data toggle", 
     "variables.tf",
     "amplify.tf",
     "README.md",
-    "documentation/infraestrutura-integracao.md",
   ]
     .map((name) => readIfPresent(path.join(fullstackPath, name)))
+    .concat(readIfPresent(integrationGuidePath))
     .join("\n");
 
   assert.doesNotMatch(
