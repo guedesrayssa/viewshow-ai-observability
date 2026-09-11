@@ -1221,10 +1221,13 @@ test("isolated deployment guide rejects legacy state and records teardown state"
     /estado\s+legado[\s\S]*outra conta[\s\S]*não pode ser[\s\S]*adotado/i,
   );
   assert.match(guide, /novo estado local[\s\S]*necessário[\s\S]*teardown/i);
-  assert.match(guide, /mkdir -p apps\/fullstack\/\.terraform-artifacts/);
   assert.match(
     guide,
-    /terraform -chdir=apps\/fullstack plan \\\n+  -input=false \\\n+  -out=\.terraform-artifacts\/g05-s3\.tfplan/,
+    /cd apps\/fullstack[\s\S]*mkdir -p \.terraform-artifacts/,
+  );
+  assert.match(
+    guide,
+    /terraform plan \\\n+  -input=false \\\n+  -out=\.terraform-artifacts\/g05-s3\.tfplan/,
   );
 });
 

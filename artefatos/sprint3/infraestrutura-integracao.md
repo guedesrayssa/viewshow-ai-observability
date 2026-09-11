@@ -214,32 +214,50 @@ aws sts get-caller-identity --region us-east-1
 
 &emsp;Não existe mais a variável obrigatória `aws_account_id`. O namespace `g05-s3` e a região `us-east-1` já são os padrões aceitos, de modo que a stack pode ser planejada sem arquivo `terraform.tfvars`. O estado legado pertence a outra conta e não pode ser adotado. O novo estado local é necessário para o teardown e precisa ser preservado até sua execução explícita.
 
-&emsp;Da raiz do repositório, a validação e o deploy seguem esta sequência:
+#### 4.1.1 Execução manual simplificada
+
+&emsp;Para compreender e executar o fluxo básico manualmente, deve-se entrar no diretório da infraestrutura, inicializar o Terraform, revisar o plano exibido e confirmar sua aplicação:
 
 ```bash
-terraform -chdir=apps/fullstack init -backend=false -input=false
-terraform -chdir=apps/fullstack fmt -check -recursive
-terraform -chdir=apps/fullstack validate
-npm --prefix apps/backend/api run test:ci-policy
+cd apps/fullstack
+terraform init
+terraform plan
+terraform apply
+```
 
-mkdir -p apps/fullstack/.terraform-artifacts
-terraform -chdir=apps/fullstack plan \
+&emsp;Nessa modalidade, o `terraform apply` calcula novamente o plano e solicita confirmação antes de modificar a AWS. O procedimento é adequado para demonstrações e execução assistida, mas não garante que o conteúdo aplicado seja exatamente o mesmo plano revisado anteriormente.
+
+#### 4.1.2 Execução controlada com plano salvo
+
+&emsp;Para a entrega e para execuções automatizadas, recomenda-se salvar o plano, validar seu conteúdo no gate do projeto e aplicar exatamente o arquivo aprovado. Após entrar em `apps/fullstack`, a sequência controlada é:
+
+```bash
+cd apps/fullstack
+terraform init -backend=false -input=false
+terraform fmt -check -recursive
+terraform validate
+npm --prefix ../backend/api run test:ci-policy
+
+mkdir -p .terraform-artifacts
+terraform plan \
   -input=false \
   -out=.terraform-artifacts/g05-s3.tfplan
-terraform -chdir=apps/fullstack show -json \
+terraform show -json \
   .terraform-artifacts/g05-s3.tfplan | \
-  node scripts/ci/validate-terraform-create-plan.mjs
-terraform -chdir=apps/fullstack apply \
+  node ../../scripts/ci/validate-terraform-create-plan.mjs
+terraform apply \
   -input=false \
   .terraform-artifacts/g05-s3.tfplan
 ```
 
-&emsp;O `apply` executa scripts locais para construir e publicar a imagem da API, compilar e publicar o frontend e gerenciar o bucket dos Flow Logs. Por isso, Docker, Node.js e AWS CLI precisam permanecer disponíveis durante toda a execução. O gate aceita somente o conjunto conhecido de criações; qualquer alteração, substituição, remoção, importação ou endereço inesperado interrompe o procedimento.
+&emsp;Os argumentos `-backend=false` e `-input=false` evitam, respectivamente, a configuração de um backend remoto e as solicitações interativas. O argumento `-out` registra o plano em um arquivo binário, que é inspecionado pelo gate antes de ser fornecido ao `terraform apply`. O gate aceita somente o conjunto conhecido de criações; qualquer alteração, substituição, remoção, importação ou endereço inesperado interrompe o procedimento.
+
+&emsp;O `apply` executa scripts locais para construir e publicar a imagem da API, compilar e publicar o frontend e gerenciar o bucket dos Flow Logs. Por isso, Docker, Node.js e AWS CLI precisam permanecer disponíveis durante toda a execução.
 
 &emsp;Um CIDR administrativo pode ser informado apenas quando houver necessidade de SSH no bastion. O padrão `null` mantém somente o acesso por SSM:
 
 ```bash
-terraform -chdir=apps/fullstack plan \
+terraform plan \
   -input=false \
   -var='bastion_admin_cidr=203.0.113.10/32' \
   -out=.terraform-artifacts/g05-s3.tfplan
@@ -282,12 +300,13 @@ terraform -chdir=apps/fullstack plan \
 &emsp;No estado atual, o endereço público do painel está no output `painel_url`, e o endpoint HTTPS da API está em `api_url_https`:
 
 ```bash
-terraform -chdir=apps/fullstack output -raw painel_url
-terraform -chdir=apps/fullstack output -raw api_url_https
-terraform -chdir=apps/fullstack output rede_vpc
-terraform -chdir=apps/fullstack output bastion_acesso
-terraform -chdir=apps/fullstack output ecs_auto_scaling
-terraform -chdir=apps/fullstack output flow_logs
+cd apps/fullstack
+terraform output -raw painel_url
+terraform output -raw api_url_https
+terraform output rede_vpc
+terraform output bastion_acesso
+terraform output ecs_auto_scaling
+terraform output flow_logs
 ```
 
 &emsp;Os quatro últimos outputs apoiam a gravação das evidências de rede, segurança, escala e observabilidade. Se a migração opcional for implementada, o Terraform deverá expor também o domínio do CloudFront e o alias do Route 53. Esses comandos apenas consultam o estado e não alteram recursos.
