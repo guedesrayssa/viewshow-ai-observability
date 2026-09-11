@@ -29,7 +29,7 @@
 <div align="center">
 
 <strong>Figura 1: Diagrama de implantação da infraestrutura atual</strong>
-<img src="/assets/diagrama-implantacao-aws1.svg" alt="Diagrama de implantação da infraestrutura atual"/>
+<img src="../assets/diagrama-implantacao-aws1.svg" alt="Diagrama de implantação da infraestrutura atual"/>
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -44,7 +44,7 @@ Fonte: Material produzido pelos autores (2026).
 <div align="center">
 
 <strong>Figura 2: Diagrama de implantação da arquitetura-alvo</strong>
-<img src="/assets/diagrama-implantacao-aws2.svg" alt="Diagrama de implantação da arquitetura-alvo"/>
+<img src="../assets/diagrama-implantacao-aws2.svg" alt="Diagrama de implantação da arquitetura-alvo"/>
 
 </div>
 
