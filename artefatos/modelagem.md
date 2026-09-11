@@ -1321,7 +1321,7 @@ Fonte: Material produzido pelos autores (2026).
 | DS-01B | Importação de snapshot pela interface | UC-01, UC-03, UC-04, UC-06, UC-07 | Suporte técnico/alternativo |
 | DS-02A | Autenticação federada e consulta | UC-01, UC-02 | Básico |
 | DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-03, UC-04 | Concorrente |
-| DS-02C | Avaliação da recuperação após correção | UC-05 | Básico/alternativo |
+| DS-02C | Avaliação da recuperação após correção ⚠️ *(fluxo proposto, sem contrato de API formalizado)* | UC-05 | Básico/alternativo |
 | DS-03A | Previsão preventiva e validação posterior | UC-06 | Suporte técnico/assíncrono |
 | DS-03B | Detecção reativa e diagnóstico por IA | UC-03, UC-04, UC-06 | Suporte técnico/assíncrono |
 | DS-03C | Falha, novas tentativas, DLQ e reanálise | UC-04, UC-07 | Exceção/alternativo |
@@ -1834,9 +1834,11 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;A avaliação de recuperação ocorre depois de uma correção realizada fora do View Show. A Engenheira de Software ou a Product Manager seleciona o incidente, confirma o marco temporal da intervenção e solicita a comparação de janelas equivalentes. O fluxo realiza UC-05 sem atribuir ao sistema a implantação da correção nem transformar uma associação temporal em afirmação de causalidade.
 
+> **Fluxo proposto.** Diferentemente dos demais diagramas desta seção, o DS-02C ainda não possui contrato de endpoint formalizado em [API do dashboard](arquitetura/api-dashboard.md) (ver Q-04 na rastreabilidade da Seção 6). As mensagens abaixo representam a solução proposta para UC-05, sujeita a ajuste quando o contrato for consolidado.
+
 <div align="center">
 
-<strong>Diagrama 8: DS-02C — Avaliação da recuperação após correção</strong>
+<strong>Diagrama 8: DS-02C — Avaliação da recuperação após correção (fluxo proposto)</strong>
 
 </div>
 
