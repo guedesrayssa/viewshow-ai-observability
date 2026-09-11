@@ -1301,6 +1301,8 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Os diagramas apresentam a arquitetura-alvo do View Show e especificam as responsabilidades dos participantes em cada cenário. As interações são descritas independentemente do estágio de implementação dos componentes.
 
+> **Aviso de estágio de implementação.** S3, Glue, Athena, SQS/DLQ, o Worker de Análise, a sincronização com o ARGUS e o Amazon Bedrock representam a arquitetura-alvo descrita nesta seção; eles não constituem, na `develop` atual, um fluxo operacional completo de ponta a ponta. O [Status de implementação](arquitetura/status-implementacao.md) registra o que já está em execução e o que ainda depende desses componentes.
+
 ### 5.1 Catálogo de diagramas de sequência
 
 &emsp;Os nove diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela 4 funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
