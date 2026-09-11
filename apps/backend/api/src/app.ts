@@ -204,7 +204,7 @@ export function createApp(deps: AppDependencies) {
       }
     },
   );
-  app.use(rateLimiter(180));
+  app.use(rateLimiter(config.rateLimitPerMinute));
 
   app.get(PUBLIC_ROUTES.authLogin.express, async (_request, response, next) => {
     try {
@@ -329,6 +329,11 @@ export function createApp(deps: AppDependencies) {
       try {
         const parsed = overviewQuerySchema.safeParse(request.query);
         if (!parsed.success) throw validationError(parsed.error);
+        const actor = auth.sessions.verify(
+          parseCookie(request.header("cookie"), "session"),
+        );
+        if (!actor)
+          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
         const result = await dashboard.overview(parsed.data);
         assertNoPhysicalFields(result.data);
         response.json(
@@ -344,6 +349,11 @@ export function createApp(deps: AppDependencies) {
     try {
       const parsed = incidentsQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
+      const actor = auth.sessions.verify(
+        parseCookie(request.header("cookie"), "session"),
+      );
+      if (!actor)
+        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
       const result = await incidents.list(parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
@@ -357,6 +367,11 @@ export function createApp(deps: AppDependencies) {
   app.get(PUBLIC_ROUTES.diagnosis.express, async (request, response, next) => {
     try {
       const incidentId = opaqueId(request.params.incidentId);
+      const actor = auth.sessions.verify(
+        parseCookie(request.header("cookie"), "session"),
+      );
+      if (!actor)
+        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
       const result = await incidents.diagnosis(incidentId);
       assertNoPhysicalFields(result.data);
       response.json(
@@ -372,6 +387,11 @@ export function createApp(deps: AppDependencies) {
       const incidentId = opaqueId(request.params.incidentId);
       const parsed = eventsQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
+      const actor = auth.sessions.verify(
+        parseCookie(request.header("cookie"), "session"),
+      );
+      if (!actor)
+        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
       const result = await incidents.events(incidentId, parsed.data.limit);
       assertNoPhysicalFields(result.data);
       response.json(
@@ -471,6 +491,11 @@ export function createApp(deps: AppDependencies) {
       try {
         const parsed = monitoringQuerySchema.safeParse(request.query);
         if (!parsed.success) throw validationError(parsed.error);
+        const actor = auth.sessions.verify(
+          parseCookie(request.header("cookie"), "session"),
+        );
+        if (!actor)
+          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
         const result = await dashboard.monitoring(parsed.data);
         assertNoPhysicalFields(result.data);
         response.json(

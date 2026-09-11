@@ -10,6 +10,10 @@ const schema = z
     FRONTEND_ORIGINS: z.string().default(""),
     FRONTEND_ORIGIN: z.string().default(""),
     METRICS_ENABLED: z.enum(["true", "false"]).default("true"),
+    // 180 é o padrão de produção. Configurável para permitir uma janela de
+    // teste de carga alta o bastante para medir RNF09/RNF14 na taxa alvo
+    // sem editar código — ver apps/backend/api/loadtest/README.md.
+    RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(180),
   })
   .passthrough();
 
@@ -19,6 +23,7 @@ export interface ApiConfig {
   readonly port: number;
   readonly frontendOrigins: readonly string[];
   readonly metricsEnabled: boolean;
+  readonly rateLimitPerMinute: number;
 }
 
 export function loadConfig(
@@ -37,5 +42,6 @@ export function loadConfig(
       ),
     ],
     metricsEnabled: value.METRICS_ENABLED === "true",
+    rateLimitPerMinute: value.RATE_LIMIT_PER_MINUTE,
   };
 }

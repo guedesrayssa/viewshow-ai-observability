@@ -9,20 +9,23 @@
  * não cai quando a API fica lenta, o que é necessário para revelar saturação.
  *
  * GOTCHAS OPERACIONAIS:
- *   - Rate limit de 180 req/min por IP (`rateLimiter(180)` em src/app.ts) teta
- *     o throughput observável de um gerador único a ~3 req/s, bem abaixo dos
- *     137 do RNF14 — não é bug deste script. Para medir capacidade real acima
- *     disso, rode distribuído (múltiplas origens) ou peça ao time de backend
- *     para ajustar o limite na janela do teste. 429s são contados em
+ *   - Rate limit por IP (`rateLimiter(config.rateLimitPerMinute)` em
+ *     src/app.ts, padrão 180 req/min) teta o throughput observável de um
+ *     gerador único a ~3,9 req/s, bem abaixo dos 137 do RNF14 — não é bug
+ *     deste script. Para medir capacidade real acima disso, rode distribuído
+ *     (múltiplas origens) ou suba o limite só na janela do teste com
+ *     `RATE_LIMIT_PER_MINUTE=<alto>` no processo da API. 429s são contados em
  *     `rate_limited_total` e o threshold `rate_limited_rate` (load/soak)
  *     REPROVA de propósito se mais da metade do tráfego for rate-limitado —
  *     um run dominado por 429 não comprova RNF09/RNF14 na taxa alvo, então
  *     não deixamos passar como se comprovasse. A latência (RNF14) e a vazão
  *     (`load`) só contam respostas `status:200` pelo mesmo motivo.
  *   - `dashboard/overview`/`monitoring/overview` dependem de snapshots que
- *     `seed-carga.cjs` grava com idade variada; eles envelhecem, então ambos
- *     aceitam 200 ou 503 (`DATA_UNAVAILABLE`) como resultado válido.
- *     `/incidents` e seus detalhes leem itens físicos e exigem 200 de verdade.
+ *     `seed-carga.cjs` grava com idade variada; eles envelhecem e passam a
+ *     responder 503 (`DATA_UNAVAILABLE`) quando o mais novo sai da janela
+ *     pedida. Os checks aqui exigem 200 mesmo assim — 503 é estado real, não
+ *     sucesso de endpoint — então semeie IMEDIATAMENTE antes de cada rodada.
+ *     `/incidents` e seus detalhes leem itens físicos e exigem 200 sempre.
  *   - Autenticação é federada (Cognito/OIDC) e não tem `POST /auth/login`;
  *     `lib/session.js` forja o cookie de sessão localmente — exige
  *     `-e AUTH_COOKIE_SECRET=<mesmo segredo do processo da API sob teste>`.
@@ -41,11 +44,29 @@ import { check } from "k6";
 import { Counter, Rate, Trend } from "k6/metrics";
 import { forgeSessionCookie, authParams } from "./lib/session.js";
 
-// Somente HTTP 200 é resposta bem-sucedida para os thresholds de disponibilidade
-// e latência. 429 (rate limiter) e 503 (projeção indisponível) continuam sendo
-// contados em métricas próprias, mas também fazem http_req_failed reprovar a
-// rodada quando excedem o critério do RNF09.
-http.setResponseCallback(http.expectedStatuses(200));
+// Cada sinal em uma métrica diferente, para que um threshold reprovado diga
+// QUAL problema ocorreu:
+//   http_req_failed        → erro inesperado (400/401/5xx): o que não deveria
+//                            acontecer em nenhuma taxa. 429 e 503 ficam fora
+//                            porque são estados esperados e documentados (rate
+//                            limiter de origem única; projeção envelhecida) —
+//                            misturá-los aqui faz a métrica saturar em ~100% e
+//                            deixa de apontar erro real (ex.: um 500 do banco).
+//   rate_limited_rate      → fração de 429 (threshold próprio em load/soak).
+//   checks                 → resposta de NEGÓCIO 200: continua estrito, um 429
+//                            ou 503 não conta como sucesso de endpoint.
+//   http_reqs{status:200}  → vazão útil.
+//   dropped_iterations     → chegadas que o gerador não conseguiu iniciar.
+// Decisão de merge (esta branch já trouxe as duas propostas): os checks
+// seguem ESTRITOS em 200. A proposta alternativa era aceitar 429/503 como
+// sucesso de check, o que resolve o incômodo de rodar contra um alvo remoto
+// que não pode ser semeado na hora — mas em `smoke`, `breakpoint`, `spike` e
+// `estresse` não existe threshold de `rate_limited_rate` nem de
+// `http_reqs{status:200}`, então uma rodada 100% rate-limitada reportaria
+// "checks 100%". O que removeu a dor prática foi o `smoke` virar
+// constant-arrival-rate a 1 iteração/s (fica abaixo de 180 req/min por
+// origem) somado a semear imediatamente antes da rodada.
+http.setResponseCallback(http.expectedStatuses(200, 429, 503));
 
 const BASE_URL = __ENV.BASE_URL;
 const MODE = __ENV.MODE || "smoke";
@@ -75,19 +96,32 @@ const latenciaEvents = new Trend("vs_events_ms");
 const rateLimited = new Counter("rate_limited_total");
 const projecaoIndisponivel = new Counter("projecao_indisponivel_total");
 const paginaSeguinte = new Counter("pagina_seguinte_total");
-// Fração de requisições que voltaram 429. Achado de revisão: como os checks
-// e o http_req_failed toleram 429/503 (ver responseCallback acima), uma
-// rodada load/soak dominada por rate limit passaria os thresholds de
-// RNF09/RNF14 sem medir a API de verdade — só a velocidade do rate limiter.
+// Fração de requisições que voltaram 429. Como `http_req_failed` trata 429
+// como status esperado (ver responseCallback acima, onde isso é necessário
+// para a métrica continuar apontando erro REAL), sem este Rate uma rodada
+// load/soak dominada pelo rate limiter passaria o gate de disponibilidade do
+// RNF09 sem ter medido a API — só a velocidade com que o limiter rejeita.
 // Este Rate vira um threshold próprio abaixo especificamente para barrar
-// isso.
+// isso; os checks de negócio, que seguem estritos em 200, são o segundo
+// sinal independente.
 const taxaRateLimit = new Rate("rate_limited_rate");
 
 /* ------------------------------ cenários ------------------------------ */
 
 const CENARIOS = {
   // 1. Confere que script e API funcionam antes de gastar carga.
-  smoke: { executor: "constant-vus", vus: 1, duration: "30s" },
+  // Uma iteração pode disparar uma segunda requisição no cenário de
+  // paginação. Limitar a chegada a 1 iteração/s mantém o smoke abaixo do
+  // rate limit de 180 requisições/min por origem e evita que a verificação de
+  // sanidade se transforme acidentalmente em um teste de carga fechado.
+  smoke: {
+    executor: "constant-arrival-rate",
+    rate: 1,
+    timeUnit: "1s",
+    duration: "30s",
+    preAllocatedVUs: 1,
+    maxVUs: 5,
+  },
 
   // 2. A rodada do relatório: carga média sustentada, com aquecimento.
   load: {
@@ -199,7 +233,9 @@ export const options = {
     ...(MODE === "smoke" ? { http_req_failed: ["rate<0.001"], checks: ["rate==1"] } : {}),
     // Também escopado a status:200 pelo mesmo motivo: "vazão" composta de
     // 429 não é vazão útil da API.
-    ...(MODE === "load" ? { "http_reqs{status:200}": [`rate>${Math.floor(RATE * 0.95)}`] } : {}),
+    ...(["load", "soak"].includes(MODE)
+      ? { "http_reqs{status:200}": [`rate>${Math.floor(RATE * 0.95)}`] }
+      : {}),
   },
   // Sem isso o k6 agrega /incidents/inc-000001 e /incidents/inc-000002 como
   // URLs diferentes e o resumo vira ilegível.
@@ -214,8 +250,9 @@ export function setup() {
 }
 
 /** A projeção precisa responder 200 para a rodada comprovar disponibilidade.
- *  503 DATA_UNAVAILABLE e 429 RATE_LIMITED são registrados para diagnóstico,
- *  mas não são aceitos como sucesso do endpoint. */
+ *  503 DATA_UNAVAILABLE é registrado em projecao_indisponivel_total e 429
+ *  RATE_LIMITED em rate_limited_total/rate; nenhum dos dois é aceito como
+ *  sucesso do endpoint (ver a nota sobre thresholds no topo do arquivo). */
 function checaProjecao(res, rotulo) {
   if (res.status === 503) projecaoIndisponivel.add(1, { rota: rotulo });
   return check(
@@ -230,8 +267,12 @@ function contaRateLimit(res, rotulo) {
   taxaRateLimit.add(limitado);
 }
 
-/** Confere somente o status de negócio esperado. Respostas 429/503 devem
- *  reprovar a disponibilidade, mesmo quando são contabilizadas à parte. */
+/** Confere somente o status de negócio esperado. Um 429 do rate limiter e um
+ *  503 de projeção indisponível já são contabilizados à parte
+ *  (`rate_limited_total`/`rate_limited_rate`, `projecao_indisponivel_total`) e
+ *  ficam fora de `http_req_failed`; aqui eles REPROVAM o check, porque este é
+ *  o sinal de "o endpoint devolveu conteúdo de negócio". Ver a nota sobre
+ *  thresholds no topo do arquivo. */
 function statusEsperado(res, status) {
   return res.status === status;
 }
@@ -254,6 +295,7 @@ export default function (data) {
     check(res, {
       "pesada: 200": (r) => statusEsperado(r, 200),
       "pesada: tem items (quando 200)": (r) => {
+        if (r.status !== 200) return true;
         try { return Array.isArray(r.json("data.items")); } catch { return false; }
       },
     });
@@ -281,6 +323,7 @@ export default function (data) {
     check(res, {
       "diagnostico: 200": (r) => statusEsperado(r, 200),
       "diagnostico: tem evidence (quando 200)": (r) => {
+        if (r.status !== 200) return true;
         try { return Array.isArray(r.json("data.evidence")); } catch { return false; }
       },
     });
@@ -393,8 +436,19 @@ export function handleSummary(data) {
     "",
     `Resumo completo: resumo-${MODE}.json`,
   ];
+  // O k6 serializa o retorno de setup() inteiro em `setup_data`, e aqui isso
+  // inclui o cookie de sessão assinado que forgeSessionCookie() gerou. O
+  // resumo é anexado como evidência versionada, então o valor é substituído
+  // por um marcador: gravá-lo colocaria uma credencial válida (8 h) no
+  // repositório. Nenhuma métrica é alterada.
+  const semCredenciais = {
+    ...data,
+    setup_data: data.setup_data
+      ? { ...data.setup_data, cookie: "<redigido: cookie de sessão>" }
+      : data.setup_data,
+  };
   return {
     stdout: linhas.join("\n") + "\n",
-    [`resumo-${MODE}.json`]: JSON.stringify(data, null, 2),
+    [`resumo-${MODE}.json`]: JSON.stringify(semCredenciais, null, 2),
   };
 }

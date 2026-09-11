@@ -79,6 +79,7 @@ resource "aws_ecs_task_definition" "api" {
         { name = "BEDROCK_MODEL_ID", value = "anthropic.claude-3-haiku-20240307-v1:0" },
         { name = "AUTH_COOKIE_SECRET", value = random_password.auth_cookie_secret.result },
         { name = "CURSOR_SECRET", value = random_password.cursor_secret.result },
+        { name = "RATE_LIMIT_PER_MINUTE", value = tostring(var.rate_limit_por_minuto) },
 
         // Cognito: a task autentica POST /auth/login contra este User Pool pelo
         // fluxo USER_PASSWORD_AUTH. O client é confidencial, então o secret vai

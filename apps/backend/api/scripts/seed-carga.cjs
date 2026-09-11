@@ -15,8 +15,10 @@
  *     sk `T#<epochMs>`, item `{ publicData, observedThrough, coverageRatio,
  *     source }`), em várias idades para cobrir os presets de window de 15m a
  *     24h — ver `buildViewItems()`. Envelhecem como o resto do seed; fora da
- *     janela pedida, as duas rotas respondem 503 `DATA_UNAVAILABLE` (esperado,
- *     não falha do teste — `consultas.js`/`auth-check.js` toleram 200 ou 503).
+ *     janela pedida, as duas rotas respondem 503 `DATA_UNAVAILABLE` — estado
+ *     real da projeção, não falha da API. `auth-check.js` tolera 200 ou 503
+ *     (só verifica controle de acesso), mas os checks de `consultas.js`
+ *     exigem 200: rode o seed imediatamente antes de cada rodada de carga.
  *
  * Extensão `.cjs` (não `.js`) de propósito: `package.json` declara
  * `"type": "module"`, então um `.js` aqui seria carregado como ESM e

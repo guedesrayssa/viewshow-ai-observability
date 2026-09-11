@@ -1,0 +1,135 @@
+{
+    "Label": "RequestCount",
+    "Datapoints": [
+        {
+            "Timestamp": "2026-09-11T04:40:00-03:00",
+            "Sum": 2280.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:39:00-03:00",
+            "Sum": 1352.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:38:00-03:00",
+            "Sum": 517.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:55:00-03:00",
+            "Sum": 4.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:37:00-03:00",
+            "Sum": 830.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:54:00-03:00",
+            "Sum": 4.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:45:00-03:00",
+            "Sum": 5621.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:44:00-03:00",
+            "Sum": 4858.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:43:00-03:00",
+            "Sum": 2744.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:42:00-03:00",
+            "Sum": 2123.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:41:00-03:00",
+            "Sum": 2306.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:49:00-03:00",
+            "Sum": 2980.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:31:00-03:00",
+            "Sum": 4.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:48:00-03:00",
+            "Sum": 5672.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:30:00-03:00",
+            "Sum": 4.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:47:00-03:00",
+            "Sum": 4997.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:46:00-03:00",
+            "Sum": 4907.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:36:00-03:00",
+            "Sum": 3661.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:53:00-03:00",
+            "Sum": 4.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:35:00-03:00",
+            "Sum": 4184.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:52:00-03:00",
+            "Sum": 4204.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:34:00-03:00",
+            "Sum": 2806.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:51:00-03:00",
+            "Sum": 7855.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:33:00-03:00",
+            "Sum": 1885.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:50:00-03:00",
+            "Sum": 7402.0,
+            "Unit": "Count"
+        },
+        {
+            "Timestamp": "2026-09-11T04:32:00-03:00",
+            "Sum": 25.0,
+            "Unit": "Count"
+        }
+    ]
+}

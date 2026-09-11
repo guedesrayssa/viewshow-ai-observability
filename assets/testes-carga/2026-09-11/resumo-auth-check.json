@@ -1,0 +1,464 @@
+{
+  "root_group": {
+    "checks": [
+      {
+        "fails": 0,
+        "name": "auth_login: 503 FEATURE_UNAVAILABLE (login federado ainda não configurado)",
+        "path": "::auth_login: 503 FEATURE_UNAVAILABLE (login federado ainda não configurado)",
+        "id": "815642254906e564653986a43d2d7cfa",
+        "passes": 1
+      },
+      {
+        "name": "auth_callback: 503 FEATURE_UNAVAILABLE (login federado ainda não configurado)",
+        "path": "::auth_callback: 503 FEATURE_UNAVAILABLE (login federado ainda não configurado)",
+        "id": "20ea625b167f364a4ce9e8f895feb45b",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "auth_logout: 204 mesmo sem sessão (idempotente por design)",
+        "path": "::auth_logout: 204 mesmo sem sessão (idempotente por design)",
+        "id": "8f21e46b08ba6898ba2a3e956a5c8509",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "auth_session: 401 sem cookie",
+        "path": "::auth_session: 401 sem cookie",
+        "id": "7e1e2d4b5e69f70cd3f9bd8bcd01dcd4",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "id": "6e013d9592c7398992d21ab011bf967d",
+        "passes": 1,
+        "fails": 0,
+        "name": "auth_session: 401 com cookie inválido",
+        "path": "::auth_session: 401 com cookie inválido"
+      },
+      {
+        "name": "auth_session: autenticado retorna 200",
+        "path": "::auth_session: autenticado retorna 200",
+        "id": "837f91ff7a66ba6d098997b764cf0376",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "id": "886103503faead17163ce6eac3bd4bd0",
+        "passes": 1,
+        "fails": 0,
+        "name": "dashboard_overview: 401 sem cookie",
+        "path": "::dashboard_overview: 401 sem cookie"
+      },
+      {
+        "name": "dashboard_overview: 401 com cookie inválido",
+        "path": "::dashboard_overview: 401 com cookie inválido",
+        "id": "43a1bc4665060d0bf94172031c939ecb",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "dashboard_overview: autenticado retorna 200 ou 503",
+        "path": "::dashboard_overview: autenticado retorna 200 ou 503",
+        "id": "e2e9b924d182599b3cfc0d79a13a2718",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "incidents_list: 401 sem cookie",
+        "path": "::incidents_list: 401 sem cookie",
+        "id": "3f08942b4e791d22ce054dace28301ac",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "incidents_list: 401 com cookie inválido",
+        "path": "::incidents_list: 401 com cookie inválido",
+        "id": "287eb804a83b65361395b21d07e2fdf2",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "incidents_list: autenticado retorna 200",
+        "path": "::incidents_list: autenticado retorna 200",
+        "id": "56507996b7442cb8f3474419ec5d435d",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "fails": 0,
+        "name": "incident_diagnosis: 401 sem cookie",
+        "path": "::incident_diagnosis: 401 sem cookie",
+        "id": "49d39aa3007c580d9eafb7583c43c31f",
+        "passes": 1
+      },
+      {
+        "name": "incident_diagnosis: 401 com cookie inválido",
+        "path": "::incident_diagnosis: 401 com cookie inválido",
+        "id": "338236142b14082da093272e048dc9d8",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "fails": 0,
+        "name": "incident_diagnosis: autenticado retorna 404",
+        "path": "::incident_diagnosis: autenticado retorna 404",
+        "id": "87690c5c41f90480231a8fdafb3cda7f",
+        "passes": 1
+      },
+      {
+        "path": "::incident_events: 401 sem cookie",
+        "id": "6545740242953e1a1b45795192616333",
+        "passes": 1,
+        "fails": 0,
+        "name": "incident_events: 401 sem cookie"
+      },
+      {
+        "fails": 0,
+        "name": "incident_events: 401 com cookie inválido",
+        "path": "::incident_events: 401 com cookie inválido",
+        "id": "5a4ac94ce7007a806019131f336384f9",
+        "passes": 1
+      },
+      {
+        "passes": 1,
+        "fails": 0,
+        "name": "incident_events: autenticado retorna 404",
+        "path": "::incident_events: autenticado retorna 404",
+        "id": "5ccde47cf4a9e9347c325ca439a9d177"
+      },
+      {
+        "name": "incident_event_detail: sem guarda de sessão (responde 503 mesmo sem cookie)",
+        "path": "::incident_event_detail: sem guarda de sessão (responde 503 mesmo sem cookie)",
+        "id": "b73cf43374c6c613c50a726240e5f7cb",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "monitoring_overview: 401 sem cookie",
+        "path": "::monitoring_overview: 401 sem cookie",
+        "id": "3eeb95d3e009af3224d06c818834d0b0",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "monitoring_overview: 401 com cookie inválido",
+        "path": "::monitoring_overview: 401 com cookie inválido",
+        "id": "d5b3b23a4c0d561d30d32d3a220d235d",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "monitoring_overview: autenticado retorna 200 ou 503",
+        "path": "::monitoring_overview: autenticado retorna 200 ou 503",
+        "id": "9ecf95c27bac272a728b423e871fad14",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "hypothesis_review: 401 sem cookie",
+        "path": "::hypothesis_review: 401 sem cookie",
+        "id": "9c98114c24d928a53cb5f1d275b13e46",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "passes": 1,
+        "fails": 0,
+        "name": "hypothesis_review: 401 com cookie inválido",
+        "path": "::hypothesis_review: 401 com cookie inválido",
+        "id": "c35c8382a0eee360339735580a5e531e"
+      },
+      {
+        "path": "::hypothesis_review: autenticado retorna 404",
+        "id": "8870389a9ba1a3ae0e3cabdbde2168f5",
+        "passes": 1,
+        "fails": 0,
+        "name": "hypothesis_review: autenticado retorna 404"
+      },
+      {
+        "passes": 1,
+        "fails": 0,
+        "name": "reanalyze: 401 sem cookie",
+        "path": "::reanalyze: 401 sem cookie",
+        "id": "28e9a9af82861045b15bdbf43755f0e8"
+      },
+      {
+        "name": "reanalyze: 401 com cookie inválido",
+        "path": "::reanalyze: 401 com cookie inválido",
+        "id": "6ed2985707b898d086b208cf9ba2807e",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "reanalyze: autenticado retorna 404",
+        "path": "::reanalyze: autenticado retorna 404",
+        "id": "b5b0b8b0e7e5c5cdd98d1e5630d7af04",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "import_start: 401 sem cookie",
+        "path": "::import_start: 401 sem cookie",
+        "id": "771b27798a75cd2ab215bedbc2cd6d0e",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "id": "ea84732e1990f46cc9fb1ffd1ae3c31b",
+        "passes": 1,
+        "fails": 0,
+        "name": "import_start: 401 com cookie inválido",
+        "path": "::import_start: 401 com cookie inválido"
+      },
+      {
+        "fails": 0,
+        "name": "import_start: autenticado retorna 503",
+        "path": "::import_start: autenticado retorna 503",
+        "id": "c0a3c212f6dda375d7525608fc622fa6",
+        "passes": 1
+      },
+      {
+        "name": "import_complete: 401 sem cookie",
+        "path": "::import_complete: 401 sem cookie",
+        "id": "d201e2b3723c31fb468fc0fb37effcbf",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "path": "::import_complete: 401 com cookie inválido",
+        "id": "3f6b5ad1b948065359ac0b5ef64076a3",
+        "passes": 1,
+        "fails": 0,
+        "name": "import_complete: 401 com cookie inválido"
+      },
+      {
+        "path": "::import_complete: autenticado retorna 503",
+        "id": "be1dd216801f7d299f78588cccb915ed",
+        "passes": 1,
+        "fails": 0,
+        "name": "import_complete: autenticado retorna 503"
+      },
+      {
+        "fails": 0,
+        "name": "import_status: 401 sem cookie",
+        "path": "::import_status: 401 sem cookie",
+        "id": "4ff1c8cfc1122fee33762770e6196a59",
+        "passes": 1
+      },
+      {
+        "name": "import_status: 401 com cookie inválido",
+        "path": "::import_status: 401 com cookie inválido",
+        "id": "19590ec4d60d98348d3209020a4594cf",
+        "passes": 1,
+        "fails": 0
+      },
+      {
+        "name": "import_status: autenticado retorna 503",
+        "path": "::import_status: autenticado retorna 503",
+        "id": "f62a6146f5f8d49a55b10c86ff25503e",
+        "passes": 1,
+        "fails": 0
+      }
+    ],
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": []
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 64.982
+  },
+  "metrics": {
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.015100000000000008,
+        "min": 0.007,
+        "med": 0.0125,
+        "max": 0.038,
+        "p(90)": 0.0241,
+        "p(95)": 0.0321
+      }
+    },
+    "iteration_duration": {
+      "contains": "time",
+      "values": {
+        "avg": 50.539333,
+        "min": 50.539333,
+        "med": 50.539333,
+        "max": 50.539333,
+        "p(90)": 50.539333,
+        "p(95)": 50.539333
+      },
+      "type": "trend"
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0.011300000000000003,
+        "p(95)": 0.060749999999999804,
+        "avg": 0.026449999999999994,
+        "min": 0.001,
+        "med": 0.004,
+        "max": 0.674
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 12.266,
+        "p(90)": 1.8774000000000015,
+        "p(95)": 7.934349999999998,
+        "avg": 1.3725999999999998,
+        "min": 0.23,
+        "med": 0.459
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 40,
+        "rate": 615.5550767904958
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 11944,
+        "rate": 183804.74592964206
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.875,
+        "passes": 35,
+        "fails": 5
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 54054,
+        "rate": 831830.3530208366
+      }
+    },
+    "http_req_blocked": {
+      "values": {
+        "avg": 0.0641499999999999,
+        "min": 0,
+        "med": 0.001,
+        "max": 2.227,
+        "p(90)": 0.002,
+        "p(95)": 0.01769999999999949
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0,
+        "p(95)": 0,
+        "avg": 0,
+        "min": 0,
+        "med": 0,
+        "max": 0
+      }
+    },
+    "iterations": {
+      "contains": "default",
+      "values": {
+        "count": 1,
+        "rate": 15.388876919762396
+      },
+      "type": "counter"
+    },
+    "http_req_waiting": {
+      "values": {
+        "min": 0.22,
+        "med": 0.439,
+        "max": 12.236,
+        "p(90)": 1.8468000000000016,
+        "p(95)": 7.878799999999999,
+        "avg": 1.3310500000000003
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "checks{objetivo:rnf04}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 1,
+        "passes": 33,
+        "fails": 0
+      },
+      "thresholds": {
+        "rate==1": {
+          "ok": true
+        }
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 1,
+        "passes": 37,
+        "fails": 0
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 0,
+        "max": 0.563,
+        "p(90)": 0,
+        "p(95)": 0.01384999999999952,
+        "avg": 0.020999999999999998,
+        "min": 0
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "values": {
+        "avg": 2.7906000000000004,
+        "min": 0.339,
+        "med": 1.531,
+        "max": 7.875,
+        "p(90)": 6.1218,
+        "p(95)": 6.998399999999999
+      },
+      "type": "trend",
+      "contains": "time"
+    }
+  },
+  "setup_data": {
+    "nonexistentId": "auth-check-ausente-1789104668214-146429673",
+    "validCookie": "<redigido: cookie de sessão>"
+  }
+}
