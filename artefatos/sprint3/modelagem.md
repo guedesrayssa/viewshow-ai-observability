@@ -63,9 +63,7 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 
 <div align="center">
 
-<strong>Tabela 1: Atores do diagrama de casos de uso</strong>
-
-</div>
+<sup>Tabela 1: Atores do diagrama de casos de uso e suas responsabilidades principais</sup>
 
 | ID | Ator | Tipo | Responsabilidade principal |
 | --- | --- | --- | --- |
@@ -77,9 +75,7 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 | AT-06 | Temporizador de sincronização (EventBridge) | Primário, técnico | Iniciar periodicamente a sincronização dos dados operacionais do ARGUS. |
 | AT-07 | ARGUS | Secundário, externo | Fornecer os dados operacionais já recebidos dos frontends do Globoplay, consumidos por leitura (MySQL) pelo Serviço de Ingestão. |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -89,9 +85,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 2: Catálogo dos casos de uso</strong>
-
-</div>
+<sup>Tabela 2: Catálogo dos casos de uso do View Show e requisitos relacionados</sup>
 
 | ID | Caso de uso | Ator principal | Requisitos relacionados |
 | --- | --- | --- | --- |
@@ -104,9 +98,7 @@ Fonte: Material produzido pelos autores (2026).
 | UC-07 | Monitorar a telemetria | Engenheira de Software | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 |
 | UC-08 | Sincronizar e normalizar dados do ARGUS | Temporizador de sincronização (EventBridge) | RF01, RF02, RF03, RIE02 |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -114,15 +106,15 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.3 Diagrama
 
-&emsp;O Diagrama 1 sintetiza a fronteira funcional do View Show e as associações entre os atores e seus objetivos. Os pormenores de cada interação permanecem nas descrições textuais para que a representação visual conserve a função de oferecer uma visão geral do sistema.
+&emsp;A Figura 1 sintetiza a fronteira funcional do View Show e as associações entre os atores e seus objetivos. Os pormenores de cada interação permanecem nas descrições textuais para que a representação visual conserve a função de oferecer uma visão geral do sistema.
 
 <div align="center">
 
-<strong>Diagrama 1: Casos de uso do View Show</strong>
+<sup>Figura 1: Casos de uso do View Show — fronteira funcional do sistema e associações entre os atores e seus objetivos</sup>
 
-![Diagrama de casos de uso do View Show](../assets/modelagem/casos-de-uso.svg)
+![Diagrama de casos de uso do View Show](../../assets/modelagem/casos-de-uso.svg)
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -140,9 +132,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 3: Relações representadas no diagrama</strong>
-
-</div>
+<sup>Tabela 3: Relações de generalização e associação representadas no diagrama de casos de uso</sup>
 
 | Origem | Relação | Destino | Justificativa |
 | --- | --- | --- | --- |
@@ -159,9 +149,7 @@ Fonte: Material produzido pelos autores (2026).
 | AT-07 | Associação | UC-08 | O ARGUS fornece os dados operacionais consumidos pela sincronização. |
 | AT-03 | Associação | UC-08 | A Engenheira de Software pode, no papel de operador de dados, importar manualmente um snapshot do ARGUS. |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -870,7 +858,7 @@ A cada 15 minutos, automaticamente; a importação manual ocorre sob demanda, ti
 
 <div align="center">
 
-<strong>Diagrama 2: Modelo de domínio do View Show</strong>
+<sup>Figura 2: Modelo de domínio do View Show — entidades, objetos de valor, atributos e relacionamentos</sup>
 
 </div>
 
@@ -1055,17 +1043,17 @@ classDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
-&emsp;O Diagrama 2 apresenta as entidades e os objetos de valor do modelo de domínio, com seus atributos, operações e relacionamentos. A responsabilidade de cada elemento é detalhada na tabela do item 4.3.1; os estados e as transições relevantes estão na tabela do item 4.3.3; e as regras, garantias e invariantes que regem o comportamento dessas classes estão consolidadas na tabela do item 4.5.
+&emsp;A Figura 2 apresenta as entidades e os objetos de valor do modelo de domínio, com seus atributos, operações e relacionamentos. A responsabilidade de cada elemento é detalhada na Tabela 5 (item 4.3.1); os estados e as transições relevantes estão na Tabela 7 (item 4.3.3); e as regras, garantias e invariantes que regem o comportamento dessas classes estão consolidadas na Tabela 9 (item 4.5).
 
 #### 4.2.2. Serviços e fronteiras da aplicação
 
 <div align="center">
 
-<strong>Diagrama 3: Serviços e fronteiras da arquitetura-alvo</strong>
+<sup>Figura 3: Serviços e fronteiras da arquitetura-alvo, organizados por namespace</sup>
 
 </div>
 
@@ -1252,15 +1240,19 @@ classDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
-&emsp;O Diagrama 3 apresenta os serviços e as fronteiras da arquitetura-alvo, organizados nos namespaces API do Dashboard, Serviços de Aplicação, Worker de Análise, Repositórios e Tipos auxiliares. A responsabilidade de cada elemento está detalhada na tabela do item 4.3.2, e suas dependências estão na tabela de relacionamentos do item 4.4.
+&emsp;A Figura 3 apresenta os serviços e as fronteiras da arquitetura-alvo, organizados nos namespaces API do Dashboard, Serviços de Aplicação, Worker de Análise, Repositórios e Tipos auxiliares. A responsabilidade de cada elemento está detalhada na Tabela 6 (item 4.3.2), e suas dependências estão na Tabela 8 (item 4.4).
 
 #### 4.2.3. Mapeamento de persistência
 
-&emsp;A tabela a seguir liga cada classe de domínio à área de armazenamento física correspondente, sem promover tabelas, buckets ou filas a classes de domínio.
+&emsp;A Tabela 4 liga cada classe de domínio à área de armazenamento física correspondente, sem promover tabelas, buckets ou filas a classes de domínio.
+
+<div align="center">
+
+<sup>Tabela 4: Mapeamento das classes de domínio para os repositórios e o armazenamento físico correspondente</sup>
 
 | Classe de domínio | Repositório | Armazenamento físico |
 |:---|:---|:---|
@@ -1273,9 +1265,17 @@ Fonte: Material produzido pelos autores (2026).
 | <code>GoldenCase</code> | Repositório do conjunto de referência | DynamoDB <code>monitoracao-golden-set</code>, sem TTL |
 | <code>Operador</code> | Nenhum — identidade federada | Cognito federado ao SSO da Globo; o View Show não mantém tabela própria de contas nem credenciais |
 
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
 ### 4.3. Descrição dos elementos
 
 #### 4.3.1. Modelo de domínio
+
+<div align="center">
+
+<sup>Tabela 5: Elementos do modelo de domínio — tipo e responsabilidade de cada entidade e objeto de valor</sup>
 
 | Elemento | Tipo | Responsabilidade |
 |:---|:---|:---|
@@ -1295,7 +1295,15 @@ Fonte: Material produzido pelos autores (2026).
 | <code>Manifesto</code> | Entidade de domínio | Aponta a <code>DatasetVersion</code> ativa e a fronteira entre as camadas quente e histórica. |
 | <code>AnalysisRun</code> | Entidade de domínio | Execução idempotente de uma mensagem de análise; evita duplicar incidentes ou previsões em reentregas. |
 
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
 #### 4.3.2. Serviços e fronteiras
+
+<div align="center">
+
+<sup>Tabela 6: Serviços e fronteiras da aplicação — camada e responsabilidade de cada elemento</sup>
 
 | Elemento | Camada | Responsabilidade |
 |:---|:---|:---|
@@ -1316,7 +1324,15 @@ Fonte: Material produzido pelos autores (2026).
 | Repositório do conjunto de referência | Repositório | Única porta de acesso à tabela <code>monitoracao-golden-set</code>; leitura pelo Worker, escrita pelo Serviço de revisão. |
 | Repositório histórico | Repositório | Encapsula as consultas ao Athena sobre o arquivo Parquet do S3. |
 
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
 #### 4.3.3. Estados e enumerações
+
+<div align="center">
+
+<sup>Tabela 7: Estados e enumerações do modelo e suas transições relevantes</sup>
 
 | Elemento | Estados possíveis | Transição relevante |
 |:---|:---|:---|
@@ -1327,7 +1343,15 @@ Fonte: Material produzido pelos autores (2026).
 | <code>ImportJob.status</code> | <code>UPLOADING</code>, <code>PROCESSING</code>, <code>COMPLETED</code>, <code>FAILED</code> | <code>ImportJob.stage</code> detalha <code>PROCESSING</code> em <code>VALIDATING</code>, <code>RESTORING</code>, <code>INGESTING</code> e <code>ACTIVATING</code>. |
 | <code>AnalysisRun.status</code> | <code>PROCESSING</code>, <code>RETRY_PENDING</code>, <code>SUCCEEDED</code>, <code>FAILED</code> | Uma execução <code>SUCCEEDED</code> confirma a mensagem sem reprocessar; uma execução incompleta retoma a partir da última etapa persistida. |
 
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
 ### 4.4. Relacionamentos e dependências
+
+<div align="center">
+
+<sup>Tabela 8: Relacionamentos entre os elementos do modelo, com multiplicidade e justificativa</sup>
 
 | Origem | Relação | Destino | Multiplicidade | Justificativa |
 |:---|:---|:---|:---|:---|
@@ -1355,7 +1379,15 @@ Fonte: Material produzido pelos autores (2026).
 | Analysis Orchestrator, Serviço de revisão | Dependência | Repositório do conjunto de referência | — | O Worker apenas lê; somente o Serviço de revisão escreve. |
 | Diagnostic Agent | Dependência | Amazon Bedrock | — | O agente delega a geração das hipóteses candidatas ao modelo gerenciado. |
 
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
 ### 4.5. Regras, garantias e limitações
+
+<div align="center">
+
+<sup>Tabela 9: Regras, garantias e limitações do modelo estrutural (INV, REG, GAR e LIM)</sup>
 
 | ID | Elemento(s) | Regra, garantia ou limitação |
 |:---|:---|:---|
@@ -1370,6 +1402,10 @@ Fonte: Material produzido pelos autores (2026).
 | GAR-01 | <code>Diagnostico</code> | Uma falha na chamada ao Bedrock não remove a previsão, o incidente ou as evidências já produzidas; o diagnóstico é marcado como recuperável. |
 | LIM-01 | <code>GoldenCase</code> | Um caso confirmado referencia a hipótese de origem para fins de auditoria, mas não mantém vínculo estrutural com o incidente original, pois serve como referência atemporal para análises futuras. |
 | GAR-02 | <code>AnalysisRun</code> | Mensagens duplicadas ou fora de ordem são identificadas por <code>idempotencyKey</code>; uma execução já <code>SUCCEEDED</code> é confirmada sem reprocessar e sem criar um segundo <code>Incidente</code> ou uma segunda <code>Previsao</code>. |
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
 
 ### 4.6. Decisões de modelagem
 
@@ -1402,13 +1438,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 5.1 Catálogo de diagramas de sequência
 
-&emsp;Os nove diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela 4 funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
+&emsp;Os nove diagramas foram organizados por cenário e vinculados aos casos de uso que realizam ou apoiam. A Tabela 10 funciona como índice da seção e diferencia as interações iniciadas pelo usuário dos processos técnicos executados de forma assíncrona.
 
 <div align="center">
 
-<strong>Tabela 4: Catálogo dos diagramas de sequência</strong>
-
-</div>
+<sup>Tabela 10: Catálogo dos diagramas de sequência e seu vínculo com os casos de uso</sup>
 
 | ID | Cenário | Casos de uso relacionados | Tipo de fluxo |
 | --- | --- | --- | --- |
@@ -1422,9 +1456,7 @@ Fonte: Material produzido pelos autores (2026).
 | DS-03C | Falha, novas tentativas, DLQ e reanálise | UC-04, UC-07 | Exceção/alternativo |
 | DS-04 | Visão geral ponta a ponta | UC-01, UC-02, UC-03, UC-04, UC-06 | Resumo |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -1446,7 +1478,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 4: DS-01A — Sincronização dos dados do MySQL vivo do ARGUS</strong>
+<sup>Figura 4: DS-01A — sincronização periódica dos dados do MySQL vivo do ARGUS, da carga no DynamoDB ao arquivamento em S3</sup>
 
 </div>
 
@@ -1542,7 +1574,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -1556,7 +1588,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 5: DS-01B — Importação assíncrona de um snapshot do ARGUS</strong>
+<sup>Figura 5: DS-01B — importação assíncrona de um snapshot do ARGUS enviado pela interface, sem interromper o conjunto de dados ativo</sup>
 
 </div>
 
@@ -1704,7 +1736,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -1724,7 +1756,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 6: DS-02A — Autenticação federada e consulta do dashboard</strong>
+<sup>Figura 6: DS-02A — autenticação federada via Cognito e SSO corporativo, seguida da consulta ao dashboard</sup>
 
 </div>
 
@@ -1797,7 +1829,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -1811,7 +1843,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 7: DS-02B — Revisão concorrente e promoção de hipótese ao conjunto de referência</strong>
+<sup>Figura 7: DS-02B — revisão concorrente de hipóteses com controle de versão e promoção ao conjunto de referência</sup>
 
 </div>
 
@@ -1917,7 +1949,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -1933,7 +1965,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 8: DS-02C — Avaliação da recuperação após correção (fluxo proposto)</strong>
+<sup>Figura 8: DS-02C — avaliação da recuperação após correção externa, por comparação de janelas equivalentes (fluxo proposto)</sup>
 
 </div>
 
@@ -1989,7 +2021,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -2009,7 +2041,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 9: DS-03A — Previsão preventiva e validação da previsão anterior</strong>
+<sup>Figura 9: DS-03A — previsão preventiva da janela horária seguinte e validação da previsão anterior</sup>
 
 </div>
 
@@ -2091,7 +2123,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -2103,7 +2135,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 10: DS-03B — Detecção reativa e diagnóstico automático por IA</strong>
+<sup>Figura 10: DS-03B — detecção reativa por MAD e distância de Mahalanobis, com diagnóstico automático por IA</sup>
 
 </div>
 
@@ -2186,7 +2218,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -2198,7 +2230,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 11: DS-03C — Recuperação de falhas, DLQ e reanálise</strong>
+<sup>Figura 11: DS-03C — recuperação de falhas do Worker, fila de mensagens não processadas (DLQ) e reanálise</sup>
 
 </div>
 
@@ -2274,17 +2306,15 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
-&emsp;Os valores iniciais adotados para a fila foram reunidos na Tabela 5. Eles delimitam o tempo concedido a cada processamento, o número de tentativas e o período disponível para uma recuperação manual.
+&emsp;Os valores iniciais adotados para a fila foram reunidos na Tabela 11. Eles delimitam o tempo concedido a cada processamento, o número de tentativas e o período disponível para uma recuperação manual.
 
 <div align="center">
 
-<strong>Tabela 5: Parâmetros operacionais da fila de análise</strong>
-
-</div>
+<sup>Tabela 11: Parâmetros operacionais iniciais da fila de análise</sup>
 
 | Configuração | Valor inicial |
 | --- | ---: |
@@ -2297,9 +2327,7 @@ Fonte: Material produzido pelos autores (2026).
 | Espera máxima por novas mensagens | 20 segundos |
 | Alarme | Uma ou mais mensagens na DLQ |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -2313,7 +2341,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Diagrama 12: DS-04 — Visão geral ponta a ponta da plataforma View Show</strong>
+<sup>Figura 12: DS-04 — visão geral ponta a ponta do View Show, da disponibilização dos dados até a decisão sobre a hipótese</sup>
 
 </div>
 
@@ -2407,7 +2435,7 @@ sequenceDiagram
 
 <div align="center">
 
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -2417,13 +2445,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 5.7 Rastreabilidade interna
 
-&emsp;Para evitar que os processos técnicos sejam interpretados como casos de uso independentes, a Tabela 6 registra a natureza de cada relação. Ela também resume a principal decisão arquitetural demonstrada por cada diagrama.
+&emsp;Para evitar que os processos técnicos sejam interpretados como casos de uso independentes, a Tabela 12 registra a natureza de cada relação. Ela também resume a principal decisão arquitetural demonstrada por cada diagrama.
 
 <div align="center">
 
-<strong>Tabela 6: Rastreabilidade dos diagramas de sequência</strong>
-
-</div>
+<sup>Tabela 12: Rastreabilidade dos diagramas de sequência aos casos de uso e às decisões arquiteturais</sup>
 
 | Diagrama | Casos de uso | Natureza da relação | Decisão principal |
 | --- | --- | --- | --- |
@@ -2437,9 +2463,7 @@ Fonte: Material produzido pelos autores (2026).
 | DS-03C | UC-04, UC-07 | Exceção e alternativa | Repetição controlada, DLQ e reanálise |
 | DS-04 | UC-01, UC-02, UC-03, UC-04, UC-06 | Síntese | Continuidade do dado até a decisão humana |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
@@ -2451,9 +2475,7 @@ A rastreabilidade relaciona os casos de uso aos requisitos, às necessidades de 
 
 <div align="center">
 
-<strong>Tabela 7: Rastreabilidade dos casos de uso</strong>
-
-</div>
+<sup>Tabela 13: Rastreabilidade dos casos de uso aos requisitos, às telas e aos elementos conceituais</sup>
 
 | Área | Caso de uso | Requisitos | Histórias ou telas relacionadas | Elementos conceituais | Sequências relacionadas |
 | --- | --- | --- | --- | --- | --- |
@@ -2466,21 +2488,17 @@ A rastreabilidade relaciona os casos de uso aos requisitos, às necessidades de 
 | Integridade da telemetria | UC-07 | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 | US-ENG-06 e tela de Monitoramento | Fonte de telemetria, métrica operacional, cobertura e alerta | DS-01A, DS-01B, DS-03C |
 | Sincronização e normalização dos dados do ARGUS | UC-08 | RF01, RF02, RF03, RIE02 | Não modelado: o temporizador e o ARGUS são atores técnicos, sem persona de usuário associada | Registro do ARGUS, checkpoint, watermark e outbox | DS-01A, DS-01B |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
 ### 6.1 Conceitos da matriz e sua representação estrutural
 
-&emsp;Nem todo conceito citado na coluna "Elementos conceituais" da Tabela 7 corresponde a uma classe adicional do diagrama de classes: vários já são cobertos por classes existentes, por registros canônicos com contrato normativo em outro documento (Seção 4.1) ou por projeções calculadas em tempo de leitura. A Tabela 8 evita que essa ausência pareça uma omissão ao explicitar, para cada conceito, onde ele está representado ou por que permanece fora do modelo estrutural.
+&emsp;Nem todo conceito citado na coluna "Elementos conceituais" da Tabela 13 corresponde a uma classe adicional do diagrama de classes: vários já são cobertos por classes existentes, por registros canônicos com contrato normativo em outro documento (Seção 4.1) ou por projeções calculadas em tempo de leitura. A Tabela 14 evita que essa ausência pareça uma omissão ao explicitar, para cada conceito, onde ele está representado ou por que permanece fora do modelo estrutural.
 
 <div align="center">
 
-<strong>Tabela 8: Justificativa estrutural dos conceitos da matriz de rastreabilidade</strong>
-
-</div>
+<sup>Tabela 14: Justificativa estrutural dos conceitos da matriz de rastreabilidade</sup>
 
 | Conceito | Caso de uso | Representação no modelo estrutural |
 | --- | --- | --- |
@@ -2494,9 +2512,7 @@ Fonte: Material produzido pelos autores (2026).
 | Marco temporal | UC-05 | Modelado como o atributo `milestoneAt` da entidade `AvaliacaoRecuperacao` (4.2.1), persistida ao final do DS-02C. |
 | Janela de comparação | UC-05 | Modelada pelas duas composições `AvaliacaoRecuperacao *-- Janela` (janela base e janela de comparação, 4.2.1 e 4.4), reaproveitando o objeto de valor já definido para `Previsao`. |
 
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 

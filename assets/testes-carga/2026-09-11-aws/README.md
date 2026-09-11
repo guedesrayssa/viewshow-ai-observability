@@ -1,9 +1,10 @@
 # Evidências brutas — testes de carga em AWS, 11/09/2026
 
 &emsp; Primeira bateria da API TypeScript executada **na nuvem** com bruto
-versionado. Substitui o relato sem evidência de `609b822` (ver
-[`artefatos/sprint3/testes-carga-inicial.md`](../../../artefatos/sprint3/testes-carga-inicial.md) §8.7)
-e é o contraste direto com o leito local de
+versionado. Substitui o relato sem evidência bruta das configurações de
+capacidade (ver
+[`artefatos/sprint3/testes-carga-inicial.md`](../../../artefatos/sprint3/testes-carga-inicial.md),
+Seção 8.8) e é o contraste direto com o leito local de
 [`2026-09-11/`](../2026-09-11/README.md).
 
 &emsp; Cada `resumo-*.json` é a saída de `handleSummary()` de um `k6 run` real;
