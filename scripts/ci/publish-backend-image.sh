@@ -4,7 +4,7 @@ set +x
 
 readonly expected_account="248880318395"
 readonly expected_region="us-east-1"
-readonly expected_repository="monitoracao-api"
+readonly expected_repository="g05-s3-api"
 
 required_variables=(AWS_ACCOUNT_ID AWS_DEFAULT_REGION ECR_REPOSITORY CI_COMMIT_SHA)
 for variable_name in "${required_variables[@]}"; do

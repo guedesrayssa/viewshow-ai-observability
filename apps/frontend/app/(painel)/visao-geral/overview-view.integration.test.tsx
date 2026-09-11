@@ -1,41 +1,61 @@
-/**
- * @file overview-view.integration.test.tsx
- * Caminho completo, sem dublê de leitura.
- *
- * `overview-view.test.tsx` mocka `fetchSummary`/`fetchOverview` e entrega o
- * recurso já normalizado; este arquivo fecha a lacuna entre os dois níveis:
- * só o `fetch` global é dublê. `fetchSummary`, `fetchOverview`,
- * `composeResource` e `useResource` são os de produção.
- *
- * Cenário do achado do P1: a API operacional está fora do ar (o `fetch`
- * rejeita). O esperado é a tela desenhar `<Unavailable>` nos blocos do resumo
- * — nunca ficar presa no espaço reservado.
- *
- * As duas APIs precisam estar apontadas por variável de ambiente, senão a
- * leitura curto-circuita em API_NOT_CONFIGURED antes de tocar no `fetch`.
- * `API_BASES` é lido na carga do módulo, então o stub vai em `vi.hoisted`.
- */
+/** Integration between the Visão Geral, its resource, and the gateway client. */
 
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 vi.hoisted(() => {
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
-  vi.stubEnv("NEXT_PUBLIC_TELEMETRY_API_BASE_URL", "http://telemetria.test");
   vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
 });
 
-import { render, screen, within } from "@testing-library/react";
-
 import { OverviewView } from "@/app/(painel)/visao-geral/overview-view";
 
-beforeEach(() => {
-  // As duas leituras da tela batem em APIs diferentes; qualquer uma que caia
-  // aqui rejeita, simulando o transporte fora do ar.
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
-  );
-});
+const successBody = {
+  data: {
+    kpis: [
+      {
+        key: "affected_sessions",
+        value: 10920,
+        unit: "sessions",
+        status: "critical",
+        comparison: null,
+        measurement: { status: "measured" },
+      },
+    ],
+    experienceHealth: {
+      baselineValue: 74,
+      points: [{ timestamp: "2026-09-09T12:00:00.000Z", value: 342 }],
+      anomalyWindows: [],
+    },
+    recentIncidents: [
+      {
+        id: "inc_1",
+        title: "Buffering em Smart TVs",
+        priority: "P1",
+        status: "investigating",
+        startedAt: "2026-09-09T11:45:00.000Z",
+        affectedSessions: {
+          value: 10920,
+          measurement: { status: "measured" },
+        },
+      },
+    ],
+  },
+  meta: {
+    requestId: "req_1",
+    schemaVersion: "1.0",
+    generatedAt: "2026-09-09T12:00:00.000Z",
+    window: {
+      preset: "30m",
+      from: "2026-09-09T11:30:00.000Z",
+      to: "2026-09-09T12:00:00.000Z",
+    },
+    partial: false,
+    refreshAfterSeconds: 900,
+    freshness: [],
+    warnings: [],
+  },
+};
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -45,41 +65,50 @@ afterAll(() => {
   vi.unstubAllEnvs();
 });
 
-describe("Visão Geral — ponta a ponta com a API operacional fora do ar", () => {
-  it("desenha <Unavailable> nos blocos do resumo em vez de ficar preso no espaço reservado", async () => {
+describe("Visão Geral integrated with the gateway", () => {
+  it("loads the complete screen with one canonical overview request", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify(successBody), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<OverviewView />);
+
+    expect(await screen.findByText("Sessões afetadas")).toBeInTheDocument();
+    expect(screen.getByText("Buffering em Smart TVs")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "http://operacional.test/api/v1/dashboard/overview?window=30m",
+    );
+  });
+
+  it("shows explicit unavailable states when the overview request fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+
     const { container } = render(<OverviewView />);
 
-    // Começa em espaço reservado enquanto a leitura não termina.
-    expect(container.querySelectorAll(".skeleton").length).toBeGreaterThan(0);
-
-    // Terminada a leitura sem fonte, os blocos do resumo declaram indisponível.
     expect(
-      await screen.findByText("Indicadores de incidentes indisponíveis"),
+      await screen.findByText("Indicadores indisponíveis"),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Incidentes recentes indisponíveis"),
     ).toBeInTheDocument();
-
-    // E nada continua preso em skeleton.
     expect(container.querySelectorAll(".skeleton").length).toBe(0);
-    expect(screen.queryByText("Sessões afetadas")).not.toBeInTheDocument();
-  });
-
-  it("dispara o Alert do topo quando o resumo fica sem fonte", async () => {
-    render(<OverviewView />);
-
-    const alerta = await screen.findByRole("alert");
-    expect(alerta).toHaveTextContent("Não foi possível ler o resumo de incidentes");
+    const requestedUrls = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.map(([input]) => String(input));
     expect(
-      within(alerta).getByText(/Tente atualizar em alguns instantes\./),
-    ).toBeInTheDocument();
-  });
-
-  it("chamou o fetch de fato — a leitura não foi curto-circuitada", async () => {
-    render(<OverviewView />);
-
-    await screen.findByText("Indicadores de incidentes indisponíveis");
-
-    expect(globalThis.fetch).toHaveBeenCalled();
+      requestedUrls.filter((url) => url.includes("/api/v1/dashboard/overview")),
+    ).toHaveLength(1);
+    expect(
+      requestedUrls.filter((url) => url.includes("/api/v1/telemetry/rum")),
+    ).toHaveLength(1);
   });
 });

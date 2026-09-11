@@ -409,7 +409,7 @@ interno do Worker de Análise"*, e não um serviço implantável separado.
 
 | Impedimento | Situação |
 |:--|:--|
-| **Nenhum modelo disponível na AWS** | Bedrock bloqueado no Learner Lab, conforme registrado no próprio [`variables.tf`](../../../../apps/infra/variables.tf); ECS Fargate não oferece GPU. Medimos 29 a 134 s por caso em L4 dedicada; em CPU seria várias vezes isso. Subir hoje colocaria no ar algo que não produz diagnóstico: todo caso terminaria em `failed`. |
+| **Nenhum modelo disponível na AWS** | Bedrock bloqueado no Learner Lab, conforme registrado no próprio [`variables.tf`](../../../../apps/fullstack/variables.tf); ECS Fargate não oferece GPU. Medimos 29 a 134 s por caso em L4 dedicada; em CPU seria várias vezes isso. Subir hoje colocaria no ar algo que não produz diagnóstico: todo caso terminaria em `failed`. |
 | **Não existe fila** | Nenhum recurso SQS ou EventBridge no Terraform. O evento que dispara a análise não tem por onde chegar. |
 | **Não existe o Worker de Análise** | A camada precisa de um hospedeiro que consuma a fila, leia o DynamoDB e grave o resultado. |
 

@@ -10,18 +10,22 @@ stages:
   - publicar
 
 .mudou-backend: &backend_changes
-  - apps/backend/api/src/**/*
-  - apps/backend/api/tests/**/*
-  - apps/backend/api/package.json
-  - apps/backend/api/package-lock.json
-  - apps/backend/api/Dockerfile
-  - apps/backend/api/.dockerignore
+  - apps/backend/**/*
   - scripts/ci/**/*
   - scripts/sync-aws-gitlab-credentials.sh
   - .gitlab-ci.yml
 
 .mudou-frontend: &mudou-frontend
   - apps/frontend/**/*
+  - .gitlab-ci.yml
+
+.mudou-iac: &iac_changes
+  - apps/fullstack/**/*
+  - .gitlab-ci.yml
+
+.mudou-python-observability: &python_observability_changes
+  - apps/backend/agentic/**/*
+  - apps/backend/ingestion-data/**/*
   - .gitlab-ci.yml
 
 workflow:
@@ -36,23 +40,77 @@ workflow:
 default:
   interruptible: true
 
+validate_fullstack_iac:
+  stage: validar
+  image:
+    name: hashicorp/terraform:1.15.9@sha256:fd5debae63188975d6febc6aa5bd1a982a588f55e4a4ddb7de28be923f250456
+    entrypoint: [""]
+  script:
+    - terraform -chdir=apps/fullstack fmt -check -recursive
+    - terraform -chdir=apps/fullstack init -backend=false -input=false
+    - terraform -chdir=apps/fullstack validate
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *iac_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *iac_changes
+
+validate_observability_iac:
+  stage: validar
+  image: docker:27.4.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a
+  script:
+    - docker compose -f apps/fullstack/docker-compose.observability.yml config --quiet
+    - AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder docker compose -f apps/fullstack/observability/aws/docker-compose.yml config --quiet
+    - RENDER_AWS_ACCOUNT_ID=000000000000 RENDER_AWS_REGION=us-east-1 RENDER_GRAFANA_PASSWORD=ci-placeholder sh apps/fullstack/observability/aws/validate-user-data.sh /tmp/view-show-user-data.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *iac_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *iac_changes
+
 variables:
   AWS_ACCOUNT_ID: "248880318395"
   AWS_DEFAULT_REGION: "us-east-1"
-  ECR_REPOSITORY: "monitoracao-api"
-  ECS_CLUSTER: "data-ingestion-cluster"
-  ECS_SERVICE: "monitoracao-api-service"
-  ECS_TASK_FAMILY: "monitoracao-api-task"
-  ECS_CONTAINER_NAME: "monitoracao-api-container"
-  ALB_NAME: "data-ingestion-alb"
+  ECR_REPOSITORY: "g05-s3-api"
+  ECS_CLUSTER: "g05-s3-cluster"
+  ECS_SERVICE: "g05-s3-api-service"
+  ECS_TASK_FAMILY: "g05-s3-api-task"
+  ECS_CONTAINER_NAME: "g05-s3-api"
+  ALB_NAME: "g05-s3-alb"
+  AMPLIFY_APP_NAME: "g05-s3-painel"
+  AMPLIFY_BRANCH: "producao"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
   DOCKER_HOST: "tcp://docker:2375"
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: "overlay2"
 
+validate_python_observability:
+  stage: validar
+  image: python:3.13.15-slim-bookworm@sha256:ed86c82274b3c69b52fb5820f358f0bd7df0b603332063cb5c6e32bd220c3e6e
+  script:
+    - python --version
+    - python -m pip install --disable-pip-version-check --no-cache-dir ruff==0.16.6 -e apps/backend/ingestion-data -e apps/backend/agentic
+    - ruff format --check apps/backend/ingestion-data/src apps/backend/ingestion-data/tests apps/backend/agentic/src apps/backend/agentic/tests
+    - ruff check apps/backend/ingestion-data/src apps/backend/ingestion-data/tests apps/backend/agentic/src apps/backend/agentic/tests
+    - python -m unittest discover -s apps/backend/ingestion-data/tests -v
+    - python -m unittest discover -s apps/backend/agentic/tests -v
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *python_observability_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *python_observability_changes
+
 validate_backend:
   stage: validar
   image: node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
+  services:
+    - name: amazon/dynamodb-local:2.6.1@sha256:1856c05cc66a0e49dc1099e483ad2851477eeebe2135250ac11a1d1227db54b1
+      alias: dynamodb
+  variables:
+    AWS_ACCESS_KEY_ID: "local"
+    AWS_SECRET_ACCESS_KEY: "local"
+    AWS_REGION: "us-east-1"
+    DYNAMODB_ENDPOINT: "http://dynamodb:8000"
   cache:
     key:
       files:
@@ -70,6 +128,8 @@ validate_backend:
     - npm --version
     - npm ci --prefer-offline --no-audit --fund=false
     - npm test
+    - npm run test:ci-policy
+    - npm run test:e2e
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *backend_changes
@@ -95,7 +155,7 @@ validate_backend_container:
     - |
       set -eu
       set -o pipefail
-      image_uri="monitoracao-api-ci:${CI_COMMIT_SHA}"
+      image_uri="g05-s3-api-ci:${CI_COMMIT_SHA}"
       docker buildx build \
         --platform linux/amd64 \
         --load \
@@ -146,7 +206,7 @@ deploy_backend_ecs:
   tags:
     - inteli-gitlab-runner-prd
   interruptible: false
-  resource_group: monitoracao-api-service
+  resource_group: g05-s3-api-service
   needs:
     - job: publish_backend_image
       artifacts: true
@@ -200,7 +260,7 @@ tipos:
   extends: .node
   stage: validar
   script:
-    - npx tsc --noEmit
+    - npm run typecheck
   rules:
     - changes: *mudou-frontend
 
@@ -276,16 +336,14 @@ construir:verificacao:
     - dnf install --quiet --assumeyes zip
   script:
     - cd apps/frontend
-    - ./deploy/deploy-amplify.sh "$AMPLIFY_APP_ID" "$AMPLIFY_BRANCH" out
+    - ./deploy/deploy-amplify.sh out
 
 publicar:staging:
   extends: .publicar
   needs: ["construir:staging"]
-  variables:
-    AMPLIFY_BRANCH: develop
+  resource_group: g05-s3-amplify-producao
   environment:
-    name: staging
-    url: https://develop.$AMPLIFY_DEFAULT_DOMAIN
+    name: aws-lab
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
       changes: *mudou-frontend
@@ -296,11 +354,9 @@ publicar:staging:
 publicar:producao:
   extends: .publicar
   needs: ["construir:producao"]
-  variables:
-    AMPLIFY_BRANCH: main
+  resource_group: g05-s3-amplify-producao
   environment:
-    name: producao
-    url: https://main.$AMPLIFY_DEFAULT_DOMAIN
+    name: aws-lab
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *mudou-frontend
