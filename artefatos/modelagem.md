@@ -392,7 +392,8 @@ Objetivo do usuário.
 
 #### Fluxos alternativos
 
-- **4a. Nenhuma hipótese disponível:** o sistema informa que a causa permanece inconclusiva e permite ao analista registrar uma causa conhecida. O fluxo segue para o passo 8.
+- **4a. Nenhuma hipótese disponível:** o sistema informa que a causa permanece inconclusiva, sem uma hipótese a ser confirmada, refutada ou reavaliada. O fluxo segue para o passo 4a.1.
+  - **4a.1. Registro de causa sem revisão de hipótese:** o analista pode informar diretamente uma causa conhecida e sua justificativa, sem que exista uma hipótese a ser revisada. O fluxo segue para o passo 9.
 - **5a. Evidências incompletas:** o sistema identifica as fontes ausentes ou atrasadas e segue para o passo 6.
 - **6a. Nenhum resultado para o recorte:** o sistema mantém o incidente aberto e permite remover filtros. O fluxo retorna ao passo 6.
 - **8a. Causa não identificada:** o analista mantém a revisão como refutada ou inconclusiva sem informar uma causa alternativa.
