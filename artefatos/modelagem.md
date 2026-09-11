@@ -335,6 +335,8 @@ No início de cada sessão e após sua expiração.
 - Qual provedor corporativo e qual protocolo de federação serão utilizados no SSO?
 - Quais grupos ou perfis corporativos determinarão as permissões de acesso ao View Show?
 
+> **Divergência tecnológica/temporária.** Este caso de uso descreve o modelo-alvo, com o Cognito federado ao SSO corporativo da Globo por OIDC/SAML. No runtime atual, a autenticação ocorre por login direto de usuário e senha no Cognito, e as rotas federadas retornam `503`. O [Status de implementação](arquitetura/status-implementacao.md) detalha essa divergência e o plano de convergência para o modelo aqui descrito.
+
 ### 3.3 UC-03 — Analisar incidente
 
 &emsp;Este caso de uso descreve a análise de um incidente pelo Atendimento N1. O sistema apresenta o impacto estimado, o recorte afetado, as hipóteses e as evidências disponíveis para que o analista avalie o diagnóstico e registre sua decisão.
@@ -1618,6 +1620,8 @@ Fonte: Material produzido pelos autores (2026).
 ### 5.4 Backend, autenticação e revisão
 
 &emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica; o terceiro compara os indicadores anteriores e posteriores a uma correção externa. Essas interações realizam os casos de uso UC-01, UC-02, UC-03, UC-04 e UC-05. O Dashboard atua como interface, enquanto o Backend concentra a validação da sessão, a consulta aos dados e a aplicação das regras de revisão e comparação.
+
+> **Divergência tecnológica/temporária.** O DS-02A a seguir modela a federação alvo (Cognito ↔ SSO corporativo por OIDC/SAML). No runtime atual, o Cognito realiza login direto por usuário e senha, e as rotas de federação retornam `503` — ver [Status de implementação](arquitetura/status-implementacao.md).
 
 #### 5.4.1 DS-02A — Autenticação federada e consulta
 
