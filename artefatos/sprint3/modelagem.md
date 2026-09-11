@@ -112,7 +112,7 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 
 <sup>Figura 1: Casos de uso do View Show — fronteira funcional do sistema e associações entre os atores e seus objetivos</sup>
 
-![Diagrama de casos de uso do View Show](../../assets/modelagem/casos-de-uso.svg)
+![Diagrama de casos de uso do View Show](/assets/modelagem/casos-de-uso.png)
 
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
 
