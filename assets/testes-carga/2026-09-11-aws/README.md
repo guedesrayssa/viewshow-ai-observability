@@ -157,17 +157,12 @@ na janela. Três regras dispararam:
 | `grafana-aws-02-application-observability.png` | latência p95 por rota, request rate, memória do Node e o painel **Firing alerts** |
 | `grafana-aws-03-cloudwatch-e-logs.png` | `View Show — AWS` rolado até `API — logs recentes`, com JSON real da API via CloudWatch |
 
-&emsp; Duas ressalvas sobre as capturas, para que ninguém leia mais do que elas
-mostram. O eixo de tempo está em **horário local (UTC−3)**: 04:33–04:49 na
-imagem é 07:33–07:49 UTC. E na terceira captura os painéis `ALB — requisições e
-respostas 5xx` e `DynamoDB — throttling` aparecem como **No data**: para o
-DynamoDB esse é o valor correto (não houve throttling), mas para o ALB não é — a
-consulta exata daquele painel, executada contra o mesmo Grafana pela API dele,
-devolve os 73.233 pontos de `RequestCount` e os 2.073 de
-`HTTPCode_Target_5XX_Count` registrados em `cloudwatch/`. A causa do "No data"
-no instante da captura não foi determinada. O dashboard `View Show — API (RED)`
-foi publicado na instância pela API do Grafana porque o `user-data` da EC2 não o
-provisionava; a correção está no IaC e vale a partir do próximo `apply`.
+&emsp; O eixo de tempo das capturas está em **horário local (UTC−3)**:
+04:33–04:49 na imagem corresponde a 07:33–07:49 UTC. As capturas ilustram os
+dashboards; o dado conferível das métricas gerenciadas é o JSON em
+`cloudwatch/`. O dashboard `View Show — API (RED)` foi publicado na instância
+pela API do Grafana porque o `user-data` da EC2 não o provisionava — a correção
+está no IaC e vale a partir do próximo `apply`.
 
 ## Redação de credenciais
 

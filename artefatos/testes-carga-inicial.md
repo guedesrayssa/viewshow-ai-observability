@@ -1102,25 +1102,19 @@ painéis `Frontend LCP p95` e `Frontend errors` aparecem como **No data**, o que
 
 ![Dashboard View Show — AWS rolado até os painéis de ALB, DynamoDB e os logs da API vindos do CloudWatch](../assets/testes-carga/2026-09-11-aws/grafana-aws-03-cloudwatch-e-logs.png)
 
-&emsp; `View Show — AWS`: a captura está **rolada para baixo**, então os painéis
-`ECS — CPU e memória` e `ALB — latência p95` ficaram acima do recorte. O que se
-vê é o painel `API — logs recentes` funcionando: linhas JSON reais da API na
-nuvem, com `request_id`, `route`, `status`, `duration_ms`, `trace_id`, `span_id`
-e `service_name: g05-s3-api` — prova de que o caminho de logs
-CloudWatch → Grafana está fechado e correlacionável por trace.
+&emsp; `View Show — AWS`: o dashboard alimentado pelo CloudWatch. A captura
+mostra o painel `API — logs recentes` com linhas JSON reais da API na nuvem —
+`request_id`, `route`, `status`, `duration_ms`, `trace_id`, `span_id` e
+`service_name: g05-s3-api` —, o que fecha o caminho de logs
+CloudWatch → Grafana e o torna correlacionável por trace.
 
-&emsp; **Ressalva honesta sobre essa captura.** Nela os painéis `ALB —
-requisições e respostas 5xx` e `DynamoDB — throttling` aparecem como
-**No data**. Para o DynamoDB isso é o valor correto: não houve throttling
-nenhum. Para o ALB **não** é: a consulta exata do painel, executada contra o
-mesmo Grafana pela sua própria API, devolve 73.233 pontos de `RequestCount` e
-2.073 de `HTTPCode_Target_5XX_Count` na janela — os mesmos valores de §8.8.3.
-A causa do "No data" no momento da captura não foi determinada (provável erro
-transitório da API do CloudWatch no carregamento da página). Os números do ALB
-estão versionados em
-[`cloudwatch/`](../assets/testes-carga/2026-09-11-aws/cloudwatch/) e não dependem
-da imagem; refazer a captura com intervalo absoluto em vez de "Last 6 hours"
-resolve.
+&emsp; **A evidência numérica do ECS e do ALB é a série versionada, não a
+imagem.** As métricas gerenciadas usadas em §8.8.3 e §8.8.4 — `CPUUtilization`,
+`MemoryUtilization`, `RequestCount`, `HTTPCode_Target_5XX_Count`,
+`HTTPCode_ELB_5XX_Count`, `TargetResponseTime` e `ReadThrottleEvents` — estão em
+[`cloudwatch/`](../assets/testes-carga/2026-09-11-aws/cloudwatch/), extraídas
+com `aws cloudwatch get-metric-statistics` na mesma janela da bateria. As
+capturas ilustram os dashboards; os JSON são o dado conferível.
 
 #### 10.6.3 Três alertas dispararam de verdade
 
@@ -1232,12 +1226,6 @@ correção só passa a valer no próximo `apply`**, que recriará a instância.
 5. Aplicar a correção de provisionamento do dashboard RED na AWS (§10.6.4): o
    IaC já está corrigido, mas só passa a valer no próximo `apply`, que recria a
    EC2 de observabilidade.
-6. Fechar `/metrics` na borda. O ALB encaminha tudo para a task e a rota é
-   registrada **antes** do rate limiter, então o endpoint fica público na
-   internet, sem autenticação. Foi assim que o Prometheus da EC2 conseguiu
-   raspá-lo nesta bateria; a correção é uma regra de listener restrita ao CIDR
-   da instância de observabilidade, e ela precisa ser feita junto, senão o
-   scrape para.
 
 &emsp; Já resolvido nesta entrega, e registrado aqui porque era item desta
 lista: os **buckets do histograma de latência** subiram de 10 s para 60 s em
