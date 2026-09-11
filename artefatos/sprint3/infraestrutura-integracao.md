@@ -29,50 +29,7 @@
 <div align="center">
 
 <strong>Figura 1: Diagrama de implantação da infraestrutura atual</strong>
-
-</div>
-
-```mermaid
-flowchart TB
-    U[Usuário]
-
-    subgraph AWS["AWS — estado atual"]
-        AMP[AWS Amplify Hosting<br/>Frontend Next.js estático]
-        APIGW[Amazon API Gateway<br/>Endpoint HTTPS]
-
-        subgraph VPC["VPC dedicada — 10.0.0.0/16 — duas AZs"]
-            subgraph PUB["Sub-redes públicas"]
-                ALB[Application Load Balancer<br/>HTTP :80]
-                NAT[Um NAT Gateway]
-                BASTION[Bastion Host<br/>SSM e SSH restrito opcional]
-            end
-
-            subgraph PRIV["Sub-redes privadas"]
-                API[ECS Service Fargate<br/>API TypeScript :3000<br/>1 a 4 tasks — CPU-alvo 50%]
-                OBS[EC2 de observabilidade<br/>LGTM + Alloy<br/>opcional]
-            end
-
-            ALB -->|Health check /health| API
-            API -->|Saída controlada| NAT
-            OBS -->|Saída controlada| NAT
-            BASTION -.->|Diagnóstico restrito| OBS
-            API -.->|Telemetria| OBS
-        end
-
-        ECR[Amazon ECR] -->|Imagem Docker| API
-        API --> DDB[Amazon DynamoDB<br/>Dados operacionais e Golden Set]
-        API --> COG[Amazon Cognito<br/>Autenticação]
-        API --> CW[Amazon CloudWatch Logs]
-        VPC --> FLOW[Amazon S3 privado<br/>VPC Flow Logs em Parquet]
-        OBS --> CW
-        AMP -->|Proxy same-origin| APIGW
-        APIGW -->|HTTP proxy| ALB
-    end
-
-    U -->|HTTPS| AMP
-```
-
-<div align="center">
+<img src="../assets/diagrama-implantacao-aws1.svg" alt="Diagrama de implantação da infraestrutura atual"/>
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -87,97 +44,10 @@ Fonte: Material produzido pelos autores (2026).
 <div align="center">
 
 <strong>Figura 2: Diagrama de implantação da arquitetura-alvo</strong>
+<img src="../assets/diagrama-implantacao-aws2.svg" alt="Diagrama de implantação da arquitetura-alvo"/>
 
 </div>
 
-```mermaid
-flowchart TB
-    U[Usuário]
-    ARGUS[Sistema ARGUS]
-    SSO[SSO Grupo Globo]
-
-    subgraph AWS["AWS — arquitetura-alvo"]
-        AMP[AWS Amplify Hosting<br/>Frontend Next.js]
-        APIGW[Amazon API Gateway]
-        COG[Amazon Cognito]
-        ECR[Amazon ECR<br/>Imagens versionadas]
-        EVB[Amazon EventBridge<br/>Agendamento a cada 15 min]
-        SQS[Amazon SQS<br/>Fila de análise]
-        DLQ[Dead-letter queue]
-        DDB[(DynamoDB<br/>Janela operacional de 30 dias)]
-        GOLD[(DynamoDB<br/>Golden Set)]
-        S3[(Amazon S3<br/>Dumps e Parquet histórico)]
-        GLUE[AWS Glue Data Catalog]
-        ATHENA[Amazon Athena]
-        BEDROCK[Amazon Bedrock<br/>Apoio à hipótese]
-        CW[Amazon CloudWatch<br/>Logs, métricas e alarmes]
-
-        subgraph VPC["VPC dedicada — duas AZs"]
-            direction TB
-            subgraph PUB["Sub-redes públicas"]
-                ALB[Application Load Balancer]
-                NAT[NAT Gateway por AZ]
-                BASTION[Bastion Host restrito<br/>uso excepcional]
-            end
-
-            subgraph PRIV["Sub-redes privadas de aplicação"]
-                API[ECS Service Fargate<br/>API — mínimo 2 tasks]
-                ING[ECS Task Fargate<br/>Ingestão]
-                WORKER[ECS Service Fargate<br/>Worker de análise]
-                OBS[Observabilidade LGTM<br/>opcional]
-            end
-
-            ALB -->|Target group e /health| API
-            API -->|Saída controlada| NAT
-            ING -->|Saída controlada| NAT
-            WORKER -->|Saída controlada| NAT
-            BASTION -.->|Diagnóstico restrito| OBS
-        end
-
-        AMP -->|Proxy same-origin| APIGW
-        APIGW --> ALB
-        COG -->|Federação| SSO
-        API --> COG
-        ECR --> API
-        ECR --> ING
-        ECR --> WORKER
-
-        EVB -->|RunTask| ING
-        ARGUS -->|VPN e TLS| ING
-        S3 -->|Dumps de origem| ING
-        ING --> DDB
-        ING -->|Parquet versionado| S3
-        ING -->|Outbox| SQS
-        SQS --> WORKER
-        SQS -->|Após tentativas| DLQ
-        WORKER --> DDB
-        WORKER --> GOLD
-        WORKER --> BEDROCK
-
-        API --> DDB
-        API --> GOLD
-        API --> ATHENA
-        API -->|Reprocessamento| SQS
-        API -->|Ingestão sob demanda| ING
-        GLUE -->|Cataloga| S3
-        ATHENA --> GLUE
-        ATHENA -->|Consulta| S3
-
-        API --> CW
-        ING --> CW
-        WORKER --> CW
-        ALB --> CW
-        VPC -->|Flow Logs| CW
-    end
-
-    U -->|HTTPS| AMP
-```
-
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
-
-</div>
 
 ## 3. Componentes e justificativas
 
