@@ -40,22 +40,7 @@ Não fazem parte da modelagem de casos de uso:
 
 Esses elementos viabilizam o produto, mas não constituem objetivos iniciados diretamente pelos atores na interface. A observação da integridade dos dados de telemetria, por sua vez, integra o escopo funcional porque subsidia a avaliação da confiabilidade das análises apresentadas pelo View Show.
 
-### 1.3 Documentos de referência
-
-| Documento | Utilização neste artefato |
-| --- | --- |
-| [Especificação de requisitos](sprint1/requisitos.md) | Identificação dos requisitos e casos de uso |
-| [Entendimento da experiência do usuário](sprint1/entendimento_ux.md) | Identificação das personas, jornadas e objetivos observáveis no frontend |
-| [Arquitetura inicial](sprint2/arquitetura-inicial.md) | Identificação de componentes e integrações |
-| [Documentação de frontend](sprint2/frontend.md) | Validação dos fluxos de interface |
-| [Documentação de backend](sprint2/backend-sprint-2.md) | Validação de serviços, entidades e operações |
-| [Visão geral da arquitetura](arquitetura/visao-geral.md) | Fonte normativa dos componentes, limites e decisões arquiteturais representados no diagrama de classes |
-| [Ingestão e dados](arquitetura/ingestao-e-dados.md) | Fonte normativa de <code>DatasetVersion</code>, <code>Manifesto</code> e das fronteiras de persistência |
-| [Análise de dados e diagnóstico por IA](arquitetura/analise-e-ia.md) | Fonte normativa de <code>Previsao</code>, <code>Diagnostico</code> e do Worker de Análise |
-| [API do dashboard](arquitetura/api-dashboard.md) | Fonte normativa dos DTOs, enums e estados representados no diagrama de classes |
-| [Status de implementação](arquitetura/status-implementacao.md) | Registro do que já está implementado, mantido fora do diagrama de classes |
-
-### 1.4 Convenções adotadas
+### 1.3 Convenções adotadas
 
 - Casos de uso são identificados como `UC-XX`.
 - Requisitos funcionais são identificados como `RFXX`.
@@ -341,7 +326,7 @@ No início de cada sessão e após sua expiração.
 - Qual provedor corporativo e qual protocolo de federação serão utilizados no SSO?
 - Quais grupos ou perfis corporativos determinarão as permissões de acesso ao View Show?
 
-> **Divergência tecnológica/temporária.** Este caso de uso descreve o modelo-alvo, com o Cognito federado ao SSO corporativo da Globo por OIDC/SAML. No runtime atual, a autenticação ocorre por login direto de usuário e senha no Cognito, e as rotas federadas retornam `503`. O [Status de implementação](arquitetura/status-implementacao.md) detalha essa divergência e o plano de convergência para o modelo aqui descrito.
+> **Divergência tecnológica/temporária.** Este caso de uso descreve o modelo-alvo, com o Cognito federado ao SSO corporativo da Globo por OIDC/SAML. No runtime atual, a autenticação ocorre por login direto de usuário e senha no Cognito, e as rotas federadas retornam `503`, até a convergência para o modelo aqui descrito.
 
 ### 3.3 UC-03 — Analisar incidente
 
@@ -853,7 +838,7 @@ A cada 15 minutos, automaticamente; a importação manual ocorre sob demanda, ti
 - Qual granularidade de erro deve ser reportada ao operador quando um snapshot falha na restauração?
 - O ARGUS deve continuar sendo a única fonte de dados, ou o View Show deverá, no futuro, expor uma API de recebimento direto dos frontends, como originalmente descrito em RIE02?
 
-> **Substituição tecnológica documentada.** RIE02, tal como redigido em [Especificação de requisitos §3](sprint1/requisitos.md), descreve uma API de ingestão que recebe eventos diretamente dos frontends do Globoplay e confirma o recebimento somente após a publicação na fila. A arquitetura-alvo aprovada em [Ingestão e dados](arquitetura/ingestao-e-dados.md) substitui esse contrato por um modelo de leitura periódica do ARGUS — sistema interno da Globo que já recebe essa telemetria antes do View Show, fora de sua fronteira. A garantia comportamental de RIE02 (nenhuma confirmação sem persistência prévia) é preservada pelo par checkpoint + outbox transacional do Serviço de Ingestão (DS-01A), mesmo sem uma API de recebimento própria dos frontends.
+> **Substituição tecnológica documentada.** RIE02 descreve originalmente uma API de ingestão que recebe eventos diretamente dos frontends do Globoplay e confirma o recebimento somente após a publicação na fila. A arquitetura-alvo substitui esse contrato por um modelo de leitura periódica do ARGUS — sistema interno da Globo que já recebe essa telemetria antes do View Show, fora de sua fronteira. A garantia comportamental de RIE02 (nenhuma confirmação sem persistência prévia) é preservada pelo par checkpoint + outbox transacional do Serviço de Ingestão (DS-01A), mesmo sem uma API de recebimento própria dos frontends.
 
 ### 3.9 Síntese das descrições
 
@@ -867,17 +852,17 @@ A cada 15 minutos, automaticamente; a importação manual ocorre sob demanda, ti
 
 ### 4.1. Objetivo e escopo
 
-&emsp;Esta seção modela exclusivamente a arquitetura-alvo final do View Show, definida nos documentos de [Visão geral da arquitetura](arquitetura/visao-geral.md), [Ingestão e dados](arquitetura/ingestao-e-dados.md), [Análise de dados e diagnóstico por IA](arquitetura/analise-e-ia.md) e [API do dashboard](arquitetura/api-dashboard.md), e alinhada aos casos de uso da Seção 2 e aos diagramas de sequência da Seção 5 deste documento. As classes, os estados e os relacionamentos representados aqui não são derivados dos arquivos, rotas ou módulos hoje presentes no repositório: eles descrevem a solução aprovada para implementação, independentemente do que já foi construído.
+&emsp;Esta seção modela exclusivamente a arquitetura-alvo final do View Show, alinhada aos casos de uso da Seção 2 e aos diagramas de sequência da Seção 5 deste documento. As classes, os estados e os relacionamentos representados aqui não são derivados dos arquivos, rotas ou módulos hoje presentes no repositório: eles descrevem a solução aprovada para implementação, independentemente do que já foi construído.
 
-&emsp;Elementos transitórios do protótipo — autenticação local, hash de senha, nomes de arquivos e módulos atuais, o schema v1/v2 da tabela operacional e demais limitações momentâneas da implementação — não são modelados nesta seção. Essas informações permanecem registradas no [Status de implementação](arquitetura/status-implementacao.md), que compara o código existente com o contrato-alvo sem redefini-lo.
+&emsp;Elementos transitórios do protótipo — autenticação local, hash de senha, nomes de arquivos e módulos atuais, o schema v1/v2 da tabela operacional e demais limitações momentâneas da implementação — não são modelados nesta seção, por descreverem um estágio intermediário e não a solução-alvo.
 
 &emsp;A modelagem é dividida em três visões complementares, para não misturar conceitos de natureza diferente na mesma figura:
 
 - **Visão de domínio** (4.2.1): as entidades e os objetos de valor que persistem através do tempo de vida de um incidente, de uma previsão ou de uma importação, independentemente de qual componente os manipula.
-- **Visão de aplicação** (4.2.2): os serviços e as fronteiras que operam sobre o domínio — a API do dashboard, o Worker de Análise, a autorização e os repositórios — segundo os componentes definidos na [Visão geral da arquitetura](arquitetura/visao-geral.md#3-componentes).
+- **Visão de aplicação** (4.2.2): os serviços e as fronteiras que operam sobre o domínio — a API do dashboard, o Worker de Análise, a autorização e os repositórios.
 - **Visão de persistência** (4.2.3): o mapeamento entre as classes de domínio e as camadas físicas de armazenamento (DynamoDB, S3/Parquet, Glue e Athena), sem transformar esses componentes de infraestrutura em classes de domínio.
 
-&emsp;O Serviço de Ingestão e seus registros canônicos (`SignalObservation`, `DimensionalMetricAggregate`, `Incident` físico) possuem contrato próprio e detalhado em [Ingestão e dados](arquitetura/ingestao-e-dados.md); nesta seção, a Ingestão aparece apenas como fronteira de serviço na visão de aplicação, para não duplicar um contrato já normativo em outro documento. O frontend permanece fora do escopo porque apenas consome a API do dashboard.
+&emsp;O Serviço de Ingestão e seus registros canônicos (`SignalObservation`, `DimensionalMetricAggregate`, `Incident` físico) possuem contrato técnico próprio; nesta seção, a Ingestão aparece apenas como fronteira de serviço na visão de aplicação, para não duplicar esse contrato. O frontend permanece fora do escopo porque apenas consome a API do dashboard.
 
 ### 4.2. Diagramas
 
@@ -1074,17 +1059,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;`Operador` substitui qualquer noção de conta local: representa a identidade corporativa validada pelo Cognito federado ao SSO da Globo (RF04, RNF04, RIE01, RESTR01), sem atributo de senha, hash ou cadastro próprio. Os perfis especializados do diagrama de casos de uso — Analista N1, Engenheira de Software e Product Manager — são papéis de autorização sobre essa mesma identidade, não classes de domínio adicionais; a permissão `data:import`, concedida pelo grupo Cognito `data-operator`, é o que autoriza um `Operador` a criar ou concluir um `ImportJob`.
-
-&emsp;`Incidente` representa uma degradação já observada; `Previsao` representa uma estimativa de risco futuro. Essa distinção é proposital: uma previsão nunca se torna um incidente automaticamente, e cada uma pode originar, no máximo, um `Diagnostico`. O `Diagnostico` agrega de zero a muitas `Hipotese` candidatas — cada uma associada às evidências que a sustentam — e permanece com `status = PENDING`/`not_started`, `processing` ou `failed` sem nenhuma hipótese associada; a multiplicidade `0..*` entre `Diagnostico` e `Hipotese` só é preenchida quando `status = ready`, conforme o fluxo alternativo "4a. Nenhuma hipótese disponível" do UC-03.
-
-&emsp;`AnalysisRun` representa a execução idempotente de uma mensagem da SQS de Análise (`ANOMALY_DETECTION`, `QOE_FORECAST` ou `REANALYSIS_REQUESTED`); seu `idempotencyKey` garante que uma entrega duplicada ou fora de ordem não produza um `Incidente` ou uma `Previsao` repetidos. Cada execução correlaciona ou cria, no máximo, um `Incidente` (detecção) ou produz, no máximo, uma `Previsao` (previsão preventiva), nunca os dois ao mesmo tempo.
-
-&emsp;`DecisaoRevisao` modela apenas o **estado atual** da revisão de uma `Hipotese` — os quatro estados definidos pelo contrato da API (`pending`, `confirmed`, `refuted`, `inconclusive`) e a `version` usada na concorrência otimista. Cada transição desse estado, incluindo `inconclusive → confirmed/refuted` (DS-02B), grava uma `AuditoriaRevisao` imutável e independente: um registro histórico de `0..*` por `Hipotese`, com o status anterior, o novo status, quem decidiu e quando. Separar as duas classes evita que o histórico de revisões concorrentes seja perdido a cada sobrescrita do estado atual. Apenas a `AuditoriaRevisao` que registra a transição para `confirmed` cria um `GoldenCase`; `refuted` pode registrar `correctedCause` quando o revisor conhece uma causa diferente; `inconclusive` não é terminal e permanece revisável com uma nova versão. `confirmed` e `refuted` são estados finais e não podem ser sobrescritos.
-
-&emsp;`AvaliacaoRecuperacao` persiste o resultado do DS-02C: o `milestoneAt` (marco temporal da correção externa), a `variation` calculada entre a janela de base e a janela de comparação — ambas modeladas pelo mesmo objeto de valor `Janela` já usado por `Previsao` —, a `conclusion` registrada pelo ator e a autoria da avaliação. Sem essa entidade, o marco temporal e as janelas comparadas do UC-05 não teriam representação estrutural, apesar de serem efetivamente armazenados ao final do fluxo ("Armazenar avaliação, autoria e data").
-
-&emsp;`DatasetVersion` identifica a versão física ativada por uma importação; `Incidente`, `Previsao` e `ImportJob` referenciam a versão sob a qual foram produzidos, e o `Manifesto` aponta qual `DatasetVersion` está ativa e delimita a fronteira entre a camada quente (`hotFrom`/`hotThrough`, no DynamoDB) e o arquivo histórico (`archivePrefix`, em Parquet no S3). Um `ImportJob` só ativa sua `candidateDatasetVersion` como versão do `Manifesto` depois de validar as duas camadas; uma falha preserva a versão anterior. O próprio `ImportJob` registra `createdBy`, `completionRequestedBy` e `activatedBy` — a identidade do operador autenticado em cada etapa — além dos respectivos `createdAt`, `completionRequestedAt` e `activatedAt`, conforme exigido pelo DS-01B; nenhum desses dados depende de uma entidade de auditoria à parte, pois o próprio ciclo de vida do `ImportJob` é o registro de auditoria da importação.
+&emsp;O Diagrama 2 apresenta as entidades e os objetos de valor do modelo de domínio, com seus atributos, operações e relacionamentos. A responsabilidade de cada elemento é detalhada na tabela do item 4.3.1; os estados e as transições relevantes estão na tabela do item 4.3.3; e as regras, garantias e invariantes que regem o comportamento dessas classes estão consolidadas na tabela do item 4.5.
 
 #### 4.2.2. Serviços e fronteiras da aplicação
 
@@ -1281,17 +1256,11 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O Backend é a única fronteira pública do View Show, conforme a invariante transversal registrada em [Fluxos integrados](arquitetura/fluxos.md#3-invariantes-transversais); nenhum outro componente expõe endpoint diretamente ao Dashboard. O Serviço de Autorização concentra a validação da sessão federada e das permissões associadas ao `Operador`, incluindo `data:import`, antes de qualquer fronteira delegar a uma consulta ou a um comando.
-
-&emsp;O orquestrador de análise (`Analysis Orchestrator`), o detector de anomalias, o modelo de previsão e o agente diagnóstico permanecem módulos internos do Worker de Análise, conforme a decisão D6 da [Visão geral da arquitetura](arquitetura/visao-geral.md#d6--orquestrador-dentro-do-worker-de-análise): eles não possuem repositório, API ou ciclo de implantação próprios nesta versão. O Worker consulta o Repositório do conjunto de referência apenas para leitura; somente o Serviço de Revisão, acionado pela fronteira de revisão do Backend, possui permissão de escrita nesse repositório (decisão D8).
-
-&emsp;Cada repositório é a única porta de acesso à sua área de persistência — o Repositório operacional concentra incidentes, evidências, diagnósticos, hipóteses, auditorias de revisão, avaliações de recuperação, previsões, `ImportJob` e o `Manifesto`; o Repositório do conjunto de referência isola os `GoldenCase` confirmados; o Repositório histórico encapsula as consultas ao Athena sobre o arquivo Parquet no S3. ARGUS, Cognito/SSO, Amazon Bedrock, a SQS de Análise e o ECS/Fargate são integrações externas ou serviços gerenciados pela AWS: aparecem como dependências da aplicação, não como classes de domínio.
-
-&emsp;O namespace **Tipos auxiliares** declara os tipos usados nas assinaturas das interfaces da API do Dashboard que não são entidades de domínio nem DTOs de persistência. `Sessao` e `RedirectUrl` são objetos de valor produzidos pelo fluxo de autenticação federada; `VisaoGeralDTO`, `IncidenteDTO`, `DiagnosticoDTO` e `MonitoringOverviewDTO` são objetos de transferência que agregam, para uma única resposta HTTP, entidades e objetos de valor já modelados na visão de domínio (4.2.1). `DimensionalMetricAggregate`, referenciado nessas assinaturas e no Repositório histórico, não é redeclarado aqui porque seu contrato completo já é normativo em [Ingestão e dados §9.2](arquitetura/ingestao-e-dados.md#92-dimensionalmetricaggregate); duplicá-lo nesta seção criaria duas fontes de verdade para o mesmo tipo.
+&emsp;O Diagrama 3 apresenta os serviços e as fronteiras da arquitetura-alvo, organizados nos namespaces API do Dashboard, Serviços de Aplicação, Worker de Análise, Repositórios e Tipos auxiliares. A responsabilidade de cada elemento está detalhada na tabela do item 4.3.2, e suas dependências estão na tabela de relacionamentos do item 4.4.
 
 #### 4.2.3. Mapeamento de persistência
 
-&emsp;A tabela a seguir liga cada classe de domínio à área de armazenamento física correspondente, sem promover tabelas, buckets ou filas a classes de domínio. Os contratos completos de chaves, partições e watermarks estão em [Ingestão e dados](arquitetura/ingestao-e-dados.md#10-contrato-de-persistência).
+&emsp;A tabela a seguir liga cada classe de domínio à área de armazenamento física correspondente, sem promover tabelas, buckets ou filas a classes de domínio.
 
 | Classe de domínio | Repositório | Armazenamento físico |
 |:---|:---|:---|
@@ -1308,44 +1277,44 @@ Fonte: Material produzido pelos autores (2026).
 
 #### 4.3.1. Modelo de domínio
 
-| Elemento | Tipo | Responsabilidade | Fonte normativa |
-|:---|:---|:---|:---|
-| <code>Operador</code> | Entidade de domínio | Identidade corporativa autenticada, portadora dos grupos que autorizam operações sensíveis como a importação de dump. | [Visão geral §7](arquitetura/visao-geral.md#7-segurança); RF04, RNF04, RIE01, RESTR01 |
-| <code>Incidente</code> | Entidade de domínio | Agrupa uma degradação efetivamente observada, da detecção ao encerramento. | [API do dashboard §6](arquitetura/api-dashboard.md#6-incidentes) |
-| <code>Evidencia</code> | Entidade de domínio | Sinal que sustenta ou contesta uma hipótese diagnóstica. | [API do dashboard §7](arquitetura/api-dashboard.md#7-diagnóstico-e-evidências) |
-| <code>Diagnostico</code> | Entidade de domínio | Agrega de zero a muitas hipóteses candidatas de um incidente ou de uma previsão de risco elevado; permanece sem hipóteses enquanto não estiver <code>ready</code>. | [Análise e IA §9](arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico) |
-| <code>Hipotese</code> | Entidade de domínio | Causa provável ranqueada por confiança, sujeita a revisão humana. | [Análise e IA §9](arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico) |
-| <code>DecisaoRevisao</code> | Objeto de valor | Estado atual da revisão de uma hipótese, com concorrência otimista por versão. | [API do dashboard §8](arquitetura/api-dashboard.md#8-revisão-de-hipótese) |
-| <code>AuditoriaRevisao</code> | Entidade de domínio, imutável | Histórico de 0..* transições de revisão de uma hipótese, uma por decisão registrada. | [API do dashboard §8](arquitetura/api-dashboard.md#8-revisão-de-hipótese) |
-| <code>GoldenCase</code> | Entidade de domínio | Diagnóstico confirmado, usado como referência para análises futuras. | [Análise e IA §10](arquitetura/analise-e-ia.md#10-persistência-de-incidentes-e-diagnósticos) |
-| <code>Previsao</code> | Entidade de domínio | Estimativa de risco de degradação para a janela horária seguinte. | [Análise e IA §7](arquitetura/analise-e-ia.md#7-previsão-preventiva) |
-| <code>Janela</code> | Objeto de valor | Intervalo temporal e granularidade de uma previsão ou de uma avaliação de recuperação. | [Análise e IA §7](arquitetura/analise-e-ia.md#7-previsão-preventiva) |
-| <code>AvaliacaoRecuperacao</code> | Entidade de domínio | Registro do marco temporal, das janelas comparadas e da conclusão de uma avaliação de recuperação após correção. | [DS-02C §5.4.3](#543-ds-02c--avaliação-da-recuperação-após-correção) deste documento; o contrato de endpoint ainda não está formalizado em [API do dashboard](arquitetura/api-dashboard.md) (ver Q-04) |
-| <code>ImportJob</code> | Entidade de domínio | Acompanha o upload, a restauração e a ativação de um dump do ARGUS, com auditoria de autoria e horário em cada etapa. | [Visão geral §D9](arquitetura/visao-geral.md#d9--importação-assíncrona-e-ativação-versionada) |
-| <code>DatasetVersion</code> | Objeto de valor | Identifica a versão física de um conjunto de dados. | [Ingestão e dados §10.5](arquitetura/ingestao-e-dados.md#105-controle) |
-| <code>Manifesto</code> | Entidade de domínio | Aponta a <code>DatasetVersion</code> ativa e a fronteira entre as camadas quente e histórica. | [Ingestão e dados §10.5](arquitetura/ingestao-e-dados.md#105-controle) |
-| <code>AnalysisRun</code> | Entidade de domínio | Execução idempotente de uma mensagem de análise; evita duplicar incidentes ou previsões em reentregas. | [Análise e IA §5](arquitetura/analise-e-ia.md#5-idempotência-e-estado-da-execução) |
+| Elemento | Tipo | Responsabilidade |
+|:---|:---|:---|
+| <code>Operador</code> | Entidade de domínio | Identidade corporativa autenticada, portadora dos grupos que autorizam operações sensíveis como a importação de dump. |
+| <code>Incidente</code> | Entidade de domínio | Agrupa uma degradação efetivamente observada, da detecção ao encerramento. |
+| <code>Evidencia</code> | Entidade de domínio | Sinal que sustenta ou contesta uma hipótese diagnóstica. |
+| <code>Diagnostico</code> | Entidade de domínio | Agrega de zero a muitas hipóteses candidatas de um incidente ou de uma previsão de risco elevado; permanece sem hipóteses enquanto não estiver <code>ready</code>. |
+| <code>Hipotese</code> | Entidade de domínio | Causa provável ranqueada por confiança, sujeita a revisão humana. |
+| <code>DecisaoRevisao</code> | Objeto de valor | Estado atual da revisão de uma hipótese, com concorrência otimista por versão. |
+| <code>AuditoriaRevisao</code> | Entidade de domínio, imutável | Histórico de 0..* transições de revisão de uma hipótese, uma por decisão registrada. |
+| <code>GoldenCase</code> | Entidade de domínio | Diagnóstico confirmado, usado como referência para análises futuras. |
+| <code>Previsao</code> | Entidade de domínio | Estimativa de risco de degradação para a janela horária seguinte. |
+| <code>Janela</code> | Objeto de valor | Intervalo temporal e granularidade de uma previsão ou de uma avaliação de recuperação. |
+| <code>AvaliacaoRecuperacao</code> | Entidade de domínio | Registro do marco temporal, das janelas comparadas e da conclusão de uma avaliação de recuperação após correção. |
+| <code>ImportJob</code> | Entidade de domínio | Acompanha o upload, a restauração e a ativação de um dump do ARGUS, com auditoria de autoria e horário em cada etapa. |
+| <code>DatasetVersion</code> | Objeto de valor | Identifica a versão física de um conjunto de dados. |
+| <code>Manifesto</code> | Entidade de domínio | Aponta a <code>DatasetVersion</code> ativa e a fronteira entre as camadas quente e histórica. |
+| <code>AnalysisRun</code> | Entidade de domínio | Execução idempotente de uma mensagem de análise; evita duplicar incidentes ou previsões em reentregas. |
 
 #### 4.3.2. Serviços e fronteiras
 
-| Elemento | Camada | Responsabilidade | Fonte normativa |
-|:---|:---|:---|:---|
-| Autenticação e sessão | Fronteira (boundary) | Conclui o fluxo OIDC com o Cognito e emite o cookie de sessão. | [API do dashboard §11](arquitetura/api-dashboard.md#11-autenticação-federada-e-sessão) |
-| Visão geral, incidentes e eventos | Fronteira (boundary) | Expõe consultas de leitura sobre o Repositório operacional e o Repositório histórico. | [API do dashboard §5, §6, §9](arquitetura/api-dashboard.md#5-visão-geral) |
-| Revisão de hipótese | Fronteira (boundary) | Recebe a decisão humana e delega ao Serviço de revisão. | [API do dashboard §8](arquitetura/api-dashboard.md#8-revisão-de-hipótese) |
-| Importação de dump | Fronteira (boundary) | Inicia e acompanha o <code>ImportJob</code>. | [API do dashboard §12](arquitetura/api-dashboard.md#12-importação-assíncrona-de-dump) |
-| Reanálise | Fronteira (boundary) | Publica uma solicitação <code>REANALYSIS_REQUESTED</code> na SQS de Análise. | [API do dashboard §13](arquitetura/api-dashboard.md#13-solicitação-de-reanálise) |
-| Monitoramento | Fronteira (boundary) | Expõe a saúde das fontes e do pipeline de ingestão e análise. | [API do dashboard §10](arquitetura/api-dashboard.md#10-monitoramento) |
-| Serviço de autorização | Serviço (control) | Resolve a sessão corporativa e verifica permissões como <code>data:import</code>. | [Visão geral §7](arquitetura/visao-geral.md#7-segurança) |
-| Serviço de importação | Serviço (control) | Cria o <code>ImportJob</code>, gera URLs pré-assinadas e inicia a tarefa Fargate. | [Visão geral §D9](arquitetura/visao-geral.md#d9--importação-assíncrona-e-ativação-versionada) |
-| Serviço de revisão | Serviço (control) | Aplica a concorrência otimista da <code>DecisaoRevisao</code>, grava a <code>AuditoriaRevisao</code> e promove o <code>GoldenCase</code>. | [Análise e IA §10](arquitetura/analise-e-ia.md#10-persistência-de-incidentes-e-diagnósticos) |
-| Analysis Orchestrator | Serviço (control), interno ao Worker | Decide quando investigar, reúne contexto e aciona o agente diagnóstico. | [Análise e IA §9](arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico); decisão D6 |
-| Anomaly Detector | Serviço (control), interno ao Worker | Aplica MAD e distância de Mahalanobis à janela de 15 minutos. | [Análise e IA §6](arquitetura/analise-e-ia.md#6-detecção-reativa) |
-| QoE Forecast Model | Serviço (control), interno ao Worker | Estima o risco de degradação da hora seguinte. | [Análise e IA §7](arquitetura/analise-e-ia.md#7-previsão-preventiva) |
-| Diagnostic Agent | Serviço (control), interno ao Worker | Estrutura o contexto enviado ao Bedrock e ranqueia as hipóteses recebidas. | [Análise e IA §9](arquitetura/analise-e-ia.md#9-orquestração-e-diagnóstico) |
-| Repositório operacional | Repositório | Única porta de acesso à tabela <code>monitoracao-operacional</code>. | [Ingestão e dados §10.1](arquitetura/ingestao-e-dados.md#101-tabelas-físicas) |
-| Repositório do conjunto de referência | Repositório | Única porta de acesso à tabela <code>monitoracao-golden-set</code>; leitura pelo Worker, escrita pelo Serviço de revisão. | Decisão D8 |
-| Repositório histórico | Repositório | Encapsula as consultas ao Athena sobre o arquivo Parquet do S3. | [Ingestão e dados §10.3](arquitetura/ingestao-e-dados.md#103-arquivo-histórico) |
+| Elemento | Camada | Responsabilidade |
+|:---|:---|:---|
+| Autenticação e sessão | Fronteira (boundary) | Conclui o fluxo OIDC com o Cognito e emite o cookie de sessão. |
+| Visão geral, incidentes e eventos | Fronteira (boundary) | Expõe consultas de leitura sobre o Repositório operacional e o Repositório histórico. |
+| Revisão de hipótese | Fronteira (boundary) | Recebe a decisão humana e delega ao Serviço de revisão. |
+| Importação de dump | Fronteira (boundary) | Inicia e acompanha o <code>ImportJob</code>. |
+| Reanálise | Fronteira (boundary) | Publica uma solicitação <code>REANALYSIS_REQUESTED</code> na SQS de Análise. |
+| Monitoramento | Fronteira (boundary) | Expõe a saúde das fontes e do pipeline de ingestão e análise. |
+| Serviço de autorização | Serviço (control) | Resolve a sessão corporativa e verifica permissões como <code>data:import</code>. |
+| Serviço de importação | Serviço (control) | Cria o <code>ImportJob</code>, gera URLs pré-assinadas e inicia a tarefa Fargate. |
+| Serviço de revisão | Serviço (control) | Aplica a concorrência otimista da <code>DecisaoRevisao</code>, grava a <code>AuditoriaRevisao</code> e promove o <code>GoldenCase</code>. |
+| Analysis Orchestrator | Serviço (control), interno ao Worker | Decide quando investigar, reúne contexto e aciona o agente diagnóstico. |
+| Anomaly Detector | Serviço (control), interno ao Worker | Aplica MAD e distância de Mahalanobis à janela de 15 minutos. |
+| QoE Forecast Model | Serviço (control), interno ao Worker | Estima o risco de degradação da hora seguinte. |
+| Diagnostic Agent | Serviço (control), interno ao Worker | Estrutura o contexto enviado ao Bedrock e ranqueia as hipóteses recebidas. |
+| Repositório operacional | Repositório | Única porta de acesso à tabela <code>monitoracao-operacional</code>. |
+| Repositório do conjunto de referência | Repositório | Única porta de acesso à tabela <code>monitoracao-golden-set</code>; leitura pelo Worker, escrita pelo Serviço de revisão. |
+| Repositório histórico | Repositório | Encapsula as consultas ao Athena sobre o arquivo Parquet do S3. |
 
 #### 4.3.3. Estados e enumerações
 
@@ -1383,7 +1352,7 @@ Fonte: Material produzido pelos autores (2026).
 | <code>AnalysisRun</code> | Associação | <code>Previsao</code> | <code>1 — 0..1</code> | Uma previsão preventiva produz, no máximo, uma previsão. |
 | Fronteiras da API do dashboard | Dependência | Serviço de autorização | — | Nenhuma fronteira acessa dados sem validar sessão e permissões antes. |
 | Analysis Orchestrator | Dependência | Anomaly Detector, QoE Forecast Model, Diagnostic Agent | — | O orquestrador combina os três módulos internos do Worker de Análise. |
-| Analysis Orchestrator, Serviço de revisão | Dependência | Repositório do conjunto de referência | — | O Worker apenas lê; somente o Serviço de revisão escreve (decisão D8). |
+| Analysis Orchestrator, Serviço de revisão | Dependência | Repositório do conjunto de referência | — | O Worker apenas lê; somente o Serviço de revisão escreve. |
 | Diagnostic Agent | Dependência | Amazon Bedrock | — | O agente delega a geração das hipóteses candidatas ao modelo gerenciado. |
 
 ### 4.5. Regras, garantias e limitações
@@ -1404,18 +1373,18 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 4.6. Decisões de modelagem
 
-- **Arquitetura-alvo como única fonte.** Todas as classes, estados e relacionamentos desta seção vêm dos documentos normativos de arquitetura e dos contratos já consolidados nas Seções 2, 3 e 5 deste artefato, nunca dos arquivos, rotas ou módulos atualmente implementados. O [Status de implementação](arquitetura/status-implementacao.md) é o local correto para registrar o quanto do código já corresponde a este modelo.
-- **Três visões para não misturar naturezas distintas.** Domínio, aplicação e persistência foram separados porque cada um responde a uma pergunta diferente: o que existe, quem opera sobre o que existe e onde isso é fisicamente guardado. Fundi-las produziria um diagrama denso e menos rastreável aos documentos de origem.
+- **Arquitetura-alvo como única fonte.** Todas as classes, estados e relacionamentos desta seção vêm da arquitetura-alvo aprovada e dos contratos já consolidados nas Seções 2, 3 e 5 deste artefato, nunca dos arquivos, rotas ou módulos atualmente implementados.
+- **Três visões para não misturar naturezas distintas.** Domínio, aplicação e persistência foram separados porque cada um responde a uma pergunta diferente: o que existe, quem opera sobre o que existe e onde isso é fisicamente guardado. Fundi-las produziria um diagrama denso e menos rastreável às decisões arquiteturais de origem.
 - **Autenticação sem estado local.** <code>Operador</code> não possui atributo de senha nem tabela própria porque a arquitetura-alvo delega toda a autenticação ao Cognito/SSO; qualquer implementação com sessão local ou hash de senha é uma divergência a ser corrigida, não uma variação válida do modelo.
 - **Previsão e incidente como conceitos distintos.** Separar <code>Previsao</code> de <code>Incidente</code> evita que uma estimativa de risco seja tratada como uma degradação confirmada, preservando a distinção normativa entre previsão preventiva e detecção reativa.
 - **Estado atual separado do histórico de revisão.** <code>DecisaoRevisao</code> modela apenas o estado atual da hipótese, necessário para a concorrência otimista por <code>version</code>; cada transição — inclusive as intermediárias em <code>inconclusive</code>, que o DS-02B permite reabrir para <code>confirmed</code> ou <code>refuted</code> — grava uma <code>AuditoriaRevisao</code> imutável e independente. Um único objeto de valor não poderia representar as duas coisas sem perder o histórico a cada sobrescrita ou sem deixar de ser um objeto de valor.
-- **Nomenclatura única para o conjunto de referência.** A classe usa o nome <code>GoldenCase</code>, o mesmo empregado pelos contratos normativos ([Fluxos integrados §3](arquitetura/fluxos.md#3-invariantes-transversais), [API do dashboard §8](arquitetura/api-dashboard.md#8-revisão-de-hipótese)) e pelos diagramas de sequência DS-02B e DS-04 desta seção, para que não exista um segundo nome (<code>CasoGoldenSet</code>) para o mesmo conceito dentro do próprio artefato.
+- **Nomenclatura única para o conjunto de referência.** A classe usa o nome <code>GoldenCase</code> de forma consistente com os diagramas de sequência DS-02B e DS-04 desta seção, para que não exista um segundo nome (<code>CasoGoldenSet</code>) para o mesmo conceito dentro do próprio artefato.
 - **Diagnóstico sem hipótese não é uma exceção.** A multiplicidade <code>0..*</code> entre <code>Diagnostico</code> e <code>Hipotese</code> reflete os estados <code>not_started</code>, <code>processing</code> e <code>failed</code>, nos quais nenhuma hipótese existe ainda, e o fluxo alternativo "4a. Nenhuma hipótese disponível" do UC-03; a cardinalidade <code>1..*</code> presumiria incorretamente que todo diagnóstico chega a ter ao menos uma hipótese.
 - **Avaliação de recuperação como entidade, não como resultado efêmero de consulta.** O DS-02C armazena o marco temporal, as janelas comparadas, a conclusão e a autoria da avaliação; <code>AvaliacaoRecuperacao</code> torna esse dado persistido visível no modelo estrutural, reaproveitando o objeto de valor <code>Janela</code> já definido para <code>Previsao</code> em vez de duplicá-lo.
 - **Operações típadas nas classes com comportamento relevante.** Entidades cujo ciclo de vida é regido por uma regra de negócio explícita nesta seção — transições de <code>Incidente</code> e <code>Diagnostico</code>, registro de decisão em <code>Hipotese</code>, avanço de etapas em <code>ImportJob</code>, confirmação idempotente em <code>AnalysisRun</code> — recebem operações com assinatura tipada; objetos de valor e entidades puramente descritivas (<code>Operador</code>, <code>Janela</code>, <code>DatasetVersion</code>, <code>GoldenCase</code>) permanecem apenas com atributos, por não possuírem comportamento normatizado além da leitura.
-- **Serviços e fronteiras como classDiagram, não como flowchart.** A Seção 4.2.2 usa um <code>classDiagram</code> com estereótipos <code>&lt;&lt;interface&gt;&gt;</code>, <code>&lt;&lt;control&gt;&gt;</code> e <code>&lt;&lt;repository&gt;&gt;</code> e operações tipadas derivadas dos endpoints e mensagens já contratados nos diagramas de sequência da Seção 5, para que a checklist da Seção 7.1 ("atributos e operações possuem tipos") também se aplique à visão de aplicação, e não somente ao modelo de domínio.
+- **Serviços e fronteiras como classDiagram, não como flowchart.** A Seção 4.2.2 usa um <code>classDiagram</code> com estereótipos <code>&lt;&lt;interface&gt;&gt;</code>, <code>&lt;&lt;control&gt;&gt;</code> e <code>&lt;&lt;repository&gt;&gt;</code> e operações tipadas derivadas dos endpoints e mensagens já contratados nos diagramas de sequência da Seção 5, para que o princípio de tipar atributos e operações também se aplique à visão de aplicação, e não somente ao modelo de domínio.
 - **Infraestrutura mapeada, não modelada como domínio.** DynamoDB, S3/Parquet, Glue, Athena, SQS e ECS aparecem apenas na visão de aplicação, como dependências externas, e no mapeamento de persistência da Seção 4.2.3 — nunca como classes com atributos e operações próprias.
-- **Ingestão tratada como fronteira, não repetida em detalhe.** O contrato interno do Serviço de Ingestão já está descrito normativamente em outro documento; repeti-lo aqui violaria a regra de manutenção de [Fluxos integrados](arquitetura/fluxos.md#5-regra-de-manutenção), que reserva a esta modelagem apenas a representação estrutural de mais alto nível.
+- **Ingestão tratada como fronteira, não repetida em detalhe.** O contrato interno do Serviço de Ingestão possui detalhamento técnico próprio fora deste artefato; por isso, esta modelagem se reserva à representação estrutural de mais alto nível, sem duplicar esse contrato.
 
 ---
 
@@ -1429,7 +1398,7 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Os diagramas apresentam a arquitetura-alvo do View Show e especificam as responsabilidades dos participantes em cada cenário. As interações são descritas independentemente do estágio de implementação dos componentes.
 
-> **Aviso de estágio de implementação.** S3, Glue, Athena, SQS/DLQ, o Worker de Análise, a sincronização com o ARGUS e o Amazon Bedrock representam a arquitetura-alvo descrita nesta seção; eles não constituem, na `develop` atual, um fluxo operacional completo de ponta a ponta. O [Status de implementação](arquitetura/status-implementacao.md) registra o que já está em execução e o que ainda depende desses componentes.
+> **Aviso de estágio de implementação.** S3, Glue, Athena, SQS/DLQ, o Worker de Análise, a sincronização com o ARGUS e o Amazon Bedrock representam a arquitetura-alvo descrita nesta seção; eles não constituem, na `develop` atual, um fluxo operacional completo de ponta a ponta.
 
 ### 5.1 Catálogo de diagramas de sequência
 
@@ -1747,7 +1716,7 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Os fluxos do Backend representam as interações iniciadas pelos usuários corporativos. O primeiro garante uma sessão autenticada antes de disponibilizar o dashboard; o segundo registra a decisão humana sobre uma hipótese diagnóstica; o terceiro compara os indicadores anteriores e posteriores a uma correção externa. Essas interações realizam os casos de uso UC-01, UC-02, UC-03, UC-04 e UC-05. O Dashboard atua como interface, enquanto o Backend concentra a validação da sessão, a consulta aos dados e a aplicação das regras de revisão e comparação.
 
-> **Divergência tecnológica/temporária.** O DS-02A a seguir modela a federação alvo (Cognito ↔ SSO corporativo por OIDC/SAML). No runtime atual, o Cognito realiza login direto por usuário e senha, e as rotas de federação retornam `503` — ver [Status de implementação](arquitetura/status-implementacao.md).
+> **Divergência tecnológica/temporária.** O DS-02A a seguir modela a federação alvo (Cognito ↔ SSO corporativo por OIDC/SAML). No runtime atual, o Cognito realiza login direto por usuário e senha, e as rotas de federação retornam `503`.
 
 #### 5.4.1 DS-02A — Autenticação federada e consulta
 
@@ -1960,7 +1929,7 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;A avaliação de recuperação ocorre depois de uma correção realizada fora do View Show. A Engenheira de Software ou a Product Manager seleciona o incidente, confirma o marco temporal da intervenção e solicita a comparação de janelas equivalentes. O fluxo realiza UC-05 sem atribuir ao sistema a implantação da correção nem transformar uma associação temporal em afirmação de causalidade.
 
-> **Fluxo proposto.** Diferentemente dos demais diagramas desta seção, o DS-02C ainda não possui contrato de endpoint formalizado em [API do dashboard](arquitetura/api-dashboard.md) (ver Q-04 na rastreabilidade da Seção 6). As mensagens abaixo representam a solução proposta para UC-05, sujeita a ajuste quando o contrato for consolidado.
+> **Fluxo proposto.** Diferentemente dos demais diagramas desta seção, o DS-02C ainda não possui contrato de endpoint formalizado. As mensagens abaixo representam a solução proposta para UC-05, sujeita a ajuste quando o contrato for consolidado.
 
 <div align="center">
 
@@ -2488,14 +2457,14 @@ A rastreabilidade relaciona os casos de uso aos requisitos, às necessidades de 
 
 | Área | Caso de uso | Requisitos | Histórias ou telas relacionadas | Elementos conceituais | Sequências relacionadas |
 | --- | --- | --- | --- | --- | --- |
-| Login e acesso | UC-02 | RF04, RNF04, RIE01, RESTR01 | [Tela de Login](sprint1/entendimento_ux.md#41-login) | Usuário corporativo, sessão e provedor de identidade | DS-02A |
-| Visão Geral, filtros e exportação | UC-01 | RF07, RF08, RF09, RF10, RNF07, RNF14 | [Visão Geral](sprint1/entendimento_ux.md#42-visão-geral) | Dashboard, consulta, filtro e exportação | DS-01A, DS-01B, DS-02A, DS-04 |
-| Análise e revisão de incidente | UC-03 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 | [US-N1-01 a US-N1-05](sprint1/entendimento_ux.md#32-user-stories-da-persona-1) | Incidente, hipótese, evidência e decisão de revisão | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 |
-| Investigação técnica | UC-04 | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 | [US-ENG-01 a US-ENG-04](sprint1/entendimento_ux.md#33-user-stories-da-persona-2) | Incidente, evento, linha do tempo, hipótese e evidência | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 |
-| Avaliação posterior a uma correção | UC-05 | RF07, RF08, RF09, RNF05, RNF14 | [US-ENG-05](sprint1/entendimento_ux.md#us-eng-05---verificar-a-recuperação-após-uma-correção) e [US-PM-04](sprint1/entendimento_ux.md#us-pm-04---avaliar-a-evolução-após-uma-correção) | Incidente, marco temporal, janela de comparação e indicador | DS-02C |
-| Indicadores, segmentos e histórico de QoE | UC-06 | RF07, RF08, RF09, RNF05, RNF14, RNF15 | [US-PM-01 a US-PM-05](sprint1/entendimento_ux.md#34-user-stories-da-persona-3) | Indicador de QoE, segmento, série temporal e degradação | DS-01A, DS-01B, DS-03A, DS-03B, DS-04 |
-| Integridade da telemetria | UC-07 | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 | [US-ENG-06](sprint1/entendimento_ux.md#us-eng-06---monitorar-a-saúde-da-telemetria) e [tela de Monitoramento](sprint1/entendimento_ux.md#56-monitoramento-da-telemetria) | Fonte de telemetria, métrica operacional, cobertura e alerta | DS-01A, DS-01B, DS-03C |
-| Sincronização e normalização dos dados do ARGUS | UC-08 | RF01, RF02, RF03, RIE02 | Não modelado em [entendimento_ux.md](sprint1/entendimento_ux.md): o temporizador e o ARGUS são atores técnicos, sem persona de usuário associada | Registro do ARGUS, checkpoint, watermark e outbox | DS-01A, DS-01B |
+| Login e acesso | UC-02 | RF04, RNF04, RIE01, RESTR01 | Tela de Login | Usuário corporativo, sessão e provedor de identidade | DS-02A |
+| Visão Geral, filtros e exportação | UC-01 | RF07, RF08, RF09, RF10, RNF07, RNF14 | Visão Geral | Dashboard, consulta, filtro e exportação | DS-01A, DS-01B, DS-02A, DS-04 |
+| Análise e revisão de incidente | UC-03 | RF07, RF08, RF09, RNF08, RNF10, RNF13, RNF15 | US-N1-01 a US-N1-05 | Incidente, hipótese, evidência e decisão de revisão | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 |
+| Investigação técnica | UC-04 | RF05, RF06, RF07, RF08, RF09, RNF05, RNF08, RNF10, RNF13, RNF14 | US-ENG-01 a US-ENG-04 | Incidente, evento, linha do tempo, hipótese e evidência | DS-01A, DS-01B, DS-02B, DS-03B, DS-04 |
+| Avaliação posterior a uma correção | UC-05 | RF07, RF08, RF09, RNF05, RNF14 | US-ENG-05 e US-PM-04 | Incidente, marco temporal, janela de comparação e indicador | DS-02C |
+| Indicadores, segmentos e histórico de QoE | UC-06 | RF07, RF08, RF09, RNF05, RNF14, RNF15 | US-PM-01 a US-PM-05 | Indicador de QoE, segmento, série temporal e degradação | DS-01A, DS-01B, DS-03A, DS-03B, DS-04 |
+| Integridade da telemetria | UC-07 | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 | US-ENG-06 e tela de Monitoramento | Fonte de telemetria, métrica operacional, cobertura e alerta | DS-01A, DS-01B, DS-03C |
+| Sincronização e normalização dos dados do ARGUS | UC-08 | RF01, RF02, RF03, RIE02 | Não modelado: o temporizador e o ARGUS são atores técnicos, sem persona de usuário associada | Registro do ARGUS, checkpoint, watermark e outbox | DS-01A, DS-01B |
 
 <div align="center">
 
@@ -2515,13 +2484,13 @@ Fonte: Material produzido pelos autores (2026).
 
 | Conceito | Caso de uso | Representação no modelo estrutural |
 | --- | --- | --- |
-| Evento | UC-04 | Corresponde ao `SignalObservation`, o registro canônico de ingestão com contrato próprio em [Ingestão e dados §9.1](arquitetura/ingestao-e-dados.md#91-signalobservation); permanece fora da Seção 4 por decisão explícita de 4.1, que reserva esse contrato ao documento de ingestão para não duplicá-lo. |
+| Evento | UC-04 | Corresponde ao `SignalObservation`, o registro canônico de ingestão; permanece fora da Seção 4 por decisão explícita de 4.1, que reserva esse contrato à documentação técnica de ingestão para não duplicá-lo. |
 | Linha do tempo | UC-04 | Não é uma entidade persistida adicional: é uma ordenação, por `startedAt`/`observedAt`, de `Incidente` e `Evidencia`, já modelados em 4.2.1, servida pela fronteira "Visão geral, incidentes e eventos" (4.2.2). |
-| Indicador de QoE | UC-06 | Corresponde ao `DimensionalMetricAggregate`, registro canônico de ingestão com contrato em [Ingestão e dados §9.2](arquitetura/ingestao-e-dados.md#92-dimensionalmetricaggregate); consumido pela mesma fronteira de leitura, sem duplicar o contrato nesta seção (Seção 4.1). |
+| Indicador de QoE | UC-06 | Corresponde ao `DimensionalMetricAggregate`, registro canônico de ingestão; consumido pela mesma fronteira de leitura, sem duplicar o contrato nesta seção (Seção 4.1). |
 | Segmento | UC-06 | Dimensão de filtro (`device`, `region`, `version`, entre outras) sobre o `DimensionalMetricAggregate`; é um parâmetro de consulta da fronteira de leitura, não uma classe de domínio própria do View Show. |
-| Fonte de telemetria | UC-07 | Corresponde ao campo `source` do contrato físico `signal_bucket` ([Ingestão e dados §5.1](arquitetura/ingestao-e-dados.md#51-signal_bucket)), que também identifica o `SignalObservation`; a saúde por fonte é uma projeção calculada em tempo de leitura pela fronteira de Monitoramento (4.2.2), sem persistência própria como classe de domínio do View Show. |
-| Cobertura | UC-07 | Métrica calculada (`coverageRatio`/`measurement.status`) na resposta da fronteira de Monitoramento ([API do dashboard §10](arquitetura/api-dashboard.md#10-monitoramento)); não é um atributo persistido de nenhuma classe de domínio, e sim um valor derivado a cada consulta. |
-| Alerta | UC-07 | Corresponde ao `status` calculado dos KPIs de monitoramento (mesmo contrato acima); o View Show não persiste uma entidade de alerta própria nesta versão — é registrado como questão em aberto em Q-05 (7.2). |
+| Fonte de telemetria | UC-07 | Corresponde ao campo `source` do contrato físico `signal_bucket`, que também identifica o `SignalObservation`; a saúde por fonte é uma projeção calculada em tempo de leitura pela fronteira de Monitoramento (4.2.2), sem persistência própria como classe de domínio do View Show. |
+| Cobertura | UC-07 | Métrica calculada (`coverageRatio`/`measurement.status`) na resposta da fronteira de Monitoramento; não é um atributo persistido de nenhuma classe de domínio, e sim um valor derivado a cada consulta. |
+| Alerta | UC-07 | Corresponde ao `status` calculado dos KPIs de monitoramento (mesmo contrato acima); o View Show não persiste uma entidade de alerta própria nesta versão — permanece como questão em aberto para uma versão futura. |
 | Marco temporal | UC-05 | Modelado como o atributo `milestoneAt` da entidade `AvaliacaoRecuperacao` (4.2.1), persistida ao final do DS-02C. |
 | Janela de comparação | UC-05 | Modelada pelas duas composições `AvaliacaoRecuperacao *-- Janela` (janela base e janela de comparação, 4.2.1 e 4.4), reaproveitando o objeto de valor já definido para `Previsao`. |
 
