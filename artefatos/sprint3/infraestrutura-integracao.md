@@ -211,18 +211,15 @@ terraform output flow_logs
 
 ### 5.1 Vídeo 1 — infraestrutura provisionada (5 a 7 minutos)
 
-**Link:** _Pendente de inclusão após a gravação._
+**Link:** [Assistir no Google Drive](
+https://drive.google.com/file/d/1i22UD_KOaWiOhof0n1x6uWQMuVJFgd8P/view?usp=sharing) · 
 
-- apresentar a VPC `10.0.0.0/16`, duas sub-redes públicas, duas privadas, rotas, endpoints S3/DynamoDB e o único NAT Gateway;
-- demonstrar o bastion com SSM, IMDSv2, volume criptografado e ausência de SSH aberto para `0.0.0.0/0`;
-- mostrar ALB, target group do tipo IP, health check `/health`, tasks Fargate privadas e política de escala entre 1 e 4 tasks com CPU-alvo de 50%;
-- apresentar as tabelas DynamoDB, o bucket privado e os VPC Flow Logs;
-- concluir com o CloudWatch e, somente se habilitada, a stack LGTM privada;
-- declarar objetivamente que Fargate e DynamoDB substituem EC2 ASG e RDS na arquitetura adotada.
+
+&emsp;O vídeo apresenta a infraestrutura provisionada na AWS, incluindo a organização da VPC, as sub-redes públicas e privadas, o NAT Gateway, o bastion host, o balanceamento de carga, o autoescalonamento no ECS Fargate, o DynamoDB e os recursos de observabilidade.
 
 ### 5.2 Vídeo 2 — integração frontend e backend (2 a 4 minutos)
 
-**Link:** [Assistir no Google Drive](https://drive.google.com/file/d/1962YkNJ1X2MjZvk6rEfJerdvEHx8yC9T/view?usp=sharing) · 2 min 40 s
+**Link:** [Assistir no Google Drive](https://drive.google.com/file/d/1962YkNJ1X2MjZvk6rEfJerdvEHx8yC9T/view?usp=sharing)
 
 &emsp;O vídeo demonstra a validação funcional da aplicação e a comunicação entre os serviços no ambiente implantado na AWS.
 
