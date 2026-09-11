@@ -3,7 +3,7 @@
 Este artefato passou a ter uma única fonte canônica junto da infraestrutura
 de observabilidade, evitando três cópias divergentes no repositório:
 
-[Consultar o mapeamento de métricas](../../apps/fullstack/observability/documentation/mapeamento-metricas-observabilidade.md).
+[Consultar o mapeamento de métricas](documentation/mapeamento-metricas-observabilidade.md).
 
 ## Sumário
 

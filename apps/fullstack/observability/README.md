@@ -1,6 +1,6 @@
 # Pilha de observabilidade Grafana
 
-Ambiente de desenvolvimento com Grafana, Prometheus, Loki e Tempo, subido por
+Ambiente de desenvolvimento com Grafana, Prometheus, Loki, Tempo e Alloy, subido por
 `apps/fullstack/docker-compose.observability.yml`. Serve para instrumentar
 a API do View Show localmente antes de levar métricas, logs e traces para a AWS.
 
@@ -35,17 +35,25 @@ Para trocar, exporte `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD` antes de su
 | 3200 | Tempo | API de consulta de traces, usada pelo Grafana |
 | 4317 | Tempo | Recepção de traces via OTLP/gRPC |
 | 4318 | Tempo | Recepção de traces via OTLP/HTTP |
+| 4320 | Alloy | Recepção OTLP/HTTP de métricas e traces dos workers Python |
+
+O Alloy descobre os containers pelo socket do Docker, persiste as posições de
+leitura e envia os logs ao Loki. Em `:4320`, também recebe OTLP/HTTP dos workers,
+converte métricas para remote write no Prometheus e encaminha traces ao Tempo.
+A API também pode enviar JSON estruturado diretamente ao Loki. Os workers
+escrevem somente em `stdout`, sem bloquear o processamento com chamadas ao Loki.
 
 Todas as portas podem ser sobrescritas por variáveis de ambiente
 (`GRAFANA_PORT`, `PROMETHEUS_PORT`, `LOKI_PORT`, `TEMPO_HTTP_PORT`,
-`TEMPO_OTLP_GRPC_PORT`, `TEMPO_OTLP_HTTP_PORT`).
+`TEMPO_OTLP_GRPC_PORT`, `TEMPO_OTLP_HTTP_PORT`, `ALLOY_OTLP_HTTP_PORT`).
 
 ## Arquivos
 
 ```
 apps/fullstack/observability/
+├── alloy/config.alloy                                 logs e gateway OTLP dos workers
 ├── grafana/provisioning/datasources/datasources.yml   data sources automáticos
-├── grafana/provisioning/dashboards/                   dashboard RED provisionado
+├── grafana/provisioning/dashboards/                   dashboards RED e de aplicação
 ├── loki/loki-config.yml                               Loki monolítico, disco local
 ├── prometheus/prometheus.yml                          alvos e intervalo de coleta
 └── tempo/tempo.yml                                    receptores OTLP e metrics_generator
@@ -93,7 +101,7 @@ done
 
 Quando a aplicação completa ainda não estiver provisionada, use o script
 isolado abaixo no AWS CloudShell. Ele cria apenas a EC2 com Grafana, Prometheus,
-Loki e Tempo; não cria ECS, ALB, DynamoDB ou Amplify.
+Loki, Tempo e Alloy; não cria ECS, ALB, DynamoDB ou Amplify.
 
 ```bash
 cd apps/fullstack/observability/aws
@@ -108,6 +116,9 @@ A execução reaproveita uma instância existente chamada
 CloudShell. O script só imprime a URL depois de validar a saúde do Grafana via
 SSM.
 
+O CI renderiza o mesmo bootstrap sem acessar a AWS. Para repetir essa validação
+localmente, execute `./deploy-learner-lab.sh --validate-only` nesse diretório.
+
 ### Aplicação completa com Terraform
 
 Pré-requisitos: Terraform, Docker, Node, AWS CLI, Session Manager plugin e uma
@@ -118,12 +129,17 @@ pela infraestrutura fullstack.
 cd apps/fullstack
 aws sts get-caller-identity
 terraform init
-terraform plan
-terraform apply
+terraform plan \
+  -var='deployment_namespace=g05-s3' \
+  -var='observabilidade_habilitada=true' \
+  -out=g05-s3-observabilidade.tfplan
+terraform apply g05-s3-observabilidade.tfplan
 ```
 
-O `apply` cria uma EC2 `t3.medium` com 30 GiB de gp3 criptografado, instala o
-Docker Compose e inicia os quatro componentes. Não é necessário clonar o
+Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
+na AWS. O plano acima cria uma EC2 `g05-s3-observabilidade` do tipo `t3.medium`
+com 30 GiB de gp3 criptografado, instala o Docker Compose e inicia os cinco
+componentes. Não é necessário clonar o
 repositório na instância: os arquivos versionados são compactados e enviados
 pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
 `running`.
@@ -143,8 +159,10 @@ aws ssm start-session \
 ```
 
 Enquanto a sessão estiver aberta, acesse <http://localhost:3002> com o usuário
-`admin` e a senha impressa pelo segundo comando. O dashboard provisionado fica
-em **Dashboards → View Show → View Show — AWS**.
+`admin` e a senha impressa pelo segundo comando. Os dashboards provisionados
+ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
+gerenciados e **View Show — Application Observability** cobre RED, Web Vitals,
+logs correlacionados e alertas da aplicação.
 
 Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
 
@@ -170,14 +188,24 @@ estável.
 
 | Data source | Estado depois do apply |
 | --- | --- |
-| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/monitoracao-api` disponíveis imediatamente |
-| Prometheus | Auto-observação da stack; a API ainda precisa expor `/metrics` |
-| Loki | Pronto para ingestão; os logs atuais da API permanecem no CloudWatch |
-| Tempo | Receptor OTLP privado em `:4317/:4318`; a API ainda precisa do SDK OpenTelemetry |
+| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/g05-s3-api` disponíveis imediatamente |
+| Prometheus | Auto-observação da stack e scrape de `/metrics` da API pelo ALB |
+| Loki | Logs dos containers da stack via Alloy e JSON correlacionado da API; CloudWatch permanece habilitado |
+| Tempo | Receptor OTLP/HTTP privado em `:4318`, restrito ao security group da API |
+| Alloy | Receptor OTLP/HTTP privado em `:4320` para métricas e traces dos workers |
 
-O Terraform já injeta `OTEL_SERVICE_NAME=view-show-api` e o endereço privado do
-Tempo na task ECS. Essas variáveis não geram traces sozinhas: passam a valer
-assim que a instrumentação OpenTelemetry for adicionada ao processo Node.
+O Terraform injeta `OTEL_SERVICE_NAME=g05-s3-api` e o endereço privado do Tempo
+na task ECS somente quando o opt-in está ativo. A API TypeScript inicializa o
+SDK OpenTelemetry quando esse endpoint existe.
+
+Os futuros tasks de ingestão e análise devem reutilizar o security group da
+aplicação e definir `OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
+`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes em
+`apps/backend/ingestion-data` e `apps/backend/agentic` já implementam o contrato,
+mas não existem tasks ou entrypoints desses workers nesta entrega.
+Os workers escrevem logs JSON em `stdout`; em ECS, mantenha o driver `awslogs`
+para enviá-los ao CloudWatch sem acoplar o processamento à disponibilidade do
+Loki.
 
 ### Operação e custo no Learner Lab
 
@@ -189,25 +217,40 @@ enquanto a EC2 estiver parada.
 Para remover a stack inteira e seus dados:
 
 ```bash
-terraform destroy
+terraform destroy \
+  -var='deployment_namespace=g05-s3' \
+  -var='observabilidade_habilitada=true'
 ```
 
 Uma alteração nos arquivos de configuração recria a EC2 para reaplicar o
 `cloud-init`; por isso, neste ambiente de laboratório, os dados históricos dos
 volumes Docker são descartados nessa troca.
 
-Os alvos de coleta ficam em <http://localhost:9090/targets>. Por padrão o
-Prometheus coleta a cada 15 segundos e observa apenas a própria pilha
-(Prometheus, Grafana, Loki e Tempo).
+Na pilha local, os alvos de coleta ficam em
+<http://localhost:9090/targets>. O Prometheus coleta a cada 15 segundos a própria
+pilha e a API em `host.docker.internal:3000`. Inicie a API para manter esse alvo
+saudável. Na AWS, o alvo `view-show-api` aponta para o ALB criado pelo Terraform.
 
 ## Coletar as métricas da API
 
 `apps/backend/api` já expõe `GET /metrics` no formato Prometheus quando
-`METRICS_ENABLED=true` (o padrão). O `prometheus.yml` mantém o alvo
-`view-show-api` comentado porque esta composição não inicia a API. Descomente o
-bloco enquanto a API estiver rodando no host; sem ela, o alvo ficará `down`.
+`METRICS_ENABLED=true` (o padrão), e o alvo `view-show-api` já está habilitado.
 Para enviar traces da API rodando no host, aponte o exportador OTLP para
 `http://localhost:4318` (HTTP) ou `localhost:4317` (gRPC).
+
+## Coletar métricas dos workers Python
+
+Os serviços de ingestão e análise usam OTLP/HTTP em vez de expor um servidor
+Prometheus dentro de processos batch. Com a stack local no ar:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4320
+export OTEL_SERVICE_NAME=view-show-ingestion # ou view-show-agentic
+```
+
+O Alloy preserva `service.name` como label `service_name`. Como esses dois
+diretórios ainda não contêm lógica de negócio, painéis e alertas permanecem sem
+séries até que um entrypoint real chame os hooks de observabilidade.
 
 ## Limites da implantação
 

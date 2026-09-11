@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { trace } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { NodeSDK } from "@opentelemetry/sdk-node";
@@ -8,6 +9,82 @@ export const SCHEMA_VERSION = "1.0" as const;
 
 export const requestId = (): string =>
   `req_${randomUUID().replaceAll("-", "")}`;
+
+export const rumMetricNames = [
+  "frontend_web_vitals_fcp_seconds",
+  "frontend_web_vitals_lcp_seconds",
+  "frontend_web_vitals_inp_ms",
+  "frontend_web_vitals_cls",
+  "frontend_client_errors_total",
+  "frontend_api_fetch_errors_total",
+  "operator_clicks_to_root_cause",
+] as const;
+
+const rumPaths = new Set([
+  "/",
+  "/login",
+  "/visao-geral",
+  "/incidentes",
+  "/evidencias",
+  "/eventos",
+  "/monitoramento",
+  "/configuracoes",
+  "/criar-conta",
+  "/recuperar-senha",
+  "/design-system",
+]);
+const rumMetricUnits = {
+  frontend_web_vitals_fcp_seconds: "seconds",
+  frontend_web_vitals_lcp_seconds: "seconds",
+  frontend_web_vitals_inp_ms: "milliseconds",
+  frontend_web_vitals_cls: "score",
+  frontend_client_errors_total: "count",
+  frontend_api_fetch_errors_total: "count",
+  operator_clicks_to_root_cause: "count",
+} as const;
+const rumMetricMaximums = {
+  frontend_web_vitals_fcp_seconds: 60,
+  frontend_web_vitals_lcp_seconds: 60,
+  frontend_web_vitals_inp_ms: 60_000,
+  frontend_web_vitals_cls: 10,
+  frontend_client_errors_total: 1,
+  frontend_api_fetch_errors_total: 1,
+  operator_clicks_to_root_cause: 100,
+} as const;
+
+export const rumTelemetrySchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    name: z.enum(rumMetricNames),
+    value: z.number().finite().nonnegative(),
+    unit: z.enum(["seconds", "milliseconds", "score", "count"]),
+    metricId: z.string().min(1).max(128).optional(),
+    path: z
+      .string()
+      .min(1)
+      .max(256)
+      .regex(/^\/[A-Za-z0-9/_-]*$/)
+      .transform((path) => (rumPaths.has(path) ? path : "/other")),
+    navigationType: z.string().min(1).max(64).optional(),
+    occurredAt: z.iso.datetime({ offset: true }),
+    rating: z.enum(["good", "needs-improvement", "poor"]).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.unit !== rumMetricUnits[value.name])
+      context.addIssue({
+        code: "custom",
+        path: ["unit"],
+        message: `Expected ${rumMetricUnits[value.name]} for ${value.name}`,
+      });
+    if (value.value > rumMetricMaximums[value.name])
+      context.addIssue({
+        code: "custom",
+        path: ["value"],
+        message: `Value exceeds the limit for ${value.name}`,
+      });
+  });
+export type RumTelemetry = z.infer<typeof rumTelemetrySchema>;
 
 export const warningSchema = z
   .object({ code: z.string().min(1), message: z.string().min(1) })
@@ -1082,7 +1159,7 @@ let telemetrySdk: NodeSDK | null = null;
 export function startTelemetry(serviceName: string): void {
   if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) return;
   telemetrySdk = new NodeSDK({
-    serviceName,
+    serviceName: process.env.OTEL_SERVICE_NAME ?? serviceName,
     traceExporter: new OTLPTraceExporter({
       url: `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace(/\/$/, "")}/v1/traces`,
     }),
@@ -1137,15 +1214,44 @@ export function createLogger(serviceName: string): Logger {
     message: string,
     fields: Readonly<Record<string, unknown>> = {},
   ): void => {
-    process.stdout.write(
-      `${JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level,
-        service_name: serviceName,
-        message,
-        ...redactFields(fields),
-      })}\n`,
-    );
+    const spanContext = trace.getActiveSpan()?.spanContext();
+    const resolvedServiceName = process.env.OTEL_SERVICE_NAME ?? serviceName;
+    const line = JSON.stringify({
+      ...redactFields(fields),
+      timestamp: new Date().toISOString(),
+      level,
+      service_name: resolvedServiceName,
+      ...(spanContext?.traceId ? { trace_id: spanContext.traceId } : {}),
+      ...(spanContext?.spanId ? { span_id: spanContext.spanId } : {}),
+      message,
+    });
+    process.stdout.write(`${line}\n`);
+
+    const lokiPushUrl = process.env.LOKI_PUSH_URL;
+    if (lokiPushUrl) {
+      void fetch(lokiPushUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: AbortSignal.timeout(2_000),
+        body: JSON.stringify({
+          streams: [
+            {
+              stream: {
+                service_name: resolvedServiceName,
+                level,
+                environment:
+                  process.env.OTEL_DEPLOYMENT_ENVIRONMENT ??
+                  process.env.NODE_ENV ??
+                  "unknown",
+              },
+              values: [[`${Date.now()}000000`, line]],
+            },
+          ],
+        }),
+      }).catch(() => {
+        // Remote logging is best-effort; stdout remains the durable fallback.
+      });
+    }
   };
   return {
     info: (message, fields) => write("info", message, fields),

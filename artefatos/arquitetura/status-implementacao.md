@@ -2,9 +2,9 @@
 
 - **Status:** acompanhamento contínuo
 - **Versão:** 1.2
-- **Última atualização:** 09/09/2026
+- **Última atualização:** 10/09/2026
 - **Responsáveis:** equipe do projeto
-- **Base auditada:** branch `refactor/backend` alinhada a `develop`
+- **Base auditada:** branch `develop`
 
 ## 1. Finalidade
 
@@ -29,7 +29,7 @@ para implementação incompleta, **Implementado** para código compatível e
 | SQS e Worker de Análise | Definido | contrato de publicação fail-closed testado e placeholder `apps/backend/agentic` | disponibilizar fila, DLQ, consumidor e modelos |
 | Revisão de hipótese | Testado | atualização condicional e autorização no módulo `incidents` | integração com o Worker e conjunto real |
 | Infraestrutura AWS | Parcial | API em ECS, DynamoDB, ingresso e CI/CD existentes | recursos de ingestão, análise, histórico e identidade |
-| Observabilidade | Parcial | request ID, logs, métricas RED e OpenTelemetry na API | correlação ponta a ponta e alarmes dos workers |
+| Observabilidade | Parcial | request ID, logs correlacionados, métricas RED/RUM, OpenTelemetry, dashboards e alertas da API | instrumentar os workers quando seus runtimes existirem |
 
 ## 3. Backend e API
 

@@ -1,6 +1,7 @@
 /** Gateway HTTP client and data-quality boundary used by every dashboard screen. */
 import { ALLOW_EXAMPLE_DATA } from "@/lib/data/mode";
 import { WARNINGS, type Warning } from "@/lib/data/warnings";
+import { reportRum } from "@/lib/rum";
 
 const CONFIGURED_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 const REQUEST_TIMEOUT = 8000;
@@ -84,7 +85,8 @@ export async function apiGet<T>(
   path: string,
   params?: QueryParams,
 ): Promise<GatewayEnvelope<T>> {
-  if (!isApiConfigured()) throw new ApiError("O gateway não está configurado neste ambiente.");
+  if (!isApiConfigured())
+    throw new ApiError("O gateway não está configurado neste ambiente.");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
@@ -96,28 +98,36 @@ export async function apiGet<T>(
       cache: "no-store",
     });
     const body = (await response.json().catch(() => null)) as
-      | GatewayEnvelope<T>
-      | ErrorBody
-      | null;
+      GatewayEnvelope<T> | ErrorBody | null;
     if (!response.ok) {
+      reportRum("frontend_api_fetch_errors_total", 1);
       const failure = body && "error" in body ? body.error : undefined;
       throw new ApiError(
-        failure?.message ?? `O gateway respondeu ${response.status} em ${path}.`,
+        failure?.message ??
+          `O gateway respondeu ${response.status} em ${path}.`,
         response.status,
         failure?.code,
         failure?.requestId,
       );
     }
     if (!body || !("data" in body) || !("meta" in body)) {
-      throw new ApiError("O gateway devolveu uma resposta fora do contrato.", response.status);
+      throw new ApiError(
+        "O gateway devolveu uma resposta fora do contrato.",
+        response.status,
+      );
     }
     return body;
   } catch (error) {
     if (error instanceof ApiError) throw error;
+    reportRum("frontend_api_fetch_errors_total", 1);
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new ApiError(`O gateway não respondeu em ${REQUEST_TIMEOUT / 1000}s.`);
+      throw new ApiError(
+        `O gateway não respondeu em ${REQUEST_TIMEOUT / 1000}s.`,
+      );
     }
-    throw new ApiError(error instanceof Error ? error.message : "Falha ao falar com o gateway.");
+    throw new ApiError(
+      error instanceof Error ? error.message : "Falha ao falar com o gateway.",
+    );
   } finally {
     clearTimeout(timeout);
   }
@@ -172,17 +182,20 @@ export async function composeResource<TData>({
 }: ComposeOptions<TData>): Promise<Resource<TData>> {
   const collected = [...warnings];
   const warn = (warning: Warning) => {
-    if (!collected.some((item) => item.code === warning.code)) collected.push(warning);
+    if (!collected.some((item) => item.code === warning.code))
+      collected.push(warning);
   };
 
-  if (!isApiConfigured()) return unavailable(WARNINGS.apiNaoConfigurada, fallback, collected);
+  if (!isApiConfigured())
+    return unavailable(WARNINGS.apiNaoConfigurada, fallback, collected);
   try {
     const result = await read(warn);
     for (const warning of result.meta?.warnings ?? []) warn(warning);
     return {
       data: result.data,
       source: "api",
-      availability: result.meta?.partial || collected.length ? "partial" : "measured",
+      availability:
+        result.meta?.partial || collected.length ? "partial" : "measured",
       warnings: collected,
       fetchedAt: new Date(result.meta?.generatedAt ?? Date.now()),
       ...(result.meta
@@ -196,8 +209,14 @@ export async function composeResource<TData>({
   } catch (error) {
     return unavailable(
       {
-        code: error instanceof ApiError ? (error.code ?? WARNINGS.leituraFalhou.code) : WARNINGS.leituraFalhou.code,
-        message: error instanceof Error ? error.message : WARNINGS.leituraFalhou.message,
+        code:
+          error instanceof ApiError
+            ? (error.code ?? WARNINGS.leituraFalhou.code)
+            : WARNINGS.leituraFalhou.code,
+        message:
+          error instanceof Error
+            ? error.message
+            : WARNINGS.leituraFalhou.message,
       },
       fallback,
       collected,

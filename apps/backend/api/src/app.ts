@@ -5,6 +5,7 @@ import express, {
   type Response,
 } from "express";
 import helmet from "helmet";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { z } from "zod";
 import {
   ServiceError,
@@ -20,6 +21,7 @@ import {
   opaqueIdSchema,
   overviewQuerySchema,
   requestId,
+  rumTelemetrySchema,
   reviewBodySchema,
   startImportBodySchema,
   successEnvelope,
@@ -35,7 +37,8 @@ import type { ImportUseCases } from "./modules/imports/index.js";
 import { Metrics } from "./observability/metrics.js";
 import { PUBLIC_ROUTES } from "./http/public-routes.js";
 
-const logger = createLogger("api");
+const SERVICE_NAME = process.env.OTEL_SERVICE_NAME ?? "view-show-api";
+const logger = createLogger(SERVICE_NAME);
 
 export interface AppDependencies {
   readonly config: ApiConfig;
@@ -107,7 +110,7 @@ function rateLimiter(limit: number): express.RequestHandler {
 export function createApp(deps: AppDependencies) {
   const { config, incidents, dashboard, imports, auth } = deps;
   const app = express();
-  const metrics = new Metrics("api");
+  const metrics = new Metrics(SERVICE_NAME);
   const sessionCookieSecure = auth.nodeEnv === "production";
 
   function issueSession(
@@ -124,6 +127,7 @@ export function createApp(deps: AppDependencies) {
   }
 
   app.disable("x-powered-by");
+  if (auth.nodeEnv === "production") app.set("trust proxy", 1);
   app.use((request, response, next) => {
     response.locals.requestId = requestIdentifier(request);
     response.setHeader("x-request-id", response.locals.requestId as string);
@@ -172,6 +176,34 @@ export function createApp(deps: AppDependencies) {
       response.end(await metrics.registry.metrics());
     });
   }
+  app.post(
+    PUBLIC_ROUTES.rumTelemetry.express,
+    rateLimiter(600),
+    (request, response, next) => {
+      try {
+        const parsed = rumTelemetrySchema.safeParse(request.body);
+        if (!parsed.success) throw validationError(parsed.error);
+        metrics.observeRum(
+          parsed.data.name,
+          parsed.data.value,
+          parsed.data.path,
+          parsed.data.rating,
+        );
+        if (
+          parsed.data.name === "frontend_client_errors_total" ||
+          parsed.data.name === "frontend_api_fetch_errors_total"
+        )
+          logger.warn("frontend telemetry error observed", {
+            request_id: response.locals.requestId,
+            event: parsed.data.name,
+            path: parsed.data.path,
+          });
+        response.status(202).end();
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   app.use(rateLimiter(180));
 
   app.get(PUBLIC_ROUTES.authLogin.express, async (_request, response, next) => {
@@ -383,6 +415,7 @@ export function createApp(deps: AppDependencies) {
         parsed.data,
         actor.id,
       );
+      metrics.observeHypothesisReview(parsed.data.status);
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
@@ -559,11 +592,20 @@ export function createApp(deps: AppDependencies) {
         !(error instanceof ServiceError) &&
         !malformedJson &&
         !malformedPathParameter
-      )
+      ) {
+        const activeSpan = trace.getActiveSpan();
+        if (activeSpan) {
+          if (error instanceof Error) activeSpan.recordException(error);
+          activeSpan.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: error instanceof Error ? error.message : "unknown error",
+          });
+        }
         logger.error("unhandled request error", {
           request_id: response.locals.requestId,
           error: error instanceof Error ? error.message : String(error),
         });
+      }
       response
         .status(serviceError.status)
         .json(errorEnvelope(serviceError, response.locals.requestId as string));

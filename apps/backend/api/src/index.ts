@@ -6,7 +6,8 @@ import {
 } from "@view-show/contracts";
 import { loadConfig } from "./config.js";
 
-startTelemetry("api");
+const SERVICE_NAME = process.env.OTEL_SERVICE_NAME ?? "view-show-api";
+startTelemetry(SERVICE_NAME);
 const [
   { createApp },
   { createAuthModule },
@@ -21,7 +22,7 @@ const [
   import("./modules/imports/index.js"),
 ]);
 const config = loadConfig();
-const logger = createLogger("api");
+const logger = createLogger(SERVICE_NAME);
 const server = createServer(
   createApp({
     config,

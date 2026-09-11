@@ -206,7 +206,7 @@ leem o estado local; não criam nem alteram recursos.
 | `quantidade_tasks` | `1` | Réplicas do serviço |
 | `bedrock_habilitado` | `false` | Explicação opcional via Bedrock |
 | `retencao_logs_dias` | `7` | Retenção do log group |
-| `observabilidade_habilitada` | `false` | Opt-in para Grafana, Prometheus, Loki e Tempo em EC2 |
+| `observabilidade_habilitada` | `false` | Opt-in para Grafana, Prometheus, Loki, Tempo e Alloy em EC2 |
 | `tipo_instancia_observabilidade` | `t3.medium` | Capacidade da EC2 opcional |
 | `disco_observabilidade_gib` | `30` | Volume gp3 criptografado da observabilidade |
 | `grafana_cidr_acesso` | `null` | Mantém o Grafana privado e acessível por túnel SSM |

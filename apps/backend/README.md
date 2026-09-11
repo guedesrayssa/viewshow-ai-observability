@@ -27,7 +27,10 @@ microsserviços aninhados. `api/contracts` concentra schemas, DTOs e o contrato
 OpenAPI público, sem regra de domínio.
 
 `ingestion-data/` e `agentic/` são limites reservados para componentes futuros
-descritos em `artefatos/arquitetura`; não fazem parte do build ou do runtime.
+descritos em `artefatos/arquitetura`; não fazem parte do build ou do runtime de
+negócio. Ambos já contêm pacotes de instrumentação OpenTelemetry em Python 3.13,
+com métricas, traces, logs estruturados e testes prontos para os entrypoints
+futuros.
 
 ## Comandos
 

@@ -12,6 +12,19 @@ Os três compartilham a mesma matriz de requisitos (RNF01 a RNF15) e as mesmas
 decisões de arquitetura (ADR-002, ADR-004 e ADR-005), cada um pelo ângulo do seu
 sinal.
 
+## Estado da implementação
+
+A API e o frontend emitem sua telemetria em seus runtimes atuais. As fronteiras
+Python de ingestão e análise já oferecem fachadas OpenTelemetry testadas, com
+Python 3.13 e OpenTelemetry 1.44, e o Alloy recebe seu OTLP/HTTP em `:4320`,
+enviando métricas ao Prometheus e traces ao Tempo. Os dashboards, alertas e
+runbooks dos dois serviços também estão provisionados.
+
+Isso não cria lógica de ingestão ou análise: esses diretórios ainda não possuem
+entrypoints de negócio. Portanto, as séries `ingestion_*`, `analysis_*` e
+`bedrock_*` só aparecem quando os futuros workers chamarem as fachadas já
+disponíveis.
+
 ## Ordem de leitura sugerida
 
 1. **Métricas**, para o vocabulário de indicadores e a matriz de requisitos.
@@ -41,9 +54,10 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
   em `datasources.yml` transformam qualquer `trace_id` em link para o Tempo, o
   que produziria links quebrados. Em log e em span o nome é reservado ao
   OpenTelemetry, e o agrupador de domínio se chama `incidentId`.
-- **A pilha não tem coletor de logs.** O `apps/fullstack/docker-compose.observability.yml` sobe
-  Grafana, Prometheus, Loki e Tempo, mas nenhum Promtail, Alloy ou driver de log
-  do Docker. Hoje nada leva uma linha até a porta 3100.
+- **A pilha tem coleta de logs.** O Alloy descobre containers locais e envia
+  stdout/stderr ao Loki. Na AWS, a API preserva o envio para CloudWatch e também
+  publica o JSON estruturado no endpoint privado do Loki; os workers mantêm o
+  `stdout` como único destino para não bloquear o processamento.
 - **O painel é exportação estática.** `output: "export"` em `next.config.ts`
   significa que não há servidor Next em produção. Log e trace do frontend nascem
   no navegador e precisam de um endpoint de recepção na API, porque nem o Loki
@@ -55,8 +69,8 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
 | Caminho | Papel |
 |---|---|
 | [`apps/fullstack/observability/README.md`](../README.md) | Como subir a pilha, portas, data sources provisionados e limites do ambiente local. |
-| [`apps/fullstack/docker-compose.observability.yml`](../../docker-compose.observability.yml) | Definição dos quatro serviços da pilha. |
-| [`apps/fullstack/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; a API já expõe `GET /metrics`, e o bloco `view-show-api` fica comentado porque a composição não inicia a API. |
+| [`apps/fullstack/docker-compose.observability.yml`](../../docker-compose.observability.yml) | Definição dos cinco serviços da pilha. |
+| [`apps/fullstack/observability/prometheus/prometheus.yml`](../prometheus/prometheus.yml) | Alvos de coleta; a API expõe `GET /metrics` e o alvo `view-show-api` é coletado a cada 15 segundos. |
 | [`apps/fullstack/observability/loki/loki-config.yml`](../loki/loki-config.yml) | Retenção de 168h e `allow_structured_metadata`. |
 | [`apps/fullstack/observability/tempo/tempo.yml`](../tempo/tempo.yml) | Receptores OTLP e `metrics_generator`. |
 | [`apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml`](../grafana/provisioning/datasources/datasources.yml) | As quatro correlações entre os sinais. |

@@ -70,6 +70,7 @@ resource "aws_ecs_task_definition" "api" {
       ]
 
       environment = [
+        { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3000" },
         { name = "AWS_REGION", value = var.regiao },
         { name = "OPERATIONAL_TABLE_NAME", value = aws_dynamodb_table.operacional.name },
@@ -88,7 +89,10 @@ resource "aws_ecs_task_definition" "api" {
         { name = "COGNITO_CLIENT_SECRET", value = aws_cognito_user_pool_client.backend.client_secret },
 
         { name = "OTEL_SERVICE_NAME", value = local.nome_container },
+        { name = "OTEL_DEPLOYMENT_ENVIRONMENT", value = "aws" },
+        { name = "OTEL_RESOURCE_ATTRIBUTES", value = "deployment.environment=aws,service.version=${local.tag_imagem},cloud.region=${var.regiao}" },
         { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
+        { name = "LOKI_PUSH_URL", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:3100/loki/api/v1/push" : "" },
 
         // O painel chega pelo Amplify, que repassa /api, /auth e /health para
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da

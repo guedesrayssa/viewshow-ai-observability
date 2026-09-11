@@ -774,6 +774,10 @@ const observabilityValidationCommands = [
     "AWS observability Docker Compose configuration validation",
     /^AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder docker compose (?:-f|--file) (?:apps\/fullstack\/)?observability\/aws\/docker-compose\.yml config(?: --quiet)?$/,
   ],
+  [
+    "standalone observability user-data rendering validation",
+    /^RENDER_AWS_ACCOUNT_ID=000000000000 RENDER_AWS_REGION=us-east-1 RENDER_GRAFANA_PASSWORD=ci-placeholder sh apps\/fullstack\/observability\/aws\/validate-user-data\.sh \/tmp\/view-show-user-data\.sh$/,
+  ],
 ];
 
 test("infrastructure is consolidated under apps/fullstack", () => {
@@ -817,12 +821,18 @@ test("fullstack Terraform fails closed to the isolated Sprint 3 namespace and ac
   const namespaceBlock = /variable "deployment_namespace"\s*\{([\s\S]*?)^\}/m.exec(
     variables,
   )?.[1];
+  const accountBlock = /variable "aws_account_id"\s*\{([\s\S]*?)^\}/m.exec(
+    variables,
+  )?.[1];
 
   assert.match(variables, /variable "deployment_namespace"/);
   assert.ok(namespaceBlock, "deployment_namespace must have a variable block");
   assert.doesNotMatch(namespaceBlock, /default\s*=/);
   assert.match(namespaceBlock, /var\.deployment_namespace == "g05-s3"/);
-  assert.match(versions, /allowed_account_ids\s*=\s*\["248880318395"\]/);
+  assert.ok(accountBlock, "aws_account_id must have a variable block");
+  assert.doesNotMatch(accountBlock, /default\s*=/);
+  assert.match(accountBlock, /\^\[0-9\]\{12\}\$/);
+  assert.match(versions, /allowed_account_ids\s*=\s*\[var\.aws_account_id\]/);
   assert.match(versions, /Stack\s*=\s*"g05-sprint3-entrega"/);
   assert.match(versions, /ManagedBy\s*=\s*"terraform"/);
 
@@ -1217,7 +1227,7 @@ test("isolated deployment guide rejects legacy state and records teardown state"
   assert.match(guide, /^## Estado local isolado e teardown$/m);
   assert.match(
     guide,
-    /estado legado[\s\S]*outra conta[\s\S]*não pode ser[\s\S]*adotado/i,
+    /estado\s+legado[\s\S]*outra conta[\s\S]*não pode ser[\s\S]*adotado/i,
   );
   assert.match(guide, /novo estado local[\s\S]*necessário[\s\S]*teardown/i);
   assert.match(
@@ -1245,7 +1255,7 @@ test("Sprint 3 JavaScript endpoint mapping is labeled as a historical snapshot",
   const mapping = readIfPresent(
     path.join(
       repositoryRoot,
-      "artefatos/sprint3/mapeamento-endpoints-backend-dynamodb.md",
+      "apps/backend/mapeamento-endpoints-backend-dynamodb.md",
     ),
   );
 

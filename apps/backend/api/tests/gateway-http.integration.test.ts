@@ -247,7 +247,51 @@ describe("api monolith over HTTP", () => {
     ).toBe(403);
     const metrics = await fetch(`${url}/metrics`);
     expect(metrics.status).toBe(200);
-    expect(await metrics.text()).toContain("http_requests_total");
+    expect(await metrics.text()).toContain(
+      'http_requests_total{service_name="view-show-api"',
+    );
+
+    const rum = await fetch(`${url}/api/v1/telemetry/rum`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "http://allowed.test",
+      },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        name: "frontend_web_vitals_lcp_seconds",
+        value: 1.25,
+        unit: "seconds",
+        metricId: "v1-test",
+        path: "/incidentes",
+        navigationType: "navigate",
+        occurredAt: "2026-09-10T12:00:00.000Z",
+        rating: "good",
+      }),
+    });
+    expect(rum.status).toBe(202);
+    const updatedMetrics = await fetch(`${url}/metrics`);
+    const updatedMetricsBody = await updatedMetrics.text();
+    expect(updatedMetricsBody).toContain(
+      'frontend_web_vitals_lcp_seconds_count{service_name="view-show-frontend",path="/incidentes",rating="good"} 1',
+    );
+    expect(updatedMetricsBody).toContain(
+      'frontend_web_vitals_lcp_seconds_bucket{le="2.5",service_name="view-show-frontend",path="/incidentes",rating="good"} 1',
+    );
+
+    const invalidRum = await fetch(`${url}/api/v1/telemetry/rum`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        name: "arbitrary_metric",
+        value: 1,
+        unit: "count",
+        path: "/",
+        occurredAt: "2026-09-10T12:00:00.000Z",
+      }),
+    });
+    expect(invalidRum.status).toBe(400);
   });
 
   it("assigns the request id before CORS and JSON parsing can fail", async () => {
