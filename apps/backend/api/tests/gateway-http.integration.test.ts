@@ -185,11 +185,22 @@ describe("api monolith over HTTP", () => {
   });
 
   it("calls a module in-process, wraps quality metadata, and keeps physical fields private", async () => {
+    const auth = createAuthModule({
+      AUTH_COOKIE_SECRET: secret,
+      NODE_ENV: "test",
+    });
+    const session = auth.sessions.issue({
+      id: "usr_1",
+      email: "engineer@example.test",
+      name: "Engineer",
+      role: "engineer",
+    });
     const url = await listen(buildApp());
     const response = await fetch(`${url}/api/v1/incidents?window=30m`, {
       headers: {
         "x-request-id": "req_integration",
         origin: "http://frontend.test",
+        cookie: `session=${encodeURIComponent(session)}`,
       },
     });
     const body = (await response.json()) as {
@@ -212,6 +223,17 @@ describe("api monolith over HTTP", () => {
   });
 
   it("returns cheap health, stable validation, CORS, dependency errors, and metrics", async () => {
+    const auth = createAuthModule({
+      AUTH_COOKIE_SECRET: secret,
+      NODE_ENV: "test",
+    });
+    const session = auth.sessions.issue({
+      id: "usr_1",
+      email: "engineer@example.test",
+      name: "Engineer",
+      role: "engineer",
+    });
+    const cookie = `session=${encodeURIComponent(session)}`;
     const url = await listen(
       buildApp({ frontendOrigins: ["http://allowed.test"] }),
     );
@@ -221,7 +243,10 @@ describe("api monolith over HTTP", () => {
     const invalid = await fetch(`${url}/api/v1/incidents?limit=1000`);
     expect(invalid.status).toBe(400);
     expect((await invalid.json()) as object).toHaveProperty("error.requestId");
-    expect((await fetch(`${url}/api/v1/dashboard/overview`)).status).toBe(503);
+    expect(
+      (await fetch(`${url}/api/v1/dashboard/overview`, { headers: { cookie } }))
+        .status,
+    ).toBe(503);
     expect(
       (
         await fetch(`${url}/api/v1/incidents`, {
@@ -357,10 +382,22 @@ describe("api monolith over HTTP", () => {
   });
 
   it("surfaces a module DATA_UNAVAILABLE as a 503 envelope", async () => {
+    const auth = createAuthModule({
+      AUTH_COOKIE_SECRET: secret,
+      NODE_ENV: "test",
+    });
+    const session = auth.sessions.issue({
+      id: "usr_1",
+      email: "engineer@example.test",
+      name: "Engineer",
+      role: "engineer",
+    });
     const url = await listen(
       buildApp({ frontendOrigins: [], metricsEnabled: false }),
     );
-    const response = await fetch(`${url}/api/v1/dashboard/overview`);
+    const response = await fetch(`${url}/api/v1/dashboard/overview`, {
+      headers: { cookie: `session=${encodeURIComponent(session)}` },
+    });
     expect(response.status).toBe(503);
     expect(await response.json()).toHaveProperty(
       "error.code",

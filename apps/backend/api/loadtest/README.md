@@ -48,6 +48,46 @@ Variáveis de `consultas.js`: `RATE` (padrão 137 req/s), `INCIDENT_COUNT`
 `EVENT_RATE` (10000/min), `WINDOW_MINUTES` (15), `BACKLOG_BATCHES` (1–4),
 `POLL_TIMEOUT_S`.
 
+## Rodando contra dados reais (AWS)
+
+O seed local (`seed-carga.cjs`) gera incidentes sintéticos — suficiente para
+RNF09/RNF14 (a API não sabe se o item veio do seed ou de ingestão real), mas
+não passa pelo caminho de ingestão de verdade. Para rodar contra a stack real:
+
+```bash
+# 1. Descobrir o endpoint e os segredos da stack aplicada (a partir de apps/fullstack)
+terraform output api_url            # BASE_URL para k6 (HTTP direto no ALB)
+terraform output -raw tabelas_dynamodb
+
+# 2. AUTH_COOKIE_SECRET é o mesmo valor configurado na task ECS/Fargate
+#    (variável de ambiente da API real) — pegue com o time ou:
+aws ecs describe-task-definition --task-definition <family> \
+  --query 'taskDefinition.containerDefinitions[0].secrets'
+
+# 3. k6 aponta para qualquer BASE_URL — é HTTP puro, não usa credenciais AWS
+k6 run -e BASE_URL=http://<dns-do-alb> -e AUTH_COOKIE_SECRET=<segredo-real> -e MODE=smoke consultas.js
+```
+
+Dois pontos que mudam de verdade ao sair do localhost:
+
+- **O rate limit (180 req/min por IP) é o mesmo teto** contra a AWS — um
+  gerador único continua sem provar os 137 req/s do RNF14. Para medir
+  capacidade real: rode k6 distribuído (múltiplas origens/IPs — k6 Cloud ou
+  várias instâncias EC2 na mesma subnet) ou peça ao time de backend para
+  subir o limite só na janela do teste.
+- **Ingestão real (`ingestao-batch.js`) continua bloqueada** até dois pontos
+  serem resolvidos, independente do ambiente: (a) um adaptador real de
+  `ImportControlPort` (hoje é `UnavailableImportControl`, fail-closed por
+  design) ligado a S3 + uma tarefa de processamento, e (b) o contrato
+  (`contracts/openapi/public.openapi.json`, schema `ImportStartData`) expor
+  `upload.parts[].url` — as URLs pré-assinadas que `completeImport()` já
+  espera receber para subir bytes de verdade. Sem isso, `setup()` aborta
+  igual em qualquer ambiente, local ou AWS.
+
+Evite `CLEAN=1 node scripts/seed-carga.cjs` contra a tabela real sem alinhar
+com o time — o script tem uma trava (`ALLOW_REMOTE_SEED=1`) justamente para
+isso não acontecer sem querer.
+
 ## Limitações a interpretar antes de ler os números
 
 1. **Rate limit de 180 req/min por IP** (`rateLimiter(180)` em `src/app.ts`)
@@ -60,9 +100,7 @@ Variáveis de `consultas.js`: `RATE` (padrão 137 req/s), `INCIDENT_COUNT`
 3. **`ingestao-batch.js` está bloqueado por design** — o adaptador de import
    é fail-closed (503) até S3 e a tarefa de ingestão serem configurados;
    `setup()` detecta isso e aborta com mensagem clara.
-4. **`auth-check.js` reprova por design** nas rotas de leitura, que ainda não
-   aplicam RNF04 — é o gap que o script existe para revelar.
-5. **Autenticação é forjada, não federada** — mede o comportamento da API
+4. **Autenticação é forjada, não federada** — mede o comportamento da API
    para uma sessão válida, não o fluxo Cognito/OIDC em si.
 
 ## Observabilidade

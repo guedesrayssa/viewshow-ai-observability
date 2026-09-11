@@ -26,16 +26,17 @@ implementada em
 descreve o estado final da implementação — não o histórico de decisões que
 levou a ela. Duas seções têm evidência real, mas ainda incompleta:
 
-- **Seção 3 (Resultados)** — `smoke`, `load`, `auth-check.js` e
-  `ingestao-batch.js` foram executados de verdade contra a API real (local,
-  DynamoDB Local) e a seção traz os números medidos, não um template vazio.
-  `breakpoint`, `spike`, `estresse`, `soak` e qualquer rodada em
-  homologação/AWS continuam pendentes — ver o aviso no início da seção.
-- **Seção 4 (Observabilidade)** — traz valores brutos reais capturados de
-  `GET /metrics` durante a rodada, porque este ambiente não tinha Docker
-  para subir a pilha Grafana completa. Falta a visualização em painel
-  propriamente dita (dashboard provisionado, capturas de tela) — ver o
+- **Seção 3 (Resultados)** — `smoke`, `load` e `auth-check.js` foram
+  executados de verdade contra a stack real na AWS (ECS Fargate, ALB,
+  DynamoDB — não simulado), em três configurações de capacidade, além de uma
+  rodada local anterior (DynamoDB Local) mantida como referência. `ingestao-
+  batch.js` continua abortando por design (adaptador fail-closed).
+  `breakpoint`, `spike`, `estresse` e `soak` continuam pendentes — ver o
   aviso no início da seção.
+- **Seção 4 (Observabilidade)** — traz valores brutos reais capturados de
+  `GET /metrics` durante a rodada local anterior (Docker não estava
+  disponível naquele ambiente). Ainda não foi repetida contra a rodada AWS
+  desta seção — ver o aviso no início da seção.
 
 ---
 
@@ -72,7 +73,7 @@ cenário é executável e já passou uma vez, sob a arquitetura anterior.
 ### 1.2 RNFs cobertos pela suíte k6
 
 | RNF                                                | Requisito (Sprint 1)                                                                                                 | Plano de teste revisado (contrato atual)                                                                                                                                                                                                                                                                                                                                         | Cenário k6                                                                                      |
-| :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| :-------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | **RNF01** — Capacidade                             | API de ingestão aceita continuamente 10.000 eventos válidos/minuto sem perda.                                        | Disparar uma importação representando uma janela de 150.000 eventos (10.000/min × 15 min) e medir o tempo até o `ImportJob` chegar a `completed`.                                                                                                                                                                                                                                | `ingestao-batch.js`, modo `drenagem`                                                            |
 | **RNF02** — Comportamento temporal (ingestão)      | Tempo entre a captura do evento e sua disponibilidade para consulta ≤ 2 minutos.                                     | Marcar `t0` no disparo da importação, `t1` na conclusão do `ImportJob` e `t2` quando o watermark de `/dashboard/overview` avança além de `t0`; reportar `t1-t0` e `t2-t0`, com threshold formal `p(100)<120s`.                                                                                                                                                                    | `ingestao-batch.js`, modo `frescor`                                                             |
 | **RNF03** — Tolerância a falhas                    | Degradação controlada sob payload inválido, fila sem capacidade ou timeout de dependência; recuperação sem reinício. | **Fila cheia** → disparar 2, 3 ou 4 janelas em sequência (`BACKLOG_BATCHES`) e medir o tempo até processar o backlog e alcançar o watermark mais recente. **Timeout** → `POLL_TIMEOUT_S` reprova explicitamente um `ImportJob` que não conclui dentro do prazo, em vez de travar o run.                                                                                          | `ingestao-batch.js`, modo `acumulo` (fila cheia) e `POLL_TIMEOUT_S` em todos os modos (timeout) |
@@ -90,9 +91,9 @@ inspecionar o repositório nesta frente (não uma execução formal do plano
 completo — onde isso não foi feito, o estado diz "não executado").
 
 | RNF                                    | Plano revisado (contrato atual)                                  | Critério                                         | Ferramenta                                    | Evidência encontrada                                                                                                                                                                                                                          | Estado                                                              |
-| :------------------------------------- | :--------------------------------------------------------------- | :----------------------------------------------- | :-------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------ |
+| :--------------------------------------- | :------------------------------------------------------------------ | :--------------------------------------------------- | :------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------- |
 | **RNF05** — Ciclo de vida hot/cold     | Inspeção da IaC por política de expiração automática.            | Transição/expiração automática após 30 dias.     | Leitura de `apps/fullstack/dynamodb.tf`.      | TTL configurado na tabela operacional (`ttl { attribute_name = "ttl", enabled = true }`, `dynamodb.tf:42-45`) — expira itens automaticamente. Não há tier frio (S3/Glacier) visível na IaC: TTL apaga o item, não o arquiva antes de apagar.  | **Parcial** — expiração existe, arquivamento frio não.              |
-| **RNF06** — Build limpo/portabilidade  | Build de imagem em ambiente limpo, só com variáveis de ambiente. | Inicia sem configuração manual do SO.            | Docker build.                                 | `Dockerfile` existe em `apps/backend/api/`. `npm run build` (TypeScript) verificado limpo nesta sessão. Build da **imagem** Docker em si não verificado — sem Docker neste ambiente.                                                          | **Parcial** — build TS ok, build de imagem não testado aqui.        |
+| **RNF06** — Build limpo/portabilidade  | Build de imagem em ambiente limpo, só com variáveis de ambiente. | Inicia sem configuração manual do SO.            | Docker build.                                 | `Dockerfile` existe em `apps/backend/api/`. `npm run build` (TypeScript) verificado limpo. Build da **imagem** validado nesta sessão via `docker build --platform linux/amd64` (script `apps/fullstack/scripts/publicar-imagem.mjs`), publicada com sucesso no ECR real. | **Sim** — build TS e build de imagem Docker ambos verificados.      |
 | **RNF07** — FCP do frontend ≤30s       | Auditoria Lighthouse/Playwright.                                 | FCP ≤ 30,0s.                                     | Lighthouse/Playwright.                        | Não inspecionado nesta frente (fora do escopo: `apps/frontend`).                                                                                                                                                                              | **Não executado.**                                                  |
 | **RNF08** — F1-score do modelo ≥80%    | Avaliação contra holdout sintético.                              | F1-Score ≥ 80%.                                  | Notebook/métricas de classificação.           | Bedrock indisponível no Learner Lab (fallback por template ativo — ver `mapeamento-metricas-observabilidade.md`); sem acesso ao modelo real não há classificação a avaliar.                                                                   | **Bloqueado** — depende de acesso ao Bedrock.                       |
 | **RNF10** — Usabilidade (≤5 cliques)   | Sessão guiada com operador real.                                 | Causa raiz encontrada em ≤5 cliques.             | Sessão guiada.                                | Não executado nesta frente (requer operador humano).                                                                                                                                                                                          | **Não executado.**                                                  |
@@ -111,8 +112,8 @@ arquitetura — não revisados aqui por não serem RNFs de desempenho/carga.
 
 &emsp; Implementação completa em
 [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/); detalhes
-operacionais (variáveis, autenticação, gotchas) em
-[`loadtest/README.md`](../../apps/backend/api/loadtest/README.md).
+operacionais (variáveis, autenticação, gotchas, como rodar contra dados reais
+na AWS) em [`loadtest/README.md`](../../apps/backend/api/loadtest/README.md).
 
 ### 2.1 `consultas.js` — desempenho de consulta (RNF14, RNF09)
 
@@ -124,7 +125,7 @@ sessões simultâneas do Globoplay dividido por um fator de escala de 1.000
 (decisão de equipe, declarada). A cada iteração, um cenário é sorteado:
 
 | Cenário         | Peso | Rota                                      | Papel                                                                            |
-| :-------------- | ---: | :---------------------------------------- | :------------------------------------------------------------------------------- |
+| :--------------- | ---: | :------------------------------------------ | :---------------------------------------------------------------------------------- |
 | A — pesada      |  30% | `GET /incidents?window=24h`               | pior caso real; o que a tela de incidentes usa                                   |
 | B — leve        |  20% | `GET /incidents?window=15m`               | consulta curta                                                                   |
 | C — diagnóstico |  15% | `GET /incidents/:id/diagnosis`            | leitura via GSI, independe do relógio                                            |
@@ -137,10 +138,10 @@ sessões simultâneas do Globoplay dividido por um fator de escala de 1.000
 
 &emsp; Execução única (não é teste de carga): confirma, para as 12 rotas da
 matriz, que uma chamada sem sessão ou com cookie inválido é recusada e que a
-sessão válida alcança o status esperado. Inclui as rotas de leitura (ainda
-públicas — reprovação esperada, é o gap que o RNF04 ainda precisa fechar) e
-as rotas mutáveis (`review`, `reanalyze`, `imports*`, já protegidas). Mais 3
-verificações avulsas, fora da matriz, do comportamento fail-closed de
+sessão válida alcança o status esperado. Cobre as rotas de leitura e as
+rotas mutáveis (`review`, `reanalyze`, `imports*`) — todas já protegidas por
+`auth.sessions.verify()` (ver §3.4). Mais 3 verificações avulsas, fora da
+matriz, do comportamento fail-closed de
 `auth/login`/`auth/callback`/`auth/logout` (não dependem de sessão).
 
 ### 2.3 `ingestao-batch.js` — ingestão (RNF01, RNF02, RNF03)
@@ -159,139 +160,186 @@ configurado.
 &emsp; [`apps/backend/api/scripts/seed-carga.cjs`](../../apps/backend/api/scripts/seed-carga.cjs)
 popula 300 incidentes (≈2.500 itens, incluindo evidências e hipóteses)
 distribuídos pelas últimas 25 horas, mais snapshots de `dashboard/overview` e
-`monitoring/overview` em idades variadas.
+`monitoring/overview` em idades variadas. Recusa endpoints remotos por
+padrão (`ALLOW_REMOTE_SEED=1` obrigatório para semear uma tabela real, fora
+do DynamoDB Local) — proteção contra rodar sem querer contra dados
+compartilhados.
 
 ---
 
 ## 3. Resultados dos testes de carga
 
-> **Execução local de desenvolvimento (`smoke`, `load`, `auth-check.js`,
-> `ingestao-batch.js`), não homologação/produção.** Ambiente: DynamoDB Local
-> em memória + `apps/backend/api` compilado rodando direto no host (sem
-> contêiner, sem limite de vCPU imposto, gerador k6 na mesma máquina). Serve
-> para provar que os scripts e os thresholds funcionam corretamente contra a
-> API real — não para medir capacidade de produção. `breakpoint`, `spike`,
-> `estresse` e `soak` (varredura de saturação, minutos a 2h) não foram
-> executados nesta rodada por tempo; ficam pendentes de uma execução em
-> homologação.
+> **Rodada principal: stack real na AWS** (ECS Fargate, ALB, DynamoDB, conta
+> do AWS Academy Learner Lab), em três configurações de capacidade — não é
+> simulação nem ambiente local. Uma rodada anterior em DynamoDB Local (§3.1a)
+> fica como referência de que os scripts/thresholds funcionam corretamente
+> contra a API real, mas seus números de latência não são comparáveis à
+> capacidade de produção. `breakpoint`, `spike`, `estresse` e `soak`
+> (varredura de saturação, minutos a 2h) continuam pendentes por tempo.
 
-### 3.1 Ambiente da rodada
+### 3.1 Ambiente das rodadas
 
-| Item                       | Valor                                                                                                                                       |
-| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
-| Data da execução           | 10 de setembro de 2026                                                                                                                      |
-| `BASE_URL`                 | `http://127.0.0.1:3000` — API local, DynamoDB Local em memória (`-sharedDb -inMemory`)                                                      |
-| Capacidade do serviço      | Processo Node.js direto no host (Windows), sem contêiner nem limite de vCPU — **não comparável** à capacidade real em ECS Fargate 0,25 vCPU |
-| Origem do gerador de carga | Mesma máquina que a API (localhost) — **não** é uma medição de capacidade distribuída                                                       |
-| Versão do k6               | 2.2.0                                                                                                                                       |
-| `INCIDENT_COUNT` / seed    | 300 incidentes (padrão), DynamoDB Local explícito, `seed-carga.cjs` com `CLEAN=1`                                                          |
+**a) Local (referência de correção dos scripts, não de capacidade)**
+
+| Item              | Valor                                                                    |
+| :------------------ | :--------------------------------------------------------------------------- |
+| Data              | 10 de setembro de 2026                                                     |
+| `BASE_URL`         | `http://127.0.0.1:3000` — processo Node.js direto no host, DynamoDB Local |
+| Origem do gerador | Mesma máquina que a API — não é medição distribuída                     |
+
+**b) AWS real** (`aws_lb.principal` → ECS Fargate → DynamoDB, todos criados por
+`apps/fullstack` nesta sessão)
+
+| Item                    | Valor                                                                                          |
+| :------------------------ | :------------------------------------------------------------------------------------------------ |
+| Data                    | 11 de setembro de 2026                                                                          |
+| `BASE_URL`               | `http://g05-s3-alb-1799051989.us-east-1.elb.amazonaws.com` (ALB direto, HTTP)                   |
+| Tabela                  | `g05-s3-operacional`, semeada com `scripts/seed-carga.cjs` (`ALLOW_REMOTE_SEED=1`, sem `CLEAN`) |
+| Origem do gerador       | Máquina do time, fora da AWS, sobre a internet pública — **não** é medição distribuída (multi-origem) |
+| Rate limit              | Elevado para `RATE_LIMIT_PER_MINUTE=20000` via `apps/fullstack/variables.tf` (`rate_limit_por_minuto`) só nesta janela de teste, para isolar a capacidade real do teto artificial de 180 req/min por IP — revertido para 180 ao final |
+| Configurações testadas  | (1) 0,25 vCPU / 512 MB × 1 task — tamanho de produção; (2) 1 vCPU / 2.048 MB × 1 task; (3) 1 vCPU / 2.048 MB × 3 tasks |
 
 ### 3.2 Resumo executivo
 
-&emsp; A captura abaixo é uma execução anterior ao endurecimento final dos
-thresholds de erro/rate-limit; deve ser repetida após esta revisão. `smoke` passa integralmente
-(188.384 checks, 0 falhas). Isolando a latência das respostas de negócio de
-verdade (`http_req_duration{status:200}`), o `load` mostra **p95 de 64 ms**
-— bem dentro do orçamento de 2.000 ms do RNF14 — mas a vazão útil
-(`http_reqs{status:200}`) ficou em **3,03 req/s**, e **97,6% do tráfego foi
-rejeitado com 429** pelo rate limiter de 180 req/min por IP. O threshold
-`rate_limited_rate<0.001` reprovou de propósito: **esta rodada não comprova
-RNF09/RNF14 na taxa alvo de 137 req/s**, porque mede majoritariamente o rate
-limiter, não a capacidade da API — exatamente o cenário que a correção da
-revisão de PR existe para impedir de passar silenciosamente. `auth-check.js`
-reprova nas 5 rotas de leitura sem RNF04 aplicado (o gap documentado) e passa
-nas demais 7. `ingestao-batch.js` aborta corretamente no estado fail-closed.
-**Para medir RNF09/RNF14 na taxa alvo de verdade, a próxima rodada precisa
-ser distribuída (múltiplas origens) ou rodar com o rate limit ajustado para
-a janela do teste, em homologação — ver Limitações.**
+&emsp; Contra a stack real na AWS, `smoke` passa integralmente (0 erros, 0
+requisições rate-limitadas — o RTT real de internet já mantém a taxa abaixo
+do teto de 180/min mesmo sem ajustar o limite). `auth-check.js` passa
+**37/37 checks** — RNF04 foi corrigido nesta sessão (guard de sessão
+adicionado às 5 rotas de leitura que ainda não o tinham; ver §3.4) e a
+correção foi validada contra o deploy real, não só localmente.
+
+&emsp; Para `load` (137 req/s alvo), o teto de 180 req/min por IP único
+continua sendo o fator dominante quando ativo — 84,8% das requisições
+tomaram 429 com o limite em produção (180). Elevando o limite só para a
+janela do teste (ver §3.1b), foi possível medir a capacidade real da API
+pela primeira vez, em três configurações de recurso (§3.3). O resultado:
+**com 3 tasks de 1 vCPU/2 GB, a API sustenta ~92% da vazão alvo com taxa de
+erro de 0,007%**, mas o p95 de latência **ainda não fecha o RNF14** — não
+por falta de CPU ou réplicas (o erro caiu de 69% para 0,007% e a vazão
+subiu quase linearmente com o recurso), mas por uma cauda longa **uniforme
+entre todos os tipos de consulta** (mediana ~150 ms, p95 ~17 s em toda
+rota, não só nas mais pesadas), o que aponta para um limite de concorrência
+compartilhado — hipótese mais provável: o pool de conexões HTTP do cliente
+DynamoDB por processo, não o custo computacional de cada requisição. Fica
+como investigação para a próxima sprint (ver §3.6).
+
+&emsp; `ingestao-batch.js` continua abortando corretamente no estado
+fail-closed, na AWS como local — nada mudou aqui (§3.5).
 
 ### 3.3 RNF14/RNF09 — desempenho e disponibilidade de consulta (`consultas.js`)
 
-| Critério                                     | Threshold                        |          Resultado (`smoke`) |         Resultado (`load`) |
-| :------------------------------------------- | :------------------------------- | ---------------------------: | -------------------------: |
-| Latência p95 (`status:200`)                  | < 2.000 ms                       |    — (não aplicado no smoke) |           **64,25 ms — ✓** |
-| Latência p95 (todas as respostas, incl. 429) | informativo                      |                      0,62 ms |                    0,71 ms |
-| Taxa de erro (`http_req_failed`)             | < 0,1%                           |               0% (execução anterior) |               0% (execução anterior) |
-| Vazão útil (`status:200`)                    | > 130 req/s                      |                            — |         3,03 req/s — **✗** |
-| Fração rate-limitada (`rate_limited_rate`)   | < 0,1%                           |   — (sem threshold no smoke) |              97,6% — **✗** |
-| Checks                                       | ≥ 99% (`smoke`) / > 99% (`load`) |   100% (188.384/188.384) — ✓ |   100% (40.490/40.490) — ✓ |
-| 429 (`rate_limited_total`)                   | informativo                      | 129.718 de 129.890 iterações | 27.267 de 27.892 iterações |
+**Escalando capacidade real na AWS, `load` (137 req/s alvo, rate limit elevado
+para isolar a API do teto artificial):**
 
-&emsp; Na versão revisada, respostas 429/503 não são mais aceitas como sucesso;
-os
-thresholds que **provam** RNF09/RNF14 na taxa alvo (vazão útil e fração
-rate-limitada) são os que reprovam, corretamente, nesta rodada de origem
-única.
+| Configuração                       | Erro real (`http_req_failed`) | Checks           | Vazão útil (`status:200`)                                  | p95 latência (`status:200`)               |
+| :------------------------------------ | -------------------------------: | ------------------: | -------------------------------------------------------------: | ---------------------------------------------: |
+| 0,25 vCPU / 512 MB × 1 (produção)   |                            69,4% | 51,9%              | ~10,8 req/s                                                    | ~43,3 s                                        |
+| 1 vCPU / 2.048 MB × 1                | 0,79%                            | 99,4% — ✓          | ~60,2 req/s                                                    | ~26,3 s                                        |
+| 1 vCPU / 2.048 MB × 3                | **0,007%**                       | **99,995% — ✓**    | **~125,5 req/s** (92% da meta, threshold `>130` — ✗)          | **~17,2 s** (mediana real: 164 ms) — ✗        |
 
-| Cenário         | Latência p95 (todas, incl. 429) |
-| :-------------- | ------------------------------: |
-| A — pesada      |                         0,71 ms |
-| B — leve        |                         0,69 ms |
-| C — diagnóstico |                         0,70 ms |
-| F — eventos     |                         0,70 ms |
+&emsp; Nenhuma das três configurações fecha o threshold formal `p(95)<2000ms`
+do RNF14, mas a trajetória é clara: erro e vazão escalam quase linearmente
+com o recurso (4× CPU/memória → ~6× vazão; horizontalizar para 3 tasks
+praticamente zerou o erro e chegou a 92% da vazão alvo). O que não escala
+com mais recurso é a cauda de latência — ela aparece **igual em todas as
+rotas** (pesada, leve, diagnóstico, eventos: todas com p50 ~150 ms e p95
+~17 s), o que descarta "consulta cara" como causa única e aponta para um
+limite de concorrência por processo (pool de conexões do SDK DynamoDB é a
+hipótese mais provável — não investigado a fundo nesta sessão).
+
+**Rate limit em produção (180/min), sem ajuste — mostra o teto artificial
+isoladamente:**
+
+| Critério                                    | Threshold    | Resultado (`load`, AWS, 180/min)                                     |
+| :--------------------------------------------- | :------------- | ------------------------------------------------------------------------: |
+| Fração rate-limitada (`rate_limited_rate`)  | < 0,1%       | 84,8% — ✗                                                             |
+| Vazão útil (`status:200`)                   | > 130 req/s  | (dominada pelo rate limiter, não mede capacidade)                     |
+
+&emsp; Confirma o comportamento documentado: um gerador de origem única nunca
+mede capacidade real acima de ~3 req/s com o limite de produção ativo — é
+preciso ajustar o limite (ou distribuir a origem) para medir a API de
+verdade, exatamente como feito em §3.1b.
+
+**`smoke` (referência de correção, ambos os ambientes):**
+
+| Ambiente                | Checks         | 429                                         |
+| :------------------------- | :---------------- | ---------------------------------------------: |
+| Local (DynamoDB Local)   | 100%             | dominante (rate limiter local sem ajuste)   |
+| AWS (real)               | 100%, 0 falhas   | 0 (RTT real já mantém abaixo do teto)       |
 
 &emsp; _(pendente: `breakpoint` — em que taxa a API começa a saturar?
 `estresse`/`spike` — como se comporta acima da capacidade e quanto tempo
 leva para recuperar? `soak` — há degradação ao longo de 2h? Nenhum dos
-quatro foi executado nesta rodada.)_
+quatro foi executado ainda.)_
 
 ### 3.4 RNF04 — controle de acesso (`auth-check.js`)
 
-&emsp; 27 checks passaram, 10 falharam — exatamente as 5 rotas de leitura
-que ainda não aplicam RNF04 (2 checks cada: sem cookie e com cookie
-inválido, ambas deveriam ser 401 e não são).
+&emsp; **37/37 checks passaram** — as 5 rotas de leitura que não aplicavam
+RNF04 (`dashboard_overview`, `incidents_list`, `incident_diagnosis`,
+`incident_events`, `monitoring_overview`) foram corrigidas nesta sessão:
+[`src/app.ts`](../../apps/backend/api/src/app.ts) agora chama
+`auth.sessions.verify()` nelas antes de qualquer lógica de negócio, na mesma
+ordem (valida forma da requisição, depois autentica) já usada em
+`review`/`reanalyze`/`imports*`. Validado tanto localmente quanto contra o
+deploy real na AWS.
 
-| Rota                                             | Sem cookie                              | Cookie inválido | Sessão válida | Conforme hoje?               |
-| :----------------------------------------------- | :-------------------------------------- | :-------------- | :------------ | :--------------------------- |
-| `auth_session`                                   | 401 ✓                                   | 401 ✓           | 200 ✓         | **Sim**                      |
-| `dashboard_overview`                             | 200 ✗ (esperado 401)                    | 200 ✗           | 200/503 ✓     | **Não**                      |
-| `incidents_list`                                 | 200 ✗                                   | 200 ✗           | 200 ✓         | **Não**                      |
-| `incident_diagnosis`                             | 404 ✗                                   | 404 ✗           | 404 ✓         | **Não**                      |
-| `incident_events`                                | 404 ✗                                   | 404 ✗           | 404 ✓         | **Não**                      |
-| `monitoring_overview`                            | 200/503 ✗                               | 200/503 ✗       | 200/503 ✓     | **Não**                      |
-| `incident_event_detail` (sem guarda alguma)      | 503 (esperado — sem checagem de sessão) | —               | —             | Gap conhecido, fora do RNF04 |
-| `hypothesis_review`                              | 401 ✓                                   | 401 ✓           | 404 ✓         | **Sim**                      |
-| `reanalyze`                                      | 401 ✓                                   | 401 ✓           | 404 ✓         | **Sim**                      |
-| `import_start`/`import_complete`/`import_status` | 401 ✓                                   | 401 ✓           | 503 ✓         | **Sim**                      |
-| `auth_login`/`auth_callback` (fora da matriz)    | 503 ✓ (fail-closed, não é RNF04)        | —               | —             | N/A                          |
-| `auth_logout` (fora da matriz)                   | 204 ✓ (idempotente, não é RNF04)        | —               | —             | N/A                          |
+| Rota                                             | Sem cookie | Cookie inválido | Sessão válida | Conforme hoje?                |
+| :-------------------------------------------------- | :----------- | :----------------- | :--------------- | :------------------------------- |
+| `auth_session`                                   | 401 ✓      | 401 ✓             | 200 ✓           | **Sim**                        |
+| `dashboard_overview`                             | 401 ✓      | 401 ✓             | 200/503 ✓       | **Sim**                        |
+| `incidents_list`                                 | 401 ✓      | 401 ✓             | 200 ✓           | **Sim**                        |
+| `incident_diagnosis`                             | 401 ✓      | 401 ✓             | 404 ✓           | **Sim**                        |
+| `incident_events`                                | 401 ✓      | 401 ✓             | 404 ✓           | **Sim**                        |
+| `monitoring_overview`                            | 401 ✓      | 401 ✓             | 200/503 ✓       | **Sim**                        |
+| `incident_event_detail` (sem guarda alguma)      | 503 (esperado — rota-stub, nunca checou sessão) | — | — | Gap conhecido, fora do RNF04 |
+| `hypothesis_review`                              | 401 ✓      | 401 ✓             | 404 ✓           | **Sim**                        |
+| `reanalyze`                                      | 401 ✓      | 401 ✓             | 404 ✓           | **Sim**                        |
+| `import_start`/`import_complete`/`import_status` | 401 ✓      | 401 ✓             | 503 ✓           | **Sim**                        |
+| `auth_login`/`auth_callback` (fora da matriz)    | 503 ✓ (fail-closed, não é RNF04) | — | — | N/A |
+| `auth_logout` (fora da matriz)                   | 204 ✓ (idempotente, não é RNF04) | — | — | N/A |
 
-&emsp; **7 das 12 rotas da matriz já cumprem o RNF04 hoje** (`auth_session`,
-`hypothesis_review`, `reanalyze`, as três de `imports*`); **5 dependem da
-proteção ainda não aplicada** às rotas de leitura (`dashboard_overview`,
-`incidents_list`, `incident_diagnosis`, `incident_events`,
-`monitoring_overview`).
+&emsp; **As 12 rotas da matriz cumprem RNF04 hoje.** Único gap remanescente
+(`incident_event_detail`) é uma rota-stub que responde 503 incondicional —
+não tem lógica de negócio nenhuma para proteger ainda.
 
 ### 3.5 RNF01/RNF02/RNF03 — ingestão (`ingestao-batch.js`)
 
-&emsp; Confirmado nesta rodada: `setup()` detecta corretamente o estado
+&emsp; Confirmado, local e na AWS: `setup()` detecta corretamente o estado
 fail-closed (`503 FEATURE_UNAVAILABLE` em `POST /api/v1/imports` com corpo e
-sessão válidos) e aborta com a mensagem esperada, sem tentar simular um
-resultado. O script foi também corrigido nesta revisão para seguir
-`contracts/openapi/public.openapi.json` à risca (201/`data.id` no início,
-202/`data.status:"queued"` no complete, status minúsculo no polling — ver
-§2.3), mas isso não pôde ser validado de ponta a ponta porque o adaptador
-continua indisponível: sem uma configuração de S3 + tarefa de ingestão, não
-há como observar uma resposta de sucesso real.
+sessão válidos) e aborta com a mensagem esperada nos três modos
+(`drenagem`, `acumulo`, `frescor`), sem tentar simular um resultado. O
+script segue `contracts/openapi/public.openapi.json` à risca (201/`data.id`
+no início, 202/`data.status:"queued"` no complete, status minúsculo no
+polling — ver §2.3), mas isso não pôde ser validado de ponta a ponta porque
+o adaptador continua indisponível: sem uma configuração de S3 + tarefa de
+ingestão, não há como observar uma resposta de sucesso real, em nenhum
+ambiente.
 
 ### 3.6 Limitações a declarar
 
-1. **Ambiente local de desenvolvimento, não homologação.** Os números de
-   latência/CPU acima refletem um processo Node.js sem contêiner rodando na
-   mesma máquina do gerador — não são comparáveis à capacidade de produção
-   (ECS Fargate 0,25 vCPU).
+1. **Origem única, não distribuída.** Mesmo na rodada AWS, o gerador k6
+   rodou de uma única máquina — a vazão de ~125 req/s (§3.3) reflete o
+   limite da API sob essa concorrência, não necessariamente o teto real
+   dela; k6 distribuído (múltiplas origens) poderia revelar um teto
+   diferente.
 2. Volume sintético — incidentes gerados por seed determinístico, não
    refletem a distribuição real de produção.
-3. **RNF09/RNF14 não foram comprovados na taxa alvo de 137 req/s** — o
-   rate limit por IP (180 req/min) tetou a vazão útil observada a ~3 req/s
-   (medido: 3,03 req/s). A latência de negócio isolada (p95 64 ms) sugere que
-   a API aguentaria mais, mas isso precisa ser confirmado distribuindo a
-   origem do gerador ou ajustando o limite na janela do teste.
-4. `breakpoint`, `spike`, `estresse` e `soak` não foram executados nesta
-   rodada (tempo) — ficam pendentes de uma bateria completa em homologação.
+3. **RNF14 (p95<2s) não fechou em nenhuma configuração testada.** A causa
+   identificada — cauda de latência uniforme entre tipos de consulta,
+   sugerindo limite de concorrência no pool de conexões do cliente
+   DynamoDB por processo — não foi investigada a fundo nesta sessão; fica
+   como item de ação concreto para a próxima sprint (candidatos:
+   `maxAttempts`/`requestHandler` do `@aws-sdk/client-dynamodb`, ou o
+   `maxSockets` do agente HTTP subjacente).
+4. `breakpoint`, `spike`, `estresse` e `soak` não foram executados ainda
+   (tempo) — ficam pendentes de uma bateria completa.
 5. RNF01/RNF02/RNF03 não são medíveis nesta branch (ver §3.5).
 6. Autenticação forjada mede o comportamento da API para uma sessão válida,
    não o fluxo de login Cognito/OIDC em si.
+7. **Custo de laboratório**: a configuração (3), usada para o ponto de dado
+   mais informativo, custa mais por hora que o tamanho de produção — a
+   infraestrutura foi revertida para 0,25 vCPU / 512 MB × 1 task / rate
+   limit 180 ao final desta rodada.
 
 ---
 
@@ -302,22 +350,23 @@ há como observar uma resposta de sucesso real.
 > `grafana/provisioning/dashboards/json/view-show-api.json`; o alvo
 > `view-show-api` está habilitado em `prometheus.yml`. Ainda faltam capturas
 > de tela/valores de uma execução com a pilha subida.
-> Este ambiente de execução não tinha Docker disponível para subir a pilha
-> completa, então as subseções abaixo trazem **valores brutos capturados
-> direto de `GET /metrics`** durante a rodada `load` da Seção 3 — evidência
-> real dos números, não a visualização em painel que o item 3 do artefato
-> pede. Falta: subir a pilha com Docker, descomentar o alvo, provisionar um
-> dashboard e capturar os mesmos números por lá.
+> As subseções abaixo trazem **valores brutos capturados direto de
+> `GET /metrics`** durante uma rodada local anterior (Docker não estava
+> disponível naquele ambiente para subir a pilha completa) — evidência real
+> dos números, não a visualização em painel que o item 3 do artefato pede.
+> Não foram recapturadas contra a rodada AWS da Seção 3 desta revisão. Falta:
+> subir a pilha com Docker (já disponível nesta máquina — ver §3), descomentar
+> o alvo, provisionar um dashboard e capturar os mesmos números por lá,
+> idealmente contra a stack AWS.
 
 ### 4.1 Latência
 
 &emsp; `http_request_duration_seconds_sum` por rota, acumulado durante
-`smoke` + `load` (a API não expõe p95 diretamente via `/metrics` — o
-histograma completo está nos buckets `_bucket`; o p95 por status:200 já foi
-calculado pelo próprio k6 na Seção 3.3: **64,25 ms**):
+`smoke` + `load` locais (a API não expõe p95 diretamente via `/metrics` — o
+histograma completo está nos buckets `_bucket`):
 
 | Rota                                  | `_sum` (segundos) | Requisições 200 |
-| :------------------------------------ | ----------------: | --------------: |
+| :--------------------------------------- | ------------------: | -----------------: |
 | `GET /api/v1/incidents`               |              8,87 |             525 |
 | `GET /api/v1/incidents/:id/diagnosis` |              0,73 |             115 |
 | `GET /api/v1/incidents/:id/events`    |              0,58 |              68 |
@@ -327,18 +376,17 @@ calculado pelo próprio k6 na Seção 3.3: **64,25 ms**):
 ### 4.2 Throughput
 
 &emsp; `http_requests_total{status_code="429"}` acumulado sob a label
-`route="unmatched"`: **156.986** — achado de observabilidade: como o rate
-limiter roda em `app.use()` antes do roteamento (`src/app.ts`), toda
-requisição rejeitada por 429 cai como rota `unmatched` no Prometheus, então
-**não dá para saber, só pela métrica da API, qual endpoint estava sendo
-chamado quando foi limitado** (o k6 sabe, via `rate_limited_total{rota=...}`
-no lado do cliente — ver resumo JSON). Vazão útil medida pelo k6 na mesma
-janela: 3,03 req/s (`http_reqs{status:200}`, Seção 3.3).
+`route="unmatched"`: **156.986** (rodada local) — achado de observabilidade:
+como o rate limiter roda em `app.use()` antes do roteamento (`src/app.ts`),
+toda requisição rejeitada por 429 cai como rota `unmatched` no Prometheus,
+então **não dá para saber, só pela métrica da API, qual endpoint estava
+sendo chamado quando foi limitado** (o k6 sabe, via
+`rate_limited_total{rota=...}` no lado do cliente — ver resumo JSON).
 
 ### 4.3 Erros por segundo
 
 &emsp; Nenhum 5xx genuíno (bug) observado — só os estados já documentados
-como esperados: 429 (rate limiter, 156.986 acumulados), 503 em
+como esperados: 429 (rate limiter), 503 em
 `dashboard_overview`/`monitoring_overview`/`import_*`/`auth_login`/
 `auth_callback`/`incident_event_detail` (todos fail-closed/DATA_UNAVAILABLE
 por design), 401/404/400 de validação e controle de acesso. Consulta correta
@@ -349,11 +397,11 @@ limiter, não por falha real).
 
 ### 4.4 Uso de CPU
 
-&emsp; Capturado ao final da rodada `load` (processo acumulado desde o
+&emsp; Capturado ao final da rodada `load` local (processo acumulado desde o
 início, ~220 mil requisições entre `smoke` e `load`):
 
 | Métrica                                      |   Valor |
-| :------------------------------------------- | ------: |
+| :---------------------------------------------- | --------: |
 | `view_show_process_cpu_user_seconds_total`   | 31,02 s |
 | `view_show_process_cpu_system_seconds_total` | 15,49 s |
 | `view_show_process_resident_memory_bytes`    | 96,4 MB |
@@ -362,12 +410,16 @@ início, ~220 mil requisições entre `smoke` e `load`):
 &emsp; Sem um limite de vCPU imposto (processo local, não contêiner), não é
 possível calcular percentual de utilização comparável ao Fargate de
 produção — apenas os segundos de CPU acumulados. Event loop lag baixo
-(1,55 ms) indica que a thread principal não estava bloqueada, consistente
-com a latência de negócio baixa (p95 64 ms) apesar do volume alto de 429.
+(1,55 ms) indica que a thread principal não estava bloqueada localmente;
+a cauda de latência observada na AWS (§3.3) não se manifestou nesta rodada
+local, consistente com a hipótese de que a causa é específica do cliente
+DynamoDB real (o DynamoDB Local não tem o mesmo comportamento de rede/pool).
 
 ---
 
 ## 5. Como reproduzir
+
+**Local (DynamoDB Local — valida os scripts, não mede capacidade):**
 
 ```bash
 # 1. Subir a API (a partir de apps/backend/api) — ver README daquele diretório
@@ -389,6 +441,12 @@ k6 run -e BASE_URL=$BASE_URL -e AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET auth-chec
 k6 run -e BASE_URL=$BASE_URL -e AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET -e MODE=load consultas.js
 ./rodadas.sh   # bateria completa: smoke → load → breakpoint → estresse → spike → soak
 ```
+
+**AWS real (stack completa via Terraform — mede capacidade de verdade):**
+ver [`loadtest/README.md` § Rodando contra dados reais (AWS)](../../apps/backend/api/loadtest/README.md#rodando-contra-dados-reais-aws)
+para o passo a passo completo (`terraform output`, `ALLOW_REMOTE_SEED=1`,
+ajuste opcional de `rate_limit_por_minuto`/`cpu_task`/`memoria_task`/
+`quantidade_tasks` para isolar/escalar capacidade).
 
 &emsp; Cada rodada grava um resumo JSON completo (`resumo-<MODE>.json`), que
 deve ser anexado como evidência ao preencher a Seção 3.

@@ -22,7 +22,10 @@ terraform {
 
 provider "aws" {
   region              = var.regiao
-  allowed_account_ids = ["248880318395"]
+  # AWS Academy Learner Lab: a conta rotaciona a cada novo lab. Atualize este
+  # ID sempre que `terraform plan` recusar com "account ID not allowed" —
+  # confirme a conta ativa com `aws sts get-caller-identity`.
+  allowed_account_ids = ["080158589617"]
 
   default_tags {
     tags = {

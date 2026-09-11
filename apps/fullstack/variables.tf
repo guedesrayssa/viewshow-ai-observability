@@ -47,6 +47,12 @@ variable "quantidade_tasks" {
   default     = 1
 }
 
+variable "rate_limit_por_minuto" {
+  description = "Requisições/minuto por IP antes de RATE_LIMITED (rateLimiter em src/app.ts). 180 é o padrão de produção; suba temporariamente numa janela de teste de carga para medir a API sem o teto do rate limiter (ver apps/backend/api/loadtest/README.md)."
+  type        = number
+  default     = 180
+}
+
 variable "bedrock_habilitado" {
   description = "Liga a explicação em linguagem natural via Bedrock. Mantenha desligado: o Learner Lab não dá acesso ao Bedrock, e o código já cai para explicação por template."
   type        = bool
