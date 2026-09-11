@@ -1,0 +1,68 @@
+{
+  "table": "ca_run",
+  "recordType": "UpstreamCollectorRun",
+  "columns": [
+    {
+      "name": "run_id",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "started_at",
+      "sqlType": "VARCHAR(40)",
+      "nullable": false
+    },
+    {
+      "name": "finished_at",
+      "sqlType": "VARCHAR(40)",
+      "nullable": true
+    },
+    {
+      "name": "range_start_ms",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "range_end_ms",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "points_inserted",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "duration_s",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "notes",
+      "sqlType": "TEXT",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "run_id"
+  ],
+  "cursorKey": [
+    "run_id"
+  ],
+  "timestampField": "started_at",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": null,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "collector_audit",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "started_at"
+  },
+  "normalizer": "ca_run"
+}

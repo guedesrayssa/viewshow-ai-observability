@@ -1,0 +1,83 @@
+{
+  "table": "apollo_run",
+  "recordType": "UpstreamCollectorRun",
+  "columns": [
+    {
+      "name": "run_id",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "started_at",
+      "sqlType": "VARCHAR(40)",
+      "nullable": false
+    },
+    {
+      "name": "finished_at",
+      "sqlType": "VARCHAR(40)",
+      "nullable": true
+    },
+    {
+      "name": "kind",
+      "sqlType": "VARCHAR(32)",
+      "nullable": false
+    },
+    {
+      "name": "range_start",
+      "sqlType": "VARCHAR(40)",
+      "nullable": true
+    },
+    {
+      "name": "range_end",
+      "sqlType": "VARCHAR(40)",
+      "nullable": true
+    },
+    {
+      "name": "pages",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "rows_inserted",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "rows_updated",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "duration_s",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "notes",
+      "sqlType": "TEXT",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "run_id"
+  ],
+  "cursorKey": [
+    "run_id"
+  ],
+  "timestampField": "started_at",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": null,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "collector_audit",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "started_at"
+  },
+  "normalizer": "apollo_run"
+}

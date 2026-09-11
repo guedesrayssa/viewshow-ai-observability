@@ -1,0 +1,50 @@
+{
+  "table": "device_hourly",
+  "recordType": "DimensionalMetricAggregate",
+  "columns": [
+    {
+      "name": "hour_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "device",
+      "sqlType": "VARCHAR(255)",
+      "nullable": false
+    },
+    {
+      "name": "sessions",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "hour_ts",
+    "device"
+  ],
+  "cursorKey": [
+    "hour_ts",
+    "device"
+  ],
+  "timestampField": "hour_ts",
+  "grainSeconds": 3600,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "known_upstream_lag",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "hour_ts"
+  },
+  "normalizer": "device_hourly"
+}

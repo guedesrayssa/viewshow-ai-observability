@@ -1,0 +1,30 @@
+{
+  "sourceSystem": "argus",
+  "physicalContractVersion": "2.0",
+  "schemaFingerprint": "sha256:18def736f973f7b1f465d141986ec4bfa83343289690f7ad37f91df351806970",
+  "descriptors": [
+    "signal_bucket",
+    "live_active_15min",
+    "live_qoe_hourly",
+    "player_hourly",
+    "device_hourly",
+    "geo_hourly",
+    "live_error_attr_hourly",
+    "error_cat_hourly",
+    "incidents",
+    "signal_meta",
+    "collector_run",
+    "apollo_run",
+    "ca_run",
+    "nr_run",
+    "prom_run",
+    "rpaas_run",
+    "app_error",
+    "app_error_model",
+    "app_error_version",
+    "cdn_vod_shadow",
+    "finding_status_log",
+    "live_event_sde",
+    "live_event"
+  ]
+}

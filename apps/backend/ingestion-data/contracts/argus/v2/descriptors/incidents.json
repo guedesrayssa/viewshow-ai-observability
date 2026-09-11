@@ -1,0 +1,180 @@
+{
+  "table": "incidents",
+  "recordType": "Incident",
+  "columns": [
+    {
+      "name": "opened_at",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "sys_id",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "number",
+      "sqlType": "VARCHAR(32)",
+      "nullable": true
+    },
+    {
+      "name": "resolved_at",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "closed_at",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "priority",
+      "sqlType": "VARCHAR(8)",
+      "nullable": true
+    },
+    {
+      "name": "priority_value",
+      "sqlType": "VARCHAR(8)",
+      "nullable": true
+    },
+    {
+      "name": "state",
+      "sqlType": "VARCHAR(32)",
+      "nullable": true
+    },
+    {
+      "name": "assignment_group",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "business_service",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "cmdb_ci",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "short_description",
+      "sqlType": "VARCHAR(1024)",
+      "nullable": true
+    },
+    {
+      "name": "u_this_incident_caused_external_impacts",
+      "sqlType": "VARCHAR(8)",
+      "nullable": true
+    },
+    {
+      "name": "u_this_incident_was_caused_by_a_change_or_deploy",
+      "sqlType": "VARCHAR(8)",
+      "nullable": true
+    },
+    {
+      "name": "parent_incident",
+      "sqlType": "VARCHAR(32)",
+      "nullable": true
+    },
+    {
+      "name": "child_incidents",
+      "sqlType": "TEXT",
+      "nullable": true
+    },
+    {
+      "name": "state_value",
+      "sqlType": "VARCHAR(8)",
+      "nullable": true
+    },
+    {
+      "name": "category",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "subcategory",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "cause",
+      "sqlType": "TEXT",
+      "nullable": true
+    },
+    {
+      "name": "caused_by",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "u_what_s_the_root_cause",
+      "sqlType": "TEXT",
+      "nullable": true
+    },
+    {
+      "name": "impact_component",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "impact_component_value",
+      "sqlType": "VARCHAR(128)",
+      "nullable": true
+    },
+    {
+      "name": "close_code",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "close_code_value",
+      "sqlType": "VARCHAR(128)",
+      "nullable": true
+    },
+    {
+      "name": "close_notes",
+      "sqlType": "TEXT",
+      "nullable": true
+    },
+    {
+      "name": "scr_vendor",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "scr_vendor_point_of_contact",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "scr_vendor_ticket",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "opened_at",
+    "sys_id"
+  ],
+  "cursorKey": [
+    "opened_at",
+    "sys_id"
+  ],
+  "timestampField": "opened_at",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": 90,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "ground_truth_90d",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "opened_at"
+  },
+  "normalizer": "incidents"
+}

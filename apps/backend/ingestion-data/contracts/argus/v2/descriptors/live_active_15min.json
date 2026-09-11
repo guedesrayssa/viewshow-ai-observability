@@ -1,0 +1,80 @@
+{
+  "table": "live_active_15min",
+  "recordType": "DimensionalMetricAggregate",
+  "columns": [
+    {
+      "name": "bucket_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "sinal",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "active_sessions",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "active_with_error",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "joins_in_bucket",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "latency_ms_p50",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "latency_ms_p95",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "bufferratio_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "jointime_s_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "dropped_frames_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "bucket_ts",
+    "sinal"
+  ],
+  "cursorKey": [
+    "bucket_ts",
+    "sinal"
+  ],
+  "timestampField": "bucket_ts",
+  "grainSeconds": 900,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "known_upstream_lag",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "bucket_ts"
+  },
+  "normalizer": "live_active_15min"
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://view-show.local/contracts/argus/v2/descriptor.schema.json",
+  "title": "ARGUS 2.0 dataset descriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "table",
+    "recordType",
+    "columns",
+    "naturalKey",
+    "cursorKey",
+    "timestampField",
+    "grainSeconds",
+    "retention",
+    "coveragePolicy",
+    "requiredModes",
+    "archivePartition",
+    "normalizer"
+  ],
+  "properties": {
+    "table": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+    "recordType": {
+      "enum": [
+        "SignalObservation",
+        "DimensionalMetricAggregate",
+        "ApplicationErrorAggregate",
+        "Incident",
+        "UpstreamSourceHealth",
+        "UpstreamCollectorRun",
+        "LiveEventContext",
+        "FindingStatusTransition",
+        "ShadowObservation"
+      ]
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "sqlType", "nullable"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "sqlType": { "type": "string", "minLength": 1 },
+          "nullable": { "type": "boolean" }
+        }
+      }
+    },
+    "naturalKey": { "$ref": "#/$defs/key" },
+    "cursorKey": { "$ref": "#/$defs/key" },
+    "timestampField": { "type": ["string", "null"] },
+    "grainSeconds": { "type": ["integer", "null"], "minimum": 1 },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceDays", "hotDays", "canonicalMonths"],
+      "properties": {
+        "sourceDays": { "type": ["integer", "null"], "minimum": 1 },
+        "hotDays": { "type": "integer", "minimum": 1 },
+        "canonicalMonths": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "coveragePolicy": { "type": "string", "minLength": 1 },
+    "requiredModes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["backfill", "sync"] }
+    },
+    "archivePartition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "field"],
+      "properties": {
+        "strategy": { "enum": ["event_time", "snapshot_date"] },
+        "field": { "type": ["string", "null"] }
+      }
+    },
+    "normalizer": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+  },
+  "$defs": {
+    "key": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "table": "live_event_sde",
+  "recordType": "LiveEventContext",
+  "columns": [
+    {
+      "name": "sde_id",
+      "sqlType": "VARCHAR(32)",
+      "nullable": false
+    },
+    {
+      "name": "team_home",
+      "sqlType": "VARCHAR(96)",
+      "nullable": true
+    },
+    {
+      "name": "team_away",
+      "sqlType": "VARCHAR(96)",
+      "nullable": true
+    },
+    {
+      "name": "competition",
+      "sqlType": "VARCHAR(160)",
+      "nullable": true
+    },
+    {
+      "name": "kickoff_ts",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "status",
+      "sqlType": "VARCHAR(32)",
+      "nullable": true
+    },
+    {
+      "name": "is_finished",
+      "sqlType": "TINYINT",
+      "nullable": false
+    },
+    {
+      "name": "tids_jarvis",
+      "sqlType": "TEXT",
+      "nullable": false
+    },
+    {
+      "name": "tids_epg",
+      "sqlType": "TEXT",
+      "nullable": false
+    },
+    {
+      "name": "tid_only_epg",
+      "sqlType": "TEXT",
+      "nullable": false
+    },
+    {
+      "name": "tid_only_jarvis",
+      "sqlType": "TEXT",
+      "nullable": false
+    },
+    {
+      "name": "name_mismatch",
+      "sqlType": "TINYINT",
+      "nullable": false
+    },
+    {
+      "name": "epg_teams",
+      "sqlType": "TEXT",
+      "nullable": true
+    },
+    {
+      "name": "updated_at",
+      "sqlType": "BIGINT",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "sde_id"
+  ],
+  "cursorKey": [
+    "sde_id"
+  ],
+  "timestampField": "kickoff_ts",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": null,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "editorial_context",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "snapshot_date",
+    "field": null
+  },
+  "normalizer": "live_event_sde"
+}

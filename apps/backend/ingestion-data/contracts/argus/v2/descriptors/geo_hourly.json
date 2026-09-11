@@ -1,0 +1,57 @@
+{
+  "table": "geo_hourly",
+  "recordType": "DimensionalMetricAggregate",
+  "columns": [
+    {
+      "name": "hour_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "state_province",
+      "sqlType": "VARCHAR(8)",
+      "nullable": false
+    },
+    {
+      "name": "isp",
+      "sqlType": "VARCHAR(128)",
+      "nullable": false
+    },
+    {
+      "name": "sessions",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "hour_ts",
+    "state_province",
+    "isp"
+  ],
+  "cursorKey": [
+    "hour_ts",
+    "state_province",
+    "isp"
+  ],
+  "timestampField": "hour_ts",
+  "grainSeconds": 3600,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "known_upstream_lag",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "hour_ts"
+  },
+  "normalizer": "geo_hourly"
+}

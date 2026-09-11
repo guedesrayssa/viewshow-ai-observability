@@ -1,0 +1,59 @@
+{
+  "table": "signal_bucket",
+  "recordType": "SignalObservation",
+  "columns": [
+    {
+      "name": "bts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "source",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "entity",
+      "sqlType": "VARCHAR(255)",
+      "nullable": false
+    },
+    {
+      "name": "metric",
+      "sqlType": "VARCHAR(128)",
+      "nullable": false
+    },
+    {
+      "name": "value",
+      "sqlType": "DOUBLE",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "source",
+    "entity",
+    "metric",
+    "bts"
+  ],
+  "cursorKey": [
+    "bts",
+    "source",
+    "entity",
+    "metric"
+  ],
+  "timestampField": "bts",
+  "grainSeconds": 900,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "snapshot_window",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "bts"
+  },
+  "normalizer": "signal_bucket"
+}

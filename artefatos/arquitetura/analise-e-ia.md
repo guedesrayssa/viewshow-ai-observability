@@ -1,8 +1,8 @@
 # Análise de dados e diagnóstico por IA
 
 - **Status:** aprovado para implementação
-- **Versão:** 1.1
-- **Última atualização:** 07/09/2026
+- **Versão:** 2.0
+- **Última atualização:** 09/09/2026
 - **Responsáveis:** equipe de análise de dados e IA
 - **Região AWS:** `us-east-1`
 
@@ -10,7 +10,12 @@
 
 Este documento define como o View Show transforma janelas materializadas em previsões, incidentes, evidências e hipóteses diagnósticas. Ele é a fonte normativa do contrato da fila de análise, da execução dos modelos, da orquestração do diagnóstico e da recuperação de falhas.
 
-O Worker de Análise não ingere registros diretamente do ARGUS. Ele recebe pela SQS apenas uma referência à janela que deve processar. As execuções online consultam no DynamoDB os dados recentes necessários à detecção, à previsão e ao contexto de até cinco horas. Treinamentos, avaliações e reproduções históricas podem consultar pelo Athena os 11 meses arquivados em Parquet no S3. A ingestão continua responsável pela normalização e pela persistência das duas camadas.
+O Worker de Análise não ingere registros diretamente do ARGUS. Ele recebe pela
+SQS apenas uma referência à janela já materializada. As execuções online
+consultam o DynamoDB; reproduções históricas podem consultar Athena sobre
+Parquet canônico. A política de retenção pode chegar a 12 meses, mas toda
+consulta depende dos `availableIntervals` do manifesto. A ingestão continua
+responsável pela normalização e persistência das duas camadas.
 
 ## 2. Componentes e responsabilidades
 
@@ -75,7 +80,7 @@ A fila é `SQS Standard`. Portanto, o consumidor deve tolerar duplicidade e entr
       "dimensions": {}
     },
     "inputWatermark": "2026-09-06T15:00:00.000Z",
-    "datasetVersion": "dsv_01K2F8BAYX"
+    "datasetVersion": "dsv_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
   }
 }
 ```
@@ -203,13 +208,23 @@ SK = TARGET#<epochMs>#<predictionId>
 
 Antes de gerar uma nova previsão, o Worker avalia a previsão cuja janela-alvo acabou de terminar. Quando os dados observados estão completos, o resultado é classificado como `TP`, `FP`, `TN` ou `FN`. Dados insuficientes após a tolerância geram `UNKNOWN` e `validationStatus = UNAVAILABLE`.
 
-## 8. Dataset importado e versionamento
+## 8. Dataset e versionamento
 
-Cada importação recebe uma `candidateDatasetVersion` derivada do `importId` e do checksum do dump. Fatos, projeções e watermarks são gravados nas chaves do DynamoDB e nos prefixos Parquet do S3 que contêm essa versão, permanecendo invisíveis durante o processamento. Depois de validar as duas camadas e suas partições, a importação troca condicionalmente o manifesto ativo; uma falha mantém a versão anterior consultável. O dump permanece no S3 conforme a política de retenção.
+A `datasetVersion` é determinística: fonte lógica, SHA-256 do dump,
+`physicalContractVersion=2.0` e `canonicalSchemaVersion=1.0` formam o JSON
+canônico usado no hash. Ela não deriva de identificador de importação. Fatos,
+projeções e watermarks são gravados sob essa versão candidata e permanecem
+invisíveis até as validações de DynamoDB, Parquet, Glue e Athena. Depois, a
+ativação condicional troca o manifesto ativo; uma falha anterior preserva a
+versão anterior consultável.
 
 Previsões, detecções e avaliações sempre registram o `datasetVersion` recebido no evento. O Worker conserva essa versão durante toda a execução, mesmo que outra versão seja ativada em paralelo. Dessa forma, uma análise feita sobre um dump pode ser reproduzida e comparada com outra versão sem confundir os resultados.
 
-O treinamento e a avaliação de novos modelos ocorrem fora do fluxo online. Esses processos podem consultar o histórico de até 12 meses: até 30 dias no DynamoDB e os 11 meses anteriores no S3 por meio do Athena, sempre sob um único `datasetVersion`. Somente um artefato previamente avaliado é disponibilizado ao Worker, com nome, versão, checksum, métricas de avaliação e data de aprovação. A troca da versão ativa não altera resultados históricos.
+O treinamento e a avaliação de novos modelos ocorrem fora do fluxo online.
+Podem consultar os intervalos presentes no manifesto, sob um único
+`datasetVersion`. Somente um artefato previamente avaliado é disponibilizado ao
+Worker, com nome, versão, checksum, métricas de avaliação e data de aprovação.
+A troca da versão ativa não altera resultados históricos.
 
 ## 9. Orquestração e diagnóstico
 
@@ -256,7 +271,7 @@ Configuração inicial:
 | Tempo de invisibilidade | 5 minutos |
 | Renovação durante processamento | 60 segundos |
 | Máximo de recebimentos | 5 |
-| Retenção da fila principal | 4 dias |
+| Retenção da fila principal | 14 dias |
 | Retenção da DLQ | 14 dias |
 | Long polling | 20 segundos |
 

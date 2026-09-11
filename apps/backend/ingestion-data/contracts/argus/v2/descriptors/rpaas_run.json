@@ -1,0 +1,78 @@
+{
+  "table": "rpaas_run",
+  "recordType": "UpstreamCollectorRun",
+  "columns": [
+    {
+      "name": "run_id",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "started_at",
+      "sqlType": "VARCHAR(40)",
+      "nullable": false
+    },
+    {
+      "name": "finished_at",
+      "sqlType": "VARCHAR(40)",
+      "nullable": true
+    },
+    {
+      "name": "range_start",
+      "sqlType": "VARCHAR(40)",
+      "nullable": true
+    },
+    {
+      "name": "range_end",
+      "sqlType": "VARCHAR(40)",
+      "nullable": true
+    },
+    {
+      "name": "regions",
+      "sqlType": "TEXT",
+      "nullable": true
+    },
+    {
+      "name": "entries_read",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "buckets_upd",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "duration_s",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "notes",
+      "sqlType": "TEXT",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "run_id"
+  ],
+  "cursorKey": [
+    "run_id"
+  ],
+  "timestampField": "started_at",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": null,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "collector_audit",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "started_at"
+  },
+  "normalizer": "rpaas_run"
+}
