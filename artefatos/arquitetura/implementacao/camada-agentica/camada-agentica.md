@@ -142,6 +142,12 @@ decisão**. Cada uma responde a uma pergunta diferente:
 &emsp; `src/index.ts` é a superfície pública: quem integra importa daí, e não de
 caminhos internos, para que reorganização interna não quebre consumidor.
 
+&emsp; O mesmo diretório hospeda um segundo pacote, em Python: o
+`view_show_agentic`, que fornece os hooks de observabilidade — spans, métricas e
+logs — que o futuro Worker de Análise deve usar. Os dois não se importam: o
+núcleo continua sem dependência, e a telemetria só passa a produzir dado quando
+o worker existir e invocar os hooks.
+
 &emsp; `tests/` tem um arquivo por unidade exercitada, com o mesmo nome do
 arquivo de `src/` que ele cobre. `scripts/` fica fora de `src/` e de `tests/`
 porque avaliação não é teste: ela chama modelo real, custa minutos e não roda no
@@ -188,14 +194,19 @@ Recebe o pacote pronto e devolve o diagnóstico; quem integra faz
 
 ### 4.1 A integração é um adaptador, não uma renegociação de contrato
 
-&emsp; O `AgenticDiagnosisPort` daqui tem assinatura idêntica ao port já
-reservado no backend, e `requestDiagnosis` devolve `"accepted"`, não o
-diagnóstico: o acionamento é assíncrono por construção e nada bloqueia esperando
-o modelo. Quem chama registra que pediu e lê o resultado depois.
+&emsp; O `AgenticDiagnosisPort` daqui tem assinatura **idêntica** ao port que a
+API já deixou reservado em
+`apps/backend/api/src/modules/incidents/ports/incident-repository.ts`, marcado lá
+como *"reserved consumer boundary for the future agentic PR"*. O mesmo vale para
+o `ReviewFeedbackPort`. Encaixar é escrever um adaptador, não renegociar
+contrato.
+
+&emsp; `requestDiagnosis` devolve `"accepted"`, e não o diagnóstico: o
+acionamento é assíncrono por construção e nada bloqueia esperando o modelo. Quem
+chama registra que pediu e lê o resultado depois.
 
 &emsp; Persistência, transporte e provisionamento ficam do lado de quem integra
-— a camada não depende do repositório (2.3), e é isso que permite que ela seja
-ligada a qualquer um dos backends sem reescrita.
+— a camada não depende do repositório (2.3).
 
 ### 4.2 Não existe score de anomalia normalizado
 
@@ -314,7 +325,7 @@ medida registrada em [`avaliacao-modelos.md`](avaliacao-modelos.md).
 
 | Fora de escopo | Motivo |
 |:--|:--|
-| Persistir qualquer coisa | é o que ainda muda entre as branches do backend |
+| Persistir qualquer coisa | o hospedeiro que grava é o Worker de Análise, que ainda não existe |
 | Estado da execução (§5: `PROCESSING`, `RETRY_PENDING`, `SUCCEEDED`, `FAILED`) | persistência com escrita condicional; a camada fornece o `analysisRunId` que isso exige |
 | Consumir SQS | responsabilidade do Worker de Análise |
 | Detectar anomalia ou prever QoE | responsabilidade dos modelos de ML |
@@ -394,9 +405,7 @@ evidência existente e tem todos os campos, e chegaria assim à tela.
 definido em [`analise-e-ia.md`](../../analise-e-ia.md) §2 — ela é *"um módulo
 interno do Worker de Análise"*, e não um serviço implantável separado.
 
-&emsp; Três impedimentos existem hoje, e **nenhum deles é a escolha entre
-`develop` e `refactor/backend`**, que decide quem *lê* o diagnóstico e não quem
-o *produz*:
+&emsp; Três impedimentos existem hoje, e nenhum deles depende desta camada:
 
 | Impedimento | Situação |
 |:--|:--|
@@ -413,8 +422,8 @@ documento normativo.
 
 | Item | Depende de |
 |:--|:--|
-| Adaptador `ler → investigate → gravar` | escolha entre `develop` e `refactor/backend` |
-| Estado da execução com escrita condicional (§5) | mesma escolha |
+| Adaptador `ler → investigate → gravar` | Worker de Análise |
+| Estado da execução com escrita condicional (§5) | mesmo hospedeiro |
 | Worker de Análise e fila SQS | infraestrutura |
 | Provider de LLM em produção | liberação do Bedrock ou GPU |
 | `rca-v3` — regra de causa ≠ consequência como restrição definicional | avaliação com mais execuções por configuração |

@@ -28,13 +28,6 @@ export const ENDPOINTS = {
     /** Hipótese mais recente. Responde 404 quando ainda não houve diagnóstico. */
     incidentHypothesis: (id: string) =>
       `/api/v1/incidents/${encodeURIComponent(id)}/hypothesis`,
-    /**
-     * Dispara o diagnóstico e devolve hipótese, score, evidências e explicação.
-     * POST porque grava uma hipótese nova a cada chamada — e por isso **exige
-     * sessão**, como a revisão. É o gatilho da camada agêntica.
-     */
-    incidentDiagnose: (id: string) =>
-      `/api/v1/incidents/${encodeURIComponent(id)}/diagnose`,
     /** Revisão humana da hipótese. Exige sessão. */
     incidentHypothesisReview: (id: string) =>
       `/api/v1/incidents/${encodeURIComponent(id)}/hypothesis/review`,

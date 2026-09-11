@@ -206,10 +206,7 @@ export const options = {
 
 /** Login uma vez. O cookie é enviado em todas as chamadas, inclusive enquanto
  *  algumas rotas ainda são públicas, para que a suíte continue válida quando
- *  o RNF04 for aplicado a todas as APIs de consulta. É HMAC com maxAge de 8 h
- *  (src/auth/session.js), então não precisa renovar durante o teste, e chega
- *  aos cenários como primeiro argumento. O PATCH de review também exige sessão,
- *  mas fica FORA da carga de propósito, porque promove caso à golden set. */
+ *  o RNF04 for aplicado a todas as APIs de consulta. */
 export function setup() {
   const res = http.post(
     `${BASE_URL}/auth/login`,
@@ -296,9 +293,7 @@ export default function (data) {
   }
 }
 
-/** Cenário isolado — ESCREVE no banco a cada chamada. Exige sessão: sem o
- *  cookie que requestParams injeta, a rota responde 401 e o teste passaria a
- *  medir o middleware de autenticação, não o orquestrador. */
+/** Cenário isolado — ESCREVE no banco a cada chamada. */
 export function diagnosticar(data) {
   const id = incidentId();
   const res = http.post(
@@ -308,7 +303,6 @@ export function diagnosticar(data) {
   );
   check(res, {
     "diagnose: 200": (r) => r.status === 200,
-    "diagnose: sessão aceita (não 401)": (r) => r.status !== 401,
     "diagnose: tem hypothesis": (r) => {
       try { return typeof r.json("hypothesis") === "string"; } catch { return false; }
     },
