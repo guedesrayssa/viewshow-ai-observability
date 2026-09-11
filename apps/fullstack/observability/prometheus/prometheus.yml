@@ -40,6 +40,8 @@ scrape_configs:
         labels:
           component: observabilidade
 
+  # A API expõe GET /metrics quando METRICS_ENABLED=true. Esta composição não
+  # inicia a API, portanto execute-a no host para manter o alvo saudável.
   - job_name: view-show-api
     metrics_path: /metrics
     static_configs:

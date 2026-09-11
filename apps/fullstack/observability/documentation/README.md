@@ -56,7 +56,8 @@ Registrados aqui porque afetam decisões de implementação em mais de um sinal:
   OpenTelemetry, e o agrupador de domínio se chama `incidentId`.
 - **A pilha tem coleta de logs.** O Alloy descobre containers locais e envia
   stdout/stderr ao Loki. Na AWS, a API preserva o envio para CloudWatch e também
-  publica o JSON estruturado no endpoint privado do Loki.
+  publica o JSON estruturado no endpoint privado do Loki; os workers mantêm o
+  `stdout` como único destino para não bloquear o processamento.
 - **O painel é exportação estática.** `output: "export"` em `next.config.ts`
   significa que não há servidor Next em produção. Log e trace do frontend nascem
   no navegador e precisam de um endpoint de recepção na API, porque nem o Loki

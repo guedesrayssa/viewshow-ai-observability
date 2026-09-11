@@ -1,6 +1,7 @@
 import json
 import logging
 import unittest
+from unittest.mock import Mock
 
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -93,6 +94,14 @@ class AgenticTelemetryTest(unittest.TestCase):
         span = self.spans.get_finished_spans()[-1]
         self.assertEqual(format(span.context.trace_id, "032x"), trace_id)
         self.assertEqual(format(span.parent.span_id, "016x"), parent_span_id)
+
+    def test_message_does_not_force_synchronous_flush(self):
+        self.telemetry.force_flush = Mock(return_value=True)
+
+        with self.telemetry.message("incident.detected", "message-4"):
+            pass
+
+        self.telemetry.force_flush.assert_not_called()
 
     def test_structured_log_redacts_prompt_and_token(self):
         with self.assertLogs("view-show-agentic", logging.INFO) as captured:

@@ -60,13 +60,13 @@ variable "retencao_logs_dias" {
 }
 
 variable "observabilidade_habilitada" {
-  description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki e Tempo em uma EC2."
+  description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki, Tempo e Alloy em uma EC2."
   type        = bool
   default     = false
 }
 
 variable "tipo_instancia_observabilidade" {
-  description = "Tipo da EC2 da stack. t3.medium fornece 4 GiB para os quatro componentes LGTM."
+  description = "Tipo da EC2 da stack. t3.medium fornece 4 GiB para os cinco componentes de observabilidade."
   type        = string
   default     = "t3.medium"
 }

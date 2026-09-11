@@ -35,9 +35,11 @@ Configuração para a stack local:
 export OTEL_SERVICE_NAME=view-show-ingestion
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4320
 export DEPLOYMENT_ENVIRONMENT=development
-# opcional fora de Docker: http://localhost:3100/loki/api/v1/push
-export LOKI_PUSH_URL=
 ```
+
+Os logs são escritos em JSON no `stdout`, sem chamadas síncronas ao Loki; o
+Alloy coleta a saída dos containers locais e o runtime da AWS pode encaminhá-la
+ao destino de logs da plataforma.
 
 O runtime de referência é Python 3.13, declarado em `.python-version`. Instale e
 teste com `python3.13 -m pip install -e .` e

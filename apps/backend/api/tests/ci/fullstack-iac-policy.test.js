@@ -774,6 +774,10 @@ const observabilityValidationCommands = [
     "AWS observability Docker Compose configuration validation",
     /^AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder docker compose (?:-f|--file) (?:apps\/fullstack\/)?observability\/aws\/docker-compose\.yml config(?: --quiet)?$/,
   ],
+  [
+    "standalone observability user-data rendering validation",
+    /^RENDER_AWS_ACCOUNT_ID=000000000000 RENDER_AWS_REGION=us-east-1 RENDER_GRAFANA_PASSWORD=ci-placeholder sh apps\/fullstack\/observability\/aws\/validate-user-data\.sh \/tmp\/view-show-user-data\.sh$/,
+  ],
 ];
 
 test("infrastructure is consolidated under apps/fullstack", () => {

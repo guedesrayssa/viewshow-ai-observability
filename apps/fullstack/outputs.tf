@@ -58,7 +58,7 @@ output "grafana_senha" {
 }
 
 output "observabilidade_instancia_id" {
-  description = "ID da EC2 que hospeda Grafana, Prometheus, Loki e Tempo."
+  description = "ID da EC2 que hospeda Grafana, Prometheus, Loki, Tempo e Alloy."
   value       = var.observabilidade_habilitada ? aws_instance.observabilidade[0].id : null
 }
 
@@ -68,7 +68,7 @@ output "observabilidade_otlp_workers_endpoint" {
 }
 
 output "observabilidade_loki_push_url" {
-  description = "URL privada para envio de logs estruturados da API e dos futuros workers ECS."
+  description = "URL privada para envio assíncrono dos logs estruturados da API."
   value       = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:3100/loki/api/v1/push" : null
 }
 

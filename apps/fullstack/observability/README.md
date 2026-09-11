@@ -40,8 +40,8 @@ Para trocar, exporte `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD` antes de su
 O Alloy descobre os containers pelo socket do Docker, persiste as posições de
 leitura e envia os logs ao Loki. Em `:4320`, também recebe OTLP/HTTP dos workers,
 converte métricas para remote write no Prometheus e encaminha traces ao Tempo.
-A API e os workers também podem enviar JSON estruturado diretamente ao Loki
-definindo `LOKI_PUSH_URL`.
+A API também pode enviar JSON estruturado diretamente ao Loki. Os workers
+escrevem somente em `stdout`, sem bloquear o processamento com chamadas ao Loki.
 
 Todas as portas podem ser sobrescritas por variáveis de ambiente
 (`GRAFANA_PORT`, `PROMETHEUS_PORT`, `LOKI_PORT`, `TEMPO_HTTP_PORT`,
@@ -53,13 +53,16 @@ Todas as portas podem ser sobrescritas por variáveis de ambiente
 apps/fullstack/observability/
 ├── alloy/config.alloy                                 logs e gateway OTLP dos workers
 ├── grafana/provisioning/datasources/datasources.yml   data sources automáticos
-├── grafana/provisioning/dashboards/                   dashboards versionados
+├── grafana/provisioning/dashboards/                   dashboards RED e de aplicação
 ├── loki/loki-config.yml                               Loki monolítico, disco local
 ├── prometheus/prometheus.yml                          alvos e intervalo de coleta
 └── tempo/tempo.yml                                    receptores OTLP e metrics_generator
 ```
 
 ## Data sources provisionados
+
+O dashboard **View Show — API (RED)** é provisionado automaticamente e exibe
+latência p95, throughput, erros por segundo e uso de CPU a partir do Prometheus.
 
 O Grafana lê `grafana/provisioning/datasources/datasources.yml` a cada subida e
 sincroniza os três data sources. Eles ficam marcados como somente leitura: para
@@ -94,6 +97,30 @@ done
 
 ## Subir na AWS
 
+### Somente observabilidade no Learner Lab
+
+Quando a aplicação completa ainda não estiver provisionada, use o script
+isolado abaixo no AWS CloudShell. Ele cria apenas a EC2 com Grafana, Prometheus,
+Loki, Tempo e Alloy; não cria ECS, ALB, DynamoDB ou Amplify.
+
+```bash
+cd apps/fullstack/observability/aws
+export GRAFANA_CIDR_ACESSO="SEU_IP_PUBLICO/32"
+chmod +x deploy-learner-lab.sh
+./deploy-learner-lab.sh
+```
+
+A execução reaproveita uma instância existente chamada
+`view-show-observabilidade`. A senha inicial fica em
+`~/.view-show-grafana-admin-password`, com acesso restrito ao usuário do
+CloudShell. O script só imprime a URL depois de validar a saúde do Grafana via
+SSM.
+
+O CI renderiza o mesmo bootstrap sem acessar a AWS. Para repetir essa validação
+localmente, execute `./deploy-learner-lab.sh --validate-only` nesse diretório.
+
+### Aplicação completa com Terraform
+
 Pré-requisitos: Terraform, Docker, Node, AWS CLI, Session Manager plugin e uma
 sessão válida do AWS Academy. As credenciais temporárias são as mesmas usadas
 pela infraestrutura fullstack.
@@ -111,8 +138,8 @@ terraform apply g05-s3-observabilidade.tfplan
 
 Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
 na AWS. O plano acima cria uma EC2 `g05-s3-observabilidade` do tipo `t3.medium`
-com 30 GiB de gp3 criptografado, instala o
-Docker Compose e inicia os cinco componentes. Não é necessário clonar o
+com 30 GiB de gp3 criptografado, instala o Docker Compose e inicia os cinco
+componentes. Não é necessário clonar o
 repositório na instância: os arquivos versionados são compactados e enviados
 pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
 `running`.
@@ -148,10 +175,7 @@ Se SSM não estiver disponível na conta, restrinja o acesso direto ao seu IP;
 jamais use `0.0.0.0/0` para o Grafana:
 
 ```bash
-terraform apply \
-  -var='deployment_namespace=g05-s3' \
-  -var='observabilidade_habilitada=true' \
-  -var='grafana_cidr_acesso=203.0.113.10/32'
+terraform apply -var='grafana_cidr_acesso=203.0.113.10/32'
 terraform output grafana_acesso
 ```
 
@@ -171,7 +195,7 @@ estável.
 | Alloy | Receptor OTLP/HTTP privado em `:4320` para métricas e traces dos workers |
 
 O Terraform injeta `OTEL_SERVICE_NAME=g05-s3-api` e o endereço privado do Tempo
-na task ECS somente quando o opt-in está ativo. A API TypeScript já inicializa o
+na task ECS somente quando o opt-in está ativo. A API TypeScript inicializa o
 SDK OpenTelemetry quando esse endpoint existe.
 
 Os futuros tasks de ingestão e análise devem reutilizar o security group da
@@ -179,8 +203,9 @@ aplicação e definir `OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
 `terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes em
 `apps/backend/ingestion-data` e `apps/backend/agentic` já implementam o contrato,
 mas não existem tasks ou entrypoints desses workers nesta entrega.
-Para logs em ECS, defina também `LOKI_PUSH_URL` com
-`terraform output -raw observabilidade_loki_push_url`.
+Os workers escrevem logs JSON em `stdout`; em ECS, mantenha o driver `awslogs`
+para enviá-los ao CloudWatch sem acoplar o processamento à disponibilidade do
+Loki.
 
 ### Operação e custo no Learner Lab
 

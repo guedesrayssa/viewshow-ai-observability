@@ -17,7 +17,7 @@
   - [1.1 Escopo Restrito: apps/frontend e apps/backend](#11-escopo-restrito-appsfrontend-e-appsbackend)
   - [1.2 Dualidade: Registro de Evento de Negócio vs. Log de Execução](#12-dualidade-registro-de-evento-de-negócio-vs-log-de-execução)
   - [1.3 Estado Atual: O Que Existe Hoje no Código](#13-estado-atual-o-que-existe-hoje-no-código)
-  - [1.4 Lacuna Estrutural: A Pilha Não Tem Coletor de Logs](#14-lacuna-estrutural-a-pilha-não-tem-coletor-de-logs)
+  - [1.4 Lacuna Estrutural Fechada: Coleta Fora da Aplicação](#14-lacuna-estrutural-fechada-coleta-fora-da-aplicação)
 - [2. Arquitetura de Coleta e Centralização de Logs](#2-arquitetura-de-coleta-e-centralização-de-logs)
 - [3. Contrato Canônico da Linha de Log](#3-contrato-canônico-da-linha-de-log)
   - [3.1 Campos Obrigatórios do Envelope](#31-campos-obrigatórios-do-envelope)
@@ -123,10 +123,12 @@
 └──────────────────────────────────────┴──────────────────────────────────────┘
 ```
 
-### 1.4 Lacuna Estrutural: A Pilha Não Tem Coletor de Logs
+### 1.4 Lacuna Estrutural Fechada: Coleta Fora da Aplicação
 
-> [!WARNING]
-> O `apps/fullstack/docker-compose.observability.yml` sobe **Grafana, Prometheus, Loki e Tempo**, mas **nenhum agente de coleta de logs**. Não há Promtail, não há Grafana Alloy e não há driver de log do Docker apontando para o Loki. Hoje, mesmo que a API passasse a emitir JSON perfeito em `stdout`, **nada levaria essa linha até a porta 3100**.
+> [!NOTE]
+> O `apps/fullstack/docker-compose.observability.yml` inclui o Grafana Alloy. Ele
+> lê `stdout`/`stderr` dos containers pelo socket do Docker e envia as linhas ao
+> Loki, mantendo os workers fora do caminho de rede dos logs.
 
 &emsp; Existem dois caminhos para fechar essa lacuna, e a escolha muda o que precisa ser escrito na aplicação:
 
@@ -135,7 +137,9 @@
 | **A. Coletor externo (recomendado)** | A aplicação escreve JSON em `stdout`; um contêiner **Grafana Alloy** lê os logs do Docker (ou o arquivo no ECS) e faz push ao Loki. | A aplicação não conhece o Loki. Mesmo código roda local e no Fargate, onde o `awslogs` já entrega ao CloudWatch. | Um serviço a mais no compose e um arquivo de configuração. |
 | **B. Transporte direto na aplicação** | A API usa um transporte (`pino-loki`) que faz `POST` em `http://localhost:3100/loki/api/v1/push`. | Nada novo na pilha; funciona em minutos. | Acopla a aplicação ao Loki, perde linha em queda de rede e não vale para o Fargate. |
 
-&emsp; **Decisão adotada neste mapeamento:** caminho **A**. A aplicação escreve em `stdout` e nada mais. O roteiro da seção [10](#10-roteiro-prático-de-instrumentação) inclui o serviço do Alloy.
+&emsp; **Decisão adotada neste mapeamento para os workers:** caminho **A**. Eles
+escrevem em `stdout` e o Alloy faz o transporte. A API mantém um envio remoto
+assíncrono na AWS, além do `stdout` entregue ao CloudWatch.
 
 ---
 
@@ -760,9 +764,10 @@ sum by (reason) (
 
 ## 10. Roteiro Prático de Instrumentação
 
-### Passo 1: Adicionar o coletor de logs à pilha
+### Passo 1: Configurar o coletor de logs da pilha
 
-&emsp; Criar `apps/fullstack/observability/alloy/config.alloy`, lendo os contêineres do Docker e enviando ao Loki:
+&emsp; `apps/fullstack/observability/alloy/config.alloy` lê os contêineres do
+Docker e envia suas linhas ao Loki. A configuração de referência é:
 
 ```alloy
 discovery.docker "containers" {

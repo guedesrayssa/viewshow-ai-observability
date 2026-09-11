@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -66,7 +65,6 @@ class TelemetryConfig:
     cloud_region: str = "local"
     service_instance_id: str = "local"
     otlp_endpoint: str = ""
-    loki_push_url: str = ""
 
     @classmethod
     def from_environment(cls) -> TelemetryConfig:
@@ -89,7 +87,6 @@ class TelemetryConfig:
                 "OTEL_SERVICE_INSTANCE_ID", os.getenv("HOSTNAME", "local")
             ),
             otlp_endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
-            loki_push_url=os.getenv("LOKI_PUSH_URL", ""),
         )
 
 
@@ -98,7 +95,7 @@ class StructuredLogger:
         self._config = config
         self._logger = logging.getLogger(config.service_name)
         if not self._logger.handlers:
-            handler = logging.StreamHandler()
+            handler = logging.StreamHandler(sys.stdout)
             handler.setFormatter(logging.Formatter("%(message)s"))
             self._logger.addHandler(handler)
         self._logger.setLevel(logging.INFO)
@@ -120,37 +117,6 @@ class StructuredLogger:
             payload["span_id"] = format(span_context.span_id, "016x")
         line = json.dumps(payload, separators=(",", ":"), default=str)
         self._logger.log(getattr(logging, level.upper(), logging.INFO), line)
-        self._push_loki(line, level)
-
-    def _push_loki(self, line: str, level: str) -> None:
-        if not self._config.loki_push_url:
-            return
-        body = json.dumps(
-            {
-                "streams": [
-                    {
-                        "stream": {
-                            "service_name": self._config.service_name,
-                            "environment": self._config.environment,
-                            "level": level,
-                        },
-                        "values": [[str(time.time_ns()), line]],
-                    }
-                ]
-            }
-        ).encode("utf-8")
-        request = urllib.request.Request(
-            self._config.loki_push_url,
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=2):
-                pass
-        except (OSError, ValueError, urllib.error.URLError):
-            # Model execution must not depend on telemetry transport health.
-            return
 
 
 @dataclass
@@ -252,57 +218,54 @@ class AgenticTelemetry:
         state = OperationState()
         started = time.monotonic()
         parent_context = extract(carrier) if carrier else None
-        try:
-            with self._tracer.start_as_current_span(
-                "analysis.message", context=parent_context, kind=SpanKind.CONSUMER
-            ) as span:
-                span.set_attribute("messaging.message.id", message_id)
-                span.set_attribute("viewshow.event_type", event_type)
+        with self._tracer.start_as_current_span(
+            "analysis.message", context=parent_context, kind=SpanKind.CONSUMER
+        ) as span:
+            span.set_attribute("messaging.message.id", message_id)
+            span.set_attribute("viewshow.event_type", event_type)
+            self.log.emit(
+                "info",
+                "analysis message started",
+                event_type=event_type,
+                message_id=message_id,
+            )
+            try:
+                yield state
+            except Exception as error:
+                state.status = "failure"
+                span.record_exception(error)
+                span.set_status(Status(StatusCode.ERROR, str(error)))
                 self.log.emit(
-                    "info",
-                    "analysis message started",
+                    "error",
+                    "analysis message failed",
                     event_type=event_type,
                     message_id=message_id,
+                    error_type=type(error).__name__,
                 )
-                try:
-                    yield state
-                except Exception as error:
+                raise
+            finally:
+                if state.status not in {
+                    "success",
+                    "failure",
+                    "retry",
+                    "throttled",
+                }:
                     state.status = "failure"
-                    span.record_exception(error)
-                    span.set_status(Status(StatusCode.ERROR, str(error)))
-                    self.log.emit(
-                        "error",
-                        "analysis message failed",
-                        event_type=event_type,
-                        message_id=message_id,
-                        error_type=type(error).__name__,
-                    )
-                    raise
-                finally:
-                    if state.status not in {
-                        "success",
-                        "failure",
-                        "retry",
-                        "throttled",
-                    }:
-                        state.status = "failure"
-                    if state.status == "failure":
-                        span.set_status(Status(StatusCode.ERROR))
-                    duration = time.monotonic() - started
-                    attributes = {"event_type": event_type, "status": state.status}
-                    self._messages.add(1, attributes)
-                    self._run_duration.record(duration, attributes)
-                    span.set_attribute("viewshow.analysis_status", state.status)
-                    self.log.emit(
-                        "info",
-                        "analysis message finished",
-                        event_type=event_type,
-                        message_id=message_id,
-                        status=state.status,
-                        duration_seconds=duration,
-                    )
-        finally:
-            self._force_flush_safely()
+                if state.status == "failure":
+                    span.set_status(Status(StatusCode.ERROR))
+                duration = time.monotonic() - started
+                attributes = {"event_type": event_type, "status": state.status}
+                self._messages.add(1, attributes)
+                self._run_duration.record(duration, attributes)
+                span.set_attribute("viewshow.analysis_status", state.status)
+                self.log.emit(
+                    "info",
+                    "analysis message finished",
+                    event_type=event_type,
+                    message_id=message_id,
+                    status=state.status,
+                    duration_seconds=duration,
+                )
 
     @contextmanager
     def investigation(self, diagnosis_source: str) -> Iterator[OperationState]:
@@ -370,12 +333,6 @@ class AgenticTelemetry:
         metrics_ok = self._meter_provider.force_flush(timeout_millis)
         traces_ok = self._tracer_provider.force_flush(timeout_millis)
         return metrics_ok and traces_ok
-
-    def _force_flush_safely(self) -> None:
-        try:
-            self.force_flush()
-        except Exception:  # noqa: BLE001 - telemetry must not fail message processing
-            self.log.emit("warning", "telemetry flush failed")
 
     def shutdown(self) -> None:
         self._meter_provider.shutdown()

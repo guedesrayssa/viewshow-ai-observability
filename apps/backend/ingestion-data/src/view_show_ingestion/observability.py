@@ -10,9 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -69,7 +68,6 @@ class TelemetryConfig:
     cloud_region: str = "local"
     service_instance_id: str = "local"
     otlp_endpoint: str = ""
-    loki_push_url: str = ""
 
     @classmethod
     def from_environment(cls) -> TelemetryConfig:
@@ -92,7 +90,6 @@ class TelemetryConfig:
                 "OTEL_SERVICE_INSTANCE_ID", os.getenv("HOSTNAME", "local")
             ),
             otlp_endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
-            loki_push_url=os.getenv("LOKI_PUSH_URL", ""),
         )
 
 
@@ -101,7 +98,7 @@ class StructuredLogger:
         self._config = config
         self._logger = logging.getLogger(config.service_name)
         if not self._logger.handlers:
-            handler = logging.StreamHandler()
+            handler = logging.StreamHandler(sys.stdout)
             handler.setFormatter(logging.Formatter("%(message)s"))
             self._logger.addHandler(handler)
         self._logger.setLevel(logging.INFO)
@@ -123,37 +120,6 @@ class StructuredLogger:
             payload["span_id"] = format(span_context.span_id, "016x")
         line = json.dumps(payload, separators=(",", ":"), default=str)
         self._logger.log(getattr(logging, level.upper(), logging.INFO), line)
-        self._push_loki(line, level)
-
-    def _push_loki(self, line: str, level: str) -> None:
-        if not self._config.loki_push_url:
-            return
-        body = json.dumps(
-            {
-                "streams": [
-                    {
-                        "stream": {
-                            "service_name": self._config.service_name,
-                            "environment": self._config.environment,
-                            "level": level,
-                        },
-                        "values": [[str(time.time_ns()), line]],
-                    }
-                ]
-            }
-        ).encode("utf-8")
-        request = urllib.request.Request(
-            self._config.loki_push_url,
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=2):
-                pass
-        except (OSError, ValueError, urllib.error.URLError):
-            # Telemetry transport must never fail an ingestion run.
-            return
 
 
 @dataclass
