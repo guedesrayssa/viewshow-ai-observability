@@ -5,7 +5,7 @@
 resource "aws_security_group" "alb" {
   name        = "${local.nome_alb}-sg"
   description = "Entrada publica na porta 80 do ALB"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = aws_vpc.principal.id
 
   ingress {
     description = "HTTP publico"
@@ -31,7 +31,7 @@ resource "aws_security_group" "alb" {
 resource "aws_security_group" "servico" {
   name        = local.nome_security_group
   description = "Porta do container liberada apenas a partir do SG do ALB"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = aws_vpc.principal.id
 
   ingress {
     description     = "Trafego do ALB para o container"
@@ -41,10 +41,8 @@ resource "aws_security_group" "servico" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  // A task precisa de saída para puxar a imagem do ECR e falar com o DynamoDB.
-  // Como ela roda em subnet pública com IP público (ver ecs.tf), essa saída vai
-  // direto pelo internet gateway — sem NAT Gateway, que custaria ~US$ 32/mês e
-  // não é desligado pelo laboratório no fim da sessão.
+  // A task precisa de saída para puxar a imagem do ECR e falar com serviços AWS.
+  // Ela permanece privada e usa o NAT ou os endpoints de gateway da VPC.
   egress {
     description = "Saida para ECR, DynamoDB e CloudWatch"
     from_port   = 0

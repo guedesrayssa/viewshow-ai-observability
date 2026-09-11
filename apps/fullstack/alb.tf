@@ -12,7 +12,7 @@ resource "aws_lb" "principal" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = data.aws_subnets.default.ids
+  subnets            = values(aws_subnet.publica)[*].id
 
   // Num laboratório o destroy precisa passar sem intervenção manual.
   enable_deletion_protection = false
@@ -26,7 +26,7 @@ resource "aws_lb_target_group" "api" {
   name     = local.nome_target_group
   port     = 3000
   protocol = "HTTP"
-  vpc_id   = data.aws_vpc.default.id
+  vpc_id   = aws_vpc.principal.id
 
   // "ip" e não "instance": Fargate com awsvpc registra ENIs, não instâncias.
   target_type = "ip"

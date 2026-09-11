@@ -3,7 +3,7 @@
 > **Snapshot histórico:** este levantamento registra a implementação JavaScript
 > observada nos commits indicados abaixo. Ele não descreve o runtime TypeScript
 > atual nem o contrato federado vigente; consulte `apps/backend/api/README.md` e
-> `apps/fullstack/documentation/infraestrutura-integracao.md` para o estado
+> `artefatos/sprint3/infraestrutura-integracao.md` para o estado
 > corrente.
 
 O objetivo deste registro era confirmar as leituras e documentar a arquitetura
