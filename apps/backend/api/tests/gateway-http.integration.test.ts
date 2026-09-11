@@ -172,16 +172,32 @@ describe("api monolith over HTTP", () => {
     });
   });
 
-  it("exposes only the federated authentication routes", async () => {
+  it("exposes the federated routes and direct password login", async () => {
     const url = await listen(buildApp());
     expect((await fetch(`${url}/auth/login`)).status).toBe(503);
     expect((await fetch(`${url}/auth/callback`)).status).toBe(400);
     expect(
       (await fetch(`${url}/auth/callback?code=code_1&state=state_1`)).status,
     ).toBe(503);
+
+    // POST /auth/login existe: valida o corpo antes de tudo...
     expect((await fetch(`${url}/auth/login`, { method: "POST" })).status).toBe(
-      404,
+      400,
     );
+    // ...e falha fechada com 503 enquanto o provedor Cognito não está
+    // configurado no ambiente.
+    const attempt = await fetch(`${url}/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        username: "engineer@example.test",
+        password: "irrelevante",
+      }),
+    });
+    expect(attempt.status).toBe(503);
+    expect(await attempt.json()).toMatchObject({
+      error: { code: "FEATURE_UNAVAILABLE" },
+    });
   });
 
   it("calls a module in-process, wraps quality metadata, and keeps physical fields private", async () => {

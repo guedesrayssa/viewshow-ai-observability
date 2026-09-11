@@ -28,7 +28,7 @@ import {
 } from "@view-show/contracts";
 import type { ApiConfig } from "./config.js";
 import type { AuthModule } from "./modules/auth/index.js";
-import { parseCookie } from "./modules/auth/index.js";
+import { parseCookie, passwordLoginBodySchema } from "./modules/auth/index.js";
 import type { DashboardQueries } from "./modules/dashboard/index.js";
 import type { IncidentUseCases } from "./modules/incidents/index.js";
 import type { ImportUseCases } from "./modules/imports/index.js";
@@ -181,6 +181,51 @@ export function createApp(deps: AppDependencies) {
       next(error);
     }
   });
+
+  // Login direto por usuário/senha (fluxo USER_PASSWORD_AUTH do Cognito, feito
+  // no servidor). Emite a mesma sessão assinada das demais rotas e devolve o
+  // ID token no corpo para clientes que precisem do JWT.
+  app.post(
+    PUBLIC_ROUTES.authPasswordLogin.express,
+    async (request, response, next) => {
+      try {
+        const parsed = passwordLoginBodySchema.safeParse(request.body);
+        if (!parsed.success) throw validationError(parsed.error);
+        const { identity, tokens } = await auth.passwordLogin.login(
+          parsed.data.username,
+          parsed.data.password,
+        );
+        issueSession(response, identity);
+        response.json(
+          successEnvelope(
+            {
+              data: {
+                token: tokens.idToken,
+                tokenType: tokens.tokenType,
+                expiresInSeconds: tokens.expiresInSeconds,
+                user: {
+                  id: identity.id,
+                  name: identity.name,
+                  email: identity.email,
+                  role: identity.role,
+                },
+              },
+              quality: {
+                window: null,
+                partial: false,
+                refreshAfterSeconds: null,
+                freshness: [],
+                warnings: [],
+              },
+            },
+            response.locals.requestId as string,
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   app.get(
     PUBLIC_ROUTES.authCallback.express,

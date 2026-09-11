@@ -23,6 +23,17 @@ variable "deployment_namespace" {
   }
 }
 
+variable "aws_account_id" {
+  description = "Conta AWS onde esta stack pode ser aplicada. Sem padrão: cada pessoa (inclusive quem revisa) define a própria conta do Learner Lab em um terraform.tfvars local, não versionado. Mesmo padrão de deployment_namespace."
+  type        = string
+  nullable    = false
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "aws_account_id deve ser o número de 12 dígitos da conta AWS."
+  }
+}
+
 variable "branch_amplify" {
   description = "Branch do Amplify. Vira o subdomínio: https://<branch>.<appId>.amplifyapp.com"
   type        = string

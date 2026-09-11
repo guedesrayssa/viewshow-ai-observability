@@ -1,9 +1,10 @@
 # Infraestrutura e integração fullstack
 
 Este módulo Terraform descreve a stack AWS que corresponde ao software
-implementado hoje no repositório. A configuração pode ser validada localmente,
-mas esta entrega não executou `terraform plan`, `terraform apply`, publicação ou
-teste end-to-end em recursos AWS.
+implementado hoje no repositório. A configuração é validável localmente e, nesta
+branch, a stack foi aplicada na conta do Learner Lab indicada por `aws_account_id`
+(na sessão atual, `904529597192`): os recursos existem na AWS e os endereços
+saem em `terraform output` (`painel_url`, `api_url`, `api_url_https`).
 
 ## Escopo atual
 
@@ -16,6 +17,7 @@ teste end-to-end em recursos AWS.
 | API Gateway | Terminação HTTPS para o proxy do Amplify | `apigateway.tf` |
 | Amplify | Export estático do frontend e proxy same-origin | `amplify.tf` |
 | DynamoDB | Tabelas operacional e golden set | `dynamodb.tf` |
+| Cognito | User Pool, app client confidencial e domínio de prefixo para o login por senha | `cognito.tf` |
 
 O módulo usa a VPC default e a `LabRole` disponíveis no AWS Academy. Ele também
 contém automações locais para construir e publicar a imagem da API e o export
@@ -29,18 +31,28 @@ navegador -> Amplify (HTTPS) -> API Gateway (HTTPS) -> ALB (HTTP)
                                                            -> DynamoDB
 ```
 
-Esta infraestrutura não declara Cognito, ingestion jobs, data lake, S3, Glue,
-Athena, SQS, EventBridge ou workers de análise. Esses runtimes e adaptadores não
-estão implementados no repositório e, portanto, não são apresentados como
-operacionais.
+O Cognito é provisionado por `cognito.tf`: um User Pool
+(`aws_cognito_user_pool.principal`), um app client confidencial para o backend
+(`aws_cognito_user_pool_client.backend`) e um domínio de prefixo
+(`aws_cognito_user_pool_domain.principal`). Ele sustenta o login por usuário e
+senha descrito abaixo. Não há Identity Pool, domínio custom no Hosted UI nem
+gatilhos Lambda/SES — os limites estão comentados no próprio `cognito.tf`.
+
+Esta infraestrutura não declara ingestion jobs, data lake, S3, Glue, Athena, SQS,
+EventBridge ou workers de análise. Esses runtimes e adaptadores não estão
+implementados no repositório e, portanto, não são apresentados como operacionais.
 
 ## Contrato do runtime
 
-A task da API recebe porta, região, nomes das duas tabelas, origem do frontend e
-a configuração opcional do Bedrock. O Terraform também gera dois valores
-criptográficos independentes de 64 caracteres: um assina cookies de sessão e o
-outro assina cursores opacos de paginação. Eles são enviados diretamente ao
-container, não são versionados e não são publicados como outputs.
+A task da API recebe porta, região, nomes das duas tabelas, origem do frontend, a
+configuração opcional do Bedrock e as credenciais do Cognito
+(`COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID` e `COGNITO_CLIENT_SECRET`), lidas
+diretamente dos recursos de `cognito.tf` pelo bloco `environment` em `ecs.tf`. O
+Terraform também gera dois valores criptográficos independentes de 64 caracteres:
+um assina cookies de sessão e o outro assina cursores opacos de paginação. Esses
+dois valores são enviados diretamente ao container, não são versionados e não são
+publicados como outputs; o secret do app client sai apenas no output sensível
+`cognito_client_secret`.
 
 O runtime correspondente está em:
 
@@ -48,13 +60,22 @@ O runtime correspondente está em:
 - `apps/backend/api/src/modules/auth/domain/session.ts`, para sessões assinadas;
 - `apps/backend/api/src/modules/incidents/domain/cursor.ts`, para cursores;
 - `apps/backend/api/src/modules/auth/adapters/configured-identity-provider.ts`,
-  para a fronteira do provedor de identidade.
+  para a fronteira do provedor de identidade;
+- `apps/backend/api/src/modules/auth/application/password-login-use-cases.ts` e
+  `apps/backend/api/src/modules/auth/adapters/cognito-password-authenticator.ts`,
+  para o login por usuário e senha contra o User Pool.
 
-Não existe login público por e-mail e senha. `GET /auth/login` e
-`GET /auth/callback` representam o contrato federado e retornam
-`503 FEATURE_UNAVAILABLE` enquanto não houver um adaptador corporativo real.
-Isso é comportamento fail-closed: a ausência do provedor não cria usuário nem
-sessão simulada.
+`POST /auth/login` autentica por usuário e senha diretamente contra o User Pool
+do Cognito, pelo fluxo `USER_PASSWORD_AUTH` do `InitiateAuth`, feito no servidor
+(sem SSO e sem Hosted UI). Em caso de sucesso, emite a mesma sessão HMAC assinada
+das demais rotas e devolve o ID token no corpo; credencial inválida volta como
+`401 UNAUTHENTICATED`. O app client é confidencial (`generate_secret = true`),
+então cada `InitiateAuth` leva `SECRET_HASH`.
+
+`GET /auth/login` e `GET /auth/callback` continuam representando o contrato
+federado (OIDC) e retornam `503 FEATURE_UNAVAILABLE` enquanto não houver um
+adaptador corporativo real. Isso é comportamento fail-closed: a ausência do
+provedor federado não cria usuário nem sessão simulada.
 
 As rotas de importação e reanálise seguem o mesmo princípio. Sem os adaptadores
 de ingestão e publicação ainda não implementados, requisições autenticadas
@@ -119,13 +140,16 @@ superfície HTTP real sem herdar credenciais ou profiles AWS.
 
 ## Estado local isolado e teardown
 
-Esta entrega só aceita `deployment_namespace=g05-s3` e o provider só permite a
-conta AWS `248880318395`. O estado legado é de outra conta e não pode ser
-adotado por esta stack; copiar, importar ou migrar esse estado faria o Terraform
-associar recursos fora do namespace isolado.
+Esta entrega só aceita `deployment_namespace=g05-s3`. A conta AWS permitida vem
+da variável obrigatória `aws_account_id`, que cada pessoa define em um
+`terraform.tfvars` local não versionado (mesmo padrão do namespace). O estado
+legado é de outra conta e não pode ser adotado por esta stack; copiar, importar
+ou migrar esse estado faria o Terraform associar recursos fora do namespace
+isolado.
 
-Antes de qualquer mutação remota, inicialize o diretório e revise o plano com o
-namespace obrigatório:
+Antes de qualquer mutação remota, inicialize o diretório e revise o plano. O
+`aws_account_id` sai do `terraform.tfvars` local (carregado automaticamente); o
+`deployment_namespace` continua obrigatório na linha de comando:
 
 ```bash
 terraform -chdir=apps/fullstack init -backend=false -input=false
@@ -146,10 +170,12 @@ remoção da stack isolada esteja concluída. Não o substitua por estado legado
 
 ## Aplicação remota
 
-Uma aplicação futura exige sessão válida no AWS Academy, Docker, Node.js e
-Terraform. Antes de qualquer mutação remota, gere o plano salvo, passe-o pelo
-gate local e revise as permissões da `LabRole`. Esta entrega não realizou essa
-etapa e não afirma que recursos já existam na AWS.
+A stack foi aplicada nesta branch com sessão do AWS Academy, Docker, Node.js e
+Terraform. Antes de cada nova mutação remota, gere o plano salvo, passe-o pelo
+gate local e revise as permissões da `LabRole`. Os recursos existem na conta do
+Learner Lab; `terraform output` lê os endereços a partir do estado local. Uma
+sessão encerrada do Learner Lab remove o acesso e `terraform plan` volta a
+falhar com `AccessDenied` até a renovação das credenciais.
 
 ALB, Fargate e API Gateway continuam gerando custo enquanto provisionados. A
 stack e o estado devem ser preservados para inspeção e diagnóstico. Execute o
@@ -174,6 +200,7 @@ leem o estado local; não criam nem alteram recursos.
 |---|---|---|
 | `regiao` | `us-east-1` | Região permitida pelo Learner Lab |
 | `deployment_namespace` | sem padrão; deve ser `g05-s3` | Origem obrigatória dos nomes isolados |
+| `aws_account_id` | sem padrão; obrigatório | Conta AWS onde a stack pode ser aplicada; cada pessoa define em `terraform.tfvars` local |
 | `branch_amplify` | `producao` | Branch hospedada no Amplify |
 | `cpu_task` / `memoria_task` | `256` / `512` | Capacidade da task Fargate |
 | `quantidade_tasks` | `1` | Réplicas do serviço |
@@ -208,5 +235,6 @@ do Grafana aparece somente no output sensível `grafana_senha` e no state local.
 | `exec format error` | Preserve o build da imagem para `linux/amd64` |
 | Health check falha | Confirme a resposta exata `{"status":"ok"}` em `/health` e leia os logs do container |
 | Painel abre sem dados | Verifique a saúde da API e a presença de itens nas tabelas; a IaC não inventa seed |
-| Login ou callback retorna 503 | Estado esperado até a integração de um provedor federado real |
+| `GET /auth/login` ou `/auth/callback` retorna 503 | Estado esperado: o contrato federado (OIDC) fica fail-closed até um adaptador corporativo real. Não afeta `POST /auth/login` |
+| `POST /auth/login` retorna 503 `FEATURE_UNAVAILABLE` | A task não recebeu `COGNITO_USER_POOL_ID`/`COGNITO_CLIENT_ID`; confira o bloco `environment` em `ecs.tf` e reaplique |
 | Importação ou reanálise retorna 503 | Estado esperado até os adaptadores correspondentes serem implementados |
