@@ -45,12 +45,16 @@ Todas as portas podem ser sobrescritas por variáveis de ambiente
 ```
 apps/fullstack/observability/
 ├── grafana/provisioning/datasources/datasources.yml   data sources automáticos
+├── grafana/provisioning/dashboards/                   dashboard RED provisionado
 ├── loki/loki-config.yml                               Loki monolítico, disco local
 ├── prometheus/prometheus.yml                          alvos e intervalo de coleta
 └── tempo/tempo.yml                                    receptores OTLP e metrics_generator
 ```
 
 ## Data sources provisionados
+
+O dashboard **View Show — API (RED)** é provisionado automaticamente e exibe
+latência p95, throughput, erros por segundo e uso de CPU a partir do Prometheus.
 
 O Grafana lê `grafana/provisioning/datasources/datasources.yml` a cada subida e
 sincroniza os três data sources. Eles ficam marcados como somente leitura: para

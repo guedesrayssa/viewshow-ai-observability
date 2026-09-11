@@ -42,9 +42,9 @@ scrape_configs:
   # API; habilite-o enquanto ela estiver rodando no host, ou ele aparecerá como
   # "down" em http://localhost:9090/targets.
   #
-  # - job_name: view-show-api
-  #   metrics_path: /metrics
-  #   static_configs:
-  #     - targets: ["host.docker.internal:3000"]
-  #       labels:
-  #         component: api
+  - job_name: view-show-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
+        labels:
+          component: api
