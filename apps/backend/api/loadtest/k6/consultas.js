@@ -233,7 +233,9 @@ export const options = {
     ...(MODE === "smoke" ? { http_req_failed: ["rate<0.001"], checks: ["rate==1"] } : {}),
     // Também escopado a status:200 pelo mesmo motivo: "vazão" composta de
     // 429 não é vazão útil da API.
-    ...(MODE === "load" ? { "http_reqs{status:200}": [`rate>${Math.floor(RATE * 0.95)}`] } : {}),
+    ...(["load", "soak"].includes(MODE)
+      ? { "http_reqs{status:200}": [`rate>${Math.floor(RATE * 0.95)}`] }
+      : {}),
   },
   // Sem isso o k6 agrega /incidents/inc-000001 e /incidents/inc-000002 como
   // URLs diferentes e o resumo vira ilegível.

@@ -123,6 +123,11 @@ resource "aws_instance" "observabilidade" {
     dashboard_provider_gzip    = base64gzip(file("${path.module}/observability/aws/dashboard-provider.yml"))
     dashboard_gzip             = base64gzip(local.dashboard_observabilidade)
     application_dashboard_gzip = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-overview.json"))
+    // O dashboard RED (latência p95, throughput, erros/s e CPU) ficava de fora
+    // do provisionamento na AWS: só a pilha local o recebia. São exatamente os
+    // quatro indicadores que o artefato de testes de carga precisa mostrar, e
+    // sem esta linha eles não existem no Grafana da nuvem.
+    api_dashboard_gzip = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-api.json"))
   })
 
   // Uma mudança nas configurações recria a instância para que o cloud-init

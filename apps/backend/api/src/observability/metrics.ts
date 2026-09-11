@@ -20,7 +20,13 @@ export class Metrics {
     name: "http_request_duration_seconds",
     help: "HTTP request duration",
     labelNames: ["service_name", "method", "route", "status_code"],
-    buckets: [0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5, 10],
+    // A cauda vai até 60 s de propósito. Com o teto anterior de 10 s o
+    // histogram_quantile saturava exatamente na faixa que interessa sob
+    // sobrecarga (as rodadas em ECS Fargate mediram p95 entre 17 s e 43 s),
+    // e o painel de latência do Grafana passava a mentir em platô.
+    buckets: [
+      0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5, 10, 15, 20, 30, 45, 60,
+    ],
     registers: [this.registry],
   });
   private readonly failed = new Counter({

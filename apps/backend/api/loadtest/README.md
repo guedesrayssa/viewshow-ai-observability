@@ -96,9 +96,11 @@ isso não acontecer sem querer.
    teste. Para medir a API de verdade, rode distribuído (múltiplas origens) ou
    suba o limite **só na janela do teste** com
    `RATE_LIMIT_PER_MINUTE=<alto> npm start` (em ECS, pela variável Terraform
-   `rate_limit_por_minuto`), devolvendo ao padrão depois. Medido: 96,89% de
-   429 com o limite em 180, contra 0% e 132,75 req/s de vazão útil com o
-   limite elevado — ver o artefato de entrega.
+   `rate_limit_por_minuto`), devolvendo ao padrão depois. Medido no leito
+   local: **97,06%** de 429 com o limite em 180, contra 0% e **133,12 req/s**
+   de vazão útil com o limite elevado. Em ECS Fargate com 1 vCPU e o limite
+   elevado, a vazão útil não passou de **58,5 req/s** — ver o artefato de
+   entrega.
 2. **`dashboard/overview`/`monitoring/overview` envelhecem.** Os snapshots
    gravados pelo seed só respondem 200 enquanto a idade cabe na janela pedida
    (o mais novo tem 5 min; `monitoring` usa janela de 15 min por padrão); fora

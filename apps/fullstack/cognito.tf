@@ -95,7 +95,13 @@ resource "aws_cognito_user_pool_client" "backend" {
 // habilita o endpoint OIDC (issuer abaixo) para uma futura integração pelo
 // caminho já previsto em src/modules/auth/config.ts (OIDC_ISSUER_URL).
 resource "aws_cognito_user_pool_domain" "principal" {
-  domain       = "${var.deployment_namespace}-auth"
+  // O prefixo do Hosted UI é único GLOBALMENTE por região, não por conta. Com
+  // `${var.deployment_namespace}-auth` fixo, a primeira conta que aplicar toma
+  // o nome e todas as outras falham com "Domain already associated with
+  // another user pool" — inclusive entre contas do Learner Lab de pessoas
+  // diferentes, que é como o erro apareceu. O ID da conta no sufixo mantém o
+  // nome estável para quem aplica e livre de colisão entre contas.
+  domain       = "${var.deployment_namespace}-auth-${data.aws_caller_identity.atual.account_id}"
   user_pool_id = aws_cognito_user_pool.principal.id
 }
 

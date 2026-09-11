@@ -10,8 +10,8 @@
 | Branch de referência        | `origin/develop`                                                                                                         |
 | Commit auditado             | `238ccec939d1909f1e4bb802083af787f05c9463` (11/09/2026 02:36 UTC, *Merge branch 'feat/camada-agentica' into 'develop'*)   |
 | Código executado            | branch `feat/teste-de-carga` **após o merge de `origin/develop` (`238ccec`)** — ou seja, a develop auditada mais o trabalho desta branch (rate limit configurável e guardas de sessão do RNF04) mais esta consolidação. Ver §2.1 |
-| Ambientes com execução      | (1) local: API Node no host + DynamoDB Local + pilha Grafana/Prometheus em Docker (11/09/2026); (2) local Flask histórico (06/09/2026); (3) AWS ECS/ALB/DynamoDB do schema v1 (sprint 2); (4) AWS ECS/ALB/DynamoDB da API atual, relatada nesta branch sem bruto versionado (§8.7) |
-| Ambientes **sem** execução  | homologação/AWS da API TypeScript atual — ver §11                                                                         |
+| Ambientes com execução      | (1) local: API Node no host + DynamoDB Local + pilha Grafana/Prometheus em Docker (11/09/2026); (2) local Flask histórico (06/09/2026); (3) AWS ECS/ALB/DynamoDB do schema v1 (sprint 2); (4) **AWS ECS/ALB/DynamoDB da API atual, executada com bruto versionado (§8.8)**; (5) AWS da API atual relatada sem bruto, em três configurações de capacidade (§8.7) |
+| Ambientes **sem** execução  | `soak` de 2 h em qualquer ambiente; as três configurações de capacidade de §8.7 com bruto — ver §11                       |
 
 Uma configuração versionada nunca é apresentada aqui como medição executada, e
 um script existente nunca é apresentado como teste executado. Cada número desta
@@ -106,8 +106,8 @@ consolidação, e nenhum deploy remoto foi feito.
 | Item da rubrica                                                                                                      | Peso | Onde está                                                     | Estado                                                                                    |
 | -------------------------------------------------------------------------------------------------------------------- | ---: | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | **1.** RNFs e planos revisados, com 10 mil eventos/min, fila cheia, timeout e critérios objetivos                     |  3,0 | §5 (matriz RNF01–RNF15) e §6 (cenários e thresholds)          | **Entregue**                                                                              |
-| **2.** Resultados de carga com análise de desempenho, de resiliência, evidências reproduzíveis e limitações declaradas |  4,0 | §8 (arquitetura atual), §9 (histórico), §11 (limitações)      | **Entregue para a API de consulta** — 8 execuções com bruto e metadados; ingestão segue bloqueada por design (§8.6) |
-| **3.** Observabilidade com latência, throughput, erros/s e CPU                                                        |  3,0 | §10, com quatro capturas reais e as séries brutas do Prometheus | **Entregue** para os quatro indicadores; painéis dos workers seguem sem dado (§10.4)      |
+| **2.** Resultados de carga com análise de desempenho, de resiliência, evidências reproduzíveis e limitações declaradas |  4,0 | §8.1–8.6 (leito local), **§8.8 (ECS Fargate)**, §9 (histórico), §11 (limitações) | **Entregue nos dois ambientes** — 8 execuções locais e **7 em AWS**, todas com bruto e metadados; ingestão segue bloqueada por design, confirmado nos dois (§8.6, §8.8.6) |
+| **3.** Observabilidade com latência, throughput, erros/s e CPU                                                        |  3,0 | §10.1–10.5 (local) e **§10.6 (AWS)**, com sete capturas reais, séries do Prometheus e do CloudWatch | **Entregue nos dois ambientes**, com três alertas disparando de verdade em AWS (§10.6.3); painéis dos workers seguem sem dado (§10.4) |
 
 ---
 
@@ -173,9 +173,9 @@ dependem do mesmo bloqueio.
 
 | RNF       | Descrição resumida                                          | Plano de teste revisado                                                                                                                                                            | Ferramenta                          | Critério de aprovação                                                                                                  | Ambiente necessário                                       | Evidência existente                                                                                                       | Status                                                                 |
 | --------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **RNF04** | Consulta e painel só por sessão autenticada; 401/403 sem ela | Matriz de 12 rotas × 3 variantes (sem cookie, cookie inválido, sessão válida), mais 3 rotas sem guarda de sessão                                                                    | k6 `auth-check.js`                  | `checks{objetivo:rnf04} rate==1`                                                                                       | Qualquer ambiente com a API de pé                         | **37 de 37 checks, `exit=0`** ([bruto](../assets/testes-carga/2026-09-11/resumo-auth-check.json))                          | **Aprovado** nesta branch (§8.5) · era **Reprovado** em `origin/develop` |
-| **RNF09** | Disponibilidade ≥ 99,9% do painel e das APIs de consulta     | `http_req_failed < 0,1%` sob carga sustentada, contando só erro inesperado; complementar: health-check por 12 h com 3 encerramentos forçados                                        | k6 `consultas.js` `MODE=load`/`soak` | `http_req_failed rate<0.001` **e** a rodada não ser dominada por 429 (`rate_limited_rate<0.001`)                       | Homologação com contêiner reiniciável para a janela de 12 h | 0 erro em 29.825 requisições a 132,75 req/s ([bruto](../assets/testes-carga/2026-09-11/resumo-load-janela-controlada.json)) | **Parcial** — taxa de erro aprovada localmente; janela de 12 h e falhas induzidas não executadas |
-| **RNF14** | Busca filtrada em até 2 s no p95                             | `http_req_duration{status:200} p(95) < 2000` na taxa alvo de 137 req/s, com vazão útil `http_reqs{status:200} rate>130` e fração rate-limitada abaixo de 0,1%                       | k6 `consultas.js`, 7 cenários de leitura | os três thresholds acima aprovados na mesma rodada                                                                     | Homologação/AWS para valer como capacidade de produção     | p95 de 9,42 ms com vazão útil de 132,75 req/s e 0 × 429 ([mesmo bruto](../assets/testes-carga/2026-09-11/resumo-load-janela-controlada.json)) | **Parcial** — aprovado no leito local; não comprovado em ECS Fargate    |
+| **RNF04** | Consulta e painel só por sessão autenticada; 401/403 sem ela | Matriz de **11 rotas × 3 variantes** (sem cookie, cookie inválido, sessão válida) = 33 checks em `objetivo:rnf04`, mais 4 checks fora do objetivo (`incident_event_detail`, que não tem guarda, e `auth_login`/`auth_callback`/`auth_logout`) — 37 no total                                                                    | k6 `auth-check.js`                  | `checks{objetivo:rnf04} rate==1`                                                                                       | Qualquer ambiente com a API de pé                         | **37 de 37 checks, `exit=0`**, no leito local ([bruto](../assets/testes-carga/2026-09-11/resumo-auth-check.json)) **e em ECS Fargate** ([bruto](../assets/testes-carga/2026-09-11-aws/resumo-auth-check.json))                          | **Aprovado** local **e em AWS** (§8.5, §8.8) |
+| **RNF09** | Disponibilidade ≥ 99,9% do painel e das APIs de consulta     | `http_req_failed < 0,1%` sob carga sustentada, contando só erro inesperado; complementar: health-check por 12 h com 3 encerramentos forçados                                        | k6 `consultas.js` `MODE=load`/`soak` | `http_req_failed rate<0.001` **e** a rodada não ser dominada por 429 (`rate_limited_rate<0.001`)                       | Homologação com contêiner reiniciável para a janela de 12 h | Local: 0 erro em 29.910 requisições a 133,12 req/s ([bruto](../assets/testes-carga/2026-09-11/resumo-load-janela-controlada.json)). **AWS: 1,11% de erro** em 13.199 requisições, mais 25.118 respostas `5xx` do próprio ALB ([bruto](../assets/testes-carga/2026-09-11-aws/resumo-load.json)) | **Reprovado** em ECS Fargate (§8.8) · aprovado só no leito local; janela de 12 h não executada |
+| **RNF14** | Busca filtrada em até 2 s no p95                             | `http_req_duration{status:200} p(95) < 2000` na taxa alvo de 137 req/s, com vazão útil `http_reqs{status:200} rate>130` e fração rate-limitada abaixo de 0,1%                       | k6 `consultas.js`, 7 cenários de leitura | os três thresholds acima aprovados na mesma rodada                                                                     | Homologação/AWS para valer como capacidade de produção     | Local: p95 de 8,95 ms com vazão útil de 133,12 req/s e 0 × 429 ([bruto](../assets/testes-carga/2026-09-11/resumo-load-janela-controlada.json)). **AWS: p95 de 34.648 ms** (p50 de 11.126 ms) com vazão útil abaixo de 58,5 req/s ([bruto](../assets/testes-carga/2026-09-11-aws/resumo-load.json)) | **Reprovado** em ECS Fargate (§8.8) — 17× o orçamento de 2 s · aprovado só no leito local |
 
 ### 5.3 RNFs validados por inspeção, CI ou execução manual
 
@@ -191,7 +191,7 @@ execução formal do plano completo.
 | **RNF08** | F1 ≥ 80% na causa raiz                                        | Avaliar em holdout rotulado, publicando precisão, recall, F1 e matriz de confusão     | Notebook/métricas de classificação | F1 ≥ 0,80                                 | Acesso a modelo (Bedrock) + golden set | Bedrock indisponível no Learner Lab (fallback por template ativo); golden set insuficiente                                                                        | **Bloqueado** — depende de acesso ao modelo                |
 | **RNF10** | Causa raiz em até 5 cliques                                   | Sessão guiada com operador, da Visão Geral até hipótese e evidência                   | Sessão guiada                    | ≤ 5 cliques em todas as tarefas           | Operador humano + frontend           | Métrica `operator_clicks_to_root_cause` declarada no registry; nenhuma sessão exportada                                                                          | **Não executado**                                          |
 | **RNF11** | Normalização multi-schema sem código por cliente              | Fixtures de Smart TV, iOS, Android e Web nos protocolos moderno e legado              | Testes de contrato do worker     | Nenhuma perda de campo obrigatório        | Worker de normalização               | `apps/backend/ingestion-data` contém **apenas** o módulo de observabilidade — não há normalizador a testar                                                        | **Bloqueado** — depende da Ingestão                        |
-| **RNF12** | Cobertura de testes ≥ 70% com gate no CI                      | Gerar cobertura de todos os serviços no CI e bloquear merge abaixo do limite          | Vitest + `@vitest/coverage-v8`   | Cobertura global ≥ 70% e gate obrigatório | CI                                   | `npm test` da API: **70 testes passaram, 1 ignorado** (10 arquivos). `npm run test:coverage` falha: `Cannot find dependency '@vitest/coverage-v8'`. `.gitlab-ci.yml` não menciona cobertura — não há gate | **Não executado** — suíte passa, percentual não medível, gate ausente |
+| **RNF12** | Cobertura de testes ≥ 70% com gate no CI                      | Gerar cobertura de todos os serviços no CI e bloquear merge abaixo do limite          | Vitest + `@vitest/coverage-v8`   | Cobertura global ≥ 70% e gate obrigatório | CI                                   | `npm test` da API: **70 testes passaram, 1 ignorado** (11 arquivos: 10 passaram, 1 ignorado). `npm run test:coverage` falha: `Cannot find dependency '@vitest/coverage-v8'`. `.gitlab-ci.yml` não menciona cobertura — não há gate | **Não executado** — suíte passa, percentual não medível, gate ausente |
 | **RNF13** | Contexto do modelo limitado a 5 h                             | Histórico sintético > 5 h e inspeção dos IDs/timestamps enviados ao modelo            | Instrumentação do worker de ML   | Nenhum evento anterior a `falha - 5 h`    | Worker de ML                         | Mesmo bloqueio do RNF08/RNF11                                                                                                                                    | **Bloqueado**                                              |
 | **RNF15** | Alerta de degradação em até 30 s                              | Injetar degradação com timestamp conhecido e medir até o alerta ficar visível          | Pipeline de alertas              | Intervalo ≤ 30 s                          | Alertmanager + detector              | 7 regras Prometheus válidas (`promtool check rules`: SUCCESS), porém `for:` mínimo é **2 min** — o desenho atual não consegue 30 s; sem Alertmanager e sem detector | **Bloqueado** — e o critério é incompatível com as regras atuais |
 
@@ -313,7 +313,7 @@ aprovam nem reprovam requisito.
 | Observabilidade       | `docker compose -f apps/fullstack/docker-compose.observability.yml` — Prometheus v3.14.0, Grafana 13.2.1, Loki 3.7.7, Tempo 3.0.3, Alloy v1.10.2 |
 | Seed                  | `CLEAN=1 node scripts/seed-carga.cjs` imediatamente antes de cada rodada (300 incidentes; 2.303 itens de domínio + 10 projeções) |
 | Autenticação          | Cookie de sessão **forjado** por `loadtest/k6/lib/session.js` (mesmo HMAC de `SessionCodec`) — mede a API para uma sessão válida, não o fluxo Cognito |
-| Limite de taxa        | 180 req/min por IP (padrão de produção) nas rodadas de referência; `RATE_LIMIT_PER_MINUTE=200000` na janela controlada de §8.3 |
+| Limite de taxa        | 180 req/min por IP (padrão de produção) nas rodadas de referência; `RATE_LIMIT_PER_MINUTE=200000` na janela controlada de §8.2 |
 
 &emsp; **O leito local não é comparável à produção.** Um processo Node sem
 contêiner, com DynamoDB Local em memória e o gerador no mesmo host, não mede
@@ -519,7 +519,7 @@ o threshold `checks{objetivo:rnf04} rate==1` aprovado
 | `auth_login` / `auth_callback` (fora da matriz)  | 503 ✓ fail-closed | —               | —             | N/A — feature desligada                |
 | `auth_logout` (fora da matriz)                   | 204 ✓ idempotente | —               | —             | N/A                                    |
 
-&emsp; **As 12 rotas da matriz cumprem o RNF04.** As 5 rotas de leitura passaram
+&emsp; **As 11 rotas com guarda de sessão cumprem o RNF04.** As 5 rotas de leitura passaram
 a chamar `auth.sessions.verify()` antes de qualquer lógica de negócio, na mesma
 ordem já usada em `review`/`reanalyze`/`imports*` — mudança desta branch, agora
 com execução e bruto versionado. Confirmação direta por `curl`, sem cookie, no
@@ -598,8 +598,176 @@ ficam registrados como **relato**, e a pendência correspondente está em §11.2
    investigar: `maxAttempts`/`requestHandler` do `@aws-sdk/client-dynamodb` e o
    `maxSockets` do agente HTTP subjacente.
 
-&emsp; Confirmar isso exige repetir a rodada AWS anexando o bruto — é a
-pendência de maior valor da próxima sprint.
+&emsp; Essa pendência **foi fechada**: a rodada em AWS com bruto versionado
+está em §8.8, e ela decide a hipótese — o gargalo é **CPU da task**, com
+memória em 40% e zero throttling no DynamoDB (§8.8.4). O que continua pendente
+é repetir as **três configurações de capacidade** desta tabela anexando o bruto
+de cada uma, para que a comparação entre elas também saia do relato.
+
+### 8.8 Resultados em AWS — ECS Fargate, ALB e DynamoDB (executado)
+
+> Esta é a primeira bateria da API TypeScript **executada na nuvem com bruto
+> versionado**, e é ela que substitui o relato de §8.7. Sete rodadas, todas com
+> `resumo-*.json` e `metadados-*.json` em
+> [`assets/testes-carga/2026-09-11-aws/`](../assets/testes-carga/2026-09-11-aws/README.md).
+
+| Item | Valor |
+| --- | --- |
+| Data | 11 de setembro de 2026, `07:32:42Z` → `07:52:54Z` |
+| Aplicação | `apps/backend/api` em **ECS Fargate**, 1 vCPU / 2.048 MB, **1 task** |
+| Entrada | ALB `g05-s3-alb` (`:80`, HTTP) |
+| Imagem | `g05-s3-api:d70e2f4f01b4` (`linux/amd64`), publicada no ECR pelo Terraform |
+| Persistência | DynamoDB `g05-s3-operacional`, `PAY_PER_REQUEST`, GSI `trace-index` |
+| Conta / região | `798295516003` / `us-east-1` (AWS Academy Learner Lab) |
+| Gerador | k6 v2.2.0 **fora da AWS**, tráfego pela internet pública |
+| Limite de taxa | `RATE_LIMIT_PER_MINUTE=20000` na janela (padrão de produção é 180) |
+| Observabilidade | EC2 `t3.medium` com Grafana, Prometheus, Loki, Tempo e Alloy (`observabilidade_habilitada=true`) |
+| Runner | [`loadtest/k6/bateria.sh`](../apps/backend/api/loadtest/k6/bateria.sh) |
+
+&emsp; **Uma task de propósito.** O Prometheus da EC2 raspa `/metrics`
+**através do ALB**. Com duas ou mais tasks, cada scrape cairia numa task
+diferente, cada uma com contadores próprios, e `rate()` leria a alternância
+como reset de contador. Com uma task a série é coerente. O dashboard de
+CloudWatch não tem esse problema porque agrega no serviço — é por isso que a
+comparação de capacidade de §8.7 precisa ser lida por lá, e não pelo Prometheus.
+
+#### 8.8.1 Visão geral das execuções
+
+| Rodada | Janela UTC | Requisições | 200 | Erro cliente | p95 cliente | Descartes | VUs | `exit` |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `smoke` | 07:32:42→07:33:13 | 34 | 34 | 0% | 217,1 ms | 0 | 1 | 0 |
+| **`load`** (137 req/s) | 07:33:13→07:37:16 | 13.199 | 13.052 | **1,11%** | **34.648 ms** | 15.547 | 800 | **99** |
+| `breakpoint` (1→220 req/s) | 07:37:17→07:43:24 | 9.633 | — | 0% | 10.482 ms | 14.653 | 300 | 0 |
+| `estresse` (411 req/s) | 07:43:25→07:49:25 | 28.929 | — | **51,44%** | 60.000 ms | 74.695 | 1.500 | 0 |
+| `spike` (1.000 req/s) | 07:49:26→07:52:46 | 21.240 | — | **63,07%** | 59.880 ms | 37.032 | 2.000 | 0 |
+| `auth-check` | 07:52:47→07:52:53 | 40 | — | — | 135,0 ms | 0 | 1 | **0** |
+| `ingestao-batch` `MODE=drenagem` | 07:52:53→07:52:54 | 1 | 0 | 100% | 123,0 ms | 0 | 1 | 107 |
+
+&emsp; `breakpoint`, `estresse` e `spike` continuam sem threshold — são
+varreduras exploratórias, e seus números descrevem comportamento sem aprovar ou
+reprovar requisito.
+
+#### 8.8.2 A rodada de referência reprova o RNF14 e o RNF09
+
+| Threshold | Resultado em AWS |
+| --- | --- |
+| `http_req_duration{status:200} p(95)<2000` | **reprovado** — 34.648 ms, **17× o orçamento** |
+| `http_reqs{status:200} rate>130` | **reprovado** — vazão útil abaixo de 58,5 req/s |
+| `http_req_failed rate<0.001` | **reprovado** — 1,11% (147 de 13.199) |
+| `checks rate>0.99` | ok |
+| `rate_limited_rate rate<0.001` | ok — zero 429, o teto elevado funcionou |
+
+&emsp; Distribuição de latência do `load`: p50 **11.126 ms**, p90 20.844 ms,
+p95 34.648 ms, máximo 60.003 ms. **Nem a mediana fecha o orçamento de 2 s.** O
+máximo é o timeout de 60 s do cliente k6, não uma resposta da API.
+
+&emsp; O throughput medido pelo Prometheus **nunca alcançou os 137 req/s
+pedidos**: o teto observado foi **58,46 req/s**. Essa é a capacidade real de uma
+task de 1 vCPU neste desenho, com o gerador fora da AWS.
+
+#### 8.8.3 Erro de cliente não é erro de servidor
+
+&emsp; O lado cliente contou 14.881 falhas no `estresse` e 13.397 no `spike`,
+mas a série de erros do Prometheus não passa de **2,16 erros/s** em toda a
+janela. A diferença são **timeouts**: a API não recusou, ela enfileirou até
+alguém desistir. `http_requests_in_flight` chegou a **1.311 requisições
+simultâneas**.
+
+&emsp; O CloudWatch fecha a conta pelo lado do servidor:
+
+| Métrica (ALB, janela `07:30`–`07:56`) | Valor |
+| --- | ---: |
+| `RequestCount` | 73.229 |
+| `HTTPCode_Target_2XX_Count` | 42.645 |
+| `HTTPCode_Target_5XX_Count` | 2.073 |
+| **`HTTPCode_ELB_5XX_Count`** | **25.118** (pico de 5.000 em um minuto) |
+| `TargetResponseTime` p50 / p95 / p99 (máximos) | 17,01 s / **52,76 s** / 58,37 s |
+
+&emsp; As **25.118 respostas `5xx` geradas pelo próprio ALB** são a contrapartida
+servidor dos timeouts do cliente: o balanceador desistiu de esperar a task. É a
+mesma história vista de dois lados, e a correlação entre elas valida a
+instrumentação.
+
+&emsp; Dos 2.117 registros com status ≥ 400 no CloudWatch Logs da janela,
+**2.080 são `503` em `/api/v1/monitoring/overview`** — o snapshot de projeção
+envelhecendo para fora da janela de 15 minutos ao longo de uma bateria de 20,
+comportamento que o próprio `seed-carga.cjs` avisa e que **não** é falha da API.
+Os 401 restantes são o `auth-check` exercitando o RNF04. **Não houve erro
+inesperado de servidor** — o que reprovou o RNF09 foi a fração de requisições
+que nunca obteve resposta.
+
+#### 8.8.4 O gargalo é CPU, não banco nem memória
+
+&emsp; A hipótese de §8.7 era limite de concorrência por processo (pool de
+conexões do cliente DynamoDB). A medição agora permite decidir:
+
+| Sinal | Medido | Leitura |
+| --- | ---: | --- |
+| ECS `CPUUtilization` | média até **99,89%**, máximo **100%** | **saturado** |
+| ECS `MemoryUtilization` | média até 40,47%, máximo 52,81% | folga |
+| DynamoDB `ReadThrottleEvents` | **zero** (sem ponto na janela) | banco não foi o limite |
+| `http_requests_in_flight` | até 1.311 | fila na aplicação |
+
+&emsp; Com CPU fixada em 100%, memória em 40% e **zero throttling no
+DynamoDB**, o gargalo desta configuração é **CPU da task** — não o banco, não a
+memória, e não é preciso invocar pool de conexões para explicar a cauda. O
+`ReadThrottleEvents` sem dado é zero real, não painel quebrado.
+
+&emsp; Isso torna acionável a comparação de §8.7: o ganho de ~6× em vazão ao ir
+de 0,25 vCPU para 1 vCPU é consistente com um gargalo de CPU, e o passo seguinte
+é medir com 2 e 4 vCPU por task antes de escalar em número de tasks.
+
+#### 8.8.5 RNF04 aprovado também em AWS
+
+&emsp; `auth-check.js` fechou **37 de 37 checks, `exit=0`**, contra a API real em
+ECS Fargate, com o threshold `checks{objetivo:rnf04} rate==1` aprovado
+([bruto](../assets/testes-carga/2026-09-11-aws/resumo-auth-check.json)). As 11
+rotas com guarda recusam chamada sem cookie e com cookie inválido na nuvem
+exatamente como no leito local. A limitação permanece: a sessão é **forjada**
+com o mesmo HMAC do `SessionCodec`, então o fluxo Cognito/OIDC de emissão
+continua não exercitado.
+
+#### 8.8.6 Ingestão bloqueada também em AWS
+
+&emsp; `ingestao-batch.js` abortou em `setup()` com o mesmo
+`503 FEATURE_UNAVAILABLE`
+([bruto](../assets/testes-carga/2026-09-11-aws/resumo-ingestao-drenagem.json)).
+O bloqueio de RNF01, RNF02 e RNF03 é do adaptador e do contrato, **não do
+ambiente** — confirmado agora nos dois.
+
+#### 8.8.7 Leito local × AWS, na mesma carga
+
+| Medida (carga alvo de 137 req/s) | Local | **AWS** | Razão |
+| --- | ---: | ---: | ---: |
+| p95 `status:200` | 8,95 ms | **34.648 ms** | **3.872×** |
+| p50 | ~4 ms | **11.126 ms** | — |
+| Vazão útil | 133,12 req/s | **< 58,5 req/s** | 0,44× |
+| Erro inesperado | 0% | 1,11% | — |
+| Descartes do gerador | 0 | 15.547 | — |
+| Thresholds aprovados | 5 de 5 | **2 de 5** | — |
+
+&emsp; O leito local media o **código**; esta bateria mede o **sistema**. Três
+ordens de grandeza de diferença no p95 são a razão pela qual RNF09 e RNF14 não
+podiam ser aprovados a partir do leito local — e a razão pela qual agora estão
+**Reprovado**, com evidência, em vez de `Parcial`.
+
+#### 8.8.8 O que esta bateria não prova
+
+1. **Uma configuração só.** 1 vCPU / 2.048 MB / 1 task. As três configurações
+   de §8.7 não foram repetidas com bruto; a pendência continua em §11.2.
+2. **Gerador fora da AWS.** O tráfego atravessou a internet pública de uma
+   máquina em rede residencial. Parte da latência e todo o custo de
+   estabelecimento de conexão são do caminho, não da API. Um gerador em EC2 na
+   mesma região isolaria isso.
+3. **Origem única.** Todo o tráfego veio de um IP, com o limite elevado a
+   20.000/min. A distribuição real de produção é outra.
+4. **Uma repetição por cenário.** Sem dispersão; continuam necessárias ao menos
+   três repetições.
+5. **Volume sintético e projeções envelhecendo.** Os 503 de
+   `/monitoring/overview` são artefato do seed, não comportamento de produção.
+   Uma bateria mais curta, ou um reseed entre rodadas, elimina esse ruído.
+6. **`soak` não executado** em nenhum dos dois ambientes.
+
 
 ## 9. Resultados históricos da API Flask
 
@@ -630,11 +798,15 @@ pendência de maior valor da próxima sprint.
 `ingestion_events_expected_rejection`, `checks`, `http_req_failed`,
 `dropped_iterations`, `ingestion_duration_ms{phase:normal}` e
 `{phase:recovery}`): **as três linhas conferem**, sem divergência. Nos dois
-cenários de falha, os 15.000/15.100 aceitos são o total das fases — 5.000/5.100
-na fase nominal e ≥ 10.000 na recuperação, que é o que o threshold
-`ingestion_events_accepted{phase:recovery} count>=10000` cobra e aprovou.
-As duas rodadas de falha iniciaram uma iteração na fronteira final, gerando
-10.100 em vez de 10.000 eventos; o critério `>= 10.000` trata essa borda.
+cenários de falha os aceitos se dividem assim: **fila cheia** = 5.000 na fase
+nominal + **10.000** na recuperação (total 15.000); **timeout** = 5.000 na fase
+nominal + **10.100** na recuperação (total 15.100). A fase nominal aceitou
+5.000 nos dois; quem varia é a recuperação, e é ela que o threshold
+`ingestion_events_accepted{phase:recovery} count>=10000` cobra — aprovado nos
+dois casos. A rodada de timeout iniciou uma iteração na fronteira final,
+gerando 10.100 em vez de 10.000 eventos na recuperação; o critério `>= 10.000`
+trata essa borda. Na rodada de fila cheia a mesma borda aparece em
+`ingestion_events_expected_rejection`, que fecha em 5.100.
 
 Brutos: [carga](./sprint2/testes-carga/resultados/resumo-ingestao-carga-local.json) ·
 [fila cheia](./sprint2/testes-carga/resultados/resumo-ingestao-fila-cheia-local.json) ·
@@ -697,9 +869,12 @@ aquela medição.
 
 ## 10. Observabilidade
 
-&emsp; A pilha local foi subida com Docker, os alvos foram conferidos no
-Prometheus, as rodadas de §8 correram e os quatro indicadores foram capturados
-**no mesmo intervalo** (`2026-09-11T05:28:00Z` → `05:57:00Z`).
+&emsp; Os quatro indicadores foram capturados em **dois ambientes**: a pilha
+local em Docker, no intervalo das rodadas de §8.1–8.6
+(`2026-09-11T05:28:00Z` → `05:57:00Z`), descrita em §10.1–§10.5; e a pilha
+equivalente **em AWS**, no intervalo da bateria de §8.8
+(`2026-09-11T07:32:00Z` → `07:54:00Z`), em §10.6. Os números de nuvem são os
+que valem como capacidade; os locais descrevem o comportamento do código.
 
 ```mermaid
 flowchart LR
@@ -847,18 +1022,147 @@ que não ocorreu nesta bateria.
 
 | Alerta                           | Condição                                              | `for:` | RNF                 | Estado                                              |
 | -------------------------------- | ----------------------------------------------------- | -----: | ------------------- | --------------------------------------------------- |
-| `ViewShowApiTargetDown`          | `up{job="view-show-api"} == 0`                        |     2m | RNF09               | Configurado; alvo observado `up`, alerta não disparado |
-| `ViewShowApiHighErrorRate`       | razão de 5xx > 0,1%                                   |     5m | RNF09               | Configurado; sem 5xx real na janela                 |
-| `ViewShowIncidentQuerySlow`      | p95 de incidentes > 2 s                               |     5m | RNF14               | Configurado; a janela de `spike`/`estresse` excede 2 s, mas o alerta não foi observado disparando |
+| `ViewShowApiTargetDown`          | `up{job="view-show-api"} == 0`                        |     2m | RNF09               | **Disparou em AWS** às `07:47:30Z` sob `estresse` (§10.6.3) |
+| `ViewShowApiHighErrorRate`       | razão de 5xx > 0,1%                                   |     5m | RNF09               | **Disparou em AWS** às `07:48:00Z` (§10.6.3)        |
+| `ViewShowIncidentQuerySlow`      | p95 de incidentes > 2 s                               |     5m | RNF14               | **Disparou em AWS** às `07:39:30Z`, ~6 min após a degradação começar (§10.6.3) |
 | `ViewShowFrontendLcpPoor`        | LCP p95 > 4 s                                         |    15m | RNF07, complementar | Configurado; métrica sem série (§10.4)              |
 | `ViewShowIngestionRunSlow`       | duração p95 da ingestão > 120 s                       |    15m | RNF02               | Configurado; métrica sem série                      |
 | `ViewShowAgenticHighFailureRate` | falhas do worker > 5%                                 |    10m | RNF03               | Configurado; métrica sem série                      |
 | `ViewShowAgenticDlqNotEmpty`     | `sqs_dead_letter_queue_messages > 0`                  |     5m | RNF03               | Configurado; métrica sem série                      |
 
 &emsp; Observação relevante para o RNF15: o menor `for:` das regras é de **2
-minutos**, incompatível com o critério de "alerta em até 30 segundos". Fechar o
-RNF15 exige rever o desenho das regras, não só executar o teste — e exige um
-Alertmanager, que não está na pilha.
+minutos**, incompatível com o critério de "alerta em até 30 segundos". A
+bateria em AWS mediu a latência de detecção real — **~6 minutos** para a
+degradação de latência (§10.6.3) —, o que confirma o diagnóstico por medição e
+não só por inspeção. Fechar o RNF15 exige rever o desenho das regras, não só
+executar o teste, e exige um Alertmanager, que não está na pilha.
+
+### 10.6 Observabilidade em AWS (executada)
+
+&emsp; A mesma pilha LGTM roda na nuvem, provisionada por
+[`observability-aws.tf`](../apps/fullstack/observability-aws.tf): uma EC2
+`t3.medium` que o `cloud-init` sobe com Grafana, Prometheus, Loki, Tempo e
+Alloy, criada apenas quando `observabilidade_habilitada=true`. O Terraform
+injeta na task ECS o `OTEL_EXPORTER_OTLP_ENDPOINT` e o `LOKI_PUSH_URL` com o IP
+privado dessa instância, e os security groups liberam `4318`, `4320` e `3100`
+**somente** a partir do security group da API. O Grafana fica fechado por
+padrão; nesta sessão foi aberto para um único `/32`.
+
+&emsp; Os cinco alvos do Prometheus ficaram `up`, incluindo `view-show-api`
+raspando `/metrics` **pelo ALB**
+([bruto](../assets/testes-carga/2026-09-11-aws/prometheus/targets.json)).
+
+#### 10.6.1 Os quatro indicadores, medidos na nuvem
+
+| Indicador | Faixa medida em AWS (`07:32`–`07:54`) | Contraste com o leito local |
+| --- | --- | --- |
+| **Latência p95** | 0,089 s → **24,943 s** | local: 0,047 s → 9,64 s |
+| **Throughput** | 0,098 → **58,46 req/s** | local: 0 → 263,6 req/s |
+| **Erros/s** | 0 → **2,159/s** | local: 0 → 93,44/s (eram 429) |
+| **CPU** | processo: 0,219% → 139,65% · **ECS `CPUUtilization`: até 100%** | local: 0,35% → 145,1% |
+
+&emsp; Brutos em
+[`2026-09-11-aws/prometheus/`](../assets/testes-carga/2026-09-11-aws/prometheus/)
+e [`2026-09-11-aws/cloudwatch/`](../assets/testes-carga/2026-09-11-aws/cloudwatch/).
+
+&emsp; **Qual número de CPU vale.** O painel "Uso de CPU do processo" usa
+`view_show_process_cpu_*` do `prom-client`, que mede tempo de CPU do processo e
+passa de 100% ao somar threads — ele não é a utilização da task. O número
+autoritativo é o `CPUUtilization` do CloudWatch, no dashboard `View Show — AWS`:
+**média por minuto chegando a 99,89% e máximo em 100%** entre 07:33 e 07:49.
+Essa distinção não existia no artefato quando só havia o leito local, onde a API
+rodava sem limite de vCPU.
+
+&emsp; **Buckets de latência.** Esta bateria já roda com o histograma estendido
+de 10 s para **60 s** em `src/observability/metrics.ts` — mudança feita
+justamente para esta rodada. Com o teto anterior o p95 do Prometheus teria
+travado em platô de 10 s e o painel mostraria 10 s no lugar dos 24,9 s medidos.
+
+#### 10.6.2 Capturas
+
+&emsp; As três imagens abaixo foram tiradas na sessão da AWS, no Grafana da EC2.
+
+![Dashboard View Show — API (RED) no Grafana da AWS, com os quatro indicadores medidos durante a bateria](../assets/testes-carga/2026-09-11-aws/grafana-aws-01-api-red.png)
+
+&emsp; `View Show — API (RED)`: os quatro painéis da rubrica com dado real da
+nuvem — p95 subindo a ~25 s, throughput com pico perto de 58 req/s, erros por
+segundo chegando a ~2/s e a CPU de processo passando de 100%. O rótulo da série
+de CPU mostra `instance="g05-s3-alb-…elb.amazonaws.com"`, o que identifica a
+origem AWS da medição. O eixo está em horário local (UTC−3), então 04:33–04:49
+corresponde a 07:33–07:49 UTC.
+
+![Dashboard View Show — Application Observability, com latência por rota, memória do Node e alertas disparados](../assets/testes-carga/2026-09-11-aws/grafana-aws-02-application-observability.png)
+
+&emsp; `View Show — Application Observability`: o mesmo período com a latência
+p95 **quebrada por rota**, o request rate, os erros por segundo, a memória do
+Node (RSS chegando a ~1 GiB) e, no canto inferior direito, o painel **Firing
+alerts** com `ViewShowApiHighErrorRate` registrado às 04:48 e 04:49 locais. Os
+painéis `Frontend LCP p95` e `Frontend errors` aparecem como **No data**, o que
+é o estado correto: nenhum `POST /api/v1/telemetry/rum` ocorreu (§10.4).
+
+![Dashboard View Show — AWS rolado até os painéis de ALB, DynamoDB e os logs da API vindos do CloudWatch](../assets/testes-carga/2026-09-11-aws/grafana-aws-03-cloudwatch-e-logs.png)
+
+&emsp; `View Show — AWS`: a captura está **rolada para baixo**, então os painéis
+`ECS — CPU e memória` e `ALB — latência p95` ficaram acima do recorte. O que se
+vê é o painel `API — logs recentes` funcionando: linhas JSON reais da API na
+nuvem, com `request_id`, `route`, `status`, `duration_ms`, `trace_id`, `span_id`
+e `service_name: g05-s3-api` — prova de que o caminho de logs
+CloudWatch → Grafana está fechado e correlacionável por trace.
+
+&emsp; **Ressalva honesta sobre essa captura.** Nela os painéis `ALB —
+requisições e respostas 5xx` e `DynamoDB — throttling` aparecem como
+**No data**. Para o DynamoDB isso é o valor correto: não houve throttling
+nenhum. Para o ALB **não** é: a consulta exata do painel, executada contra o
+mesmo Grafana pela sua própria API, devolve 73.233 pontos de `RequestCount` e
+2.073 de `HTTPCode_Target_5XX_Count` na janela — os mesmos valores de §8.8.3.
+A causa do "No data" no momento da captura não foi determinada (provável erro
+transitório da API do CloudWatch no carregamento da página). Os números do ALB
+estão versionados em
+[`cloudwatch/`](../assets/testes-carga/2026-09-11-aws/cloudwatch/) e não dependem
+da imagem; refazer a captura com intervalo absoluto em vez de "Last 6 hours"
+resolve.
+
+#### 10.6.3 Três alertas dispararam de verdade
+
+&emsp; Até esta bateria, todas as sete regras estavam "configuradas e sem
+evidência de funcionamento". Três dispararam na nuvem, com a série `ALERTS`
+capturada do Prometheus
+([bruto](../assets/testes-carga/2026-09-11-aws/prometheus/alertas-disparados.json)):
+
+| Alerta | `for:` | Disparou em | Latência de detecção | RNF |
+| --- | ---: | --- | --- | --- |
+| `ViewShowIncidentQuerySlow` | 5m | `07:39:30Z` | **~6 min 17 s** depois do início do `load` (07:33:13Z) | RNF14 |
+| `ViewShowApiTargetDown` | 2m | `07:47:30Z` | target ficou indisponível sob `estresse` | RNF09 |
+| `ViewShowApiHighErrorRate` | 5m | `07:48:00Z` | — | RNF09 |
+
+&emsp; Isso é evidência de que o caminho **regra → avaliação → alerta em estado
+`firing`** funciona de ponta a ponta, e não só de que o YAML é válido. Duas
+consequências:
+
+1. **O RNF09 ganhou um sinal que não tinha:** `ViewShowApiTargetDown` disparando
+   significa que o alvo realmente saiu do ar sob 411 req/s — a task parou de
+   responder ao scrape. É degradação observável, registrada.
+2. **O RNF15 continua `Bloqueado`, mas agora por medição e não por inspeção.**
+   O critério pede alerta em **até 30 s**; o desenho atual levou **~6 min** para
+   acusar a degradação de latência, coerente com `for: 5m`. Não é ajuste de
+   limiar: fechar 30 s exige rever `for:`, o intervalo de avaliação e a janela
+   das consultas — e ainda instalar um Alertmanager, que não está na pilha.
+   Nenhum alerta foi **entregue** a ninguém; eles apenas entraram em `firing`.
+
+#### 10.6.4 Uma lacuna de provisionamento, corrigida
+
+&emsp; O dashboard `View Show — API (RED)` — o que reúne exatamente os quatro
+indicadores da rubrica — **não era provisionado na AWS**. O `user-data` da EC2
+escrevia só `view-show-aws.json` e `view-show-overview.json`; o RED existia
+apenas na pilha local. Na prática, quem abrisse o Grafana da nuvem não
+encontraria os quatro indicadores reunidos em lugar nenhum.
+
+&emsp; Foram feitas duas coisas: o dashboard foi publicado na instância em
+execução pela API do Grafana, para não recriar a EC2 e perder as séries desta
+bateria (`user_data_replace_on_change = true` recria a instância a cada mudança
+de configuração); e a causa foi corrigida no IaC, com `api_dashboard_gzip` em
+`observability-aws.tf` e a linha correspondente em `user-data.sh.tftpl`. **Essa
+correção só passa a valer no próximo `apply`**, que recriará a instância.
 
 ---
 
@@ -867,9 +1171,9 @@ Alertmanager, que não está na pilha.
 ### 11.1 O que os números de §8 não provam
 
 1. **Leito local, não homologação.** Processo Node sem contêiner, sem limite de
-   vCPU (CPU chegou a 143% — mais de um núcleo), DynamoDB Local em memória e
+   vCPU (CPU de processo chegou a 145,1% — mais de um núcleo), DynamoDB Local em memória e
    gerador na mesma máquina. Nada disso é comparável a ECS Fargate com 0,25 vCPU
-   atrás de um ALB. O p95 de 9,42 ms de §8.2 **não** é o p95 de produção.
+   atrás de um ALB. O p95 de 8,95 ms de §8.2 **não** é o p95 de produção.
 2. **Origem única, não distribuída.** Mesmo com o limite elevado, todo o tráfego
    veio de um IP. A concorrência real de produção tem outra distribuição.
 3. **Limite de taxa alterado.** A rodada válida de §8.2 rodou com
@@ -902,10 +1206,12 @@ Alertmanager, que não está na pilha.
 
 | Pendência                                                                              | Bloqueio                                          |
 | -------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Repetir `load`/`breakpoint`/`spike`/`estresse` em ECS Fargate, com bruto anexado         | Conta AWS + autorização de deploy                 |
+| ~~Repetir `load`/`breakpoint`/`spike`/`estresse` em ECS Fargate, com bruto anexado~~ **FEITO em §8.8** | — |
+| Repetir a bateria com o gerador **dentro** da AWS (EC2 na mesma região), para separar latência de rede da latência da API | Conta AWS |
 | Reexecutar as três configurações de capacidade de §8.7 **anexando o `resumo-*.json`**, para que aquelas rodadas passem de relato a evidência | Conta AWS + autorização de deploy |
-| Investigar a cauda de latência de §8.7 (`maxSockets`/`requestHandler` do cliente DynamoDB) | Conta AWS para reproduzir          |
-| Rodada AWS pós-correção de chaves para fechar o RNF14 em produção (§9.2)                | Conta AWS + autorização de deploy                 |
+| ~~Investigar a cauda de latência de §8.7~~ **FEITO em §8.8.4**: o gargalo é CPU da task (100%), com memória em 40% e zero throttling no DynamoDB | — |
+| Medir 2 e 4 vCPU por task antes de escalar em número de tasks (§8.8.4)                   | Conta AWS + autorização de deploy                 |
+| Fechar o RNF14 em produção: nenhuma configuração testada chega a `p(95)<2000ms` (§8.8.2, §8.7) | Conta AWS + decisão de capacidade |
 | Janela de 12 h de health-check com 3 encerramentos forçados (RNF09)                     | Homologação com contêiner reiniciável             |
 | RNF01/RNF02/RNF03 na arquitetura atual                                                  | Adaptador real de `ImportControlPort` (S3 + tarefa ECS) **e** `upload.parts[].url` no contrato |
 | RNF11 (normalização multi-schema)                                                       | Worker de ingestão implementado                   |
@@ -921,22 +1227,36 @@ Alertmanager, que não está na pilha.
    `.gitlab-ci.yml` (RNF12).
 3. Relatório Lighthouse/RUM controlado para o RNF07 e sessão guiada para o
    RNF10.
-4. **Buckets do histograma de latência param em 10 s** (`http_request_duration_seconds`
-   em `src/observability/metrics.ts`), então o p95 do Prometheus satura perto de
-   9,7 s e não descreve a cauda sob sobrecarga (§8.4). Acrescentar buckets
-   acima de 10 s — ou usar histograma nativo — é mudança pequena e de alto
-   retorno para a próxima bateria.
-6. Adicionar thresholds de recuperação por fase a `spike` e `estresse`, para
+4. Adicionar thresholds de recuperação por fase a `spike` e `estresse`, para
    que os ~30–45 s medidos em §8.4 passem a ser critério e não só observação.
+5. Aplicar a correção de provisionamento do dashboard RED na AWS (§10.6.4): o
+   IaC já está corrigido, mas só passa a valer no próximo `apply`, que recria a
+   EC2 de observabilidade.
+6. Fechar `/metrics` na borda. O ALB encaminha tudo para a task e a rota é
+   registrada **antes** do rate limiter, então o endpoint fica público na
+   internet, sem autenticação. Foi assim que o Prometheus da EC2 conseguiu
+   raspá-lo nesta bateria; a correção é uma regra de listener restrita ao CIDR
+   da instância de observabilidade, e ela precisa ser feita junto, senão o
+   scrape para.
+
+&emsp; Já resolvido nesta entrega, e registrado aqui porque era item desta
+lista: os **buckets do histograma de latência** subiram de 10 s para 60 s em
+`src/observability/metrics.ts`. Sem isso o p95 do Prometheus teria saturado em
+platô durante toda a bateria em AWS, onde a medição real foi de 24,9 s.
 
 ### 11.4 Nota sobre a suíte de política de CI
 
-&emsp; `npm run test:ci-policy` reprova **227** casos neste host, todos com
-`declare: -A: invalid option`: os scripts usam arrays associativos, que exigem
-bash 4+, e o macOS traz bash 3.2.57. É incompatibilidade de ambiente, não
-regressão — nenhum arquivo em `scripts/` ou `tests/ci/` foi tocado nesta
-consolidação. `npm run build` e `npm test` (70 passaram, 1 ignorado) passam
-normalmente.
+&emsp; `npm run test:ci-policy` reprova **113 de 321 casos** neste host
+(`tests 321 · pass 208 · fail 113`). A causa dominante é
+`mapfile: command not found` (~68 ocorrências), seguida de
+`declare: -A: invalid option` (~35) e de assertivas em cascata dessas duas
+(`0 !== 2`, `127 !== 0`): os scripts de `scripts/ci/` usam builtins de bash 4+
+e o macOS traz bash 3.2.57. É incompatibilidade de ambiente, não regressão —
+nenhum arquivo em `scripts/` ou `tests/ci/` foi tocado nesta consolidação.
+`npm run build` e `npm test` (70 passaram, 1 ignorado, 11 arquivos) passam
+normalmente. Uma versão anterior deste documento dizia "227 casos": aquele era
+o número de linhas com marcador de falha na saída, que inclui os nós de
+agrupamento, e não a contagem de casos.
 
 ---
 
@@ -1038,6 +1358,58 @@ docker exec vs-prometheus promtool check rules  /etc/prometheus/rules/view-show.
 procedimento com renderizador temporário está descrito em
 [`assets/testes-carga/2026-09-11/README.md`](../assets/testes-carga/2026-09-11/README.md).
 
+### 12.6 Bateria em AWS (ECS Fargate)
+
+&emsp; Requer sessão ativa do AWS Academy, Terraform, Docker e k6. **Cria
+infraestrutura que gera custo enquanto existir.**
+
+```bash
+# 1. terraform.tfvars local (não versionado) com a conta do lab da vez
+cd apps/fullstack
+cat > terraform.tfvars <<'TFVARS'
+aws_account_id             = "<12 dígitos — aws sts get-caller-identity>"
+deployment_namespace       = "g05-s3"
+regiao                     = "us-east-1"
+observabilidade_habilitada = true
+grafana_cidr_acesso        = "<seu-ip>/32"   # null exige túnel SSM
+TFVARS
+
+# 2. Uma task só: o Prometheus raspa /metrics pelo ALB, e com 2+ tasks
+#    o rate() lê a alternância entre contadores como reset (§8.8)
+terraform init
+terraform apply -var cpu_task=1024 -var memoria_task=2048 \
+                -var quantidade_tasks=1 -var rate_limit_por_minuto=20000
+
+# 3. Semear a tabela real. CLEAN=1 é recusado contra endpoint remoto de
+#    propósito; a tabela recém-criada já nasce vazia.
+cd ../backend/api
+ALLOW_REMOTE_SEED=1 AWS_REGION=us-east-1 \
+  OPERATIONAL_TABLE_NAME=g05-s3-operacional node scripts/seed-carga.cjs
+
+# 4. Bateria com evidência auditável (resumo + metadados por rodada)
+cd loadtest/k6
+export AUTH_COOKIE_SECRET=$(terraform -chdir=../../../../fullstack \
+  output -json 2>/dev/null | python3 -c \
+  'import json,sys;print(json.load(sys.stdin)["grafana_senha"]["value"])')  # ver nota
+BASE_URL=$(terraform -chdir=../../../../fullstack output -raw api_url) \
+AMB_API="ECS Fargate 1 vCPU / 2048 MB x 1 task" \
+AMB_RATE_LIMIT=20000 ./bateria.sh
+```
+
+&emsp; **Nota sobre o segredo:** `AUTH_COOKIE_SECRET` é o mesmo valor que o
+Terraform injeta na task (`random_password.auth_cookie_secret`), e não tem
+output próprio — leia-o do estado com `terraform show -json` e **não** o grave
+em arquivo versionado. O `bateria.sh` já o substitui por `<segredo>` no
+`metadados-*.json`, e o `handleSummary()` dos scripts redige o cookie em
+`setup_data`.
+
+&emsp; Grafana: `terraform output grafana_acesso` dá a URL direta e o comando de
+túnel SSM; `terraform output -raw grafana_senha` dá a senha do `admin`. As
+séries do CloudWatch usadas em §8.8 saem de
+`aws cloudwatch get-metric-statistics` nos namespaces `AWS/ECS`,
+`AWS/ApplicationELB` e `AWS/DynamoDB`, na mesma janela da bateria.
+
+
 ---
 
 ## 13. Conclusão por RNF
@@ -1050,31 +1422,44 @@ abaixo é a conclusão, requisito por requisito.
 | **RNF01** | **Bloqueado** · **Histórico** aprovado | [`resumo-ingestao-drenagem.json`](../assets/testes-carga/2026-09-11/resumo-ingestao-drenagem.json) · [`resumo-ingestao-carga-local.json`](./sprint2/testes-carga/resultados/resumo-ingestao-carga-local.json) | Local atual · Local Flask      | 10 mil eventos/min aprovados **no Flask** (10.100 aceitos, p95 2,89 ms, zero descarte). Na stack atual o adaptador responde `503` e o cenário não roda | Adaptador de import (S3 + tarefa ECS) e `upload.parts[].url` no contrato               |
 | **RNF02** | **Bloqueado**   | Mesmo aborto de `setup()`                                                                              | Local atual                    | Nenhuma medição ponta a ponta existe; a confirmação HTTP não substitui o critério de 120 s                      | Mesmo bloqueio do RNF01 + projeção publicada pela ingestão                             |
 | **RNF03** | **Bloqueado** · **Histórico** aprovado | [fila cheia](./sprint2/testes-carga/resultados/resumo-ingestao-fila-cheia-local.json) · [timeout](./sprint2/testes-carga/resultados/resumo-ingestao-timeout-local.json) | Local Flask                    | Fila cheia (`429 queue_full`) e timeout (`504 dependency_timeout`) aprovados no Flask, com recuperação sem reinício e 402/402 checks — mas **induzidos**, sem SQS, retry, backoff, DLQ ou perda pós-`202` | Repetir contra fila, worker e dependências reais                                       |
-| **RNF04** | **Aprovado**    | [`resumo-auth-check.json`](../assets/testes-carga/2026-09-11/resumo-auth-check.json)                   | Local, código desta branch | **37/37 checks, `exit=0`**: as 12 rotas da matriz recusam chamada sem sessão e com cookie inválido. Em `origin/develop` eram 27/37 — as guardas das 5 rotas de leitura vêm desta branch | Fluxo Cognito/OIDC real e restrição ao domínio corporativo seguem não exercitados (sessão forjada) |
+| **RNF04** | **Aprovado** | [local](../assets/testes-carga/2026-09-11/resumo-auth-check.json) · [**AWS**](../assets/testes-carga/2026-09-11-aws/resumo-auth-check.json) | Local **e ECS Fargate** | **37/37 checks, `exit=0` nos dois ambientes**: as 11 rotas com guarda recusam chamada sem sessão e com cookie inválido. O 27/37 atribuído a `origin/develop` é derivado (5 rotas sem guarda × 2 variantes), não uma execução versionada | Fluxo Cognito/OIDC real e restrição ao domínio corporativo seguem não exercitados (sessão forjada) |
 | **RNF05** | **Parcial**     | `apps/fullstack/dynamodb.tf:42-43`                                                                     | Inspeção de IaC                | TTL hot configurado; **nenhuma** camada cold na IaC — TTL apaga o item, não o arquiva                            | S3/Glacier + Glue/Athena e teste de item vencido                                       |
 | **RNF06** | **Parcial**     | `apps/backend/api/Dockerfile`; `npm run build` limpo                                                   | Local                          | Só a API é conteinerizável; `ingestion-data` e `agentic` não têm Dockerfile                                      | Dockerfile dos workers + build de imagem em ambiente limpo                             |
 | **RNF07** | **Não executado** | Coleta RUM implementada em `metrics.ts`                                                              | —                              | Instrumentação existe; nenhuma auditoria controlada foi executada                                               | Lighthouse/RUM em desktop e móvel, ≥ 3 repetições                                      |
 | **RNF08** | **Bloqueado**   | —                                                                                                      | —                              | Sem acesso ao modelo real não há classificação a avaliar                                                        | Acesso ao Bedrock + golden set rotulado                                                |
-| **RNF09** | **Parcial**     | [`resumo-load-janela-controlada.json`](../assets/testes-carga/2026-09-11/resumo-load-janela-controlada.json) · [séries de recuperação](../assets/testes-carga/2026-09-11/prometheus/) | Local, código desta branch | 0 erro inesperado em 29.910 requisições a 133,12 req/s; sob `estresse` a 411 req/s a API degradou **sem erro** e voltou ao p95 nominal em ~30 s (e em ~45 s depois da rajada de 1.000 req/s), sem reinício. Mas 99,9% é afirmação sobre janela de tempo, e essa janela não foi medida | Health-check por 12 h com 3 encerramentos forçados, em homologação                     |
+| **RNF09** | **Reprovado** em AWS | [`resumo-load.json`](../assets/testes-carga/2026-09-11-aws/resumo-load.json) · [CloudWatch](../assets/testes-carga/2026-09-11-aws/cloudwatch/) · [alertas](../assets/testes-carga/2026-09-11-aws/prometheus/alertas-disparados.json) | **ECS Fargate** (referência) · local (contraste) | **1,11% de erro** a 137 req/s contra o critério de 0,1%, mais **25.118 respostas `5xx` do ALB** por timeout do target; `ViewShowApiTargetDown` chegou a disparar sob 411 req/s. No leito local a mesma carga dava 0 erro — é o leito, não o código. Nenhum erro **inesperado** de servidor: o que reprova é a fração sem resposta | Health-check por 12 h com 3 encerramentos forçados; repetir com gerador dentro da AWS |
 | **RNF10** | **Não executado** | Métrica `operator_clicks_to_root_cause` declarada                                                   | —                              | Métrica existe; nenhuma sessão guiada foi realizada                                                             | Sessão com operador real                                                               |
 | **RNF11** | **Bloqueado**   | `apps/backend/ingestion-data` só tem o módulo de observabilidade                                       | Inspeção de código             | Não há normalizador a testar                                                                                     | Worker de normalização implementado                                                    |
 | **RNF12** | **Não executado** | `npm test`: 70 passaram, 1 ignorado; `test:coverage` falha; `.gitlab-ci.yml` sem cobertura         | Local + CI                     | A suíte passa, mas o percentual não é medível e **não existe gate** — o critério tem duas partes e nenhuma está atendida | Instalar `@vitest/coverage-v8` e adicionar o gate de 70% ao pipeline                   |
 | **RNF13** | **Bloqueado**   | —                                                                                                      | —                              | Mesmo bloqueio do RNF08/RNF11                                                                                    | Worker de ML instrumentado                                                             |
-| **RNF14** | **Parcial**     | [`resumo-load-janela-controlada.json`](../assets/testes-carga/2026-09-11/resumo-load-janela-controlada.json) · [`resumo-load-limite-padrao.json`](../assets/testes-carga/2026-09-11/resumo-load-limite-padrao.json) · [§8.7](#87-rodadas-aws-relatadas-nesta-branch-sem-bruto-versionado) · [§9.2](#92-baseline-aws-do-schema-v1-api-de-consulta) | Local (código desta branch) · AWS relatada · AWS schema v1 | p95 de **8,95 ms** com vazão útil de 133,12 req/s e zero 429 — o critério de 2 s foi atendido com folga **no leito local**. A rodada com o limite de produção reprova e mede o rate limiter. Na AWS, o relato de §8.7 dá p95 de ~17,2 s na melhor configuração (não fecha), e o baseline do schema v1 reprovou (p95 60 s, 91,90% de erro) | Rodada em ECS Fargate com bruto anexado; investigar a cauda de concorrência de §8.7 |
-| **RNF15** | **Bloqueado**   | 7 regras válidas (`promtool`), `for:` mínimo de 2 min                                                  | Inspeção de configuração       | O desenho atual das regras **não consegue** alertar em 30 s, e não há Alertmanager nem detector                  | Alertmanager, detector de degradação e revisão do `for:` das regras                    |
+| **RNF14** | **Reprovado** em AWS | [`resumo-load.json`](../assets/testes-carga/2026-09-11-aws/resumo-load.json) · [CloudWatch](../assets/testes-carga/2026-09-11-aws/cloudwatch/alb-target-response-time.json) · [local](../assets/testes-carga/2026-09-11/resumo-load-janela-controlada.json) · [§8.7](#87-rodadas-aws-relatadas-nesta-branch-sem-bruto-versionado) | **ECS Fargate** (referência) · local (contraste) | **p95 de 34.648 ms contra o orçamento de 2.000 ms — 17×**, com p50 de 11.126 ms: nem a mediana fecha. O ALB mediu `TargetResponseTime` p95 de até 52,76 s. No leito local o p95 era de 8,95 ms, o que media o código e não o sistema. Nenhuma das configurações de §8.7 fecha o critério tampouco | Gargalo é CPU da task (§8.8.4): medir 2 e 4 vCPU antes de escalar em tasks |
+| **RNF15** | **Bloqueado** | [série `ALERTS`](../assets/testes-carga/2026-09-11-aws/prometheus/alertas-disparados.json) · 7 regras válidas (`promtool`) | **Medido em AWS** | Três alertas dispararam de verdade, mas a latência de detecção medida foi de **~6 min** para a degradação de latência — o critério pede **30 s**. Não é ajuste de limiar: `for:` mínimo é 2 min. E nenhum alerta foi **entregue**, só entrou em `firing` | Alertmanager, detector, e revisão de `for:`/intervalo de avaliação |
 
-**Resumo:** 1 `Aprovado` (RNF04), 0 `Reprovado`, 4 `Parcial` (RNF05, RNF06,
-RNF09, RNF14), 3 `Não executado` (RNF07, RNF10, RNF12), 7 `Bloqueado` (RNF01,
-RNF02, RNF03, RNF08, RNF11, RNF13, RNF15), sendo que RNF01 e RNF03 têm
-resultado `Histórico` aprovado na arquitetura Flask.
+**Resumo:** 1 `Aprovado` (RNF04, agora local **e** em AWS), **2 `Reprovado`
+(RNF09 e RNF14, em ECS Fargate, com bruto versionado)**, 2 `Parcial` (RNF05,
+RNF06), 3 `Não executado` (RNF07, RNF10, RNF12), 7 `Bloqueado` (RNF01, RNF02,
+RNF03, RNF08, RNF11, RNF13, RNF15), sendo que RNF01 e RNF03 têm resultado
+`Histórico` aprovado na arquitetura Flask.
 
 &emsp; O RNF04 é o único `Aprovado`: tem execução reproduzível, bruto
-versionado e critério formal atendido (`checks{objetivo:rnf04} rate==1`) —
-graças às guardas de sessão que esta branch adicionou. RNF09 e RNF14 são os
-mais próximos entre os demais: têm medição válida, reproduzível e com
-threshold aprovado, mas em leito local, e o critério deles fala de
-homologação/produção. Os sete `Bloqueado` não dependem de mais teste: dependem
-de runtime de ingestão, acesso a modelo ou infraestrutura que não existem.
+versionado nos dois ambientes e critério formal atendido
+(`checks{objetivo:rnf04} rate==1`) — graças às guardas de sessão que esta
+branch adicionou.
+
+&emsp; **RNF09 e RNF14 mudaram de `Parcial` para `Reprovado`, e isso é um
+resultado melhor do que parece.** Enquanto a única medição era local, os dois
+ficavam num limbo: p95 de 8,95 ms e zero erro, mas num processo Node sem limite
+de vCPU, com o banco em memória e o gerador na mesma máquina — números bonitos
+que não respondiam à pergunta. A bateria em ECS Fargate respondeu: **p95 de
+34.648 ms e 1,11% de erro**, com CPU da task fixada em 100%, memória em 40% e
+zero throttling no DynamoDB. Há agora um número, um bruto, um gargalo
+identificado e um próximo passo concreto (§8.8.4). Um `Reprovado` medido vale
+mais, para decidir capacidade, do que um `Parcial` que media o leito.
+
+&emsp; Os sete `Bloqueado` não dependem de mais teste: dependem de runtime de
+ingestão, acesso a modelo ou infraestrutura que não existem. O RNF15 é o único
+que mudou de natureza — continua `Bloqueado`, mas agora por **medição** (~6 min
+de latência de detecção contra os 30 s pedidos) e não por inspeção do `for:`.
 
 ---
 
