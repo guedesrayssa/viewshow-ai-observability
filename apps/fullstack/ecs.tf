@@ -78,6 +78,15 @@ resource "aws_ecs_task_definition" "api" {
         { name = "BEDROCK_MODEL_ID", value = "anthropic.claude-3-haiku-20240307-v1:0" },
         { name = "AUTH_COOKIE_SECRET", value = random_password.auth_cookie_secret.result },
         { name = "CURSOR_SECRET", value = random_password.cursor_secret.result },
+
+        // Cognito: a task autentica POST /auth/login contra este User Pool pelo
+        // fluxo USER_PASSWORD_AUTH. O client é confidencial, então o secret vai
+        // junto. Mesmo tratamento em texto plano dos dois segredos acima: nascem
+        // no Terraform, entram só na task e nunca passam pelo git.
+        { name = "COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.principal.id },
+        { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.backend.id },
+        { name = "COGNITO_CLIENT_SECRET", value = aws_cognito_user_pool_client.backend.client_secret },
+
         { name = "OTEL_SERVICE_NAME", value = local.nome_container },
         { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
 

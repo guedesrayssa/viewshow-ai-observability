@@ -17,11 +17,6 @@
 //     *.auth.us-east-1.amazoncognito.com.
 //   - Gatilhos Lambda e SES: a verificação de e-mail usa o remetente padrão do
 //     Cognito (limite baixo, suficiente para a demonstração).
-//
-// Integração pendente, fora deste arquivo: a task ECS precisa receber
-// COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID e COGNITO_CLIENT_SECRET no bloco
-// `environment` de ecs.tf, a partir dos outputs no fim deste arquivo. A região
-// já chega pela variável AWS_REGION que ecs.tf define.
 
 resource "aws_cognito_user_pool" "principal" {
   name = "${var.deployment_namespace}-user-pool"
