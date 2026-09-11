@@ -1,0 +1,26 @@
+{
+  "rotulo": "ingestao-drenagem",
+  "comando": "k6 run -e BASE_URL=http://g05-s3-alb-2121584483.us-east-1.elb.amazonaws.com -e AUTH_COOKIE_SECRET=<segredo> -e MODE=drenagem ingestao-batch.js ",
+  "inicio_utc": "2026-09-11T07:52:53Z",
+  "fim_utc": "2026-09-11T07:52:54Z",
+  "duracao_s": 1,
+  "exit_code": 107,
+  "k6": "k6 v2.2.0 (commit/devel, go1.26.5, darwin/arm64)",
+  "commit": "05a02577b24e968ad43d08ef85acdbe36d8e2713",
+  "ambiente": {
+    "host": "macOS 25.6.0 arm64 — gerador FORA da AWS, tráfego pela internet pública até o ALB",
+    "api": "ECS Fargate 1 vCPU / 2048 MB x 1 task atras do ALB g05-s3-alb (us-east-1)",
+    "node": "v26.3.0",
+    "persistencia": "DynamoDB g05-s3-operacional (PAY_PER_REQUEST, GSI trace-index)",
+    "base_url": "http://g05-s3-alb-2121584483.us-east-1.elb.amazonaws.com",
+    "rate_limit_por_minuto": 20000,
+    "seed": "ALLOW_REMOTE_SEED=1 node scripts/seed-carga.cjs (300 incidentes, 2303+10 itens)"
+  },
+  "stdout_final": "\n         /\\      Grafana   /‾‾/  \n    /\\  /  \\     |\\  __   /  /   \n   /  \\/    \\    | |/ /  /   ‾‾\\ \n  /          \\   |   (  |  (‾)  |\n / __________ \\  |_|\\_\\  \\_____/ \n\n\n     execution: local\n        script: ingestao-batch.js\n        output: -\n\n     scenarios: (100.00%) 1 scenario, 1 max VUs, 31m30s max duration (incl. graceful stop):\n              * drenagem: 1 iterations shared among 1 VUs (maxDuration: 31m0s, gracefulStop: 30s)\n\nIngestão — modo drenagem · janela 15 min · 150000 eventos\n\nRun        [ 100% ] setup()\ndrenagem   [   0% ]",
+  "stderr_final": "time=\"2026-09-11T04:52:54-03:00\" level=error msg=\"Error: /api/v1/imports existe mas está fail-closed (503 FEATURE_UNAVAILABLE: \\\"a importação requer S3 e uma tarefa de ingestão configurados\\\"). Isso é deliberado (UnavailableImportControl em src/modules/imports/adapters/, ver apps/backend/README.md) até o adaptador real ser configurado. Este script fica pronto para quando isso acontecer — nada a fazer aqui até lá.\\n\\tat probeImportEndpoint (file:///Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/ingestao-batch.js:150:11(60))\\n\\tat setup (file:///Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/ingestao-batch.js:169:22(11))\\n\" hint=\"script exception\" source=stacktrace",
+  "thresholds": {
+    "ingestion_drain_seconds: p(100)<900": "ok",
+    "checks: rate==1": "ok",
+    "http_req_failed: rate<0.001": "reprovado"
+  }
+}

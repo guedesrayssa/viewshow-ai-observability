@@ -1,28 +1,52 @@
 {
-  "name": "api",
-  "version": "1.0.0",
-  "description": "",
-  "main": "src/index.js",
-  "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "test": "node --test --test-concurrency=1",
-    "seed": "node scripts/seed.js",
-    "reset": "node scripts/reset.js"
+  "name": "@view-show/api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "workspaces": [
+    "contracts"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build:contracts": "npm run build --workspace @view-show/contracts",
+    "build": "tsc -b tsconfig.workspaces.json",
+    "typecheck": "tsc -b tsconfig.workspaces.json --pretty false",
+    "lint": "node scripts/lint.mjs && tsc -b tsconfig.workspaces.json --pretty false",
+    "format:check": "prettier --check \"{src,contracts,tests}/**/*.{ts,json,yaml,md}\"",
+    "pretest": "npm run build:contracts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "node scripts/live-e2e-runtime.mjs && npm run build && RUN_LIVE_E2E=true vitest run tests/live-api.e2e.test.ts",
+    "test:e2e-local": "bash ../../../scripts/ci/test-live-api-local.sh",
+    "test:ci-policy": "node --test --test-concurrency=1 \"tests/ci/*.test.js\"",
+    "verify": "npm run lint && npm run test && npm run build",
+    "start": "node dist/index.js",
+    "dev": "npm run build && npm run start"
+  },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.1117.0",
-    "@aws-sdk/client-dynamodb": "^3.1115.0",
-    "@aws-sdk/lib-dynamodb": "^3.1115.0",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "@aws-sdk/client-cognito-identity-provider": "3.1128.0",
+    "@aws-sdk/client-dynamodb": "3.1128.0",
+    "@aws-sdk/lib-dynamodb": "3.1128.0",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "0.80.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/sdk-node": "0.222.0",
+    "cors": "2.8.6",
+    "express": "5.2.1",
+    "helmet": "8.3.0",
+    "prom-client": "15.1.3",
+    "zod": "4.5.4"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.18.3",
+    "prettier": "^3.6.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0",
+    "yaml": "2.9.0"
   }
 }

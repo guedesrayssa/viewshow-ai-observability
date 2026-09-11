@@ -45,6 +45,27 @@ class PayloadTooLargeError(ApiError):
     code = "payload_too_large"
 
 
+class FaultInjectionUnauthorizedError(ApiError):
+    """Tentativa sem autorização de acionar uma falha de teste."""
+
+    status_code = 403
+    code = "fault_injection_unauthorized"
+
+
+class QueueFullError(ApiError):
+    """A fila simulada recusou o evento para aplicar backpressure."""
+
+    status_code = 429
+    code = "queue_full"
+
+
+class DependencyTimeoutError(ApiError):
+    """Uma dependência simulada excedeu seu orçamento de tempo."""
+
+    status_code = 504
+    code = "dependency_timeout"
+
+
 class ResourceNotFoundError(ApiError):
     """Recurso inexistente na janela consultada."""
 

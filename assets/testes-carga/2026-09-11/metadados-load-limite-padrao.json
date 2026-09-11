@@ -1,0 +1,28 @@
+{
+  "rotulo": "load-limite-padrao",
+  "comando": "k6 run -e BASE_URL=http://127.0.0.1:3000 -e AUTH_COOKIE_SECRET=<segredo> -e MODE=load /Users/marcossilva/Dev/inteli/g05/apps/backend/api/loadtest/k6/consultas.js ",
+  "inicio_utc": "2026-09-11T05:31:51Z",
+  "fim_utc": "2026-09-11T05:35:36Z",
+  "duracao_s": 225,
+  "exit_code": 99,
+  "k6": "k6 v2.2.0 (commit/00a9a1b7f5, go1.26.5, darwin/arm64)",
+  "commit": "fb8b0af69f9831542535d44ddcb18a52188ce702",
+  "ambiente": {
+    "host": "macOS 25.6.0 arm64 (Darwin), gerador e API na mesma máquina",
+    "api": "node dist/index.js no host, sem contêiner e sem limite de vCPU",
+    "node": "v26.3.0",
+    "persistencia": "DynamoDB Local http://127.0.0.1:18000 (-inMemory -sharedDb)",
+    "base_url": "http://127.0.0.1:3000",
+    "rate_limit_por_minuto": 180,
+    "seed": "CLEAN=1 node scripts/seed-carga.cjs (300 incidentes, 2303+10 itens)"
+  },
+  "thresholds": {
+    "http_req_duration{status:200}: p(95)<2000": "ok",
+    "http_reqs{status:200}: rate>130": "reprovado",
+    "checks: rate>0.99": "reprovado",
+    "rate_limited_rate: rate<0.001": "reprovado",
+    "http_req_failed: rate<0.001": "ok"
+  },
+  "stdout_final": "errupted iterations\nload   [  90% ] 000/100 VUs  3m23.0s/3m45s  137.00 iters/s\n\nrunning (3m23.9s), 000/100 VUs, 26041 complete and 0 interrupted iterations\nload   [  91% ] 000/100 VUs  3m24.0s/3m45s  137.00 iters/s\n\nrunning (3m24.9s), 000/100 VUs, 26178 complete and 0 interrupted iterations\nload   [  91% ] 000/100 VUs  3m25.0s/3m45s  137.00 iters/s\n\nrunning (3m25.9s), 000/100 VUs, 26315 complete and 0 interrupted iterations\nload   [  92% ] 000/100 VUs  3m26.0s/3m45s  137.00 iters/s\n\nrunning (3m26.9s), 000/100 VUs, 26452 complete and 0 interrupted iterations\nload   [  92% ] 000/100 VUs  3m27.0s/3m45s  137.00 iters/s\n\nrunning (3m27.9s), 000/100 VUs, 26589 complete and 0 interrupted iterations\nload   [  92% ] 000/100 VUs  3m28.0s/3m45s  137.00 iters/s\n\nrunning (3m28.9s), 000/100 VUs, 26726 complete and 0 interrupted iterations\nload   [  93% ] 000/100 VUs  3m29.0s/3m45s  137.00 iters/s\n\nrunning (3m29.9s), 000/100 VUs, 26863 complete and 0 interrupted iterations\nload   [  93% ] 000/100 VUs  3m30.0s/3m45s  137.00 iters/s\n\nrunning (3m30.9s), 001/100 VUs, 26995 complete and 0 interrupted iterations\nload   [  94% ] 001/100 VUs  3m31.0s/3m45s  127.93 iters/s\n\nrunning (3m31.9s), 000/100 VUs, 27119 complete and 0 interrupted iterations\nload   [  94% ] 000/100 VUs  3m32.0s/3m45s  118.83 iters/s\n\nrunning (3m32.9s), 000/100 VUs, 27233 complete and 0 interrupted iterations\nload   [  95% ] 000/100 VUs  3m33.0s/3m45s  109.72 iters/s\n\nrunning (3m33.9s), 000/100 VUs, 27338 complete and 0 interrupted iterations\nload   [  95% ] 000/100 VUs  3m34.0s/3m45s  100.60 iters/s\n\nrunning (3m34.9s), 000/100 VUs, 27434 complete and 0 interrupted iterations\nload   [  96% ] 000/100 VUs  3m35.0s/3m45s  091.47 iters/s\n\nrunning (3m35.9s), 000/100 VUs, 27521 complete and 0 interrupted iterations\nload   [  96% ] 000/100 VUs  3m36.0s/3m45s  082.32 iters/s\n\nrunning (3m36.9s), 000/100 VUs, 27599 complete and 0 interrupted iterations\nload   [  96% ] 000/100 VUs  3m37.0s/3m45s  073.16 iters/s\n\nrunning (3m37.9s), 001/100 VUs, 27667 complete and 0 interrupted iterations\nload   [  97% ] 001/100 VUs  3m38.0s/3m45s  063.97 iters/s\n\nrunning (3m38.9s), 000/100 VUs, 27727 complete and 0 interrupted iterations\nload   [  97% ] 000/100 VUs  3m39.0s/3m45s  054.90 iters/s\n\nrunning (3m39.9s), 000/100 VUs, 27777 complete and 0 interrupted iterations\nload   [  98% ] 000/100 VUs  3m40.0s/3m45s  045.83 iters/s\n\nrunning (3m40.9s), 000/100 VUs, 27818 complete and 0 interrupted iterations\nload   [  98% ] 001/100 VUs  3m41.0s/3m45s  036.52 iters/s\n\nrunning (3m41.9s), 000/100 VUs, 27851 complete and 0 interrupted iterations\nload   [  99% ] 000/100 VUs  3m42.0s/3m45s  027.37 iters/s\n\nrunning (3m42.9s), 001/100 VUs, 27873 complete and 0 interrupted iterations\nload   [  99% ] 001/100 VUs  3m43.0s/3m45s  018.13 iters/s\n\nrunning (3m43.9s), 000/100 VUs, 27887 complete and 0 interrupted iterations\nload   [ 100% ] 000/100 VUs  3m44.0s/3m45s  009.54 iters/s\nTeste de desempenho — API de consulta (View Show)\nModo: load · RATE alvo: 137 req/s\n\n⚠ 27149 requisições receberam 429 RATE_LIMITED (97.1% do total) — o rate limit de 180 req/min por IP (src/app.ts) provavelmente tetou o throughput bem abaixo do RATE pedido. Ver aviso no topo de consultas.js.\n✗ rate_limited_rate ≥ 50% — esta rodada NÃO comprova RNF09/RNF14 na taxa alvo (137 req/s); mede principalmente o rate limiter. Rode distribuído ou com o limite ajustado para medir a API de verdade.\nℹ Cenário G seguiu o cursor para a página 2 em 78 iteração(ões) — 0 aqui indica que INCIDENT_COUNT/limit não geraram hasMore=true, não necessariamente um bug de paginação.\nℹ Cada requisição carregou X-Request-Id prefixado \"k6-consultas-load\", gravado em request_id no log JSON da API (src/app.ts) — filtrável na saída padrão do processo hoje; ver seção Observabilidade do README para Prometheus/Tempo.\n\nResumo completo: resumo-load.json\n\nrunning (3m44.6s), 000/100 VUs, 27892 complete and 0 interrupted iterations\nload ✗ [ 100% ] 000/100 VUs  3m44.7s/3m45s  004.13 iters/s\n",
+  "stderr_final": "time=\"2026-09-11T02:35:36-03:00\" level=error msg=\"thresholds on metrics 'checks, http_reqs{status:200}, rate_limited_rate' have been crossed\"\n"
+}

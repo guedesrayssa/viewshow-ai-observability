@@ -59,7 +59,7 @@
 | Campo | Formato | Papel |
 |:---|:---|:---|
 | `pk` | `INC#<hora-UTC-ISO>` | Bucket de hora — permite `Query` por janela de tempo sem `Scan` |
-| `sk` | `INCIDENT#<id>` \| `INCIDENT#<id>#EVIDENCE#<seq:3>` \| `INCIDENT#<id>#HYPOTHESIS#<epoch:10>` | Largura fixa, agrupa todos os itens de um incidente sob o mesmo prefixo |
+| `sk` | `INCIDENT#<id>` \| `EVIDENCE#<id>#<seq:3>` \| `HYPOTHESIS#<id>#<epoch:10>` | Prefixo discriminante por tipo; `trace_id` mantém os itens do incidente agrupados no GSI |
 | `trace_id` | `<incident_id>` | Presente em todo item do incidente; alimenta o GSI `trace-index` |
 | `ttl` | epoch seconds | TTL nativo do DynamoDB |
 
@@ -68,6 +68,11 @@
 </div>
 
 &emsp; O GSI `trace-index` (`trace_id` como chave de partição, `sk` como chave de ordenação) é o que permite buscar incidente + evidências + hipóteses com um único `Query`, independente de qual bucket de hora o incidente caiu — usado por `getIncidentBundle` (ver Seção 3).
+
+&emsp; O schema v1 usava filhos com `INCIDENT#<id>#EVIDENCE#…` e
+`INCIDENT#<id>#HYPOTHESIS#…`, o que fazia `listIncidents` ler também os filhos.
+Novas escritas usam os prefixos discriminantes acima; a classificação de leitura
+continua aceitando v1 para permitir transição sem esvaziar bundles existentes.
 
 ### 2.2. Convenção de chaves — `monitoracao-golden-set`
 
@@ -240,7 +245,7 @@ routes/  →  orchestrator + agent  →  services/  →  db/  →  DynamoDB
 
 ### 7.1. Automação de entrega
 
-&emsp; O pipeline de CI/CD do backend publica uma nova imagem identificada pelo SHA completo do commit e registra uma nova revisão de `monitoracao-api-task` a cada alteração de backend integrada à `develop`. Reutiliza cache de camadas do build, serializa as atualizações do `monitoracao-api-service` (evita dois deploys concorrentes), valida `/health` pelo ALB antes de considerar o deploy bem-sucedido e restaura a revisão anterior da task definition em caso de falha. Como o AWS Academy renova as credenciais a cada sessão de laboratório, `scripts/sync-aws-gitlab-credentials.sh` atualiza as três variáveis protegidas do GitLab a partir do profile local `default` — o equivalente, para o backend, do `credenciais-gitlab.sh` usado pelo frontend (ver [`ci-cd-amplify.md`](ci-cd-amplify.md)).
+&emsp; O pipeline de CI/CD do backend publica uma nova imagem identificada pelo SHA completo do commit e registra uma nova revisão de `monitoracao-api-task` a cada alteração de backend integrada à `develop`. Reutiliza cache de camadas do build, serializa as atualizações do `monitoracao-api-service` (evita dois deploys concorrentes), valida `/health` pelo ALB antes de considerar o deploy bem-sucedido e restaura a revisão anterior da task definition em caso de falha. Como o AWS Academy renova as credenciais a cada sessão de laboratório, o fluxo atual usa `scripts/sync-aws-gitlab-credentials.sh` para validar o profile local `default` e atualizar as três variáveis protegidas, ocultas e restritas ao escopo `aws-lab` no GitLab (ver [`ci-cd-amplify.md`](ci-cd-amplify.md)). O antigo entrypoint `apps/frontend/deploy/credenciais-gitlab.sh` está descontinuado e permanece apenas como wrapper de compatibilidade: ele encaminha somente `--dry-run` e `--allow-unprotected-develop` ao mesmo sincronizador endurecido e rejeita argumentos posicionais.
 
 ---
 

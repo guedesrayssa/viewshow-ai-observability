@@ -9,9 +9,11 @@
 
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
+import type { ReactNode } from "react";
 
 import { AccountProvider } from "@/components/account/account-provider";
 import { InlineScript } from "@/components/inline-script";
+import { RumReporter } from "@/components/observability/rum-reporter";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 
@@ -46,7 +48,7 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // `data-theme` nasce claro e é corrigido pelo script abaixo ainda durante
     // a leitura do HTML; `suppressHydrationWarning` faz o React aceitar o valor
@@ -61,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <InlineScript html={THEME_BOOTSTRAP_SCRIPT} />
       </head>
       <body className="min-h-full flex flex-col">
+        <RumReporter />
         <ThemeProvider>
           <AccountProvider>{children}</AccountProvider>
         </ThemeProvider>

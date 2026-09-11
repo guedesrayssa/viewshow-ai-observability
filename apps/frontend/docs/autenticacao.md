@@ -3,70 +3,58 @@
 > Parte da [documentação do frontend](../documentacao-frontend.md). Este documento
 > detalha o acesso e o perfil em sessão; a visão geral está na seção 8 do índice.
 
-O View Show não guarda senha nem valida credencial: a autenticação é delegada ao
-serviço de identidade (RIE01, RESTR01).
+O View Show inicia a autenticação no serviço corporativo de identidade
+(RIE01, RESTR01). O frontend não recebe nem envia credenciais.
 
 ## `lib/auth.ts`
 
 | Export | Assinatura | Papel |
 | --- | --- | --- |
-| `CORPORATE_DOMAINS` | `["globo.com"]` | Domínios corporativos, para o exemplo de preenchimento e o SSO. |
-| `isCorporateEmail(email)` | `→ boolean` | Reconhece a conta corporativa para **sugerir** o SSO. Não restringe a entrada. |
-| `validateEmail(email)` | `→ string \| undefined` | Formato mínimo: algo `@` domínio com ponto, sem espaços. |
-| `validatePassword(password)` | `→ string \| undefined` | Só verifica preenchimento. |
-| `signIn({ email, password })` | `→ Promise<SignInResult>` | Envia as credenciais. |
-| `ssoEntryPoint()` | `→ string \| undefined` | URL do fluxo de SSO, ou `undefined` sem API configurada. |
+| `beginAuthentication()` | `→ AuthenticationDecision` | Decide entre redirecionar ao provedor, abrir a demonstração ou informar indisponibilidade. |
 | `AUTH_UNAVAILABLE_MESSAGE` | `string` | Aviso quando o SSO não está configurado. |
 
 ```ts
-type SignInResult =
-  | { ok: true; demo?: boolean }        // demo = sessão sem provedor por trás
-  | { ok: false; message: string };
+type AuthenticationDecision =
+  | { kind: "redirect"; url: string }
+  | { kind: "demo" }
+  | { kind: "unavailable"; message: string };
 ```
+
+## Contrato da API
+
+`ENDPOINTS.auth` expõe apenas estes caminhos públicos:
+
+| Caminho | Papel |
+| --- | --- |
+| `GET /auth/login` | Inicia a autenticação federada. |
+| `/auth/callback` | Recebe o retorno do provedor de identidade. |
+| `/auth/logout` | Encerra a sessão. |
+| `/auth/session` | Consulta a sessão atual. |
+
+Não há operações de criação de conta, redefinição de acesso ou envio de
+credenciais no frontend.
 
 ## Fluxo de login
 
-`app/(auth)/login/login-form.tsx` (`"use client"`): `handleSubmit` chama
-`preventDefault`, valida os dois campos, leva o foco ao primeiro inválido, então
-`await signIn(...)`. `ok: false` → `<Alert tone="critical">` com `result.message`.
-`ok: true` → `router.push("/visao-geral")`.
+`app/(auth)/login/login-form.tsx` é um componente cliente com uma única ação
+SSO. Ao clicar, chama `beginAuthentication()`:
 
-**Com API configurada:**
-
-```
-POST {NEXT_PUBLIC_API_BASE_URL}/auth/login
-Content-Type: application/json
-credentials: "include"        // a sessão volta como cookie assinado —
-                              // o token não passa por localStorage
-body: { email: <minúsculas, sem espaços>, password }
-```
-
-| Resposta | Resultado |
+| Decisão | Ação da interface |
 | --- | --- |
-| `2xx` | `{ ok: true }` → vai para `/visao-geral` |
-| `401` / `403` | "E-mail ou senha incorretos. Verifique e tente novamente." |
-| Outro status | "Não foi possível entrar agora. Tente novamente em instantes." |
-| Falha de rede | "Não conseguimos falar com o serviço de autenticação. Verifique a sua conexão." |
+| `{ kind: "redirect", url }` | `window.location.assign(url)` leva ao `GET /auth/login`. |
+| `{ kind: "demo" }` | `router.push("/visao-geral")`. |
+| `{ kind: "unavailable", message }` | Mostra `<Alert tone="critical">` com a mensagem. |
 
-## Sessão de demonstração
+Com `NEXT_PUBLIC_API_BASE_URL` configurada, a decisão é `redirect`. Sem API, a
+demonstração só é aberta quando `NEXT_PUBLIC_ALLOW_EXAMPLE_DATA=true` e o
+ambiente não é de produção; do contrário, a interface informa indisponibilidade.
+Essa decisão não faz chamada HTTP.
 
-**Sem `NEXT_PUBLIC_API_BASE_URL`**, `signIn` devolve `{ ok: true, demo: true }`
-sem tocar na rede. Travar o acesso deixaria a plataforma inalcançável num
-ambiente sem backend; o painel inteiro funciona com o conjunto de exemplo. Nada é
-persistido no navegador por esta camada. A flag `demo` permite à interface dizer
-que a sessão não tem provedor de identidade por trás.
+## Páginas auxiliares de acesso
 
-## SSO Globo
-
-O botão "Entrar com SSO Globo" chama `handleSso()`: `ssoEntryPoint()` devolve
-`{API}/auth/sso` quando há API, ou `undefined`. Com URL:
-`window.location.assign(ssoUrl)`. Sem URL: mostra `AUTH_UNAVAILABLE_MESSAGE` — a
-ação **explica** a indisponibilidade em vez de ficar desabilitada.
-
-## Recuperação de senha
-
-`/recuperar-senha` é estática. A senha pertence ao provedor corporativo
-(RESTR01). A tela orienta a procurar o suporte interno de TI e volta ao login.
+As páginas de criação de conta e de recuperação de acesso são informativas:
+orientam a procurar o suporte interno de TI e oferecem retorno ao login. Nenhuma
+delas chama a API.
 
 ## Perfil da conta (`AccountProvider`)
 

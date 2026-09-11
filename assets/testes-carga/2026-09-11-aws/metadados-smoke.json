@@ -1,0 +1,25 @@
+{
+  "rotulo": "smoke",
+  "comando": "k6 run -e BASE_URL=http://g05-s3-alb-2121584483.us-east-1.elb.amazonaws.com -e AUTH_COOKIE_SECRET=<segredo> -e MODE=smoke consultas.js ",
+  "inicio_utc": "2026-09-11T07:32:42Z",
+  "fim_utc": "2026-09-11T07:33:13Z",
+  "duracao_s": 31,
+  "exit_code": 0,
+  "k6": "k6 v2.2.0 (commit/devel, go1.26.5, darwin/arm64)",
+  "commit": "05a02577b24e968ad43d08ef85acdbe36d8e2713",
+  "ambiente": {
+    "host": "macOS 25.6.0 arm64 — gerador FORA da AWS, tráfego pela internet pública até o ALB",
+    "api": "ECS Fargate 1 vCPU / 2048 MB x 1 task atras do ALB g05-s3-alb (us-east-1)",
+    "node": "v26.3.0",
+    "persistencia": "DynamoDB g05-s3-operacional (PAY_PER_REQUEST, GSI trace-index)",
+    "base_url": "http://g05-s3-alb-2121584483.us-east-1.elb.amazonaws.com",
+    "rate_limit_por_minuto": 20000,
+    "seed": "ALLOW_REMOTE_SEED=1 node scripts/seed-carga.cjs (300 incidentes, 2303+10 itens)"
+  },
+  "stdout_final": "\nrunning (0m21.0s), 0/1 VUs, 21 complete and 0 interrupted iterations\nsmoke   [  70% ] 0/1 VUs  21.0s/30s  1.00 iters/s\n\nrunning (0m22.0s), 0/1 VUs, 22 complete and 0 interrupted iterations\nsmoke   [  73% ] 0/1 VUs  22.0s/30s  1.00 iters/s\n\nrunning (0m23.0s), 0/1 VUs, 23 complete and 0 interrupted iterations\nsmoke   [  77% ] 0/1 VUs  23.0s/30s  1.00 iters/s\n\nrunning (0m24.0s), 0/1 VUs, 24 complete and 0 interrupted iterations\nsmoke   [  80% ] 0/1 VUs  24.0s/30s  1.00 iters/s\n\nrunning (0m25.0s), 0/1 VUs, 25 complete and 0 interrupted iterations\nsmoke   [  83% ] 0/1 VUs  25.0s/30s  1.00 iters/s\n\nrunning (0m26.0s), 0/1 VUs, 26 complete and 0 interrupted iterations\nsmoke   [  87% ] 0/1 VUs  26.0s/30s  1.00 iters/s\n\nrunning (0m27.0s), 0/1 VUs, 27 complete and 0 interrupted iterations\nsmoke   [  90% ] 0/1 VUs  27.0s/30s  1.00 iters/s\n\nrunning (0m28.0s), 0/1 VUs, 28 complete and 0 interrupted iterations\nsmoke   [  93% ] 0/1 VUs  28.0s/30s  1.00 iters/s\n\nrunning (0m29.0s), 0/1 VUs, 29 complete and 0 interrupted iterations\nsmoke   [  97% ] 0/1 VUs  29.0s/30s  1.00 iters/s\n\nrunning (0m30.0s), 0/1 VUs, 30 complete and 0 interrupted iterations\nsmoke   [ 100% ] 0/1 VUs  30.0s/30s  1.00 iters/s\nTeste de desempenho — API de consulta (View Show)\nModo: smoke · RATE alvo: 137 req/s\n\nℹ Cenário G seguiu o cursor para a página 2 em 3 iteração(ões) — 0 aqui indica que INCIDENT_COUNT/limit não geraram hasMore=true, não necessariamente um bug de paginação.\nℹ Cada requisição carregou X-Request-Id prefixado \"k6-consultas-smoke\", gravado em request_id no log JSON da API (src/app.ts) — filtrável na saída padrão do processo hoje; ver seção Observabilidade do README para Prometheus/Tempo.\n\nResumo completo: resumo-smoke.json\n\nrunning (0m30.2s), 0/1 VUs, 31 complete and 0 interrupted iterations\nsmoke ✓ [ 100% ] 0/1 VUs  30s  1.00 iters/s",
+  "stderr_final": "",
+  "thresholds": {
+    "http_req_failed: rate<0.001": "ok",
+    "checks: rate==1": "ok"
+  }
+}

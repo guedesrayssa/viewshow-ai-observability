@@ -1,0 +1,22 @@
+{
+  "rotulo": "breakpoint",
+  "comando": "k6 run -e BASE_URL=http://g05-s3-alb-2121584483.us-east-1.elb.amazonaws.com -e AUTH_COOKIE_SECRET=<segredo> -e MODE=breakpoint consultas.js ",
+  "inicio_utc": "2026-09-11T07:37:17Z",
+  "fim_utc": "2026-09-11T07:43:24Z",
+  "duracao_s": 367,
+  "exit_code": 0,
+  "k6": "k6 v2.2.0 (commit/devel, go1.26.5, darwin/arm64)",
+  "commit": "05a02577b24e968ad43d08ef85acdbe36d8e2713",
+  "ambiente": {
+    "host": "macOS 25.6.0 arm64 — gerador FORA da AWS, tráfego pela internet pública até o ALB",
+    "api": "ECS Fargate 1 vCPU / 2048 MB x 1 task atras do ALB g05-s3-alb (us-east-1)",
+    "node": "v26.3.0",
+    "persistencia": "DynamoDB g05-s3-operacional (PAY_PER_REQUEST, GSI trace-index)",
+    "base_url": "http://g05-s3-alb-2121584483.us-east-1.elb.amazonaws.com",
+    "rate_limit_por_minuto": 20000,
+    "seed": "ALLOW_REMOTE_SEED=1 node scripts/seed-carga.cjs (300 incidentes, 2303+10 itens)"
+  },
+  "stdout_final": "running (5m57.0s), 300/300 VUs, 8615 complete and 0 interrupted iterations\nbreakpoint   [  99% ] 300/300 VUs  5m57.0s/6m0s  215.99 iters/s\n\nrunning (5m58.0s), 300/300 VUs, 8659 complete and 0 interrupted iterations\nbreakpoint   [  99% ] 300/300 VUs  5m58.0s/6m0s  217.33 iters/s\n\nrunning (5m59.0s), 300/300 VUs, 8672 complete and 0 interrupted iterations\nbreakpoint   [ 100% ] 300/300 VUs  5m59.0s/6m0s  218.66 iters/s\n\nrunning (6m00.0s), 300/300 VUs, 8694 complete and 0 interrupted iterations\nbreakpoint   [ 100% ] 300/300 VUs  6m00.0s/6m0s  219.99 iters/s\n\nrunning (6m01.0s), 249/300 VUs, 8745 complete and 0 interrupted iterations\nbreakpoint ↓ [ 100% ] 300/300 VUs  6m0s  219.99 iters/s\n\nrunning (6m02.0s), 191/300 VUs, 8803 complete and 0 interrupted iterations\nbreakpoint ↓ [ 100% ] 300/300 VUs  6m0s  219.99 iters/s\n\nrunning (6m03.0s), 148/300 VUs, 8846 complete and 0 interrupted iterations\nbreakpoint ↓ [ 100% ] 300/300 VUs  6m0s  219.99 iters/s\n\nrunning (6m04.0s), 116/300 VUs, 8878 complete and 0 interrupted iterations\nbreakpoint ↓ [ 100% ] 300/300 VUs  6m0s  219.99 iters/s\n\nrunning (6m05.0s), 066/300 VUs, 8928 complete and 0 interrupted iterations\nbreakpoint ↓ [ 100% ] 300/300 VUs  6m0s  219.99 iters/s\n\nrunning (6m06.0s), 017/300 VUs, 8977 complete and 0 interrupted iterations\nbreakpoint ↓ [ 100% ] 300/300 VUs  6m0s  219.99 iters/s\nTeste de desempenho — API de consulta (View Show)\nModo: breakpoint · RATE alvo: 137 req/s\n\nℹ 202 chamadas a overview/monitoring receberam 503 DATA_UNAVAILABLE — esperado enquanto apps/backend/ingestion-data não existe.\nℹ Cenário G seguiu o cursor para a página 2 em 639 iteração(ões) — 0 aqui indica que INCIDENT_COUNT/limit não geraram hasMore=true, não necessariamente um bug de paginação.\nℹ Cada requisição carregou X-Request-Id prefixado \"k6-consultas-breakpoint\", gravado em request_id no log JSON da API (src/app.ts) — filtrável na saída padrão do processo hoje; ver seção Observabilidade do README para Prometheus/Tempo.\n\nResumo completo: resumo-breakpoint.json\n\nrunning (6m06.8s), 000/300 VUs, 8994 complete and 0 interrupted iterations\nbreakpoint ✓ [ 100% ] 000/300 VUs  6m0s  219.99 iters/s",
+  "stderr_final": "time=\"2026-09-11T04:40:53-03:00\" level=warning msg=\"Insufficient VUs, reached 300 active VUs and cannot initialize more\" executor=ramping-arrival-rate scenario=breakpoint",
+  "thresholds": {}
+}
