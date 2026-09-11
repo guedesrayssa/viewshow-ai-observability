@@ -536,11 +536,18 @@ async function batchWrite(tableName, items) {
 async function main() {
   const total = INCIDENTS_PER_HOUR * HOURS_BACK;
 
+  if (!pareceEndpointLocal(ENDPOINT) && process.env.ALLOW_REMOTE_SEED !== "1") {
+    throw new Error(
+      "Seed remoto recusado: defina DYNAMODB_ENDPOINT para DynamoDB Local " +
+        "ou ALLOW_REMOTE_SEED=1 somente em um ambiente isolado e autorizado.",
+    );
+  }
+
   if (process.env.CLEAN === "1") {
     if (!pareceEndpointLocal(ENDPOINT)) {
       throw new Error(
         "CLEAN=1 recusado: DYNAMODB_ENDPOINT precisa apontar para um endereço " +
-          "local (http://127.0.0.1:.../http://localhost:... ou http://dynamodb:8000 " +
+          "local (http://127.0.0.1:... ou http://localhost:... ou http://dynamodb:8000 " +
           `em CI) — valor atual: ${ENDPOINT ?? "(não definido — resolveria para a AWS real)"}. ` +
           "Isso existe para não apagar itens de uma tabela remota por engano: CLEAN " +
           "remove incondicionalmente todo item cujo pk comece com INC# ou VIEW# na " +

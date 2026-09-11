@@ -41,13 +41,11 @@ import { check } from "k6";
 import { Counter, Rate, Trend } from "k6/metrics";
 import { forgeSessionCookie, authParams } from "./lib/session.js";
 
-// 429 (rate limiter) e 503 (projeção ainda não publicada) são estados
-// esperados e já contados em métricas próprias (rate_limited_total,
-// projecao_indisponivel_total) — sem isto, http_req_failed (usado nos
-// thresholds de smoke/load/soak) reprovaria o run só por causa deles, mesmo
-// com a API funcionando corretamente. Confirmado rodando localmente: um
-// único VU excede 180 req/min em poucos segundos, então isto não é opcional.
-http.setResponseCallback(http.expectedStatuses(200, 429, 503));
+// Somente HTTP 200 é resposta bem-sucedida para os thresholds de disponibilidade
+// e latência. 429 (rate limiter) e 503 (projeção indisponível) continuam sendo
+// contados em métricas próprias, mas também fazem http_req_failed reprovar a
+// rodada quando excedem o critério do RNF09.
+http.setResponseCallback(http.expectedStatuses(200));
 
 const BASE_URL = __ENV.BASE_URL;
 const MODE = __ENV.MODE || "smoke";
@@ -186,7 +184,7 @@ export const options = {
           // limiter rejeita com 429. Sem esse escopo, uma rodada dominada
           // por 429 mediria o rate limiter e ainda assim passaria.
           "http_req_duration{status:200}": ["p(95)<2000"],
-          http_req_failed: ["rate<0.01"],
+          http_req_failed: ["rate<0.001"],
           checks: ["rate>0.99"],
           // Gate específico para RNF09/RNF14: se mais da metade do tráfego
           // for rate-limitado, esta rodada NÃO comprova a API na taxa alvo
@@ -195,10 +193,10 @@ export const options = {
           // req/s reais por IP); só passa rodando distribuído (múltiplas
           // origens) ou com o limite ajustado para a janela do teste — ver
           // gotcha no topo do arquivo.
-          rate_limited_rate: ["rate<0.5"],
+          rate_limited_rate: ["rate<0.001"],
         }
       : {}),
-    ...(MODE === "smoke" ? { http_req_failed: ["rate<0.01"], checks: ["rate==1"] } : {}),
+    ...(MODE === "smoke" ? { http_req_failed: ["rate<0.001"], checks: ["rate==1"] } : {}),
     // Também escopado a status:200 pelo mesmo motivo: "vazão" composta de
     // 429 não é vazão útil da API.
     ...(MODE === "load" ? { "http_reqs{status:200}": [`rate>${Math.floor(RATE * 0.95)}`] } : {}),
@@ -215,14 +213,14 @@ export function setup() {
   return { cookie };
 }
 
-/** 200: a projeção já foi publicada. 503 DATA_UNAVAILABLE: ainda não há
- *  Ingestão publicando. 429: rate limiter — nenhum dos três é falha do
- *  teste (ver rate_limited_total/projecao_indisponivel_total). */
+/** A projeção precisa responder 200 para a rodada comprovar disponibilidade.
+ *  503 DATA_UNAVAILABLE e 429 RATE_LIMITED são registrados para diagnóstico,
+ *  mas não são aceitos como sucesso do endpoint. */
 function checaProjecao(res, rotulo) {
   if (res.status === 503) projecaoIndisponivel.add(1, { rota: rotulo });
   return check(
     res,
-    { [`${rotulo}: 200, 503 (ingestão não publicou) ou 429 (rate limit)`]: (r) => r.status === 200 || r.status === 503 || r.status === 429 },
+    { [`${rotulo}: 200`]: (r) => r.status === 200 },
   );
 }
 
@@ -232,10 +230,10 @@ function contaRateLimit(res, rotulo) {
   taxaRateLimit.add(limitado);
 }
 
-/** true se a resposta é o resultado de negócio esperado OU um 429 de rate
- *  limiter — nunca um "bug" na ausência de outra checagem mais específica. */
-function statusOuRateLimited(res, status) {
-  return res.status === status || res.status === 429;
+/** Confere somente o status de negócio esperado. Respostas 429/503 devem
+ *  reprovar a disponibilidade, mesmo quando são contabilizadas à parte. */
+function statusEsperado(res, status) {
+  return res.status === status;
 }
 
 /* ------------------------------ default ------------------------------- */
@@ -254,9 +252,8 @@ export default function (data) {
     latenciaPesada.add(res.timings.duration);
     contaRateLimit(res, "incidents_24h");
     check(res, {
-      "pesada: 200 (ou 429 rate limit)": (r) => statusOuRateLimited(r, 200),
+      "pesada: 200": (r) => statusEsperado(r, 200),
       "pesada: tem items (quando 200)": (r) => {
-        if (r.status === 429) return true;
         try { return Array.isArray(r.json("data.items")); } catch { return false; }
       },
     });
@@ -269,7 +266,7 @@ export default function (data) {
     );
     latenciaLeve.add(res.timings.duration);
     contaRateLimit(res, "incidents_15m");
-    check(res, { "leve: 200 (ou 429 rate limit)": (r) => statusOuRateLimited(r, 200) });
+    check(res, { "leve: 200": (r) => statusEsperado(r, 200) });
   } else if (sorteio < 0.65) {
     // C — DIAGNÓSTICO: Query única no GSI trace-index (bundle do
     //     incidente). Independe do relógio, não sofre com o envelhecimento
@@ -282,9 +279,8 @@ export default function (data) {
     latenciaDiagnostico.add(res.timings.duration);
     contaRateLimit(res, "diagnosis");
     check(res, {
-      "diagnostico: 200 (ou 429 rate limit)": (r) => statusOuRateLimited(r, 200),
+      "diagnostico: 200": (r) => statusEsperado(r, 200),
       "diagnostico: tem evidence (quando 200)": (r) => {
-        if (r.status === 429) return true;
         try { return Array.isArray(r.json("data.evidence")); } catch { return false; }
       },
     });
@@ -317,7 +313,7 @@ export default function (data) {
     );
     latenciaEvents.add(res.timings.duration);
     contaRateLimit(res, "events");
-    check(res, { "events: 200 (ou 429 rate limit)": (r) => statusOuRateLimited(r, 200) });
+    check(res, { "events: 200": (r) => statusEsperado(r, 200) });
   } else {
     // G — PAGINAÇÃO: limit baixo força hasMore=true com os INCIDENT_COUNT
     //     incidentes do seed; segue nextCursor para a página seguinte.
@@ -329,7 +325,7 @@ export default function (data) {
       params({ cenario: "paginacao", name: "GET /api/v1/incidents (pagina 1)" }),
     );
     contaRateLimit(pagina1, "paginacao_p1");
-    check(pagina1, { "paginacao: pagina 1 (ou 429 rate limit)": (r) => statusOuRateLimited(r, 200) });
+    check(pagina1, { "paginacao: pagina 1": (r) => statusEsperado(r, 200) });
     if (pagina1.status === 200) {
       let cursor = null;
       try { cursor = pagina1.json("data.page.nextCursor"); } catch { /* segue sem cursor */ }
@@ -340,7 +336,7 @@ export default function (data) {
           params({ cenario: "paginacao", name: "GET /api/v1/incidents (pagina 2, cursor)" }),
         );
         contaRateLimit(pagina2, "paginacao_p2");
-        check(pagina2, { "paginacao: pagina 2, cursor (ou 429 rate limit)": (r) => statusOuRateLimited(r, 200) });
+        check(pagina2, { "paginacao: pagina 2, cursor": (r) => statusEsperado(r, 200) });
       }
     }
   }

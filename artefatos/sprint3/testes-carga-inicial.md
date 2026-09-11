@@ -74,10 +74,10 @@ cenário é executável e já passou uma vez, sob a arquitetura anterior.
 | RNF                                                | Requisito (Sprint 1)                                                                                                 | Plano de teste revisado (contrato atual)                                                                                                                                                                                                                                                                                                                                         | Cenário k6                                                                                      |
 | :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------- |
 | **RNF01** — Capacidade                             | API de ingestão aceita continuamente 10.000 eventos válidos/minuto sem perda.                                        | Disparar uma importação representando uma janela de 150.000 eventos (10.000/min × 15 min) e medir o tempo até o `ImportJob` chegar a `completed`.                                                                                                                                                                                                                                | `ingestao-batch.js`, modo `drenagem`                                                            |
-| **RNF02** — Comportamento temporal (ingestão)      | Tempo entre a captura do evento e sua disponibilidade para consulta ≤ 2 minutos.                                     | Marcar `t0` no disparo da importação, `t1` na conclusão do `ImportJob` e `t2` quando o watermark de `/dashboard/overview` avança além de `t0`; reportar `t1-t0` e `t2-t0`.                                                                                                                                                                                                       | `ingestao-batch.js`, modo `frescor`                                                             |
+| **RNF02** — Comportamento temporal (ingestão)      | Tempo entre a captura do evento e sua disponibilidade para consulta ≤ 2 minutos.                                     | Marcar `t0` no disparo da importação, `t1` na conclusão do `ImportJob` e `t2` quando o watermark de `/dashboard/overview` avança além de `t0`; reportar `t1-t0` e `t2-t0`, com threshold formal `p(100)<120s`.                                                                                                                                                                    | `ingestao-batch.js`, modo `frescor`                                                             |
 | **RNF03** — Tolerância a falhas                    | Degradação controlada sob payload inválido, fila sem capacidade ou timeout de dependência; recuperação sem reinício. | **Fila cheia** → disparar 2, 3 ou 4 janelas em sequência (`BACKLOG_BATCHES`) e medir o tempo até processar o backlog e alcançar o watermark mais recente. **Timeout** → `POLL_TIMEOUT_S` reprova explicitamente um `ImportJob` que não conclui dentro do prazo, em vez de travar o run.                                                                                          | `ingestao-batch.js`, modo `acumulo` (fila cheia) e `POLL_TIMEOUT_S` em todos os modos (timeout) |
 | **RNF04** — Confidencialidade (controle de acesso) | Painel e APIs de consulta acessíveis somente via sessão autenticada; tentativa sem sessão retorna 401/403.           | Matriz por rota: chamada sem cookie e com cookie inválido devem retornar 401; chamada com sessão válida deve alcançar o status esperado da rota. Cobre 12 rotas na matriz (consulta, revisão de hipótese, reanálise, importação, sessão) mais 3 verificações avulsas de rotas sem checagem de sessão (login/callback/logout).                                                    | `auth-check.js`                                                                                 |
-| **RNF09** — Disponibilidade                        | Dashboard e APIs de consulta com disponibilidade ≥ 99,9%.                                                            | Taxa de erro (`http_req_failed`) `< 1%` como threshold formal em todos os modos de carga sustentada (`load`, `soak`).                                                                                                                                                                                                                                                            | `consultas.js`, thresholds de `load`/`soak`                                                     |
+| **RNF09** — Disponibilidade                        | Dashboard e APIs de consulta com disponibilidade ≥ 99,9%.                                                            | Taxa de erro (`http_req_failed`) `< 0,1%` (`rate<0.001`) como threshold formal em todos os modos de carga sustentada (`load`, `soak`).                                                                                                                                                                                                                                           | `consultas.js`, thresholds de `load`/`soak`                                                     |
 | **RNF14** — Comportamento temporal (consulta)      | Busca filtrada retorna em até 2 segundos para 95% das solicitações (p95).                                            | Threshold formal `http_req_duration{status:200}: p(95)<2000` nos modos `load`/`soak` (escopado a respostas de negócio reais — ver §3.3), mais `rate_limited_rate<0.5` para barrar runs de origem única que meçam o rate limiter em vez da API, medido nos 7 cenários de leitura da API (lista de incidentes leve/pesada, diagnóstico, eventos, paginação, overview, monitoring). | `consultas.js`, todos os modos                                                                  |
 
 ### 1.3 RNFs não cobertos pela suíte k6 (revisão de estado, não de carga)
@@ -184,18 +184,18 @@ distribuídos pelas últimas 25 horas, mais snapshots de `dashboard/overview` e
 | Capacidade do serviço      | Processo Node.js direto no host (Windows), sem contêiner nem limite de vCPU — **não comparável** à capacidade real em ECS Fargate 0,25 vCPU |
 | Origem do gerador de carga | Mesma máquina que a API (localhost) — **não** é uma medição de capacidade distribuída                                                       |
 | Versão do k6               | 2.2.0                                                                                                                                       |
-| `INCIDENT_COUNT` / seed    | 300 incidentes (padrão), `seed-carga.cjs` com `CLEAN=1`                                                                                     |
+| `INCIDENT_COUNT` / seed    | 300 incidentes (padrão), DynamoDB Local explícito, `seed-carga.cjs` com `CLEAN=1`                                                          |
 
 ### 3.2 Resumo executivo
 
-&emsp; Os três scripts rodam corretamente contra a API real e os thresholds
-corrigidos se comportam como projetado. `smoke` passa integralmente
+&emsp; A captura abaixo é uma execução anterior ao endurecimento final dos
+thresholds de erro/rate-limit; deve ser repetida após esta revisão. `smoke` passa integralmente
 (188.384 checks, 0 falhas). Isolando a latência das respostas de negócio de
 verdade (`http_req_duration{status:200}`), o `load` mostra **p95 de 64 ms**
 — bem dentro do orçamento de 2.000 ms do RNF14 — mas a vazão útil
 (`http_reqs{status:200}`) ficou em **3,03 req/s**, e **97,6% do tráfego foi
 rejeitado com 429** pelo rate limiter de 180 req/min por IP. O threshold
-`rate_limited_rate<0.5` reprovou de propósito: **esta rodada não comprova
+`rate_limited_rate<0.001` reprovou de propósito: **esta rodada não comprova
 RNF09/RNF14 na taxa alvo de 137 req/s**, porque mede majoritariamente o rate
 limiter, não a capacidade da API — exatamente o cenário que a correção da
 revisão de PR existe para impedir de passar silenciosamente. `auth-check.js`
@@ -211,14 +211,14 @@ a janela do teste, em homologação — ver Limitações.**
 | :------------------------------------------- | :------------------------------- | ---------------------------: | -------------------------: |
 | Latência p95 (`status:200`)                  | < 2.000 ms                       |    — (não aplicado no smoke) |           **64,25 ms — ✓** |
 | Latência p95 (todas as respostas, incl. 429) | informativo                      |                      0,62 ms |                    0,71 ms |
-| Taxa de erro (`http_req_failed`)             | < 1%                             |                       0% — ✓ |                     0% — ✓ |
+| Taxa de erro (`http_req_failed`)             | < 0,1%                           |               0% (execução anterior) |               0% (execução anterior) |
 | Vazão útil (`status:200`)                    | > 130 req/s                      |                            — |         3,03 req/s — **✗** |
-| Fração rate-limitada (`rate_limited_rate`)   | < 50%                            |   — (sem threshold no smoke) |              97,6% — **✗** |
+| Fração rate-limitada (`rate_limited_rate`)   | < 0,1%                           |   — (sem threshold no smoke) |              97,6% — **✗** |
 | Checks                                       | ≥ 99% (`smoke`) / > 99% (`load`) |   100% (188.384/188.384) — ✓ |   100% (40.490/40.490) — ✓ |
 | 429 (`rate_limited_total`)                   | informativo                      | 129.718 de 129.890 iterações | 27.267 de 27.892 iterações |
 
-&emsp; Checks tolerantes a 429 continuam em 100% porque um 429 é um
-resultado válido para o script (é o rate limiter funcionando); os
+&emsp; Na versão revisada, respostas 429/503 não são mais aceitas como sucesso;
+os
 thresholds que **provam** RNF09/RNF14 na taxa alvo (vazão útil e fração
 rate-limitada) são os que reprovam, corretamente, nesta rodada de origem
 única.
@@ -297,12 +297,11 @@ há como observar uma resposta de sucesso real.
 
 ## 4. Observabilidade
 
-> **Painel Grafana provisionado, com dashboard dedicado à aplicação, ainda
-> pendente** — a pilha local (`apps/fullstack/observability/`) hoje só
-> provisiona **data sources** (Prometheus/Loki/Tempo), sem
-> `grafana/provisioning/dashboards/`; e o alvo `view-show-api` fica
-> comentado em `prometheus.yml` por padrão (a composição não inicia a API —
-> ver [`loadtest/README.md`](../../apps/backend/api/loadtest/README.md#observabilidade)).
+> **Painel Grafana provisionado** — `View Show — API (RED)` configura painéis
+> de latência p95, throughput, erros por segundo e CPU em
+> `grafana/provisioning/dashboards/json/view-show-api.json`; o alvo
+> `view-show-api` está habilitado em `prometheus.yml`. Ainda faltam capturas
+> de tela/valores de uma execução com a pilha subida.
 > Este ambiente de execução não tinha Docker disponível para subir a pilha
 > completa, então as subseções abaixo trazem **valores brutos capturados
 > direto de `GET /metrics`** durante a rodada `load` da Seção 3 — evidência
@@ -376,7 +375,9 @@ com a latência de negócio baixa (p95 64 ms) apesar do volume alto de 429.
 #    OPERATIONAL_TABLE_NAME etc.)
 npm run build && npm start
 
-# 2. Semear
+# 2. Semear (DynamoDB Local; endpoints remotos são recusados por padrão)
+export DYNAMODB_ENDPOINT=http://127.0.0.1:8000
+export AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local
 CLEAN=1 node scripts/seed-carga.cjs
 
 # 3. k6 (a partir de apps/backend/api/loadtest/k6)

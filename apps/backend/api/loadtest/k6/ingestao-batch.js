@@ -52,13 +52,10 @@
  * /imports/:id devolve `data.status` em **minúsculo**
  * (`created|uploading|queued|processing|completed|failed`).
  *
- * O QUE CONTINUA SENDO STAND-IN: `ImportStartData` não expõe nenhuma URL
- * pré-assinada de upload — não há, hoje, como um cliente real saber para
- * onde mandar os bytes. `completeImport()` abaixo manda um `etag` fabricado
- * só para bater com o schema de `CompleteImportRequest`; nenhum byte é
- * enviado ao S3 de fato. Quando URLs de upload forem publicadas no contrato,
- * ajuste `completeImport()` para fazer o PUT real de cada parte antes de
- * completar.
+ * PRÉ-CONDIÇÃO DE EXECUÇÃO: `ImportStartData` precisa expor URLs pré-assinadas
+ * (upload.parts[].url) para que o cliente envie os bytes ao S3. O contrato
+ * atual não expõe essas URLs e, por isso, o cenário falha explicitamente com
+ * uma mensagem acionável; nenhum ETag fictício é aceito como sucesso.
  *
  * USO (quando o adaptador de import sair do estado fail-closed):
  *   k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<32+ chars> -e MODE=drenagem ingestao-batch.js
@@ -114,7 +111,9 @@ export const options = {
     ...(MODE === "drenagem"
       ? { ingestion_drain_seconds: [`p(100)<${WINDOW_MINUTES * 60}`] } // "bem antes dos 15 min"
       : {}),
-    ...(MODE === "frescor" ? { ingestion_end_to_end_freshness_seconds: ["p(100)<900"] } : {}),
+    ...(MODE === "frescor" ? { ingestion_end_to_end_freshness_seconds: ["p(100)<120"] } : {}),
+    http_req_failed: ["rate<0.001"],
+    checks: ["rate==1"],
   },
 };
 
@@ -180,13 +179,27 @@ function triggerImport(cookie, label) {
   );
 }
 
-/** Completa o upload multipart (CompleteImportRequest) — etag fabricado, ver
- *  nota "O QUE CONTINUA SENDO STAND-IN" no cabeçalho do arquivo. */
-function completeImport(cookie, importId, partCount, label) {
-  const parts = Array.from({ length: partCount }, (_, i) => ({
-    partNumber: i + 1,
-    etag: `k6-fake-etag-${i + 1}`,
-  }));
+/** Completa o multipart somente quando o backend fornece URLs reais. */
+function completeImport(cookie, importId, upload, label) {
+  if (!upload || !Array.isArray(upload.parts) || upload.parts.length === 0) {
+    throw new Error(
+      "Importação iniciou sem upload.parts[].url: o contrato atual não permite " +
+        "enviar bytes ao S3; configure o adaptador real antes de executar o cenário.",
+    );
+  }
+  const parts = [];
+  for (const part of upload.parts) {
+    if (!part.url) throw new Error(`Parte ${part.partNumber} não possui URL pré-assinada`);
+    const put = http.put(part.url, new ArrayBuffer(Number(part.sizeBytes || 0)), {
+      tags: { name: "PUT import part" },
+    });
+    if (![200, 201, 204].includes(put.status)) {
+      throw new Error(`Upload da parte ${part.partNumber} falhou com HTTP ${put.status}`);
+    }
+    const etag = put.headers.ETag || put.headers.etag;
+    if (!etag) throw new Error(`Upload da parte ${part.partNumber} não retornou ETag`);
+    parts.push({ partNumber: part.partNumber, etag });
+  }
   return http.post(
     `${BASE_URL}${ENDPOINTS.importComplete(importId)}`,
     JSON.stringify({ parts }),
@@ -240,7 +253,8 @@ export default function (data) {
     check(disparo, { "drenagem: import aceito (201)": (r) => r.status === 201 });
     const importId = (() => { try { return disparo.json("data.id"); } catch { return null; } })();
     if (importId) {
-      const completou = completeImport(data.cookie, importId, importBody("drenagem-unica").partCount, "drenagem");
+      const upload = (() => { try { return disparo.json("data.upload"); } catch { return null; } })();
+      const completou = completeImport(data.cookie, importId, upload, "drenagem");
       check(completou, { "drenagem: complete aceito (202)": (r) => r.status === 202 });
     }
     const concluiu = importId && waitForCompletion(data.cookie, importId, "drenagem");
@@ -265,7 +279,8 @@ export default function (data) {
     ids.forEach((id, i) => {
       if (!id) return;
       const label = `acumulo-lote-${i + 1}`;
-      const completou = completeImport(data.cookie, id, importBody(label).partCount, label);
+      const upload = (() => { try { return disparo.json("data.upload"); } catch { return null; } })();
+      const completou = completeImport(data.cookie, id, upload, label);
       check(completou, { [`${label}: complete aceito (202)`]: (r) => r.status === 202 });
     });
     const todasConcluiram = ids.every((id, i) => id && waitForCompletion(data.cookie, id, `acumulo-lote-${i + 1}`));
@@ -285,7 +300,8 @@ export default function (data) {
     check(disparo, { "frescor: import aceito (201)": (r) => r.status === 201 });
     const importId = (() => { try { return disparo.json("data.id"); } catch { return null; } })();
     if (importId) {
-      const completou = completeImport(data.cookie, importId, importBody("frescor-ponta-a-ponta").partCount, "frescor");
+      const upload = (() => { try { return disparo.json("data.upload"); } catch { return null; } })();
+      const completou = completeImport(data.cookie, importId, upload, "frescor");
       check(completou, { "frescor: complete aceito (202)": (r) => r.status === 202 });
     }
     const ingestaoConcluiu = importId && waitForCompletion(data.cookie, importId, "frescor");
