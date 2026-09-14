@@ -3,52 +3,53 @@
 > Parte da [documentação do frontend](../documentacao-frontend.md). Este documento
 > detalha o acesso e o perfil em sessão; a visão geral está na seção 8 do índice.
 
-O View Show inicia a autenticação no serviço corporativo de identidade
-(RIE01, RESTR01). O frontend não recebe nem envia credenciais.
+O View Show recebe e-mail e senha na tela de login e os envia por HTTPS ao
+backend. O backend confere a credencial no Cognito e cria um cookie de sessão;
+o client secret nunca vai para o navegador.
 
 ## `lib/auth.ts`
 
 | Export | Assinatura | Papel |
 | --- | --- | --- |
-| `beginAuthentication()` | `→ AuthenticationDecision` | Decide entre redirecionar ao provedor, abrir a demonstração ou informar indisponibilidade. |
-| `AUTH_UNAVAILABLE_MESSAGE` | `string` | Aviso quando o SSO não está configurado. |
+| `authenticateWithPassword()` | `(username, password) → Promise<PasswordAuthenticationDecision>` | Envia a credencial ao backend ou abre a demonstração local. |
+| `AUTH_UNAVAILABLE_MESSAGE` | `string` | Aviso quando o serviço de login não responde. |
 
 ```ts
-type AuthenticationDecision =
-  | { kind: "redirect"; url: string }
+type PasswordAuthenticationDecision =
+  | { kind: "authenticated" }
   | { kind: "demo" }
-  | { kind: "unavailable"; message: string };
+  | { kind: "error"; message: string };
 ```
 
 ## Contrato da API
 
-`ENDPOINTS.auth` expõe apenas estes caminhos públicos:
+`ENDPOINTS.auth` expõe estes caminhos públicos:
 
 | Caminho | Papel |
 | --- | --- |
-| `GET /auth/login` | Inicia a autenticação federada. |
-| `/auth/callback` | Recebe o retorno do provedor de identidade. |
+| `POST /auth/login` | Confere e-mail e senha no Cognito e cria a sessão. |
 | `/auth/logout` | Encerra a sessão. |
 | `/auth/session` | Consulta a sessão atual. |
 
-Não há operações de criação de conta, redefinição de acesso ou envio de
-credenciais no frontend.
+Não há cadastro público nem redefinição automática de senha. Usuários são
+criados pelo responsável pelo ambiente com os comandos de
+`apps/fullstack/README.md`.
 
 ## Fluxo de login
 
-`app/(auth)/login/login-form.tsx` é um componente cliente com uma única ação
-SSO. Ao clicar, chama `beginAuthentication()`:
+`app/(auth)/login/login-form.tsx` é um componente cliente com campos de e-mail
+e senha. Ao enviar, chama `authenticateWithPassword()`:
 
 | Decisão | Ação da interface |
 | --- | --- |
-| `{ kind: "redirect", url }` | `window.location.assign(url)` leva ao `GET /auth/login`. |
+| `{ kind: "authenticated" }` | Abre `/visao-geral`. |
 | `{ kind: "demo" }` | `router.push("/visao-geral")`. |
-| `{ kind: "unavailable", message }` | Mostra `<Alert tone="critical">` com a mensagem. |
+| `{ kind: "error", message }` | Mostra `<Alert tone="critical">` e limpa a senha. |
 
-Com `NEXT_PUBLIC_API_BASE_URL` configurada, a decisão é `redirect`. Sem API, a
-demonstração só é aberta quando `NEXT_PUBLIC_ALLOW_EXAMPLE_DATA=true` e o
-ambiente não é de produção; do contrário, a interface informa indisponibilidade.
-Essa decisão não faz chamada HTTP.
+Com `NEXT_PUBLIC_API_BASE_URL` configurada, o frontend faz `POST /auth/login`
+com `credentials: "include"`. Sem API, a demonstração só é aberta quando
+`NEXT_PUBLIC_ALLOW_EXAMPLE_DATA=true` e o ambiente não é de produção; do
+contrário, a interface informa indisponibilidade. A senha não é persistida.
 
 ## Páginas auxiliares de acesso
 

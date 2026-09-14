@@ -2,7 +2,7 @@
  * page.tsx
  * Tela de login do View Show.
  *
- * Inicia o acesso pelo provedor corporativo de identidade.
+ * Inicia o acesso com um usuário cadastrado no Cognito deste ambiente.
  */
 
 import type { Metadata } from "next";
@@ -14,7 +14,7 @@ import { Wordmark } from "@/components/ui/wordmark";
 export const metadata: Metadata = {
   title: "Entrar",
   description:
-    "Acesse o View Show com a sua conta corporativa Globo para acompanhar a telemetria de frontend do Globoplay.",
+    "Acesse o View Show com seu e-mail e senha para acompanhar a telemetria de frontend do Globoplay.",
 };
 
 export default function LoginPage() {

@@ -88,3 +88,43 @@ terraform -chdir=apps/fullstack output bastion_acesso
 terraform -chdir=apps/fullstack output ecs_auto_scaling
 terraform -chdir=apps/fullstack output flow_logs
 ```
+
+## Criar usuário do Cognito
+
+Cada conta do Learner Lab cria um User Pool diferente. Execute estes comandos
+na raiz do repositório depois do `terraform apply`; não copie IDs de outra
+conta:
+
+```bash
+G05_COGNITO_POOL_ID="$(terraform -chdir=apps/fullstack output -raw cognito_user_pool_id)"
+read -rp "E-mail: " G05_COGNITO_EMAIL
+read -rsp "Senha: " G05_COGNITO_PASSWORD
+echo
+
+aws cognito-idp admin-create-user \
+  --user-pool-id "$G05_COGNITO_POOL_ID" \
+  --username "$G05_COGNITO_EMAIL" \
+  --user-attributes Name=email,Value="$G05_COGNITO_EMAIL" Name=email_verified,Value=true \
+  --message-action SUPPRESS \
+  --region us-east-1
+
+aws cognito-idp admin-set-user-password \
+  --user-pool-id "$G05_COGNITO_POOL_ID" \
+  --username "$G05_COGNITO_EMAIL" \
+  --password "$G05_COGNITO_PASSWORD" \
+  --permanent \
+  --region us-east-1
+
+aws cognito-idp admin-get-user \
+  --user-pool-id "$G05_COGNITO_POOL_ID" \
+  --username "$G05_COGNITO_EMAIL" \
+  --region us-east-1 \
+  --query UserStatus \
+  --output text
+
+unset G05_COGNITO_PASSWORD
+```
+
+O resultado final deve ser `CONFIRMED`. A senha precisa ter pelo menos oito
+caracteres, com letra maiúscula, letra minúscula e número. Se o usuário já
+existir, pule `admin-create-user` e execute os dois comandos seguintes.
