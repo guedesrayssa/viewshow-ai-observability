@@ -29,37 +29,68 @@ async function renderLoginForm() {
 }
 
 describe("LoginForm", () => {
-  it("offers only one federated action without credential controls or requests", async () => {
+  it("submits email and password and opens the dashboard", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
-    const fetch = vi.fn();
-    const assign = vi.fn();
+    const fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: {}, meta: {} }), { status: 200 }),
+    );
     vi.stubGlobal("fetch", fetch);
-    vi.stubGlobal("window", {
-      location: { origin: "http://dashboard.test", assign },
-    });
-
     await renderLoginForm();
 
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(screen.queryByRole("textbox", { name: /e-mail/i })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/senha/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /criar conta/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /esqueceu a senha/i })).not.toBeInTheDocument();
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /e-mail/i }),
+      "ana@globo.com",
+    );
+    await userEvent.type(screen.getByLabelText(/^senha$/i), "Senha123");
+    await userEvent.click(screen.getByRole("button", { name: /^entrar$/i }));
 
-    await userEvent.click(screen.getByRole("button", { name: /entrar com sso globo/i }));
-
-    expect(assign).toHaveBeenCalledWith("http://operacional.test/auth/login");
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(push).toHaveBeenCalledWith("/visao-geral");
   });
 
-  it("navigates to the dashboard instead of making an authentication request in demo mode", async () => {
+  it("shows a simple error and clears the password after a failed login", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { code: "UNAUTHENTICATED" } }),
+            { status: 401 },
+          ),
+      ),
+    );
+    await renderLoginForm();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /e-mail/i }),
+      "ana@globo.com",
+    );
+    const password = screen.getByLabelText(/^senha$/i);
+    await userEvent.type(password, "errada");
+    await userEvent.click(screen.getByRole("button", { name: /^entrar$/i }));
+
+    expect(
+      await screen.findByText("E-mail ou senha incorretos."),
+    ).toBeInTheDocument();
+    expect(password).toHaveValue("");
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("opens the dashboard without a request in demo mode", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
     vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "true");
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
 
     await renderLoginForm();
-    await userEvent.click(screen.getByRole("button", { name: /entrar com sso globo/i }));
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /e-mail/i }),
+      "ana@globo.com",
+    );
+    await userEvent.type(screen.getByLabelText(/^senha$/i), "Senha123");
+    await userEvent.click(screen.getByRole("button", { name: /^entrar$/i }));
 
     expect(push).toHaveBeenCalledWith("/visao-geral");
     expect(fetch).not.toHaveBeenCalled();
