@@ -18,34 +18,75 @@ const meta = {
 };
 
 describe("gateway client", () => {
-  it("starts federated authentication at the operational login endpoint", async () => {
+  it("authenticates through the backend without exposing Cognito configuration", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
-    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
-    const { beginAuthentication } = await import("@/lib/auth");
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async (input: string | URL | Request, init?: RequestInit) => {
+          requests.push({ url: String(input), init });
+          return new Response(
+            JSON.stringify({
+              data: { user: { email: "ana@globo.com" } },
+              meta,
+            }),
+            { status: 200 },
+          );
+        },
+      ),
+    );
+    const { authenticateWithPassword } = await import("@/lib/auth");
 
-    expect(beginAuthentication()).toEqual({
-      kind: "redirect",
-      url: "http://operacional.test/auth/login",
+    await expect(
+      authenticateWithPassword(" ana@globo.com ", "Senha123"),
+    ).resolves.toEqual({ kind: "authenticated" });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url).toBe("http://operacional.test/auth/login");
+    expect(requests[0]?.init).toMatchObject({
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify({
+        username: "ana@globo.com",
+        password: "Senha123",
+      }),
     });
   });
 
-  it("starts a demo session when examples are explicitly enabled without an API", async () => {
+  it("returns a simple message for invalid credentials", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { code: "UNAUTHENTICATED" } }),
+            { status: 401 },
+          ),
+      ),
+    );
+    const { authenticateWithPassword } = await import("@/lib/auth");
+
+    await expect(
+      authenticateWithPassword("ana@globo.com", "errada"),
+    ).resolves.toEqual({
+      kind: "error",
+      message: "E-mail ou senha incorretos.",
+    });
+  });
+
+  it("keeps demo mode available without sending credentials", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
     vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "true");
-    const { beginAuthentication } = await import("@/lib/auth");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const { authenticateWithPassword } = await import("@/lib/auth");
 
-    expect(beginAuthentication()).toEqual({ kind: "demo" });
-  });
-
-  it("reports authentication as unavailable without an API or demo mode", async () => {
-    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
-    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
-    const { AUTH_UNAVAILABLE_MESSAGE, beginAuthentication } = await import("@/lib/auth");
-
-    expect(beginAuthentication()).toEqual({
-      kind: "unavailable",
-      message: AUTH_UNAVAILABLE_MESSAGE,
-    });
+    await expect(
+      authenticateWithPassword("ana@globo.com", "Senha123"),
+    ).resolves.toEqual({ kind: "demo" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("supports the same-origin path prefix used by the existing ingress", async () => {
