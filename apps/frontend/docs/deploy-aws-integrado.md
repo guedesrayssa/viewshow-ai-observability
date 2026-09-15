@@ -45,12 +45,12 @@ inventado pelo backend.
 
 ## Autenticação nesta fase
 
-O frontend usa somente a superfície federada: `GET /auth/session`,
-`GET /auth/login`, `GET /auth/callback` e `POST /auth/logout`. Não existe fluxo
-público de e-mail e senha. Até o adaptador Cognito/OIDC corporativo estar
-disponível, login e callback falham fechado com `503 FEATURE_UNAVAILABLE`; uma
-sessão ausente retorna `401 UNAUTHENTICATED`. Isso é uma pendência externa
-explícita, sem autenticação simulada em produção.
+O frontend envia e-mail e senha por HTTPS para `POST /auth/login`. O backend
+confere a credencial no Cognito e devolve um cookie de sessão `Secure`,
+`HttpOnly` e `SameSite=Lax`; o client secret nunca vai para o navegador. Depois
+do login, a interface abre `/visao-geral`. `GET /auth/session` consulta a sessão
+e `POST /auth/logout` a encerra. Uma sessão ausente retorna
+`401 UNAUTHENTICATED`.
 
 As rotas de importação e reanálise já fazem validação de borda e autenticação,
 mas seus adaptadores de S3/ingestão e publicação SQS estão definidos como
