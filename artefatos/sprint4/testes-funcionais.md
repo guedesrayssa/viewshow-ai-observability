@@ -1,12 +1,14 @@
-# Testes Funcionais — Planejamento
+# Testes Funcionais
 
-> **Status deste documento: PLANEJAMENTO.** Esta versão define **quais** serão os testes funcionais do projeto (identificador, objetivo, procedimento e resultado esperado), atendendo à issue de Messias Olivindo *"Definir quais vão ser os Testes Funcionais do Projeto"*. **Nenhum teste novo foi implementado ou executado como parte desta entrega.** Os campos "Resultado obtido" e "Situação" estão marcados como **a executar** em todos os itens; implementação, execução e evidências (capturas, brutos de `vitest`/`k6`) ficam para uma etapa futura da sprint.
+## Visão Geral
 
-## O que este documento é (e o que não é)
+&emsp;Este documento define o plano de testes funcionais do sistema ARGUS/View Show — alvo `apps/backend/api` (monólito modular TypeScript, Express 5, DynamoDB) — cobrindo os requisitos funcionais **RF01–RF10** definidos em [`sprint1/requisitos.md`](../sprint1/requisitos.md#2-requisitos-funcionais-rf). Para cada teste são especificados identificador, objetivo, procedimento e resultado esperado, verificando se o sistema faz o que deveria: se uma função devolve o valor correto, se uma rota entrega o dado esperado, se um fluxo de negócio se comporta corretamente nos limites de entrada, e se essa corretude se mantém sob concorrência.
 
-&emsp;Este artefato cobre os **requisitos funcionais (RF01–RF10)** definidos em [`sprint1/requisitos.md`](../sprint1/requisitos.md#2-requisitos-funcionais-rf): verifica se o sistema **faz** o que deveria — se uma função devolve o valor correto, se uma rota entrega o dado esperado, se um fluxo de negócio se comporta certo nos limites de entrada, e se isso continua verdadeiro sob carga.
+&emsp;O documento encontra-se em fase de planejamento: define quais testes serão executados e como, mas nenhum teste novo foi implementado ou executado como parte desta entrega. Os campos "Resultado obtido" e "Situação" estão marcados como **a executar** em todos os itens; implementação, execução e coleta de evidências (capturas de tela, saídas brutas de `vitest`/`k6`) ficam para uma etapa futura.
 
-&emsp;Ele **não** substitui nem duplica [`sprint3/testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md), que cobre os **requisitos não funcionais (RNF01–RNF15)** — capacidade, latência (p95), disponibilidade, throughput. Onde a Seção 4 deste documento usa carga progressiva com a mesma ferramenta k6, o objetivo é **corretude da resposta sob concorrência** (dado certo, sem corrupção, sem efeito colateral), não desempenho; os números de capacidade da API atual (RNF09, RNF14) já estão medidos e classificados naquele artefato e são apenas referenciados aqui como contexto, sem repetir a análise.
+&emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
+
+&emsp;A suíte atual (`npm test`, Vitest) tem 11 arquivos e roda **70 testes passando, 1 ignorado**. As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
 
 ## Sumário
 
@@ -15,14 +17,6 @@
 3. [Testes de Caso de Uso e Análise de Valor Limite](#3-testes-de-caso-de-uso-e-análise-de-valor-limite)
 4. [Testes de Carga Funcional](#4-testes-de-carga-funcional)
 5. [Convenção de evidências](#5-convenção-de-evidências)
-
----
-
-## Objetivo geral
-
-&emsp;Documentar o planejamento dos testes que verificarão os requisitos funcionais do sistema ARGUS/View Show — alvo `apps/backend/api` (monólito modular TypeScript, Express 5, DynamoDB), o mesmo escopo do artefato de RNF. A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para preencher a issue.
-
-&emsp;A suíte atual (`npm test`, Vitest) tem 11 arquivos e roda **70 testes passando, 1 ignorado** (confirmado em [`sprint3/testes-carga-inicial.md`, RNF12](../sprint3/testes-carga-inicial.md#43-requisitos-validados-por-inspeção-ci-ou-execução-manual)). A Seção 1 e a Seção 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
 
 ---
 
@@ -113,7 +107,7 @@
 | Componentes verificados | `IncidentUseCases` + `DynamoIncidentRepository` ([`src/modules/incidents/adapters/dynamodb-incident-repository.ts`](../../apps/backend/api/src/modules/incidents/adapters/dynamodb-incident-repository.ts)) contra uma instância **real** de DynamoDB Local — não o cliente AWS mockado |
 | RF relacionado | RF01/RF02 (evento persistido fica disponível para consulta) e RF09 (consulta filtrada e paginada sobre dado realmente gravado) |
 | Já existe? | **Não — a escrever.** `tests/dynamodb-adapters.test.ts` cobre os mesmos adaptadores, mas com `client.send` **inteiramente mockado** (`vi.fn(async () => ({ Items: [] }))`), então nenhum teste hoje grava e lê de um banco de verdade — a integração real nunca foi exercitada |
-| Pré-condições e dados de entrada | DynamoDB Local em `127.0.0.1:18000` (`-inMemory -sharedDb`, mesma configuração usada em [`sprint3/testes-carga-inicial.md`, Tabela 12](../sprint3/testes-carga-inicial.md#61-ambiente-local-controlado)); tabela criada com o esquema de `apps/fullstack/dynamodb.tf` (`pk`/`sk`, GSI `trace-index`); `DYNAMODB_ENDPOINT` apontando para o local; alguns incidentes sintéticos gravados via `PutItem`/`seed-carga.cjs` |
+| Pré-condições e dados de entrada | DynamoDB Local em `127.0.0.1:18000` (`-inMemory -sharedDb`); tabela criada com o esquema de `apps/fullstack/dynamodb.tf` (`pk`/`sk`, GSI `trace-index`); `DYNAMODB_ENDPOINT` apontando para o local; alguns incidentes sintéticos gravados via `PutItem`/`seed-carga.cjs` |
 | Procedimento | 1. Subir DynamoDB Local e criar a tabela operacional com o schema do Terraform. 2. Gravar N incidentes sintéticos (N > `limit` de teste, ex.: 5 incidentes com `limit=2`). 3. Instanciar `DynamoIncidentRepository` apontando para o endpoint local e `IncidentUseCases` com um `CursorCodec` real. 4. Chamar `listIncidents({ limit: 2 })`, guardar `nextCursor`. 5. Chamar novamente com o `cursor` recebido e conferir que a segunda página não repete nenhum item da primeira e é consistente com o total gravado |
 | Resultado esperado | Os itens persistidos no DynamoDB real são lidos, convertidos para DTO (sem campos físicos `pk`/`sk`) e paginados corretamente: união das páginas = total gravado, sem duplicatas, `hasMore` e `nextCursor` coerentes com o fim da lista |
 | Resultado obtido | a executar |
@@ -128,7 +122,7 @@
 
 ### 3.1 Pré-condições e dados de entrada comuns
 
-- Sessão autenticada válida (cookie emitido por `SessionCodec`) — sem ela a rota responde `401` antes de qualquer validação de query (comportamento já confirmado no RNF04, [`sprint3/testes-carga-inicial.md`, Seção 7.5](../sprint3/testes-carga-inicial.md#75-controle-de-acesso)), então este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão.
+- Sessão autenticada válida (cookie emitido por `SessionCodec`) — sem ela a rota responde `401` antes de qualquer validação de query; este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão.
 - Base de incidentes conhecida (ex.: N=150 incidentes sintéticos gravados via `scripts/seed-carga.cjs` ou equivalente), para que `hasMore`/`nextCursor` tenham um valor determinístico em cada consulta.
 
 ### 3.2 Fluxo principal
@@ -146,7 +140,7 @@
 - **E1 — `window` e `from`/`to` juntos:** rejeitado por `validateTemporalQuery` (erro de validação, sem chegar ao banco).
 - **E2 — cursor de outra combinação de filtros:** `CursorCodec.decode` rejeita por fingerprint incompatível (`ServiceError` 400 — mesma trilha da UT01).
 - **E3 — `limit` fora do intervalo ou não numérico:** rejeitado por `incidentsQuerySchema` antes de qualquer chamada ao repositório (mesma trilha da UT04).
-- **E4 — sessão ausente/inválida:** `401`, fora do escopo desta análise de valor limite (já coberto por RNF04), citado aqui só para registrar a ordem das guardas (sessão → schema → cursor → negócio).
+- **E4 — sessão ausente/inválida:** `401`, citado aqui apenas para registrar a ordem das guardas (sessão → schema → cursor → negócio).
 
 ### 3.5 Pós-condições
 
@@ -182,9 +176,9 @@
 
 ## 4. Testes de Carga Funcional
 
-&emsp;**Estes não são testes de capacidade.** O objetivo de cada nível é confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe — não medir p95, vazão ou taxa de erro de infraestrutura, que já têm plano de teste, execução e critério próprios no RNF09/RNF14 ([`sprint3/testes-carga-inicial.md`, Seção 5.4](../sprint3/testes-carga-inicial.md#54-cenários-da-api-de-consulta-e-o-que-cada-threshold-prova)).
+&emsp;O objetivo de cada nível é confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe — não medir p95, vazão ou taxa de erro de infraestrutura, que ficam fora do escopo deste documento.
 
-&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G da Tabela 10 daquele artefato: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; os **critérios de aprovação** aqui são inteiramente diferentes: nenhum threshold de `http_req_duration` ou `http_reqs{status:200} rate`, e sim verificação de conteúdo — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido. Isso exige adicionar checks de corpo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo); essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) é parte do trabalho de implementação a fazer na etapa de execução, não desta entrega de planejamento.
+&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; os **critérios de aprovação** aqui são inteiramente diferentes: nenhum threshold de `http_req_duration` ou `http_reqs{status:200} rate`, e sim verificação de conteúdo — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido. Isso exige adicionar checks de corpo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo); essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) é parte do trabalho de implementação a fazer na etapa de execução, não desta entrega de planejamento.
 
 ### Nível 1 — Carga leve
 
@@ -192,7 +186,7 @@
 | --- | --- |
 | Ferramenta | k6, reaproveitando `consultas.js` `MODE=smoke` (ou script funcional equivalente) + `lib/session.js` |
 | Usuários/requisições simultâneas | 1–2 VUs, modelo de chegada aberto a ~1 req/s |
-| Duração e volume planejados | ~30 s; dezenas de requisições (mesma ordem de grandeza do `smoke` já documentado: 34 requisições em 31 s) |
+| Duração e volume planejados | ~30 s; dezenas de requisições (ordem de grandeza de um `smoke test` típico: 34 requisições em 31 s) |
 | Critério de sucesso funcional | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, e `page.limit` bate com o `limit` pedido (ou o padrão) |
 | Situação | a executar |
 
@@ -200,9 +194,9 @@
 
 | Campo | Descrição |
 | --- | --- |
-| Ferramenta | k6, reaproveitando `consultas.js` sob taxa elevada de rate limit por IP (mesma técnica da "janela controlada" do RNF09/RNF14, para a carga chegar à API em vez de ser barrada em 429) — ver [`sprint3/testes-carga-inicial.md`, Seção 7.2](../sprint3/testes-carga-inicial.md#72-análise-de-desempenho--o-efeito-do-limite-de-taxa) |
-| Usuários/requisições simultâneas | Rampa até a taxa alvo já usada no projeto (137 req/s), sustentada por alguns minutos |
-| Duração e volume planejados | ~3–4 min; dezenas de milhares de requisições (ordem de grandeza da rodada "load — janela controlada": ~30 mil requisições) |
+| Ferramenta | k6, reaproveitando `consultas.js` sob taxa elevada de requisições por IP (janela controlada), de modo que a carga chegue à API em vez de ser barrada pelo limite de taxa (429) |
+| Usuários/requisições simultâneas | Rampa até 137 req/s, sustentada por alguns minutos |
+| Duração e volume planejados | ~3–4 min; dezenas de milhares de requisições (ordem de grandeza: ~30 mil) |
 | Critério de sucesso funcional | Cenário G (paginação, cursor `nextCursor`) percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado |
 | Situação | a executar |
 
@@ -213,17 +207,17 @@
 | Ferramenta | k6, reaproveitando os perfis `breakpoint` (rampa 1→220 req/s) e/ou `estresse` (137→411 req/s) já definidos em `consultas.js` |
 | Usuários/requisições simultâneas | Até a faixa já exercitada localmente (VUs máx. 30–1.500, conforme o perfil escolhido) |
 | Duração e volume planejados | Mesma janela dos perfis existentes (3–6 min); dezenas de milhares de requisições |
-| Critério de sucesso funcional | Sob fila/latência alta (comportamento de saturação já caracterizado no RNF09/RNF14, não medido de novo aqui), toda resposta `200` continua com corpo correto e sem corrupção — em particular, o `X-Request-Id` devolvido no cabeçalho/log corresponde ao enviado por aquele VU (nenhuma resposta cruzada entre requisições concorrentes) e nenhum incidente devolvido por `diagnosis`/`events` pertence a um `incidentId` diferente do solicitado. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim |
+| Critério de sucesso funcional | Sob fila/latência alta, toda resposta `200` continua com corpo correto e sem corrupção — em particular, o `X-Request-Id` devolvido no cabeçalho/log corresponde ao enviado por aquele VU (nenhuma resposta cruzada entre requisições concorrentes) e nenhum incidente devolvido por `diagnosis`/`events` pertence a um `incidentId` diferente do solicitado. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim |
 | Situação | a executar |
 
 ---
 
 ## 5. Convenção de evidências
 
-&emsp;Seguindo o padrão já usado em `assets/testes-carga/<data>/` (ver [`sprint3/testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)), as evidências desta suíte — quando os testes forem executados — devem ser versionadas em `assets/testes-funcionais/<data>/`, com um `README.md` descrevendo cada arquivo, incluindo:
+&emsp;As evidências desta suíte — quando os testes forem executados — devem ser versionadas em `assets/testes-funcionais/<data>/`, com um `README.md` descrevendo cada arquivo, incluindo:
 
 - saída de `npm test` (e, por teste, o arquivo específico) para as Seções 1 e 2;
-- brutos JSON do k6 (`resumo-*.json`) e metadados de ambiente para a Seção 4, no mesmo formato de manifesto usado em `assets/testes-carga/2026-09-11/README.md`;
+- brutos JSON do k6 (`resumo-*.json`) e metadados de ambiente para a Seção 4;
 - capturas de tela ou logs para os casos de uso da Seção 3, seguindo a convenção `teste-<seção>-<caso>-<descrição>.png` já usada em `assets/testes/` (ex.: `assets/testes/teste-1-1-ingestao-lote-eventos.png`).
 
 &emsp;Até a execução, cada linha deste documento permanece com "Resultado obtido" e "Situação" como **a executar**.
