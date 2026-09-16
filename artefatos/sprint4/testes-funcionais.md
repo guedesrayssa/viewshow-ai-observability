@@ -156,20 +156,22 @@
 
 ### 3.6 Tabela de rastreabilidade — fluxos/condições × casos de teste
 
-| Fluxo/condição | Caso de teste | Entrada | Resultado esperado | Situação |
-| --- | --- | --- | --- | --- |
-| Fluxo principal | CT-01 | `GET /api/v1/incidents?window=1h` (sem `limit`) | `page.limit=20` (default); ≤ 20 itens; página coerente com o total | a executar |
-| A1 — paginação subsequente | CT-02 | Repetir CT-04 (abaixo) com `cursor` da resposta anterior | Segunda página sem itens repetidos da primeira; `hasMore` correto | a executar |
-| A2 — janela absoluta | CT-03 | `from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` (sem `window`) | `200`, itens restritos à janela informada | a executar |
-| A3 — facetas combinadas | CT-04 | `deviceType=android&limit=50` | `200`, `page.limit=50`, itens só de `deviceType=android` | a executar |
-| Limite — valor mínimo válido | CT-05 | `limit=1` | `200`, exatamente 1 item (se houver dado), `page.limit=1` | a executar |
-| Limite — abaixo do mínimo | CT-06 | `limit=0` | Erro de validação (400), nenhuma consulta ao banco | a executar |
-| Limite — valor máximo válido | CT-07 | `limit=100` | `200`, até 100 itens, `page.limit=100` | a executar |
-| Limite — acima do máximo | CT-08 | `limit=101` | Erro de validação (400) | a executar |
-| Limite — tipo inválido | CT-09 | `limit=abc` | Erro de validação (400) | a executar |
-| E1 — `window` + `from`/`to` juntos | CT-10 | `window=1h&from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` | Erro de validação (400), mensagem "from e to devem ser enviados juntos..." | a executar |
-| E2 — cursor de outro filtro | CT-11 | `cursor` obtido com `deviceType=android`, reenviado com `deviceType=ios` | `400` (`VALIDATION_ERROR`, "O cursor é inválido para estes filtros.") | a executar |
-| E4 — sem sessão | CT-12 | Mesma chamada de CT-01, sem cookie | `401`, corpo sem dado de incidente | a executar |
+&emsp;Procedimento comum a todos os casos abaixo: autenticar uma sessão válida, enviar a requisição indicada na coluna "Entrada" para `GET /api/v1/incidents` e comparar o corpo e o status da resposta com o "Resultado esperado".
+
+| Fluxo/condição | Caso de teste | Entrada | Resultado esperado | Resultado obtido | Situação | Evidências / reprodução |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fluxo principal | CT-01 | `GET /api/v1/incidents?window=1h` (sem `limit`) | `page.limit=20` (default); ≤ 20 itens; página coerente com o total | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-01.png` |
+| A1 — paginação subsequente | CT-02 | Repetir CT-04 (abaixo) com `cursor` da resposta anterior | Segunda página sem itens repetidos da primeira; `hasMore` correto | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-02.png` |
+| A2 — janela absoluta | CT-03 | `from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` (sem `window`) | `200`, itens restritos à janela informada | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-03.png` |
+| A3 — facetas combinadas | CT-04 | `deviceType=android&limit=50` | `200`, `page.limit=50`, itens só de `deviceType=android` | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-04.png` |
+| Limite — valor mínimo válido | CT-05 | `limit=1` | `200`, exatamente 1 item (se houver dado), `page.limit=1` | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-05.png` |
+| Limite — abaixo do mínimo | CT-06 | `limit=0` | Erro de validação (400), nenhuma consulta ao banco | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-06.png` |
+| Limite — valor máximo válido | CT-07 | `limit=100` | `200`, até 100 itens, `page.limit=100` | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-07.png` |
+| Limite — acima do máximo | CT-08 | `limit=101` | Erro de validação (400) | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-08.png` |
+| Limite — tipo inválido | CT-09 | `limit=abc` | Erro de validação (400) | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-09.png` |
+| E1 — `window` + `from`/`to` juntos | CT-10 | `window=1h&from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` | Erro de validação (400), mensagem "from e to devem ser enviados juntos..." | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-10.png` |
+| E2 — cursor de outro filtro | CT-11 | `cursor` obtido com `deviceType=android`, reenviado com `deviceType=ios` | `400` (`VALIDATION_ERROR`, "O cursor é inválido para estes filtros.") | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-11.png` |
+| E4 — sem sessão | CT-12 | Mesma chamada de CT-01, sem cookie | `401`, corpo sem dado de incidente | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-12.png` |
 
 <div align="center">
 
