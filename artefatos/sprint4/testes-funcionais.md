@@ -87,3 +87,37 @@
 | Evidências / reprodução | Teste novo a adicionar em `tests/contracts.test.ts`; saída de `npm test -- contracts.test.ts` registrada em `assets/testes-funcionais/<data>/resultado-vitest-contracts.txt` |
 
 ---
+
+## 2. Testes de Integração
+
+&emsp;Dois testes cruzando camadas diferentes: um já coberto pela suíte de integração HTTP existente, outro expondo uma lacuna real (persistência mockada, nunca exercitada contra um banco de verdade).
+
+### IT01 — Camada HTTP (Express) × módulo de autenticação/sessão
+
+| Campo | Descrição |
+| --- | --- |
+| Componentes verificados | `createApp` (Express, [`src/app.ts`](../../apps/backend/api/src/app.ts)) integrado de ponta a ponta com o módulo de auth real (`SessionCodec`, `IdentityUseCases`) — servidor HTTP real ouvindo em porta efêmera, requisição feita via `node:http` |
+| RF relacionado | RF04 (autenticação corporativa: sessão válida libera acesso, ausência/invalidez bloqueia) |
+| Já existe? | **Sim** — `tests/gateway-http.integration.test.ts:145` (`"returns authenticated session details through the public success envelope"`) e `:175` (`"exposes the federated routes and direct password login"`) |
+| Pré-condições e dados de entrada | App montado com `createApp`, `AUTH_COOKIE_SECRET` de teste (32+ chars), repositórios de incidentes/dashboard falsos (não é o alvo desta integração); cookie de sessão emitido pelo próprio `SessionCodec` do processo |
+| Procedimento | 1. Subir o app em `127.0.0.1:0` (porta livre) com `createServer`. 2. Emitir uma sessão válida com `SessionCodec.issue(...)`. 3. Requisitar `GET /auth/session` com o cookie e conferir envelope de sucesso com a identidade. 4. Requisitar as rotas de login federado (`GET /auth/login`, `GET /auth/callback`) e `POST /auth/login` e conferir os contratos de resposta expostos pelo gateway HTTP |
+| Resultado esperado | O cookie emitido pela camada de domínio é aceito pela camada HTTP e devolve a identidade correta no envelope público padronizado; as rotas de login (federada e direta) respondem com o contrato documentado, sem vazar campos internos |
+| Resultado obtido | a executar |
+| Situação | a executar |
+| Evidências / reprodução | Saída de `npm test -- gateway-http.integration.test.ts` registrada em `assets/testes-funcionais/<data>/resultado-vitest-gateway.txt` |
+
+### IT02 — Aplicação (`IncidentUseCases`) × DynamoDB real (DynamoDB Local)
+
+| Campo | Descrição |
+| --- | --- |
+| Componentes verificados | `IncidentUseCases` + `DynamoIncidentRepository` ([`src/modules/incidents/adapters/dynamodb-incident-repository.ts`](../../apps/backend/api/src/modules/incidents/adapters/dynamodb-incident-repository.ts)) contra uma instância **real** de DynamoDB Local — não o cliente AWS mockado |
+| RF relacionado | RF01/RF02 (evento persistido fica disponível para consulta) e RF09 (consulta filtrada e paginada sobre dado realmente gravado) |
+| Já existe? | **Não — a escrever.** `tests/dynamodb-adapters.test.ts` cobre os mesmos adaptadores, mas com `client.send` **inteiramente mockado** (`vi.fn(async () => ({ Items: [] }))`), então nenhum teste hoje grava e lê de um banco de verdade — a integração real nunca foi exercitada |
+| Pré-condições e dados de entrada | DynamoDB Local em `127.0.0.1:18000` (`-inMemory -sharedDb`, mesma configuração usada em [`sprint3/testes-carga-inicial.md`, Tabela 12](../sprint3/testes-carga-inicial.md#61-ambiente-local-controlado)); tabela criada com o esquema de `apps/fullstack/dynamodb.tf` (`pk`/`sk`, GSI `trace-index`); `DYNAMODB_ENDPOINT` apontando para o local; alguns incidentes sintéticos gravados via `PutItem`/`seed-carga.cjs` |
+| Procedimento | 1. Subir DynamoDB Local e criar a tabela operacional com o schema do Terraform. 2. Gravar N incidentes sintéticos (N > `limit` de teste, ex.: 5 incidentes com `limit=2`). 3. Instanciar `DynamoIncidentRepository` apontando para o endpoint local e `IncidentUseCases` com um `CursorCodec` real. 4. Chamar `listIncidents({ limit: 2 })`, guardar `nextCursor`. 5. Chamar novamente com o `cursor` recebido e conferir que a segunda página não repete nenhum item da primeira e é consistente com o total gravado |
+| Resultado esperado | Os itens persistidos no DynamoDB real são lidos, convertidos para DTO (sem campos físicos `pk`/`sk`) e paginados corretamente: união das páginas = total gravado, sem duplicatas, `hasMore` e `nextCursor` coerentes com o fim da lista |
+| Resultado obtido | a executar |
+| Situação | a executar |
+| Evidências / reprodução | Teste novo a adicionar em `tests/` (ex.: `tests/dynamodb-real.integration.test.ts`); log de execução e captura de `docker ps`/processo do DynamoDB Local em `assets/testes-funcionais/<data>/` |
+
+---
