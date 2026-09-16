@@ -19,6 +19,16 @@ export type PasswordAuthenticationDecision =
   | { kind: "demo" }
   | { kind: "error"; message: string };
 
+/**
+ * Verdadeiro quando o login aceita qualquer e-mail e senha e abre o painel
+ * com dado de exemplo. Mesma condição usada por `authenticateWithPassword`;
+ * exportada para que a tela de login possa avisar antes de a pessoa tentar
+ * entrar.
+ */
+export function isDemoModeActive(): boolean {
+  return !isApiConfigured() && ALLOW_EXAMPLE_DATA;
+}
+
 function authenticationErrorMessage(status: number): string {
   if (status === 401) return "E-mail ou senha incorretos.";
   if (status === 403)
@@ -33,11 +43,9 @@ export async function authenticateWithPassword(
   username: string,
   password: string,
 ): Promise<PasswordAuthenticationDecision> {
-  if (!isApiConfigured()) {
-    return ALLOW_EXAMPLE_DATA
-      ? { kind: "demo" }
-      : { kind: "error", message: AUTH_UNAVAILABLE_MESSAGE };
-  }
+  if (isDemoModeActive()) return { kind: "demo" };
+  if (!isApiConfigured())
+    return { kind: "error", message: AUTH_UNAVAILABLE_MESSAGE };
 
   try {
     const response = await fetch(gatewayUrl(ENDPOINTS.auth.login), {
@@ -59,5 +67,40 @@ export async function authenticateWithPassword(
     return { kind: "authenticated" };
   } catch {
     return { kind: "error", message: AUTH_UNAVAILABLE_MESSAGE };
+  }
+}
+
+export type SessionRole = "viewer" | "engineer" | "admin";
+
+/** Identidade da sessão em cookie, como devolvida por `GET /auth/session`. */
+export type SessionIdentity = {
+  readonly id: string;
+  readonly name: string | null;
+  readonly email: string;
+  readonly role: SessionRole;
+  /** Quando a sessão foi criada (login), em ISO 8601. */
+  readonly issuedAt: string;
+};
+
+/**
+ * Lê a sessão atual do backend. `null` cobre tanto "sem sessão" quanto
+ * "API não configurada": em ambos os casos a tela de conta não tem uma
+ * identidade real para mostrar.
+ */
+export async function fetchSessionIdentity(): Promise<SessionIdentity | null> {
+  if (!isApiConfigured()) return null;
+  try {
+    const response = await fetch(gatewayUrl(ENDPOINTS.auth.session), {
+      headers: { Accept: "application/json" },
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const body = (await response.json().catch(() => null)) as {
+      data?: { user?: SessionIdentity };
+    } | null;
+    return body?.data?.user ?? null;
+  } catch {
+    return null;
   }
 }

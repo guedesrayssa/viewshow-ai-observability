@@ -62,15 +62,25 @@ delas chama a API.
 ```ts
 const { profile, updateProfile, reset } = useAccount();
 // profile: AccountProfile & { photo: string | null }
-// updateProfile(patch: Partial<{ name: string; photo: string | null }>)
-// reset(): volta ao nome do provedor e remove a foto
+// updateProfile(patch: Partial<{ name: string | null; photo: string | null }>)
+// reset(): remove o nome sobreposto e a foto; volta ao nome da sessão
 ```
 
-`AccountProfile` (de `lib/settings-data.ts`): `name`, `email`, `role`,
-`authMethod`, `lastAccess`, `activeSessions`. Editáveis pela pessoa: **só `name` e
-`photo`**. Persistido em `localStorage` via `createPersistedJson` (chave
-`view-show:account`). Quando a API de conta existir, `updateProfile` passa a
-enviá-la e **nenhuma tela muda**.
+`AccountProfile` (`name`, `email`, `role`, `authMethod`, `lastAccess`) vem de
+`GET /auth/session` — é a identidade real de quem logou pelo Cognito, não um
+valor fixo. `role` é o grupo do Cognito traduzido (`admin` → "Administrador(a)"
+etc.) e `lastAccess` é o horário de emissão da sessão em cookie. Sem sessão
+válida, o perfil cai para "Sem sessão" (ou, em modo de demonstração, para um
+perfil claramente rotulado como tal — ver `isDemoModeActive()`).
+
+Editáveis pela pessoa: **só `name` e `photo`**, sobrepostos localmente em
+`localStorage` via `createPersistedJson` (chave `view-show:account`); os
+demais campos não têm edição porque descrevem a sessão, não a pessoa.
+
+Não existe "sessões ativas": o backend não mantém um registro de sessões
+concorrentes, então esse número não teria origem — mostrar um valor
+inventado violaria a mesma regra que `ALLOW_EXAMPLE_DATA` já aplica ao
+restante do painel.
 
 | Campo | Quando vale | Onde | Por quê |
 | --- | --- | --- | --- |
