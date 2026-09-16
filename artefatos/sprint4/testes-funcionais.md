@@ -121,3 +121,61 @@
 | Evidências / reprodução | Teste novo a adicionar em `tests/` (ex.: `tests/dynamodb-real.integration.test.ts`); log de execução e captura de `docker ps`/processo do DynamoDB Local em `assets/testes-funcionais/<data>/` |
 
 ---
+
+## 3. Testes de Caso de Uso e Análise de Valor Limite
+
+&emsp;Caso de uso escolhido: **consulta filtrada e paginada de incidentes** (RF09, rota `GET /api/v1/incidents`, exposta em [`src/http/public-routes.ts`](../../apps/backend/api/src/http/public-routes.ts) como `incidents`). É o único caso de uso do projeto com uma entrada numérica de faixa explícita e documentada em código: `limit` — inteiro entre **1 e 100**, padrão **20** (`incidentsQuerySchema`, `contracts/src/index.ts:295`) — combinada com um cursor opaco de paginação (`CursorCodec`, Seção 1/UT01) e com a regra de exclusividade entre `window` e o par `from`/`to` (`validateTemporalQuery`, `contracts/src/index.ts:251-262`).
+
+### 3.1 Pré-condições e dados de entrada comuns
+
+- Sessão autenticada válida (cookie emitido por `SessionCodec`) — sem ela a rota responde `401` antes de qualquer validação de query (comportamento já confirmado no RNF04, [`sprint3/testes-carga-inicial.md`, Seção 7.5](../sprint3/testes-carga-inicial.md#75-controle-de-acesso)), então este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão.
+- Base de incidentes conhecida (ex.: N=150 incidentes sintéticos gravados via `scripts/seed-carga.cjs` ou equivalente), para que `hasMore`/`nextCursor` tenham um valor determinístico em cada consulta.
+
+### 3.2 Fluxo principal
+
+&emsp;Cliente autenticado chama `GET /api/v1/incidents?window=1h&limit=20` (ou sem `limit`, usando o padrão); a API devolve até 20 incidentes da última hora, ordenados por `recent` (padrão), com `page.limit=20`, `page.hasMore` e `page.nextCursor` coerentes com o total disponível.
+
+### 3.3 Fluxos alternativos
+
+- **A1 — paginação subsequente:** repetir a chamada com o `nextCursor` da resposta anterior e os mesmos filtros; a segunda página não repete itens da primeira (mesmo mecanismo validado em `tests/incident-use-cases.test.ts:40`, `"paginates with a cursor bound to the original filters"`).
+- **A2 — filtro de janela absoluta:** `from`+`to` sem `window` — válido segundo `validateTemporalQuery`.
+- **A3 — combinação de facetas:** `deviceType`, `os`, `status` etc. combinados com `limit` no meio do intervalo (ex.: `limit=50`).
+
+### 3.4 Fluxos de exceção
+
+- **E1 — `window` e `from`/`to` juntos:** rejeitado por `validateTemporalQuery` (erro de validação, sem chegar ao banco).
+- **E2 — cursor de outra combinação de filtros:** `CursorCodec.decode` rejeita por fingerprint incompatível (`ServiceError` 400 — mesma trilha da UT01).
+- **E3 — `limit` fora do intervalo ou não numérico:** rejeitado por `incidentsQuerySchema` antes de qualquer chamada ao repositório (mesma trilha da UT04).
+- **E4 — sessão ausente/inválida:** `401`, fora do escopo desta análise de valor limite (já coberto por RNF04), citado aqui só para registrar a ordem das guardas (sessão → schema → cursor → negócio).
+
+### 3.5 Pós-condições
+
+- A união de todas as páginas percorridas com o mesmo conjunto de filtros é igual ao total de incidentes que atendem ao filtro, sem duplicatas e sem lacunas.
+- Nenhuma resposta traz mais itens do que o `limit` solicitado (ou o padrão, quando omitido).
+- `page.hasMore=false` se e somente se não existir próxima página; `page.nextCursor=null` nesse caso.
+- Nenhum campo físico de persistência (`pk`, `sk`, `ttl`) vaza no corpo da resposta (mesma regra validada em `tests/domain.test.ts:100-125` para o DTO de incidente).
+
+### 3.6 Tabela de rastreabilidade — fluxos/condições × casos de teste
+
+| Fluxo/condição | Caso de teste | Entrada | Resultado esperado | Situação |
+| --- | --- | --- | --- | --- |
+| Fluxo principal | CT-01 | `GET /api/v1/incidents?window=1h` (sem `limit`) | `page.limit=20` (default); ≤ 20 itens; página coerente com o total | a executar |
+| A1 — paginação subsequente | CT-02 | Repetir CT-04 (abaixo) com `cursor` da resposta anterior | Segunda página sem itens repetidos da primeira; `hasMore` correto | a executar |
+| A2 — janela absoluta | CT-03 | `from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` (sem `window`) | `200`, itens restritos à janela informada | a executar |
+| A3 — facetas combinadas | CT-04 | `deviceType=android&limit=50` | `200`, `page.limit=50`, itens só de `deviceType=android` | a executar |
+| Limite — valor mínimo válido | CT-05 | `limit=1` | `200`, exatamente 1 item (se houver dado), `page.limit=1` | a executar |
+| Limite — abaixo do mínimo | CT-06 | `limit=0` | Erro de validação (400), nenhuma consulta ao banco | a executar |
+| Limite — valor máximo válido | CT-07 | `limit=100` | `200`, até 100 itens, `page.limit=100` | a executar |
+| Limite — acima do máximo | CT-08 | `limit=101` | Erro de validação (400) | a executar |
+| Limite — tipo inválido | CT-09 | `limit=abc` | Erro de validação (400) | a executar |
+| E1 — `window` + `from`/`to` juntos | CT-10 | `window=1h&from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` | Erro de validação (400), mensagem "from e to devem ser enviados juntos..." | a executar |
+| E2 — cursor de outro filtro | CT-11 | `cursor` obtido com `deviceType=android`, reenviado com `deviceType=ios` | `400` (`VALIDATION_ERROR`, "O cursor é inválido para estes filtros.") | a executar |
+| E4 — sem sessão | CT-12 | Mesma chamada de CT-01, sem cookie | `401`, corpo sem dado de incidente | a executar |
+
+<div align="center">
+
+<sup>Fonte: Material produzido pelos autores (2026), com base em `contracts/src/index.ts` e `src/modules/incidents/`.</sup>
+
+</div>
+
+---
