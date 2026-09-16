@@ -34,6 +34,25 @@ export class SessionCodec {
     value: string | undefined,
     now = new Date(),
   ): AuthenticatedIdentity | null {
+    return this.decode(value, now)?.identity ?? null;
+  }
+
+  /**
+   * Igual a `verify`, mas também devolve quando a sessão foi emitida. Usado
+   * só pela rota `/auth/session`, que expõe isso à interface; as demais
+   * rotas continuam usando `verify` e não precisam desse detalhe.
+   */
+  verifyWithIssuedAt(
+    value: string | undefined,
+    now = new Date(),
+  ): { identity: AuthenticatedIdentity; issuedAt: number } | null {
+    return this.decode(value, now);
+  }
+
+  private decode(
+    value: string | undefined,
+    now: Date,
+  ): { identity: AuthenticatedIdentity; issuedAt: number } | null {
     if (!value) return null;
     const [encoded, signature] = value.split(".");
     if (!encoded || !signature) return null;
@@ -57,6 +76,7 @@ export class SessionCodec {
         typeof record.id !== "string" ||
         typeof record.email !== "string" ||
         typeof record.expiresAt !== "number" ||
+        typeof record.issuedAt !== "number" ||
         record.expiresAt <= Math.floor(now.getTime() / 1000)
       )
         return null;
@@ -67,10 +87,13 @@ export class SessionCodec {
       )
         return null;
       return {
-        id: record.id,
-        email: record.email,
-        name: typeof record.name === "string" ? record.name : null,
-        role: record.role,
+        identity: {
+          id: record.id,
+          email: record.email,
+          name: typeof record.name === "string" ? record.name : null,
+          role: record.role,
+        },
+        issuedAt: record.issuedAt,
       };
     } catch {
       return null;

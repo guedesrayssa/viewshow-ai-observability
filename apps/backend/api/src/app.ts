@@ -288,10 +288,10 @@ export function createApp(deps: AppDependencies) {
   });
 
   app.get(PUBLIC_ROUTES.authSession.express, (request, response, next) => {
-    const identity = auth.sessions.verify(
+    const session = auth.sessions.verifyWithIssuedAt(
       parseCookie(request.header("cookie"), "session"),
     );
-    if (!identity)
+    if (!session)
       return next(
         new ServiceError(
           401,
@@ -299,6 +299,7 @@ export function createApp(deps: AppDependencies) {
           "Sessão inválida, ausente ou expirada.",
         ),
       );
+    const { identity, issuedAt } = session;
     response.json(
       successEnvelope(
         {
@@ -308,6 +309,8 @@ export function createApp(deps: AppDependencies) {
               id: identity.id,
               name: identity.name,
               email: identity.email,
+              role: identity.role,
+              issuedAt: new Date(issuedAt * 1000).toISOString(),
             },
           },
           quality: {
