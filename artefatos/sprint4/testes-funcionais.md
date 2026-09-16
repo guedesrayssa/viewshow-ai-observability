@@ -179,3 +179,57 @@
 </div>
 
 ---
+
+## 4. Testes de Carga Funcional
+
+&emsp;**Estes não são testes de capacidade.** O objetivo de cada nível é confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe — não medir p95, vazão ou taxa de erro de infraestrutura, que já têm plano de teste, execução e critério próprios no RNF09/RNF14 ([`sprint3/testes-carga-inicial.md`, Seção 5.4](../sprint3/testes-carga-inicial.md#54-cenários-da-api-de-consulta-e-o-que-cada-threshold-prova)).
+
+&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G da Tabela 10 daquele artefato: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; os **critérios de aprovação** aqui são inteiramente diferentes: nenhum threshold de `http_req_duration` ou `http_reqs{status:200} rate`, e sim verificação de conteúdo — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido. Isso exige adicionar checks de corpo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo); essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) é parte do trabalho de implementação a fazer na etapa de execução, não desta entrega de planejamento.
+
+### Nível 1 — Carga leve
+
+| Campo | Descrição |
+| --- | --- |
+| Ferramenta | k6, reaproveitando `consultas.js` `MODE=smoke` (ou script funcional equivalente) + `lib/session.js` |
+| Usuários/requisições simultâneas | 1–2 VUs, modelo de chegada aberto a ~1 req/s |
+| Duração e volume planejados | ~30 s; dezenas de requisições (mesma ordem de grandeza do `smoke` já documentado: 34 requisições em 31 s) |
+| Critério de sucesso funcional | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, e `page.limit` bate com o `limit` pedido (ou o padrão) |
+| Situação | a executar |
+
+### Nível 2 — Carga progressiva moderada
+
+| Campo | Descrição |
+| --- | --- |
+| Ferramenta | k6, reaproveitando `consultas.js` sob taxa elevada de rate limit por IP (mesma técnica da "janela controlada" do RNF09/RNF14, para a carga chegar à API em vez de ser barrada em 429) — ver [`sprint3/testes-carga-inicial.md`, Seção 7.2](../sprint3/testes-carga-inicial.md#72-análise-de-desempenho--o-efeito-do-limite-de-taxa) |
+| Usuários/requisições simultâneas | Rampa até a taxa alvo já usada no projeto (137 req/s), sustentada por alguns minutos |
+| Duração e volume planejados | ~3–4 min; dezenas de milhares de requisições (ordem de grandeza da rodada "load — janela controlada": ~30 mil requisições) |
+| Critério de sucesso funcional | Cenário G (paginação, cursor `nextCursor`) percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado |
+| Situação | a executar |
+
+### Nível 3 — Carga alta (equivalente a `breakpoint`/`estresse`)
+
+| Campo | Descrição |
+| --- | --- |
+| Ferramenta | k6, reaproveitando os perfis `breakpoint` (rampa 1→220 req/s) e/ou `estresse` (137→411 req/s) já definidos em `consultas.js` |
+| Usuários/requisições simultâneas | Até a faixa já exercitada localmente (VUs máx. 30–1.500, conforme o perfil escolhido) |
+| Duração e volume planejados | Mesma janela dos perfis existentes (3–6 min); dezenas de milhares de requisições |
+| Critério de sucesso funcional | Sob fila/latência alta (comportamento de saturação já caracterizado no RNF09/RNF14, não medido de novo aqui), toda resposta `200` continua com corpo correto e sem corrupção — em particular, o `X-Request-Id` devolvido no cabeçalho/log corresponde ao enviado por aquele VU (nenhuma resposta cruzada entre requisições concorrentes) e nenhum incidente devolvido por `diagnosis`/`events` pertence a um `incidentId` diferente do solicitado. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim |
+| Situação | a executar |
+
+---
+
+## 5. Convenção de evidências
+
+&emsp;Seguindo o padrão já usado em `assets/testes-carga/<data>/` (ver [`sprint3/testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)), as evidências desta suíte — quando os testes forem executados — devem ser versionadas em `assets/testes-funcionais/<data>/`, com um `README.md` descrevendo cada arquivo, incluindo:
+
+- saída de `npm test` (e, por teste, o arquivo específico) para as Seções 1 e 2;
+- brutos JSON do k6 (`resumo-*.json`) e metadados de ambiente para a Seção 4, no mesmo formato de manifesto usado em `assets/testes-carga/2026-09-11/README.md`;
+- capturas de tela ou logs para os casos de uso da Seção 3, seguindo a convenção `teste-<seção>-<caso>-<descrição>.png` já usada em `assets/testes/` (ex.: `assets/testes/teste-1-1-ingestao-lote-eventos.png`).
+
+&emsp;Até a execução, cada linha deste documento permanece com "Resultado obtido" e "Situação" como **a executar**.
+
+<div align="center">
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
