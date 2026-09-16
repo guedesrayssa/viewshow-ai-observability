@@ -185,37 +185,43 @@
 
 &emsp;O objetivo de cada nível é confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe — não medir p95, vazão ou taxa de erro de infraestrutura, que ficam fora do escopo deste documento.
 
-&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; os **critérios de aprovação** aqui são inteiramente diferentes: nenhum threshold de `http_req_duration` ou `http_reqs{status:200} rate`, e sim verificação de conteúdo — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido. Isso exige adicionar checks de corpo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo); essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) é parte do trabalho de implementação a fazer na etapa de execução, não desta entrega de planejamento.
+&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; os **critérios de aprovação** aqui são inteiramente diferentes: nenhum threshold de `http_req_duration` ou `http_reqs{status:200} rate`, e sim verificação de conteúdo — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido. Isso exige adicionar checks de corpo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo); essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) faz parte da implementação destes testes.
 
 ### Nível 1 — Carga leve
 
 | Campo | Descrição |
 | --- | --- |
-| Ferramenta | k6, reaproveitando `consultas.js` `MODE=smoke` (ou script funcional equivalente) + `lib/session.js` |
-| Usuários/requisições simultâneas | 1–2 VUs, modelo de chegada aberto a ~1 req/s |
-| Duração e volume planejados | ~30 s; dezenas de requisições (ordem de grandeza de um `smoke test` típico: 34 requisições em 31 s) |
-| Critério de sucesso funcional | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, e `page.limit` bate com o `limit` pedido (ou o padrão) |
+| Objetivo e requisito relacionado | Confirmar que, sob baixa concorrência, todas as respostas da API de consultas permanecem corretas (schema, dados, paginação) — execução real, via HTTP, das rotas ligadas a RF01/RF02/RF07/RF09 |
+| Pré-condições e dados de entrada | Suíte k6 (`consultas.js` + `lib/session.js`) disponível; base de incidentes populada; endpoint da API acessível |
+| Procedimento | Executar `consultas.js` em `MODE=smoke`, com 1–2 VUs em modelo de chegada aberto a ~1 req/s por ~30 s (ordem de grandeza: 34 requisições em 31 s), sorteando os cenários A–G; validar o corpo de cada resposta contra o contrato Zod correspondente |
+| Resultado esperado | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, e `page.limit` bate com o `limit` pedido (ou o padrão) |
+| Resultado obtido | a executar |
 | Situação | a executar |
+| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel1.json`) registrados em `assets/testes-funcionais/<data>/` |
 
 ### Nível 2 — Carga progressiva moderada
 
 | Campo | Descrição |
 | --- | --- |
-| Ferramenta | k6, reaproveitando `consultas.js` sob taxa elevada de requisições por IP (janela controlada), de modo que a carga chegue à API em vez de ser barrada pelo limite de taxa (429) |
-| Usuários/requisições simultâneas | Rampa até 137 req/s, sustentada por alguns minutos |
-| Duração e volume planejados | ~3–4 min; dezenas de milhares de requisições (ordem de grandeza: ~30 mil) |
-| Critério de sucesso funcional | Cenário G (paginação, cursor `nextCursor`) percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado |
+| Objetivo e requisito relacionado | Confirmar que a paginação de incidentes (RF09) permanece correta — sem itens repetidos ou pulados — quando múltiplos usuários paginam concorrentemente sobre a mesma base, sob carga moderada e sustentada |
+| Pré-condições e dados de entrada | Suíte k6 (`consultas.js`) configurada para taxa elevada de requisições por IP (janela controlada), de modo que a carga chegue à API em vez de ser barrada pelo limite de taxa (429); base de incidentes populada |
+| Procedimento | Executar `consultas.js` em rampa até 137 req/s, sustentada por ~3–4 min (~30 mil requisições), com múltiplos VUs percorrendo o cenário G (paginação por cursor) concorrentemente |
+| Resultado esperado | Cenário G percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado |
+| Resultado obtido | a executar |
 | Situação | a executar |
+| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel2.json`) registrados em `assets/testes-funcionais/<data>/` |
 
 ### Nível 3 — Carga alta (equivalente a `breakpoint`/`estresse`)
 
 | Campo | Descrição |
 | --- | --- |
-| Ferramenta | k6, reaproveitando os perfis `breakpoint` (rampa 1→220 req/s) e/ou `estresse` (137→411 req/s) já definidos em `consultas.js` |
-| Usuários/requisições simultâneas | Até a faixa já exercitada localmente (VUs máx. 30–1.500, conforme o perfil escolhido) |
-| Duração e volume planejados | Mesma janela dos perfis existentes (3–6 min); dezenas de milhares de requisições |
-| Critério de sucesso funcional | Sob fila/latência alta, toda resposta `200` continua com corpo correto e sem corrupção — em particular, o `X-Request-Id` devolvido no cabeçalho/log corresponde ao enviado por aquele VU (nenhuma resposta cruzada entre requisições concorrentes) e nenhum incidente devolvido por `diagnosis`/`events` pertence a um `incidentId` diferente do solicitado. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim |
+| Objetivo e requisito relacionado | Confirmar que, sob fila e latência altas (próximas ao ponto de saturação da API), toda resposta `200` continua com corpo correto — sem corrupção nem mistura de dados entre requisições concorrentes (RF01/RF02/RF09) |
+| Pré-condições e dados de entrada | Perfis `breakpoint` (rampa 1→220 req/s) e/ou `estresse` (137→411 req/s) já definidos em `consultas.js`; base de incidentes populada |
+| Procedimento | Executar `consultas.js` com o perfil `breakpoint` e/ou `estresse` (3–6 min, VUs máx. 30–1.500 conforme o perfil), verificando em cada resposta `200` a correlação entre o `X-Request-Id` enviado e devolvido e que nenhum incidente devolvido por `diagnosis`/`events` pertence a um `incidentId` diferente do solicitado |
+| Resultado esperado | Toda resposta `200` mantém corpo correto e sem corrupção, mesmo sob saturação. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim |
+| Resultado obtido | a executar |
 | Situação | a executar |
+| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel3.json`) registrados em `assets/testes-funcionais/<data>/` |
 
 ---
 
