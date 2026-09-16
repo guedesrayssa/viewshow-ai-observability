@@ -2,9 +2,14 @@
 
 ## Visão Geral
 
-&emsp;Este documento define o plano de testes funcionais do sistema ARGUS/View Show — alvo `apps/backend/api` (monólito modular TypeScript, Express 5, DynamoDB) — cobrindo os requisitos funcionais **RF01–RF10** definidos em [`sprint1/requisitos.md`](../sprint1/requisitos.md#2-requisitos-funcionais-rf). Para cada teste são especificados identificador, objetivo, procedimento e resultado esperado, verificando se o sistema faz o que deveria: se uma função devolve o valor correto, se uma rota entrega o dado esperado, se um fluxo de negócio se comporta corretamente nos limites de entrada, e se essa corretude se mantém sob concorrência.
+&emsp;Este documento define os testes funcionais do sistema ARGUS/View Show — alvo `apps/backend/api` (monólito modular TypeScript, Express 5, DynamoDB) — cobrindo os requisitos funcionais **RF01–RF10** definidos em [`sprint1/requisitos.md`](../sprint1/requisitos.md#2-requisitos-funcionais-rf). Para cada teste são especificados identificador, objetivo e requisito ou caso de uso relacionado, pré-condições e dados de entrada, procedimento de execução, resultado esperado, resultado obtido, situação (aprovado/reprovado) e evidências e instruções de reprodução.
 
-&emsp;O documento encontra-se em fase de planejamento: define quais testes serão executados e como, mas nenhum teste novo foi implementado ou executado como parte desta entrega. Os campos "Resultado obtido" e "Situação" estão marcados como **a executar** em todos os itens; implementação, execução e coleta de evidências (capturas de tela, saídas brutas de `vitest`/`k6`) ficam para uma etapa futura.
+&emsp;A suíte está organizada em quatro categorias:
+
+- **Testes unitários** — validam uma função ou método isolado, com pelo menos um caso válido e um caso de erro.
+- **Testes de integração** — validam a comunicação real entre duas camadas do sistema (ex.: HTTP e sessão, aplicação e banco de dados).
+- **Testes de caso de uso e valor limite** — validam um fluxo de negócio completo e o comportamento nos extremos de uma entrada numérica.
+- **Testes de carga funcional** — validam que a resposta permanece correta (não necessariamente rápida) conforme a concorrência aumenta.
 
 &emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
 
