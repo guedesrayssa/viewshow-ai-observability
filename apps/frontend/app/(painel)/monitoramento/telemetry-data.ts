@@ -57,6 +57,7 @@ export type TelemetrySource = {
   ingestionTrend: Record<WindowKey, number>;
   /** Variação percentual da profundidade da fila em cada janela. */
   queueTrend: Record<WindowKey, number>;
+  flowSeries?: Array<{ timestamp: string; processing: number; ingestion: number }>;
 };
 
 export const SOURCES: TelemetrySource[] = [
@@ -318,6 +319,8 @@ export type FlowChartData = {
   ingestion: number[];
   /** Índice do ponto de pico da etapa de processamento. */
   peakIndex: number;
+  historical?: boolean;
+  observedAt?: string;
 };
 
 /**
@@ -332,6 +335,23 @@ export function buildFlowChart(
   metric: FlowMetric,
   window: FlowWindow,
 ): FlowChartData | null {
+  const live = sources.find((source) => source.flowSeries?.length);
+  if (live) {
+    if (metric !== "latencia") return null;
+    const cutoff = Date.now() - Number(window) * 60_000;
+    const recent = (live.flowSeries ?? []).filter((point) => new Date(point.timestamp).getTime() >= cutoff);
+    const points = recent.length ? recent : (live.flowSeries ?? []);
+    if (!points.length) return null;
+    const processing = points.map((point) => point.processing);
+    return {
+      times: points.map((point) => new Date(point.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })),
+      processing,
+      ingestion: points.map((point) => point.ingestion),
+      peakIndex: processing.indexOf(Math.max(...processing)),
+      historical: recent.length === 0,
+      observedAt: points.at(-1)?.timestamp,
+    };
+  }
   const selected = aggregateKpis(sources, "15");
   const everything = aggregateKpis(SOURCES, "15");
   if (!selected || !everything) return null;
@@ -483,7 +503,9 @@ export function summarizeByRegion(
 
 /** Formata `2.8` como `2,8 mi/min`. */
 export function formatIngestion(value: number): string {
-  return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi/min`;
+  return value < 0.1
+    ? `${Math.round(value * 1_000_000).toLocaleString("pt-BR")} eventos/min`
+    : `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi/min`;
 }
 
 /** Formata `18.4` como `18,4 mil`. */

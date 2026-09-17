@@ -82,7 +82,7 @@ export function MonitoringView() {
   const [source, setSource] = useState<string>("all");
   const [metric, setMetric] = useState<FlowMetric>("latencia");
   const [worker, setWorker] = useState<string>("all");
-  const [window, setWindow] = useState<WindowKey>("15");
+  const [window, setWindow] = useState<WindowKey>("360");
 
   const telemetry = useResource((revision) => fetchTelemetrySources(revision), [], {
     refreshMs: REFRESH_MS,
@@ -102,12 +102,13 @@ export function MonitoringView() {
   });
 
   const allSources = useMemo(() => telemetry.data ?? [], [telemetry.data]);
+  const live = telemetry.source === "api";
   const workers = useMemo(
     () => Array.from(new Set(allSources.map((item) => item.worker))).sort(),
     [allSources],
   );
 
-  const hasActiveFilters = source !== "all" || worker !== "all" || window !== "15";
+  const hasActiveFilters = source !== "all" || worker !== "all" || window !== "360";
 
   const selectedSources = useMemo(
     () =>
@@ -127,7 +128,7 @@ export function MonitoringView() {
   function clearFilters() {
     setSource("all");
     setWorker("all");
-    setWindow("15");
+    setWindow("360");
   }
 
   return (
@@ -176,7 +177,7 @@ export function MonitoringView() {
               aria-label="Métrica em análise"
               value={metric}
               onValueChange={(value) => setMetric(value as FlowMetric)}
-              options={(Object.keys(FLOW_METRICS) as FlowMetric[]).map((key) => ({
+              options={(live ? ["latencia"] as FlowMetric[] : Object.keys(FLOW_METRICS) as FlowMetric[]).map((key) => ({
                 value: key,
                 label: `Métrica: ${FLOW_METRICS[key].label}`,
               }))}
@@ -272,9 +273,9 @@ export function MonitoringView() {
                 label="Taxa de ingestão"
                 value={kpis.ingestionPerMinute}
                 format={formatIngestion}
-                note={`${formatTrend(kpis.ingestionTrend)} ${describeTrend(kpis.ingestionTrend).text}`}
+                note={live ? "último lote publicado" : `${formatTrend(kpis.ingestionTrend)} ${describeTrend(kpis.ingestionTrend).text}`}
                 tone="info"
-                noteTone={describeTrend(kpis.ingestionTrend).tone}
+                noteTone={live ? "neutral" : describeTrend(kpis.ingestionTrend).tone}
               />
             </Reveal>
 
@@ -294,26 +295,26 @@ export function MonitoringView() {
             <Reveal index={2}>
               <KpiCard
                 label="Profundidade da fila"
-                value={kpis.queueDepth}
+                value={live ? null : kpis.queueDepth}
                 format={formatQueue}
-                note={`${formatTrend(kpis.queueTrend)} / ${WINDOW_LABELS[window]}`}
+                note={live ? "fluxo em lote, sem fila" : `${formatTrend(kpis.queueTrend)} / ${WINDOW_LABELS[window]}`}
                 tone="warning"
-                noteTone={kpis.queueTrend > 0 ? "warning" : "success"}
+                noteTone={live ? "neutral" : kpis.queueTrend > 0 ? "warning" : "success"}
               />
             </Reveal>
 
             <Reveal index={3}>
               <KpiCard
                 label="Fila de falhas · DLQ"
-                value={kpis.deadLetters}
+                value={live ? null : kpis.deadLetters}
                 format={formatInteger}
                 note={
-                  kpis.newDeadLetters === 1
+                  live ? "não se aplica ao pipeline" : kpis.newDeadLetters === 1
                     ? "1 nova mensagem"
                     : `${formatInteger(kpis.newDeadLetters)} novas mensagens`
                 }
                 tone="critical"
-                noteTone={kpis.newDeadLetters > 0 ? "critical" : "success"}
+                noteTone={live ? "neutral" : kpis.newDeadLetters > 0 ? "critical" : "success"}
               />
             </Reveal>
           </div>
