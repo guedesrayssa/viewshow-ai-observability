@@ -84,12 +84,18 @@ ambiente compartilhado.
 ainda falam em "conta corporativa Globo" / SSO — vocabulário do fluxo antigo,
 anterior à migração para Cognito por e-mail/senha.
 
-### 7. Rate limit genérico
+### 7. Rate limit genérico — **resolvido em 2026-09-17**
 
 `/auth/login` usa o mesmo limitador por IP de toda a API
 (`apps/backend/api/src/app.ts`), sem limite dedicado para tentativas de
 login. O Cognito tem seu próprio throttling (`rate_limited`), mas uma camada
 extra aqui é barata.
+
+Novo `AUTH_LOGIN_RATE_LIMIT_PER_MINUTE` (padrão: 10/min por IP, contra 180/min
+do limite geral) aplicado só em `POST /auth/login`, além do limitador geral
+que já cobria a rota. Testado manualmente: com o limite configurado para
+3/min, a 4ª tentativa em menos de um minuto já volta `429 RATE_LIMITED`,
+sem afetar outras rotas.
 
 ## Plano de ação
 
@@ -99,7 +105,7 @@ extra aqui é barata.
 | 2 | Proteger `(painel)`: checar `/auth/session` no layout e redirecionar para `/login` se não autenticado; adicionar botão de logout chamando `/auth/logout` | Médio | Botão de logout **feito** (2026-09-17); guard de rota pendente |
 | 3 | Substituir `ACCOUNT_PROFILE` mockado pela identidade real vinda de `/auth/session` (id/e-mail/nome/role), mantendo só nome e foto editáveis localmente como hoje | Médio | **Feito** (2026-09-16) |
 | 4 | Atualizar textos de `criar-conta`/`recuperar-senha` e adicionar indicação visual de "modo demonstração" | Baixo | Indicador de demo **feito**; textos de `criar-conta`/`recuperar-senha` mantidos por pedido explícito |
-| 5 | Rate limit dedicado em `/auth/login`; testes cobrindo guard de rota, logout e novo profile | Baixo–Médio | Pendente |
+| 5 | Rate limit dedicado em `/auth/login`; testes cobrindo guard de rota, logout e novo profile | Baixo–Médio | Rate limit **feito** (2026-09-17); testes automatizados de guard/logout/profile ainda pendentes (logout e profile só foram verificados manualmente) |
 
 ### Detalhes da fase 3 (feita)
 
