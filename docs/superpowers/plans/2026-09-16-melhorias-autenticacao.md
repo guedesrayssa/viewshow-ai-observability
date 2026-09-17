@@ -87,7 +87,7 @@ extra aqui é barata.
 
 | Fase | Ação | Risco / esforço | Status |
 | --- | --- | --- | --- |
-| 1 | Parar de devolver `idToken`/`accessToken` no corpo de `/auth/login`; manter só o cookie | Baixo | Pendente |
+| 1 | Parar de devolver `idToken`/`accessToken` no corpo de `/auth/login`; manter só o cookie | Baixo | **Feito** (2026-09-17) |
 | 2 | Proteger `(painel)`: checar `/auth/session` no layout e redirecionar para `/login` se não autenticado; adicionar botão de logout chamando `/auth/logout` | Médio | Pendente |
 | 3 | Substituir `ACCOUNT_PROFILE` mockado pela identidade real vinda de `/auth/session` (id/e-mail/nome/role), mantendo só nome e foto editáveis localmente como hoje | Médio | **Feito** (2026-09-16) |
 | 4 | Atualizar textos de `criar-conta`/`recuperar-senha` e adicionar indicação visual de "modo demonstração" | Baixo | Indicador de demo **feito**; textos de `criar-conta`/`recuperar-senha` mantidos por pedido explícito |
@@ -120,6 +120,19 @@ extra aqui é barata.
 - Implementado em `feat/frontend-auth-copy-demo` (a partir de
   `origin/develop`); apesar do nome da branch, o foco final foi os dados de
   conta mockados, a pedido do usuário durante a sessão.
+
+### Detalhes da fase 1 (feita)
+
+- `POST /auth/login` (`apps/backend/api/src/app.ts`) não devolve mais
+  `token`/`tokenType`/`expiresInSeconds` no corpo da resposta — só `user`
+  (id/nome/e-mail/role). A sessão continua sendo o cookie `HttpOnly`; o
+  frontend nunca leu esses campos (descartava o corpo inteiro), então isso
+  só reduz superfície de exposição a XSS sem mudar comportamento.
+- `contracts/openapi/public.openapi.json` atualizado para não documentar mais
+  os campos de token na resposta de 200.
+- Nenhum teste existente cobria o corpo de sucesso dessa rota, então nada
+  precisou ser atualizado; `npm test`/`typecheck`/`lint` do backend
+  continuam verdes.
 
 ## Observação à parte
 
