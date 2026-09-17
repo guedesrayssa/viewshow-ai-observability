@@ -86,7 +86,7 @@
   <g transform="translate(2010,810)"><rect width="190" height="90" rx="8" class="green"/><rect x="15" y="17" width="43" height="43" rx="5" fill="#16a34a"/><text x="36" y="45" class="icon">S3</text><text x="125" y="42" class="box-title">Amazon S3</text><text x="125" y="63" class="box-sub">histórico e logs</text></g>
   <g transform="translate(2240,810)"><rect width="190" height="90" rx="8" class="blue"/><rect x="15" y="17" width="43" height="43" rx="5" fill="#2563eb"/><text x="36" y="45" class="icon">CW</text><text x="125" y="42" class="box-title">CloudWatch</text><text x="125" y="63" class="box-sub">logs, métricas e alarmes</text></g>
   <rect x="2010" y="980" width="420" height="84" rx="8" class="gray"/><text x="2220" y="1014" class="box-title">VPC endpoints de gateway</text><text x="2220" y="1038" class="box-sub">acesso privado a S3 e DynamoDB</text>
-  <rect x="2010" y="1100" width="420" height="84" rx="8" class="gray"/><text x="2220" y="1134" class="box-title">Terraform e Helm / manifests</text><text x="2220" y="1158" class="box-sub">provisionamento e release versionados</text>
+  <rect x="2010" y="1100" width="420" height="84" rx="8" class="gray"/><text x="2220" y="1134" class="box-title">Terraform e kubectl</text><text x="2220" y="1158" class="box-sub">infraestrutura e manifests versionados</text>
 
   <!-- Runtime flow lines -->
   <path d="M155 310 H390" class="flow"/><text x="265" y="292" class="label">HTTPS</text>
@@ -123,5 +123,5 @@
   <path d="M965 1470 H1035" class="async"/><text x="1050" y="1476" class="legend">assíncrono</text>
   <path d="M1190 1470 H1260" class="observe"/><text x="1275" y="1476" class="legend">observabilidade</text>
   <path d="M1470 1470 H1540" class="control"/><text x="1555" y="1476" class="legend">deploy ou controle</text>
-  <text x="340" y="1515" class="small">Proposta de planejamento: substitui ECS/Fargate por EKS com perfis Fargate. Não representa recursos já provisionados.</text>
+  <text x="340" y="1515" class="small">Arquitetura de implantação com EKS Fargate: requer provisionamento e validação antes de entrar em operação.</text>
 </svg>

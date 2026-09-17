@@ -1,69 +1,65 @@
-# Arquitetura Final
+# Arquitetura Final — Amazon EKS
 
-> Este documento apresenta a arquitetura final proposta para o View Show, a integração entre seus módulos e o plano de implantação na AWS com Amazon EKS e AWS Fargate.
+> Este documento especifica a arquitetura de implantação do View Show na AWS com Amazon EKS e perfis Fargate. A aplicação é publicada por manifests Kubernetes YAML versionados; Helm é usado somente para instalar e atualizar o AWS Load Balancer Controller oficial.
 
 ## Sumário
 
-1. [Introdução](#1-introdução)
-2. [Diagramas de implantação](#2-diagramas-de-implantação)
-3. [Componentes e justificativas](#3-componentes-e-justificativas)
-4. [Plano de deploy na AWS](#4-plano-de-deploy-na-aws)
-5. [Evidências e validação](#5-evidências-e-validação)
+1. [Escopo](#1-escopo)
+2. [Diagrama de implantação](#2-diagrama-de-implantação)
+3. [Componentes da arquitetura](#3-componentes-da-arquitetura)
+4. [Organização e publicação dos manifests](#4-organização-e-publicação-dos-manifests)
+5. [Plano de implantação](#5-plano-de-implantação)
+6. [Segurança, escala e observabilidade](#6-segurança-escala-e-observabilidade)
+7. [Evidências de aceite](#7-evidências-de-aceite)
 
 ---
 
-## 1. Introdução
+## 1. Escopo
 
-&emsp;Este artefato documenta a arquitetura final proposta para o View Show com Amazon EKS e perfis Fargate. O foco está nos elementos novos da solução: orquestração Kubernetes, workloads privados em duas Zonas de Disponibilidade (AZs), roteamento por `Ingress`, identidade IAM por ServiceAccount, processamento assíncrono e operação observável.
+&emsp;A arquitetura executa a API, a ingestão e o worker de análise em Pods Amazon EKS Fargate. O frontend Next.js permanece no AWS Amplify. A entrada HTTP é feita por API Gateway e Application Load Balancer (ALB). Os Pods executam apenas em sub-redes privadas e acessam serviços AWS por roles IAM associadas às ServiceAccounts.
 
-&emsp;A decisão por EKS com perfis Fargate elimina a administração de instâncias EC2 para os workloads da aplicação, mas mantém os recursos próprios do Kubernetes necessários à operação: `Deployment`, `Service`, `Ingress`, `CronJob`, HPA, namespaces e políticas de identidade. DynamoDB, S3, SQS/DLQ, Cognito, ECR e CloudWatch compõem a camada de serviços gerenciados.
+&emsp;A infraestrutura AWS é declarada por Terraform. Os recursos da aplicação são declarados em YAML e aplicados com `kubectl`. Não há Helm Chart próprio e não há Kustomize na solução. O único uso de Helm é o chart oficial, com versão fixa, do AWS Load Balancer Controller.
 
-&emsp;A entrada pública é formada por AWS Amplify, API Gateway e Application Load Balancer (ALB). A computação permanece privada na VPC; somente a borda de acesso recebe tráfego externo. A arquitetura deve ser implementada, validada e evidenciada antes de ser apresentada como provisionada.
-
-## 2. Diagramas de implantação
-
-### 2.1 Arquitetura final proposta
-
-&emsp;A arquitetura final usa o caminho público Amplify → API Gateway → ALB e executa a aplicação em Pods do EKS Fargate nas sub-redes privadas. A API é um `Deployment` com pelo menos duas réplicas, a ingestão é um `CronJob` e o consumidor assíncrono é um `Deployment` de worker. O AWS Load Balancer Controller reconcilia o `Ingress` e registra Pods saudáveis como targets IP no ALB.
+## 2. Diagrama de implantação
 
 <div align="center">
 
 <strong>Figura 1: Diagrama de implantação da arquitetura final com Amazon EKS</strong>
-<img src="../../assets/diagrama-implantacao-eks-az.svg" alt="Diagrama de implantação com EKS, duas AZs, sub-redes públicas e privadas"/>
+<img src="../../assets/diagrama-implantacao-aws3.jpg" alt="Diagrama de implantação manual com EKS, duas zonas de disponibilidade, sub-redes públicas e privadas"/>
 
 Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;As setas do diagrama distinguem requisições, identidade, dados, processamento assíncrono, observabilidade e operações de entrega. A representação do `Ingress` e do `Service` é lógica: o controlador interpreta esses recursos Kubernetes e registra os IPs dos Pods no target group do ALB, que entrega o tráfego diretamente aos targets saudáveis.
+&emsp;O diagrama organiza a solução em região AWS, VPC, AZs, sub-redes públicas, sub-redes privadas, serviços gerenciados e componentes externos. As setas indicam requisições, identidade, dados, processamento assíncrono, observabilidade e operações de entrega.
 
-## 3. Componentes e justificativas
+## 3. Componentes da arquitetura
 
 <div align="center">
 
-<sup>Tabela 1: Componentes da infraestrutura e justificativas arquiteturais</sup>
+<sup>Tabela 1: Componentes e responsabilidades da arquitetura final</sup>
 
 </div>
 
-| Camada | Componente | Descrição e justificativa |
+| Camada | Componente | Configuração e responsabilidade |
 | --- | --- | --- |
-| Entrega | Terraform | Mantém a infraestrutura como código, permite revisão por plano salvo, repetibilidade e rastreabilidade. Os recursos EKS devem ser provisionados sem alterações manuais na conta. |
-| Rede | VPC e sub-redes | A VPC `10.0.0.0/16` separa a entrada pública da computação privada em duas AZs. Os Pods Fargate não recebem IP público. |
-| Rede | Internet Gateway, NAT e endpoints | O Internet Gateway atende a camada pública. Os endpoints de gateway dão acesso privado a S3 e DynamoDB. A arquitetura final prevê um NAT Gateway por AZ para saída resiliente. |
-| Experiência | Amplify Hosting | Publica o frontend Next.js e mantém os rewrites same-origin para `/api`, `/auth` e `/health`, reduzindo problemas de CORS, cookies e sessão. |
-| Borda HTTP | API Gateway e ALB | O API Gateway oferece a origem HTTPS utilizada pelo Amplify. O ALB público distribui apenas para targets IP saudáveis, verificados em `/health`, nas duas sub-redes públicas. |
-| Orquestração | Amazon EKS | Control plane Kubernetes gerenciado. Centraliza o agendamento, os recursos de rede e a operação dos workloads sem expor Pods diretamente à internet. |
-| Orquestração | Perfis EKS Fargate | Selecionam Pods por namespace e rótulo e os executam apenas nas sub-redes privadas. Devem existir perfis elegíveis para os add-ons e perfis separados por AZ quando a distribuição controlada for necessária. |
-| Orquestração | AWS Load Balancer Controller | Observa `Ingress` e `Service`, cria ou reconcilia regras e targets IP do ALB. |
-| Workload | EKS/Fargate — API | Um `Deployment` com duas réplicas iniciais, `Service` `ClusterIP`, `Ingress`, probes em `/health` e HPA entre duas e quatro réplicas. |
-| Workload | EKS/Fargate — ingestão | Um `CronJob` executa janelas idempotentes de ingestão. |
-| Workload | EKS/Fargate — worker | Um `Deployment` consome trabalhos da SQS e pode escalar por profundidade de fila com KEDA ou HPA baseado em métrica externa. |
-| Identidade | IRSA e ServiceAccounts | Cada workload recebe uma identidade Kubernetes e uma role IAM com privilégio mínimo. A pod execution role do Fargate não substitui as permissões da aplicação. |
-| Dados | DynamoDB | Armazena as tabelas operacional e Golden Set, com acesso restrito às roles da API e do worker. |
-| Dados | S3, SQS e DLQ | S3 armazena dados históricos e logs; SQS desacopla produtores e consumidores; a DLQ retém mensagens que excedem as tentativas configuradas. |
-| Identidade | Cognito e SSO | Centraliza autenticação e federação corporativa OIDC ou SAML sem distribuir credenciais do SSO aos Pods. |
-| Entrega | ECR | Armazena imagens de contêiner. Os manifests devem referenciar imagens por digest para associar cada release a conteúdo imutável. |
-| Observabilidade | CloudWatch | Recebe logs, métricas e alarmes da borda e dos workloads, incluindo Pods, HPA e SQS/DLQ. |
+| Experiência | AWS Amplify | Publica o frontend Next.js e encaminha `/api`, `/auth` e `/health` pela mesma origem do dashboard. |
+| Borda HTTP | API Gateway | Fornece HTTPS para o proxy same-origin do Amplify e encaminha as requisições ao ALB. |
+| Borda HTTP | Application Load Balancer | Opera nas duas sub-redes públicas, valida `/health` e usa targets IP para os Pods Fargate. |
+| Rede | VPC e sub-redes | Usa a VPC `10.0.0.0/16`, com duas sub-redes públicas e duas privadas em AZs distintas. Os Pods não recebem IP público. |
+| Rede | Internet Gateway, NAT e endpoints | Internet Gateway atende a borda pública; um NAT Gateway por AZ fornece saída resiliente; endpoints de gateway dão acesso privado a S3 e DynamoDB. |
+| Orquestração | Amazon EKS | Fornece o control plane Kubernetes gerenciado. |
+| Orquestração | Perfis EKS Fargate | Selecionam Pods por namespace e rótulo e os executam em sub-redes privadas. A arquitetura usa perfis elegíveis para `kube-system` e `view-show`. |
+| Orquestração | AWS Load Balancer Controller | É instalado pelo chart oficial da AWS, com versão fixa. Observa `Ingress` e `Service`, e reconcilia ALB, listeners, regras e targets IP. |
+| API | `Deployment`, `Service` e `Ingress` | A API inicia com duas réplicas, expõe um `Service` `ClusterIP`, recebe regras de `Ingress` e responde a probes em `/health`. |
+| Ingestão | `CronJob` | Executa janelas idempotentes de coleta, registra histórico no S3 e produz mensagens de análise. |
+| Análise | `Deployment` de worker | Consome a SQS, processa análises e persiste os resultados no DynamoDB. |
+| Identidade AWS | ServiceAccounts e IRSA | Cada workload possui uma ServiceAccount e uma role IAM de privilégio mínimo. A pod execution role do Fargate não concede permissões à aplicação. |
+| Dados | DynamoDB | Armazena as tabelas operacional e Golden Set. |
+| Dados | S3, SQS e DLQ | S3 armazena histórico; SQS desacopla produtores e consumidor; DLQ retém mensagens que excedem as tentativas configuradas. |
+| Autenticação | Cognito e SSO | Cognito centraliza sessão e federação corporativa OIDC ou SAML. |
+| Entrega | ECR | Armazena imagens. Os manifests referenciam cada imagem por digest. |
+| Observabilidade | CloudWatch | Consolida logs, métricas e alarmes da borda, dos Pods, do HPA e da SQS/DLQ. |
 
 <div align="center">
 
@@ -71,24 +67,61 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;A arquitetura final usa recursos Kubernetes para explicitar a operação de cada workload, a política de escala, o roteamento e a identidade AWS. Essa flexibilidade exige que manifests, add-ons, políticas Kubernetes e roles IAM sejam versionados e revisados junto com a aplicação.
+## 4. Organização e publicação dos manifests
 
-## 4. Plano de deploy na AWS
+### 4.1 Estrutura do repositório
 
-### 4.1 Pré-requisitos e infraestrutura como código
+&emsp;Os recursos Kubernetes da aplicação devem ficar no diretório `k8s/`. Os arquivos usam YAML puro, sem templating. O nome numérico mantém uma ordem explícita de aplicação e facilita a revisão do diff em pull requests.
 
-&emsp;A migração requer Terraform, Docker, Node.js, npm, AWS CLI, `kubectl` e Helm disponíveis na estação de deploy. A equipe deve usar as credenciais válidas do AWS Academy ou da conta alvo, confirmar a região `us-east-1` e validar previamente as permissões de EKS, Fargate profiles, IAM/OIDC, ELBv2 e AWS Load Balancer Controller.
+```text
+k8s/
+  00-namespace.yaml
+  10-serviceaccounts.yaml
+  20-api-deployment.yaml
+  21-api-service.yaml
+  22-api-hpa.yaml
+  30-worker-deployment.yaml
+  31-ingestion-cronjob.yaml
+  40-ingress.yaml
+```
+
+&emsp;Os valores estáveis da aplicação ficam nos manifests. Dados sensíveis não são versionados em YAML nem incluídos na imagem. A distribuição de segredos deve usar um mecanismo compatível com EKS Fargate e preservar a separação de permissões por ServiceAccount.
+
+### 4.2 Imagens e versões
+
+&emsp;A API, o worker e a ingestão usam imagens no ECR identificadas por digest. A atualização de versão ocorre por alteração explícita do campo `image` nos arquivos `20-api-deployment.yaml`, `30-worker-deployment.yaml` e `31-ingestion-cronjob.yaml`. A alteração é revisada em pull request e permite recuperar uma revisão anterior do manifest sem resolver tags mutáveis.
+
+### 4.3 Fluxo de publicação
+
+&emsp;O fluxo de publicação é declarativo e não depende de chart próprio:
+
+```bash
+kubectl diff -f k8s/
+kubectl apply -f k8s/
+```
+
+&emsp;O comando é executado com o contexto correto do cluster EKS e somente após a revisão dos manifests. `kubectl apply` cria ou atualiza os recursos declarados no diretório. A remoção de recursos é explícita, por exemplo com `kubectl delete -f k8s/31-ingestion-cronjob.yaml`; não é usado `--prune` no fluxo inicial.
+
+### 4.4 Uso restrito de Helm
+
+&emsp;Helm não empacota nem publica a aplicação. Ele instala somente o AWS Load Balancer Controller oficial no namespace `kube-system`. A versão do chart e os valores obrigatórios — nome do cluster, região, VPC e ServiceAccount com IRSA — devem ficar registrados no script ou procedimento de infraestrutura.
+
+&emsp;Essa separação mantém os manifests da aplicação pequenos, legíveis e auditáveis, sem replicar localmente os recursos internos do controlador de carga.
+
+## 5. Plano de implantação
+
+### 5.1 Pré-requisitos
+
+&emsp;O deploy requer Terraform, Docker, Node.js, npm, AWS CLI, `kubectl` e Helm. Helm é necessário apenas para instalar ou atualizar o AWS Load Balancer Controller. A conta deve ter permissões para EKS, Fargate profiles, IAM/OIDC, ELBv2, ECR, DynamoDB, S3, SQS, Cognito e CloudWatch.
 
 ```bash
 aws sts get-caller-identity --region us-east-1
 aws eks list-clusters --region us-east-1
+kubectl version --client
+helm version
 ```
 
-&emsp;Os comandos acima apenas consultam a conta. O deploy deve começar somente depois que o cluster, as roles, os add-ons e os manifests Kubernetes estiverem revisados e validados em ambiente controlado.
-
-&emsp;A arquitetura exige duas AZs, tags de descoberta de sub-rede para o AWS Load Balancer Controller, CIDRs compatíveis com o número de Pods e add-ons e um NAT Gateway por AZ para saída resiliente. A criação dos perfis Fargate exige uma pod execution role; as permissões de cada aplicação permanecem nas roles IRSA vinculadas às respectivas ServiceAccounts.
-
-### 4.2 Etapas de provisionamento
+### 5.2 Etapas de provisionamento
 
 <div align="center">
 
@@ -98,15 +131,15 @@ aws eks list-clusters --region us-east-1
 
 | Etapa | Recursos e ações | Critério de aceite |
 | --- | --- | --- |
-| 1. Identidade e cotas | Selecionar o perfil AWS, executar `aws sts get-caller-identity`, confirmar a região e verificar permissões, quotas EKS/Fargate e disponibilidade de IPs. | Conta, região, permissões e capacidade conferidas antes do plano. |
-| 2. Rede e segurança | Criar ou revisar VPC, duas sub-redes públicas, duas privadas, rotas, Security Groups, endpoints S3/DynamoDB, NAT por AZ e tags de sub-rede. | Pods sem IP público; ALB descoberto em duas AZs; saída privada e endpoints funcionais. |
-| 3. Control plane e Fargate | Criar cluster EKS, provider OIDC, pod execution role e perfis Fargate para `kube-system` e `view-show`. | Cluster ativo; CoreDNS e Pods elegíveis executando em sub-redes privadas. |
-| 4. Add-ons e identidade | Instalar AWS Load Balancer Controller e o mecanismo de métricas aprovado. Criar ServiceAccounts e roles IRSA com privilégio mínimo. | Controlador saudável; roles assumidas apenas pelos workloads autorizados. |
-| 5. Imagens e workloads | Publicar imagens no ECR por digest e aplicar Helm chart ou manifests de API, worker, `CronJob`, `Service`, `Ingress`, HPA e `ConfigMap`/segredos compatíveis. | Pods `Ready`; API com duas réplicas e referências de imagem rastreáveis. |
-| 6. Entrada HTTP | Permitir que o controlador reconcilie o ALB e os targets IP. Validar `/health`, regras de `Ingress` e integração do API Gateway. | Targets IP saudáveis e resposta funcional pelo endpoint de teste. |
-| 7. Dados e pipeline | Validar DynamoDB, S3, SQS/DLQ, ingestão idempotente e consumo do worker com as roles IRSA. | Dados persistidos; uma mensagem processada e uma falha controlada encaminhada à DLQ. |
-| 8. Escala e observabilidade | Configurar HPA da API, KEDA ou HPA externo do worker, dashboards e alarmes do CloudWatch. | Escala observável e logs/métricas disponíveis para borda, Pods e fila. |
-| 9. Corte e rollback | Liberar a nova integração da borda somente após aceite e manter uma rota de retorno para a versão anterior durante a estabilização. | Dashboard íntegro após o corte; retorno para a versão anterior validado. |
+| 1. Identidade e cotas | Confirmar conta, região, permissões, quotas EKS/Fargate e capacidade de IP das sub-redes privadas. | Conta e região conferidas; capacidade compatível com Pods e add-ons. |
+| 2. Rede e segurança | Provisionar VPC, duas sub-redes públicas, duas privadas, rotas, Security Groups, endpoints S3/DynamoDB, NAT por AZ e tags de descoberta do ALB. | Pods sem IP público; ALB descoberto nas duas AZs; saída privada funcional. |
+| 3. EKS e Fargate | Provisionar control plane, provider OIDC, pod execution role e perfis Fargate para `kube-system` e `view-show`. | Cluster ativo; CoreDNS e Pods elegíveis em sub-redes privadas. |
+| 4. Add-on de carga | Criar role IRSA do controlador e instalar a versão aprovada do AWS Load Balancer Controller por Helm. | Controller `Ready`, ServiceAccount correta e reconciliação habilitada. |
+| 5. Identidade da aplicação | Criar ServiceAccounts e roles IRSA da API, worker e ingestão. | Cada Pod assume somente a role prevista para seu workload. |
+| 6. Imagens e manifests | Publicar imagens no ECR por digest e aplicar os manifests do diretório `k8s/`. | API, worker e `CronJob` criados com imagens rastreáveis. |
+| 7. Entrada HTTP | Aplicar o `Ingress`, validar o ALB, os targets IP e o endpoint `/health`, e integrar o API Gateway. | Targets IP saudáveis e resposta funcional pelo dashboard. |
+| 8. Dados e fila | Validar DynamoDB, S3, SQS/DLQ, ingestão idempotente e consumo pelo worker. | Dados persistidos, mensagem processada e falha encaminhada à DLQ. |
+| 9. Escala e observabilidade | Configurar HPA da API, mecanismo de escala do worker, dashboards e alarmes CloudWatch. | Escala, logs e métricas observáveis para borda, Pods e fila. |
 
 <div align="center">
 
@@ -114,47 +147,48 @@ aws eks list-clusters --region us-east-1
 
 </div>
 
-&emsp;A API inicia com duas réplicas e HPA entre duas e quatro réplicas como ponto de partida. O worker não deve ser escalado somente por CPU quando a carga relevante é a profundidade da fila; a equipe deve aprovar KEDA ou métricas externas antes de configurar o autoscaling. O `CronJob` e o worker devem ser idempotentes e preservar correlação suficiente para reprocessamento pela DLQ.
+### 5.3 Recuperação operacional
 
-### 4.3 Corte e recuperação operacional
+&emsp;O rollback da aplicação é feito aplicando uma revisão anterior dos manifests que referencia os digests de imagem conhecidos. O rollback da infraestrutura é feito exclusivamente por Terraform, com plano revisado. Antes de uma alteração de borda, deve existir uma rota de retorno validada para a revisão anterior.
 
-&emsp;O corte não altera o frontend. Depois de validar Pods, `Ingress`, targets IP e autenticação, a integração do API Gateway passa a apontar para o ALB reconciliado pelo EKS. Caso os health checks, a autenticação, o DynamoDB ou o consumo da fila falhem, a integração da borda retorna à versão anterior e os workloads são analisados sem interrupção do dashboard.
+## 6. Segurança, escala e observabilidade
 
-&emsp;O rollback de aplicação usa a imagem por digest e uma revisão anterior de Helm ou manifest. O rollback de infraestrutura deve ser feito somente por Terraform, com plano revisado, para evitar divergência entre a conta AWS, o estado Terraform e os recursos criados pelo AWS Load Balancer Controller.
+### 6.1 Segurança
 
-### 4.4 Restrições de EKS Fargate
+- Apenas o ALB recebe tráfego público; Pods Fargate ficam em sub-redes privadas.
+- Security Groups permitem acesso à porta da API somente a partir do security group do ALB.
+- Cada workload recebe uma role IAM própria por IRSA.
+- Endpoints de gateway evitam que o acesso a S3 e DynamoDB dependa do NAT Gateway.
+- Segredos não são incluídos em imagens nem em manifests versionados.
+- Imagens são referenciadas por digest e possuem origem rastreável no ECR.
 
-&emsp;Os Pods Fargate são executados apenas em sub-redes privadas e usam targets IP no ALB. `DaemonSet` e `topologySpreadConstraints` não são suportados nesse modo. Portanto, agentes de observabilidade por nó precisam ser substituídos por sidecars ou coletores compatíveis, e a distribuição da API entre AZs deve ser validada com perfis Fargate separados por sub-rede/AZ; ela não pode ser presumida apenas pelo scheduler.
+### 6.2 Escala e disponibilidade
 
-&emsp;EKS Pod Identity depende de um agente em `DaemonSet` e não atende workloads Fargate. A arquitetura final usa IRSA para conceder permissões às aplicações. A pod execution role existe para a infraestrutura Fargate registrar Pods e obter imagens, não para fornecer permissões de negócio ao código em execução.
+&emsp;A API usa HPA com mínimo de duas e máximo de quatro réplicas. O worker usa KEDA ou HPA com métrica externa baseada na profundidade da SQS; a escolha deve ser definida antes do deploy. O ALB opera em duas sub-redes públicas e envia tráfego somente a Pods saudáveis.
 
-## 5. Evidências e validação
+&emsp;EKS Fargate não suporta `DaemonSet` nem `topologySpreadConstraints`. Agentes de observabilidade por nó devem ser substituídos por sidecars ou coletores compatíveis. A distribuição da API entre AZs é validada por perfis Fargate separados por sub-rede/AZ e por testes de implantação; ela não é presumida somente pelo scheduler.
 
-&emsp;Após a implementação, a demonstração da arquitetura final deve comprovar a topologia e a comunicação efetivamente executadas, sem substituir evidência por capturas estáticas do diagrama. A documentação, os vídeos e os relatórios devem identificar recursos planejados como planejados até que sua execução seja comprovada.
+### 6.3 Observabilidade
 
-### 5.1 Evidências de infraestrutura
+&emsp;O CloudWatch deve registrar logs, métricas e alarmes para saúde dos targets do ALB, latência e erros da API, réplicas do HPA, profundidade e idade da SQS, mensagens da DLQ, duração e resultado do `CronJob` e falhas de integração com DynamoDB, S3 e Cognito.
 
-- cluster EKS ativo, perfis Fargate criados e Pods elegíveis nas duas sub-redes privadas;
+## 7. Evidências de aceite
+
+- cluster EKS ativo, perfis Fargate criados e Pods em sub-redes privadas;
 - AWS Load Balancer Controller saudável e `Ingress` reconciliado;
 - ALB em duas sub-redes públicas com targets IP `healthy` no endpoint `/health`;
-- regras de Security Group impedindo acesso direto externo aos Pods;
-- ServiceAccounts associadas às roles IRSA corretas;
-- endpoints de gateway de S3 e DynamoDB e, quando aprovado, NAT Gateway por AZ;
-- CloudWatch com logs, métricas e alarmes dos workloads Kubernetes.
+- autenticação pelo Amplify, API Gateway e Cognito;
+- API e worker executando com roles IRSA de menor privilégio;
+- execução do `CronJob`, escrita no S3, envio à SQS, consumo pelo worker e persistência no DynamoDB;
+- mensagem de falha encaminhada à DLQ;
+- HPA da API e mecanismo de escala do worker demonstrados sob carga;
+- logs, métricas e alarmes disponíveis no CloudWatch;
+- aplicação e rollback de uma revisão anterior dos manifests validados.
 
-### 5.2 Evidências de integração e dados
+## Referências técnicas
 
-- acesso do dashboard pelo Amplify e chamadas same-origin por API Gateway;
-- autenticação federada pelo Cognito e recusa de operações sem sessão válida;
-- leitura e escrita no DynamoDB pela API e pelo worker;
-- execução do `CronJob`, persistência de histórico no S3, envio à SQS e consumo pelo worker;
-- mensagem de falha encaminhada à DLQ após o limite configurado;
-- alteração observável de réplicas da API pelo HPA e do worker pelo mecanismo de escala aprovado;
-- rollback do API Gateway para a revisão anterior validado antes da estabilização definitiva da nova versão.
-
-### 5.3 Referências técnicas
-
-- [Amazon EKS on AWS Fargate — considerações e targets IP](https://docs.aws.amazon.com/eks/latest/userguide/fargate.html)
-- [Perfis Fargate — seletores, sub-redes e restrições de distribuição](https://docs.aws.amazon.com/eks/latest/userguide/fargate-profile.html)
-- [IAM Roles for Service Accounts — IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
-- [AWS Load Balancer Controller e targets IP](https://docs.aws.amazon.com/eks/latest/best-practices/load-balancing.html)
+- [Gerenciamento declarativo com `kubectl apply`](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/)
+- [AWS Load Balancer Controller no EKS](https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html)
+- [Amazon EKS com AWS Fargate](https://docs.aws.amazon.com/eks/latest/userguide/fargate.html)
+- [Perfis Fargate](https://docs.aws.amazon.com/eks/latest/userguide/fargate-profile.html)
+- [IAM Roles for Service Accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
