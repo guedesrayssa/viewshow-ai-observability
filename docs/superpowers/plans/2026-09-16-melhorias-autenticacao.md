@@ -60,7 +60,7 @@ sobrepostos localmente e zera a sessão em memória — e depois navega para
 `/login`. A proteção de rota do painel (não deixar acessar `/visao-geral`
 sem sessão) continua pendente; é um problema separado deste.
 
-### 4. Dados de conta 100% mockados
+### 4. Dados de conta 100% mockados — **resolvido em 2026-09-16**
 
 `apps/frontend/lib/settings-data.ts` define `ACCOUNT_PROFILE` fixo:
 `"Giovanna Matsu"`, `giovanna.matsu@globo.com`, `authMethod: "SSO Globo"`.
@@ -69,6 +69,11 @@ topbar, em Configurações, e assina os registros de Evidências — **para
 qualquer pessoa que logar de verdade pelo Cognito**. Dois problemas em um:
 identidade errada exibida/atribuída, e o rótulo "SSO Globo" nem bate mais com
 o fluxo atual (e-mail + senha via Cognito).
+
+`ACCOUNT_PROFILE` foi removido; `AccountProvider` agora busca a identidade
+real em `GET /auth/session` (nome, e-mail, cargo, último acesso). Só nome e
+foto continuam com sobreposição local editável. Ver detalhes na fase 3, mais
+abaixo.
 
 ### 5. Modo demo sem sinalização — **resolvido em 2026-09-16**
 
