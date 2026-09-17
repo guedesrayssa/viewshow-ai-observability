@@ -70,13 +70,20 @@ qualquer pessoa que logar de verdade pelo Cognito**. Dois problemas em um:
 identidade errada exibida/atribuída, e o rótulo "SSO Globo" nem bate mais com
 o fluxo atual (e-mail + senha via Cognito).
 
-### 5. Modo demo sem sinalização
+### 5. Modo demo sem sinalização — **resolvido em 2026-09-16**
 
 `authenticateWithPassword` aceita qualquer e-mail/senha quando
 `NEXT_PUBLIC_ALLOW_EXAMPLE_DATA=true` e a API não está configurada
 (comportamento intencional, documentado em `lib/data/mode.ts`), mas a UI não
 indica visualmente que é uma sessão de demonstração — pode confundir em
 ambiente compartilhado.
+
+`LoginForm` mostra um `<Alert tone="warning">` quando `isDemoModeActive()`
+(nova função em `lib/auth.ts`) é verdadeiro, avisando antes do envio que
+qualquer e-mail/senha abre o painel com dado de exemplo. O perfil de conta
+em modo demo (`AccountProvider`) também usa um rótulo dedicado
+("Conta de demonstração" / "Modo de demonstração") em vez de imitar uma
+sessão real — ver achado 4.
 
 ### 6. Textos desatualizados
 
