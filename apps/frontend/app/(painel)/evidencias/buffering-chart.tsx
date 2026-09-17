@@ -28,6 +28,8 @@ export type BufferingChartProps = {
   marker: { index: number; label: string } | null;
   period: BufferingPeriodKey;
   onPeriodChange: (period: BufferingPeriodKey) => void;
+  historical?: boolean;
+  observedAt?: string;
 };
 
 /** Escreve o buffer ratio com uma casa e o sinal de porcentagem. */
@@ -40,6 +42,8 @@ export function BufferingChart({
   marker,
   period,
   onPeriodChange,
+  historical,
+  observedAt,
 }: BufferingChartProps) {
   return (
     <Card padding="lg" className="flex flex-1 flex-col">
@@ -49,6 +53,9 @@ export function BufferingChart({
           <CardDescription className="mt-1">
             Tempo travado sobre tempo assistido, em porcentagem
           </CardDescription>
+          {historical && observedAt ? (
+            <CardDescription className="mt-1">Última série disponível: {new Date(observedAt).toLocaleString("pt-BR")}</CardDescription>
+          ) : null}
         </div>
 
         <Select
