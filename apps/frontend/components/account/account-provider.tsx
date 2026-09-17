@@ -107,9 +107,18 @@ function profileFromSession(session: SessionIdentity): AccountProfile {
   };
 }
 
+/**
+ * "checking" só dura até a primeira resposta de `/auth/session`; depois disso
+ * é sempre "authenticated" ou "unauthenticated". Quem precisa decidir se
+ * mostra ou esconde algo antes de saber a sessão (como `PanelGuard`) lê isto
+ * em vez de repetir o fetch.
+ */
+export type SessionStatus = "checking" | "authenticated" | "unauthenticated";
+
 type AccountContextValue = {
   /** Perfil completo, já com as alterações aplicadas. */
   profile: AccountProfile & { photo: string | null };
+  sessionStatus: SessionStatus;
   updateProfile: (patch: Partial<EditableProfile>) => void;
   /** Remove o nome sobreposto e a foto; volta ao nome da sessão. */
   reset: () => void;
@@ -126,7 +135,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     accountStore.getServerSnapshot,
   );
 
-  const [session, setSession] = useState<SessionIdentity | null>(null);
+  // `undefined` = ainda não voltou a primeira checagem; `null` = voltou e
+  // confirmou que não há sessão. Os dois viram "sem identidade" para o
+  // perfil (linha do `base` abaixo), mas só o segundo é "unauthenticated"
+  // para quem faz guarda de rota.
+  const [session, setSession] = useState<SessionIdentity | null | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +165,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const sessionStatus: SessionStatus =
+    session === undefined
+      ? "checking"
+      : session
+        ? "authenticated"
+        : "unauthenticated";
+
   const value = useMemo<AccountContextValue>(() => {
     const base = session
       ? profileFromSession(session)
@@ -163,11 +185,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         name: edits.name ?? base.name,
         photo: edits.photo,
       },
+      sessionStatus,
       updateProfile,
       reset,
       signOut,
     };
-  }, [session, edits, updateProfile, reset, signOut]);
+  }, [session, sessionStatus, edits, updateProfile, reset, signOut]);
 
   return (
     <AccountContext.Provider value={value}>{children}</AccountContext.Provider>
