@@ -44,6 +44,7 @@ CLOUDWATCH_DATASOURCE_GZIP=$(encode_file "${SCRIPT_DIR}/cloudwatch-datasource.ym
 DASHBOARD_PROVIDER_GZIP=$(encode_file "${SCRIPT_DIR}/dashboard-provider.yml")
 DASHBOARD_GZIP=$(encode_file "${RENDER_WORK_DIR}/view-show-aws.json")
 APPLICATION_DASHBOARD_GZIP=$(encode_file "${OBSERVABILITY_DIR}/grafana/provisioning/dashboards/json/view-show-overview.json")
+API_DASHBOARD_GZIP=$(encode_file "${OBSERVABILITY_DIR}/grafana/provisioning/dashboards/json/view-show-api.json")
 PASSWORD_BASE64=$(printf '%s' "${RENDER_GRAFANA_PASSWORD}" | base64 | tr -d '\n')
 
 sed \
@@ -60,6 +61,7 @@ sed \
   -e "s|\${dashboard_provider_gzip}|${DASHBOARD_PROVIDER_GZIP}|g" \
   -e "s|\${dashboard_gzip}|${DASHBOARD_GZIP}|g" \
   -e "s|\${application_dashboard_gzip}|${APPLICATION_DASHBOARD_GZIP}|g" \
+  -e "s|\${api_dashboard_gzip}|${API_DASHBOARD_GZIP}|g" \
   -e 's/$${/${/g' \
   "${SCRIPT_DIR}/user-data.sh.tftpl" >"${OUTPUT_PATH}"
 

@@ -25,22 +25,19 @@ export const INITIAL_SCREEN_OPTIONS: SelectOption[] = [
   { value: "monitoramento", label: "Monitoramento" },
 ];
 
+/**
+ * Perfil exibido na navegação e em Configurações. `name` e `photo` podem ser
+ * sobrepostos localmente (ver `AccountProvider`); os demais campos vêm da
+ * sessão em `/auth/session` e não têm edição — não existe fonte real para
+ * "sessões ativas" (não há registro de múltiplas sessões no backend), por
+ * isso o campo não existe aqui: mostrar um número não teria origem.
+ */
 export type AccountProfile = {
   name: string;
   email: string;
   role: string;
   authMethod: string;
   lastAccess: string;
-  activeSessions: number;
-};
-
-export const ACCOUNT_PROFILE: AccountProfile = {
-  name: "Giovanna Matsu",
-  email: "giovanna.matsu@globo.com",
-  role: "Engenheira de Software",
-  authMethod: "SSO Globo",
-  lastAccess: "Hoje, 09:42",
-  activeSessions: 2,
 };
 
 export type NotificationPreference = {

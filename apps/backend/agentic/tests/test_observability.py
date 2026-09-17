@@ -6,6 +6,7 @@ from unittest.mock import Mock
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode
+
 from view_show_agentic import AgenticTelemetry, TelemetryConfig
 
 

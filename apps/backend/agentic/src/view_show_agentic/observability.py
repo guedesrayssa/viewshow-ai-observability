@@ -10,7 +10,7 @@ import time
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from opentelemetry import trace
@@ -104,7 +104,7 @@ class StructuredLogger:
     def emit(self, level: str, message: str, **fields: Any) -> None:
         span_context = trace.get_current_span().get_span_context()
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "level": level,
             "message": message,
             "service_name": self._config.service_name,

@@ -1,0 +1,99 @@
+{
+  "activeDatasetVersion": "dsv_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "entityType": "ACTIVE_MANIFEST",
+  "manifest": {
+    "datasetVersion": "dsv_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fingerprint": "45093dd08f89de85360951e0617c9af06fea3a9023caa5b2f8acbadf4dd2eed6",
+    "metadata": {
+      "availableIntervals": {
+        "signal_bucket": [
+          {
+            "end": "2026-09-01T00:00:00Z",
+            "start": "2026-08-01T00:00:00Z"
+          }
+        ]
+      },
+      "canonicalSchemaVersion": "1.0",
+      "coverage": {
+        "signal_bucket": "COMPLETE"
+      },
+      "descriptorVersions": {
+        "signal_bucket": "2.0"
+      },
+      "dumpChecksumSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "formulaVersions": {
+        "overview": "1.0"
+      },
+      "glueTables": {
+        "signal_bucket": "argus_signal_bucket"
+      },
+      "hotFrom": {
+        "signal_bucket": "2026-08-18T00:00:00Z"
+      },
+      "physicalContractVersion": "2.0",
+      "projectionVersions": {
+        "overview/day": "1.0"
+      },
+      "qualityFlags": {
+        "signal_bucket": []
+      },
+      "s3Prefix": "s3://argus-canonical/dsv_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+      "snapshotExtractedOn": "2026-09-01",
+      "validations": {
+        "coverageQuality": {
+          "datasets": {
+            "signal_bucket": {
+              "coverage": "COMPLETE",
+              "qualityFlags": []
+            }
+          },
+          "state": "PASSED",
+          "validatedAt": "2026-09-08T12:00:00Z"
+        },
+        "parquetCatalog": {
+          "datasets": {
+            "signal_bucket": {
+              "catalogValidated": true,
+              "partitionCount": 1
+            }
+          },
+          "state": "PASSED",
+          "validatedAt": "2026-09-08T12:00:00Z"
+        },
+        "physicalSchemas": {
+          "datasets": {
+            "signal_bucket": {
+              "compatible": true,
+              "fingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            }
+          },
+          "state": "PASSED",
+          "validatedAt": "2026-09-08T12:00:00Z"
+        },
+        "reconciliation": {
+          "datasets": {
+            "signal_bucket": {
+              "accepted": 1,
+              "persisted": 1,
+              "rejected": 0
+            }
+          },
+          "state": "PASSED",
+          "validatedAt": "2026-09-08T12:00:00Z"
+        },
+        "requiredProjections": {
+          "projections": [
+            "overview/day"
+          ],
+          "state": "PASSED",
+          "validatedAt": "2026-09-08T12:00:00Z"
+        }
+      },
+      "watermarks": {
+        "signal_bucket": "2026-09-01T00:00:00Z"
+      }
+    }
+  },
+  "pk": "CONTROL#DATASET",
+  "sk": "ACTIVE"
+}

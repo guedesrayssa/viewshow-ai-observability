@@ -20,6 +20,11 @@ terraform {
   }
 }
 
+// Sem allowed_account_ids de propósito: a stack precisa ser aplicável em
+// qualquer conta do Learner Lab trocando apenas o profile. A conferência de
+// conta é do operador, no pré-voo do runbook (aws sts get-caller-identity), e a
+// checagem que de fato protege uma operação — a credencial pertencer à mesma
+// conta do stack — vive em run_task.py, derivada dos ARNs do terraform output.
 provider "aws" {
   // Usa a cadeia padrão de credenciais da AWS. Portanto, AWS_PROFILE seleciona
   // o perfil tanto para o provider quanto para os scripts executados no apply.
