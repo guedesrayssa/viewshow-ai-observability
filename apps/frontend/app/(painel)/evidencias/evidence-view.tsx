@@ -33,6 +33,8 @@ import {
   fetchEvidence,
   reviewHypothesis,
 } from "@/app/(painel)/evidencias/evidence-resource";
+import { fetchIncidents } from "@/app/(painel)/incidentes/incidents-resource";
+import { fetchOverview } from "@/app/(painel)/visao-geral/overview-resource";
 import { useAccount } from "@/components/account/account-provider";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -62,10 +64,18 @@ export function EvidenceView() {
   const searchParams = useSearchParams();
   const { profile } = useAccount();
 
-  // Sem recorte na URL, a tela pede a escolha em vez de eleger um incidente
-  // sozinha: um diagnóstico aberto "por padrão" pareceria o diagnóstico do
-  // momento, e não é.
-  const incidentId = searchParams.get("incidente");
+  const requestedIncidentId = searchParams.get("incidente") ?? "";
+  const incidents = useResource(
+    () => fetchIncidents({ period: "1440", deviceType: "all", region: "all", appVersion: "all" }),
+    [],
+    { enabled: requestedIncidentId === "" },
+  );
+  const overview = useResource(
+    () => fetchOverview({ timeRange: "24h", device: "all", region: "all", appVersion: "all" }),
+    [],
+    { enabled: requestedIncidentId === "" },
+  );
+  const incidentId = requestedIncidentId || incidents.data?.[0]?.id || overview.data?.incidents[0]?.id || "";
 
   const [review, setReview] = useState<{
     status: ReviewStatus;
@@ -79,18 +89,22 @@ export function EvidenceView() {
   const [bufferingPeriod, setBufferingPeriod] = useState<BufferingPeriodKey>("120");
 
   const evidence = useResource(
-    () => fetchEvidence(incidentId ?? ""),
+    () => fetchEvidence(incidentId),
     [incidentId],
-    { enabled: incidentId !== null },
+    { enabled: incidentId !== "" },
   );
 
   const buffering = useResource(
-    (revision) => fetchBuffering(incidentId ?? "", bufferingPeriod, revision),
+    (revision) => fetchBuffering(incidentId, bufferingPeriod, revision),
     [incidentId, bufferingPeriod],
-    { enabled: incidentId !== null },
+    { enabled: incidentId !== "" },
   );
 
   const data = evidence.data;
+  const timelineCutoff = (evidence.fetchedAt?.getTime() ?? 0) - Number(timelineWindow) * 60_000;
+  const visibleTimeline = data?.timeline.filter((mark) =>
+    !mark.timestamp || new Date(mark.timestamp).getTime() >= timelineCutoff,
+  ) ?? [];
 
   function toggleSource(id: string) {
     setExpandedSourceId((current) => (current === id ? null : id));
@@ -110,16 +124,15 @@ export function EvidenceView() {
   }
 
   if (!incidentId) {
+    const loadingIncident = incidents.status === "loading" || overview.status === "loading";
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Evidências"
           subtitle="Hipótese de causa provável e evidências do diagnóstico"
         />
-        <Unavailable title="Escolha um incidente para investigar" minHeight={280}>
-          Esta tela monta o diagnóstico de um incidente específico, e abrir um
-          por conta própria apresentaria um caso qualquer como se fosse o da
-          sua investigação. Venha pela lista de Incidentes.
+        <Unavailable title={loadingIncident ? "Procurando incidente" : "Escolha um incidente para investigar"} minHeight={280}>
+          {loadingIncident ? "Consultando os incidentes e o último panorama disponível." : "Nenhum incidente foi encontrado. Verifique a lista de Incidentes."}
         </Unavailable>
         <Link
           href="/incidentes"
@@ -324,17 +337,19 @@ export function EvidenceView() {
         </Reveal>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Reveal delay={150} className="flex">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+        <div className="flex">
           <BufferingChart
             points={buffering.data?.points}
             marker={buffering.data?.marker ?? null}
+            historical={buffering.data?.historical}
+            observedAt={buffering.data?.observedAt}
             period={bufferingPeriod}
             onPeriodChange={setBufferingPeriod}
           />
-        </Reveal>
+        </div>
 
-        <Reveal delay={210} className="flex">
+        <div className="flex">
           <Card padding="lg" className="flex-1">
             <CardTitle>Concentração afetada</CardTitle>
             <CardDescription className="mt-1">
@@ -387,23 +402,27 @@ export function EvidenceView() {
               </p>
             ) : null}
           </Card>
-        </Reveal>
+        </div>
 
-        <Reveal delay={270} className="flex">
+        <div className="flex">
           <Card padding="lg" className="flex-1">
-            <CardTitle>Evidências por fonte</CardTitle>
+            <CardTitle id="evidence-sources-heading">Evidências por fonte</CardTitle>
             <CardDescription className="mt-1">
               Relação com a hipótese principal
             </CardDescription>
 
             {data ? (
-              <ul className="mt-3 flex flex-col divide-y divide-line-subtle">
-                {data.sources.map((item, index) => {
+              <ul
+                aria-labelledby="evidence-sources-heading"
+                tabIndex={0}
+                className="evidence-source-list focus-ring mt-3 flex max-h-[14rem] flex-col divide-y divide-line-subtle overflow-y-auto overscroll-contain pr-2"
+              >
+                {data.sources.map((item) => {
                   const expanded = expandedSourceId === item.id;
                   const meta = STRENGTH_META[item.strength];
 
                   return (
-                    <Reveal as="li" key={item.id} index={index} variant="rise-sm">
+                    <li key={item.id}>
                       <button
                         type="button"
                         aria-expanded={expanded}
@@ -438,7 +457,7 @@ export function EvidenceView() {
                           </p>
                         </div>
                       </div>
-                    </Reveal>
+                    </li>
                   );
                 })}
               </ul>
@@ -450,10 +469,10 @@ export function EvidenceView() {
               </div>
             )}
           </Card>
-        </Reveal>
+        </div>
       </div>
 
-      <Reveal delay={330}>
+      <div>
         <Card padding="lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -476,7 +495,7 @@ export function EvidenceView() {
             />
           </div>
 
-          {data && data.timeline.length === 0 ? (
+          {data && visibleTimeline.length === 0 ? (
             <Unavailable title="Sem linha do tempo de mudanças" className="mt-6">
               Nenhuma das origens atuais registra deploys ou mudanças
               correlacionadas a este incidente. A linha do tempo volta quando o
@@ -484,17 +503,12 @@ export function EvidenceView() {
             </Unavailable>
           ) : null}
 
-          {data && data.timeline.length > 0 ? (
+          {data && visibleTimeline.length > 0 ? (
             <>
               <div className="mt-8 overflow-x-auto">
                 <div className="grid min-w-[46rem] grid-cols-6 gap-2">
-                  {data.timeline.map((mark, index) => (
-                    <Reveal
-                      key={mark.time}
-                      index={index}
-                      variant="rise-sm"
-                      className="flex flex-col items-center gap-2 text-center"
-                    >
+                  {visibleTimeline.map((mark) => (
+                    <div key={`${mark.timestamp}-${mark.label}`} className="flex flex-col items-center gap-2 text-center">
                       <span className="text-caption font-semibold text-ink">
                         {mark.time}
                       </span>
@@ -519,26 +533,26 @@ export function EvidenceView() {
                       <span className="text-caption text-ink-brand">
                         {mark.source}
                       </span>
-                    </Reveal>
+                    </div>
                   ))}
                 </div>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-2">
-                {data.changes.map((item, index) => (
-                  <Reveal key={item.cause} index={index} variant="scale">
+                {data.changes.map((item) => (
+                  <div key={item.cause}>
                     <Badge tone={item.tone}>
                       {item.label}: {item.cause} · {item.percentage}%
                     </Badge>
-                  </Reveal>
+                  </div>
                 ))}
               </div>
             </>
-          ) : (
+          ) : !data ? (
             <Skeleton className="mt-8 h-28 w-full" />
-          )}
+          ) : null}
         </Card>
-      </Reveal>
+      </div>
     </div>
   );
 }

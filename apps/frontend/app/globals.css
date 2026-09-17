@@ -414,6 +414,26 @@
   background-image: var(--gradient-brand);
 }
 
+/* Mantém a lista de fontes dentro do cartão, com uma barra de rolagem visível. */
+.evidence-source-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) var(--color-surface-muted);
+}
+
+.evidence-source-list::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.evidence-source-list::-webkit-scrollbar-track {
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+}
+
+.evidence-source-list::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: var(--radius-pill);
+}
+
 /** Fundo institucional escuro. */
 @utility bg-gradient-navy {
   background-image: var(--gradient-navy);
