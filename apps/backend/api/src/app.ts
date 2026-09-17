@@ -205,6 +205,7 @@ export function createApp(deps: AppDependencies) {
     },
   );
   app.use(rateLimiter(config.rateLimitPerMinute));
+  const loginRateLimiter = rateLimiter(config.authLoginRateLimitPerMinute);
 
   app.get(PUBLIC_ROUTES.authLogin.express, async (_request, response, next) => {
     try {
@@ -219,8 +220,12 @@ export function createApp(deps: AppDependencies) {
   // navegador não recebe o ID/access token do Cognito, só o cookie
   // HttpOnly — um token no corpo da resposta seria alcançável por JS
   // (inclusive por um XSS) sem que o cliente precise dele para nada.
+  // `loginRateLimiter` soma-se ao limite geral: esta rota é alvo natural de
+  // força bruta, e o throttling do próprio Cognito só entra depois do
+  // round-trip até a AWS.
   app.post(
     PUBLIC_ROUTES.authPasswordLogin.express,
+    loginRateLimiter,
     async (request, response, next) => {
       try {
         const parsed = passwordLoginBodySchema.safeParse(request.body);
