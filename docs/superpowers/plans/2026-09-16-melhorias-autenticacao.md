@@ -47,10 +47,18 @@ busca — zero referências fora do arquivo de endpoints). Ou seja, qualquer
 pessoa que digite `/visao-geral` acessa a casca do painel sem estar logada; só
 as chamadas de API individuais falham depois.
 
-### 3. Sem logout
+### 3. Sem logout — **resolvido em 2026-09-17**
 
 `POST /auth/logout` existe e funciona no backend, mas não há botão nem
 chamada a ele em nenhum lugar do frontend. A sessão só expira sozinha em 8h.
+
+Botão "Sair da conta" adicionado em `AccessSecurityCard`
+(`apps/frontend/components/settings/access-security-card.tsx`), chamando o
+novo `signOut()` de `AccountProvider` — que por sua vez chama
+`signOut()` de `lib/auth.ts` (`POST /auth/logout`), limpa nome/foto
+sobrepostos localmente e zera a sessão em memória — e depois navega para
+`/login`. A proteção de rota do painel (não deixar acessar `/visao-geral`
+sem sessão) continua pendente; é um problema separado deste.
 
 ### 4. Dados de conta 100% mockados
 
@@ -88,7 +96,7 @@ extra aqui é barata.
 | Fase | Ação | Risco / esforço | Status |
 | --- | --- | --- | --- |
 | 1 | Parar de devolver `idToken`/`accessToken` no corpo de `/auth/login`; manter só o cookie | Baixo | **Feito** (2026-09-17) |
-| 2 | Proteger `(painel)`: checar `/auth/session` no layout e redirecionar para `/login` se não autenticado; adicionar botão de logout chamando `/auth/logout` | Médio | Pendente |
+| 2 | Proteger `(painel)`: checar `/auth/session` no layout e redirecionar para `/login` se não autenticado; adicionar botão de logout chamando `/auth/logout` | Médio | Botão de logout **feito** (2026-09-17); guard de rota pendente |
 | 3 | Substituir `ACCOUNT_PROFILE` mockado pela identidade real vinda de `/auth/session` (id/e-mail/nome/role), mantendo só nome e foto editáveis localmente como hoje | Médio | **Feito** (2026-09-16) |
 | 4 | Atualizar textos de `criar-conta`/`recuperar-senha` e adicionar indicação visual de "modo demonstração" | Baixo | Indicador de demo **feito**; textos de `criar-conta`/`recuperar-senha` mantidos por pedido explícito |
 | 5 | Rate limit dedicado em `/auth/login`; testes cobrindo guard de rota, logout e novo profile | Baixo–Médio | Pendente |
