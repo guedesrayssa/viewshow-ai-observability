@@ -80,6 +80,7 @@ describe("dashboard queries module", () => {
       state: "delayed",
       lagSeconds: 7200,
     });
+    expect(result.quality.warnings).toContainEqual(expect.objectContaining({ code: "STALE_SNAPSHOT" }));
   });
 
   it("returns explicit 503 when a projection was not published", async () => {
