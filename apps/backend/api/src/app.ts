@@ -214,16 +214,18 @@ export function createApp(deps: AppDependencies) {
     }
   });
 
-  // Login direto por usuário/senha (fluxo USER_PASSWORD_AUTH do Cognito, feito
-  // no servidor). Emite a mesma sessão assinada das demais rotas e devolve o
-  // ID token no corpo para clientes que precisem do JWT.
+  // Login direto por usuário/senha (fluxo USER_PASSWORD_AUTH do Cognito,
+  // feito no servidor). Emite a mesma sessão assinada das demais rotas; o
+  // navegador não recebe o ID/access token do Cognito, só o cookie
+  // HttpOnly — um token no corpo da resposta seria alcançável por JS
+  // (inclusive por um XSS) sem que o cliente precise dele para nada.
   app.post(
     PUBLIC_ROUTES.authPasswordLogin.express,
     async (request, response, next) => {
       try {
         const parsed = passwordLoginBodySchema.safeParse(request.body);
         if (!parsed.success) throw validationError(parsed.error);
-        const { identity, tokens } = await auth.passwordLogin.login(
+        const { identity } = await auth.passwordLogin.login(
           parsed.data.username,
           parsed.data.password,
         );
@@ -232,9 +234,6 @@ export function createApp(deps: AppDependencies) {
           successEnvelope(
             {
               data: {
-                token: tokens.idToken,
-                tokenType: tokens.tokenType,
-                expiresInSeconds: tokens.expiresInSeconds,
                 user: {
                   id: identity.id,
                   name: identity.name,
