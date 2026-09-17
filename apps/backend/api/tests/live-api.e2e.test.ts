@@ -397,7 +397,6 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
         meta: {
           partial: true,
           warnings: [
-            { code: "AGGREGATE_EVENTS_UNAVAILABLE" },
             { code: "INDIVIDUAL_EVENTS_UNAVAILABLE" },
           ],
         },
