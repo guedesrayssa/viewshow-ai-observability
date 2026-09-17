@@ -39,13 +39,34 @@ spec original diz explicitamente "não guardar senha nem token no navegador"
 token ainda trafega até o JS do navegador, ampliando à toa a superfície de um
 XSS.
 
-### 2. Nenhuma proteção de rota no painel
+### 2. Nenhuma proteção de rota no painel — **resolvido em 2026-09-17**
 
 `apps/frontend/app/(painel)/layout.tsx` não verifica sessão. O backend já
 expõe `GET /auth/session`, mas nada no frontend o chama (confirmado por
 busca — zero referências fora do arquivo de endpoints). Ou seja, qualquer
 pessoa que digite `/visao-geral` acessa a casca do painel sem estar logada; só
 as chamadas de API individuais falham depois.
+
+Tentei primeiro um `middleware.ts` do Next.js — não funciona neste projeto:
+`next.config.ts` usa `output: "export"` (export estático puro para o
+Amplify, sem servidor), e o próprio `next build` avisa que exportação
+estática desativa middleware. Confirmado rodando o build com o middleware
+presente: ele nunca intercepta nada.
+
+Solução real, coerente com o resto do app (que já é inteiramente
+client-side): `components/shell/panel-guard.tsx`, um componente cliente que
+embrulha `AppShell` em `(painel)/layout.tsx`. Ele lê `sessionStatus` de
+`AccountProvider` (novo campo no contexto, reaproveitando o fetch de sessão
+que já existia — sem round-trip extra) e não desenha nada (`return null`)
+enquanto checa ou quando não há sessão nem modo demo, redirecionando para
+`/login` via `router.replace`. Isso não substitui a proteção de verdade — os
+dados continuam exigindo sessão válida na API — mas resolve a casca do
+painel aparecer para quem não está logado.
+
+Verificado de verdade com Chrome headless (`--dump-dom`), não só por
+typecheck: sem sessão e sem demo, `/visao-geral/` termina renderizando só o
+formulário de login; com `NEXT_PUBLIC_ALLOW_EXAMPLE_DATA=true`, o painel
+completo (navegação, Incidentes, Monitoramento etc.) aparece normalmente.
 
 ### 3. Sem logout — **resolvido em 2026-09-17**
 
@@ -114,7 +135,7 @@ sem afetar outras rotas.
 | Fase | Ação | Risco / esforço | Status |
 | --- | --- | --- | --- |
 | 1 | Parar de devolver `idToken`/`accessToken` no corpo de `/auth/login`; manter só o cookie | Baixo | **Feito** (2026-09-17) |
-| 2 | Proteger `(painel)`: checar `/auth/session` no layout e redirecionar para `/login` se não autenticado; adicionar botão de logout chamando `/auth/logout` | Médio | Botão de logout **feito** (2026-09-17); guard de rota pendente |
+| 2 | Proteger `(painel)`: checar `/auth/session` no layout e redirecionar para `/login` se não autenticado; adicionar botão de logout chamando `/auth/logout` | Médio | **Feito** (2026-09-17) |
 | 3 | Substituir `ACCOUNT_PROFILE` mockado pela identidade real vinda de `/auth/session` (id/e-mail/nome/role), mantendo só nome e foto editáveis localmente como hoje | Médio | **Feito** (2026-09-16) |
 | 4 | Atualizar textos de `criar-conta`/`recuperar-senha` e adicionar indicação visual de "modo demonstração" | Baixo | Indicador de demo **feito**; textos de `criar-conta`/`recuperar-senha` mantidos por pedido explícito |
 | 5 | Rate limit dedicado em `/auth/login`; testes cobrindo guard de rota, logout e novo profile | Baixo–Médio | Rate limit **feito** (2026-09-17); testes automatizados de guard/logout/profile ainda pendentes (logout e profile só foram verificados manualmente) |
