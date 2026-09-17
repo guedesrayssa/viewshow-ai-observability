@@ -29,6 +29,7 @@ import {
 import {
   fetchSessionIdentity,
   isDemoModeActive,
+  signOut as requestSignOut,
   type SessionIdentity,
   type SessionRole,
 } from "@/lib/auth";
@@ -112,6 +113,8 @@ type AccountContextValue = {
   updateProfile: (patch: Partial<EditableProfile>) => void;
   /** Remove o nome sobreposto e a foto; volta ao nome da sessão. */
   reset: () => void;
+  /** Encerra a sessão no backend e limpa nome/foto sobrepostos localmente. */
+  signOut: () => Promise<void>;
 };
 
 const AccountContext = createContext<AccountContextValue | null>(null);
@@ -141,6 +144,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => accountStore.set(DEFAULT_EDITS), []);
 
+  const signOut = useCallback(async () => {
+    await requestSignOut();
+    accountStore.set(DEFAULT_EDITS);
+    setSession(null);
+  }, []);
+
   const value = useMemo<AccountContextValue>(() => {
     const base = session
       ? profileFromSession(session)
@@ -156,8 +165,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       },
       updateProfile,
       reset,
+      signOut,
     };
-  }, [session, edits, updateProfile, reset]);
+  }, [session, edits, updateProfile, reset, signOut]);
 
   return (
     <AccountContext.Provider value={value}>{children}</AccountContext.Provider>

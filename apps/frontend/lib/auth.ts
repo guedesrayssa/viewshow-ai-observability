@@ -104,3 +104,20 @@ export async function fetchSessionIdentity(): Promise<SessionIdentity | null> {
     return null;
   }
 }
+
+/**
+ * Encerra a sessão em cookie no backend. Sem API configurada não há cookie
+ * para encerrar; a chamada é ignorada silenciosamente nesse caso.
+ */
+export async function signOut(): Promise<void> {
+  if (!isApiConfigured()) return;
+  try {
+    await fetch(gatewayUrl(ENDPOINTS.auth.logout), {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch {
+    // O cookie expira sozinho em até 8h mesmo se essa chamada falhar.
+  }
+}
