@@ -101,7 +101,7 @@ resource "aws_cognito_user_pool_domain" "principal" {
   // another user pool" — inclusive entre contas do Learner Lab de pessoas
   // diferentes, que é como o erro apareceu. O ID da conta mantém o nome estável
   // para quem aplica e livre de colisão entre contas.
-  domain       = "${var.deployment_namespace}-${data.aws_caller_identity.atual.account_id}-auth"
+  domain       = "${var.deployment_namespace}-${data.aws_caller_identity.atual.account_id}-iac-auth"
   user_pool_id = aws_cognito_user_pool.principal.id
 }
 
