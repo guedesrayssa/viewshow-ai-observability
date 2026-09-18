@@ -193,9 +193,9 @@
 
 ## 4. Testes de Carga Funcional
 
-&emsp;O objetivo de cada nível é confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe — não medir p95, vazão ou taxa de erro de infraestrutura, que ficam fora do escopo deste documento.
+&emsp;O objetivo de cada nível é duplo: (1) confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe; e (2) registrar, em cada um dos três níveis, os **tempos de resposta** (`http_req_duration`, p50/p95/p99) e a **taxa de erros** (`http_req_failed`), conforme pede o barema.
 
-&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; os **critérios de aprovação** aqui são inteiramente diferentes: nenhum threshold de `http_req_duration` ou `http_reqs{status:200} rate`, e sim verificação de conteúdo — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido. Isso exige adicionar checks de corpo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo); essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) faz parte da implementação destes testes.
+&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; a ela somam-se checks de conteúdo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo) — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido; essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) faz parte da implementação destes testes. Além dos checks de conteúdo, cada nível reporta as métricas nativas do k6 — tempo de resposta e taxa de erros — extraídas do resumo JSON de cada execução (`resumo-nivelN.json`), com `429`/`503` contabilizados à parte, como proteção esperada, e não como falha funcional.
 
 ### Nível 1 — Carga leve
 
@@ -204,10 +204,13 @@
 | Objetivo e requisito relacionado | Confirmar que, sob baixa concorrência, todas as respostas da API de consultas permanecem corretas (schema, dados, paginação) — execução real, via HTTP, das rotas ligadas a RF01/RF02/RF07/RF09 |
 | Pré-condições e dados de entrada | Suíte k6 (`consultas.js` + `lib/session.js`) disponível; base de incidentes populada; endpoint da API acessível |
 | Procedimento | Executar `consultas.js` em `MODE=smoke`, com 1–2 VUs em modelo de chegada aberto a ~1 req/s por ~30 s (ordem de grandeza: 34 requisições em 31 s), sorteando os cenários A–G; validar o corpo de cada resposta contra o contrato Zod correspondente |
-| Resultado esperado | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, e `page.limit` bate com o `limit` pedido (ou o padrão) |
+| Critérios de sucesso | 100% das respostas `200` com corpo aderente ao contrato (funcional) **e** p95 de `http_req_duration` < 300 ms **e** taxa de erros (`http_req_failed`, respostas não-2xx) = 0% — nesta carga leve não há contenção esperada, logo nem `429` nem `503` deveriam ocorrer |
+| Resultado esperado | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, `page.limit` bate com o `limit` pedido (ou o padrão), e as métricas de carga atendem aos critérios de sucesso acima |
+| Tempos de resposta e taxa de erros (medidos) | a executar — p50/p95/p99 de `http_req_duration` e `http_req_failed` extraídos de `resumo-nivel1.json` |
 | Resultado obtido | a executar |
 | Situação | a executar |
-| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel1.json`) registrados em `assets/testes-funcionais/<data>/` |
+| Análise e conclusão | a executar — confrontar as métricas medidas com os critérios de sucesso acima e concluir se o sistema atende à carga leve tanto em correção de conteúdo quanto em tempo de resposta |
+| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel1.json`, já contendo `http_req_duration` e `http_req_failed` nativamente) registrados em `assets/testes-funcionais/<data>/` |
 
 ### Nível 2 — Carga progressiva moderada
 
@@ -216,10 +219,13 @@
 | Objetivo e requisito relacionado | Confirmar que a paginação de incidentes (RF09) permanece correta — sem itens repetidos ou pulados — quando múltiplos usuários paginam concorrentemente sobre a mesma base, sob carga moderada e sustentada |
 | Pré-condições e dados de entrada | Suíte k6 (`consultas.js`) configurada para taxa elevada de requisições por IP (janela controlada), de modo que a carga chegue à API em vez de ser barrada pelo limite de taxa (429); base de incidentes populada |
 | Procedimento | Executar `consultas.js` em rampa até 137 req/s, sustentada por ~3–4 min (~30 mil requisições), com múltiplos VUs percorrendo o cenário G (paginação por cursor) concorrentemente |
-| Resultado esperado | Cenário G percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado |
+| Critérios de sucesso | Cenário G sem itens repetidos/pulados entre páginas (funcional) **e** p95 de `http_req_duration` < 800 ms **e** taxa de erros "duros" (códigos diferentes de `200`/`429`/`503`) < 1% — sob 137 req/s sustentados alguma rejeição por limite de taxa é aceitável, desde que sinalizada como `429`, não como corpo incorreto |
+| Resultado esperado | Cenário G percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado; métricas de carga dentro dos critérios de sucesso acima |
+| Tempos de resposta e taxa de erros (medidos) | a executar — p50/p95/p99 de `http_req_duration` e `http_req_failed` (discriminando `429`/`503` dos demais códigos) extraídos de `resumo-nivel2.json` |
 | Resultado obtido | a executar |
 | Situação | a executar |
-| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel2.json`) registrados em `assets/testes-funcionais/<data>/` |
+| Análise e conclusão | a executar — confrontar as métricas medidas com os critérios de sucesso acima e concluir se a paginação permanece correta e responsiva sob carga moderada sustentada |
+| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel2.json`, já contendo `http_req_duration` e `http_req_failed` nativamente) registrados em `assets/testes-funcionais/<data>/` |
 
 ### Nível 3 — Carga alta (equivalente a `breakpoint`/`estresse`)
 
@@ -228,10 +234,13 @@
 | Objetivo e requisito relacionado | Confirmar que, sob fila e latência altas (próximas ao ponto de saturação da API), toda resposta `200` continua com corpo correto — sem corrupção nem mistura de dados entre requisições concorrentes (RF01/RF02/RF09) |
 | Pré-condições e dados de entrada | Perfis `breakpoint` (rampa 1→220 req/s) e/ou `estresse` (137→411 req/s) já definidos em `consultas.js`; base de incidentes populada |
 | Procedimento | Executar `consultas.js` com o perfil `breakpoint` e/ou `estresse` (3–6 min, VUs máx. 30–1.500 conforme o perfil), verificando em cada resposta `200` a correlação entre o `X-Request-Id` enviado e devolvido e que nenhum incidente devolvido por `diagnosis`/`events` pertence a um `incidentId` diferente do solicitado |
-| Resultado esperado | Toda resposta `200` mantém corpo correto e sem corrupção, mesmo sob saturação. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim |
+| Critérios de sucesso | Nenhuma resposta `200` com corpo corrompido/trocado (funcional) **e** taxa de erros "duros" (códigos diferentes de `200`/`429`/`503`) = 0%, mesmo com p95/p99 de `http_req_duration` subindo à medida que a API se aproxima da saturação; `429`/`503` são esperados perto do breakpoint e não contam como falha |
+| Resultado esperado | Toda resposta `200` mantém corpo correto e sem corrupção, mesmo sob saturação. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim; métricas de carga dentro dos critérios de sucesso acima |
+| Tempos de resposta e taxa de erros (medidos) | a executar — p50/p95/p99 de `http_req_duration` e distribuição de `http_req_failed` por código de status (`200` vs. `429`/`503` vs. outros), extraídos de `resumo-nivel3.json` |
 | Resultado obtido | a executar |
 | Situação | a executar |
-| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel3.json`) registrados em `assets/testes-funcionais/<data>/` |
+| Análise e conclusão | a executar — identificar o ponto aproximado de saturação (onde p95/p99 dispara e/ou `429`/`503` predominam) e confirmar que nenhuma resposta `200` veio corrompida até esse ponto |
+| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel3.json`, já contendo `http_req_duration` e `http_req_failed` nativamente) registrados em `assets/testes-funcionais/<data>/` |
 
 ---
 
