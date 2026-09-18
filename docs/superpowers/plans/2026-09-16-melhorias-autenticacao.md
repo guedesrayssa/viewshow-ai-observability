@@ -111,11 +111,17 @@ em modo demo (`AccountProvider`) também usa um rótulo dedicado
 ("Conta de demonstração" / "Modo de demonstração") em vez de imitar uma
 sessão real — ver achado 4.
 
-### 6. Textos desatualizados
+### 6. Textos desatualizados — **resolvido em 2026-09-17**
 
 `app/(auth)/criar-conta/page.tsx` e `app/(auth)/recuperar-senha/page.tsx`
 ainda falam em "conta corporativa Globo" / SSO — vocabulário do fluxo antigo,
 anterior à migração para Cognito por e-mail/senha.
+
+Troca mínima, por pedido explícito: só as menções literais a "conta
+corporativa Globo" viraram "sua conta"/"conta", genérico. Títulos ("Acesso
+corporativo", "Recuperar acesso"), estrutura das páginas e o texto sobre
+suporte interno de TI ficaram como estavam — nenhuma menção a Cognito foi
+adicionada.
 
 ### 7. Rate limit genérico — **resolvido em 2026-09-17**
 
@@ -137,7 +143,7 @@ sem afetar outras rotas.
 | 1 | Parar de devolver `idToken`/`accessToken` no corpo de `/auth/login`; manter só o cookie | Baixo | **Feito** (2026-09-17) |
 | 2 | Proteger `(painel)`: checar `/auth/session` no layout e redirecionar para `/login` se não autenticado; adicionar botão de logout chamando `/auth/logout` | Médio | **Feito** (2026-09-17) |
 | 3 | Substituir `ACCOUNT_PROFILE` mockado pela identidade real vinda de `/auth/session` (id/e-mail/nome/role), mantendo só nome e foto editáveis localmente como hoje | Médio | **Feito** (2026-09-16) |
-| 4 | Atualizar textos de `criar-conta`/`recuperar-senha` e adicionar indicação visual de "modo demonstração" | Baixo | Indicador de demo **feito**; textos de `criar-conta`/`recuperar-senha` mantidos por pedido explícito |
+| 4 | Atualizar textos de `criar-conta`/`recuperar-senha` e adicionar indicação visual de "modo demonstração" | Baixo | **Feito** (2026-09-16/17) |
 | 5 | Rate limit dedicado em `/auth/login`; testes cobrindo guard de rota, logout e novo profile | Baixo–Médio | Rate limit **feito** (2026-09-17); testes automatizados de guard/logout/profile ainda pendentes (logout e profile só foram verificados manualmente) |
 
 ### Detalhes da fase 3 (feita)
