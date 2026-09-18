@@ -254,6 +254,19 @@
 
 &emsp;Até a execução, cada linha deste documento permanece com "Resultado obtido" e "Situação" como **a executar**.
 
+### 5.1 Itens pendentes e plano de entrega
+
+&emsp;Para que o andamento do planejamento possa ser acompanhado até a conclusão, cada item ainda em aberto tem local definido de implementação (quando é código a escrever) e de entrega da evidência de execução:
+
+| Item pendente | Situação atual | Onde será implementado | Onde a evidência será entregue |
+| --- | --- | --- | --- |
+| IT02 (integração `IncidentUseCases` × DynamoDB Local) | **A escrever** — código não existe ainda, ver Seção 2 | Novo arquivo `tests/dynamodb-real.integration.test.ts` em `apps/backend/api/` | `assets/testes-funcionais/<data>/` (log de execução do teste e captura do processo/`docker ps` do DynamoDB Local) |
+| IT01 (HTTP × sessão) | Código já existe (`tests/gateway-http.integration.test.ts`), execução pendente | N/A — já implementado | `assets/testes-funcionais/<data>/resultado-vitest-gateway.txt` |
+| Seção 3 — casos CT-01 a CT-12 | Casos definidos na tabela de rastreabilidade (3.6), execução pendente | Requisições contra `GET /api/v1/incidents` (script/coleção a definir, ex. Node/curl) | `assets/testes-funcionais/<data>/teste-3-ct-XX.png`, uma captura por caso |
+| Seção 4 — Níveis 1, 2 e 3 | Scripts k6 base já existem (`consultas.js`); extensão com checks de conteúdo mais estritos é a escrever | `apps/backend/api/loadtest/k6/consultas.js` ou script irmão `consultas-funcionais.js` | `assets/testes-funcionais/<data>/resumo-nivel{1,2,3}.json` |
+
+&emsp;Este quadro deve ser atualizado conforme cada item for implementado e executado, até que todas as linhas de "Situação" nas Seções 2 a 4 estejam preenchidas com aprovado/reprovado.
+
 <div align="center">
 
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
