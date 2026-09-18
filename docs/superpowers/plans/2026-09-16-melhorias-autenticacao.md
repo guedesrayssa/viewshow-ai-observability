@@ -29,7 +29,7 @@ Arquivos revisados:
 
 ## Achados
 
-### 1. Token exposto sem necessidade (segurança)
+### 1. Token exposto sem necessidade (segurança) — **resolvido em 2026-09-17**
 
 Em `apps/backend/api/src/app.ts` (rota `POST /auth/login`), a resposta devolve
 `tokens.idToken` (JWT com e-mail, `sub` e grupos) no corpo JSON. O frontend
