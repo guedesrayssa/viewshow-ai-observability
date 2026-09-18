@@ -557,7 +557,9 @@ Objetivo do usuário.
 
 #### Requisitos especiais
 
-- O histórico deve observar a retenção de 30 dias em armazenamento de acesso rápido e 11 meses em armazenamento de baixo custo, conforme RNF05.
+- O histórico deve observar até 30 dias em armazenamento de acesso rápido e
+  uma política de retenção de até 12 meses; a disponibilidade é dada pelos
+  intervalos registrados no manifesto, conforme RNF05.
 - As buscas filtradas devem apresentar P95 de até dois segundos quando os dados estiverem em armazenamento de acesso rápido, conforme RNF14.
 - Cada janela deve conter ao menos 20 observações enquanto não houver um limiar específico definido para o indicador analisado.
 - As janelas devem possuir a mesma duração e preservar dispositivo, versão, região, conteúdo e demais filtros que definem o segmento comparado.
@@ -1434,7 +1436,13 @@ classDiagram
 
 &emsp;Os diagramas apresentam a arquitetura-alvo do View Show e especificam as responsabilidades dos participantes em cada cenário. As interações são descritas independentemente do estágio de implementação dos componentes.
 
-> **Aviso de estágio de implementação.** S3, Glue, Athena, SQS/DLQ, o Worker de Análise, a sincronização com o ARGUS e o Amazon Bedrock representam a arquitetura-alvo descrita nesta seção; eles não constituem, na `develop` atual, um fluxo operacional completo de ponta a ponta.
+> **Aviso de estágio de implementação.** O worker batch, S3/Glue/Athena,
+> DynamoDB e a outbox estão implementados, testados localmente e passaram pelo
+> smoke reduzido no Learner Lab em 12/09/2026. O candidato dessa execução não
+> foi ativado. O gate e o controle do sync live estão implementados e testados
+> localmente, mas conectividade/operação com o ARGUS live ainda não possuem
+> evidência AWS. Importação pela interface, prova com volume representativo e o
+> Worker de Análise integrado à AWS permanecem futuros.
 
 ### 5.1 Catálogo de diagramas de sequência
 
@@ -1446,8 +1454,8 @@ classDiagram
 
 | ID | Cenário | Casos de uso relacionados | Tipo de fluxo |
 | --- | --- | --- | --- |
-| DS-01A | Sincronização com o MySQL vivo | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico |
-| DS-01B | Importação de snapshot pela interface | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico/alternativo |
+| DS-01A | Sincronização controlada com o MySQL vivo | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Controle implementado; operação AWS pendente |
+| DS-01B | Backfill operacional/manual de snapshot | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Operação inicial |
 | DS-02A | Autenticação federada e consulta | UC-01, UC-02 | Básico |
 | DS-02B | Revisão concorrente e promoção ao conjunto de referência | UC-03, UC-04 | Concorrente |
 | DS-02C | Avaliação da recuperação após correção ⚠️ *(fluxo proposto, sem contrato de API formalizado)* | UC-05 | Básico/alternativo |
@@ -1470,268 +1478,125 @@ classDiagram
 
 ### 5.3 Ingestão e disponibilização dos dados
 
-&emsp;A ingestão transforma os registros operacionais do ARGUS em fatos e projeções consultáveis pelo View Show. O mesmo serviço processa tanto a fonte MySQL ativa quanto os snapshots enviados pela interface, preservando as regras de normalização e persistência. Esses fluxos realizam a sincronização e a normalização descritas em UC-08 e fornecem os dados utilizados nos demais casos de uso, UC-01, UC-03, UC-04, UC-06 e UC-07.
+&emsp;A ingestão ARGUS 2.0 transforma dados físicos em fatos e projeções
+canônicos. O contrato fechado tem 23 datasets e está em
+[Ingestão e dados](../arquitetura/ingestao-e-dados.md). O procedimento inicial é
+manual: o operador usa o uploader e `RunTask`; UI de importação e `ImportJob`
+são evolução futura, não participantes desta sequência. Esses fluxos dão suporte
+ao UC-08 e fornecem dados aos demais casos de uso.
 
-#### 5.3.1 DS-01A — Sincronização com o MySQL vivo
+#### 5.3.1 DS-01A — Sincronização controlada com o MySQL vivo
 
-&emsp;A sincronização periódica mantém no DynamoDB os últimos 30 dias dos dados produzidos pelo ARGUS e arquiva no S3, em formato Parquet, os 11 meses anteriores. A cada 15 minutos, o EventBridge inicia uma tarefa no Fargate e o Serviço de Ingestão tenta obter no DynamoDB um **bloqueio temporário com expiração**. Esse bloqueio, também denominado *lease*, concede a uma única execução o direito de atualizar a janela; caso a tarefa seja interrompida, a expiração permite que uma execução posterior continue o processamento.
+&emsp;O modo `sync`, o gate DynamoDB e o controle autenticado estão implementados.
+A agenda `g05-s3-ingestion-sync` nasce em estado `DISABLED`, e item ausente em
+`CONTROL#ARGUS`/`LIVE_SYNC` bloqueia novas leituras. Qualquer sessão autenticada
+pode alterar os dois estados pelo botão em Configurações, sem novo deploy. Isso
+não prova conectividade com a origem: rede autorizada, segredo live e evidência
+operacional ainda são pré-requisitos para habilitar a integração na AWS.
 
 <div align="center">
 
-<sup>Figura 4: DS-01A — sincronização periódica dos dados do MySQL vivo do ARGUS, da carga no DynamoDB ao arquivamento em S3</sup>
+<sup>Figura 4: DS-01A — sincronização controlada com o MySQL vivo</sup>
 
 </div>
 
 ```mermaid
 sequenceDiagram
     autonumber
-
-    participant EB as EventBridge
-    participant ECS as ECS/Fargate
-    participant ING as Serviço de Ingestão
-    participant SM as Secrets Manager
-    participant MYSQL as MySQL ARGUS
-    participant DB as DynamoDB
-    participant S3 as Amazon S3
-    participant GLUE as Glue Data Catalog
-    participant Q as SQS de Análise
-    participant CW as CloudWatch
-
-    EB->>ECS: RunTask(sync)
-    ECS->>ING: Iniciar sincronização
-    ING->>DB: Criar IngestionRun
-    ING->>DB: Adquirir bloqueio temporário
-
-    alt Outra sincronização mantém o bloqueio
-        DB-->>ING: ConditionalCheckFailed
-        ING->>DB: IngestionRun = SKIPPED_LOCKED
-        ING->>CW: Registrar execução ignorada
-    else Bloqueio adquirido
-        ING->>SM: Obter credenciais do ARGUS
-        SM-->>ING: Credenciais
-        ING->>MYSQL: Conectar via VPN e TLS
-        ING->>MYSQL: Validar schema físico
-
-        alt Schema incompatível
-            ING->>DB: Registrar erro permanente
-            ING->>DB: IngestionRun = FAILED
-            Note over ING,DB: Checkpoint e watermark não avançam
-        else Schema válido
-            ING->>DB: Ler checkpoint e watermark
-            DB-->>ING: resumeCursor e publishedWatermark
-            ING->>ING: Calcular janela, lookback e safety delay
-
-            loop Enquanto houver páginas
-                ING->>MYSQL: Ler página após resumeCursor
-                MYSQL-->>ING: Registros físicos
-                ING->>ING: Validar e normalizar
-                ING->>ING: Calcular recordId e payloadHash
-                ING->>DB: Consultar registros existentes
-
-                alt Registro novo ou alterado
-                    ING->>DB: Gravar em lote
-                    opt Payload grande autorizado
-                        ING->>S3: Armazenar payload
-                        ING->>DB: Gravar referência do objeto
-                    end
-                else Registro inalterado
-                    Note over ING,DB: Não repetir escrita
-                end
-
-                ING->>DB: Avançar resumeCursor
-            end
-
-            ING->>DB: Atualizar projeções afetadas
-            opt Dados ultrapassaram 30 dias na camada quente
-                ING->>S3: Gravar partição Parquet histórica
-                S3-->>ING: Checksum e contagem confirmados
-                ING->>GLUE: Registrar partição validada
-                ING->>DB: Autorizar expiração da cópia quente
-            end
-            ING->>ING: Determinar eventos exigidos pela janela
-            ING->>DB: Transação: watermark + uma outbox PENDING por evento
-
-            loop Para cada item PENDING
-                ING->>Q: Publicar evento com eventId e idempotencyKey próprios
-                Q-->>ING: Evento aceito
-                ING->>DB: Marcar somente esse item como PUBLISHED
-            end
-
-            ING->>DB: IngestionRun = SUCCEEDED
-        end
-
-        ING->>DB: Liberar bloqueio
-        ING->>CW: Publicar logs, métricas e watermarks
-    end
-
-    opt Uma publicação SQS foi interrompida
-        Note over DB: Somente a outbox não confirmada permanece PENDING
-        ING->>DB: Próxima execução recupera itens PENDING
-        ING->>Q: Republicar cada item com os mesmos IDs
-        ING->>DB: Marcar cada item confirmado como PUBLISHED
-    end
-```
-
-<div align="center">
-
-<sup>Fonte: Material produzido pelos autores (2026).</sup>
-
-</div>
-
-&emsp;Depois de obter o bloqueio, o serviço recupera as credenciais no Secrets Manager e acessa o MySQL pela rede privada, com transporte protegido por TLS. Os registros são lidos em páginas, normalizados e identificados por `recordId`. O `payloadHash` permite reconhecer quando o conteúdo não mudou e evita escritas desnecessárias. Registros novos ou alterados permanecem no DynamoDB durante a janela quente. Ao ultrapassarem 30 dias, são consolidados em partições Parquet no S3 e registrados no Glue Data Catalog; a expiração da cópia quente somente é autorizada após a validação do arquivo histórico.
-
-&emsp;O marcador da última janela completa publicada é denominado *watermark*. Sua atualização ocorre na mesma transação que cria um item de saída pendente, conhecido como *outbox*, para cada evento exigido. Toda janela produz uma detecção, e o fechamento horário também produz uma previsão; cada item possui identificadores e estado próprios. Se uma publicação falhar, a execução seguinte republica somente os itens `PENDING` com as mesmas chaves de idempotência. Se outra sincronização mantiver o bloqueio, a nova tentativa é encerrada como `SKIPPED_LOCKED`, sem interferir na tarefa ativa.
-
-#### 5.3.2 DS-01B — Importação de snapshot pela interface
-
-&emsp;A importação de snapshot permite carregar pela interface uma cópia do banco do ARGUS sem interromper o conjunto de dados que já está disponível. O arquivo é enviado diretamente ao S3 por partes, mediante endereços temporários gerados pelo Backend. Concluído o envio, uma tarefa Fargate restaura o dump em um MySQL 8 isolado e reutiliza o mesmo processo de normalização empregado na sincronização periódica. Enquanto a tarefa é executada, o Dashboard consulta periodicamente o estado do `ImportJob`, prática denominada *polling*, para apresentar o progresso ao usuário.
-
-<div align="center">
-
-<sup>Figura 5: DS-01B — importação assíncrona de um snapshot do ARGUS enviado pela interface, sem interromper o conjunto de dados ativo</sup>
-
-</div>
-
-```mermaid
-sequenceDiagram
-    autonumber
-
-    actor U as Operador de dados
-    participant UI as Dashboard
+    actor U as Usuário autenticado
+    participant UI as Configurações
     participant API as Backend
-    participant S3 as Amazon S3
+    participant SCH as Scheduler
     participant ECS as ECS/Fargate
-    participant MYSQL as MySQL 8 temporário
-    participant ING as Serviço de Ingestão
+    participant ING as Serviço batch
+    participant MYSQL as MySQL ARGUS live
     participant DB as DynamoDB
-    participant GLUE as Glue Data Catalog
-    participant Q as SQS de Análise
-    participant CW as CloudWatch
+    participant Q as SQS
 
-    U->>UI: Selecionar dump
-    UI->>API: POST /api/v1/imports
-    API->>API: Resolver sessão corporativa e verificar data:import
-    alt Sessão ausente
-        API-->>UI: HTTP 401 UNAUTHENTICATED
-    else Sessão sem data:import
-        API-->>UI: HTTP 403 FORBIDDEN
-    else Operador autorizado
-    API->>DB: Criar ImportJob = UPLOADING e candidateDatasetVersion
-    API-->>UI: importId + URLs multipart pré-assinadas
-    end
-
-    loop Para cada parte do arquivo
-        UI->>S3: Enviar parte
-        S3-->>UI: Parte recebida
-        UI->>UI: Atualizar percentual do upload
-    end
-
-    UI->>API: POST /api/v1/imports/{importId}/complete + Idempotency-Key
-    API->>API: Resolver sessão corporativa e verificar data:import
-    alt Sessão ausente
-        API-->>UI: HTTP 401 UNAUTHENTICATED
-    else Sessão sem data:import
-        API-->>UI: HTTP 403 FORBIDDEN
-    else Operador autorizado
-    API->>DB: Reservar chave + hash, completionStep = RESERVED
-
-    alt Primeira conclusão válida
-        API->>S3: Confirmar upload, tamanho e checksum
-        API->>DB: completionStep = UPLOAD_COMPLETED,<br/>status = PROCESSING, stage = STARTING_TASK
-        API->>ECS: RunTask(import-snapshot, clientToken derivado do importId)
-        ECS-->>API: taskArn
-        API->>DB: Persistir taskArn e resposta, stage = VALIDATING
-        API-->>UI: HTTP 202 Accepted
-    else Mesma chave e mesmas partes
-        API->>DB: Consultar etapa e resposta persistidas
-        opt Upload ainda não confirmado
-            API->>S3: Confirmar ou reconhecer upload já concluído
-            API->>DB: completionStep = UPLOAD_COMPLETED,<br/>status = PROCESSING, stage = STARTING_TASK
-        end
-        opt RunTask pendente ou resposta perdida
-            API->>ECS: Repetir RunTask com o mesmo clientToken
-            ECS-->>API: Mesmo taskArn
-            API->>DB: Persistir taskArn e resposta
-        end
-        API-->>UI: Repetir HTTP 202 sem duplicar efeitos
-    else Chave reutilizada com partes diferentes
-        API-->>UI: HTTP 409 IDEMPOTENCY_KEY_REUSED
-    end
-    end
-
-    par Processamento assíncrono
-        ECS->>DB: stage = VALIDATING
-        ECS->>S3: Baixar dump
-        S3-->>ECS: Arquivo
-        ECS->>ECS: Validar formato, checksum e espaço
-
-        alt Dump inválido
-            ECS->>DB: ImportJob = FAILED
-            ECS->>CW: Registrar erro sanitizado
-        else Dump válido
-            ECS->>DB: stage = RESTORING
-            ECS->>MYSQL: Iniciar MySQL 8 isolado
-            ECS->>MYSQL: Restaurar dump
-
-            alt Restauração falhou
-                ECS->>DB: ImportJob = FAILED
-                ECS->>CW: Registrar falha de restauração
-            else Restauração concluída
-                ECS->>DB: stage = INGESTING
-                ECS->>ING: Executar backfill(snapshot)
-                ING->>MYSQL: Ler dados restaurados
-                Note over ING,DB: Paginação e normalização seguem o DS-01A
-                ING->>DB: Gravar até 30 dias na versão candidata
-                ING->>S3: Gravar 11 meses em Parquet na versão candidata
-                S3-->>ING: Checksum e contagens do arquivo
-                ING->>GLUE: Registrar partições da versão candidata
-                ING->>DB: Validar camadas, projeções e watermarks
-
-                alt Backfill ou validação falhou
-                    ING->>DB: ImportJob = FAILED
-                    ING->>CW: Registrar falha sem ativar a candidata
-                else Versão candidata concluída
-                    ECS->>DB: stage = ACTIVATING
-                    ING->>DB: TransactWriteItems
-                    Note over ING,DB: Atualizar watermark e manifesto ativo,<br/>criar duas outboxes PENDING e concluir ImportJob
-                    ING->>Q: Publicar ANOMALY_DETECTION
-                    Q-->>ING: Detecção aceita
-                    ING->>DB: Outbox da detecção = PUBLISHED
-                    ING->>Q: Publicar QOE_FORECAST
-                    Q-->>ING: Previsão aceita
-                    ING->>DB: Outbox da previsão = PUBLISHED
-                    ECS->>CW: Publicar métricas da importação
-                end
-            end
-        end
-
-        ECS->>MYSQL: Encerrar banco temporário, se iniciado
-        ECS->>ECS: Descartar volume efêmero
-        ECS->>CW: Registrar resultado da limpeza
-
-    and Acompanhamento pelo usuário
-        loop Enquanto o estado não for terminal
-            UI->>API: GET /api/v1/imports/{importId}
-            API->>API: Resolver sessão corporativa e verificar data:import
-            API->>DB: Consultar ImportJob
-            DB-->>API: status, stage e progresso
-            API-->>UI: Estado atual
-            UI->>UI: Atualizar mensagem de carregamento
+    U->>UI: Habilitar integração ARGUS
+    UI->>API: PATCH enabled=true
+    API->>SCH: GetSchedule + UpdateSchedule(ENABLED)
+    API->>DB: Put CONTROL#ARGUS/LIVE_SYNC=true
+    API-->>UI: Estado confirmado
+    loop A cada 15 minutos
+        SCH->>ECS: RunTask(sync)
+        ECS->>ING: executar sync
+        ING->>DB: leitura consistente do gate
+        alt Gate habilitado e origem autorizada
+            ING->>MYSQL: ler incremento autenticado
+            ING->>DB: materializar janela e outbox
+            ING->>Q: publicar pendências
+        else Gate ausente ou desligado
+            ING-->>ECS: SKIPPED_DISABLED
         end
     end
+```
 
-    UI->>API: GET /api/v1/imports/{importId}
-    API->>API: Resolver sessão corporativa e verificar data:import
-    API->>DB: Consultar estado final
-    DB-->>API: COMPLETED ou FAILED
+&emsp;Quando autorizado, o sync usa lease, checkpoint e a mesma normalização do
+snapshot. Desligar grava primeiro o gate e depois pausa o Scheduler; uma task
+que já passou pelo gate pode terminar. O controle implementado não prova
+disponibilidade do MySQL live antes da validação operacional da origem.
 
-    alt Importação concluída
-        API-->>UI: Dataset carregado
-        UI->>UI: Exibir sucesso e atualizar dashboard
-    else Importação falhou
-        API-->>UI: Falha e código de acompanhamento
-        UI->>UI: Exibir erro e preservar dataset anterior
+#### 5.3.2 DS-01B — Backfill operacional/manual de snapshot
+
+&emsp;O backfill é a operação inicial. O operador fornece `SNAPSHOT`
+(`argus_dump.sql.gz` ou ZIP que o contém) ao uploader, com bucket, conta e
+região, e conserva o resultado em `upload-result.json`. O uploader calcula o
+SHA-256 dos bytes compactados, publica `dumps/<sha256>/argus_dump.sql.gz` e
+obtém `VersionId`. Em seguida, `RunTask` consome `terraform-output.json` e
+`upload-result.json`, injetando somente bucket, chave, versão, checksum e a
+data de extração explicitamente atestada pelo operador. A
+senha do MySQL é gerada e entregue pelo Secrets Manager, nunca por argumento ou
+log.
+
+<div align="center">
+
+<sup>Figura 5: DS-01B — backfill manual de snapshot ARGUS 2.0</sup>
+
+</div>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Operador
+    participant UP as upload_snapshot.py
+    participant RT as run_task.py
+    participant S3 as S3 versionado
+    participant ECS as ECS/Fargate
+    participant MYSQL as mysql-snapshot efêmero
+    participant ING as ingestion batch
+    participant DB as DynamoDB
+    participant GLUE as Glue
+    participant ATH as Athena
+    participant Q as SQS
+
+    O->>UP: arquivo .sql.gz ou ZIP
+    UP->>UP: extrair só argus_dump.sql.gz e SHA-256 streaming
+    UP->>S3: multipart dumps/<sha256>/argus_dump.sql.gz
+    S3-->>UP: VersionId, tamanho e checksum
+    O->>RT: --terraform-output + --snapshot + --no-activate
+    RT->>ECS: RunTask com clientToken determinístico
+    ECS->>MYSQL: iniciar MySQL 8 e segredo runtime
+    ECS->>ING: iniciar após health check
+    ING->>DB: STARTING; adquirir lease e candidata
+    ING->>S3: conferir checksum do objeto
+    ING->>MYSQL: RESTORING, stream S3 → gzip → MySQL
+    ING->>MYSQL: VALIDATING schema físico 2.0
+    ING->>DB: INGESTING registros canônicos por página
+    ING->>DB: PROJECTING read models
+    ING->>S3: ARCHIVING Parquet em staging/canonical
+    ING->>GLUE: catalogar uma tabela/partição por dataset
+    ING->>ATH: reconciliar contagem e schema
+    Note over O,RT: Após validação, execução separada com --activate, ACTIVATE_CANDIDATE=true e clientToken ECS distinto
+    ING->>DB: ACTIVATING manifesto por compare-and-swap
+    ING->>DB: PUBLISHING watermark + outbox
+    alt SQS confirma
+        ING->>Q: publicar evento idempotente
+        ING->>DB: SUCCEEDED e outbox PUBLISHED
+    else SQS falha após ativação
+        ING->>DB: PARTIAL; conservar outbox PENDING
     end
+    ECS->>MYSQL: encerrar e descartar volume
 ```
 
 <div align="center">
@@ -1740,9 +1605,24 @@ sequenceDiagram
 
 </div>
 
-&emsp;O ator deste fluxo é o `Operador de dados`: o Backend resolve a sessão corporativa e exige `data:import`, concedida somente pelo grupo Cognito `data-operator`, antes de criar ou consultar o `ImportJob` e antes de acessar S3 ou ECS. Sessão ausente recebe HTTP 401 com `UNAUTHENTICATED`; sessão válida sem a permissão recebe HTTP 403 com `FORBIDDEN`. Claims no body ou em headers não concedem essa autorização. O Backend responde com HTTP 202 porque a restauração e a ingestão continuam de forma assíncrona. A conclusão reserva condicionalmente a chave de idempotência e o hash canônico das partes no `ImportJob`; cada etapa alcançada, o `taskArn` e a resposta são persistidos. Se a chamada for repetida ou interrompida, o Backend retoma a etapa pendente e utiliza o mesmo `clientToken` no `RunTask`, sem criar outra tarefa. O `ImportJob` registra `createdBy`, `completionRequestedBy` e `activatedBy` a partir da sessão autorizada, além de `createdAt`, `completionRequestedAt` e `activatedAt`; `activatedBy` guarda o operador cujo comando autorizado iniciou o processamento. Ele recebe uma `candidateDatasetVersion`, usada nas chaves do DynamoDB, nos prefixos do S3, nas partições do Glue e nos watermarks. O dashboard continua consultando o manifesto anterior até que os dois níveis da candidata sejam validados. Depois da validação, uma transação troca o manifesto ativo, cria itens independentes de outbox para a detecção e para a previsão e conclui o job. O `recordId` permanece estável entre versões.
+&emsp;A ordem é obrigatória: `STARTING` → `RESTORING` → `VALIDATING` →
+`INGESTING` → `PROJECTING` → `ARCHIVING` → `ACTIVATING` →
+`PUBLISHING` → `SUCCEEDED` ou `PARTIAL`. Falha antes de `ACTIVATING`
+termina em `FAILED` e preserva o manifesto ativo. Se outro run retiver o
+lease, o resultado é `SKIPPED_LOCKED`. A segunda execução do mesmo
+bucket/chave/versão/checksum deve produzir a mesma `datasetVersion`, sem novos
+fatos, objetos canônicos ou eventos lógicos.
 
-&emsp;As falhas são tratadas de modo a preservar um estado utilizável. Dump inválido, falha de restauração, backfill incompleto ou validação inconsistente encerram o `ImportJob` como `FAILED` sem alterar o manifesto ativo; a versão candidata permanece invisível e pode ser removida posteriormente. Falhas de publicação mantêm apenas o item correspondente da outbox como `PENDING`. O encerramento do MySQL e o descarte do volume são executados no caminho comum após sucesso ou falha, sem remover o dump retido no S3. A ingestão não consulta nem modifica o conjunto de diagnósticos confirmados.
+&emsp;O MySQL é transitório; S3 é a cópia durável. O archive passa por
+`STAGING`, `UPLOADED`, `CATALOGED`, `VALIDATED` e `AVAILABLE`. Somente
+depois da reconciliação Athena a TTL da cópia quente pode ser elegível. O
+manifesto expõe `availableIntervals`: a política de até 12 meses não permite
+afirmar uma cobertura que o snapshot não contenha.
+
+&emsp;O dump reduzido determinístico cobre as 23 tabelas e serve para smoke do
+caminho funcional. Ele não valida capacidade nem substitui uma execução
+representativa do dump real. O smoke reduzido na AWS foi concluído em
+12/09/2026; a prova de capacidade continua pendente.
 
 ### 5.4 Backend, autenticação e revisão
 
@@ -2322,7 +2202,7 @@ sequenceDiagram
 | Tempo de invisibilidade da mensagem | 5 minutos |
 | Renovação durante o processamento | A cada 60 segundos |
 | Máximo de recebimentos | 5 |
-| Retenção da fila principal | 4 dias |
+| Retenção da fila principal | 14 dias |
 | Retenção da DLQ | 14 dias |
 | Espera máxima por novas mensagens | 20 segundos |
 | Alarme | Uma ou mais mensagens na DLQ |
@@ -2366,8 +2246,8 @@ sequenceDiagram
     SRC->>ING: Disponibilizar nova janela de dados
     ING->>ING: Validar e normalizar
     ING->>DB: Manter até 30 dias de fatos e projeções
-    ING->>S3: Arquivar 11 meses em Parquet
-    ING->>GLUE: Registrar partições históricas
+    ING->>S3: Arquivar Parquet canônico conforme partições disponíveis
+    ING->>GLUE: Registrar e validar partições históricas
     ING->>DB: Publicar watermark e outbox
     ING->>Q: ANALYSIS_REQUESTED
     Q->>W: Entregar janela materializada
@@ -2441,7 +2321,16 @@ sequenceDiagram
 
 &emsp;Na primeira parte, o DS-01A detalha a sincronização do MySQL e o DS-01B detalha a importação de snapshots. Depois da publicação na fila, o DS-03A descreve a previsão horária, o DS-03B apresenta a detecção de incidentes e o DS-03C mostra a recuperação de falhas. A interação do usuário é aprofundada no DS-02A, para autenticação e consulta, no DS-02B, para revisão de hipóteses, e no DS-02C, para avaliação posterior a uma correção externa.
 
-&emsp;Ao final do percurso, até 30 dias da janela ingerida estão disponíveis no DynamoDB e os 11 meses anteriores permanecem em Parquet no S3, sob o mesmo `datasetVersion`. Uma previsão continua distinta de um incidente observado, enquanto uma anomalia pode criar ou reforçar um incidente. As hipóteses permanecem pendentes até a decisão humana e somente as confirmadas passam a integrar o conjunto de referência; decisões refutadas podem registrar a causa alternativa informada, e decisões inconclusivas permanecem revisáveis. O `traceId`, identificador de correlação propagado entre os componentes, permite acompanhar uma execução ao longo de todo o fluxo.
+&emsp;Ao final do percurso, a camada quente mantém até 30 dias e o S3 mantém
+Parquet canônico sob o mesmo `datasetVersion`; os intervalos consultáveis são
+os declarados no manifesto. A política de retenção pode chegar a 12 meses, sem
+afirmar que o snapshot atual cubra toda essa duração. Uma previsão continua
+distinta de um incidente observado, enquanto uma anomalia pode criar ou reforçar
+um incidente. As hipóteses permanecem pendentes até a decisão humana e somente
+as confirmadas passam a integrar o conjunto de referência; decisões refutadas
+podem registrar a causa alternativa informada, e decisões inconclusivas
+permanecem revisáveis. O `traceId`, identificador de correlação propagado entre
+os componentes, permite acompanhar uma execução ao longo de todo o fluxo.
 
 ### 5.7 Rastreabilidade interna
 
@@ -2453,8 +2342,8 @@ sequenceDiagram
 
 | Diagrama | Casos de uso | Natureza da relação | Decisão principal |
 | --- | --- | --- | --- |
-| DS-01A | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico | Persistência operacional e arquivamento histórico da telemetria |
-| DS-01B | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico | Upload no S3, MySQL temporário no Fargate e ativação versionada |
+| DS-01A | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Suporte técnico controlado | Gate autoritativo, Scheduler coordenado e persistência operacional da telemetria |
+| DS-01B | UC-01, UC-03, UC-04, UC-06, UC-07, UC-08 | Operação manual | Upload por script, MySQL sidecar, validação Athena e ativação versionada |
 | DS-02A | UC-01, UC-02 | Realização | SSO federado com Backend for Frontend |
 | DS-02B | UC-03, UC-04 | Realização | Concorrência otimista, auditoria e promoção transacional |
 | DS-02C | UC-05 | Realização | Comparação auditável de janelas equivalentes sem inferência indevida de causalidade |

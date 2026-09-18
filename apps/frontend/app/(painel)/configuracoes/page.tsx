@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Reveal } from "@/components/motion/reveal";
 import { AccessSecurityCard } from "@/components/settings/access-security-card";
 import { AccountDetailsCard } from "@/components/settings/account-details-card";
+import { ArgusSyncCard } from "@/components/settings/argus-sync-card";
 import { DangerZoneCard } from "@/components/settings/danger-zone-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { ProfileCard } from "@/components/settings/profile-card";
@@ -49,6 +50,10 @@ export default function ConfiguracoesPage() {
       </Reveal>
 
       <Reveal delay={320}>
+        <ArgusSyncCard />
+      </Reveal>
+
+      <Reveal delay={380}>
         <DangerZoneCard />
       </Reveal>
     </div>

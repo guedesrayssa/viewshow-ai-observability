@@ -206,6 +206,17 @@ export function MonitorIcon(props: IconProps) {
   );
 }
 
+/** Dados e importações, na navegação lateral. */
+export function DatabaseIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <ellipse cx="12" cy="5.5" rx="7.5" ry="3" />
+      <path d="M4.5 5.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6" />
+      <path d="M4.5 11.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6" />
+    </Icon>
+  );
+}
+
 /** Conta da pessoa usuária, no rodapé da navegação lateral. */
 export function UserIcon(props: IconProps) {
   return (

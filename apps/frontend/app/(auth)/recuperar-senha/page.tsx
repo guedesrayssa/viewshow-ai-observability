@@ -15,8 +15,7 @@ import { Wordmark } from "@/components/ui/wordmark";
 
 export const metadata: Metadata = {
   title: "Recuperar acesso",
-  description:
-    "Como recuperar o acesso à conta corporativa usada no View Show.",
+  description: "Como recuperar o acesso à conta usada no View Show.",
 };
 
 export default function RecuperarSenhaPage() {
@@ -29,8 +28,8 @@ export default function RecuperarSenhaPage() {
       <h1 className="mt-6 animate-rise text-h2 text-ink">Recuperar acesso</h1>
 
       <p className="mt-3 text-center text-body-sm text-ink-muted">
-        O View Show usa a sua conta corporativa Globo. Se você não consegue
-        entrar, o suporte interno pode ajudar a recuperar o acesso.
+        Se você não consegue entrar, o suporte interno pode ajudar a
+        recuperar o acesso à sua conta.
       </p>
 
       <Alert tone="info" className="mt-8 w-full">
