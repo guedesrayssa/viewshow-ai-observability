@@ -15,7 +15,17 @@
 
 &emsp;A suíte atual (`npm test`, Vitest) tem 11 arquivos e roda **70 testes passando, 1 ignorado**. As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
 
+## Priorização de execução
+
+&emsp;A ordem de implementação e execução desta suíte segue o risco funcional de cada fluxo, não a ordem de apresentação das seções:
+
+1. **Prioridade 1 — a consulta paginada como fluxo completo (Seção 3: fluxo principal CT-01, paginação subsequente A1/CT-02, pós-condições; e IT02).** O caso de uso de consulta filtrada e paginada de incidentes (RF09) é o de maior risco funcional do sistema: combina filtros cumulativos, cursor assinado (`CursorCodec`) e paginação sobre dado real em DynamoDB. Uma falha aqui — cursor aceito para filtro errado, página duplicada/pulada, ou paginação incorreta contra o banco real (hoje só coberta por adaptador mockado, ver IT02) — compromete diretamente a confiabilidade do dado usado na análise de falhas críticas (RF09) e no dashboard (RF07). Por isso, o fluxo completo de consulta paginada e a integração real com o DynamoDB Local (IT02) são implementados e executados primeiro.
+2. **Prioridade 2 — valores de fronteira do `limit` (UT04 e os casos CT-05 a CT-09).** A validação isolada do `limit` no schema apoia a análise de valor limite exigida pelo barema e já está implementada e passando (UT04), mas cobre sozinha apenas a camada de schema: um `limit` inválido nunca chega ao banco, então o risco de dado incorreto exposto ao usuário é menor do que o risco coberto pela Prioridade 1. Por isso esses casos, embora necessários, vêm depois do fluxo completo na ordem de execução.
+3. **Prioridade 3 — fluxos de exceção e de sessão (E1, E2, E4 / CT-10 a CT-12) e Testes de Carga (Seção 4).** Guardas de validação (janela temporal, cursor de outra combinação de filtros, sessão ausente) e os testes de carga dependem do fluxo principal e da massa de dados (N=150 incidentes) já estarem consolidados, e seu risco funcional é menor — rejeitar corretamente uma entrada inválida é menos crítico do que corromper ou misturar dados retornados como válidos.
+
 ## Sumário
+
+- [Priorização de execução](#priorização-de-execução)
 
 1. [Testes Unitários](#1-testes-unitários)
 2. [Testes de Integração](#2-testes-de-integração)
