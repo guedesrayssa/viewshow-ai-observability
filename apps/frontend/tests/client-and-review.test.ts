@@ -9,6 +9,7 @@ afterEach(() => {
 const meta = {
   requestId: "req_frontend",
   schemaVersion: "1.0",
+  datasetVersion: null,
   generatedAt: "2026-01-01T00:00:00Z",
   window: null,
   partial: true,
@@ -18,34 +19,75 @@ const meta = {
 };
 
 describe("gateway client", () => {
-  it("starts federated authentication at the operational login endpoint", async () => {
+  it("authenticates through the backend without exposing Cognito configuration", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
-    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
-    const { beginAuthentication } = await import("@/lib/auth");
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async (input: string | URL | Request, init?: RequestInit) => {
+          requests.push({ url: String(input), init });
+          return new Response(
+            JSON.stringify({
+              data: { user: { email: "ana@globo.com" } },
+              meta,
+            }),
+            { status: 200 },
+          );
+        },
+      ),
+    );
+    const { authenticateWithPassword } = await import("@/lib/auth");
 
-    expect(beginAuthentication()).toEqual({
-      kind: "redirect",
-      url: "http://operacional.test/auth/login",
+    await expect(
+      authenticateWithPassword(" ana@globo.com ", "Senha123"),
+    ).resolves.toEqual({ kind: "authenticated" });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url).toBe("http://operacional.test/auth/login");
+    expect(requests[0]?.init).toMatchObject({
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify({
+        username: "ana@globo.com",
+        password: "Senha123",
+      }),
     });
   });
 
-  it("starts a demo session when examples are explicitly enabled without an API", async () => {
+  it("returns a simple message for invalid credentials", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { code: "UNAUTHENTICATED" } }),
+            { status: 401 },
+          ),
+      ),
+    );
+    const { authenticateWithPassword } = await import("@/lib/auth");
+
+    await expect(
+      authenticateWithPassword("ana@globo.com", "errada"),
+    ).resolves.toEqual({
+      kind: "error",
+      message: "E-mail ou senha incorretos.",
+    });
+  });
+
+  it("keeps demo mode available without sending credentials", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
     vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "true");
-    const { beginAuthentication } = await import("@/lib/auth");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const { authenticateWithPassword } = await import("@/lib/auth");
 
-    expect(beginAuthentication()).toEqual({ kind: "demo" });
-  });
-
-  it("reports authentication as unavailable without an API or demo mode", async () => {
-    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
-    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "false");
-    const { AUTH_UNAVAILABLE_MESSAGE, beginAuthentication } = await import("@/lib/auth");
-
-    expect(beginAuthentication()).toEqual({
-      kind: "unavailable",
-      message: AUTH_UNAVAILABLE_MESSAGE,
-    });
+    await expect(
+      authenticateWithPassword("ana@globo.com", "Senha123"),
+    ).resolves.toEqual({ kind: "demo" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("supports the same-origin path prefix used by the existing ingress", async () => {
@@ -75,6 +117,39 @@ describe("gateway client", () => {
     const resource = await composeResource({ read: async () => { throw new Error("missing"); }, fallback: () => ({ fabricated: true }) });
     expect(resource.source).toBe("indisponivel");
     expect(resource.data).toBeUndefined();
+  });
+
+  it("sends ARGUS mutations as JSON and preserves gateway errors", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://gateway.test");
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      error: {
+        code: "ARGUS_UNAVAILABLE",
+        message: "ARGUS indisponível.",
+        requestId: "req_argus_error",
+      },
+    }), { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { apiPatch } = await import("@/lib/data/client");
+    const { ENDPOINTS } = await import("@/lib/data/endpoints");
+
+    await expect(
+      apiPatch(ENDPOINTS.argusIntegration, { enabled: true }),
+    ).rejects.toMatchObject({
+      status: 503,
+      code: "ARGUS_UNAVAILABLE",
+      message: "ARGUS indisponível.",
+      requestId: "req_argus_error",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/integrations/argus"),
+      expect.objectContaining({
+        method: "PATCH",
+        credentials: "include",
+        body: JSON.stringify({ enabled: true }),
+      }),
+    );
+    const requestHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(requestHeaders.get("Content-Type")).toBe("application/json");
   });
 
   it("blocks examples in production even if the public flag is set", async () => {
