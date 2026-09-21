@@ -13,7 +13,7 @@
 
 &emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
 
-&emsp;A suíte atual (`npm test`, Vitest) tem 11 arquivos e roda **70 testes passando, 1 ignorado**. As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
+&emsp;A suíte atual (`npm test`, Vitest) tem 11 arquivos e roda **71 testes passando, 1 ignorado** (72 no total). As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
 
 ## Priorização de execução
 
@@ -37,7 +37,7 @@
 
 ## 1. Testes Unitários
 
-&emsp;Quatro testes unitários, cobrindo função/método isolado com pelo menos um caso válido e um caso de erro cada. Três das quatro já existem na suíte Vitest; o quarto expõe uma lacuna real (limite de paginação nunca testado nos seus extremos) que também alimenta a análise de valor limite da Seção 3.
+&emsp;Quatro testes unitários, cobrindo função/método isolado com pelo menos um caso válido e um caso de erro cada. Três das quatro já existiam na suíte Vitest; o quarto (UT04) expunha uma lacuna real (limite de paginação nunca testado nos seus extremos) e foi escrito nesta rodada, também alimentando a análise de valor limite da Seção 3. Os quatro testes foram executados e os quatro passaram.
 
 ### UT01 — `CursorCodec.encode` / `CursorCodec.decode`
 
@@ -49,9 +49,9 @@
 | Pré-condições e dados de entrada | Segredo de 32+ caracteres para a chave AES-256-GCM; um par `(offset, fingerprint)` de filtros válido |
 | Procedimento | 1. Instanciar `CursorCodec` com um segredo fixo. 2. `encode(20, "filter-a")` e conferir que o cursor não contém o texto do filtro em claro. 3. `decode(cursor, "filter-a")` deve devolver `20` (caso válido). 4. `decode(cursor, "filter-b")` (fingerprint errado) deve lançar `ServiceError` (caso de erro). 5. Adulterar um caractere do cursor e chamar `decode` novamente — deve lançar `ServiceError` |
 | Resultado esperado | Caso válido: offset original devolvido sem vazar o filtro no cursor. Caso de erro: `ServiceError` (400) para fingerprint incompatível e para cursor adulterado — nunca um offset silenciosamente incorreto |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Evidências / reprodução | Saída de `npm test -- domain.test.ts` registrada em `assets/testes-funcionais/<data>/resultado-vitest-domain.txt` |
+| Resultado obtido | Offset original devolvido corretamente para o mesmo conjunto de filtros; `ServiceError` lançado tanto para fingerprint incompatível quanto para cursor adulterado, conforme esperado |
+| Situação | Aprovado |
+| Evidências / reprodução | `npm test -- domain.test.ts`, teste `"encrypts cursors and binds them to filters"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
 ### UT02 — `CognitoPasswordAuthenticator.authenticate`
 
@@ -63,9 +63,9 @@
 | Pré-condições e dados de entrada | Mock de `InitiateAuthFn` (substitui a chamada real ao Cognito); `clientId`/`clientSecret` de teste; um ID token JWT sintético com `email` e `cognito:groups` |
 | Procedimento | 1. Caso válido: mock devolve `AuthenticationResult` com ID token contendo grupo `engineer`; chamar `authenticate({ username, password })` e conferir identidade, papel e tokens devolvidos. 2. Caso de erro: mock lança `NotAuthorizedException`; chamar `authenticate` e conferir que o retorno é `{ ok: false, reason: "invalid_credentials" }`, sem lançar exceção não tratada |
 | Resultado esperado | Caso válido: `{ ok: true, identity: { role: "engineer", ... }, tokens: {...} }`. Caso de erro: falha classificada (`invalid_credentials`) e nunca uma sessão emitida a partir de credencial rejeitada pelo Cognito |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Evidências / reprodução | Saída de `npm test -- auth-password-login.test.ts` registrada em `assets/testes-funcionais/<data>/resultado-vitest-auth.txt` |
+| Resultado obtido | Identidade, papel e tokens corretos devolvidos no login válido; cada exceção do Cognito (`NotAuthorizedException`, `UserNotFoundException`, `UserNotConfirmedException`, `PasswordResetRequiredException`, throttling, erro desconhecido, desafio sem `AuthenticationResult`, ID token ilegível) classificada como falha, sem exceção não tratada — 9 dos 9 testes do bloco passaram |
+| Situação | Aprovado |
+| Evidências / reprodução | `npm test -- auth-password-login.test.ts`, bloco `"CognitoPasswordAuthenticator"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
 ### UT03 — `PasswordLoginUseCases.login` (tradução de falha em HTTP)
 
@@ -77,9 +77,9 @@
 | Pré-condições e dados de entrada | Um `PasswordAuthenticatorPort` falso, parametrizado com cada `PasswordAuthOutcome` possível (`ok: true` e as 6 variantes de `ok: false`) |
 | Procedimento | 1. Caso válido: port devolve `{ ok: true, identity, tokens }`; chamar `login(username, password)` e conferir que o resultado é `{ identity, tokens }`. 2. Caso de erro (repetir para as 6 razões): port devolve `{ ok: false, reason }`; chamar `login` e conferir que a promise rejeita com `{ status, code }` — por exemplo `invalid_credentials → 401/UNAUTHENTICATED`, `rate_limited → 429/RATE_LIMITED` |
 | Resultado esperado | Login válido devolve identidade e tokens sem alteração. Cada razão de falha do Cognito mapeia para exatamente o par `(status, code)` documentado — nenhuma falha de autenticação deve escapar como 500 genérico |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Evidências / reprodução | Mesma saída de `npm test -- auth-password-login.test.ts` da UT02 |
+| Resultado obtido | Login válido devolveu identidade e tokens sem alteração; as 6 razões de falha (`invalid_credentials → 401`, `user_not_confirmed → 403`, `password_reset_required → 403`, `challenge_required → 403`, `rate_limited → 429`, `unavailable → 503`) mapeadas para o par `(status, code)` correto — 7 dos 7 testes do bloco passaram |
+| Situação | Aprovado |
+| Evidências / reprodução | `npm test -- auth-password-login.test.ts`, bloco `"PasswordLoginUseCases"`. Mesma saída da UT02, registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
 ### UT04 — `incidentsQuerySchema` (validação do parâmetro `limit`)
 
@@ -87,13 +87,13 @@
 | --- | --- |
 | Função testada | `incidentsQuerySchema` em [`contracts/src/index.ts:275-304`](../../apps/backend/api/contracts/src/index.ts), campo `limit: z.coerce.number().int().min(1).max(100).default(20)` (linha 295) |
 | Objetivo e requisito relacionado | Garantir que o parâmetro `limit` só aceita valores inteiros entre 1 e 100, rejeitando os demais antes de qualquer lógica de negócio. RF09 (consultas filtradas para análise de falhas críticas) — schema que valida a query de `GET /api/v1/incidents` |
-| Já existe? | **Parcial — a escrever.** `tests/contracts.test.ts:220-223` já testa que `limit: "10"` é coagido para o número `10`, mas **nenhum teste cobre os extremos do intervalo** (`min(1)`, `max(100)`) nem o caso de erro (`limit` fora do intervalo ou não numérico) |
+| Já existe? | **Sim — escrito nesta rodada.** `tests/contracts.test.ts:220-223` já testava que `limit: "10"` era coagido para o número `10`, mas nenhum teste cobria os extremos do intervalo (`min(1)`, `max(100)`) nem o caso de erro (`limit` fora do intervalo ou não numérico); o teste `"enforces the limit boundaries (1-100, default 20) on incidentsQuerySchema"` foi adicionado para cobrir essa lacuna |
 | Pré-condições e dados de entrada | Nenhuma — teste puro de schema Zod, sem HTTP nem banco. Entradas: `{}` (ausente), `{ limit: "1" }`, `{ limit: "100" }`, `{ limit: "0" }`, `{ limit: "101" }`, `{ limit: "abc" }` |
 | Procedimento | 1. Caso válido (ausente): `incidentsQuerySchema.parse({})` → `limit` deve ser `20` (default). 2. Caso válido (limite inferior): `parse({ limit: "1" })` → `limit === 1`. 3. Caso válido (limite superior): `parse({ limit: "100" })` → `limit === 100`. 4. Caso de erro (abaixo do limite): `parse({ limit: "0" })` deve lançar. 5. Caso de erro (acima do limite): `parse({ limit: "101" })` deve lançar. 6. Caso de erro (não numérico): `parse({ limit: "abc" })` deve lançar |
 | Resultado esperado | Os três valores dentro do intervalo `[1, 100]` (incluindo os dois extremos) são aceitos e coagidos para `number`; os três valores fora do intervalo ou de tipo inválido lançam `ZodError`, impedindo que a query chegue ao `IncidentUseCases` com um `limit` inválido |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Evidências / reprodução | Teste novo a adicionar em `tests/contracts.test.ts`; saída de `npm test -- contracts.test.ts` registrada em `assets/testes-funcionais/<data>/resultado-vitest-contracts.txt` |
+| Resultado obtido | `{}` resultou em `limit === 20`; `{ limit: "1" }` em `limit === 1`; `{ limit: "100" }` em `limit === 100`; `{ limit: "0" }`, `{ limit: "101" }` e `{ limit: "abc" }` lançaram erro, conforme esperado |
+| Situação | Aprovado |
+| Evidências / reprodução | Teste adicionado em `tests/contracts.test.ts`. `npm test -- contracts.test.ts`, teste `"enforces the limit boundaries (1-100, default 20) on incidentsQuerySchema"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
 ---
 
@@ -246,13 +246,13 @@
 
 ## 5. Convenção de evidências
 
-&emsp;As evidências desta suíte — quando os testes forem executados — devem ser versionadas em `assets/testes-funcionais/<data>/`, com um `README.md` descrevendo cada arquivo, incluindo:
+&emsp;As evidências desta suíte devem ser versionadas em `assets/testes-funcionais/<data>/`, com um `README.md` descrevendo cada arquivo, incluindo:
 
 - saída de `npm test` (e, por teste, o arquivo específico) para as Seções 1 e 2;
 - brutos JSON do k6 (`resumo-*.json`) e metadados de ambiente para a Seção 4;
 - capturas de tela ou logs para os casos de uso da Seção 3, seguindo a convenção `teste-<seção>-<caso>-<descrição>.png` já usada em `assets/testes/` (ex.: `assets/testes/teste-1-1-ingestao-lote-eventos.png`).
 
-&emsp;Até a execução, cada linha deste documento permanece com "Resultado obtido" e "Situação" como **a executar**.
+&emsp;A Seção 1 (Testes Unitários) já foi executada: os quatro testes (UT01–UT04) passaram, com evidência em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) e na saída completa da suíte em [`assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt) (71 testes passando, 1 ignorado, de 11 arquivos). As demais linhas deste documento (Seções 2 a 4) permanecem com "Resultado obtido" e "Situação" como **a executar**.
 
 ### 5.1 Itens pendentes e plano de entrega
 
