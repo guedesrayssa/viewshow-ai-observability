@@ -13,7 +13,7 @@
 
 &emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
 
-&emsp;A suíte atual (`npm test`, Vitest) tem 11 arquivos e roda **71 testes passando, 1 ignorado** (72 no total). As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
+&emsp;A suíte atual (`npm test`, Vitest) tem 12 arquivos e roda **71 testes passando, 13 ignorados** (84 no total) sem nenhuma credencial AWS — os 12 ignorados são os casos da Seção 3 (`tests/incidents-aws-live.functional.test.ts`), que só rodam com `RUN_AWS_FUNCTIONAL=true` contra a stack real. As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
 
 ## Priorização de execução
 
@@ -137,8 +137,8 @@
 
 ### 3.1 Pré-condições e dados de entrada comuns
 
-- Sessão autenticada válida (cookie emitido por `SessionCodec`) — sem ela a rota responde `401` antes de qualquer validação de query; este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão.
-- Base de incidentes conhecida (ex.: N=150 incidentes sintéticos gravados via `scripts/seed-carga.cjs` ou equivalente), para que `hasMore`/`nextCursor` tenham um valor determinístico em cada consulta.
+- Sessão autenticada válida — sem ela a rota responde `401` antes de qualquer validação de query; este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão. Na execução real (ver 3.6), a sessão vem de um login de senha real contra o Cognito (`POST /auth/login`), não de um cookie forjado com `SessionCodec`.
+- Base de incidentes conhecida (300 incidentes sintéticos gravados via `scripts/seed-carga.cjs` com `ALLOW_REMOTE_SEED=1` direto na tabela DynamoDB real), para que `hasMore`/`nextCursor` tenham um valor determinístico em cada consulta.
 
 ### 3.2 Fluxo principal
 
@@ -168,26 +168,71 @@
 
 &emsp;Procedimento comum a todos os casos abaixo: autenticar uma sessão válida, enviar a requisição indicada na coluna "Entrada" para `GET /api/v1/incidents` e comparar o corpo e o status da resposta com o "Resultado esperado".
 
+&emsp;**Execução real** (não simulada): os 12 casos rodam como requisições HTTP `fetch` reais em [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts), contra a API implantada de verdade na AWS (ALB → ECS Fargate → DynamoDB, stack `apps/fullstack`, namespace `g05-s3`), autenticando com um login de senha real no Cognito (`POST /auth/login`) — não um `createApp()` local nem um cookie forjado. Como `GET /api/v1/incidents` só sustenta uma das três dimensões `deviceType`/`region`/`appVersion` por vez, CT-04 e CT-11 usam `deviceType=Mobile`/`deviceType=Web` (vocabulário real gerado por `seed-carga.cjs`), não `android`/`ios` como no rascunho original. Ver 3.7 para o passo a passo de reprodução.
+
 | Fluxo/condição | Caso de teste | Entrada | Resultado esperado | Resultado obtido | Situação | Evidências / reprodução |
 | --- | --- | --- | --- | --- | --- | --- |
-| Fluxo principal | CT-01 | `GET /api/v1/incidents?window=1h` (sem `limit`) | `page.limit=20` (default); ≤ 20 itens; página coerente com o total | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-01.png` |
-| A1 — paginação subsequente | CT-02 | Repetir CT-04 (abaixo) com `cursor` da resposta anterior | Segunda página sem itens repetidos da primeira; `hasMore` correto | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-02.png` |
-| A2 — janela absoluta | CT-03 | `from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` (sem `window`) | `200`, itens restritos à janela informada | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-03.png` |
-| A3 — facetas combinadas | CT-04 | `deviceType=android&limit=50` | `200`, `page.limit=50`, itens só de `deviceType=android` | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-04.png` |
-| Limite — valor mínimo válido | CT-05 | `limit=1` | `200`, exatamente 1 item (se houver dado), `page.limit=1` | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-05.png` |
-| Limite — abaixo do mínimo | CT-06 | `limit=0` | Erro de validação (400), nenhuma consulta ao banco | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-06.png` |
-| Limite — valor máximo válido | CT-07 | `limit=100` | `200`, até 100 itens, `page.limit=100` | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-07.png` |
-| Limite — acima do máximo | CT-08 | `limit=101` | Erro de validação (400) | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-08.png` |
-| Limite — tipo inválido | CT-09 | `limit=abc` | Erro de validação (400) | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-09.png` |
-| E1 — `window` + `from`/`to` juntos | CT-10 | `window=1h&from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z` | Erro de validação (400), mensagem "from e to devem ser enviados juntos..." | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-10.png` |
-| E2 — cursor de outro filtro | CT-11 | `cursor` obtido com `deviceType=android`, reenviado com `deviceType=ios` | `400` (`VALIDATION_ERROR`, "O cursor é inválido para estes filtros.") | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-11.png` |
-| E4 — sem sessão | CT-12 | Mesma chamada de CT-01, sem cookie | `401`, corpo sem dado de incidente | a executar | a executar | `assets/testes-funcionais/<data>/teste-3-ct-12.png` |
+| Fluxo principal | CT-01 | `GET /api/v1/incidents?window=1h` (sem `limit`) | `page.limit=20` (default); ≤ 20 itens; página coerente com o total | `page.limit=20`, itens ≤ 20, sem campo físico vazado | Aprovado | [`resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) |
+| A1 — paginação subsequente | CT-02 | `window=6h&limit=5`, depois repetido com o `cursor` da resposta anterior | Segunda página sem itens repetidos da primeira; `hasMore` correto | `hasMore=true` na primeira página; nenhum id da segunda página presente na primeira | Aprovado | idem |
+| A2 — janela absoluta | CT-03 | `from=<agora-2h>&to=<agora>` (sem `window`) | `200`, itens restritos à janela informada | `200`; todo `startedAt` dentro de `[from, to]` | Aprovado | idem |
+| A3 — filtro por dimensão suportada | CT-04 | `deviceType=Mobile&window=24h&limit=50` | `200`, `page.limit=50`, itens só de `deviceType=Mobile` | `200`, `page.limit=50`; todo item com `scopeSummary.deviceType=Mobile` | Aprovado | idem |
+| Limite — valor mínimo válido | CT-05 | `limit=1` | `200`, exatamente 1 item (se houver dado), `page.limit=1` | `200`, `page.limit=1`, ≤ 1 item | Aprovado | idem |
+| Limite — abaixo do mínimo | CT-06 | `limit=0` | Erro de validação (400), nenhuma consulta ao banco | `400 VALIDATION_ERROR` | Aprovado | idem |
+| Limite — valor máximo válido | CT-07 | `limit=100` | `200`, até 100 itens, `page.limit=100` | `200`, `page.limit=100`, ≤ 100 itens | Aprovado | idem |
+| Limite — acima do máximo | CT-08 | `limit=101` | Erro de validação (400) | `400 VALIDATION_ERROR` | Aprovado | idem |
+| Limite — tipo inválido | CT-09 | `limit=abc` | Erro de validação (400) | `400 VALIDATION_ERROR` | Aprovado | idem |
+| E1 — `window` + `from`/`to` juntos | CT-10 | `window=1h&from=<agora-1h>&to=<agora>` | Erro de validação (400), mensagem "from e to devem ser enviados juntos..." | `400 VALIDATION_ERROR`; `error.fields[0].message` contém a mensagem esperada | Aprovado | idem |
+| E2 — cursor de outro filtro | CT-11 | `cursor` obtido com `deviceType=Mobile`, reenviado com `deviceType=Web` | `400` (`VALIDATION_ERROR`, "O cursor é inválido para estes filtros.") | `400 VALIDATION_ERROR`, mensagem exata batida | Aprovado | idem |
+| E4 — sem sessão | CT-12 | Mesma chamada de CT-01, sem cookie | `401`, corpo sem dado de incidente | `401 UNAUTHENTICATED` | Aprovado | idem |
 
 <div align="center">
 
 <sup>Fonte: Material produzido pelos autores (2026), com base em `contracts/src/index.ts` e `src/modules/incidents/`.</sup>
 
 </div>
+
+### 3.7 Reprodução contra a AWS real
+
+&emsp;Nesta rodada (2026-09-21), a stack foi aplicada do zero na conta `080158589617` (`aws sts get-caller-identity`) do Learner Lab então ativo — 56 recursos criados, 0 alterados, 0 destruídos (`terraform apply`), com `GET /health` respondendo `200` logo em seguida. O estado local de uma sessão anterior, de outra conta (`985109744788`), foi preservado sem reaproveitamento em `apps/fullstack/.terraform-state-backup-985109744788/`, conforme a regra do README do projeto ("o estado legado pertence a outra conta e não pode ser adotado"). A massa de dados foi semeada com `scripts/seed-carga.cjs` (`ALLOW_REMOTE_SEED=1`) direto na tabela `g05-s3-operacional`: 300 incidentes / 2303 itens (incidentes + evidências + hipóteses), no mesmo formato de item já usado pelos testes de carga do sprint 3. A saída bruta do `vitest run` fica em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt); o passo a passo abaixo permite reproduzir do zero em qualquer sessão do Learner Lab.
+
+```bash
+# 1. Sessão válida do AWS Academy Learner Lab em ~/.aws/credentials
+aws sts get-caller-identity --region us-east-1
+
+# 2. Provisionar a stack (apps/fullstack) — fluxo controlado do README do projeto
+cd apps/fullstack
+terraform init -backend=false -input=false
+terraform plan -input=false -out=.terraform-artifacts/g05-s3.tfplan
+terraform show -json .terraform-artifacts/g05-s3.tfplan | \
+  node ../../scripts/ci/validate-terraform-create-plan.mjs
+terraform apply -input=false .terraform-artifacts/g05-s3.tfplan
+
+# 3. Semear dados (nome da tabela sai do output tabelas_dynamodb)
+cd ../backend/api
+ALLOW_REMOTE_SEED=1 OPERATIONAL_TABLE_NAME=g05-s3-operacional \
+  node scripts/seed-carga.cjs
+
+# 4. Criar o usuário de teste no Cognito (user pool id sai do output cognito_user_pool_id)
+aws cognito-idp admin-create-user \
+  --user-pool-id <cognito_user_pool_id> \
+  --username "teste-funcional@viewshow.local" \
+  --user-attributes Name=email,Value=teste-funcional@viewshow.local Name=email_verified,Value=true \
+  --message-action SUPPRESS --region us-east-1
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <cognito_user_pool_id> \
+  --username "teste-funcional@viewshow.local" \
+  --password "<senha-forte-com-maiuscula-minuscula-numero>" \
+  --permanent --region us-east-1
+
+# 5. Rodar os 12 casos contra a API real (api_url do output do terraform)
+RUN_AWS_FUNCTIONAL=true \
+AWS_API_BASE_URL=<api_url> \
+AWS_TEST_USERNAME=teste-funcional@viewshow.local \
+AWS_TEST_PASSWORD=<a mesma senha do passo 4> \
+npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
+```
+
+&emsp;Sem `RUN_AWS_FUNCTIONAL=true`, o arquivo de teste é pulado inteiro (inclusive o `beforeAll` que faz login) — `npm test` normal nunca tenta acessar a AWS.
 
 ---
 
@@ -252,7 +297,9 @@
 - brutos JSON do k6 (`resumo-*.json`) e metadados de ambiente para a Seção 4;
 - capturas de tela ou logs para os casos de uso da Seção 3, seguindo a convenção `teste-<seção>-<caso>-<descrição>.png` já usada em `assets/testes/` (ex.: `assets/testes/teste-1-1-ingestao-lote-eventos.png`).
 
-&emsp;A Seção 1 (Testes Unitários) já foi executada: os quatro testes (UT01–UT04) passaram, com evidência em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) e na saída completa da suíte em [`assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt) (71 testes passando, 1 ignorado, de 11 arquivos). As demais linhas deste documento (Seções 2 a 4) permanecem com "Resultado obtido" e "Situação" como **a executar**.
+&emsp;A Seção 1 (Testes Unitários) já foi executada: os quatro testes (UT01–UT04) passaram, com evidência em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) e na saída completa da suíte em [`assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt) (71 testes passando, 1 ignorado, de 11 arquivos).
+
+&emsp;A Seção 3 (CT-01 a CT-12) também já foi executada — os 12 casos passaram contra a API implantada de verdade na AWS (não localmente), com evidência em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) e passo a passo de reprodução na Seção 3.7. As linhas restantes deste documento (Seções 2 e 4) permanecem com "Resultado obtido" e "Situação" como **a executar**.
 
 ### 5.1 Itens pendentes e plano de entrega
 
@@ -262,7 +309,7 @@
 | --- | --- | --- | --- |
 | IT02 (integração `IncidentUseCases` × DynamoDB Local) | **A escrever** — código não existe ainda, ver Seção 2 | Novo arquivo `tests/dynamodb-real.integration.test.ts` em `apps/backend/api/` | `assets/testes-funcionais/<data>/` (log de execução do teste e captura do processo/`docker ps` do DynamoDB Local) |
 | IT01 (HTTP × sessão) | Código já existe (`tests/gateway-http.integration.test.ts`), execução pendente | N/A — já implementado | `assets/testes-funcionais/<data>/resultado-vitest-gateway.txt` |
-| Seção 3 — casos CT-01 a CT-12 | Casos definidos na tabela de rastreabilidade (3.6), execução pendente | Requisições contra `GET /api/v1/incidents` (script/coleção a definir, ex. Node/curl) | `assets/testes-funcionais/<data>/teste-3-ct-XX.png`, uma captura por caso |
+| Seção 3 — casos CT-01 a CT-12 | **Concluído** — 12/12 aprovados, executados contra a API real na AWS (não local) | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) em `apps/backend/api/` | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
 | Seção 4 — Níveis 1, 2 e 3 | Scripts k6 base já existem (`consultas.js`); extensão com checks de conteúdo mais estritos é a escrever | `apps/backend/api/loadtest/k6/consultas.js` ou script irmão `consultas-funcionais.js` | `assets/testes-funcionais/<data>/resumo-nivel{1,2,3}.json` |
 
 &emsp;Este quadro deve ser atualizado conforme cada item for implementado e executado, até que todas as linhas de "Situação" nas Seções 2 a 4 estejam preenchidas com aprovado/reprovado.
