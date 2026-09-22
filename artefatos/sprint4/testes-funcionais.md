@@ -13,13 +13,13 @@
 
 &emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
 
-&emsp;A suíte atual (`npm test`, Vitest) tem 12 arquivos e roda **71 testes passando, 13 ignorados** (84 no total) sem nenhuma credencial AWS — os 12 ignorados são os casos da Seção 3 (`tests/incidents-aws-live.functional.test.ts`), que só rodam com `RUN_AWS_FUNCTIONAL=true` contra a stack real. As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
+&emsp;A suíte atual (`npm test`, Vitest) tem 13 arquivos e roda **71 testes passando, 15 ignorados** (86 no total) sem nenhuma credencial AWS — 12 dos ignorados são os casos da Seção 3 (`tests/incidents-aws-live.functional.test.ts`, exige `RUN_AWS_FUNCTIONAL=true` contra a stack real) e 2 são o IT02 da Seção 2 (`tests/dynamodb-real.integration.test.ts`, exige `RUN_LIVE_E2E=true` contra DynamoDB Local — 100% local, sem AWS). As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
 
 ## Priorização de execução
 
 &emsp;A ordem de implementação e execução desta suíte segue o risco funcional de cada fluxo, não a ordem de apresentação das seções:
 
-1. **Prioridade 1 — a consulta paginada como fluxo completo (Seção 3: fluxo principal CT-01, paginação subsequente A1/CT-02, pós-condições; e IT02).** O caso de uso de consulta filtrada e paginada de incidentes (RF09) é o de maior risco funcional do sistema: combina filtros cumulativos, cursor assinado (`CursorCodec`) e paginação sobre dado real em DynamoDB. Uma falha aqui — cursor aceito para filtro errado, página duplicada/pulada, ou paginação incorreta contra o banco real (hoje só coberta por adaptador mockado, ver IT02) — compromete diretamente a confiabilidade do dado usado na análise de falhas críticas (RF09) e no dashboard (RF07). Por isso, o fluxo completo de consulta paginada e a integração real com o DynamoDB Local (IT02) são implementados e executados primeiro.
+1. **Prioridade 1 — a consulta paginada como fluxo completo (Seção 3: fluxo principal CT-01, paginação subsequente A1/CT-02, pós-condições; e IT02).** O caso de uso de consulta filtrada e paginada de incidentes (RF09) é o de maior risco funcional do sistema: combina filtros cumulativos, cursor assinado (`CursorCodec`) e paginação sobre dado real em DynamoDB. Uma falha aqui — cursor aceito para filtro errado, página duplicada/pulada, ou paginação incorreta contra o banco real — compromete diretamente a confiabilidade do dado usado na análise de falhas críticas (RF09) e no dashboard (RF07). Por isso, o fluxo completo de consulta paginada e a integração real com o DynamoDB Local (IT02) foram implementados e executados primeiro — os dois aprovados.
 2. **Prioridade 2 — valores de fronteira do `limit` (UT04 e os casos CT-05 a CT-09).** A validação isolada do `limit` no schema apoia a análise de valor limite exigida pelo barema e já está implementada e passando (UT04), mas cobre sozinha apenas a camada de schema: um `limit` inválido nunca chega ao banco, então o risco de dado incorreto exposto ao usuário é menor do que o risco coberto pela Prioridade 1. Por isso esses casos, embora necessários, vêm depois do fluxo completo na ordem de execução.
 3. **Prioridade 3 — fluxos de exceção e de sessão (E1, E2, E4 / CT-10 a CT-12) e Testes de Carga (Seção 4).** Guardas de validação (janela temporal, cursor de outra combinação de filtros, sessão ausente) e os testes de carga dependem do fluxo principal e da massa de dados (N=150 incidentes) já estarem consolidados, e seu risco funcional é menor — rejeitar corretamente uma entrada inválida é menos crítico do que corromper ou misturar dados retornados como válidos.
 
@@ -99,7 +99,7 @@
 
 ## 2. Testes de Integração
 
-&emsp;Dois testes cruzando camadas diferentes: um já coberto pela suíte de integração HTTP existente, outro expondo uma lacuna real (persistência mockada, nunca exercitada contra um banco de verdade).
+&emsp;Dois testes cruzando camadas diferentes: um já coberto pela suíte de integração HTTP existente, outro que expunha uma lacuna real (persistência mockada, nunca exercitada contra um banco de verdade) e foi escrito nesta rodada. Os dois foram executados e os dois passaram.
 
 ### IT01 — Camada HTTP (Express) × módulo de autenticação/sessão
 
@@ -111,9 +111,9 @@
 | Pré-condições e dados de entrada | App montado com `createApp`, `AUTH_COOKIE_SECRET` de teste (32+ chars), repositórios de incidentes/dashboard falsos (não é o alvo desta integração); cookie de sessão emitido pelo próprio `SessionCodec` do processo |
 | Procedimento | 1. Subir o app em `127.0.0.1:0` (porta livre) com `createServer`. 2. Emitir uma sessão válida com `SessionCodec.issue(...)`. 3. Requisitar `GET /auth/session` com o cookie e conferir envelope de sucesso com a identidade. 4. Requisitar as rotas de login federado (`GET /auth/login`, `GET /auth/callback`) e `POST /auth/login` e conferir os contratos de resposta expostos pelo gateway HTTP |
 | Resultado esperado | O cookie emitido pela camada de domínio é aceito pela camada HTTP e devolve a identidade correta no envelope público padronizado; as rotas de login (federada e direta) respondem com o contrato documentado, sem vazar campos internos |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Evidências / reprodução | Saída de `npm test -- gateway-http.integration.test.ts` registrada em `assets/testes-funcionais/<data>/resultado-vitest-gateway.txt` |
+| Resultado obtido | 11 de 11 testes do arquivo passaram: sessão emitida por `SessionCodec` aceita em `GET /auth/session` com a identidade correta; rotas de login federado e direto respondem conforme o contrato; nenhum campo interno vazado |
+| Situação | Aprovado |
+| Evidências / reprodução | `npm test -- gateway-http.integration.test.ts`. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt) |
 
 ### IT02 — Aplicação (`IncidentUseCases`) × DynamoDB real (DynamoDB Local)
 
@@ -121,13 +121,13 @@
 | --- | --- |
 | Componentes verificados | `IncidentUseCases` + `DynamoIncidentRepository` ([`src/modules/incidents/adapters/dynamodb-incident-repository.ts`](../../apps/backend/api/src/modules/incidents/adapters/dynamodb-incident-repository.ts)) contra uma instância **real** de DynamoDB Local — não o cliente AWS mockado |
 | Objetivo e requisito relacionado | Garantir que incidentes gravados em um banco DynamoDB real são lidos e paginados corretamente pela aplicação, sem duplicatas nem campos físicos vazados. RF01/RF02 (evento persistido fica disponível para consulta) e RF09 (consulta filtrada e paginada sobre dado realmente gravado) |
-| Já existe? | **Não — a escrever.** `tests/dynamodb-adapters.test.ts` cobre os mesmos adaptadores, mas com `client.send` **inteiramente mockado** (`vi.fn(async () => ({ Items: [] }))`), então nenhum teste hoje grava e lê de um banco de verdade — a integração real nunca foi exercitada |
-| Pré-condições e dados de entrada | DynamoDB Local em `127.0.0.1:18000` (`-inMemory -sharedDb`); tabela criada com o esquema de `apps/fullstack/dynamodb.tf` (`pk`/`sk`, GSI `trace-index`); `DYNAMODB_ENDPOINT` apontando para o local; alguns incidentes sintéticos gravados via `PutItem`/`seed-carga.cjs` |
-| Procedimento | 1. Subir DynamoDB Local e criar a tabela operacional com o schema do Terraform. 2. Gravar N incidentes sintéticos (N > `limit` de teste, ex.: 5 incidentes com `limit=2`). 3. Instanciar `DynamoIncidentRepository` apontando para o endpoint local e `IncidentUseCases` com um `CursorCodec` real. 4. Chamar `listIncidents({ limit: 2 })`, guardar `nextCursor`. 5. Chamar novamente com o `cursor` recebido e conferir que a segunda página não repete nenhum item da primeira e é consistente com o total gravado |
-| Resultado esperado | Os itens persistidos no DynamoDB real são lidos, convertidos para DTO (sem campos físicos `pk`/`sk`) e paginados corretamente: união das páginas = total gravado, sem duplicatas, `hasMore` e `nextCursor` coerentes com o fim da lista |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Evidências / reprodução | Teste novo a adicionar em `tests/` (ex.: `tests/dynamodb-real.integration.test.ts`); log de execução e captura de `docker ps`/processo do DynamoDB Local em `assets/testes-funcionais/<data>/` |
+| Já existe? | **Sim — escrito nesta rodada.** `tests/dynamodb-adapters.test.ts` cobre os mesmos adaptadores, mas com `client.send` inteiramente mockado; o novo [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) fecha a lacuna, reusando o guarda de segurança já existente (`requireDynamoDbEndpoint` de `scripts/live-e2e-runtime.mjs`, mesmo usado por `tests/live-api.e2e.test.ts`) — só aceita endpoint local, nunca a AWS real |
+| Pré-condições e dados de entrada | DynamoDB Local efêmero via Docker (`amazon/dynamodb-local:2.6.1`, porta host aleatória); tabela criada com o esquema de `apps/fullstack/dynamodb.tf` (`pk`/`sk`, GSI `trace-index`); 25 incidentes sintéticos gravados via `PutCommand` no mesmo bucket de hora |
+| Procedimento | 1. Subir DynamoDB Local (container efêmero) e criar a tabela operacional com o schema do Terraform. 2. Gravar 25 incidentes sintéticos determinísticos (`inc-it02-001`…`inc-it02-025`). 3. Instanciar `DynamoIncidentRepository` apontando para o endpoint local e `IncidentUseCases` com um `CursorCodec` real. 4. Paginar com `limit=7` seguindo `nextCursor` até `hasMore=false`, conferindo a cada página ausência de duplicata e de campo físico (`pk`/`sk`/`trace_id`/`itemType`). 5. Repetir o teste de cursor cruzado da Seção 3 (UT01/CT-11) nesta camada: cursor obtido com `deviceType=Web` rejeitado ao ser reenviado com `region=Sudeste` |
+| Resultado esperado | Os itens persistidos no DynamoDB real são lidos, convertidos para DTO (sem campos físicos) e paginados corretamente: união das páginas = total gravado, sem duplicatas, `hasMore`/`nextCursor` coerentes com o fim da lista; cursor de outro filtro rejeitado com 400 |
+| Resultado obtido | 25 incidentes gravados, 4 páginas (7+7+7+4) percorridas via `nextCursor`, união das páginas = 25 sem duplicata, `nextCursor=null` na última página; nenhum item com `pk`/`sk`/`trace_id`/`itemType`; cursor obtido com `deviceType=Web` rejeitado (400) ao ser reenviado com `region=Sudeste` — 2 de 2 testes passaram |
+| Situação | Aprovado |
+| Evidências / reprodução | `bash scripts/ci/test-dynamodb-real-local.sh` (a partir da raiz do repositório) — sobe e derruba o DynamoDB Local automaticamente. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
 
 ---
 
@@ -313,20 +313,22 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 &emsp;A Seção 3 (CT-01 a CT-12) também já foi executada — os 12 casos passaram contra a API implantada de verdade na AWS (não localmente), com evidência em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) e passo a passo de reprodução na Seção 3.7.
 
-&emsp;A Seção 4 (Níveis 1 a 3) também já foi executada contra a mesma stack AWS — resultados, análise e evidência (`resumo-nivel{1,2,3}.json`) em cada tabela da Seção 4. Resumo: correção de conteúdo (schema, ausência de campo físico, ausência de duplicidade entre páginas) aprovada nos três níveis, 100% das vezes que uma resposta chegou; desempenho aprovado só no Nível 1, e mesmo assim com ressalva no p95 — Níveis 2 e 3 expuseram que uma única task Fargate de 1 vCPU sem autoscaling reagindo a tempo não sustenta os alvos de RNF09/RNF14 nesta configuração. A linha restante deste documento (Seção 2) permanece com "Resultado obtido" e "Situação" como **a executar**.
+&emsp;A Seção 4 (Níveis 1 a 3) também já foi executada contra a mesma stack AWS — resultados, análise e evidência (`resumo-nivel{1,2,3}.json`) em cada tabela da Seção 4. Resumo: correção de conteúdo (schema, ausência de campo físico, ausência de duplicidade entre páginas) aprovada nos três níveis, 100% das vezes que uma resposta chegou; desempenho aprovado só no Nível 1, e mesmo assim com ressalva no p95 — Níveis 2 e 3 expuseram que uma única task Fargate de 1 vCPU sem autoscaling reagindo a tempo não sustenta os alvos de RNF09/RNF14 nesta configuração.
 
-### 5.1 Itens pendentes e plano de entrega
+&emsp;A Seção 2 (IT01 e IT02) também já foi executada — os dois aprovados. IT01 (11/11 testes) confirma que uma sessão emitida pelo domínio é aceita pela camada HTTP; IT02, escrito nesta rodada, fecha a lacuna que só existia mockada: 25 incidentes gravados num DynamoDB Local real, paginados em 4 páginas sem duplicata nem campo físico vazado.
 
-&emsp;Para que o andamento do planejamento possa ser acompanhado até a conclusão, cada item ainda em aberto tem local definido de implementação (quando é código a escrever) e de entrega da evidência de execução:
+&emsp;Com isso, todas as linhas de "Situação" deste documento (Seções 1 a 4) estão preenchidas com aprovado/reprovado — não há mais item pendente no plano.
 
-| Item pendente | Situação atual | Onde será implementado | Onde a evidência será entregue |
-| --- | --- | --- | --- |
-| IT02 (integração `IncidentUseCases` × DynamoDB Local) | **A escrever** — código não existe ainda, ver Seção 2 | Novo arquivo `tests/dynamodb-real.integration.test.ts` em `apps/backend/api/` | `assets/testes-funcionais/<data>/` (log de execução do teste e captura do processo/`docker ps` do DynamoDB Local) |
-| IT01 (HTTP × sessão) | Código já existe (`tests/gateway-http.integration.test.ts`), execução pendente | N/A — já implementado | `assets/testes-funcionais/<data>/resultado-vitest-gateway.txt` |
-| Seção 3 — casos CT-01 a CT-12 | **Concluído** — 12/12 aprovados, executados contra a API real na AWS (não local) | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) em `apps/backend/api/` | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
-| Seção 4 — Níveis 1, 2 e 3 | **Concluído** — `consultas.js` estendido in-place com os checks de conteúdo mais estritos; 3 níveis executados contra a API real na AWS. Correção aprovada nos 3; desempenho aprovado só no Nível 1 (ver Seção 4) | [`apps/backend/api/loadtest/k6/consultas.js`](../../apps/backend/api/loadtest/k6/consultas.js) + [`lib/asserts.js`](../../apps/backend/api/loadtest/k6/lib/asserts.js) (novo) | `assets/testes-funcionais/2026-09-21/resumo-nivel{1,2,3}.json` |
+### 5.1 Histórico de implementação
 
-&emsp;Este quadro deve ser atualizado conforme cada item for implementado e executado, até que todas as linhas de "Situação" na Seção 2 estejam preenchidas com aprovado/reprovado — único item ainda em aberto.
+&emsp;Registro de onde cada item foi implementado, para rastreabilidade — não há mais pendência em aberto:
+
+| Item | Onde foi implementado | Onde está a evidência |
+| --- | --- | --- |
+| IT01 (HTTP × sessão) | Já existia — [`tests/gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt) |
+| IT02 (`IncidentUseCases` × DynamoDB Local) | Escrito nesta rodada — [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) + [`scripts/ci/test-dynamodb-real-local.sh`](../../scripts/ci/test-dynamodb-real-local.sh) (novo) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
+| Seção 3 — casos CT-01 a CT-12 | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) (novo) | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
+| Seção 4 — Níveis 1, 2 e 3 | `consultas.js` estendido in-place + [`lib/asserts.js`](../../apps/backend/api/loadtest/k6/lib/asserts.js) (novo) | `assets/testes-funcionais/2026-09-21/resumo-nivel{1,2,3}.json` |
 
 <div align="center">
 
