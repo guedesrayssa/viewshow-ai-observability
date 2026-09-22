@@ -28,7 +28,8 @@ describe("dashboard DTO adapters", () => {
       ],
       impactSeries: { points: [] },
     });
-    expect(mapped.map((item) => item.id)).toEqual(["inc_measured"]);
-    expect(mapped[0]?.devices).toBe(0);
+    expect(mapped.map((item) => item.id)).toEqual(["inc_unknown", "inc_measured"]);
+    expect(mapped[0]?.devices).toBeNull();
+    expect(mapped[1]?.devices).toBe(0);
   });
 });

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer } from "node:net";
+import { createRequire } from "node:module";
 import {
   CreateTableCommand,
   DeleteTableCommand,
@@ -23,6 +24,9 @@ import { SessionCodec } from "../src/modules/auth/domain/session.js";
 const tableName = "monitoracao-operacional-e2e";
 const authSecret = "a".repeat(32);
 const cursorSecret = "c".repeat(32);
+const seed = createRequire(import.meta.url)("../scripts/seed-carga.cjs") as {
+  buildMonitoringProjection: (source: string, now: Date) => unknown;
+};
 
 let client: DynamoDBClient | undefined;
 let documentClient: DynamoDBDocumentClient | undefined;
@@ -195,43 +199,7 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
             Item: {
               pk: `VIEW#MONITORING#argus#${day}`,
               sk: `T#${now.getTime()}`,
-              publicData: {
-                capabilities: {
-                  sourceQuality: { status: "available" },
-                  pipelineRuntime: {
-                    status: "partial",
-                    metrics: {
-                      ingestionRate: "available",
-                      processingLatencyP95: "available",
-                      queueDepth: "unavailable",
-                      deadLetterQueue: "unavailable",
-                    },
-                    reason: "BATCH_PIPELINE",
-                  },
-                  geographicMetrics: {
-                    status: "available",
-                    granularity: "state",
-                  },
-                  filtering: capabilities.filtering,
-                },
-                kpis: {},
-                flow: {
-                  metric: "processing_latency",
-                  unit: "milliseconds",
-                  bucketSeconds: 60,
-                  measurement,
-                  target: null,
-                  series: [],
-                  peak: null,
-                },
-                sources: [],
-                geography: {
-                  granularity: "state",
-                  metrics: [],
-                  areas: [],
-                },
-                facets,
-              },
+              publicData: seed.buildMonitoringProjection("argus", now),
               observedThrough: now.toISOString(),
               coverageRatio: 1,
               source: "e2e",
@@ -280,6 +248,29 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
               reviewStatus: "pending",
               generatedAt: now.toISOString(),
               createdAt: now.toISOString(),
+            },
+          }),
+        ),
+        documentClient.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: incidentPk,
+              sk: "EVENT#inc_e2e#001",
+              trace_id: "inc_e2e",
+              itemType: "event",
+              publicData: {
+                id: "evt_e2e",
+                timestamp: now.toISOString(),
+                category: "error",
+                source: { name: "e2e" },
+                entity: "Player",
+                summary: "Erro de reprodução",
+                quality: { status: "verified" },
+                dimensions: { deviceType: "smart-tv" },
+                normalized: { metric: "playback_error", value: "1", tags: ["player"] },
+                raw: { available: false },
+              },
             },
           }),
         ),
@@ -395,19 +386,17 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
       expect(events.status).toBe(200);
       expect(await events.json()).toMatchObject({
         meta: {
-          partial: true,
-          warnings: [
-            { code: "INDIVIDUAL_EVENTS_UNAVAILABLE" },
-          ],
+          partial: false,
         },
+        data: { items: [{ id: "evt_e2e" }] },
       });
 
       const individualEvent = await fetch(
         `${apiUrl}/api/v1/incidents/inc_e2e/events/evt_e2e`,
       );
-      expect(individualEvent.status).toBe(503);
+      expect(individualEvent.status).toBe(200);
       expect(await individualEvent.json()).toMatchObject({
-        error: { code: "DATA_UNAVAILABLE" },
+        data: { id: "evt_e2e", normalized: { metric: "playback_error" } },
       });
 
       const importBody = {

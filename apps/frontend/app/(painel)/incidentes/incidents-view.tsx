@@ -16,7 +16,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { IncidentsChart } from "@/app/(painel)/incidentes/incidents-chart";
 import {
@@ -24,7 +24,6 @@ import {
   PERIOD_LABELS,
   SORT_LABELS,
   URGENCY_META,
-  sortIncidents,
   type ChartPeriodKey,
   type Incident,
   type PeriodKey,
@@ -32,7 +31,8 @@ import {
 } from "@/app/(painel)/incidentes/incidents-data";
 import {
   fetchAffectedDevices,
-  fetchIncidents,
+  fetchIncidentsPage,
+  type IncidentsPage,
 } from "@/app/(painel)/incidentes/incidents-resource";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -51,9 +51,11 @@ import { formatInteger } from "@/lib/format";
 
 /** Releitura automática da lista, no ritmo de acompanhamento de plantão. */
 const REFRESH_MS = 45_000;
+const EMPTY_PAGES: IncidentsPage[] = [];
 
 export function IncidentsView() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   // O recorte mais largo que a origem sustenta é o de 24 horas: a listagem
   // varre baldes por hora, e "todo o período" seria varrer os 30 dias do TTL.
   const [period, setPeriod] = useState<PeriodKey>("1440");
@@ -63,12 +65,54 @@ export function IncidentsView() {
   const [sort, setSort] = useState<SortKey>("urgency");
   const [chartPeriod, setChartPeriod] = useState<ChartPeriodKey>("60");
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const queryKey = [period, deviceType, region, appVersion, debouncedSearch, sort].join("|");
+  const queryKeyRef = useRef(queryKey);
+  useEffect(() => { queryKeyRef.current = queryKey; }, [queryKey]);
+  const query = { period, deviceType, region, appVersion, search: debouncedSearch, sort };
+
   const incidents = useResource(
-    (revision) =>
-      fetchIncidents({ period, deviceType, region, appVersion }, revision),
-    [period, deviceType, region, appVersion],
+    () => fetchIncidentsPage(query),
+    [queryKey],
     { refreshMs: REFRESH_MS },
   );
+  const [pagination, setPagination] = useState<{ key: string; base?: IncidentsPage; pages: IncidentsPage[]; error: string | null } | null>(null);
+  const [loadingMoreKey, setLoadingMoreKey] = useState<string | null>(null);
+  const currentPagination = pagination?.key === queryKey && pagination.base === incidents.data ? pagination : null;
+  const extraPages = currentPagination?.pages ?? EMPTY_PAGES;
+  const moreError = currentPagination?.error ?? null;
+  const loadingMore = loadingMoreKey === queryKey;
+
+  const allIncidents = useMemo(() => {
+    const byId = new Map<string, Incident>();
+    for (const item of [...(incidents.data?.items ?? []), ...extraPages.flatMap((page) => page.items)]) {
+      byId.set(item.id, item);
+    }
+    return [...byId.values()];
+  }, [incidents.data, extraPages]);
+  const nextCursor = extraPages.length > 0
+    ? extraPages[extraPages.length - 1]?.nextCursor ?? null
+    : incidents.data?.nextCursor ?? null;
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    const requestedKey = queryKey;
+    setLoadingMoreKey(requestedKey);
+    const page = await fetchIncidentsPage(query, nextCursor);
+    if (queryKeyRef.current === requestedKey) {
+      setPagination({
+        key: requestedKey,
+        base: incidents.data,
+        pages: page.source === "api" && page.data ? [...extraPages, page.data] : extraPages,
+        error: page.source === "api" && page.data ? null : page.warnings[0]?.message ?? "Não foi possível carregar mais incidentes.",
+      });
+    }
+    setLoadingMoreKey((current) => current === requestedKey ? null : current);
+  }
 
   const chart = useResource(
     (revision) => fetchAffectedDevices(chartPeriod, revision),
@@ -83,31 +127,22 @@ export function IncidentsView() {
     region !== "all" ||
     appVersion !== "all";
 
-  // As opções dos filtros dimensionais saem do que a leitura trouxe: são as
-  // facetas que existem de fato no recorte, e não uma lista fixa que pode
-  // oferecer um valor sem nenhum incidente atrás.
+  // A API calcula as facetas para todo o recorte, inclusive páginas ainda não abertas.
   const facets = useMemo(() => {
-    const list = incidents.data ?? [];
+    const list = allIncidents;
     const distinct = (pick: (incident: Incident) => string) =>
       Array.from(new Set(list.map(pick).filter(Boolean))).sort();
+    const fromApi = (key: string, fallback: string[]) =>
+      incidents.data?.facets[key]?.map((item) => item.value) ?? fallback;
 
     return {
-      deviceTypes: distinct((incident) => incident.deviceType),
-      regions: distinct((incident) => incident.region),
-      appVersions: distinct((incident) => incident.appVersion),
+      deviceTypes: fromApi("deviceTypes", distinct((incident) => incident.deviceType)),
+      regions: fromApi("regions", distinct((incident) => incident.region)),
+      appVersions: fromApi("appVersions", distinct((incident) => incident.appVersion)),
     };
-  }, [incidents.data]);
+  }, [incidents.data, allIncidents]);
 
-  // A leitura já chega recortada pelos filtros; a busca por título é local,
-  // porque acompanha a digitação e não justifica uma ida à API por tecla.
-  const visibleIncidents = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const list = (incidents.data ?? []).filter(
-      (incident) => query === "" || incident.title.toLowerCase().includes(query),
-    );
-
-    return sortIncidents(list, sort);
-  }, [incidents.data, search, sort]);
+  const visibleIncidents = allIncidents;
 
   function clearFilters() {
     setSearch("");
@@ -178,7 +213,7 @@ export function IncidentsView() {
             <Select
               aria-label="Filtrar por dispositivo"
               value={deviceType}
-              onValueChange={(value) => setDeviceType(value)}
+              onValueChange={(value) => { setDeviceType(value); setRegion("all"); setAppVersion("all"); }}
               options={[
                 { value: "all", label: `Todos os dispositivos` },
                 ...facets.deviceTypes.map((name) => ({ value: name, label: name })),
@@ -188,7 +223,7 @@ export function IncidentsView() {
             <Select
               aria-label="Filtrar por região"
               value={region}
-              onValueChange={(value) => setRegion(value)}
+              onValueChange={(value) => { setRegion(value); setDeviceType("all"); setAppVersion("all"); }}
               options={[
                 { value: "all", label: `Todas as regiões` },
                 ...facets.regions.map((name) => ({ value: name, label: name })),
@@ -198,7 +233,7 @@ export function IncidentsView() {
             <Select
               aria-label="Filtrar por versão do app"
               value={appVersion}
-              onValueChange={(value) => setAppVersion(value)}
+              onValueChange={(value) => { setAppVersion(value); setDeviceType("all"); setRegion("all"); }}
               options={[
                 { value: "all", label: `Todas as versões` },
                 ...facets.appVersions.map((name) => ({ value: name, label: name })),
@@ -252,7 +287,7 @@ export function IncidentsView() {
             </div>
           ) : visibleIncidents.length === 0 ? (
             <p className="mt-8 text-center text-body-sm text-ink-muted">
-              Nenhum incidente encontrado para os filtros aplicados.
+              {incidents.source === "indisponivel" ? "A lista de incidentes está indisponível." : "Nenhum incidente encontrado para os filtros aplicados."}
             </p>
           ) : (
             <div className="mt-6 overflow-x-auto">
@@ -312,7 +347,7 @@ export function IncidentsView() {
                             DEVICE_COUNT_CLASSES[incident.urgency] ?? "text-ink",
                           )}
                         >
-                          {formatInteger(incident.devices)}
+                          {incident.devices === null ? "sem contagem" : formatInteger(incident.devices)}
                         </td>
                         <td className="py-4 pr-4 text-body-sm text-ink-muted">
                           {incident.startedAt}
@@ -338,6 +373,14 @@ export function IncidentsView() {
               </table>
             </div>
           )}
+          {moreError ? <Alert tone="critical" title="Não foi possível carregar a próxima página">{moreError}</Alert> : null}
+          {nextCursor && incidents.source === "api" ? (
+            <div className="mt-5 flex justify-center">
+              <Button variant="outline" loading={loadingMore} onClick={loadMore}>
+                Carregar mais incidentes
+              </Button>
+            </div>
+          ) : null}
         </Card>
       </Reveal>
     </div>

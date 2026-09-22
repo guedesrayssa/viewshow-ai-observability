@@ -3,34 +3,29 @@
  * Busca e filtros globais, abas por tipo, gráfico de volume e tabela de
  * eventos correlacionados.
  *
- * Cobre a seção 5.5 do entendimento de UX e, principalmente, a US-ENG-02 e a
- * US-ENG-03. O recorte inicial (Smart TV · Nordeste · App 4.2.1) chega já
- * aplicado porque a tela continua a investigação do INC-4821, aberta em
- * Incidentes e aprofundada em Evidências.
+ * Cobre a seção 5.5 do entendimento de UX e as US-ENG-02 e US-ENG-03.
  */
 
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { EventsChart } from "@/app/(painel)/eventos/events-chart";
 import {
   ADVANCED_FILTERS,
-  APP_VERSIONS,
-  DEVICE_TYPES,
   PERIOD_LABELS,
-  REGIONS,
-  SOURCES,
   type EventCategory,
   type PeriodKey,
   type VolumePeriodKey,
 } from "@/app/(painel)/eventos/events-data";
 import {
   fetchEventVolume,
+  fetchEventDetail,
   fetchEvents,
+  type EventsData,
 } from "@/app/(painel)/eventos/events-resource";
-import { fetchIncidents } from "@/app/(painel)/incidentes/incidents-resource";
 import { EventsTable } from "@/app/(painel)/eventos/events-table";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { Unavailable } from "@/components/dashboard/unavailable";
@@ -46,6 +41,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
+import type { CorrelatedEvent } from "@/app/(painel)/eventos/events-data";
 
 const DEFAULT_FILTERS = {
   period: "all" as PeriodKey | "all",
@@ -54,15 +50,12 @@ const DEFAULT_FILTERS = {
   appVersion: "all",
   source: "all",
 };
+const EMPTY_PAGES: EventsData[] = [];
 
 export function EventsView() {
-  const requestedIncidentId = useSearchParams().get("incidente") ?? "";
-  const incidents = useResource(
-    () => fetchIncidents({ period: "1440", deviceType: "all", region: "all", appVersion: "all" }),
-    [],
-  );
-  const incidentId = requestedIncidentId || incidents.data?.[0]?.id || "";
+  const incidentId = useSearchParams().get("incidente") ?? "";
   const [search, setSearch] = useState("");
+  const [committedSearch, setCommittedSearch] = useState("");
   const [category, setCategory] = useState<EventCategory | "all">("all");
   const [period, setPeriod] = useState<PeriodKey | "all">(DEFAULT_FILTERS.period);
   const [deviceType, setDeviceType] = useState(DEFAULT_FILTERS.deviceType);
@@ -73,14 +66,58 @@ export function EventsView() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [volumePeriod, setVolumePeriod] = useState<VolumePeriodKey>("60");
 
+  useEffect(() => {
+    const timeout = setTimeout(() => setCommittedSearch(search.trim()), 250);
+    return () => clearTimeout(timeout);
+  }, [search]);
+  const queryKey = [incidentId, period, category, deviceType, region, appVersion, source, committedSearch].join("|");
+  const queryKeyRef = useRef(queryKey);
+  useEffect(() => { queryKeyRef.current = queryKey; }, [queryKey]);
+  const query = { incidentId, period, category, deviceType, region, appVersion, source, search: committedSearch };
+
   const events = useResource(
-    () => fetchEvents({ incidentId, period, category, deviceType, region, appVersion, source }),
-    [incidentId, period, category, deviceType, region, appVersion, source],
+    () => fetchEvents(query),
+    [queryKey],
+    { enabled: incidentId !== "" },
   );
+  const [pagination, setPagination] = useState<{ key: string; base?: EventsData; pages: EventsData[]; error: string | null } | null>(null);
+  const [loadingMoreKey, setLoadingMoreKey] = useState<string | null>(null);
+  const currentPagination = pagination?.key === queryKey && pagination.base === events.data ? pagination : null;
+  const extraPages = currentPagination?.pages ?? EMPTY_PAGES;
+  const moreError = currentPagination?.error ?? null;
+  const loadingMore = loadingMoreKey === queryKey;
+  const [details, setDetails] = useState<Record<string, CorrelatedEvent>>({});
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const nextCursor = extraPages.length > 0
+    ? extraPages[extraPages.length - 1]?.nextCursor ?? null
+    : events.data?.nextCursor ?? null;
+  const allEvents = useMemo(() => {
+    const byId = new Map<string, CorrelatedEvent>();
+    for (const item of [...(events.data?.events ?? []), ...extraPages.flatMap((page) => page.events)]) byId.set(item.id, item);
+    return [...byId.values()];
+  }, [events.data, extraPages]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    const requestedKey = queryKey;
+    setLoadingMoreKey(requestedKey);
+    const page = await fetchEvents(query, nextCursor);
+    if (queryKeyRef.current === requestedKey) {
+      setPagination({
+        key: requestedKey,
+        base: events.data,
+        pages: page.source === "api" && page.data ? [...extraPages, page.data] : extraPages,
+        error: page.source === "api" && page.data ? null : page.warnings[0]?.message ?? "Não foi possível carregar mais eventos.",
+      });
+    }
+    setLoadingMoreKey((current) => current === requestedKey ? null : current);
+  }
 
   const volume = useResource(
     (revision) => fetchEventVolume(incidentId, volumePeriod, revision),
     [incidentId, volumePeriod],
+    { enabled: incidentId !== "" },
   );
 
   const hasActiveFilters =
@@ -92,12 +129,12 @@ export function EventsView() {
     appVersion !== DEFAULT_FILTERS.appVersion ||
     source !== DEFAULT_FILTERS.source;
 
-  // A leitura já vem recortada; a busca livre e o tipo continuam locais para
-  // responder na hora, sem uma ida à API a cada tecla.
+  // A busca responde imediatamente na página atual e consulta o conjunto
+  // completo na API após a pausa de digitação.
   const visibleEvents = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return (events.data?.events ?? []).filter((event) => {
+    return allEvents.filter((event) => {
       const matchesQuery =
         query === "" ||
         event.summary.toLowerCase().includes(query) ||
@@ -122,7 +159,7 @@ export function EventsView() {
       );
     });
   }, [
-    events.data,
+    allEvents,
     search,
     category,
     period,
@@ -131,10 +168,9 @@ export function EventsView() {
     appVersion,
     source,
   ]);
-  const sources = useMemo(
-    () => Array.from(new Set([...SOURCES, ...(events.data?.events ?? []).map((event) => event.source)])),
-    [events.data],
-  );
+  const facets = events.data?.facets;
+  const supports = (dimension: string) =>
+    events.data?.capabilities.filtering.supportedDimensions.includes(dimension) ?? false;
 
   function clearFilters() {
     setSearch("");
@@ -146,9 +182,28 @@ export function EventsView() {
     setSource(DEFAULT_FILTERS.source);
   }
 
-  function toggleExpanded(id: string) {
-    setExpandedId((current) => (current === id ? null : id));
+  async function toggleExpanded(id: string) {
+    if (expandedId === id) { setExpandedId(null); return; }
+    setExpandedId(id);
+    setDetailError(null);
+    if (details[id]) return;
+    try {
+      const detail = await fetchEventDetail(incidentId, id);
+      setDetails((current) => ({ ...current, [id]: detail }));
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "Não foi possível abrir o evento.");
+    }
   }
+
+  if (!incidentId) return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Eventos" subtitle="Eventos e sessões vinculados a um incidente" />
+      <Unavailable title="Escolha um incidente para consultar eventos" minHeight={240}>
+        Abra um incidente na lista para ver seus eventos e a origem de cada dado.
+      </Unavailable>
+      <Link href="/incidentes" className="text-body-sm text-ink-brand underline">Ir para Incidentes</Link>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -215,9 +270,10 @@ export function EventsView() {
               aria-label="Filtrar por dispositivo"
               value={deviceType}
               onValueChange={(value) => setDeviceType(value)}
+              disabled={!supports("deviceType")}
               options={[
                 { value: "all", label: `Todos os dispositivos` },
-                ...DEVICE_TYPES.map((name) => ({ value: name, label: name })),
+                ...(facets?.deviceTypes ?? []).map((name) => ({ value: name, label: name })),
               ]}
             />
 
@@ -225,9 +281,10 @@ export function EventsView() {
               aria-label="Filtrar por região"
               value={region}
               onValueChange={(value) => setRegion(value)}
+              disabled={!supports("region")}
               options={[
                 { value: "all", label: `Todas as regiões` },
-                ...REGIONS.map((name) => ({ value: name, label: name })),
+                ...(facets?.regions ?? []).map((name) => ({ value: name, label: name })),
               ]}
             />
 
@@ -235,9 +292,10 @@ export function EventsView() {
               aria-label="Filtrar por versão do app"
               value={appVersion}
               onValueChange={(value) => setAppVersion(value)}
+              disabled={!supports("appVersion")}
               options={[
                 { value: "all", label: `Todas as versões` },
-                ...APP_VERSIONS.map((name) => ({ value: name, label: name })),
+                ...(facets?.appVersions ?? []).map((name) => ({ value: name, label: name })),
               ]}
             />
           </div>
@@ -283,11 +341,12 @@ export function EventsView() {
                 onValueChange={(value) => setSource(value)}
                 options={[
                   { value: "all", label: `Fonte: todas` },
-                  ...sources.map((name) => ({
+                  ...(facets?.sources ?? []).map((name) => ({
                     value: name,
                     label: `Fonte: ${name}`,
                   })),
                 ]}
+                disabled={!supports("source")}
               />
 
               <Button
@@ -333,6 +392,7 @@ export function EventsView() {
       <Reveal delay={200}>
         <EventsChart
           series={volume.data}
+          loading={volume.status === "loading"}
           period={volumePeriod}
           onPeriodChange={setVolumePeriod}
         />
@@ -351,24 +411,29 @@ export function EventsView() {
                 <Skeleton key={index} className="h-14 w-full" />
               ))}
             </div>
-          ) : events.source !== "exemplo" &&
-            (events.data?.events.length ?? 0) === 0 ? (
+          ) : events.data?.capabilities.individualEvents.status === "unavailable" ? (
             <Unavailable
               title="Eventos individuais sem fonte nesta fase"
               className="mt-6"
               minHeight={220}
             >
-              Os agregados publicados pela telemetria não reconstroem eventos
-              um a um. A lista passa a existir quando a instrumentação
-              individual das seis categorias entrar no ar.
+              Este incidente ainda não possui eventos individuais publicados.
             </Unavailable>
           ) : (
             <EventsTable
               events={visibleEvents}
               expandedId={expandedId}
               onToggle={toggleExpanded}
+              details={details}
+              detailError={detailError}
             />
           )}
+          {moreError ? <Alert tone="critical" title="Não foi possível carregar a próxima página">{moreError}</Alert> : null}
+          {nextCursor && events.source === "api" ? (
+            <div className="mt-5 flex justify-center">
+              <Button variant="outline" loading={loadingMore} onClick={loadMore}>Carregar mais eventos</Button>
+            </div>
+          ) : null}
         </Card>
       </Reveal>
     </div>

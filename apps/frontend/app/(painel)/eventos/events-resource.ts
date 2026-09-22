@@ -9,8 +9,9 @@ import {
   type VolumePeriodKey,
   type VolumeSeries,
 } from "@/app/(painel)/eventos/events-data";
-import { jitter, loadResource, type Resource } from "@/lib/data/client";
+import { apiGet, isApiConfigured, jitter, loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
+import { ALLOW_EXAMPLE_DATA } from "@/lib/data/mode";
 
 function incidentRequired<T>(): Promise<Resource<T>> {
   const message = "Escolha um incidente antes de consultar eventos.";
@@ -31,11 +32,22 @@ export type EventsQuery = {
   region: string;
   appVersion: string;
   source: string;
+  search?: string;
 };
 
-export type EventsData = { events: CorrelatedEvent[]; categories: CategoryStat[] };
+export type EventsData = {
+  events: CorrelatedEvent[];
+  categories: CategoryStat[];
+  facets: { deviceTypes: string[]; regions: string[]; appVersions: string[]; sources: string[] };
+  capabilities: {
+    individualEvents: { status: "available" | "unavailable"; reason: string | null };
+    aggregateMetrics: { status: "available" | "unavailable" };
+    filtering: { status: "available" | "partial" | "unavailable"; supportedDimensions: string[] };
+  };
+  nextCursor: string | null;
+};
 
-type EventItem = {
+export type EventItem = {
   id: string;
   timestamp: string;
   category: EventCategory;
@@ -49,12 +61,15 @@ type EventItem = {
 };
 
 type EventsResponse = {
+  capabilities: EventsData["capabilities"];
   categoryStats: Array<{ key: EventCategory | "all"; name: string; total: number }>;
   volumeSeries: {
     points: Array<{ timestamp: string; value: number }>;
     anomalyWindows?: Array<{ from: string; to: string }>;
   } | null;
   items: EventItem[];
+  facets: EventsData["facets"];
+  page: { limit: number; hasMore: boolean; nextCursor: string | null };
 };
 
 function optional(value: string): string | undefined {
@@ -100,7 +115,7 @@ function toEvent(item: EventItem): CorrelatedEvent {
   };
 }
 
-export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
+export function fetchEvents(query: EventsQuery, cursor?: string): Promise<Resource<EventsData>> {
   if (!query.incidentId) return incidentRequired();
   return loadResource<EventsResponse, EventsData>({
     path: ENDPOINTS.events(query.incidentId),
@@ -111,6 +126,9 @@ export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
       region: optional(query.region),
       appVersion: optional(query.appVersion),
       source: optional(query.source),
+      search: query.search?.trim() || undefined,
+      cursor,
+      limit: 50,
     },
     map: (response) => ({
       events: response.items.map(toEvent),
@@ -119,9 +137,21 @@ export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
         label: item.name,
         total: item.total.toLocaleString("pt-BR"),
       })),
+      facets: response.facets,
+      capabilities: response.capabilities,
+      nextCursor: response.page.nextCursor,
     }),
-    fallback: () => ({ events: EVENTS, categories: CATEGORY_STATS }),
+    fallback: () => ({ events: EVENTS, categories: CATEGORY_STATS, facets: { deviceTypes: [], regions: [], appVersions: [], sources: [] }, capabilities: { individualEvents: { status: "available", reason: null }, aggregateMetrics: { status: "available" }, filtering: { status: "available", supportedDimensions: ["category", "deviceType", "region", "appVersion", "source"] } }, nextCursor: null }),
   });
+}
+
+export async function fetchEventDetail(incidentId: string, eventId: string): Promise<CorrelatedEvent> {
+  if (ALLOW_EXAMPLE_DATA && !isApiConfigured()) {
+    const example = EVENTS.find((event) => event.id === eventId);
+    if (example) return example;
+  }
+  const response = await apiGet<EventItem>(ENDPOINTS.event(incidentId, eventId));
+  return toEvent(response.data);
 }
 
 function axisFor(values: number[]): { axisMax: number; axisTicks: number[] } {

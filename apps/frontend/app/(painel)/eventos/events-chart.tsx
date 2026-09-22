@@ -24,11 +24,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export type EventsChartProps = {
   series?: VolumeSeries;
+  loading?: boolean;
   period: VolumePeriodKey;
   onPeriodChange: (period: VolumePeriodKey) => void;
 };
 
-export function EventsChart({ series, period, onPeriodChange }: EventsChartProps) {
+export function EventsChart({ series, loading = false, period, onPeriodChange }: EventsChartProps) {
   return (
     <Card padding="lg">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -49,8 +50,12 @@ export function EventsChart({ series, period, onPeriodChange }: EventsChartProps
         />
       </div>
 
-      {!series ? (
+      {loading ? (
         <Skeleton className="mt-5 h-56 w-full" />
+      ) : !series || series.values.length === 0 ? (
+        <p className="mt-5 flex h-56 items-center justify-center text-body-sm text-ink-muted">
+          Volume temporal indisponível para esta janela.
+        </p>
       ) : (
         <VolumePlot series={series} />
       )}

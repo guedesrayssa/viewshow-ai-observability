@@ -39,9 +39,11 @@ export type EventsTableProps = {
   events: CorrelatedEvent[];
   expandedId: string | null;
   onToggle: (id: string) => void;
+  details?: Record<string, CorrelatedEvent>;
+  detailError?: string | null;
 };
 
-export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) {
+export function EventsTable({ events, expandedId, onToggle, details = {}, detailError }: EventsTableProps) {
   if (events.length === 0) {
     return (
       <p className="mt-8 text-center text-body-sm text-ink-muted">
@@ -82,6 +84,7 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
           {events.map((event, index) => {
             const expanded = event.id === expandedId;
             const detailId = `evento-detalhe-${event.id}`;
+            const detail = details[event.id];
 
             return (
               <Fragment key={event.id}>
@@ -138,26 +141,29 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
                     )}
                   >
                     <td colSpan={7} className="bg-surface-muted px-4 py-5">
+                      {detailError ? <Alert tone="critical" className="mb-4">{detailError}</Alert> : null}
+                      {!detail && !detailError ? <p className="text-body-sm text-ink-muted">Carregando detalhes…</p> : null}
+                      {detail ? (
                       <div className="grid gap-6 sm:grid-cols-2">
                         <div>
                           <p className="text-label font-medium text-ink">Dado normalizado</p>
                           <dl className="mt-2 flex flex-col gap-1.5 text-body-sm">
                             <div className="flex gap-2">
                               <dt className="text-ink-muted">Métrica</dt>
-                              <dd className="font-medium text-ink">{event.detail.metric}</dd>
+                              <dd className="font-medium text-ink">{detail.detail.metric}</dd>
                             </div>
                             <div className="flex gap-2">
                               <dt className="text-ink-muted">Timestamp</dt>
-                              <dd className="font-medium text-ink">{event.detail.timestamp}</dd>
+                              <dd className="font-medium text-ink">{detail.detail.timestamp}</dd>
                             </div>
                             <div className="flex gap-2">
                               <dt className="text-ink-muted">Valor</dt>
-                              <dd className="font-medium text-ink">{event.detail.value}</dd>
+                              <dd className="font-medium text-ink">{detail.detail.value}</dd>
                             </div>
                           </dl>
 
                           <div className="mt-3 flex flex-wrap gap-1.5">
-                            {event.detail.tags.map((tag) => (
+                            {detail.detail.tags.map((tag) => (
                               <Badge key={tag} tone="neutral">
                                 {tag}
                               </Badge>
@@ -170,9 +176,9 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
                             Origem · {event.source} / {event.entity}
                           </p>
 
-                          {event.detail.rawAvailable ? (
+                          {detail.detail.rawAvailable ? (
                             <pre className="mt-2 overflow-x-auto rounded-field bg-canvas p-3 text-caption text-ink-muted">
-                              {event.detail.rawSnippet}
+                              {detail.detail.rawSnippet}
                             </pre>
                           ) : (
                             <Alert tone="warning" className="mt-2">
@@ -181,6 +187,7 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
                           )}
                         </div>
                       </div>
+                      ) : null}
                     </td>
                   </tr>
                 ) : null}
