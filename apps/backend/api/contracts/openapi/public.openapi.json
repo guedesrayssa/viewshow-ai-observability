@@ -670,11 +670,13 @@
           "user": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "name", "email"],
+            "required": ["id", "name", "email", "role", "issuedAt"],
             "properties": {
               "id": { "type": "string" },
               "name": { "type": ["string", "null"] },
-              "email": { "type": "string", "format": "email" }
+              "email": { "type": "string", "format": "email" },
+              "role": { "enum": ["viewer", "engineer", "admin"] },
+              "issuedAt": { "type": "string", "format": "date-time" }
             }
           }
         }

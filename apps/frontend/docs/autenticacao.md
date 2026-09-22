@@ -60,11 +60,20 @@ delas chama a API.
 ## Perfil da conta (`AccountProvider`)
 
 ```ts
-const { profile, updateProfile, reset } = useAccount();
+const { profile, sessionStatus, updateProfile, reset, signOut } = useAccount();
 // profile: AccountProfile & { photo: string | null }
+// sessionStatus: "checking" | "authenticated" | "unauthenticated"
 // updateProfile(patch: Partial<{ name: string | null; photo: string | null }>)
 // reset(): remove o nome sobreposto e a foto; volta ao nome da sessão
+// signOut(): Promise<void> — POST /auth/logout, limpa nome/foto locais e
+//   marca a sessão como "unauthenticated"
 ```
+
+`sessionStatus` fica em `"checking"` só até a primeira resposta de
+`GET /auth/session`. Quem precisa decidir algo antes de saber a sessão (como
+`PanelGuard`, que redireciona para `/login`) lê esse valor em vez de repetir o
+fetch. `signOut()` nunca lança: sem API configurada ele não faz chamada, e se o
+POST falhar o cookie expira sozinho em até 8h.
 
 `AccountProfile` (`name`, `email`, `role`, `authMethod`, `lastAccess`) vem de
 `GET /auth/session` — é a identidade real de quem logou pelo Cognito, não um
