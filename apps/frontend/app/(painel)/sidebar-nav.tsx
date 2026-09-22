@@ -65,6 +65,9 @@ export type SidebarNavProps = {
 
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
+  // A exportação estática usa trailingSlash: a URL pode chegar com "/" no fim.
+  // Rotas internas da seção também pertencem ao mesmo item da navegação.
+  const currentPath = pathname.replace(/\/+$/, "") || "/";
 
   return (
     <nav
@@ -72,7 +75,8 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
       className={cn("flex flex-col gap-1.5", collapsed ? "px-2" : "px-3")}
     >
       {NAV_ITEMS.map((item, index) => {
-        const active = pathname === item.href;
+        const active =
+          currentPath === item.href || currentPath.startsWith(`${item.href}/`);
 
         return (
           <Fragment key={item.href}>

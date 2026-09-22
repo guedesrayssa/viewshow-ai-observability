@@ -62,7 +62,7 @@ function optional(value: string): string | undefined {
 }
 
 function windowOf(minutes: string): string {
-  return ({ "30": "30m", "60": "1h", "360": "6h", "1440": "24h", all: "24h" } as Record<string, string>)[minutes] ?? minutes;
+  return ({ "30": "30m", "60": "1h", "180": "6h", "360": "6h", "1440": "24h", all: "24h" } as Record<string, string>)[minutes] ?? minutes;
 }
 
 function toClock(iso: string, seconds = false): string {
@@ -142,10 +142,12 @@ export function fetchEventVolume(
     params: { window: windowOf(period) },
     map: (response) => {
       if (!response.volumeSeries) throw new Error("O agregado temporal de eventos não está disponível para este incidente.");
-      const values = response.volumeSeries.points.map((point) => point.value);
+      const cutoff = Date.now() - Number(period) * 60_000;
+      const points = response.volumeSeries.points.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
+      const values = points.map((point) => point.value);
       const peakIndex = values.reduce((best, value, index, all) => (value > (all[best] ?? -Infinity) ? index : best), 0);
       return {
-        times: response.volumeSeries.points.map((point) => toClock(point.timestamp)),
+        times: points.map((point) => toClock(point.timestamp)),
         values,
         peakIndex,
         anomalyRange: null,

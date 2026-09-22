@@ -230,6 +230,7 @@ describe("api monolith over HTTP", () => {
       };
     };
     expect(response.status).toBe(200);
+    expect((await fetch(`${url}/api/v1/incidents?window=30m`)).status).toBe(200);
     expect(body.meta).toMatchObject({
       requestId: "req_integration",
       partial: true,

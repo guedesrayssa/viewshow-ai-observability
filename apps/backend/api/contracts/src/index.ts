@@ -526,10 +526,25 @@ export interface DiagnosisData {
     };
   }[];
   readonly charts: {
-    readonly buffering: null;
-    readonly concentrations: readonly unknown[];
+    readonly buffering: {
+      readonly points: readonly { readonly timestamp: string; readonly value: number }[];
+      readonly marker: { readonly timestamp: string; readonly label: string } | null;
+    } | null;
+    readonly concentrations: readonly { readonly label: string; readonly percentage: number }[];
+    readonly concentrationNote: string;
   };
-  readonly timeline: readonly unknown[];
+  readonly timeline: readonly {
+    readonly timestamp: string;
+    readonly label: string;
+    readonly source: string;
+    readonly tone: "info" | "warning" | "critical" | "navy";
+  }[];
+  readonly changes: readonly {
+    readonly label: string;
+    readonly cause: string;
+    readonly percentage: number;
+    readonly tone: "info" | "warning" | "critical";
+  }[];
   readonly dataQuality: {
     readonly status: "sufficient" | "limited" | "insufficient";
     readonly coverageRatio: number | null;
