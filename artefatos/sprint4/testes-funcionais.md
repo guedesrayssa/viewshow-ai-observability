@@ -251,11 +251,11 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Procedimento | Executar `consultas.js` em `MODE=smoke`, com 1–2 VUs em modelo de chegada aberto a ~1 req/s por ~30 s (ordem de grandeza: 34 requisições em 31 s), sorteando os cenários A–G; validar o corpo de cada resposta contra o contrato Zod correspondente |
 | Critérios de sucesso | 100% das respostas `200` com corpo aderente ao contrato (funcional) **e** p95 de `http_req_duration` < 300 ms **e** taxa de erros (`http_req_failed`, respostas não-2xx) = 0% — nesta carga leve não há contenção esperada, logo nem `429` nem `503` deveriam ocorrer |
 | Resultado esperado | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, `page.limit` bate com o `limit` pedido (ou o padrão), e as métricas de carga atendem aos critérios de sucesso acima |
-| Tempos de resposta e taxa de erros (medidos) | a executar — p50/p95/p99 de `http_req_duration` e `http_req_failed` extraídos de `resumo-nivel1.json` |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Análise e conclusão | a executar — confrontar as métricas medidas com os critérios de sucesso acima e concluir se o sistema atende à carga leve tanto em correção de conteúdo quanto em tempo de resposta |
-| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel1.json`, já contendo `http_req_duration` e `http_req_failed` nativamente) registrados em `assets/testes-funcionais/<data>/` |
+| Tempos de resposta e taxa de erros (medidos) | `http_req_duration`: p50=182,4 ms · p95=422,0 ms · p99=617,5 ms · max=676,9 ms. `http_req_failed`=0% (0 de 35). `429`=0, `503`=0 |
+| Resultado obtido | 35 requisições em ~31 s contra a API real na AWS (ALB `g05-s3-alb`); `checks`=100% (schema de `data.items`, ausência de `pk`/`sk`/`ttl`, eco de `X-Request-Id` e paginação sem duplicidade todos aprovados); nenhum `429`/`503` |
+| Situação | Aprovado quanto à corretude funcional e à taxa de erros (0%); **reprovado quanto ao critério de latência** — p95 medido (422 ms) excede o limite de 300 ms do critério de sucesso |
+| Análise e conclusão | O conteúdo das respostas está sempre correto sob carga leve — os quatro checks de conteúdo (schema, campo físico, duplicidade, `X-Request-Id`) passaram em 100% das chamadas. A latência, porém, não atende ao critério de 300 ms: mesmo sem contenção (~1 req/s), o p95 já é 422 ms, refletindo o RTT real até o ALB na AWS e uma task Fargate única de 1 vCPU — não um bug funcional. O critério de 300 ms do plano provavelmente assumia execução local; vale revisá-lo à luz do ambiente real de implantação. |
+| Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=smoke consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel1.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel1.json) |
 
 ### Nível 2 — Carga progressiva moderada
 
@@ -266,11 +266,11 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Procedimento | Executar `consultas.js` em rampa até 137 req/s, sustentada por ~3–4 min (~30 mil requisições), com múltiplos VUs percorrendo o cenário G (paginação por cursor) concorrentemente |
 | Critérios de sucesso | Cenário G sem itens repetidos/pulados entre páginas (funcional) **e** p95 de `http_req_duration` < 800 ms **e** taxa de erros "duros" (códigos diferentes de `200`/`429`/`503`) < 1% — sob 137 req/s sustentados alguma rejeição por limite de taxa é aceitável, desde que sinalizada como `429`, não como corpo incorreto |
 | Resultado esperado | Cenário G percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado; métricas de carga dentro dos critérios de sucesso acima |
-| Tempos de resposta e taxa de erros (medidos) | a executar — p50/p95/p99 de `http_req_duration` e `http_req_failed` (discriminando `429`/`503` dos demais códigos) extraídos de `resumo-nivel2.json` |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Análise e conclusão | a executar — confrontar as métricas medidas com os critérios de sucesso acima e concluir se a paginação permanece correta e responsiva sob carga moderada sustentada |
-| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel2.json`, já contendo `http_req_duration` e `http_req_failed` nativamente) registrados em `assets/testes-funcionais/<data>/` |
+| Tempos de resposta e taxa de erros (medidos) | Todas as respostas: `http_req_duration` p50=10.132 ms · p95=60.000 ms (teto do timeout) · p99=60.000 ms. Só `status:200`: p50=11.796 ms · p95=27.368 ms · p99=53.832 ms. `http_req_failed` (exclui `429`/`503`)=84,38%; `429`=0 (0%); vazão útil (`status:200`)=5,83 req/s, muito abaixo do alvo de 137 req/s; `dropped_iterations`=18.307 de ~28 mil ofertadas |
+| Resultado obtido | `rate_limit_por_minuto` elevado para 20000 antes da rodada (nova revisão da task ECS, ver Seção 4.1) para isolar o rate limiter como variável. Com o limite fora do caminho, `429`=0 confirma que o gargalo passou a ser a capacidade computacional: a CPU da task ECS (`g05-s3-cluster/g05-s3-api-service`, CloudWatch) ficou entre 99% e 100% por ~4 min sustentados durante a rodada, e o autoscaling (min 1 / máx 4, alvo 50% CPU) **não escalou** dentro da janela do teste — `runningCount`/`desiredCount` permaneceram 1/1 o tempo todo. Apesar disso, os checks de conteúdo (schema de `data.items`, ausência de campo físico, cenário G sem duplicidade entre páginas) passaram em 100% das respostas que chegaram a se completar — nenhuma corrupção de dado, só indisponibilidade por saturação |
+| Situação | **Aprovado quanto à corretude** (paginação sem itens repetidos/pulados, 100% dos checks de schema/conteúdo). **Reprovado quanto ao desempenho** — p95 medido (27,4 s em `status:200`; 60 s incluindo timeouts) muito acima do limite de 800 ms, e taxa de erros "duros" (84,38%) muito acima do limite de 1% |
+| Análise e conclusão | A paginação nunca devolveu dado incorreto sob carga — o RF09 se sustenta funcionalmente mesmo saturado. Mas a configuração atual (1 task Fargate de 1 vCPU, autoscaling que não reage dentro de poucos minutos) não comprova RNF09/RNF14 na taxa alvo de 137 req/s: a vazão útil real ficou em ~5,8 req/s, e a maioria das requisições nem chegou a ser enviada (`dropped_iterations`) porque os VUs ficaram presos aguardando respostas lentas. Próximo passo natural, fora do escopo desta rodada: medir com `ecs_capacidade_minima>1` e/ou cooldown de scale-out menor. |
+| Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=load consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel2.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel2.json) |
 
 ### Nível 3 — Carga alta (equivalente a `breakpoint`/`estresse`)
 
@@ -281,17 +281,29 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Procedimento | Executar `consultas.js` com o perfil `breakpoint` e/ou `estresse` (3–6 min, VUs máx. 30–1.500 conforme o perfil), verificando em cada resposta `200` a correlação entre o `X-Request-Id` enviado e devolvido e que nenhum incidente devolvido por `diagnosis`/`events` pertence a um `incidentId` diferente do solicitado |
 | Critérios de sucesso | Nenhuma resposta `200` com corpo corrompido/trocado (funcional) **e** taxa de erros "duros" (códigos diferentes de `200`/`429`/`503`) = 0%, mesmo com p95/p99 de `http_req_duration` subindo à medida que a API se aproxima da saturação; `429`/`503` são esperados perto do breakpoint e não contam como falha |
 | Resultado esperado | Toda resposta `200` mantém corpo correto e sem corrupção, mesmo sob saturação. Respostas `429`/`503` (comportamento de proteção conhecido) não contam como falha funcional; um `200` com corpo malformado ou trocado, sim; métricas de carga dentro dos critérios de sucesso acima |
-| Tempos de resposta e taxa de erros (medidos) | a executar — p50/p95/p99 de `http_req_duration` e distribuição de `http_req_failed` por código de status (`200` vs. `429`/`503` vs. outros), extraídos de `resumo-nivel3.json` |
-| Resultado obtido | a executar |
-| Situação | a executar |
-| Análise e conclusão | a executar — identificar o ponto aproximado de saturação (onde p95/p99 dispara e/ou `429`/`503` predominam) e confirmar que nenhuma resposta `200` veio corrompida até esse ponto |
-| Evidências / reprodução | Comando de execução e saída resumida do k6 (`resumo-nivel3.json`, já contendo `http_req_duration` e `http_req_failed` nativamente) registrados em `assets/testes-funcionais/<data>/` |
+| Tempos de resposta e taxa de erros (medidos) | Rodado só o perfil `breakpoint` (rampa 1→220 req/s, 6 min; `estresse` não rodado nesta entrega). `http_req_duration`: p50=8.489 ms · p95=57.152 ms · p99=60.000 ms (teto do timeout). `http_req_failed` (exclui `429`/`503`)=2,48% (121 de 4.874); `503` (`overview`/`monitoring`, projeção envelhecida)=136; `429`=0; `dropped_iterations`=19.077 |
+| Resultado obtido | CPU da task ECS (CloudWatch, 1 min de granularidade) acompanhou a rampa: ~34% no estágio de 20 req/s, 46,5% em 40 req/s, saltando para 80,5% em 70 req/s e 97–100% a partir do estágio de 110 req/s — ponto aproximado de saturação entre **70 e 110 req/s** de carga nominal, bem abaixo do topo da rampa (220 req/s). Mesmo assim, todo `200` recebido veio com o schema correto, sem campo físico vazado e sem duplicidade entre páginas do cenário G — os três checks de conteúdo ficaram em 100% (0 falhas) nas 4.874 respostas completadas |
+| Situação | **Aprovado quanto à corretude** — nenhuma resposta `200` veio corrompida ou trocada em nenhum ponto da rampa, incluindo além do ponto de saturação. **Reprovado quanto ao critério de erros "duros" = 0%** — 2,48% medido, concentrado nos estágios finais da rampa (timeouts, não `429`/`503`) |
+| Análise e conclusão | O ponto de saturação (~70–110 req/s) é consistente com o achado do Nível 2 (vazão útil de ~5,8 req/s a 137 req/s de alvo): a mesma causa raiz — uma única task Fargate de 1 vCPU e autoscaling que não reage dentro de poucos minutos — explica os dois níveis. O resultado mais importante para RF01/RF02/RF09 é qualitativo: em nenhum momento da rampa, mesmo bem além do ponto de saturação, a API misturou ou corrompeu dado entre requisições concorrentes; ela degrada por indisponibilidade (timeout), não por incorreção. `estresse` (137→411 req/s sustentado) não foi executado nesta rodada — o `breakpoint` já expõe o mesmo teto de capacidade com uma rampa mais curta. |
+| Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=breakpoint consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel3.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel3.json) |
+
+### 4.1 Rate limit elevado durante a janela de carga
+
+&emsp;Os Níveis 2 e 3 precisam de mais de ~3 req/s por origem, acima do limite de produção (180 req/min por IP, `rateLimiter` em `src/app.ts`). Antes dessas duas rodadas, a variável Terraform `rate_limit_por_minuto` (`apps/fullstack/variables.tf:99`) foi elevada de 180 para 20000:
+
+```bash
+cd apps/fullstack
+terraform plan -input=false -var='rate_limit_por_minuto=20000' -out=.terraform-artifacts/rate-limit-alto.tfplan
+terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
+```
+
+&emsp;Isso gera uma nova revisão da task definition ECS (só o container muda) e atualiza o serviço — sem tocar em rede, banco ou dado; a mudança é 100% reversível. Depois de coletar os Níveis 2 e 3, o mesmo procedimento com `-var='rate_limit_por_minuto=180'` devolve o limite ao padrão de produção. Nenhuma resposta `429` apareceu nos Níveis 2 e 3 com o limite elevado, confirmando que o rate limiter deixou de ser a variável limitante — o gargalo observado (Seção 4, Níveis 2 e 3) é a capacidade computacional da task Fargate, não o rate limiter.
 
 ---
 
 ## 5. Convenção de evidências
 
-&emsp;As evidências desta suíte devem ser versionadas em `assets/testes-funcionais/<data>/`, com um `README.md` descrevendo cada arquivo, incluindo:
+&emsp;As evidências desta suíte devem ser versionadas em `assets/testes-funcionais/<data>/` — só os arquivos brutos (saída de ferramenta), sem `README.md` nem outra prosa explicativa na pasta: a descrição de cada arquivo e como reproduzi-lo vive neste documento (ver Seção 3.7 e as linhas "Evidências / reprodução" de cada tabela), não solta em `assets/`. A pasta reúne:
 
 - saída de `npm test` (e, por teste, o arquivo específico) para as Seções 1 e 2;
 - brutos JSON do k6 (`resumo-*.json`) e metadados de ambiente para a Seção 4;
@@ -299,7 +311,9 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 
 &emsp;A Seção 1 (Testes Unitários) já foi executada: os quatro testes (UT01–UT04) passaram, com evidência em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) e na saída completa da suíte em [`assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt) (71 testes passando, 1 ignorado, de 11 arquivos).
 
-&emsp;A Seção 3 (CT-01 a CT-12) também já foi executada — os 12 casos passaram contra a API implantada de verdade na AWS (não localmente), com evidência em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) e passo a passo de reprodução na Seção 3.7. As linhas restantes deste documento (Seções 2 e 4) permanecem com "Resultado obtido" e "Situação" como **a executar**.
+&emsp;A Seção 3 (CT-01 a CT-12) também já foi executada — os 12 casos passaram contra a API implantada de verdade na AWS (não localmente), com evidência em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) e passo a passo de reprodução na Seção 3.7.
+
+&emsp;A Seção 4 (Níveis 1 a 3) também já foi executada contra a mesma stack AWS — resultados, análise e evidência (`resumo-nivel{1,2,3}.json`) em cada tabela da Seção 4. Resumo: correção de conteúdo (schema, ausência de campo físico, ausência de duplicidade entre páginas) aprovada nos três níveis, 100% das vezes que uma resposta chegou; desempenho aprovado só no Nível 1, e mesmo assim com ressalva no p95 — Níveis 2 e 3 expuseram que uma única task Fargate de 1 vCPU sem autoscaling reagindo a tempo não sustenta os alvos de RNF09/RNF14 nesta configuração. A linha restante deste documento (Seção 2) permanece com "Resultado obtido" e "Situação" como **a executar**.
 
 ### 5.1 Itens pendentes e plano de entrega
 
@@ -310,9 +324,9 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | IT02 (integração `IncidentUseCases` × DynamoDB Local) | **A escrever** — código não existe ainda, ver Seção 2 | Novo arquivo `tests/dynamodb-real.integration.test.ts` em `apps/backend/api/` | `assets/testes-funcionais/<data>/` (log de execução do teste e captura do processo/`docker ps` do DynamoDB Local) |
 | IT01 (HTTP × sessão) | Código já existe (`tests/gateway-http.integration.test.ts`), execução pendente | N/A — já implementado | `assets/testes-funcionais/<data>/resultado-vitest-gateway.txt` |
 | Seção 3 — casos CT-01 a CT-12 | **Concluído** — 12/12 aprovados, executados contra a API real na AWS (não local) | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) em `apps/backend/api/` | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
-| Seção 4 — Níveis 1, 2 e 3 | Scripts k6 base já existem (`consultas.js`); extensão com checks de conteúdo mais estritos é a escrever | `apps/backend/api/loadtest/k6/consultas.js` ou script irmão `consultas-funcionais.js` | `assets/testes-funcionais/<data>/resumo-nivel{1,2,3}.json` |
+| Seção 4 — Níveis 1, 2 e 3 | **Concluído** — `consultas.js` estendido in-place com os checks de conteúdo mais estritos; 3 níveis executados contra a API real na AWS. Correção aprovada nos 3; desempenho aprovado só no Nível 1 (ver Seção 4) | [`apps/backend/api/loadtest/k6/consultas.js`](../../apps/backend/api/loadtest/k6/consultas.js) + [`lib/asserts.js`](../../apps/backend/api/loadtest/k6/lib/asserts.js) (novo) | `assets/testes-funcionais/2026-09-21/resumo-nivel{1,2,3}.json` |
 
-&emsp;Este quadro deve ser atualizado conforme cada item for implementado e executado, até que todas as linhas de "Situação" nas Seções 2 a 4 estejam preenchidas com aprovado/reprovado.
+&emsp;Este quadro deve ser atualizado conforme cada item for implementado e executado, até que todas as linhas de "Situação" na Seção 2 estejam preenchidas com aprovado/reprovado — único item ainda em aberto.
 
 <div align="center">
 

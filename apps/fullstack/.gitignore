@@ -15,3 +15,7 @@ crash.*.log
 # Artefatos intermediários do archive_file (zips gerados a cada apply).
 .terraform-artifacts/
 *.tfplan
+
+# Backup de state legado de outra conta AWS (preservado localmente, nunca
+# commitado — mesmo motivo de *.tfstate acima, só que com nome diferente).
+.terraform-state-backup-*/
