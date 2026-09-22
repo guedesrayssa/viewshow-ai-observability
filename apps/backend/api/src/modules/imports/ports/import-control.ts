@@ -1,15 +1,49 @@
+import type {
+  CompleteImportBody,
+  ImportAuthor,
+  InternalResponse,
+  ImportPage,
+  ImportPartsResponse,
+  ImportSnapshot,
+  SignImportPartsBody,
+  SignImportPartsResponse,
+  StartImportBody,
+} from "@view-show/contracts";
+import type { DatasetActivationResult } from "./dataset-activation.js";
+
+export type StartImportInput = StartImportBody & {
+  requestedBy: string;
+  idempotencyKey: string;
+  author?: ImportAuthor;
+};
+export type ImportActionInput = {
+  importId: string;
+  requestedBy: string;
+  idempotencyKey: string;
+};
 export interface ImportControlPort {
-  start(input: {
-    fileName: string;
-    sizeBytes: number;
-    sha256: string;
-    partCount: number;
+  start(input: StartImportInput): Promise<InternalResponse<ImportSnapshot>>;
+  get(
+    importId: string,
+    requestedBy: string,
+  ): Promise<InternalResponse<ImportSnapshot>>;
+  list(input: {
     requestedBy: string;
-  }): Promise<"unavailable">;
-  complete(input: {
-    importId: string;
-    parts: readonly { partNumber: number; etag: string }[];
-    requestedBy: string;
-  }): Promise<"unavailable">;
-  get(importId: string, requestedBy: string): Promise<"unavailable">;
+    limit: number;
+    cursor?: string | undefined;
+  }): Promise<InternalResponse<ImportPage>>;
+  listParts(
+    importId: string,
+    requestedBy: string,
+  ): Promise<InternalResponse<ImportPartsResponse>>;
+  signParts(
+    input: SignImportPartsBody & { importId: string; requestedBy: string },
+  ): Promise<InternalResponse<SignImportPartsResponse>>;
+  restart(input: ImportActionInput): Promise<InternalResponse<ImportSnapshot>>;
+  complete(
+    input: CompleteImportBody & ImportActionInput,
+  ): Promise<InternalResponse<ImportSnapshot>>;
+  activate(
+    input: ImportActionInput,
+  ): Promise<InternalResponse<DatasetActivationResult>>;
 }

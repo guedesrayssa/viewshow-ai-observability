@@ -1,0 +1,92 @@
+
+> @view-show/api@2.0.0 pretest
+> npm run build:contracts
+
+
+> @view-show/api@2.0.0 build:contracts
+> npm run build --workspace @view-show/contracts
+
+
+> @view-show/contracts@1.0.0 build
+> tsc -b
+
+
+> @view-show/api@2.0.0 test
+> vitest run
+
+
+ RUN  v5.0.0 C:/Users/Inteli/projetos/modulo7/g05/apps/backend/api
+
+{"request_id":"req_session","method":"GET","route":"/auth/session","status":200,"duration_ms":8.4821,"timestamp":"2026-09-17T16:25:40.312Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7da8a495a7f5430ea50e5949f124badf","method":"GET","route":"/auth/login","status":503,"duration_ms":3.5623,"timestamp":"2026-09-17T16:25:40.343Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5bbae6ea22fc4d4fb098a5d6b5ebb798","method":"GET","route":"/health","status":200,"duration_ms":5.2312,"timestamp":"2026-09-17T16:25:40.344Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_0f6ab5316b8a4b46a7792cef7f9c657e","method":"GET","route":"/auth/callback","status":400,"duration_ms":4.5529,"timestamp":"2026-09-17T16:25:40.354Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_2d21b55860f34465b5ec92dcc1a6b2ff","method":"GET","route":"/metrics","status":200,"duration_ms":3.7293,"timestamp":"2026-09-17T16:25:40.360Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5ffb00bbfa014001ad2e3df18e1ecd06","method":"POST","route":"/api/v1/telemetry/rum","status":400,"duration_ms":2.7106,"timestamp":"2026-09-17T16:25:40.366Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7d32486431824ee6888bc34b5ac5ddbd","method":"GET","route":"/auth/session","status":401,"duration_ms":1.9285,"timestamp":"2026-09-17T16:25:40.371Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_47652621c7bc4f048516d9ef46adcce8","method":"GET","route":"/auth/callback","status":503,"duration_ms":1.6722,"timestamp":"2026-09-17T16:25:40.377Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5583beb0bc2a4b629bd7c9c656fe6860","method":"GET","route":"/auth/login","status":503,"duration_ms":1.6748,"timestamp":"2026-09-17T16:25:40.378Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_2d0544609b51470780b754ec222a4584","method":"POST","route":"/auth/login","status":400,"duration_ms":1.8508,"timestamp":"2026-09-17T16:25:40.382Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_98032f716f50418eb37caa67a86e6ad0","method":"POST","route":"/auth/login","status":400,"duration_ms":1.5188,"timestamp":"2026-09-17T16:25:40.383Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_eebe55837f074e3cbff3aafb3f1d9f58","method":"GET","route":"/auth/callback","status":400,"duration_ms":1.9151,"timestamp":"2026-09-17T16:25:40.394Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_22d91ed887b946ac9ecadca28515e929","method":"POST","route":"/auth/logout","status":204,"duration_ms":2.9659,"timestamp":"2026-09-17T16:25:40.411Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_e0d34d1252704f0dbd877a5778fbc4b3","method":"POST","route":"/auth/login","status":503,"duration_ms":23.9229,"timestamp":"2026-09-17T16:25:40.420Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_63dcc72df2024ab1b93d283d33cc3c19","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":2.0326,"timestamp":"2026-09-17T16:25:40.429Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_integration","method":"GET","route":"/api/v1/incidents","status":200,"duration_ms":3.4524,"timestamp":"2026-09-17T16:25:40.435Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_29dffc32ff0c4265800d2973244c0d99","method":"GET","route":"/health","status":200,"duration_ms":0.7064,"timestamp":"2026-09-17T16:25:40.443Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_b2d37e997a6a4e17a846af7b3a152e26","method":"POST","route":"/api/v1/imports/:importId/complete","status":400,"duration_ms":1.5296,"timestamp":"2026-09-17T16:25:40.444Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5e084e2c29ec4e9eab5dae6519fd37c8","method":"GET","route":"/api/v1/incidents","status":400,"duration_ms":1.502,"timestamp":"2026-09-17T16:25:40.448Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_fef6dedfc71446baafc6098575400fa6","method":"GET","route":"/api/v1/imports/:importId","status":401,"duration_ms":1.8835,"timestamp":"2026-09-17T16:25:40.461Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_88188c6350fd4dceaa3364cf0a46244d","method":"GET","route":"/api/v1/dashboard/overview","status":503,"duration_ms":3.5349,"timestamp":"2026-09-17T16:25:40.463Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_85b626905b224b7288ca5f8f659de13a","method":"GET","route":"/api/v1/incidents","status":403,"duration_ms":0.9115,"timestamp":"2026-09-17T16:25:40.476Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_6620c68a08fb4b51a1defadb45b15827","method":"GET","route":"/api/v1/dashboard/overview","status":401,"duration_ms":2.1999,"timestamp":"2026-09-17T16:25:40.477Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_22bd512da7e642c4bf9e9a3abf19257b","method":"GET","route":"/api/v1/incidents","status":401,"duration_ms":1.8953,"timestamp":"2026-09-17T16:25:40.493Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_f7aec6cfa18f45daa9fb8ac40c73a943","method":"GET","route":"/metrics","status":200,"duration_ms":6.114,"timestamp":"2026-09-17T16:25:40.497Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_028ac40070284563b5cbb7d2769da9c3","method":"GET","route":"/api/v1/incidents/:incidentId/diagnosis","status":401,"duration_ms":1.0007,"timestamp":"2026-09-17T16:25:40.508Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_63a809fa31d14d3aab29d4675ff274ed","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":400,"duration_ms":1.5133,"timestamp":"2026-09-17T16:25:40.513Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5d4cc9239e0343808ee07d632fbe02ba","method":"POST","route":"/api/v1/telemetry/rum","status":202,"duration_ms":4.7847,"timestamp":"2026-09-17T16:25:40.513Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_781bf718962641188cd4f22573347712","method":"GET","route":"/api/v1/incidents/:incidentId/events","status":401,"duration_ms":3.1011,"timestamp":"2026-09-17T16:25:40.530Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_dd576e08ed7e455796147d613cfa1f8f","method":"GET","route":"/metrics","status":200,"duration_ms":2.8647,"timestamp":"2026-09-17T16:25:40.529Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5cb1249a461a4e28b6af9d0e859bbcb2","method":"GET","route":"/api/v1/incidents/:incidentId/events/:eventId","status":503,"duration_ms":1.1915,"timestamp":"2026-09-17T16:25:40.544Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_6813423594f04e42b8abeb7411ef406d","method":"POST","route":"/api/v1/telemetry/rum","status":400,"duration_ms":2.4022,"timestamp":"2026-09-17T16:25:40.545Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_811d35ad9a204255bfb126f92600ef43","method":"GET","route":"/api/v1/monitoring/overview","status":401,"duration_ms":1.6494,"timestamp":"2026-09-17T16:25:40.548Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_forbidden_origin","method":"GET","route":"/api/v1/incidents","status":403,"duration_ms":0.83,"timestamp":"2026-09-17T16:25:40.556Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_ec1a42977e5c4e88bfe08ceefe0cc8d6","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":2.0384,"timestamp":"2026-09-17T16:25:40.561Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_malformed_json","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":2.2237,"timestamp":"2026-09-17T16:25:40.562Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_ba63c702350e49f39b4c265fbe3b4bf1","method":"GET","route":"/api/v1/incidents/:incidentId/diagnosis","status":400,"duration_ms":1.78,"timestamp":"2026-09-17T16:25:40.582Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_9a872cbfbf5348cd8b40a6974281fa0a","method":"GET","route":"/api/v1/incidents/:incidentId/events","status":400,"duration_ms":1.8194,"timestamp":"2026-09-17T16:25:40.587Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_2b85b6844ca04b7581ff7c471acdeb1c","method":"GET","route":"/api/v1/incidents/:incidentId/events/:eventId","status":400,"duration_ms":1.7636,"timestamp":"2026-09-17T16:25:40.607Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_58e4a74a158644838d6ed69da9f9254b","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":400,"duration_ms":1.793,"timestamp":"2026-09-17T16:25:40.627Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_c86e38cb7c3c47758b9a6502f142317d","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":400,"duration_ms":1.5041,"timestamp":"2026-09-17T16:25:40.645Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_bad_incident_encoding","method":"GET","route":"/api/v1/incidents/%/diagnosis","status":400,"duration_ms":1.1341,"timestamp":"2026-09-17T16:25:40.661Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_bad_event_encoding","method":"GET","route":"/api/v1/incidents/inc_1/events/%","status":400,"duration_ms":0.8359,"timestamp":"2026-09-17T16:25:40.665Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_bad_import_encoding","method":"GET","route":"/api/v1/imports/%","status":400,"duration_ms":0.8153,"timestamp":"2026-09-17T16:25:40.668Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_c17ec5057399400eb59bf55da06bc45b","method":"GET","route":"/auth/session","status":401,"duration_ms":0.9524,"timestamp":"2026-09-17T16:25:40.678Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_13e4b1fb423549538499c2084eb501e4","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":401,"duration_ms":1.4899,"timestamp":"2026-09-17T16:25:40.684Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7ab346180ec64d439b6599e0b63e1285","method":"GET","route":"/api/v1/dashboard/overview","status":503,"duration_ms":0.8461,"timestamp":"2026-09-17T16:25:40.691Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_72db24b62ab94aa0be693f74946cd5b4","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":0.8854,"timestamp":"2026-09-17T16:25:40.699Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_62b34d250e4a4bfab6d924b73095f8c7","method":"POST","route":"/api/v1/imports","status":401,"duration_ms":1.5609,"timestamp":"2026-09-17T16:25:40.703Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7b286f2630a24e4fbd0491e511a55609","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":2.5728,"timestamp":"2026-09-17T16:25:40.710Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5cb5b3d4ac594e03a531f1db33cefa12","method":"POST","route":"/api/v1/imports","status":503,"duration_ms":2.2617,"timestamp":"2026-09-17T16:25:40.725Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_d04aecd3f1f34cb481c65eec42d96c82","method":"POST","route":"/api/v1/imports/:importId/complete","status":400,"duration_ms":3.0856,"timestamp":"2026-09-17T16:25:40.731Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_77f348a8f4094617b4914a859eac5fe6","method":"POST","route":"/api/v1/imports/:importId/complete","status":503,"duration_ms":2.4599,"timestamp":"2026-09-17T16:25:40.741Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_e34dd97bff6846deb50466ec0f613a4f","method":"GET","route":"/api/v1/imports/:importId","status":503,"duration_ms":1.8417,"timestamp":"2026-09-17T16:25:40.760Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_8e92869700f543e29ed92670348a3ac4","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":2.6871,"timestamp":"2026-09-17T16:25:40.773Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_ffcd94c62679444eb8840b0905fbdf90","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":1.4417,"timestamp":"2026-09-17T16:25:40.778Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_0460e63c05b94eee863f4d02db1e2946","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":1.08,"timestamp":"2026-09-17T16:25:40.794Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_f812618fbae04734ac76b7afd8c0fcdf","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":401,"duration_ms":1.2521,"timestamp":"2026-09-17T16:25:40.810Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_a0bea351a0fb4511b8c816f68daafe38","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":1.2691,"timestamp":"2026-09-17T16:25:40.813Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_ab2833f4903d44ca994709d6e2c1b9cc","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":1.7878,"timestamp":"2026-09-17T16:25:40.827Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_e05d91018885421884359d106c639afc","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":1.1942,"timestamp":"2026-09-17T16:25:40.843Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_bd21692c98b44947a23488c43085172f","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":1.5001,"timestamp":"2026-09-17T16:25:40.861Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_cd1e06f9c54941c9bda7a20b3d15a51b","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":404,"duration_ms":1.7604,"timestamp":"2026-09-17T16:25:40.865Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7749b1b0d4764494b3cdeb973d4ff2b3","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":503,"duration_ms":1.5691,"timestamp":"2026-09-17T16:25:40.868Z","level":"info","service_name":"view-show-api","message":"request completed"}
+
+ Test Files  10 passed | 1 skipped (11)
+      Tests  71 passed | 1 skipped (72)
+   Start at  13:25:38
+   Duration  4.14s (import 83%, tests 9%, transform 7%, worker 1%)
+
+    Isolate  11 workers spawned · ~224ms startup each (spawn + environment, per file)
+             at least ~393ms faster with isolate: false — reuses workers across files instead of one per file
+

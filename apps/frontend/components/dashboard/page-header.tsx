@@ -71,7 +71,7 @@ export function PageHeader({
       </div>
 
       {actions ? (
-        <div className="flex flex-wrap items-center gap-3">{actions}</div>
+        <div className="ml-auto flex flex-wrap items-center gap-3">{actions}</div>
       ) : null}
     </Reveal>
   );
