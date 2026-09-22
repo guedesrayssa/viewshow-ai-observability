@@ -32,6 +32,23 @@ Thumbs.db
 .aws-sam/
 *.pem
 
+# ---------- Terraform: caches, pacotes gerados e estado local ----------
+.terraform/
+.terraform-artifacts/
+*.tfstate
+*.tfstate.*
+# .terraform.lock.hcl permanece versionado para fixar os providers.
+
+# ---------- Dados e saídas brutas da pesquisa local ----------
+/artefatos/arquitetura/estudos/resultados/**/*.sql
+/artefatos/arquitetura/estudos/resultados/**/*.sql.gz
+/artefatos/arquitetura/estudos/resultados/**/*.sqlite*
+/artefatos/arquitetura/estudos/resultados/**/dataset.json
+/artefatos/arquitetura/estudos/resultados/**/run-*.json
+/artefatos/arquitetura/estudos/resultados/**/review-packets.json
+/artefatos/arquitetura/estudos/resultados/**/review.html
+/artefatos/arquitetura/estudos/resultados/**/sol-evaluation/blind/
+
 # ---------- Laboratório Argus ----------
 .worktrees/
 /.claude/worktrees/
