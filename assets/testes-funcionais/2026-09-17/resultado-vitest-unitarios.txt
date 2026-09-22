@@ -1,0 +1,59 @@
+
+ RUN  v5.0.0 C:/Users/Inteli/projetos/modulo7/g05/apps/backend/api
+
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > devolve identidade, papel a partir dos grupos e tokens num login válido 4ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > omite o SECRET_HASH quando o client não tem secret 0ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > cai para o papel viewer quando o token não traz grupo conhecido 1ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > mapeia NotAuthorizedException e UserNotFoundException para invalid_credentials 1ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > mapeia UserNotConfirmedException para user_not_confirmed 0ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > mapeia PasswordResetRequiredException para password_reset_required 0ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > mapeia throttling para rate_limited e erro desconhecido para unavailable 0ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > trata resposta de desafio (sem AuthenticationResult) como challenge_required 0ms
+ ✓ tests/auth-password-login.test.ts > CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito) > trata ID token ilegível como unavailable 1ms
+ ✓ tests/auth-password-login.test.ts > PasswordLoginUseCases (tradução de falha em HTTP) > devolve identidade e tokens quando a autenticação passa 0ms
+ ✓ tests/auth-password-login.test.ts > PasswordLoginUseCases (tradução de falha em HTTP) > mapeia invalid_credentials para HTTP 401 1ms
+ ✓ tests/auth-password-login.test.ts > PasswordLoginUseCases (tradução de falha em HTTP) > mapeia user_not_confirmed para HTTP 403 0ms
+ ✓ tests/auth-password-login.test.ts > PasswordLoginUseCases (tradução de falha em HTTP) > mapeia password_reset_required para HTTP 403 0ms
+ ✓ tests/auth-password-login.test.ts > PasswordLoginUseCases (tradução de falha em HTTP) > mapeia challenge_required para HTTP 403 0ms
+ ✓ tests/auth-password-login.test.ts > PasswordLoginUseCases (tradução de falha em HTTP) > mapeia rate_limited para HTTP 429 0ms
+ ✓ tests/auth-password-login.test.ts > PasswordLoginUseCases (tradução de falha em HTTP) > mapeia unavailable para HTTP 503 0ms
+ ✓ tests/domain.test.ts > domain values > returns the authorization URL and completed identity from its provider 5ms
+ ✓ tests/domain.test.ts > domain values > reports the federated provider as unavailable when it has no authorization flow 2ms
+ ✓ tests/domain.test.ts > domain values > encrypts cursors and binds them to filters 2ms
+ ✓ tests/domain.test.ts > domain values > verifies session expiry and signature server-side 1ms
+ ✓ tests/domain.test.ts > domain values > maps persisted records without physical keys and selects versions explicitly 3ms
+ ✓ tests/domain.test.ts > domain values > fails incomplete required incident facts instead of inventing values 1ms
+{"request_id":"req_7ce41bb834ee4e6c8db50c964421f2fe","method":"GET","route":"/health","status":200,"duration_ms":3.1126,"timestamp":"2026-09-17T16:25:36.160Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_015c4cfbd3df4ea1a1137c77995545d2","method":"GET","route":"/metrics","status":200,"duration_ms":2.4368,"timestamp":"2026-09-17T16:25:36.170Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_b36139e952de419a8a109b5988eb8aa9","method":"POST","route":"/api/v1/telemetry/rum","status":400,"duration_ms":1.8462,"timestamp":"2026-09-17T16:25:36.174Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_ca01f32ddc194b7f99bc4a90d73a0857","method":"GET","route":"/auth/session","status":401,"duration_ms":1.1388,"timestamp":"2026-09-17T16:25:36.194Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_d8afeaab43c1485084adc0ec4e0f704e","method":"GET","route":"/auth/login","status":503,"duration_ms":0.7675,"timestamp":"2026-09-17T16:25:36.210Z","level":"info","service_name":"view-show-api","message":"request completed"}
+ ✓ tests/contracts.test.ts > versioned contracts > accepts only code and state in a federated callback 3ms
+ ✓ tests/contracts.test.ts > versioned contracts > bounds and normalizes untrusted browser telemetry 2ms
+ ✓ tests/contracts.test.ts > versioned contracts > correlates structured logs with the active trace and redacts secrets 2ms
+ ✓ tests/contracts.test.ts > versioned contracts > validates temporal queries and optimistic review input 3ms
+ ✓ tests/contracts.test.ts > versioned contracts > enforces the limit boundaries (1-100, default 20) on incidentsQuerySchema 1ms
+ ✓ tests/contracts.test.ts > versioned contracts > builds valid success and error envelopes with request ids 1ms
+ ✓ tests/contracts.test.ts > versioned contracts > rejects physical persistence fields recursively 0ms
+{"request_id":"req_e6734b8896c64b0097f190a2c5a144c2","method":"POST","route":"/auth/login","status":400,"duration_ms":1.5386,"timestamp":"2026-09-17T16:25:36.227Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_148c841fbb744d228afcee0d40f14412","method":"GET","route":"/auth/callback","status":400,"duration_ms":1.7287,"timestamp":"2026-09-17T16:25:36.243Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7f3b41b5519e4f6994e113c33b0e81e4","method":"POST","route":"/auth/logout","status":204,"duration_ms":2.2177,"timestamp":"2026-09-17T16:25:36.261Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_90a3b16bf8b54f7e9724d56f00bd91d2","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":1.7182,"timestamp":"2026-09-17T16:25:36.277Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_f264b6ac658647958d36dae67d87abbe","method":"POST","route":"/api/v1/imports/:importId/complete","status":400,"duration_ms":0.9171,"timestamp":"2026-09-17T16:25:36.285Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_a3eaf87cfe47450ab50b9fe58db0e343","method":"GET","route":"/api/v1/imports/:importId","status":401,"duration_ms":0.7765,"timestamp":"2026-09-17T16:25:36.291Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_0dae10915c9943fba3d1a8a916debc21","method":"GET","route":"/api/v1/dashboard/overview","status":401,"duration_ms":2.2945,"timestamp":"2026-09-17T16:25:36.309Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_004194cc91cc4d34b84dcd23148f5fc9","method":"GET","route":"/api/v1/incidents","status":401,"duration_ms":1.4255,"timestamp":"2026-09-17T16:25:36.323Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_3eb6a717fa6f415a96c034234fcd1b63","method":"GET","route":"/api/v1/incidents/:incidentId/diagnosis","status":401,"duration_ms":1.598,"timestamp":"2026-09-17T16:25:36.345Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7c0541c414c64c898960859ba02e2c0b","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":400,"duration_ms":2.1523,"timestamp":"2026-09-17T16:25:36.361Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_b83f9631ae4f4ff7a80510feee3982f1","method":"GET","route":"/api/v1/incidents/:incidentId/events","status":401,"duration_ms":3.9268,"timestamp":"2026-09-17T16:25:36.396Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_e287377421494ad28b6054ef27757d41","method":"GET","route":"/api/v1/incidents/:incidentId/events/:eventId","status":503,"duration_ms":1.2188,"timestamp":"2026-09-17T16:25:36.409Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_7bccfdd247d14b4d8acbc4d5527de83c","method":"GET","route":"/api/v1/monitoring/overview","status":401,"duration_ms":1.4973,"timestamp":"2026-09-17T16:25:36.413Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_c65aca189a6f431b815a94f60cbe86dc","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.6036,"timestamp":"2026-09-17T16:25:36.414Z","level":"info","service_name":"view-show-api","message":"request completed"}
+ ✓ tests/contracts.test.ts > versioned contracts > keeps the manifest, OpenAPI document, and registered Express routes in parity 290ms
+ ✓ tests/contracts.test.ts > versioned contracts > publishes OpenAPI 3.1 for every public gateway operation 5ms
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  13:25:34
+   Duration  1.87s (import 81%, transform 11%, tests 8%)
+
