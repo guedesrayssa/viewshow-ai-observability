@@ -14,7 +14,7 @@ A regra editorial é **uma decisão, um único lugar oficial**. Quando um arquiv
 ## Ordem de leitura
 
 1. [Visão geral](visao-geral.md): componentes, comunicação, AWS, segurança e decisões arquiteturais.
-2. [Diagramas de sequência](../modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
+2. [Diagramas de sequência](../sprint3/modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
 3. Documento específico da área em desenvolvimento.
 4. [Implementação](implementacao/README.md): como cada componente foi construído, o que a verificação mostrou e como rodar.
 5. [Status de implementação](status-implementacao.md): cobertura atual, responsáveis, evidências e bloqueios.
@@ -48,6 +48,18 @@ Reúne o registro por componente do que está construído: estrutura do código,
 ### [Status de implementação](status-implementacao.md)
 
 Registra somente o que está definido, implementado, testado ou pendente. Ele não redefine contratos.
+
+## Estudos e propostas para revisão
+
+- [Análise de arquiteturas agênticas — decisão por A′](analise-arquiteturas-agenticas.md): consolida o estudo, explica as notas e os erros críticos e registra a escolha atual de A′ com validações determinísticas. É o ponto de entrada para a decisão de desenvolvimento.
+- [Plano de implementação de A′](estudos/plano-implementacao-a-prime.md): entregas para os desenvolvedores, componentes existentes, contratos propostos, dependências, responsáveis por área e critérios de aceite. Há uma cópia de entrega em Downloads.
+- [Worker de Análise — visão consolidada e plano de desenvolvimento](estudos/worker-de-analise.md): explica as responsabilidades, a relação com o notebook, os fluxos de detecção e previsão, a construção de evidências, a integração agêntica e a persistência. Registra propostas, lacunas e critérios de aceite para discussão futura; não substitui os contratos normativos nem declara o worker implementado.
+- [Opções para a camada analítica](estudos/opcoes-camada-analitica.md): amplia a investigação para modelos alternativos, contexto recuperado, agente investigador, supervisor com especialistas e debate. Compara ferramentas, limitações dos dados e do servidor e um plano de avaliação antes da escolha arquitetural.
+- [Resultados das 72 investigações A/B](estudos/resultados/2026-09-21-ab-real-72/ANALISE.md): compara contexto fixo e escolha de consultas sobre 12 janelas reais de QoE. Expõe resultados operacionais, exemplos de interpretações incorretas, limitações e o próximo experimento necessário.
+- [Conclusões das três premissas de investigação](estudos/conclusoes-premissas-agentes.md): fecha a análise de contexto fixo, agente com consultas e revisão/coordenação entre agentes. Distingue resultados A/B das alternativas ainda não testadas e registra a recomendação e os critérios da próxima comparação.
+- [Protocolo da comparação prospectiva](estudos/protocolo-comparacao-final.md): define A′, B, C e autocorreção, dados reservados, revisão pelo usuário e critérios anteriores aos resultados para embasar a próxima escolha.
+- [Comparação prospectiva — 96 resultados](estudos/resultados/2026-09-22-comparison-final-v1/README.md): registra execução, custos, auditoria e formulário humano preservado.
+- [Avaliação pelo Sol e recomendação histórica](estudos/resultados/2026-09-22-comparison-final-v1/sol-evaluation/README.md): preserva a recomendação inicial de B, substituída pela decisão de desenvolver A′. Inclui notas individuais, erros materiais e correções do próprio avaliador.
 
 ## Roteiro por área
 
