@@ -13,8 +13,7 @@ import { Wordmark } from "@/components/ui/wordmark";
 
 export const metadata: Metadata = {
   title: "Acesso corporativo",
-  description:
-    "Entre no View Show com a sua conta corporativa Globo.",
+  description: "Entre no View Show com a sua conta.",
 };
 
 export default function CriarContaPage() {
@@ -32,8 +31,8 @@ export default function CriarContaPage() {
       </h1>
 
       <Alert tone="info" className="mt-8 w-full animate-rise">
-        O acesso ao View Show é feito com a conta corporativa Globo. Se você
-        precisa de acesso, procure o suporte interno de TI.
+        O acesso ao View Show é feito com a sua conta. Se você precisa de
+        acesso, procure o suporte interno de TI.
       </Alert>
 
       <Link

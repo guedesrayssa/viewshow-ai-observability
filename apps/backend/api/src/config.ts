@@ -14,6 +14,10 @@ const schema = z
     // teste de carga alta o bastante para medir RNF09/RNF14 na taxa alvo
     // sem editar código — ver apps/backend/api/loadtest/README.md.
     RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(180),
+    // Limite dedicado para POST /auth/login, mais apertado que o geral: essa
+    // rota é o alvo natural de força bruta/credential stuffing. O Cognito já
+    // tem seu próprio throttling por usuário; este é por IP, na frente dele.
+    AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(10),
   })
   .passthrough();
 
@@ -24,6 +28,7 @@ export interface ApiConfig {
   readonly frontendOrigins: readonly string[];
   readonly metricsEnabled: boolean;
   readonly rateLimitPerMinute: number;
+  readonly authLoginRateLimitPerMinute: number;
 }
 
 export function loadConfig(
@@ -43,5 +48,6 @@ export function loadConfig(
     ],
     metricsEnabled: value.METRICS_ENABLED === "true",
     rateLimitPerMinute: value.RATE_LIMIT_PER_MINUTE,
+    authLoginRateLimitPerMinute: value.AUTH_LOGIN_RATE_LIMIT_PER_MINUTE,
   };
 }
