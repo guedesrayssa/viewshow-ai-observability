@@ -61,3 +61,6 @@ artefatos/extras/analysis/outputs/*
 *superpowers/
 /docs/superpowers/
 /.superpowers/
+# Artefatos locais do worker analítico; modelos aprovados são publicados pelo pipeline, não pelo Git.
+apps/backend/agentic/models/*.json
+apps/backend/agentic/data/
