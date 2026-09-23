@@ -69,11 +69,16 @@ describe("DynamoDB adapters", () => {
       new Date("2026-09-09T12:00:00Z"),
     );
 
-    const partitionKeys = send.mock.calls.map(
-      ([command]) =>
-        (command as { input: { ExpressionAttributeValues: { ":pk": string } } })
-          .input.ExpressionAttributeValues[":pk"],
-    );
+    const partitionKeys = send.mock.calls
+      .map(
+        ([command]) =>
+          (
+            command as {
+              input: { ExpressionAttributeValues?: { ":pk": string } };
+            }
+          ).input.ExpressionAttributeValues?.[":pk"],
+      )
+      .filter((key): key is string => typeof key === "string");
     expect(partitionKeys).toEqual(["VIEW#OVERVIEW#GLOBAL#20260909"]);
   });
 
@@ -91,11 +96,16 @@ describe("DynamoDB adapters", () => {
       new Date("2026-09-09T12:15:00Z"),
     );
 
-    const partitionKeys = send.mock.calls.map(
-      ([command]) =>
-        (command as { input: { ExpressionAttributeValues: { ":pk": string } } })
-          .input.ExpressionAttributeValues[":pk"],
-    );
+    const partitionKeys = send.mock.calls
+      .map(
+        ([command]) =>
+          (
+            command as {
+              input: { ExpressionAttributeValues?: { ":pk": string } };
+            }
+          ).input.ExpressionAttributeValues?.[":pk"],
+      )
+      .filter((key): key is string => typeof key === "string");
     expect(partitionKeys.filter((key) => key.startsWith("INC#"))).toEqual([
       "INC#2026-09-09T12",
       "INC#2026-09-09T11",
@@ -106,6 +116,7 @@ describe("DynamoDB adapters", () => {
     const send = vi
       .fn()
       .mockResolvedValue({ Items: [] })
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({
         Items: [
           {
@@ -130,6 +141,29 @@ describe("DynamoDB adapters", () => {
     expect(send.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(result.map((item) => item.id)).toContain("inc_1");
     expect(JSON.stringify(result)).not.toContain("LastEvaluatedKey");
+  });
+
+  it("uses the active dataset partition when the canonical manifest exists", async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValue({ Items: [] })
+      .mockResolvedValueOnce({ Item: { activeDatasetVersion: "dsv_active" } });
+    const repository = new DynamoIncidentRepository("us-east-1", "table", {
+      send,
+    } as unknown as DynamoDBDocumentClient);
+    await repository.listBetween(
+      new Date("2026-09-09T11:15:00Z"),
+      new Date("2026-09-09T12:15:00Z"),
+    );
+    const keys = send.mock.calls.flatMap(([command]) => {
+      const values = (
+        command as {
+          input: { ExpressionAttributeValues?: Record<string, string> };
+        }
+      ).input.ExpressionAttributeValues;
+      return values?.[":pk"] ? [values[":pk"]] : [];
+    });
+    expect(keys).toEqual(["DATASET#dsv_active#VIEW#INCIDENTS#DAY#20260909"]);
   });
 
   it("uses a conditional update that prohibits phantom upsert", async () => {

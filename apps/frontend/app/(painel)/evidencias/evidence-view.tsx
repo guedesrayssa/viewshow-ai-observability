@@ -185,13 +185,12 @@ export function EvidenceView() {
 
                 <div>
                   <p className="text-display text-ink">
-                    <AnimatedNumber
-                      value={data.incident.affectedDevices}
-                      format={formatCompact}
-                    />
+                    {data.incident.affectedDevices === null ? "—" : (
+                      <AnimatedNumber value={data.incident.affectedDevices} format={formatCompact} />
+                    )}
                   </p>
                   <p className="mt-1 text-body-sm text-ink-brand">
-                    dispositivos afetados
+                    {data.incident.affectedDevices === null ? "impacto ainda não medido" : "dispositivos afetados"}
                   </p>
                 </div>
               </>
@@ -230,7 +229,7 @@ export function EvidenceView() {
                   <CardTitle>Hipótese</CardTitle>
                   {reviewStatus === "pending" ? (
                     <Badge tone="success" withDot>
-                      {data.hypothesis.confidence}% de confiança
+                      {data.hypothesis.confidence === null ? "Hipótese a revisar" : `${data.hypothesis.confidence}% de confiança`}
                     </Badge>
                   ) : (
                     <Badge tone={REVIEW_META[reviewStatus].tone} withDot>
@@ -248,13 +247,11 @@ export function EvidenceView() {
                   {/* A barra de confiança preenche até o grau lido: o número e
                       a barra dizem a mesma coisa, uma para leitura e outra
                       para comparação rápida entre hipóteses. */}
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
-                    <div
-                      key={data.hypothesis.confidence}
-                      className="track-grow h-full rounded-pill bg-success"
-                      style={{ width: `${data.hypothesis.confidence}%` }}
-                    />
-                  </div>
+                  {data.hypothesis.confidence !== null ? (
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
+                      <div key={data.hypothesis.confidence} className="track-grow h-full rounded-pill bg-success" style={{ width: `${data.hypothesis.confidence}%` }} />
+                    </div>
+                  ) : null}
                 </div>
 
                 <div>
