@@ -83,6 +83,12 @@ O preditor preserva as onze variáveis do notebook e o Random Forest com 300 ár
 
 O bundle exportado contém `trainedThrough`. O runtime rejeita qualquer evento anterior a esse instante, impedindo vazamento temporal. Também rejeita versão de modelo ou dataset diferente da indicada no evento.
 
+A primeira execução com o dump sanitizado do Argus, seus resultados e os
+bloqueios de aprovação estão em
+[`avaliacao-worker-argus.md`](avaliacao-worker-argus.md). Os recortes e o bundle
+continuam fora do Git; somente o extrator, o treinamento reproduzível e as
+métricas auditáveis são versionados.
+
 ## Persistência no DynamoDB
 
 | Registro | Chave principal |

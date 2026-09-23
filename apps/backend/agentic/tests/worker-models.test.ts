@@ -28,6 +28,11 @@ test("matriz de precisão assimétrica ou não positiva é recusada",()=>{
   assert.throws(()=>validateBundle(invalid),/INVALID_DETECTOR_PRECISION/);
 });
 
+test("matriz positiva em escalas muito diferentes é aceita",()=>{
+  const scaled=structuredClone(model); scaled.detection.scopes.s!.precision=[[1,0],[0,1e-12]];
+  assert.doesNotThrow(()=>validateBundle(scaled));
+});
+
 test("catálogo aceita a mesma métrica em 15 minutos e uma hora, com séries distintas",()=>{
   const catalog=validateScopes([{id:"s",source:"argus",entity:"canal",priority:"P2",detectorMetrics:["buffer"],series:[
     {metric:"buffer",seriesId:"buffer-15m",unit:"ratio",grainSeconds:900},{metric:"buffer",seriesId:"buffer-1h",unit:"ratio",grainSeconds:3600},

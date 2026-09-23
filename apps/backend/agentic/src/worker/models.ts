@@ -54,11 +54,18 @@ export function validateBundle(raw: unknown, allowUnapproved = false): ModelBund
       !Array.isArray(m.mean) || m.mean.length !== n || !m.mean.every(finite) ||
       !Array.isArray(m.precision) || m.precision.length !== n || !m.precision.every(row => Array.isArray(row) && row.length === n && row.every(finite)) ||
       !finite(m.threshold) || m.threshold <= 0) throw new AnalysisError("INVALID_DETECTOR", true);
+    const diagonal = Array.from({ length: n }, (_, i) => m.precision[i]![i]!);
+    if (diagonal.some(value => !finite(value) || value <= 0)) throw new AnalysisError("INVALID_DETECTOR_PRECISION", true);
+    // Verifica a matriz após normalizar a diagonal. A propriedade positiva
+    // definida não depende da unidade; uma tolerância absoluta rejeitaria
+    // precisões válidas de métricas grandes, como contagens de sessões.
+    const normalized = m.precision.map((row, i) => row.map((value, j) => value / Math.sqrt(diagonal[i]! * diagonal[j]!)));
     const lower = Array.from({ length: n }, () => Array(n).fill(0) as number[]);
     for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) {
-      if (Math.abs(m.precision[i]![j]! - m.precision[j]![i]!) > 1e-8) throw new AnalysisError("INVALID_DETECTOR_PRECISION", true);
-      const sum = m.precision[i]![j]! - Array.from({ length: j }, (_, k) => lower[i]![k]! * lower[j]![k]!).reduce((a, b) => a + b, 0);
-      if (i === j) { if (sum <= 1e-10) throw new AnalysisError("INVALID_DETECTOR_PRECISION", true); lower[i]![j] = Math.sqrt(sum); }
+      const scale = Math.max(1, Math.abs(m.precision[i]![j]!), Math.abs(m.precision[j]![i]!));
+      if (Math.abs(m.precision[i]![j]! - m.precision[j]![i]!) > 1e-10 * scale) throw new AnalysisError("INVALID_DETECTOR_PRECISION", true);
+      const sum = normalized[i]![j]! - Array.from({ length: j }, (_, k) => lower[i]![k]! * lower[j]![k]!).reduce((a, b) => a + b, 0);
+      if (i === j) { if (sum <= 1e-12) throw new AnalysisError("INVALID_DETECTOR_PRECISION", true); lower[i]![j] = Math.sqrt(sum); }
       else lower[i]![j] = sum / lower[j]![j]!;
     }
   }
