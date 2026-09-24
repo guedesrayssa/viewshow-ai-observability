@@ -1,5 +1,11 @@
 # Avaliação do Worker de Análise com o Argus
 
+> Complemento de 24/09: a ausência de sobreposição abaixo se refere ao
+> `incident_label`. A auditoria ampliada confirmou 276 tickets de vídeo no
+> período, com limitações de escopo e campos de causa removidos. Consulte
+> [a análise de viabilidade](viabilidade-diagnostico-previsao-argus.md) para os
+> cruzamentos entre fontes e a sondagem de previsão de erros.
+
 - **Data da execução:** 23/09/2026
 - **Estado:** candidato treinado; não aprovado para produção
 - **Dump:** `argus_dump(1).sql.gz`
