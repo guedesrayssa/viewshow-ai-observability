@@ -143,6 +143,27 @@ TN no limiar atual. Esse resultado de um único dia é apenas um teste funcional
 o bundle continua `approved: false` e a decisão exige replay temporal maior,
 comparação com baselines e uma janela reservada.
 
+O replay ampliado cobriu os seis dias posteriores ao corte de treino, de 26/08
+a 01/09. Em 5.760 janelas, 5.751 passaram o gate de volume. Os detectores
+emitiram 1.459 sinais, agrupados em 104 episódios. Telemetria de entrega estava
+disponível em 1.449 buckets, mas houve aumento simultâneo de CDN ou origem em
+apenas 449. No nível de episódio, 48 de 104 apresentaram esse aumento. Portanto,
+disponibilidade não é evidência favorável: somente os 48 episódios permitem à
+camada A′ sustentar uma hipótese de entrega; os demais devem apontar a lacuna ou
+outras famílias de hipótese.
+
+Elevar o mínimo de sessões reduziria pouco a carga: os sinais cairiam de 1.459
+com mínimo 25 para 1.373 com 100, 1.243 com 500 e 1.121 com 1.000. Sem rótulos,
+essa perda de cobertura não justifica mudar o gate agora. A redução deve vir da
+calibração dos detectores e da apresentação por episódio.
+
+Nas 1.430 previsões avaliáveis do replay ampliado, o Random Forest obteve 74 TP,
+18 FP, 87 FN e 1.251 TN: precisão de 80,4%, recall de 46,0% e FPR de 1,42%. A
+persistência simples obteve 102 TP, 62 FP, 59 FN e 1.207 TN: precisão de 62,2%,
+recall de 63,4% e FPR de 4,89%. O modelo troca cobertura por menos falsos
+positivos; a preferência depende do orçamento operacional de alertas. O recorte
+foi usado durante o desenvolvimento e não serve como confirmação independente.
+
 ```bash
 npm run replay:pilot -- \
   --data data/argus-2026-09-01 \

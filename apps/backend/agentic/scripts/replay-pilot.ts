@@ -51,26 +51,48 @@ async function main(): Promise<void> {
   for (const scope of scopes) {
     const from = Math.floor(start / 86400000) * 86400000 - 7 * 86400000;
     const clean = cleanObservations(rows.get(scope.id)!, model.datasetVersion, scope, from, end + 3600000);
-    let detectionWindows = 0, materialWindows = 0, alerts = 0, alertsWithDeliveryEvidence = 0, episodes = 0, lastAlert: number | null = null;
+    type Episode = { start: string; end: string; buckets: number; peakRelativeMargin: number; triggerMetrics: string[]; deliveryAvailable: string[]; deliveryIncreases: string[] };
+    let detectionWindows = 0, materialWindows = 0, alerts = 0, alertsWithDeliveryEvidence = 0, alertsWithDeliveryIncrease = 0, lastAlert: number | null = null;
+    const episodeDetails: Episode[] = [];
+    const alertsAtMinimumSessions: Record<string, number> = { "25": 0, "100": 0, "500": 0, "1000": 0 };
     for (let at = start; at < end; at += 900000) {
       const current = event("ANOMALY_DETECTION", scope, at, model), result = infer(model, current, scope, clean); detectionWindows++;
       if (!isMaterial(clean, current, scope)) continue; materialWindows++;
       const signal = result.signals.filter(item => item.score > item.threshold.value).sort((a, b) => b.score / b.threshold.value - a.score / a.threshold.value)[0];
       if (!signal || result.coverage !== 1) continue; alerts++;
-      if (lastAlert === null || at - lastAlert >= (scope.episodeWindowSeconds ?? 3600) * 1000) episodes++;
-      lastAlert = at;
+      const activeSessions = clean.filter(row => row.metric === "active_sessions" && row.grainSeconds === 900 && Date.parse(row.timestamp) === at).reduce((sum, row) => sum + (row.value ?? 0), 0);
+      for (const minimum of [25, 100, 500, 1000]) if (activeSessions >= minimum) alertsAtMinimumSessions[String(minimum)]!++;
       const context = prepareContext(clean, model.datasetVersion, scope, signal, current.payload.window.end, 3600, 50000, 900);
-      if (context.facts.some(fact => Object.values(DELIVERY).includes(fact.metric) && fact.current !== null)) alertsWithDeliveryEvidence++;
+      const deliveryFacts = context.facts.filter(fact => Object.values(DELIVERY).includes(fact.metric) && fact.current !== null);
+      const deliveryAvailable = deliveryFacts.map(fact => fact.metric), deliveryIncreases = deliveryFacts.filter(fact => fact.direction === "increase").map(fact => fact.metric);
+      if (deliveryAvailable.length) alertsWithDeliveryEvidence++;
+      if (deliveryIncreases.length) alertsWithDeliveryIncrease++;
+      const triggerMetric = signal.detector === "univariate-robust-z" ? signal.series.metric : signal.detector;
+      const margin = (signal.score - signal.threshold.value) / signal.threshold.value;
+      if (lastAlert === null || at - lastAlert >= (scope.episodeWindowSeconds ?? 3600) * 1000) episodeDetails.push({ start: current.payload.window.start, end: current.payload.window.end, buckets: 1, peakRelativeMargin: margin, triggerMetrics: [triggerMetric], deliveryAvailable, deliveryIncreases });
+      else {
+        const episode = episodeDetails.at(-1)!; episode.end = current.payload.window.end; episode.buckets++;
+        episode.peakRelativeMargin = Math.max(episode.peakRelativeMargin, margin);
+        episode.triggerMetrics = [...new Set([...episode.triggerMetrics, triggerMetric])];
+        episode.deliveryAvailable = [...new Set([...episode.deliveryAvailable, ...deliveryAvailable])];
+        episode.deliveryIncreases = [...new Set([...episode.deliveryIncreases, ...deliveryIncreases])];
+      }
+      lastAlert = at;
     }
-    const confusion = { TP: 0, FP: 0, FN: 0, TN: 0 }, forecast = { windows: 0, alerts: 0, evaluated: 0, confusion };
+    const confusion = { TP: 0, FP: 0, FN: 0, TN: 0 }, persistence = { TP: 0, FP: 0, FN: 0, TN: 0 }, forecast = { windows: 0, alerts: 0, evaluated: 0, confusion, persistence };
     for (let at = Math.ceil(start / 3600000) * 3600000; at + 3600000 < end; at += 3600000) {
       const current = event("QOE_FORECAST", scope, at, model), result = infer(model, current, scope, clean), signal = result.signals.find(item => item.detector === "qoe-forecast"); forecast.windows++;
       if (!signal) continue; const actual = clean.find(row => row.metric === "bufferratio_avg" && row.grainSeconds === 3600 && Date.parse(row.timestamp) === at + 3600000)?.value;
       if (actual === null || actual === undefined) continue; forecast.evaluated++;
       const predicted = signal.score > signal.threshold.value, observed = actual > model.forecast.valueThreshold; if (predicted) forecast.alerts++;
       confusion[predicted ? observed ? "TP" : "FP" : observed ? "FN" : "TN"]++;
+      const currentValue = clean.find(row => row.metric === "bufferratio_avg" && row.grainSeconds === 3600 && Date.parse(row.timestamp) === at)?.value;
+      if (currentValue !== null && currentValue !== undefined) {
+        const baseline = currentValue > model.forecast.valueThreshold;
+        persistence[baseline ? observed ? "TP" : "FP" : observed ? "FN" : "TN"]++;
+      }
     }
-    report.scopes.push({ scopeId: scope.id, observations: clean.length, detection: { windows: detectionWindows, materialWindows, alerts, episodes, alertsWithDeliveryEvidence }, forecast });
+    report.scopes.push({ scopeId: scope.id, observations: clean.length, detection: { windows: detectionWindows, materialWindows, alerts, alertsAtMinimumSessions, episodes: episodeDetails.length, alertsWithDeliveryEvidence, alertsWithDeliveryIncrease, episodeDetails }, forecast });
   }
   await writeFile(args.output, JSON.stringify(report, null, 2) + "\n");
 }
