@@ -389,11 +389,13 @@ export function createApp(deps: AppDependencies) {
     }
   });
 
-  app.get(PUBLIC_ROUTES.event.express, (request, response, next) => {
+  app.get(PUBLIC_ROUTES.event.express, async (request, response, next) => {
     try {
-      opaqueId(request.params.incidentId);
-      opaqueId(request.params.eventId);
-      incidents.event();
+      const incidentId = opaqueId(request.params.incidentId);
+      const eventId = opaqueId(request.params.eventId);
+      const result = await incidents.event(incidentId, eventId);
+      assertNoPhysicalFields(result.data);
+      response.json(successEnvelope(result, response.locals.requestId as string));
     } catch (error) {
       next(error);
     }

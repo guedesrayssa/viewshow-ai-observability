@@ -4,6 +4,8 @@ import {
   resolveWindow,
   type DiagnosisData,
   type EventsData,
+  type EventData,
+  eventItemRuntimeSchema,
   type IncidentsData,
   type IncidentsQuery,
   type InternalResponse,
@@ -52,6 +54,16 @@ type EventQuery = {
   readonly region?: string | undefined;
   readonly appVersion?: string | undefined;
   readonly source?: string | undefined;
+  readonly search?: string | undefined;
+  readonly cursor?: string | undefined;
+  readonly sort?: "recent" | "oldest" | undefined;
+  readonly os?: string | undefined;
+  readonly state?: string | undefined;
+  readonly pop?: string | undefined;
+  readonly isp?: string | undefined;
+  readonly cdn?: string | undefined;
+  readonly content?: string | undefined;
+  readonly environment?: string | undefined;
 };
 
 function presentDimensions(query: IncidentsQuery): string[] {
@@ -140,6 +152,8 @@ function sortItems(
     if (sort === "priority")
       return (
         left.priority.localeCompare(right.priority) ||
+        (right.impact.affectedDevices.value ?? -1) -
+          (left.impact.affectedDevices.value ?? -1) ||
         right.startedAt.localeCompare(left.startedAt)
       );
     if (sort === "impact")
@@ -221,10 +235,10 @@ export class IncidentUseCases {
     const items = incidents.slice(offset, offset + query.limit);
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < incidents.length;
-    const measuredDevices = items
+    const measuredDevices = incidents
       .map((item) => item.impact.affectedDevices.value)
       .filter((value): value is number => value !== null);
-    const measuredSessions = items
+    const measuredSessions = incidents
       .map((item) => item.impact.affectedSessions.value)
       .filter((value): value is number => value !== null);
     const selected =
@@ -235,7 +249,7 @@ export class IncidentUseCases {
       string,
       { total: number; byPriority: Record<"P1" | "P2" | "P3" | "P4", number> }
     >();
-    for (const item of items) {
+    for (const item of incidents) {
       const value =
         query.chartMetric === "affected_devices"
           ? item.impact.affectedDevices.value
@@ -350,6 +364,10 @@ export class IncidentUseCases {
     incidentId: string,
     query: EventQuery,
   ): Promise<InternalResponse<EventsData>> {
+    const unsupported = ["os", "state", "pop", "isp", "cdn", "content", "environment"]
+      .filter((key) => query[key as keyof EventQuery] !== undefined);
+    if (unsupported.length > 0)
+      throw new ServiceError(422, "UNSUPPORTED_FILTER_COMBINATION", "A fonte de eventos não sustenta os filtros solicitados.");
     const bundle = await this.repository.bundle(incidentId);
     if (!bundle.incident)
       throw new ServiceError(
@@ -365,31 +383,37 @@ export class IncidentUseCases {
     const range = query.from && query.to
       ? { from: query.from, to: query.to, preset: null }
       : resolveWindow(query.window, this.clock());
-    const events = bundle.children
+    const persistedEvents = bundle.children
       .filter((item) => itemKind(item) === "event")
       .map((item) => item.publicData)
-      .filter((value): value is Record<string, unknown> =>
-        value !== null && typeof value === "object" && !Array.isArray(value),
-      )
-      .filter((event) => {
-        const timestamp = new Date(String(event.timestamp)).getTime();
-        if (Number.isNaN(timestamp) || timestamp < new Date(range.from).getTime() || timestamp > new Date(range.to).getTime()) return false;
-        const dimensions = event.dimensions as Record<string, unknown> | undefined;
-        const source = event.source as Record<string, unknown> | undefined;
-        return (!query.category || event.category === query.category)
-          && (!query.deviceType || dimensions?.deviceType === query.deviceType)
-          && (!query.region || dimensions?.region === query.region)
-          && (!query.appVersion || dimensions?.appVersion === query.appVersion)
-          && (!query.source || source?.name === query.source);
-      })
-      .sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
-    const categories = ["request", "vitals", "screen_view", "video_view", "session", "error"];
-    const categoryStats = [
-      { key: "all", name: "Todos", total: events.length },
+      .flatMap((value) => {
+        const parsed = eventItemRuntimeSchema.safeParse(value);
+        return parsed.success ? [parsed.data] : [];
+      });
+    const from = new Date(range.from).getTime();
+    const to = new Date(range.to).getTime();
+    const scopedEvents = persistedEvents.filter((event) => {
+      const timestamp = new Date(event.timestamp).getTime();
+      const textMatch = !query.search || [event.summary, event.entity, event.source.name]
+        .some((part) => part.toLocaleLowerCase("pt-BR").includes(query.search!.toLocaleLowerCase("pt-BR")));
+      return timestamp >= from && timestamp <= to && textMatch
+        && (!query.deviceType || event.dimensions.deviceType === query.deviceType)
+        && (!query.region || event.dimensions.region === query.region)
+        && (!query.appVersion || event.dimensions.appVersion === query.appVersion)
+        && (!query.source || event.source.name === query.source);
+    });
+    const events = scopedEvents
+      .filter((event) => !query.category || event.category === query.category)
+      .sort((left, right) => query.sort === "oldest"
+        ? left.timestamp.localeCompare(right.timestamp)
+        : right.timestamp.localeCompare(left.timestamp));
+    const categories = ["request", "vitals", "screen_view", "video_view", "session", "error"] as const;
+    const categoryStats: EventsData["categoryStats"] = [
+      { key: "all", name: "Todos", total: scopedEvents.length },
       ...categories.map((key) => ({
         key,
         name: key.replaceAll("_", " "),
-        total: events.filter((event) => event.category === key).length,
+        total: scopedEvents.filter((event) => event.category === key).length,
       })),
     ];
     const volume = new Map<string, number>();
@@ -400,7 +424,14 @@ export class IncidentUseCases {
       const bucket = timestamp.toISOString();
       volume.set(bucket, (volume.get(bucket) ?? 0) + 1);
     }
-    const available = events.length > 0;
+    const available = persistedEvents.length > 0;
+    const fingerprintKey = fingerprint({ incidentId, ...query, cursor: undefined });
+    const offset = query.cursor ? this.cursor.decode(query.cursor, fingerprintKey) : 0;
+    const items = events.slice(offset, offset + query.limit);
+    const hasMore = offset + items.length < events.length;
+    const values = (pick: (event: EventData) => string | undefined) =>
+      [...new Set(scopedEvents.map(pick).filter((value): value is string => Boolean(value)))].sort();
+    const rawAvailable = persistedEvents.some((event) => event.raw.available);
     return {
       data: {
         incident: {
@@ -411,9 +442,11 @@ export class IncidentUseCases {
         capabilities: {
           aggregateMetrics: { status: available ? "available" : "unavailable" },
           filtering: {
-            status: "partial",
+            status: available ? "available" : "unavailable",
             supportedDimensions: ["category", "deviceType", "region", "appVersion", "source"],
-            supportedFilterSets: [[]],
+            supportedFilterSets: Array.from({ length: 32 }, (_, mask) =>
+              ["category", "deviceType", "region", "appVersion", "source"]
+                .filter((_, index) => (mask & (1 << index)) !== 0)),
           },
           individualEvents: {
             status: available ? "available" : "unavailable",
@@ -422,8 +455,8 @@ export class IncidentUseCases {
             reason: available ? null : "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED",
           },
           rawPayload: {
-            status: "unavailable",
-            reason: "SEED_CONTAINS_NORMALIZED_EVENTS_ONLY",
+            status: rawAvailable ? "available" : "unavailable",
+            reason: rawAvailable ? null : "RAW_PAYLOAD_NOT_STORED",
           },
         },
         categoryStats,
@@ -434,14 +467,19 @@ export class IncidentUseCases {
             .map(([timestamp, value]) => ({ timestamp, value })),
           anomalyWindows: [],
         } : null,
-        items: events.slice(0, query.limit),
+        items,
         facets: {
           categories: categoryStats,
-          deviceTypes: [],
-          appVersions: [],
-          regions: [],
+          deviceTypes: values((event) => event.dimensions.deviceType),
+          appVersions: values((event) => event.dimensions.appVersion),
+          regions: values((event) => event.dimensions.region),
+          sources: values((event) => event.source.name),
         },
-        page: { limit: query.limit, hasMore: events.length > query.limit, nextCursor: null },
+        page: {
+          limit: query.limit,
+          hasMore,
+          nextCursor: hasMore ? this.cursor.encode(offset + items.length, fingerprintKey) : null,
+        },
       },
       quality: {
         window: range,
@@ -456,12 +494,26 @@ export class IncidentUseCases {
     };
   }
 
-  event(): never {
-    throw new ServiceError(
-      503,
-      "DATA_UNAVAILABLE",
-      "A fonte de eventos individuais não está configurada.",
-    );
+  async event(incidentId: string, eventId: string): Promise<InternalResponse<EventData>> {
+    const bundle = await this.repository.bundle(incidentId);
+    if (!bundle.incident)
+      throw new ServiceError(404, "RESOURCE_NOT_FOUND", "Incidente não encontrado.");
+    const event = bundle.children
+      .filter((item) => itemKind(item) === "event")
+      .map((item) => eventItemRuntimeSchema.safeParse(item.publicData))
+      .find((result) => result.success && result.data.id === eventId);
+    if (!event?.success)
+      throw new ServiceError(404, "RESOURCE_NOT_FOUND", "Evento não encontrado neste incidente.");
+    return {
+      data: event.data,
+      quality: {
+        window: null,
+        partial: !event.data.raw.available,
+        refreshAfterSeconds: null,
+        freshness: [],
+        warnings: event.data.raw.available ? [] : [{ code: "RAW_PAYLOAD_UNAVAILABLE", message: "O dado original deste evento não está armazenado." }],
+      },
+    };
   }
 
   async reanalyze(

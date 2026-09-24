@@ -1,10 +1,10 @@
 # Status de implementação da arquitetura
 
 - **Status:** acompanhamento contínuo
-- **Versão:** 1.2
-- **Última atualização:** 10/09/2026
+- **Versão:** 1.3
+- **Última atualização:** 22/09/2026
 - **Responsáveis:** equipe do projeto
-- **Base auditada:** branch `develop`
+- **Base auditada:** branch `fix/corrigir-integracao-dashboard`, criada da `develop` após a integração de `feat/melhoria-integracao`
 
 ## 1. Finalidade
 
@@ -44,8 +44,8 @@ separado, APIs HTTP internas ou supervisor multiprocesso.
 | `GET /incidents` | filtros suportados, cursor opaco e famílias horária/diária | Testado |
 | `GET /incidents/{id}/diagnosis` | incidente, evidências e hipóteses persistidas | Testado |
 | revisão com `hypothesisId` e `expectedVersion` | autorização e atualização condicional | Testado |
-| eventos correlacionados | agregado quando disponível; evento individual declara indisponibilidade | Parcial |
-| `GET /monitoring/overview` | leitura de projeção com frescor e parcialidade | Testado |
+| eventos correlacionados | listagem, filtros, cursor e detalhe dos eventos persistidos; payload bruto ausente é declarado | Testado para eventos persistidos; origem contínua pendente |
+| `GET /monitoring/overview` | leitura e validação da projeção com frescor, parcialidade, fontes e série temporal | Testado |
 | importação de dump | rotas registradas, entrada/autorização validadas e adaptador indisponível | Testado |
 | reanálise assíncrona | rota validada e publicação SQS indisponível/fail-closed | Testado |
 | autenticação Cognito/SSO | login, callback, sessão e logout federados; provider indisponível/fail-closed | Testado |
@@ -64,6 +64,15 @@ medido, parcial, indisponível e de exemplo. A Visão Geral usa somente
 `GET /api/v1/dashboard/overview`: indicadores, gráfico e incidentes compartilham
 a mesma janela e a mesma procedência. Os filtros dimensionais continuam
 desabilitados enquanto o backend só publica a projeção global.
+
+Incidentes usa busca, ordenação, facetas e cursor do gateway; contagens de
+impacto desconhecidas aparecem sem valor, e o agregado considera todo o
+recorte consultado. Eventos exige a escolha explícita de um incidente, consulta
+filtros e páginas no gateway e abre o detalhe persistido ao expandir a linha.
+Monitoramento consome a projeção da janela escolhida para indicadores, fontes,
+fluxo e geografia. Filtros sem suporte publicado ficam desabilitados. A
+topologia da carga sintética é identificada como demonstração; uma topologia
+medida depende da publicação de traces reais.
 
 Não há dependência ativa da API Flask de telemetria na Visão Geral. Permanecem
 pendentes o upload multipart, acompanhamento de `ImportJob`, o adaptador
@@ -102,7 +111,8 @@ operacional posterior e não altera a arquitetura da aplicação.
 ## 7. Bloqueios externos
 
 - conectividade autorizada e schema final do ARGUS;
-- origem de eventos individuais;
+- origem contínua de eventos individuais e dos traces de serviços; a carga local
+  fornece apenas eventos e topologia sintéticos para teste;
 - configuração do SSO corporativo no Cognito;
 - política definitiva de retenção dos dumps;
 - limiares aprovados de detecção, previsão e qualidade mínima;

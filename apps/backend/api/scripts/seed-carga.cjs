@@ -433,11 +433,13 @@ function buildMonitoringProjection(source, now) {
     status,
     measurement: value === null ? { ...measurementNow(now), status: "unknown" } : measurementNow(now),
   });
+  const measured = (value, unit) => ({ value, unit, measurement: measurementNow(now) });
   const flowSeries = [1.1, 1.0, 1.2, 1.4, 1.3, 1.5, 1.2, 1.1].map((processing, index) => ({
     timestamp: new Date(now.getTime() - (7 - index) * 10 * 60_000).toISOString(),
     processing,
     ingestion: Number((processing * 0.35).toFixed(2)),
   }));
+  const peakFlow = flowSeries.reduce((peak, point) => point.processing > peak.processing ? point : peak);
   const areas = [
     ["SP", "São Paulo", "Sudeste", 0.021, 1400, 0.002],
     ["RJ", "Rio de Janeiro", "Sudeste", 0.017, 1300, 0.003],
@@ -447,11 +449,12 @@ function buildMonitoringProjection(source, now) {
     ["RS", "Rio Grande do Sul", "Sul", 0.010, 1100, 0.001],
   ].map(([code, name, region, instability, latency, loss]) => ({
     code, name, region,
-    observedSessions: kpi(18000, "sessions", "healthy"),
+    observedSessions: measured(18000, "sessions"),
+    coverageRatio: measured(0.99, "ratio"),
     values: {
-      instabilityRatio: kpi(instability, "ratio", "warning"),
-      latencyP95: kpi(latency, "ms", "healthy"),
-      eventLossRatio: kpi(loss, "ratio", "healthy"),
+      instabilityRatio: measured(instability, "ratio"),
+      latencyP95: measured(latency, "ms"),
+      eventLossRatio: measured(loss, "ratio"),
     },
   }));
   return {
@@ -486,8 +489,12 @@ function buildMonitoringProjection(source, now) {
       bucketSeconds: 900,
       measurement: measurementNow(now),
       target: null,
-      series: flowSeries.map((point) => ({ timestamp: point.timestamp, value: Math.round(point.processing * 1000) })),
-      peak: Math.max(...flowSeries.map((point) => point.processing * 1000)),
+      series: [{
+        stage: "processing",
+        name: "Processamento",
+        points: flowSeries.map((point) => ({ timestamp: point.timestamp, value: Math.round(point.processing * 1000) })),
+      }],
+      peak: { timestamp: peakFlow.timestamp, stage: "processing", value: Math.round(peakFlow.processing * 1000) },
     },
     sources: [
       {
@@ -502,7 +509,6 @@ function buildMonitoringProjection(source, now) {
         state: "stable",
         ingestionRate: kpi(9800, "events_per_minute", "healthy"),
         processingLatencyP95: kpi(1200, "ms", "healthy"),
-        flowSeries,
         records: {
           read: 15000,
           written: 14950,
@@ -516,9 +522,14 @@ function buildMonitoringProjection(source, now) {
         },
       },
     ],
-    geography: { granularity: "state", metrics: ["instability_ratio", "latency_p95", "event_loss_ratio"], areas },
+    geography: { granularity: "state", metrics: [
+      { key: "instability_ratio", unit: "ratio", status: "available" },
+      { key: "latency_p95", unit: "ms", status: "available" },
+      { key: "event_loss_ratio", unit: "ratio", status: "available" },
+    ], areas },
     topology: {
       status: "available",
+      provenance: "seed-carga",
       services: [
         { service: "Player", status: "healthy", calls: 12000, errors: 42, errorRate: 0.0035, latencyP95: 120 },
         { service: "API GraphQL", status: "degraded", calls: 8200, errors: 410, errorRate: 0.05, latencyP95: 950 },

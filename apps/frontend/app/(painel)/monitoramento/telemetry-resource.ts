@@ -1,20 +1,71 @@
-/** Monitoring projection adapter. Missing metrics remain unavailable. */
+/** Leitura da projeção de monitoramento. Medidas ausentes permanecem nulas. */
 import {
   SOURCES,
   STATES,
-  type StateTelemetry,
-  type TelemetrySource,
+  aggregateKpis,
+  buildFlowChart,
+  type FlowWindow,
+  type WindowKey,
 } from "@/app/(painel)/monitoramento/telemetry-data";
-import { jitter, loadResource, type Resource } from "@/lib/data/client";
+import { loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
 
-type Measured = { value: number | null; measurement: { status: string; source: string } };
-type MonitoringResponse = {
+export type Measured = {
+  value: number | null;
+  unit: string;
+  measurement: { status: string; source: string };
+};
+
+export type MonitoringKpi = Measured & {
+  status: "healthy" | "warning" | "critical" | "unknown";
+  newInWindow?: number | null;
+};
+
+export type ServiceHealth = {
+  service: string;
+  status: "healthy" | "degraded" | "critical";
+  calls: number;
+  errors: number;
+  errorRate: number;
+  latencyP95: number | null;
+};
+
+export type ServiceDependency = {
+  source: string;
+  target: string;
+  calls: number;
+  errorRate: number;
+};
+
+export type ServiceTopology = {
+  status: "available" | "partial" | "unavailable";
+  provenance: "traces" | "seed-carga";
+  services: ServiceHealth[];
+  dependencies: ServiceDependency[];
+};
+
+export type MonitoringResponse = {
+  capabilities: {
+    filtering: { supportedDimensions: string[] };
+    pipelineRuntime: { metrics: Record<string, string> };
+  };
   kpis: {
-    ingestionRate: Measured;
-    processingLatencyP95: Measured;
-    queueDepth: Measured;
-    deadLetterQueue: Measured & { newInWindow: number | null };
+    ingestionRate: MonitoringKpi;
+    processingLatencyP95: MonitoringKpi;
+    queueDepth: MonitoringKpi;
+    deadLetterQueue: MonitoringKpi;
+  };
+  flow: {
+    metric: "ingestion_rate" | "processing_latency";
+    unit: string;
+    measurement: { status: string; source: string };
+    target: { operator: string; value: number } | null;
+    series: Array<{
+      stage: string;
+      name: string;
+      points: Array<{ timestamp: string; value: number }>;
+    }>;
+    peak: { timestamp: string; stage: string; value: number } | null;
   };
   sources: Array<{
     id: string;
@@ -22,14 +73,11 @@ type MonitoringResponse = {
     workers: string[];
     observedThrough: string | null;
     lagSeconds: number | null;
-    state: "stable" | "delayed" | "partial";
-    records: { read: number; written: number; rejected: number };
+    state: "stable" | "delayed" | "partial" | "unavailable";
     coverage: Measured;
-    ingestionRate?: Measured;
-    processingLatencyP95?: Measured;
-    flowSeries?: Array<{ timestamp: string; processing: number; ingestion: number }>;
+    ingestionRate?: MonitoringKpi;
+    processingLatencyP95?: MonitoringKpi;
   }>;
-  topology?: ServiceTopology;
   geography: {
     areas: Array<{
       code: string;
@@ -43,109 +91,131 @@ type MonitoringResponse = {
       };
     }>;
   };
+  topology?: ServiceTopology;
 };
-
-export type ServiceHealth = {
-  service: string;
-  status: "healthy" | "degraded" | "critical";
-  calls: number;
-  errors: number;
-  errorRate: number;
-  latencyP95: number | null;
-};
-
-export type ServiceDependency = { source: string; target: string; calls: number; errorRate: number };
-export type ServiceTopology = { status: string; services: ServiceHealth[]; dependencies: ServiceDependency[] };
 
 function monitoringWindow(minutes: string): string {
-  return ({ "15": "15m", "30": "30m", "60": "1h", "360": "6h" } as Record<string, string>)[minutes.replace("m", "")] ?? minutes;
+  return (
+    (
+      { "15": "15m", "30": "30m", "60": "1h", "360": "6h" } as Record<
+        string,
+        string
+      >
+    )[minutes] ?? minutes
+  );
 }
 
-export function fetchServiceTopology(window: string): Promise<Resource<ServiceTopology>> {
-  return loadResource<MonitoringResponse, ServiceTopology>({
-    path: ENDPOINTS.monitoringOverview,
-    params: { window: monitoringWindow(window) },
-    map: (response) => {
-      if (!response.topology || response.topology.status !== "available")
-        throw new Error("A projeção de monitoramento não publica topologia de serviços.");
-      return response.topology;
+function exampleProjection(window: string): MonitoringResponse {
+  const selectedWindow = (
+    window in { "15": 1, "30": 1, "60": 1, "360": 1 } ? window : "360"
+  ) as WindowKey;
+  const kpis = aggregateKpis(SOURCES, selectedWindow)!;
+  const chartWindow: FlowWindow =
+    selectedWindow === "15" || selectedWindow === "30" ? selectedWindow : "60";
+  const chart = buildFlowChart(SOURCES, "latencia", chartWindow)!;
+  const now = Date.now();
+  const measurement = { status: "measured", source: "exemplo" };
+  const measured = (value: number | null, unit: string): Measured => ({
+    value,
+    unit,
+    measurement,
+  });
+  const kpi = (value: number | null, unit: string): MonitoringKpi => ({
+    ...measured(value, unit),
+    status: value === null ? "unknown" : "healthy",
+  });
+  const timestamps = chart.times.map((_, index) =>
+    new Date(now - (chart.times.length - index - 1) * 5 * 60_000).toISOString(),
+  );
+  const series = [
+    { stage: "processing", name: "Processamento", values: chart.processing },
+    { stage: "ingestion", name: "Ingestão", values: chart.ingestion },
+  ].map((item) => ({
+    stage: item.stage,
+    name: item.name,
+    points: item.values.map((value, index) => ({
+      timestamp: timestamps[index]!,
+      value: value * 1000,
+    })),
+  }));
+  return {
+    capabilities: {
+      filtering: { supportedDimensions: [] },
+      pipelineRuntime: {
+        metrics: {
+          ingestionRate: "available",
+          processingLatencyP95: "available",
+          queueDepth: "available",
+          deadLetterQueue: "available",
+        },
+      },
     },
-  });
+    kpis: {
+      ingestionRate: kpi(
+        kpis.ingestionPerMinute * 1_000_000,
+        "events_per_minute",
+      ),
+      processingLatencyP95: kpi(kpis.processingLatency * 1000, "ms"),
+      queueDepth: kpi(kpis.queueDepth * 1000, "messages"),
+      deadLetterQueue: kpi(kpis.deadLetters, "messages"),
+    },
+    flow: {
+      metric: "processing_latency",
+      unit: "ms",
+      measurement,
+      target: { operator: "less_than_or_equal", value: 120_000 },
+      series,
+      peak: {
+        timestamp: timestamps[chart.peakIndex]!,
+        stage: "processing",
+        value: chart.processing[chart.peakIndex]! * 1000,
+      },
+    },
+    sources: SOURCES.map((source) => ({
+      id: source.id,
+      name: source.name,
+      workers: [source.worker],
+      observedThrough: new Date(
+        now - source.updatedSecondsAgo * 1000,
+      ).toISOString(),
+      lagSeconds: source.updatedSecondsAgo,
+      state:
+        source.state === "estavel"
+          ? ("stable" as const)
+          : source.state === "atrasado"
+            ? ("delayed" as const)
+            : ("partial" as const),
+      coverage: measured(source.coverage / 100, "ratio"),
+      ingestionRate: kpi(
+        source.ingestionPerMinute * 1_000_000,
+        "events_per_minute",
+      ),
+      processingLatencyP95: kpi(source.processingLatency * 1000, "ms"),
+    })),
+    geography: {
+      areas: STATES.map((state) => ({
+        code: state.id,
+        name: state.name,
+        region: state.region,
+        observedSessions: measured(state.sessions * 1000, "sessions"),
+        values: {
+          instabilityRatio: measured(state.values.instabilidade / 100, "ratio"),
+          latencyP95: measured(state.values.latencia * 1000, "ms"),
+          eventLossRatio: measured(state.values.perda / 100, "ratio"),
+        },
+      })),
+    },
+  };
 }
 
-export function fetchTelemetrySources(revision = 0): Promise<Resource<TelemetrySource[]>> {
-  return loadResource<MonitoringResponse, TelemetrySource[]>({
+export function fetchMonitoringOverview(
+  window: string,
+  source?: string,
+): Promise<Resource<MonitoringResponse>> {
+  return loadResource<MonitoringResponse, MonitoringResponse>({
     path: ENDPOINTS.monitoringOverview,
-    params: { window: "6h" },
-    map: (response) => response.sources.flatMap((item) => {
-      const ingestion = item.ingestionRate?.value;
-      const latency = item.processingLatencyP95?.value;
-      if (ingestion === null || ingestion === undefined || latency === null || latency === undefined) return [];
-      const observed = item.observedThrough ? new Date(item.observedThrough).getTime() : NaN;
-      const state = item.state === "delayed" ? "atrasado" : item.state === "partial" ? "parcial" : "estavel";
-      return [{
-        id: item.id,
-        name: item.name,
-        worker: item.workers[0] ?? "—",
-        updatedSecondsAgo: Number.isNaN(observed) ? item.lagSeconds ?? 0 : Math.max(0, Math.round((Date.now() - observed) / 1000)),
-        coverage: Math.round((item.coverage.value ?? 0) * 100),
-        state,
-        ingestionPerMinute: ingestion / 1_000_000,
-        processingLatency: latency / 1000,
-        queueDepth: 0,
-        deadLetters: 0,
-        newDeadLetters: { "15": 0, "30": 0, "60": 0, "360": 0 },
-        ingestionTrend: { "15": 0, "30": 0, "60": 0, "360": 0 },
-        queueTrend: { "15": 0, "30": 0, "60": 0, "360": 0 },
-        flowSeries: item.flowSeries ?? [],
-      }];
-    }),
-    fallback: () => SOURCES.map((source, index) =>
-      revision === 0
-        ? source
-        : {
-            ...source,
-            updatedSecondsAgo: Math.max(1, Math.round(jitter(source.updatedSecondsAgo, revision * 3 + index, 0.2))),
-            ingestionPerMinute: Number(jitter(source.ingestionPerMinute, revision * 5 + index, 0.06).toFixed(2)),
-            processingLatency: Math.round(jitter(source.processingLatency, revision * 11 + index, 0.1)),
-            queueDepth: Number(jitter(source.queueDepth, revision * 13 + index, 0.12).toFixed(1)),
-          },
-    ),
-  });
-}
-
-export function fetchGeographicConcentration(revision = 0): Promise<Resource<StateTelemetry[]>> {
-  return loadResource<MonitoringResponse, StateTelemetry[]>({
-    path: ENDPOINTS.monitoringOverview,
-    params: { window: "6h" },
-    map: (response) => response.geography.areas.flatMap((area) => {
-      const geometry = STATES.find((state) => state.id === area.code);
-      const instability = area.values.instabilityRatio.value;
-      const latency = area.values.latencyP95.value;
-      const loss = area.values.eventLossRatio.value;
-      const sessions = area.observedSessions.value;
-      if (!geometry || instability === null || latency === null || loss === null || sessions === null) return [];
-      return [{
-        id: area.code,
-        name: area.name,
-        region: area.region,
-        path: geometry.path,
-        values: { instabilidade: instability * 100, latencia: latency / 1000, perda: loss * 100 },
-        sessions: sessions / 1000,
-        topSource: area.values.instabilityRatio.measurement.source,
-      }];
-    }),
-    fallback: () => STATES.map((state, index) =>
-      revision === 0
-        ? state
-        : {
-            ...state,
-            values: {
-              instabilidade: Number(jitter(state.values.instabilidade, revision * 17 + index, 0.1).toFixed(1)),
-              latencia: Number(jitter(state.values.latencia, revision * 19 + index, 0.08).toFixed(1)),
-              perda: Number(jitter(state.values.perda, revision * 23 + index, 0.12).toFixed(1)),
-            },
-          },
-    ),
+    params: { window: monitoringWindow(window), source },
+    map: (response) => response,
+    fallback: () => exampleProjection(window),
   });
 }

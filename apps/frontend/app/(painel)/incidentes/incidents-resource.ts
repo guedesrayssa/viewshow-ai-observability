@@ -14,6 +14,8 @@ export type IncidentsQuery = {
   deviceType: string;
   region: string;
   appVersion: string;
+  search?: string;
+  sort?: "urgency" | "devices" | "recent";
 };
 
 type IncidentDto = {
@@ -28,6 +30,8 @@ type IncidentDto = {
 
 export type IncidentsResponse = {
   items: IncidentDto[];
+  facets?: Record<string, Array<{ value: string; name: string; count: number }>>;
+  page?: { limit: number; hasMore: boolean; nextCursor: string | null };
   impactSeries: {
     points: Array<{ timestamp: string; total: number; byPriority: Record<"P1" | "P2" | "P3" | "P4", number> }>;
   };
@@ -52,15 +56,14 @@ function toClock(iso: string, short: boolean): string {
   return short ? `${hour.replace(" h", "")}h` : hour;
 }
 
-function toIncident(item: IncidentDto): Incident | null {
+function toIncident(item: IncidentDto): Incident {
   const devices = item.impact.affectedDevices.value;
-  if (devices === null || item.impact.affectedDevices.measurement.status === "unknown") return null;
   return {
     id: item.id,
     urgency: item.priority,
     title: item.title,
     segment: item.scopeSummary.map((entry) => entry.name).join(" · "),
-    devices,
+    devices: item.impact.affectedDevices.measurement.status === "unknown" ? null : devices,
     startedAt: toClock(item.startedAt, false),
     startedMinutesAgo: Math.max(0, Math.round((Date.now() - new Date(item.startedAt).getTime()) / 60_000)),
     component: item.primaryComponent?.name ?? "—",
@@ -71,7 +74,35 @@ function toIncident(item: IncidentDto): Incident | null {
 }
 
 export function mapIncidents(response: IncidentsResponse): Incident[] {
-  return response.items.map(toIncident).filter((item): item is Incident => item !== null);
+  return response.items.map(toIncident);
+}
+
+export type IncidentsPage = {
+  items: Incident[];
+  facets: Record<string, Array<{ value: string; name: string; count: number }>>;
+  nextCursor: string | null;
+};
+
+export function fetchIncidentsPage(query: IncidentsQuery, cursor?: string): Promise<Resource<IncidentsPage>> {
+  return loadResource<IncidentsResponse, IncidentsPage>({
+    path: ENDPOINTS.incidents,
+    params: {
+      window: windowOf(query.period),
+      deviceType: optional(query.deviceType),
+      region: optional(query.region),
+      appVersion: optional(query.appVersion),
+      search: query.search || undefined,
+      sort: query.sort === "urgency" ? "priority" : query.sort === "devices" ? "impact" : query.sort,
+      limit: 100,
+      cursor,
+    },
+    map: (response) => ({
+      items: mapIncidents(response),
+      facets: response.facets ?? {},
+      nextCursor: response.page?.nextCursor ?? null,
+    }),
+    fallback: () => ({ items: INCIDENTS, facets: {}, nextCursor: null }),
+  });
 }
 
 export function fetchIncidents(query: IncidentsQuery, revision = 0): Promise<Resource<Incident[]>> {
@@ -86,7 +117,7 @@ export function fetchIncidents(query: IncidentsQuery, revision = 0): Promise<Res
     map: mapIncidents,
     fallback: () => INCIDENTS.map((incident, index) => ({
       ...incident,
-      devices: revision === 0 ? incident.devices : Math.round(jitter(incident.devices, revision * 20 + index, 0.07)),
+      devices: revision === 0 || incident.devices === null ? incident.devices : Math.round(jitter(incident.devices, revision * 20 + index, 0.07)),
     })),
   });
 }

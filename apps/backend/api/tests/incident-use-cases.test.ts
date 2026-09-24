@@ -124,7 +124,12 @@ describe("incident use cases", () => {
               timestamp: now.toISOString(),
               category: "error",
               source: { name: "seed-carga" },
+              entity: "Player",
+              summary: "Falha de reprodução",
+              quality: { status: "verified", label: "Verificado" },
               dimensions: { deviceType: "smart-tv" },
+              normalized: { metric: "playback_error", value: "1", tags: ["player"] },
+              raw: { available: false },
             },
           }],
         })),
@@ -138,6 +143,42 @@ describe("incident use cases", () => {
     expect(result.data.volumeSeries).toMatchObject({ points: [{ value: 1 }] });
     expect(result.quality.partial).toBe(false);
     expect(JSON.stringify(result.data)).not.toMatch(/"(?:pk|sk|ttl)"/);
+    const detail = await useCases.event("inc_0", "evt_1");
+    expect(detail.data.normalized.metric).toBe("playback_error");
+    expect(detail.quality.warnings[0]?.code).toBe("RAW_PAYLOAD_UNAVAILABLE");
+  });
+
+  it("pages persisted events without shrinking the aggregate or losing filter binding", async () => {
+    const children = Array.from({ length: 5 }, (_, index) => ({
+      itemType: "event",
+      publicData: {
+        id: `evt_${index}`,
+        timestamp: new Date(now.getTime() - index * 60_000).toISOString(),
+        category: index % 2 === 0 ? "error" : "request",
+        source: { name: "argus" },
+        entity: "Player",
+        summary: `Evento ${index}`,
+        quality: { status: "verified" },
+        dimensions: { region: index % 2 === 0 ? "Sudeste" : "Sul" },
+        normalized: { metric: "event_count", value: "1", tags: [] },
+        raw: { available: false },
+      },
+    }));
+    const useCases = new IncidentUseCases(
+      repository({ bundle: vi.fn(async () => ({ incident: items[0] ?? null, children })) }),
+      new CursorCodec("p".repeat(32)),
+      new UnavailableReviewFeedbackPort(),
+      () => now,
+    );
+    const first = await useCases.events("inc_0", { limit: 2, window: "1h" });
+    expect(first.data.items.map((event) => event.id)).toEqual(["evt_0", "evt_1"]);
+    expect(first.data.page.hasMore).toBe(true);
+    expect(first.data.categoryStats[0]?.total).toBe(5);
+    expect(first.data.volumeSeries?.points.reduce((sum, point) => sum + point.value, 0)).toBe(5);
+    const second = await useCases.events("inc_0", { limit: 2, window: "1h", cursor: first.data.page.nextCursor! });
+    expect(second.data.items.map((event) => event.id)).toEqual(["evt_2", "evt_3"]);
+    await expect(useCases.events("inc_0", { limit: 2, window: "1h", region: "Sul", cursor: first.data.page.nextCursor! }))
+      .rejects.toMatchObject({ status: 400 });
   });
 
   it("fails closed when reanalysis cannot find an incident or publish its request", async () => {
