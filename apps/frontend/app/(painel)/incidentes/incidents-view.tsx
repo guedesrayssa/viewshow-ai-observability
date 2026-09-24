@@ -103,7 +103,8 @@ export function IncidentsView() {
   const visibleIncidents = useMemo(() => {
     const query = search.trim().toLowerCase();
     const list = (incidents.data ?? []).filter(
-      (incident) => query === "" || incident.title.toLowerCase().includes(query),
+      (incident) =>
+        query === "" || incident.title.toLowerCase().includes(query),
     );
 
     return sortIncidents(list, sort);
@@ -169,10 +170,12 @@ export function IncidentsView() {
               aria-label="Filtrar por período"
               value={period}
               onValueChange={(value) => setPeriod(value as PeriodKey)}
-              options={(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => ({
-                value: key,
-                label: PERIOD_LABELS[key],
-              }))}
+              options={(Object.keys(PERIOD_LABELS) as PeriodKey[]).map(
+                (key) => ({
+                  value: key,
+                  label: PERIOD_LABELS[key],
+                }),
+              )}
             />
 
             <Select
@@ -181,7 +184,10 @@ export function IncidentsView() {
               onValueChange={(value) => setDeviceType(value)}
               options={[
                 { value: "all", label: `Todos os dispositivos` },
-                ...facets.deviceTypes.map((name) => ({ value: name, label: name })),
+                ...facets.deviceTypes.map((name) => ({
+                  value: name,
+                  label: name,
+                })),
               ]}
             />
 
@@ -201,7 +207,10 @@ export function IncidentsView() {
               onValueChange={(value) => setAppVersion(value)}
               options={[
                 { value: "all", label: `Todas as versões` },
-                ...facets.appVersions.map((name) => ({ value: name, label: name })),
+                ...facets.appVersions.map((name) => ({
+                  value: name,
+                  label: name,
+                })),
               ]}
             />
 
@@ -309,10 +318,13 @@ export function IncidentsView() {
                         <td
                           className={cn(
                             "py-4 pr-4 text-right text-body-sm font-semibold",
-                            DEVICE_COUNT_CLASSES[incident.urgency] ?? "text-ink",
+                            DEVICE_COUNT_CLASSES[incident.urgency] ??
+                              "text-ink",
                           )}
                         >
-                          {formatInteger(incident.devices)}
+                          {incident.devices === null
+                            ? "sem contagem"
+                            : formatInteger(incident.devices)}
                         </td>
                         <td className="py-4 pr-4 text-body-sm text-ink-muted">
                           {incident.startedAt}
@@ -320,7 +332,16 @@ export function IncidentsView() {
                         <td className="py-4 pr-4 text-body-sm text-ink-muted">
                           {incident.component}
                         </td>
-                        <td className="py-4">
+                        <td className="flex gap-2 py-4">
+                          <Link
+                            href={`/eventos?incidente=${incident.id}`}
+                            className={buttonClasses({
+                              variant: "quiet",
+                              size: "sm",
+                            })}
+                          >
+                            Ver eventos
+                          </Link>
                           <Link
                             href={`/evidencias?incidente=${incident.id}`}
                             className={buttonClasses({

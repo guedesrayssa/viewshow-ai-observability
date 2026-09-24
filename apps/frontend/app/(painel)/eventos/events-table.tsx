@@ -27,12 +27,9 @@ import {
 } from "@/app/(painel)/eventos/events-data";
 
 const ROW_ACCENT_CLASSES: Record<EventCategory, string> = {
-  error: "border-l-critical bg-critical/5",
-  vitals: "border-l-brand-orange bg-warning/5",
-  request: "border-l-brand-blue-light bg-info/5",
-  screen_view: "border-l-brand-blue-light bg-info/5",
-  video_view: "border-l-brand-blue-light bg-info/5",
-  session: "border-l-brand-blue-light bg-info/5",
+  signal_observation: "border-l-brand-orange bg-warning/5",
+  live_event: "border-l-brand-blue-light bg-info/5",
+  live_event_context: "border-l-brand-navy bg-info/5",
 };
 
 export type EventsTableProps = {
@@ -41,7 +38,11 @@ export type EventsTableProps = {
   onToggle: (id: string) => void;
 };
 
-export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) {
+export function EventsTable({
+  events,
+  expandedId,
+  onToggle,
+}: EventsTableProps) {
   if (events.length === 0) {
     return (
       <p className="mt-8 text-center text-body-sm text-ink-muted">
@@ -108,13 +109,19 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
                   >
                     {CATEGORY_LABELS[event.category]}
                   </td>
-                  <td className="py-4 pr-4 text-body-sm text-ink-muted">{event.source}</td>
-                  <td className="py-4 pr-4 text-body-sm text-ink-muted">{event.entity}</td>
+                  <td className="py-4 pr-4 text-body-sm text-ink-muted">
+                    {event.source}
+                  </td>
+                  <td className="py-4 pr-4 text-body-sm text-ink-muted">
+                    {event.entity}
+                  </td>
                   <td className="py-4 pr-4 text-body-sm font-medium text-ink">
                     {event.summary}
                   </td>
                   <td className="py-4 pr-4">
-                    <Badge tone={event.quality.tone}>{event.quality.label}</Badge>
+                    <Badge tone={event.quality.tone}>
+                      {event.quality.label}
+                    </Badge>
                   </td>
                   <td className="py-4">
                     <Button
@@ -140,19 +147,35 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
                     <td colSpan={7} className="bg-surface-muted px-4 py-5">
                       <div className="grid gap-6 sm:grid-cols-2">
                         <div>
-                          <p className="text-label font-medium text-ink">Dado normalizado</p>
+                          <p className="text-label font-medium text-ink">
+                            Dado normalizado
+                          </p>
                           <dl className="mt-2 flex flex-col gap-1.5 text-body-sm">
                             <div className="flex gap-2">
                               <dt className="text-ink-muted">Métrica</dt>
-                              <dd className="font-medium text-ink">{event.detail.metric}</dd>
+                              <dd className="font-medium text-ink">
+                                {event.detail.metric}
+                              </dd>
                             </div>
                             <div className="flex gap-2">
                               <dt className="text-ink-muted">Timestamp</dt>
-                              <dd className="font-medium text-ink">{event.detail.timestamp}</dd>
+                              <dd className="font-medium text-ink">
+                                {event.detail.timestamp}
+                              </dd>
                             </div>
                             <div className="flex gap-2">
                               <dt className="text-ink-muted">Valor</dt>
-                              <dd className="font-medium text-ink">{event.detail.value}</dd>
+                              <dd className="font-medium text-ink">
+                                {event.detail.value}
+                              </dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt className="text-ink-muted">
+                                Registro de origem
+                              </dt>
+                              <dd className="break-all font-medium text-ink">
+                                {event.detail.sourceRecordId}
+                              </dd>
                             </div>
                           </dl>
 
@@ -170,15 +193,15 @@ export function EventsTable({ events, expandedId, onToggle }: EventsTableProps) 
                             Origem · {event.source} / {event.entity}
                           </p>
 
-                          {event.detail.rawAvailable ? (
-                            <pre className="mt-2 overflow-x-auto rounded-field bg-canvas p-3 text-caption text-ink-muted">
-                              {event.detail.rawSnippet}
-                            </pre>
-                          ) : (
+                          <p className="mt-2 break-all text-caption text-ink-muted">
+                            {event.detail.canonicalLocator}
+                          </p>
+                          {!event.detail.rawAvailable ? (
                             <Alert tone="warning" className="mt-2">
-                              Dado bruto não disponível para esta fonte.
+                              Dado bruto não disponível:{" "}
+                              {event.detail.rawReason}.
                             </Alert>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </td>

@@ -9,6 +9,9 @@ export const ENDPOINTS = {
   },
   dashboardOverview: "/api/v1/dashboard/overview",
   incidents: "/api/v1/incidents",
+  globalEvents: "/api/v1/events",
+  globalEvent: (eventId: string) =>
+    `/api/v1/events/${encodeURIComponent(eventId)}`,
   diagnosis: (incidentId: string) =>
     `/api/v1/incidents/${encodeURIComponent(incidentId)}/diagnosis`,
   events: (incidentId: string) =>
@@ -18,6 +21,20 @@ export const ENDPOINTS = {
   review: (incidentId: string, hypothesisId: string) =>
     `/api/v1/incidents/${encodeURIComponent(incidentId)}/hypotheses/${encodeURIComponent(hypothesisId)}/review`,
   monitoringOverview: "/api/v1/monitoring/overview",
+  argusIntegration: "/api/v1/integrations/argus",
+  imports: {
+    root: "/api/v1/imports",
+    status: (importId: string) =>
+      `/api/v1/imports/${encodeURIComponent(importId)}`,
+    parts: (importId: string) =>
+      `/api/v1/imports/${encodeURIComponent(importId)}/parts`,
+    restart: (importId: string) =>
+      `/api/v1/imports/${encodeURIComponent(importId)}/restart`,
+    complete: (importId: string) =>
+      `/api/v1/imports/${encodeURIComponent(importId)}/complete`,
+    activate: (importId: string) =>
+      `/api/v1/imports/${encodeURIComponent(importId)}/activate`,
+  },
 } as const;
 
 export type ApiWindow = `${number}${"m" | "h"}`;

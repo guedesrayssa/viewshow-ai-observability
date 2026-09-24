@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 const MAX_INPUT_BYTES = 20 * 1024 * 1024;
-const expectedAddresses = [
+const apiExpectedAddresses = [
   "aws_amplify_app.painel",
   "aws_amplify_branch.principal",
   "aws_appautoscaling_policy.cpu_api",
@@ -58,12 +58,92 @@ const expectedAddresses = [
   "terraform_data.flow_logs_bucket",
   "terraform_data.imagem",
   "terraform_data.painel",
+];
+const ingestionExpectedAddresses = [
+  "aws_athena_workgroup.ingestion",
+  "aws_cloudwatch_dashboard.ingestion",
+  "aws_cloudwatch_log_group.ingestion_backfill",
+  "aws_cloudwatch_log_group.ingestion_incremental_export",
+  "aws_cloudwatch_log_group.ingestion_incremental_ingest",
+  "aws_cloudwatch_log_group.ingestion_sync",
+  "aws_cloudwatch_log_metric_filter.import_active_upload_age",
+  "aws_cloudwatch_log_metric_filter.import_reconciliation_failures",
+  "aws_cloudwatch_metric_alarm.analysis_dlq_depth",
+  "aws_cloudwatch_metric_alarm.analysis_queue_backlog",
+  "aws_cloudwatch_metric_alarm.analysis_queue_oldest_age",
+  "aws_cloudwatch_metric_alarm.import_active_upload_age",
+  "aws_cloudwatch_metric_alarm.import_reconciliation_failures",
+  "aws_cloudwatch_metric_alarm.import_worker_failures",
+  "aws_cloudwatch_metric_alarm.incremental_batch_quarantined",
+  "aws_cloudwatch_metric_alarm.incremental_dlq_depth",
+  "aws_cloudwatch_metric_alarm.incremental_queue_backlog",
+  "aws_cloudwatch_metric_alarm.incremental_queue_oldest_age",
+  "aws_cloudwatch_metric_alarm.incremental_watermark_lag",
+  "aws_cloudwatch_metric_alarm.ingestion_athena_failures",
+  "aws_cloudwatch_metric_alarm.ingestion_athena_processed_bytes",
+  "aws_cloudwatch_metric_alarm.ingestion_backfill_failures",
+  "aws_cloudwatch_metric_alarm.ingestion_canonical_archive_failures",
+  "aws_cloudwatch_metric_alarm.ingestion_disk_usage_critical",
+  "aws_cloudwatch_metric_alarm.ingestion_disk_usage_warning",
+  "aws_cloudwatch_metric_alarm.ingestion_mysql_page_duration",
+  "aws_cloudwatch_metric_alarm.ingestion_mysql_preflight_failures",
+  "aws_cloudwatch_metric_alarm.ingestion_mysql_retries",
+  "aws_cloudwatch_metric_alarm.ingestion_outbox_oldest_age",
+  'aws_cloudwatch_metric_alarm.ingestion_partial_runs["backfill"]',
+  'aws_cloudwatch_metric_alarm.ingestion_partial_runs["sync"]',
+  "aws_cloudwatch_metric_alarm.ingestion_projecting_duration",
+  "aws_cloudwatch_metric_alarm.ingestion_rebuild_projections_failures",
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-cpu"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-memory"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-storage"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-cpu"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-memory"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-storage"]',
+  'aws_cloudwatch_metric_alarm.ingestion_schema_drift["backfill"]',
+  'aws_cloudwatch_metric_alarm.ingestion_schema_drift["sync"]',
+  'aws_cloudwatch_metric_alarm.ingestion_stage_failures["archiving"]',
+  'aws_cloudwatch_metric_alarm.ingestion_stage_failures["projecting"]',
+  "aws_cloudwatch_metric_alarm.ingestion_sync_failures",
+  "aws_cloudwatch_metric_alarm.scheduler_dlq_depth",
+  "aws_cloudwatch_metric_alarm.scheduler_target_errors",
+  "aws_ecr_repository.ingestion",
+  "aws_ecs_task_definition.ingestion_backfill",
+  "aws_ecs_task_definition.ingestion_import",
+  "aws_ecs_task_definition.ingestion_incremental_export",
+  "aws_ecs_task_definition.ingestion_incremental_ingest",
+  "aws_ecs_task_definition.ingestion_sync",
+  "aws_glue_catalog_database.ingestion",
+  "aws_s3_bucket_lifecycle_configuration.ingestion",
+  "aws_s3_bucket_public_access_block.ingestion",
+  "aws_s3_bucket_server_side_encryption_configuration.ingestion",
+  "aws_s3_bucket_versioning.ingestion",
+  "aws_scheduler_schedule.ingestion_sync",
+  "aws_scheduler_schedule.ingestion_incremental_export",
+  "aws_scheduler_schedule.ingestion_incremental_ingest",
+  "aws_scheduler_schedule_group.ingestion",
+  "aws_secretsmanager_secret.live_mysql[0]",
+  "aws_secretsmanager_secret.snapshot_mysql[0]",
+  "aws_security_group.ingestion",
+  "aws_sqs_queue.analysis",
+  "aws_sqs_queue.analysis_dlq",
+  "aws_sqs_queue.incremental_batches",
+  "aws_sqs_queue.incremental_batches_dlq",
+  "aws_sqs_queue.ingestion_scheduler_dlq",
+  "aws_sqs_queue_redrive_allow_policy.incremental_batches_dlq",
+  "terraform_data.ingestion_bucket_learner_lab[0]",
+  "terraform_data.ingestion_guardrails",
+  "terraform_data.ingestion_image[0]",
+];
+const expectedAddresses = [
+  ...apiExpectedAddresses,
+  ...ingestionExpectedAddresses,
 ].sort();
 const expectedAddressSet = new Set(expectedAddresses);
 const allowedDataAddresses = new Set([
   "data.archive_file.painel",
   "data.aws_availability_zones.disponiveis",
   "data.aws_caller_identity.atual",
+  "data.aws_ecr_image.ingestion[0]",
   "data.aws_iam_instance_profile.lab",
   "data.aws_iam_role.lab",
   "data.aws_region.atual",
@@ -222,9 +302,9 @@ if (process.exitCode === undefined) {
     if (
       !Array.isArray(change.actions) ||
       change.actions.length !== 1 ||
-      change.actions[0] !== "create"
+      !["create", "no-op"].includes(change.actions[0])
     ) {
-      reject("action must be create", address);
+      reject("action must be create or no-op", address);
       break;
     }
   }
@@ -240,10 +320,10 @@ if (process.exitCode === undefined) {
 
   if (process.exitCode === undefined) {
     for (const address of expectedAddresses) {
-      process.stdout.write(`${address}: create\n`);
+      process.stdout.write(`${address}: create or no-op\n`);
     }
     process.stdout.write(
-      `create-only plan accepted: ${expectedAddresses.length} resources; auxiliary data reads/no-ops: ${auxiliaryDataReadCount}\n`,
+      `create/no-op plan accepted: ${expectedAddresses.length} resources; auxiliary data reads/no-ops: ${auxiliaryDataReadCount}\n`,
     );
   }
 }

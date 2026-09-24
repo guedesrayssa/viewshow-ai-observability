@@ -44,6 +44,7 @@ const successBody = {
   meta: {
     requestId: "req_1",
     schemaVersion: "1.0",
+    datasetVersion: null,
     generatedAt: "2026-09-09T12:00:00.000Z",
     window: {
       preset: "30m",
@@ -82,7 +83,7 @@ describe("Visão Geral integrated with the gateway", () => {
     expect(screen.getByText("Buffering em Smart TVs")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "http://operacional.test/api/v1/dashboard/overview?window=30m",
+      "http://operacional.test/api/v1/dashboard/overview?window=24h",
     );
   });
 

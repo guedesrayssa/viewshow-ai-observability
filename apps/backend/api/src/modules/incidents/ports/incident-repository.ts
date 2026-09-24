@@ -1,8 +1,60 @@
+import type { EventDto, EvidenceDto, EventsQuery } from "@view-show/contracts";
+import type { ActiveDatasetSnapshot } from "../../datasets/ports/active-dataset-resolver.js";
 import type { PhysicalItem } from "../domain/incident.js";
+
+export interface ActiveIncidentProjection {
+  readonly observedThrough: string;
+  readonly coverage: "complete" | "partial" | "unavailable";
+  readonly incidents: readonly {
+    readonly incidentId: string;
+    readonly number: string | null;
+    readonly openedAt: string;
+    readonly state: string | null;
+    readonly priority: "P1" | "P2" | "P3" | "P4";
+  }[];
+}
 
 export interface IncidentBundle {
   readonly incident: PhysicalItem | null;
   readonly children: readonly PhysicalItem[];
+}
+
+export interface EventProjectionStatus {
+  readonly observedThrough: string | null;
+  readonly coverage: "complete" | "partial" | "unavailable";
+  readonly qualityFlags: readonly string[];
+}
+
+export interface EventPagePosition {
+  readonly day: string;
+  readonly sortKey: string;
+}
+
+export interface EventReadRequest {
+  readonly incidentId: string | null;
+  readonly from: string;
+  readonly to: string;
+  readonly search?: string;
+  readonly category?: string;
+  readonly sourceDataset?: string;
+  readonly correlation: EventsQuery["correlation"];
+  readonly sort: EventsQuery["sort"];
+  readonly limit: number;
+  readonly position: EventPagePosition | null;
+}
+
+export interface EventReadPage {
+  readonly items: readonly EventDto[];
+  readonly categoryStats: readonly {
+    readonly category: EventDto["category"];
+    readonly count: number;
+  }[];
+  readonly facets: {
+    readonly categories: readonly EventDto["category"][];
+    readonly sourceDatasets: readonly string[];
+    readonly correlationStatuses: readonly ("linked" | "unlinked")[];
+  };
+  readonly next: EventPagePosition | null;
 }
 
 export interface ReviewWrite {
@@ -15,8 +67,27 @@ export interface ReviewWrite {
 }
 
 export interface IncidentRepository {
+  activeProjection(
+    active: ActiveDatasetSnapshot,
+  ): Promise<ActiveIncidentProjection | null>;
   listBetween(from: Date, to: Date): Promise<readonly PhysicalItem[]>;
   bundle(incidentId: string): Promise<IncidentBundle>;
+  eventProjection(
+    active: ActiveDatasetSnapshot,
+  ): Promise<EventProjectionStatus | null>;
+  listEvents(
+    active: ActiveDatasetSnapshot,
+    request: EventReadRequest,
+  ): Promise<EventReadPage>;
+  getEvent(
+    active: ActiveDatasetSnapshot,
+    eventId: string,
+    incidentId: string | null,
+  ): Promise<EventDto | null>;
+  listEvidence(
+    active: ActiveDatasetSnapshot,
+    incidentId: string,
+  ): Promise<readonly EvidenceDto[]>;
   writeReview(write: ReviewWrite): Promise<PhysicalItem>;
 }
 

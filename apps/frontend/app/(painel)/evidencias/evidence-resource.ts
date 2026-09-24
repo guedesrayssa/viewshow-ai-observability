@@ -1,27 +1,12 @@
 /** Diagnosis reads and optimistic human review through the public gateway. */
 import {
-  BUFFERING_DATASETS,
-  CHANGE_LIKELIHOODS,
-  CONCENTRATION,
-  CONCENTRATION_NOTE,
-  DEPLOY_INDEX,
-  DEPLOY_LABEL,
-  EVIDENCE_SOURCES,
-  HYPOTHESIS,
-  INCIDENT,
-  TIMELINE,
   type BufferingPeriodKey,
   type BufferingPoint,
   type EvidenceData,
   type EvidenceSource,
   type ReviewStatus,
 } from "@/app/(painel)/evidencias/evidence-data";
-import {
-  gatewayUrl,
-  jitter,
-  loadResource,
-  type Resource,
-} from "@/lib/data/client";
+import { gatewayUrl, loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
 import { reportRum } from "@/lib/rum";
 
@@ -56,15 +41,59 @@ type DiagnosisResponse = {
   };
   evidence: Array<{
     id: string;
+    eventId: string;
+    incidentId: string;
     type: string;
-    title: string;
-    statement: string;
     relation: "supports" | "contradicts" | "context";
+    hypothesisIds: string[];
     strength: "strong" | "moderate" | "weak";
-    source: { type: string; name: string };
-    quality: { status: string; flags: string[] };
+    observedAt: string | null;
+    source: {
+      type: string;
+      name: string;
+      dataset: string;
+      recordId: string;
+    };
+    correlation: {
+      correlationId: string;
+      incidentId: string;
+      ruleVersion: string;
+      timeDistanceSeconds: number;
+      matchedFields: Array<{
+        eventField: string;
+        incidentField: string;
+        value: string;
+      }>;
+    };
+    quality: {
+      status: string;
+      coverageRatio: number | null;
+      flags: string[];
+    };
   }>;
-  charts: { buffering: BufferingContract | null; concentrations: unknown[] };
+  charts: {
+    buffering: BufferingContract | null;
+    concentrations: Array<{ label: string; percentage: number }>;
+    concentrationNote: string;
+  };
+  timeline: Array<{
+    timestamp: string;
+    label: string;
+    source: string;
+    tone: "info" | "warning" | "critical" | "navy";
+  }>;
+  changes: Array<{
+    label: string;
+    cause: string;
+    percentage: number;
+    tone: "info" | "warning" | "critical";
+  }>;
+  dataQuality: {
+    status: string;
+    coverageRatio: number | null;
+    observedThrough: string | null;
+    gaps: string[];
+  };
 };
 
 type BufferingContract = {
@@ -76,20 +105,6 @@ const reviewTargets = new Map<
   string,
   { hypothesisId: string; expectedVersion: number }
 >();
-
-function exampleEvidence(): EvidenceData {
-  return {
-    incidentId: INCIDENT.id,
-    incident: INCIDENT,
-    hypothesis: HYPOTHESIS,
-    reviewStatus: "pending",
-    concentration: CONCENTRATION,
-    concentrationNote: CONCENTRATION_NOTE,
-    sources: EVIDENCE_SOURCES,
-    timeline: TIMELINE,
-    changes: CHANGE_LIKELIHOODS,
-  };
-}
 
 function toClock(iso: string): string {
   const date = new Date(iso);
@@ -103,30 +118,35 @@ function toEvidence(
 ): EvidenceSource {
   return {
     id: item.id,
+    eventId: item.eventId,
+    incidentId: item.incidentId,
+    observedAt: item.observedAt,
+    qualityStatus: item.quality.status,
+    qualityFlags: item.quality.flags,
     source: item.source.name,
-    summary: item.statement,
+    summary: "Evento ARGUS correlacionado ao incidente",
     strength:
       item.relation === "contradicts"
         ? "contra"
         : item.strength === "strong"
           ? "forte"
           : "neutra",
-    detail: [item.title, item.type, ...item.quality.flags]
-      .filter(Boolean)
-      .join(" · "),
+    detail: [
+      `Evento ${item.eventId}`,
+      `Regra ${item.correlation.ruleVersion}`,
+      `Distância ${item.correlation.timeDistanceSeconds}s`,
+      `Registro ${item.source.recordId}`,
+      ...item.correlation.matchedFields.map(
+        (field) =>
+          `${field.eventField} = ${field.value} (${field.incidentField})`,
+      ),
+      ...item.quality.flags,
+    ].join(" · "),
   };
 }
 
 function toData(response: DiagnosisResponse): EvidenceData {
   const devices = response.incident.impact.affectedDevices.value;
-  if (
-    devices === null ||
-    response.incident.impact.affectedDevices.measurement.status === "unknown"
-  ) {
-    throw new Error(
-      "O diagnóstico não possui contagem observada de dispositivos afetados.",
-    );
-  }
   const hypothesis =
     response.diagnosis.hypotheses.find(
       (item) => item.id === response.diagnosis.primaryHypothesisId,
@@ -169,11 +189,14 @@ function toData(response: DiagnosisResponse): EvidenceData {
         }
       : null,
     reviewStatus,
-    concentration: [],
-    concentrationNote: "",
+    concentration: response.charts.concentrations,
+    concentrationNote: response.charts.concentrationNote,
     sources: response.evidence.map(toEvidence),
-    timeline: [],
-    changes: [],
+    timeline: response.timeline.map((mark) => ({
+      ...mark,
+      time: toClock(mark.timestamp),
+    })),
+    changes: response.changes,
   };
 }
 
@@ -183,7 +206,6 @@ export function fetchEvidence(
   return loadResource<DiagnosisResponse, EvidenceData>({
     path: ENDPOINTS.diagnosis(incidentId),
     map: toData,
-    fallback: exampleEvidence,
   });
 }
 
@@ -197,6 +219,7 @@ export function fetchBuffering(
   period: BufferingPeriodKey,
   revision = 0,
 ): Promise<Resource<BufferingSeries>> {
+  void revision;
   return loadResource<DiagnosisResponse, BufferingSeries>({
     path: ENDPOINTS.diagnosis(incidentId),
     map: (response) => {
@@ -223,18 +246,6 @@ export function fetchBuffering(
             : null,
       };
     },
-    fallback: () => ({
-      points: BUFFERING_DATASETS[period].map((point, index) => ({
-        ...point,
-        value:
-          revision === 0
-            ? point.value
-            : Number(
-                jitter(point.value, revision * 40 + index, 0.08).toFixed(1),
-              ),
-      })),
-      marker: { index: DEPLOY_INDEX[period], label: DEPLOY_LABEL },
-    }),
   });
 }
 

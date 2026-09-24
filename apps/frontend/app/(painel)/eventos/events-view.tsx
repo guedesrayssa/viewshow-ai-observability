@@ -16,19 +16,19 @@ import { useSearchParams } from "next/navigation";
 
 import { EventsChart } from "@/app/(painel)/eventos/events-chart";
 import {
-  ADVANCED_FILTERS,
-  APP_VERSIONS,
-  DEVICE_TYPES,
   PERIOD_LABELS,
-  REGIONS,
-  SOURCES,
+  type CorrelatedEvent,
   type EventCategory,
   type PeriodKey,
   type VolumePeriodKey,
 } from "@/app/(painel)/eventos/events-data";
 import {
+  fetchEventDetail,
   fetchEventVolume,
   fetchEvents,
+  eventQueryKey,
+  mergeEventPages,
+  mergeRequestedEvent,
 } from "@/app/(painel)/eventos/events-resource";
 import { EventsTable } from "@/app/(painel)/eventos/events-table";
 import { DataStatus } from "@/components/dashboard/data-status";
@@ -36,7 +36,6 @@ import { Unavailable } from "@/components/dashboard/unavailable";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Reveal } from "@/components/motion/reveal";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { ExportIcon, SearchIcon, XIcon } from "@/components/ui/icons";
@@ -46,31 +45,53 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
 
-/** Recorte herdado da investigação do INC-4821. */
 const DEFAULT_FILTERS = {
   period: "30" as PeriodKey | "all",
-  deviceType: "Smart TV",
-  region: "Nordeste",
-  appVersion: "App 4.2.1",
   source: "all",
+  correlation: "all" as const,
 };
 
 export function EventsView() {
-  const incidentId = useSearchParams().get("incidente") ?? "";
+  const searchParams = useSearchParams();
+  const incidentId = searchParams.get("incidente") ?? "";
+  const requestedEventId = searchParams.get("evento");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<EventCategory | "all">("all");
-  const [period, setPeriod] = useState<PeriodKey | "all">(DEFAULT_FILTERS.period);
-  const [deviceType, setDeviceType] = useState(DEFAULT_FILTERS.deviceType);
-  const [region, setRegion] = useState(DEFAULT_FILTERS.region);
-  const [appVersion, setAppVersion] = useState(DEFAULT_FILTERS.appVersion);
+  const [period, setPeriod] = useState<PeriodKey | "all">(
+    DEFAULT_FILTERS.period,
+  );
   const [source, setSource] = useState(DEFAULT_FILTERS.source);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [correlation, setCorrelation] = useState<"all" | "linked" | "unlinked">(
+    incidentId ? "linked" : DEFAULT_FILTERS.correlation,
+  );
+  const [expandedId, setExpandedId] = useState<string | null>(requestedEventId);
   const [volumePeriod, setVolumePeriod] = useState<VolumePeriodKey>("30");
+  const eventQuery = {
+    incidentId,
+    period,
+    search,
+    category,
+    source,
+    correlation,
+  };
+  const filterKey = eventQueryKey(eventQuery);
+  const [continuation, setContinuation] = useState<{
+    key: string;
+    items: CorrelatedEvent[];
+    nextCursor: string | null;
+    loading: boolean;
+    error?: string;
+  }>({ key: filterKey, items: [], nextCursor: null, loading: false });
 
   const events = useResource(
-    () => fetchEvents({ incidentId, period, category, deviceType, region, appVersion, source }),
-    [incidentId, period, category, deviceType, region, appVersion, source],
+    () => fetchEvents(eventQuery),
+    [incidentId, period, search, category, source, correlation],
+  );
+
+  const requestedEvent = useResource(
+    () => fetchEventDetail(incidentId, requestedEventId ?? ""),
+    [incidentId, requestedEventId],
+    { enabled: Boolean(requestedEventId) },
   );
 
   const volume = useResource(
@@ -78,63 +99,89 @@ export function EventsView() {
     [incidentId, volumePeriod],
   );
 
+  const loadedEvents = useMemo(() => {
+    const pages = mergeEventPages(
+      events.data?.queryKey === filterKey ? events.data.events : [],
+      continuation.key === filterKey ? continuation.items : [],
+    );
+    return mergeRequestedEvent(pages, requestedEvent.data);
+  }, [events.data, continuation, filterKey, requestedEvent.data]);
+  const nextCursor =
+    continuation.key === filterKey && continuation.items.length > 0
+      ? continuation.nextCursor
+      : events.data?.queryKey === filterKey
+        ? events.data.nextCursor
+        : null;
+  const hasMore =
+    continuation.key === filterKey && continuation.items.length > 0
+      ? continuation.nextCursor !== null
+      : events.data?.queryKey === filterKey && events.data.hasMore;
+
+  async function loadNextPage() {
+    if (!nextCursor || continuation.loading) return;
+    setContinuation((current) => ({
+      key: filterKey,
+      items: current.key === filterKey ? current.items : [],
+      nextCursor,
+      loading: true,
+    }));
+    try {
+      const page = await fetchEvents({ ...eventQuery, cursor: nextCursor });
+      setContinuation((current) => ({
+        key: filterKey,
+        items: mergeEventPages(
+          current.key === filterKey ? current.items : [],
+          page.data?.events ?? [],
+        ),
+        nextCursor: page.data?.nextCursor ?? null,
+        loading: false,
+      }));
+    } catch (error) {
+      setContinuation((current) => ({
+        ...current,
+        loading: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar a próxima página.",
+      }));
+    }
+  }
+
   const hasActiveFilters =
     search !== "" ||
     category !== "all" ||
     period !== DEFAULT_FILTERS.period ||
-    deviceType !== DEFAULT_FILTERS.deviceType ||
-    region !== DEFAULT_FILTERS.region ||
-    appVersion !== DEFAULT_FILTERS.appVersion ||
-    source !== DEFAULT_FILTERS.source;
+    source !== DEFAULT_FILTERS.source ||
+    (!incidentId && correlation !== DEFAULT_FILTERS.correlation);
 
   // A leitura já vem recortada; a busca livre e o tipo continuam locais para
   // responder na hora, sem uma ida à API a cada tecla.
   const visibleEvents = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return (events.data?.events ?? []).filter((event) => {
+    return loadedEvents.filter((event) => {
+      if (event.id === requestedEventId) return true;
       const matchesQuery =
         query === "" ||
         event.summary.toLowerCase().includes(query) ||
         event.entity.toLowerCase().includes(query) ||
         event.source.toLowerCase().includes(query);
       const matchesCategory = category === "all" || event.category === category;
-      const matchesPeriod = period === "all" || event.minutesAgo <= Number(period);
-      const matchesDevice = deviceType === "all" || event.deviceType === deviceType;
-      const matchesRegion = region === "all" || event.region === region;
-      const matchesVersion =
-        appVersion === "all" || event.appVersion === appVersion;
+      const matchesPeriod =
+        period === "all" || event.minutesAgo <= Number(period);
       const matchesSource = source === "all" || event.source === source;
 
-      return (
-        matchesQuery &&
-        matchesCategory &&
-        matchesPeriod &&
-        matchesDevice &&
-        matchesRegion &&
-        matchesVersion &&
-        matchesSource
-      );
+      return matchesQuery && matchesCategory && matchesPeriod && matchesSource;
     });
-  }, [
-    events.data,
-    search,
-    category,
-    period,
-    deviceType,
-    region,
-    appVersion,
-    source,
-  ]);
+  }, [loadedEvents, requestedEventId, search, category, period, source]);
 
   function clearFilters() {
     setSearch("");
     setCategory("all");
     setPeriod(DEFAULT_FILTERS.period);
-    setDeviceType(DEFAULT_FILTERS.deviceType);
-    setRegion(DEFAULT_FILTERS.region);
-    setAppVersion(DEFAULT_FILTERS.appVersion);
     setSource(DEFAULT_FILTERS.source);
+    setCorrelation(incidentId ? "linked" : DEFAULT_FILTERS.correlation);
   }
 
   function toggleExpanded(id: string) {
@@ -145,7 +192,11 @@ export function EventsView() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Eventos"
-        subtitle="Eventos e sessões sem perder o dado original"
+        subtitle={
+          incidentId
+            ? "Eventos ARGUS correlacionados ao incidente"
+            : "Feed global de eventos ARGUS, incluindo os não correlacionados"
+        }
         status={
           <DataStatus
             source={events.source}
@@ -170,6 +221,15 @@ export function EventsView() {
         </Alert>
       ) : null}
 
+      {requestedEventId && requestedEvent.status === "error" ? (
+        <Alert
+          tone="critical"
+          title="Não foi possível abrir o evento solicitado"
+        >
+          {requestedEvent.error} O feed continua disponível abaixo.
+        </Alert>
+      ) : null}
+
       <Reveal delay={80}>
         <Card padding="md">
           <div className="flex flex-wrap items-center gap-3">
@@ -184,7 +244,9 @@ export function EventsView() {
                 placeholder="Buscar"
                 aria-label="Buscar evento"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                }}
                 className="pl-10"
               />
             </div>
@@ -192,7 +254,9 @@ export function EventsView() {
             <Select
               aria-label="Filtrar por período"
               value={period}
-              onValueChange={(value) => setPeriod(value as PeriodKey | "all")}
+              onValueChange={(value) => {
+                setPeriod(value as PeriodKey | "all");
+              }}
               options={[
                 { value: "all", label: `Todo o período` },
                 ...(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => ({
@@ -202,35 +266,20 @@ export function EventsView() {
               ]}
             />
 
-            <Select
-              aria-label="Filtrar por dispositivo"
-              value={deviceType}
-              onValueChange={(value) => setDeviceType(value)}
-              options={[
-                { value: "all", label: `Todos os dispositivos` },
-                ...DEVICE_TYPES.map((name) => ({ value: name, label: name })),
-              ]}
-            />
-
-            <Select
-              aria-label="Filtrar por região"
-              value={region}
-              onValueChange={(value) => setRegion(value)}
-              options={[
-                { value: "all", label: `Todas as regiões` },
-                ...REGIONS.map((name) => ({ value: name, label: name })),
-              ]}
-            />
-
-            <Select
-              aria-label="Filtrar por versão do app"
-              value={appVersion}
-              onValueChange={(value) => setAppVersion(value)}
-              options={[
-                { value: "all", label: `Todas as versões` },
-                ...APP_VERSIONS.map((name) => ({ value: name, label: name })),
-              ]}
-            />
+            {!incidentId ? (
+              <Select
+                aria-label="Filtrar por correlação"
+                value={correlation}
+                onValueChange={(value) => {
+                  setCorrelation(value as "all" | "linked" | "unlinked");
+                }}
+                options={[
+                  { value: "all", label: "Todos os vínculos" },
+                  { value: "linked", label: "Vinculados" },
+                  { value: "unlinked", label: "Não correlacionados" },
+                ]}
+              />
+            ) : null}
           </div>
         </Card>
       </Reveal>
@@ -252,7 +301,9 @@ export function EventsView() {
                   <button
                     type="button"
                     aria-pressed={active}
-                    onClick={() => setCategory(stat.key)}
+                    onClick={() => {
+                      setCategory(stat.key);
+                    }}
                     className={cn(
                       "focus-ring rounded-pill border px-3 py-1.5 text-caption font-medium",
                       "transition-colors duration-200 tabular-nums",
@@ -271,24 +322,17 @@ export function EventsView() {
               <Select
                 aria-label="Filtrar por fonte"
                 value={source}
-                onValueChange={(value) => setSource(value)}
+                onValueChange={(value) => {
+                  setSource(value);
+                }}
                 options={[
                   { value: "all", label: `Fonte: todas` },
-                  ...SOURCES.map((name) => ({
+                  ...(events.data?.sourceDatasets ?? []).map((name) => ({
                     value: name,
                     label: `Fonte: ${name}`,
                   })),
                 ]}
               />
-
-              <Button
-                variant="outline"
-                size="sm"
-                aria-expanded={showAdvanced}
-                onClick={() => setShowAdvanced((current) => !current)}
-              >
-                Mais filtros · {ADVANCED_FILTERS.length}
-              </Button>
 
               {hasActiveFilters ? (
                 <Button variant="quiet" size="sm" onClick={clearFilters}>
@@ -298,32 +342,14 @@ export function EventsView() {
               ) : null}
             </div>
           </div>
-
-          <div
-            className={cn(
-              "grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-              showAdvanced ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-            )}
-          >
-            <div className="overflow-hidden">
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line-subtle pt-4">
-                <p className="text-caption text-ink-muted">
-                  Ainda sem tela própria, conforme a disponibilidade dos dados:
-                </p>
-                {ADVANCED_FILTERS.map((filter) => (
-                  <Badge key={filter} tone="neutral">
-                    {filter}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
         </Card>
       </Reveal>
 
       <Reveal delay={200}>
         <EventsChart
           series={volume.data}
+          status={volume.status}
+          error={volume.error}
           period={volumePeriod}
           onPeriodChange={setVolumePeriod}
         />
@@ -331,7 +357,9 @@ export function EventsView() {
 
       <Reveal delay={260}>
         <Card padding="lg">
-          <CardTitle>Eventos correlacionados</CardTitle>
+          <CardTitle>
+            {incidentId ? "Eventos correlacionados" : "Todos os eventos"}
+          </CardTitle>
           <CardDescription className="mt-1">
             Selecione uma linha para ver o dado normalizado e a origem
           </CardDescription>
@@ -342,23 +370,41 @@ export function EventsView() {
                 <Skeleton key={index} className="h-14 w-full" />
               ))}
             </div>
-          ) : events.source !== "exemplo" &&
-            (events.data?.events.length ?? 0) === 0 ? (
+          ) : loadedEvents.length === 0 ? (
             <Unavailable
-              title="Eventos individuais sem fonte nesta fase"
+              title="Nenhum evento encontrado"
               className="mt-6"
               minHeight={220}
             >
-              Os agregados publicados pela telemetria não reconstroem eventos
-              um a um. A lista passa a existir quando a instrumentação
-              individual das seis categorias entrar no ar.
+              Não há registros ARGUS nesta janela e com estes filtros.
             </Unavailable>
           ) : (
-            <EventsTable
-              events={visibleEvents}
-              expandedId={expandedId}
-              onToggle={toggleExpanded}
-            />
+            <>
+              <EventsTable
+                events={visibleEvents}
+                expandedId={expandedId}
+                onToggle={toggleExpanded}
+              />
+              {continuation.key === filterKey && continuation.error ? (
+                <Alert
+                  tone="critical"
+                  title="Não foi possível carregar mais eventos"
+                >
+                  {continuation.error}
+                </Alert>
+              ) : null}
+              {hasMore && nextCursor ? (
+                <div className="mt-5 flex justify-end">
+                  <Button
+                    variant="outline"
+                    disabled={continuation.loading}
+                    onClick={loadNextPage}
+                  >
+                    {continuation.loading ? "Carregando…" : "Carregar mais"}
+                  </Button>
+                </div>
+              ) : null}
+            </>
           )}
         </Card>
       </Reveal>
