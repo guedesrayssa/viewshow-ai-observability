@@ -1129,6 +1129,15 @@ describe("versioned contracts", () => {
     expect(() => incidentsQuerySchema.parse({ limit: "abc" })).toThrow();
   });
 
+  it("enforces the limit boundaries (1-100, default 20) on incidentsQuerySchema", () => {
+    expect(incidentsQuerySchema.parse({}).limit).toBe(20);
+    expect(incidentsQuerySchema.parse({ limit: "1" }).limit).toBe(1);
+    expect(incidentsQuerySchema.parse({ limit: "100" }).limit).toBe(100);
+    expect(() => incidentsQuerySchema.parse({ limit: "0" })).toThrow();
+    expect(() => incidentsQuerySchema.parse({ limit: "101" })).toThrow();
+    expect(() => incidentsQuerySchema.parse({ limit: "abc" })).toThrow();
+  });
+
   it("builds valid success and error envelopes with request ids", () => {
     const datasetVersion = `dsv_${"a".repeat(64)}`;
     const success = successEnvelope(
@@ -1444,6 +1453,57 @@ describe("versioned contracts", () => {
       };
       expect(operation.get?.responses, path).toHaveProperty("400");
     }
+  });
+
+  it("documents secure session fields and ARGUS controls together", async () => {
+    const document = JSON.parse(
+      await readFile(
+        new URL("../contracts/openapi/public.openapi.json", import.meta.url),
+        "utf8",
+      ),
+    ) as {
+      paths: Record<string, Record<string, unknown>>;
+      components: {
+        schemas: Record<
+          string,
+          { required?: readonly string[]; properties?: Record<string, unknown> }
+        >;
+      };
+    };
+
+    expect(document.paths["/api/v1/integrations/argus"]).toMatchObject({
+      get: expect.any(Object),
+      patch: expect.any(Object),
+    });
+    expect(document.components.schemas.AuthenticatedSession?.properties?.user).toMatchObject({
+      required: expect.arrayContaining(["role", "issuedAt"]),
+    });
+    const passwordLogin = document.paths["/auth/login"] as {
+      post?: {
+        responses?: {
+          "200"?: {
+            content?: {
+              "application/json"?: {
+                schema?: {
+                  allOf?: Array<{
+                    properties?: {
+                      data?: { required?: readonly string[]; properties?: Record<string, unknown> };
+                    };
+                  }>;
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+    const loginData = passwordLogin.post?.responses?.["200"]?.content?.["application/json"]?.schema?.allOf?.[1]?.properties?.data;
+    expect(loginData?.required).toEqual(
+      expect.arrayContaining(["user"]),
+    );
+    expect(loginData?.properties).not.toHaveProperty("token");
+    expect(loginData?.properties).not.toHaveProperty("tokenType");
+    expect(loginData?.properties).not.toHaveProperty("expiresInSeconds");
   });
   it("accepts every query parameter and enum value the OpenAPI document announces", async () => {
     const document = await readOpenApiDocument();

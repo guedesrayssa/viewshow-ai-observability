@@ -516,16 +516,18 @@ describe("api monolith over HTTP", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      data: {
-        authenticated: true,
-        user: {
-          id: "usr_1",
-          name: "Engineer",
-          email: "engineer@example.test",
-        },
-      },
-      meta: { requestId: "req_session", datasetVersion: null },
+    const body = await response.json();
+    expect(body).toMatchObject({
+      data: { authenticated: true },
+      meta: { requestId: "req_session" },
+    });
+    // Igualdade exata: o contrato usa additionalProperties: false em `user`.
+    expect(body.data.user).toEqual({
+      id: "usr_1",
+      name: "Engineer",
+      email: "engineer@example.test",
+      role: "engineer",
+      issuedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$/),
     });
   });
 
