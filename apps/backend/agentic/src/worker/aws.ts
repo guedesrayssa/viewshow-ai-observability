@@ -74,14 +74,14 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
     if (!item) throw new AnalysisError("INCIDENT_NOT_FOUND", true);
     return { event: item.event, scope: item.scope, incidentId: id };
   }
-  async correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<string> {
+  async correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<{ incidentId: string; isNew: boolean }> {
     const key = { pk: `DATASET#${event.payload.datasetVersion}#CORRELATION#${scope.id}`, sk: "META" };
     const prior = await this.get(key), start = Date.parse(event.payload.window.start);
     if (prior && start >= (prior.lastSeen ?? prior.start) && start - (prior.lastSeen ?? prior.start) < correlationMs) {
       const existing = await this.get(incidentKey(event.payload.datasetVersion, prior.incidentId));
       if (existing && !["closed", "resolved"].includes(existing.status)) {
-        await this.write(lease, [{ ...key, incidentId: prior.incidentId, start: prior.start, lastSeen: start }]);
-        return prior.incidentId;
+        await this.write(lease, [{ ...key, incidentId: prior.incidentId, start: prior.start, lastSeen: start }, { ...existing, lastObservedAt: event.payload.window.end }]);
+        return { incidentId: prior.incidentId, isNew: false };
       }
     }
     // Deterministic time buckets make concurrent deliveries converge without overwriting human reviews.
@@ -91,14 +91,14 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
     const actualExisting = actualId === id ? existing : await this.get(incidentKey(event.payload.datasetVersion, actualId));
     const item = { ...incidentKey(event.payload.datasetVersion, actualId), itemType: "incident", id: actualId, incidentId: actualId, trace_id: actualId,
       title: `Desvio observado em ${scope.entity}`, priority: scope.priority, status: "detected", startedAt: event.payload.window.start,
-      datasetVersion: event.payload.datasetVersion, scopeId: scope.id, reviewVersion: 0 };
+      lastObservedAt: event.payload.window.end, datasetVersion: event.payload.datasetVersion, scopeId: scope.id, reviewVersion: 0 };
     await this.write(lease, [
       ...(!actualExisting ? [{ ...item, createOnly: true }] : []),
       { ...key, incidentId: actualId, start, lastSeen: start },
       { pk: `ANALYSIS#INCIDENT#${actualId}`, sk: "META", event, scope },
-      { ...item, pk: `DATASET#${event.payload.datasetVersion}#VIEW#INCIDENTS#DAY#${day(event.payload.window.start)}`, sk: `OPENED#${start}#${actualId}`, trace_id: undefined },
+      ...(!actualExisting ? [{ ...item, pk: `DATASET#${event.payload.datasetVersion}#VIEW#INCIDENTS#DAY#${day(event.payload.window.start)}`, sk: `OPENED#${start}#${actualId}`, trace_id: undefined }] : []),
     ]);
-    return actualId;
+    return { incidentId: actualId, isNew: !actualExisting };
   }
   async saveResult(lease: Lease, checkpoint: ScopeCheckpoint): Promise<void> {
     const { event, scope, predictionId, incidentId, result } = checkpoint;

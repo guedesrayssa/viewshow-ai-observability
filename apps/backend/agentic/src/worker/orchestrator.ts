@@ -85,19 +85,22 @@ export class AnalysisWorker {
           await store.saveCheckpoint(lease, scope.id, checkpoint);
         }
         if (checkpoint.context && !checkpoint.incidentId && windowed.eventType === "ANOMALY_DETECTION") {
-          checkpoint.incidentId = await store.correlate(lease, windowed, scope, (scope.episodeWindowSeconds ?? 3600) * 1000);
+          const correlation = await store.correlate(lease, windowed, scope, (scope.episodeWindowSeconds ?? 3600) * 1000);
+          checkpoint.incidentId = correlation.incidentId;
+          checkpoint.episodeStarted = correlation.isNew;
           await store.saveCheckpoint(lease, scope.id, checkpoint);
         }
         await store.saveResult(lease, checkpoint);
-        if (checkpoint.context && !checkpoint.diagnosis && !checkpoint.diagnosticFailure) {
-          try { checkpoint.diagnosis = await interpret(checkpoint.context, this.deps.llm); }
+        const shouldDiagnose = checkpoint.context && (windowed.eventType !== "ANOMALY_DETECTION" || checkpoint.episodeStarted !== false);
+        if (shouldDiagnose && !checkpoint.diagnosis && !checkpoint.diagnosticFailure) {
+          try { checkpoint.diagnosis = await interpret(checkpoint.context!, this.deps.llm); }
           catch (error) {
             if (!(error instanceof AnalysisError) || !error.permanent) throw error;
             checkpoint.diagnosticFailure = error.code;
           }
           await store.saveCheckpoint(lease, scope.id, checkpoint);
         }
-        if (checkpoint.context) await store.saveDiagnosis(lease, checkpoint);
+        if (shouldDiagnose) await store.saveDiagnosis(lease, checkpoint);
       }
       await stopHeartbeat();
       if (lost) throw new AnalysisError("LEASE_LOST");

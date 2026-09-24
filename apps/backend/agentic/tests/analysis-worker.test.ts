@@ -22,10 +22,10 @@ for (let h=0;h<4;h++) for (const [metric,value,unit] of [["bufferratio_avg",.1+h
   rows.push({id:`${metric}-${h}`,datasetVersion:"d1",scopeId:"canal-a",metric,unit,timestamp:`2026-01-01T0${h}:00:00Z`,grainSeconds:3600,value});
 
 class MemoryStore implements AnalysisStore {
-  state=""; checkpointValue: ScopeCheckpoint|null=null; results=0; diagnoses=0; validations=0;
+  state=""; checkpointValue: ScopeCheckpoint|null=null; results=0; diagnoses=0; validations=0; correlation:{incidentId:string;isNew:boolean}|null=null;
   async acquire(){return "acquired" as const} async renew(){} async finish(_l:Lease,state:string){this.state=state}
   async checkpoint(){return this.checkpointValue} async saveCheckpoint(_l:Lease,_s:string,v:ScopeCheckpoint){this.checkpointValue=structuredClone(v)}
-  async resolveIncident():Promise<never>{throw new Error("unused")} async correlate():Promise<string>{throw new Error("forecast cannot create incident")}
+  async resolveIncident():Promise<never>{throw new Error("unused")} async correlate():Promise<{incidentId:string;isNew:boolean}>{if(!this.correlation)throw new Error("unexpected correlation");return this.correlation}
   async saveResult(){this.results++} async saveDiagnosis(){this.diagnoses++} async validatePredictions(){this.validations++}
 }
 class MemoryQueue implements AnalysisQueue { ack=0; dlq=0; visibilityCalls:number[]=[]; async receive(){return []} async acknowledge(){this.ack++} async visibility(_r:string,s:number){this.visibilityCalls.push(s)} async deadLetter(){this.dlq++} }
@@ -50,4 +50,18 @@ test("evento inválido vai direto à DLQ sem modelo nem LLM", async()=>{
 
 test("janela incompleta ou watermark atrasado é rejeitada",()=>{
   assert.throws(()=>validateWindow({...event,payload:{...event.payload,inputWatermark:"2026-01-01T03:59:59Z"}}),/INVALID_COMPLETE_WINDOW/);
+});
+
+test("bucket de episódio existente persiste análise sem chamar a LLM novamente",async()=>{
+  const detectorScope:AnalysisScope={id:"canal-a",source:"argus",entity:"Canal A",priority:"P2",detectorMetrics:["buffer"],episodeWindowSeconds:7200,series:[{metric:"buffer",seriesId:"buffer-15m",unit:"ratio",grainSeconds:900}]};
+  const detectorModel:ModelBundle={...model,detection:{robustThreshold:3.5,minHistoryDays:3,minHistoryPoints:96,scopes:{}}};
+  const detectorRows:Observation[]=[];
+  for(let point=0;point<7*96;point++) detectorRows.push({id:`h-${point}`,datasetVersion:"d1",scopeId:"canal-a",metric:"buffer",unit:"ratio",timestamp:new Date(Date.parse("2025-12-25T00:00:00Z")+point*900000).toISOString(),grainSeconds:900,value:point%2?1:1.2});
+  detectorRows.push({id:"current",datasetVersion:"d1",scopeId:"canal-a",metric:"buffer",unit:"ratio",timestamp:"2026-01-01T00:00:00Z",grainSeconds:900,value:4});
+  const detectorEvent:WindowedEvent={...event,eventType:"ANOMALY_DETECTION",payload:{window:{start:"2026-01-01T00:00:00Z",end:"2026-01-01T00:15:00Z",grainSeconds:900},inputWatermark:"2026-01-01T00:15:00Z",datasetVersion:"d1",scope:{kind:"channel",dimensions:{scopeId:"canal-a"}}}};
+  const store=new MemoryStore(),queue=new MemoryQueue();store.correlation={incidentId:"inc-existing",isNew:false};let llmCalls=0;
+  const worker=new AnalysisWorker({store,queue,reader:{read:async()=>detectorRows},model:detectorModel,scopes:[detectorScope],llm:{generate:async()=>{llmCalls++;throw new Error("must not run")}},now:()=>Date.parse("2026-01-01T00:16:00Z")});
+  await worker.process({id:"m",receipt:"r",body:JSON.stringify(detectorEvent),receives:1});
+  assert.equal(store.state,"SUCCEEDED");assert.equal(store.checkpointValue?.incidentId,"inc-existing");assert.equal(store.checkpointValue?.episodeStarted,false);
+  assert.equal(store.results,1);assert.equal(store.diagnoses,0);assert.equal(llmCalls,0);
 });

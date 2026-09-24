@@ -122,6 +122,13 @@ O piloto real está em `apps/backend/agentic/config/scope-catalog.pilot.json`. E
 
 No piloto, uma anomalia só abre incidente quando a janela contém ao menos 25 sessões ativas. Esse valor inicial limita alertas sem impacto e deve ser recalibrado com os episódios revisados. Sinais consecutivos com distância menor que duas horas atualizam o mesmo episódio; o intervalo é medido desde o último sinal, preservando o início original. Evidências de CDN e origem podem sustentar uma hipótese de camada provável, mas continuam descritas como associação temporal, não como causa confirmada.
 
+A correlação informa se o episódio acabou de ser criado. O A′ e a LLM são
+executados somente na abertura; buckets seguintes atualizam `lastObservedAt` e
+persistem a análise determinística no mesmo incidente. Uma reanálise solicitada
+por pessoa continua autorizando uma nova execução do A′. No replay ampliado,
+essa regra reduz o teto de chamadas de diagnóstico de 1.459 buckets para 104
+aberturas de episódio, além de evitar hipóteses repetidas no dashboard.
+
 Toda saída do Random Forest é persistida com `experimental: true`. Ela pode aparecer para validação e receber TP, FP, FN ou TN depois da janela-alvo, porém não deve ser apresentada como modelo aprovado até superar persistência e sazonalidade em uma janela temporal reservada.
 
 ### Replay sem escrita do piloto

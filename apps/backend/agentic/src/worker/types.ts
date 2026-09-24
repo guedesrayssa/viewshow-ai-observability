@@ -42,6 +42,7 @@ export interface ScopeCheckpoint {
   event: WindowedEvent; scope: AnalysisScope; result: ModelResult;
   context: PreparedContext | null; incidentId: string | null; predictionId: string | null;
   diagnosis?: Interpretation; diagnosticFailure?: string;
+  episodeStarted?: boolean;
 }
 export interface Lease { runId: string; owner: string }
 export interface AnalysisStore {
@@ -51,7 +52,7 @@ export interface AnalysisStore {
   checkpoint(lease: Lease, scopeId: string): Promise<ScopeCheckpoint | null>;
   saveCheckpoint(lease: Lease, scopeId: string, value: ScopeCheckpoint): Promise<void>;
   resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string }>;
-  correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<string>;
+  correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<{ incidentId: string; isNew: boolean }>;
   saveResult(lease: Lease, checkpoint: ScopeCheckpoint): Promise<void>;
   saveDiagnosis(lease: Lease, checkpoint: ScopeCheckpoint): Promise<void>;
   validatePredictions(lease: Lease, event: WindowedEvent, scope: AnalysisScope, rows: Observation[], toleranceMs: number): Promise<void>;
