@@ -18,7 +18,7 @@ export function cleanObservations(rows: Observation[], dataset: string, scope: A
         row.grainSeconds !== definition.grainSeconds || row.unit !== definition.unit ||
         !row.id || (row.value !== null && !Number.isFinite(row.value))) throw new AnalysisError("INVALID_OBSERVATION", true);
     if (timestamp < from || timestamp + row.grainSeconds * 1000 > cutoff) continue;
-    const slot = `${row.metric}:${timestamp}`;
+    const slot = `${row.metric}:${row.grainSeconds}:${timestamp}`;
     if (slots.has(slot) && slots.get(slot) !== row.id) throw new AnalysisError("DUPLICATE_BUCKET", true);
     const prior = unique.get(row.id);
     if (prior && JSON.stringify(prior) !== JSON.stringify(row)) throw new AnalysisError("CONFLICTING_OBSERVATION", true);

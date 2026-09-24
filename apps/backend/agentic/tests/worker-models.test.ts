@@ -42,6 +42,13 @@ test("catálogo aceita a mesma métrica em 15 minutos e uma hora, com séries di
   assert.equal(catalog[0]?.series.length,2);
 });
 
+test("limpeza preserva a mesma métrica em grãos diferentes",()=>{
+  const mixed:AnalysisScope={...scope,series:[{metric:"buffer",seriesId:"15m",unit:"ratio",grainSeconds:900},{metric:"buffer",seriesId:"1h",unit:"ratio",grainSeconds:3600}]};
+  const base={datasetVersion:"d",scopeId:"s",metric:"buffer",unit:"ratio",timestamp:"2026-01-01T00:00:00Z",value:1};
+  const clean=cleanObservations([{...base,id:"15m",grainSeconds:900},{...base,id:"1h",grainSeconds:3600}],"d",mixed,Date.parse(base.timestamp),Date.parse("2026-01-01T01:00:00Z"));
+  assert.equal(clean.length,2);
+});
+
 test("seriesId é estável mesmo quando dimensões chegam em outra ordem",()=>{
   const base={logicalDataset:"live_active_15min",source:"argus",entity:"globo-rj",metric:"active_sessions"};
   assert.equal(seriesId({...base,dimensions:{channel:"globo-rj",region:"br"}}),seriesId({...base,dimensions:{region:"br",channel:"globo-rj"}}));

@@ -124,6 +124,35 @@ No piloto, uma anomalia só abre incidente quando a janela contém ao menos 25 s
 
 Toda saída do Random Forest é persistida com `experimental: true`. Ela pode aparecer para validação e receber TP, FP, FN ou TN depois da janela-alvo, porém não deve ser apresentada como modelo aprovado até superar persistência e sazonalidade em uma janela temporal reservada.
 
+### Replay sem escrita do piloto
+
+O comando `npm run replay:pilot` executa os mesmos validadores, detectores,
+preditor e preparação de contexto do worker diretamente sobre os agregados
+locais. Ele não acessa DynamoDB, SQS nem LLM e grava somente um relatório JSON
+no caminho escolhido. Isso permite medir o comportamento antes da ativação.
+
+No recorte de 27/08/2026 UTC, os dez canais produziram 960 janelas de detecção,
+todas acima do gate inicial de 25 sessões. Houve 308 sinais acima de algum
+limiar, agrupados em 27 episódios; todos tinham ao menos uma evidência de CDN ou
+origem disponível no contexto. A frequência bruta de sinais é alta e confirma
+que o dashboard deve mostrar episódios, não cada bucket. Esses números não
+medem precisão porque o recorte não possui rótulos curados sobrepostos.
+
+A previsão experimental foi avaliável em 230 janelas: 21 TP, 2 FP, 14 FN e 193
+TN no limiar atual. Esse resultado de um único dia é apenas um teste funcional;
+o bundle continua `approved: false` e a decisão exige replay temporal maior,
+comparação com baselines e uma janela reservada.
+
+```bash
+npm run replay:pilot -- \
+  --data data/argus-2026-09-01 \
+  --model models/argus-2026-09-01-unapproved.json \
+  --catalog config/scope-catalog.pilot.json \
+  --start 2026-08-27T00:00:00Z \
+  --end 2026-08-28T00:00:00Z \
+  --output /tmp/analysis-pilot-replay.json
+```
+
 ## Treinamento, aprovação e execução
 
 ```bash
