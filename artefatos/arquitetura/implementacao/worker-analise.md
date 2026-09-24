@@ -137,6 +137,9 @@ O comando `npm run replay:pilot` executa os mesmos validadores, detectores,
 preditor e preparação de contexto do worker diretamente sobre os agregados
 locais. Ele não acessa DynamoDB, SQS nem LLM e grava somente um relatório JSON
 no caminho escolhido. Isso permite medir o comportamento antes da ativação.
+O script `scripts/export-episode-review.py` converte esse relatório em uma ficha
+CSV sem respostas pré-preenchidas, com campos para relevância, camada provável,
+suficiência das evidências e observações da revisão humana.
 
 No recorte de 27/08/2026 UTC, os dez canais produziram 960 janelas de detecção,
 todas acima do gate inicial de 25 sessões. Houve 308 sinais acima de algum
