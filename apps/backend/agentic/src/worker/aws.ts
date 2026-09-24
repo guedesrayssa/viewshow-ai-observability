@@ -77,9 +77,12 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
   async correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<string> {
     const key = { pk: `DATASET#${event.payload.datasetVersion}#CORRELATION#${scope.id}`, sk: "META" };
     const prior = await this.get(key), start = Date.parse(event.payload.window.start);
-    if (prior && start >= prior.start && start - prior.start < correlationMs) {
+    if (prior && start >= (prior.lastSeen ?? prior.start) && start - (prior.lastSeen ?? prior.start) < correlationMs) {
       const existing = await this.get(incidentKey(event.payload.datasetVersion, prior.incidentId));
-      if (existing && !["closed", "resolved"].includes(existing.status)) return prior.incidentId;
+      if (existing && !["closed", "resolved"].includes(existing.status)) {
+        await this.write(lease, [{ ...key, incidentId: prior.incidentId, start: prior.start, lastSeen: start }]);
+        return prior.incidentId;
+      }
     }
     // Deterministic time buckets make concurrent deliveries converge without overwriting human reviews.
     const id = `inc_${hash({ dataset: event.payload.datasetVersion, scope: scope.id, bucket: Math.floor(start / correlationMs) }).slice(0, 32)}`;
@@ -91,7 +94,7 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
       datasetVersion: event.payload.datasetVersion, scopeId: scope.id, reviewVersion: 0 };
     await this.write(lease, [
       ...(!actualExisting ? [{ ...item, createOnly: true }] : []),
-      { ...key, incidentId: actualId, start },
+      { ...key, incidentId: actualId, start, lastSeen: start },
       { pk: `ANALYSIS#INCIDENT#${actualId}`, sk: "META", event, scope },
       { ...item, pk: `DATASET#${event.payload.datasetVersion}#VIEW#INCIDENTS#DAY#${day(event.payload.window.start)}`, sk: `OPENED#${start}#${actualId}`, trace_id: undefined },
     ]);

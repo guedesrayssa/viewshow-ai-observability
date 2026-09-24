@@ -116,7 +116,13 @@ As variáveis obrigatórias são:
 - `ANALYSIS_MODEL_LOCATION`, `ANALYSIS_SCOPE_CATALOG_LOCATION` e, no S3, `ANALYSIS_MODEL_SHA256`;
 - `LLM_PROVIDER`, `LLM_MODEL_ID` e `OLLAMA_BASE_URL` quando aplicável.
 
-O catálogo mapeia métricas para os `seriesId` produzidos pela ingestão. O exemplo em `apps/backend/agentic/config/scope-catalog.example.json` precisa receber os identificadores reais; o worker não tenta adivinhá-los.
+O catálogo mapeia métricas para os `seriesId` produzidos pela ingestão. A função pública `seriesId`, em `apps/backend/agentic/src/worker/series-id.ts`, é o contrato único: aplica SHA-256 à identidade canônica formada por dataset lógico, fonte, entidade, métrica e dimensões ordenadas. A ingestão deve usar essa função ao gravar cada série. O worker apenas consome o identificador; uma divergência entre catálogo e fato impede a análise.
+
+O piloto real está em `apps/backend/agentic/config/scope-catalog.pilot.json`. Ele contém os dez canais de maior volume que também aparecem no modelo treinado e possuem cobertura nas três fontes de entrega: CDN, origem e origem-CDN. Cada escopo reúne QoE de 15 minutos, features horárias da previsão e taxas de erro de entrega no mesmo canal. O script `scripts/build-pilot-catalog.py` regenera o arquivo a partir dos agregados preparados e do bundle avaliado, sem versionar o dump.
+
+No piloto, uma anomalia só abre incidente quando a janela contém ao menos 25 sessões ativas. Esse valor inicial limita alertas sem impacto e deve ser recalibrado com os episódios revisados. Sinais consecutivos com distância menor que duas horas atualizam o mesmo episódio; o intervalo é medido desde o último sinal, preservando o início original. Evidências de CDN e origem podem sustentar uma hipótese de camada provável, mas continuam descritas como associação temporal, não como causa confirmada.
+
+Toda saída do Random Forest é persistida com `experimental: true`. Ela pode aparecer para validação e receber TP, FP, FN ou TN depois da janela-alvo, porém não deve ser apresentada como modelo aprovado até superar persistência e sazonalidade em uma janela temporal reservada.
 
 ## Treinamento, aprovação e execução
 
@@ -142,7 +148,7 @@ Depois da aprovação, publique o arquivo e o catálogo no S3, construa a imagem
 
 O código e os testes locais não substituem a validação com as séries canônicas do ARGUS. Antes da ativação, ainda é necessário:
 
-1. gerar o catálogo com os `seriesId` realmente gravados pela ingestão;
+1. integrar a função compartilhada de `seriesId` à escrita de fatos da ingestão e confirmar que os identificadores do catálogo piloto são os realmente gravados;
 2. treinar e avaliar o bundle no corte temporal completo, registrar a decisão e aprová-lo;
 3. executar um teste de integração com DynamoDB Local ou uma tabela temporária e SQS real;
 4. executar replay sem escrita de pelo menos uma semana, medir falsos positivos, falsos negativos, cobertura e custo;

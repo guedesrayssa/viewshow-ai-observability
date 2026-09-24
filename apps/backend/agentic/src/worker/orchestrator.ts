@@ -17,6 +17,15 @@ export function validateWindow(event: WindowedEvent): void {
     throw new AnalysisError("INVALID_FORECAST_TARGET", true);
 }
 
+export function isMaterial(rows: import("./types.js").Observation[], event: WindowedEvent, scope: AnalysisScope): boolean {
+  if (!scope.materiality?.length) return true;
+  const start = Date.parse(event.payload.window.start), end = Date.parse(event.payload.window.end);
+  return scope.materiality.every(rule => rows
+    .filter(row => row.metric === rule.metric && row.grainSeconds === event.payload.window.grainSeconds &&
+      Date.parse(row.timestamp) >= start && Date.parse(row.timestamp) + row.grainSeconds * 1000 <= end && row.value !== null)
+    .reduce((sum, row) => sum + row.value!, 0) >= rule.minimum);
+}
+
 export class AnalysisWorker {
   constructor(private readonly deps: { queue: AnalysisQueue; store: AnalysisStore; reader: ObservationReader;
     model: ModelBundle; scopes: AnalysisScope[]; llm: LlmProvider; telemetry?: Telemetry; now?: () => number }) {}
@@ -63,10 +72,12 @@ export class AnalysisWorker {
           const from = new Date(day - 7 * 86400000).toISOString();
           const rows = cleanObservations(await this.deps.reader.read(windowed, scope, from), windowed.payload.datasetVersion, scope, Date.parse(from), Date.parse(windowed.payload.window.end));
           const result = infer(this.deps.model, windowed, scope, rows);
+          const material = windowed.eventType !== "ANOMALY_DETECTION" || isMaterial(rows, windowed, scope);
+          if (!material) result.reasons.push("MATERIALITY_GATE_NOT_MET");
           await store.validatePredictions(lease, windowed, scope, rows, 3600000);
           const eligible = result.coverage === 1 && (windowed.eventType === "QOE_FORECAST" ||
             (result.historyDays >= this.deps.model.detection.minHistoryDays && result.historyPoints >= this.deps.model.detection.minHistoryPoints));
-          const elevated = eligible ? result.signals.filter(s => s.score > s.threshold.value).sort((a, b) => b.score / b.threshold.value - a.score / a.threshold.value)[0] : undefined;
+          const elevated = eligible && material ? result.signals.filter(s => s.score > s.threshold.value).sort((a, b) => b.score / b.threshold.value - a.score / a.threshold.value)[0] : undefined;
           checkpoint = { event: windowed, scope, result,
             context: elevated ? prepareContext(rows, windowed.payload.datasetVersion, scope, elevated, windowed.payload.window.end, 3600, 50000, windowed.payload.window.grainSeconds) : null,
             incidentId: resolved?.incidentId ?? null,
@@ -74,7 +85,7 @@ export class AnalysisWorker {
           await store.saveCheckpoint(lease, scope.id, checkpoint);
         }
         if (checkpoint.context && !checkpoint.incidentId && windowed.eventType === "ANOMALY_DETECTION") {
-          checkpoint.incidentId = await store.correlate(lease, windowed, scope, 3600000);
+          checkpoint.incidentId = await store.correlate(lease, windowed, scope, (scope.episodeWindowSeconds ?? 3600) * 1000);
           await store.saveCheckpoint(lease, scope.id, checkpoint);
         }
         await store.saveResult(lease, checkpoint);

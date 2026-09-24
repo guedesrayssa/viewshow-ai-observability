@@ -95,6 +95,8 @@ export interface QoeForecastSignal extends BaseSignal {
   readonly riskLevel: "NORMAL" | "ELEVATED" | "HIGH";
   /** Janela para a qual o risco foi previsto. */
   readonly targetWindow: { readonly start: string; readonly end: string };
+  /** Permanece verdadeiro até a validação prospectiva aprovar o modelo. */
+  readonly experimental?: true;
 }
 
 export type MlSignal = UnivariateSignal | MultivariateSignal | QoeForecastSignal;

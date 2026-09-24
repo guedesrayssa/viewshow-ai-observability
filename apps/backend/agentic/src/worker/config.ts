@@ -23,6 +23,11 @@ export function validateScopes(raw: unknown): AnalysisScope[] {
       metricGrains.add(metricGrain); seriesIds.add(series.seriesId);
     }
     if (value.detectorMetrics.some(metric => typeof metric !== "string" || !seriesValues.some(series => object(series) && series.metric === metric && series.grainSeconds === 900))) throw new AnalysisError("INVALID_DETECTOR_METRIC", true);
+    if (value.materiality !== undefined && (!Array.isArray(value.materiality) || !value.materiality.length || value.materiality.some(rule =>
+      !object(rule) || typeof rule.metric !== "string" || !seriesValues.some(series => object(series) && series.metric === rule.metric && series.grainSeconds === 900) ||
+      typeof rule.minimum !== "number" || !Number.isFinite(rule.minimum) || rule.minimum < 0))) throw new AnalysisError("INVALID_MATERIALITY_RULE", true);
+    if (value.episodeWindowSeconds !== undefined && (!Number.isInteger(value.episodeWindowSeconds) || Number(value.episodeWindowSeconds) < 900 || Number(value.episodeWindowSeconds) > 21600))
+      throw new AnalysisError("INVALID_EPISODE_WINDOW", true);
     return value as unknown as AnalysisScope;
   });
 }

@@ -4,7 +4,9 @@ import { AnalysisError, type Fact, type Interpretation, type PreparedContext } f
 export const PROMPT_VERSION = "a-prime-structured-v1";
 /** The model selects candidates, never supplies observed values or factual prose. */
 export const CANDIDATES = {
-  delivery_instability: { title: "Possível instabilidade na entrega", explanation: "A mudança nas evidências pode estar associada à entrega de conteúdo. A causa ainda depende de verificação de rede e CDN.", metrics: ["bufferratio_avg", "latency_ms_avg", "stalls_avg"], increase: true },
+  delivery_instability: { title: "Possível instabilidade na entrega", explanation: "A mudança nas evidências de QoE pode estar associada à entrega de conteúdo. A hipótese ainda exige confirmação pelas métricas técnicas.", metrics: ["bufferratio_avg", "latency_ms_avg", "stalls_avg"], increase: true },
+  cdn_failure: { title: "Possível degradação na CDN", explanation: "Erros da CDN cresceram no mesmo canal e intervalo do desvio de QoE. A coincidência temporal sustenta investigação, mas não comprova causalidade.", metrics: ["cdn_live_err_rate"], increase: true },
+  origin_failure: { title: "Possível degradação na origem", explanation: "Erros de origem cresceram no mesmo canal e intervalo do desvio de QoE. A coincidência temporal sustenta investigação, mas não comprova causalidade.", metrics: ["origin_live_err_rate", "origin_cdn_live_err_rate"], increase: true },
   traffic_mix: { title: "Possível mudança na composição do tráfego", explanation: "A variação na exposição pode influenciar os agregados. É necessário comparar segmentos e denominadores antes de atribuir uma causa técnica.", metrics: ["sessions"], increase: false },
   startup_failure: { title: "Possível problema de inicialização", explanation: "As evidências de inicialização justificam investigar essa etapa. Não há confirmação de falha de player ou infraestrutura.", metrics: ["startup_errors_per_session_pooled", "jointime_s_avg"], increase: true },
   measurement_change: { title: "Possível mudança de medição", explanation: "Uma alteração na coleta pode explicar parte da mudança. Essa hipótese exige conferir cobertura e registros do coletor.", metrics: ["bufferratio_avg", "sessions", "errors", "stalls_avg"], increase: false },
@@ -15,6 +17,15 @@ export const CHECKS = {
   traffic: { question: "A mudança permanece quando comparamos os mesmos segmentos e a exposição de cada um?", requiredData: ["segmented_sessions", "segmented_errors"], available: false },
   collector: { question: "Houve mudança de cobertura ou versão da coleta no intervalo do sinal?", requiredData: ["collector_runs", "collector_version"], available: false },
 } as const;
+
+function renderCheck(key: keyof typeof CHECKS, context: PreparedContext): Interpretation["nextChecks"][number] {
+  const base = CHECKS[key];
+  const metricAvailability: Partial<Record<keyof typeof CHECKS, string[]>> = {
+    network: ["cdn_live_err_rate", "origin_live_err_rate", "origin_cdn_live_err_rate"],
+  };
+  const metrics = metricAvailability[key] ?? [];
+  return { ...base, requiredData: [...base.requiredData], available: metrics.some(metric => context.facts.some(fact => fact.metric === metric && fact.current !== null)) };
+}
 type Reference = { factId: string; metric: string; scopeId: string; direction: Fact["direction"] };
 type Draft = { hypotheses: { category: keyof typeof CANDIDATES; supporting: Reference[]; contradicting: Reference[] }[]; nextChecks: (keyof typeof CHECKS)[] };
 const object = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -64,7 +75,7 @@ export async function interpret(context: PreparedContext, llm: LlmProvider): Pro
     hypotheses: draft.hypotheses.map((h, i) => ({ id: `hyp_${context.hash.slice(0, 16)}_${i}`, title: CANDIDATES[h.category].title,
       explanation: CANDIDATES[h.category].explanation, supportingEvidenceIds: h.supporting.map(r => r.factId),
       contradictingEvidenceIds: h.contradicting.map(r => r.factId), reviewStatus: "pending" })),
-    nextChecks: [...new Set(draft.nextChecks)].map(k => ({ ...CHECKS[k], requiredData: [...CHECKS[k].requiredData] })),
+    nextChecks: [...new Set(draft.nextChecks)].map(k => renderCheck(k, context)),
     reasons: [...context.gaps, ...(!draft.hypotheses.length ? ["NO_SUPPORTED_HYPOTHESIS"] : [])],
     model: response.modelId, provider: response.provider, promptVersion: PROMPT_VERSION };
 }

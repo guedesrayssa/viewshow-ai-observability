@@ -118,8 +118,9 @@ teste com `python3.13 -m pip install -e .` e
 ## Estado do runtime
 
 O consumidor SQS, o worker, os adaptadores AWS e o ponto de entrada estão
-implementados. O deploy continua desabilitado até receber catálogo de séries e
-bundle aprovado. O guia operacional está em
+implementados. O catálogo piloto de dez canais foi gerado, mas sua identidade
+de séries ainda precisa ser adotada pela ingestão. O deploy continua
+desabilitado até essa integração e a aprovação do bundle. O guia operacional está em
 [`worker-analise.md`](../../../artefatos/arquitetura/implementacao/worker-analise.md)
 e a primeira avaliação com o dump real está em
 [`avaliacao-worker-argus.md`](../../../artefatos/arquitetura/implementacao/avaliacao-worker-argus.md).

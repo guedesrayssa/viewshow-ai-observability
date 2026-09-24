@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { cleanObservations, prepareContext } from "../src/worker/facts.js";
 import { infer, validateBundle, type ModelBundle } from "../src/worker/models.js";
 import { validateScopes } from "../src/worker/config.js";
+import { canonicalSeriesIdentity, seriesId } from "../src/worker/series-id.js";
+import { isMaterial } from "../src/worker/orchestrator.js";
 import type { AnalysisScope, Observation } from "../src/worker/types.js";
 import type { WindowedEvent } from "../src/contracts/analysis-event.js";
 
@@ -38,4 +40,24 @@ test("catálogo aceita a mesma métrica em 15 minutos e uma hora, com séries di
     {metric:"buffer",seriesId:"buffer-15m",unit:"ratio",grainSeconds:900},{metric:"buffer",seriesId:"buffer-1h",unit:"ratio",grainSeconds:3600},
   ]}]);
   assert.equal(catalog[0]?.series.length,2);
+});
+
+test("seriesId é estável mesmo quando dimensões chegam em outra ordem",()=>{
+  const base={logicalDataset:"live_active_15min",source:"argus",entity:"globo-rj",metric:"active_sessions"};
+  assert.equal(seriesId({...base,dimensions:{channel:"globo-rj",region:"br"}}),seriesId({...base,dimensions:{region:"br",channel:"globo-rj"}}));
+  assert.equal(seriesId({...base,dimensions:{channel:"globo-rj"}}),"ts_39328613a9667d827a298acd1cde08c064374a42764895e5e302f580f55b1b04");
+  assert.match(canonicalSeriesIdentity(base),/^\{"logicalDataset"/);
+});
+
+test("gate de materialidade exige volume mínimo na janela corrente",()=>{
+  const gated:AnalysisScope={...scope,materiality:[{metric:"buffer",minimum:10}]};
+  const row:Observation={id:"m",datasetVersion:"d",scopeId:"s",metric:"buffer",unit:"ratio",timestamp:event.payload.window.start,grainSeconds:900,value:9};
+  assert.equal(isMaterial([row],event,gated),false);
+  assert.equal(isMaterial([{...row,value:10}],event,gated),true);
+});
+
+test("catálogo valida regras de materialidade e janela de episódio",()=>{
+  const valid={...scope,materiality:[{metric:"buffer",minimum:10}],episodeWindowSeconds:7200};
+  assert.doesNotThrow(()=>validateScopes([valid]));
+  assert.throws(()=>validateScopes([{...valid,episodeWindowSeconds:86400}]),/INVALID_EPISODE_WINDOW/);
 });

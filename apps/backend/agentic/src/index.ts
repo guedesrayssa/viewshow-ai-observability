@@ -25,4 +25,5 @@ export * from "./worker/models.js";
 export { CANDIDATES, CHECKS, validateInterpretation, interpret, PROMPT_VERSION as A_PRIME_PROMPT_VERSION } from "./worker/interpret.js";
 export * from "./worker/orchestrator.js";
 export * from "./worker/config.js";
+export * from "./worker/series-id.js";
 export * from "./worker/aws.js";

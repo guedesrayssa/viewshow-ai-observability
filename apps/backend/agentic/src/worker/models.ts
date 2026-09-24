@@ -110,7 +110,7 @@ export function infer(bundle: ModelBundle, event: WindowedEvent, scope: Analysis
     const signal: QoeForecastSignal = { detector: "qoe-forecast", scale: "qoe-risk", model: { name: bundle.name, version: bundle.version },
       score: risk, predictedValue, threshold: { value: bundle.forecast.riskThreshold, origin: "manual" }, observedAt: window.end,
       riskLevel: risk > bundle.forecast.highRiskThreshold ? "HIGH" : risk > bundle.forecast.riskThreshold ? "ELEVATED" : "NORMAL",
-      targetWindow: event.payload.targetWindow! };
+      targetWindow: event.payload.targetWindow!, experimental: true };
     return { ...result, signals: [signal], coverage: 1, historyPoints: 4, historyDays: 4 / 24 };
   }
   const day = Math.floor(start / 86400000) * 86400000;

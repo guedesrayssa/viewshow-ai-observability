@@ -39,6 +39,7 @@ test("previsão elevada é persistida e diagnosticada sem criar incidente", asyn
   const delivery:Delivery={id:"m",receipt:"r",body:JSON.stringify(event),receives:1}; await worker.process(delivery);
   assert.equal(store.state,"SUCCEEDED"); assert.equal(queue.ack,1); assert.equal(queue.dlq,0); assert.equal(store.results,1); assert.equal(store.diagnoses,1); assert.equal(store.validations,1); assert.equal(llmCalls,1);
   assert.equal(store.checkpointValue?.incidentId,null); assert.ok(store.checkpointValue?.predictionId); assert.equal(store.checkpointValue?.diagnosis?.status,"ready");
+  assert.equal(store.checkpointValue?.result.signals.find(signal=>signal.detector==="qoe-forecast")?.experimental,true);
 });
 
 test("evento inválido vai direto à DLQ sem modelo nem LLM", async()=>{

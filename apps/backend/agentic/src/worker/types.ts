@@ -8,6 +8,8 @@ export interface SeriesDefinition { metric: string; seriesId: string; unit: stri
 export interface AnalysisScope {
   id: string; source: string; entity: string; priority: "P1" | "P2" | "P3" | "P4";
   series: SeriesDefinition[]; detectorMetrics: string[];
+  materiality?: { metric: string; minimum: number }[];
+  episodeWindowSeconds?: number;
 }
 export interface Observation {
   id: string; datasetVersion: string; scopeId: string; metric: string; unit: string;
