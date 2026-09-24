@@ -23,12 +23,21 @@ describe("LoginPage", () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ data: {}, meta: {} }), {
-            status: 200,
-          }),
-      ),
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const data = url.endsWith("/auth/session")
+          ? {
+              user: {
+                id: "usr_1",
+                name: "Ana",
+                email: "ana@globo.com",
+                role: "engineer",
+                issuedAt: "2026-09-24T20:00:00.000Z",
+              },
+            }
+          : {};
+        return new Response(JSON.stringify({ data, meta: {} }), { status: 200 });
+      }),
     );
     const { default: LoginPage } = await import("./page");
     searchParams.set(
