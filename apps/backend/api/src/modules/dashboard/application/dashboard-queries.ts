@@ -1,6 +1,7 @@
 import {
   ServiceError,
   assertNoPhysicalFields,
+  monitoringProjectionSchema,
   resolveWindow,
   type InternalResponse,
   type Warning,
@@ -140,13 +141,16 @@ export class DashboardQueries {
         "DATA_UNAVAILABLE",
         "A projeção de monitoramento ainda não foi publicada pela ingestão.",
       );
-    assertNoPhysicalFields(read.data);
+    const projection = monitoringProjectionSchema.safeParse(read.data);
+    if (!projection.success)
+      throw new ServiceError(503, "DATA_UNAVAILABLE", "A projeção de monitoramento publicada não segue o contrato esperado.");
+    assertNoPhysicalFields(projection.data);
     const warnings = [
       {
         code: "QUEUELESS_BATCH_PIPELINE",
         message: "Fila e DLQ não se aplicam ao pipeline batch atual.",
       },
     ];
-    return { data: read.data, quality: quality(read, window, warnings) };
+    return { data: projection.data, quality: quality(read, window, warnings) };
   }
 }

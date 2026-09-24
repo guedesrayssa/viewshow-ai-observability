@@ -553,17 +553,61 @@ export interface DiagnosisData {
   };
 }
 
+export type EventCategory = "request" | "vitals" | "screen_view" | "video_view" | "session" | "error";
+
+export interface EventData {
+  readonly id: string;
+  readonly timestamp: string;
+  readonly category: EventCategory;
+  readonly source: { readonly name: string };
+  readonly entity: string;
+  readonly summary: string;
+  readonly quality: { readonly status: string; readonly label?: string | undefined };
+  readonly dimensions: {
+    readonly deviceType?: string | undefined;
+    readonly region?: string | undefined;
+    readonly appVersion?: string | undefined;
+  };
+  readonly normalized: {
+    readonly metric: string;
+    readonly value: string;
+    readonly tags: readonly string[];
+  };
+  readonly raw: { readonly available: boolean; readonly snippet?: string | undefined };
+}
+
 export interface EventsData {
   readonly incident: {
     readonly id: string;
     readonly number: string | null;
     readonly title: string;
   };
-  readonly capabilities: Readonly<Record<string, unknown>>;
-  readonly categoryStats: readonly unknown[];
-  readonly volumeSeries: Readonly<Record<string, unknown>> | null;
-  readonly items: readonly unknown[];
-  readonly facets: Readonly<Record<string, readonly unknown[]>>;
+  readonly capabilities: {
+    readonly aggregateMetrics: { readonly status: "available" | "unavailable" };
+    readonly filtering: FilteringCapabilities["filtering"];
+    readonly individualEvents: {
+      readonly status: "available" | "unavailable";
+      readonly availableCategories: readonly EventCategory[];
+      readonly unavailableCategories: readonly EventCategory[];
+      readonly reason: string | null;
+    };
+    readonly rawPayload: { readonly status: "available" | "unavailable"; readonly reason: string | null };
+  };
+  readonly categoryStats: readonly { readonly key: EventCategory | "all"; readonly name: string; readonly total: number }[];
+  readonly volumeSeries: {
+    readonly metric: "event_count";
+    readonly bucketSeconds: number;
+    readonly points: readonly { readonly timestamp: string; readonly value: number }[];
+    readonly anomalyWindows: readonly { readonly from: string; readonly to: string }[];
+  } | null;
+  readonly items: readonly EventData[];
+  readonly facets: {
+    readonly categories: readonly { readonly key: EventCategory | "all"; readonly name: string; readonly total: number }[];
+    readonly deviceTypes: readonly string[];
+    readonly appVersions: readonly string[];
+    readonly regions: readonly string[];
+    readonly sources: readonly string[];
+  };
   readonly page: {
     readonly limit: number;
     readonly hasMore: boolean;
@@ -818,6 +862,25 @@ export const diagnosisDataSchema = z
   })
   .strict();
 
+export const eventItemRuntimeSchema = z.object({
+  id: z.string().min(1),
+  timestamp: z.iso.datetime({ offset: true }),
+  category: z.enum(["request", "vitals", "screen_view", "video_view", "session", "error"]),
+  source: z.object({ name: z.string().min(1) }).strict(),
+  entity: z.string(),
+  summary: z.string(),
+  quality: z.object({ status: z.string(), label: z.string().optional() }).strict(),
+  dimensions: z.object({ deviceType: z.string().optional(), region: z.string().optional(), appVersion: z.string().optional() }).strict(),
+  normalized: z.object({ metric: z.string(), value: z.string(), tags: z.array(z.string()) }).strict(),
+  raw: z.object({ available: z.boolean(), snippet: z.string().optional() }).strict(),
+}).strict();
+
+const eventCategoryStatSchema = z.object({
+  key: z.enum(["all", "request", "vitals", "screen_view", "video_view", "session", "error"]),
+  name: z.string(),
+  total: z.number().int().nonnegative(),
+}).strict();
+
 export const eventsDataRuntimeSchema = z
   .object({
     incident: z
@@ -827,11 +890,16 @@ export const eventsDataRuntimeSchema = z
         title: z.string(),
       })
       .strict(),
-    capabilities: z.record(z.string(), z.unknown()),
-    categoryStats: z.array(z.unknown()),
-    volumeSeries: z.record(z.string(), z.unknown()).nullable(),
-    items: z.array(z.unknown()),
-    facets: z.record(z.string(), z.array(z.unknown())),
+    capabilities: z.object({
+      aggregateMetrics: z.object({ status: z.enum(["available", "unavailable"]) }).strict(),
+      filtering: filteringCapabilitiesSchema.shape.filtering,
+      individualEvents: z.object({ status: z.enum(["available", "unavailable"]), availableCategories: z.array(eventItemRuntimeSchema.shape.category), unavailableCategories: z.array(eventItemRuntimeSchema.shape.category), reason: z.string().nullable() }).strict(),
+      rawPayload: z.object({ status: z.enum(["available", "unavailable"]), reason: z.string().nullable() }).strict(),
+    }).strict(),
+    categoryStats: z.array(eventCategoryStatSchema),
+    volumeSeries: z.object({ metric: z.literal("event_count"), bucketSeconds: z.number().int().positive(), points: z.array(z.object({ timestamp: z.iso.datetime({ offset: true }), value: z.number().int().nonnegative() }).strict()), anomalyWindows: z.array(z.object({ from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }) }).strict()) }).strict().nullable(),
+    items: z.array(eventItemRuntimeSchema),
+    facets: z.object({ categories: z.array(eventCategoryStatSchema), deviceTypes: z.array(z.string()), appVersions: z.array(z.string()), regions: z.array(z.string()), sources: z.array(z.string()) }).strict(),
     page: z
       .object({
         limit: z.number().int().positive(),
@@ -1069,6 +1137,8 @@ export const monitoringProjectionSchema = z
             })
             .strict(),
           coverage: measuredValueSchema,
+          ingestionRate: monitoringKpiSchema.optional(),
+          processingLatencyP95: monitoringKpiSchema.optional(),
         })
         .strict(),
     ),
@@ -1104,6 +1174,12 @@ export const monitoringProjectionSchema = z
         ),
       })
       .strict(),
+    topology: z.object({
+      status: availabilitySchema,
+      provenance: z.enum(["traces", "seed-carga"]),
+      services: z.array(z.object({ service: z.string(), status: z.enum(["healthy", "degraded", "critical"]), calls: z.number().nonnegative(), errors: z.number().nonnegative(), errorRate: z.number().min(0).max(1), latencyP95: z.number().nullable() }).strict()),
+      dependencies: z.array(z.object({ source: z.string(), target: z.string(), calls: z.number().nonnegative(), errorRate: z.number().min(0).max(1) }).strict()),
+    }).strict().optional(),
     facets: z.record(z.string(), z.array(z.unknown())),
   })
   .strict();

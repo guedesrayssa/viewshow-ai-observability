@@ -16,7 +16,7 @@ export type Incident = {
   urgency: Urgency;
   title: string;
   segment: string;
-  devices: number;
+  devices: number | null;
   startedAt: string;
   startedMinutesAgo: number;
   component: string;
@@ -145,7 +145,7 @@ export function sortIncidents(incidents: Incident[], sort: SortKey): Incident[] 
   const sorted = [...incidents];
 
   if (sort === "devices") {
-    sorted.sort((a, b) => b.devices - a.devices);
+    sorted.sort((a, b) => (b.devices ?? -1) - (a.devices ?? -1));
   } else if (sort === "recent") {
     sorted.sort((a, b) => a.startedMinutesAgo - b.startedMinutesAgo);
   } else {

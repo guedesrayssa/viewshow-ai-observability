@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
 import { describe, expect, it, vi } from "vitest";
 import { trace, TraceFlags } from "@opentelemetry/api";
@@ -11,6 +12,7 @@ import {
   createLogger,
   errorEnvelope,
   incidentsQuerySchema,
+  monitoringProjectionSchema,
   responseMetaSchema,
   reviewBodySchema,
   rumTelemetrySchema,
@@ -75,7 +77,13 @@ function buildPublicApp() {
         return [];
       },
       async bundle() {
-        return { incident, children: [] };
+        return { incident, children: [{ itemType: "event", publicData: {
+          id: "sample", timestamp: "2026-01-01T12:00:00Z", category: "error",
+          source: { name: "test" }, entity: "Player", summary: "Sample event",
+          quality: { status: "verified" }, dimensions: {},
+          normalized: { metric: "error_count", value: "1", tags: [] },
+          raw: { available: false },
+        } }] };
       },
       async writeReview() {
         return {};
@@ -144,6 +152,15 @@ function samplePath(expressPath: string): string {
 }
 
 describe("versioned contracts", () => {
+  it("accepts the monitoring projection written by the seed", () => {
+    const require = createRequire(import.meta.url);
+    const seed = require("../scripts/seed-carga.cjs") as {
+      buildMonitoringProjection: (source: string, now: Date) => unknown;
+    };
+    const projection = seed.buildMonitoringProjection("argus", new Date("2026-01-01T12:00:00Z"));
+    expect(monitoringProjectionSchema.safeParse(projection)).toMatchObject({ success: true });
+  });
+
   it("accepts only code and state in a federated callback", () => {
     expect(
       authCallbackQuerySchema.parse({ code: "code_1", state: "state_1" }),
