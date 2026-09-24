@@ -637,9 +637,6 @@ function assertProtectedUpdateEnvironment({ environment, root, lstat, realpath }
   if (!gitMetadata.isDirectory() || gitMetadata.isSymbolicLink()) {
     throw new Error("protected commands require a physical primary Git checkout");
   }
-  if (environment.AWS_PROFILE !== "default") {
-    throw new Error("AWS_PROFILE must be exactly default for protected Learner Lab commands");
-  }
   if (
     Object.hasOwn(environment, "AWS_DEFAULT_PROFILE") &&
     environment.AWS_DEFAULT_PROFILE !== "default"

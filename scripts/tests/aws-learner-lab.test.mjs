@@ -1391,10 +1391,9 @@ test("destroy rejects arguments before any AWS or Terraform call", async () => {
   assert.match(a.logs.join("\n"), /destroy does not accept extra arguments/i);
 });
 
-test("destroy fails closed outside the original checkout and default AWS binding", async () => {
+test("destroy fails closed outside the original checkout or configured region", async () => {
   for (const overrides of [
     { root: "/repo/worktree" },
-    { environment: { AWS_PROFILE: "nora", AWS_REGION: "us-east-1" } },
     { environment: { AWS_PROFILE: "default", AWS_REGION: "sa-east-1" } },
   ]) {
     const a = testEnvironment(overrides);
@@ -1404,6 +1403,16 @@ test("destroy fails closed outside the original checkout and default AWS binding
     assert.equal(result.status, 1, JSON.stringify(overrides));
     assert.deepEqual(a.calls, [], JSON.stringify(overrides));
   }
+});
+
+test("destroy permits a non-default AWS profile in the primary checkout", async () => {
+  const a = testEnvironment({
+    environment: { AWS_PROFILE: "nora", AWS_REGION: "us-east-1" },
+  });
+
+  const result = await runLearnerLab({ ...a.options, step: "destroy" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
 });
 
 test("a missing prerequisite stops before any mutating Terraform or AWS call", async () => {
@@ -2819,10 +2828,8 @@ test("update rejects unknown presets and extra arguments before any tool call", 
   }
 });
 
-test("protected update commands require the primary checkout and explicit default profile region", async () => {
+test("protected update commands require the primary checkout and configured region", async () => {
   const invalidEnvironments = [
-    {},
-    { AWS_PROFILE: "other-profile", AWS_REGION: "us-east-1" },
     { AWS_PROFILE: "default", AWS_DEFAULT_PROFILE: "other-profile", AWS_REGION: "us-east-1" },
     { AWS_PROFILE: "default", AWS_REGION: "sa-east-1" },
     { AWS_PROFILE: "default", AWS_REGION: "us-east-1", AWS_ACCESS_KEY_ID: "secret" },
@@ -2874,7 +2881,6 @@ test("protected commands accept the primary checkout at a portable path", async 
 test("seed fails closed on an unsafe checkout or AWS binding before any tool call", async () => {
   const cases = [
     { root: "/repo/worktree" },
-    { environment: { AWS_PROFILE: "nora", AWS_REGION: "us-east-1" } },
     { environment: { AWS_PROFILE: "default", AWS_REGION: "sa-east-1" } },
     {
       environment: {
@@ -2898,7 +2904,6 @@ test("seed fails closed on an unsafe checkout or AWS binding before any tool cal
 test("all fails closed on an unsafe checkout or AWS binding before any tool call", async () => {
   for (const configuration of [
     { root: "/repo/worktree" },
-    { environment: { AWS_PROFILE: "nora", AWS_REGION: "us-east-1" } },
     { environment: { AWS_PROFILE: "default", AWS_REGION: "sa-east-1" } },
   ]) {
     const a = testEnvironment(configuration);
