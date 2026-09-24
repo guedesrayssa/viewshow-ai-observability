@@ -107,6 +107,7 @@ Fonte: Material produzido pelos autores (2026).
 k8s/
   00-namespace.yaml
   10-serviceaccounts.yaml
+  11-api-securitygrouppolicy.yaml
   20-api-deployment.yaml
   21-api-service.yaml
   22-api-hpa.yaml
@@ -116,7 +117,9 @@ k8s/
   40-ingress.yaml
 ```
 
-&emsp;Os valores estáveis da aplicação ficam nos manifests. Dados sensíveis não são versionados em YAML nem incluídos na imagem. A distribuição de segredos deve usar um mecanismo compatível com EKS Fargate e preservar a separação de permissões por ServiceAccount.
+&emsp;Os valores estáveis da aplicação ficam nos manifests. Dados sensíveis não são versionados em YAML nem incluídos na imagem.
+
+&emsp;Os segredos da API — `AUTH_COOKIE_SECRET`, `CURSOR_SECRET` e `COGNITO_CLIENT_SECRET` — são gerados pelo Terraform e gravados no AWS Secrets Manager, que é a fonte de verdade. O mesmo ciclo de Terraform cria, a partir desses valores, um `Secret` Kubernetes por workload no namespace `view-show` (por exemplo, `api-secrets`), consumido pelo `Deployment` com `envFrom.secretRef`. Esses `Secret` não fazem parte do diretório `k8s/` e não são aplicados por `kubectl apply`. O cluster é criado com criptografia de envelope de `Secret` por chave KMS, e o RBAC não concede `get` ou `list` de `Secret` às ServiceAccounts da aplicação: o valor chega ao container pelo kubelet, não por leitura da API Kubernetes. O Secrets Store CSI Driver não é usado porque depende de `DaemonSet`, recurso não suportado no EKS Fargate. A aplicação não precisa de alteração de código, pois continua lendo os segredos de variáveis de ambiente, como no ECS.
 
 ### 4.2 Imagens e versões
 
@@ -164,9 +167,9 @@ helm version
 | --- | --- | --- |
 | 1. Identidade e cotas | Confirmar conta, região, permissões, quotas EKS/Fargate e capacidade de IP das sub-redes privadas. | Conta e região conferidas; capacidade compatível com Pods e add-ons. |
 | 2. Rede e segurança | Provisionar VPC, duas sub-redes públicas, duas privadas, rotas, Security Groups, endpoints S3/DynamoDB, NAT por AZ e tags de descoberta do ALB. | Pods sem IP público; ALB descoberto nas duas AZs; saída privada funcional. |
-| 3. EKS e Fargate | Provisionar control plane, provider OIDC, pod execution role e perfis Fargate para `kube-system`, `keda`, `fargate-container-insights` e `view-show`. | Cluster ativo; CoreDNS, controladores, coletor e Pods elegíveis em sub-redes privadas. |
+| 3. EKS e Fargate | Provisionar control plane com criptografia KMS de `Secret`, provider OIDC, pod execution role e perfis Fargate para `kube-system`, `keda`, `fargate-container-insights` e `view-show`. Instalar o CoreDNS como add-on gerenciado do EKS com `configuration_values = {"computeType": "Fargate"}`, para que seus Pods não fiquem presos à anotação `eks.amazonaws.com/compute-type: ec2`. | Cluster ativo; Pods do CoreDNS `Running` no Fargate e resolução DNS funcional dentro do cluster; controladores, coletor e Pods elegíveis em sub-redes privadas. |
 | 4. Add-ons e controladores | Instalar o Metrics Server como add-on do EKS e as versões aprovadas do AWS Load Balancer Controller e KEDA por Helm. | Metrics Server disponível; controladores `Ready`, ServiceAccounts corretas e reconciliação habilitada. |
-| 5. Identidade da aplicação | Criar ServiceAccounts e roles IRSA da API, worker e ingestão, além da role de leitura da SQS usada pelo KEDA. | Cada Pod assume somente a role prevista; KEDA consulta apenas os atributos da fila necessários à escala. |
+| 5. Identidade e segredos da aplicação | Criar ServiceAccounts e roles IRSA da API, worker e ingestão, além da role de leitura da SQS usada pelo KEDA. Gravar os segredos no Secrets Manager e criar os `Secret` Kubernetes de cada workload pelo Terraform. | Cada Pod assume somente a role prevista; KEDA consulta apenas os atributos da fila necessários à escala; nenhum segredo aparece em `k8s/` ou na imagem, e as ServiceAccounts da aplicação não leem `Secret` pela API. |
 | 6. Imagens e manifests | Publicar imagens no ECR por digest e aplicar os manifests do diretório `k8s/`. | Campos `image` da API, worker e `CronJob` usam URIs ECR imutáveis no formato `repositório@sha256:<digest>`. |
 | 7. Entrada HTTP | Aplicar o `Ingress`, validar o ALB, os targets IP e o endpoint `/health`, e integrar o API Gateway. | Targets IP saudáveis e resposta funcional pelo dashboard. |
 | 8. Dados e fila | Validar DynamoDB, S3, SQS/DLQ, ingestão idempotente e consumo pelo worker. | Dados persistidos, mensagem processada e falha encaminhada à DLQ. |
@@ -196,15 +199,37 @@ helm version
 ### 6.1 Segurança
 
 - Apenas o ALB recebe tráfego público; Pods Fargate ficam em sub-redes privadas.
-- Security Groups permitem acesso à porta da API somente a partir do security group do ALB.
+- Security Groups permitem acesso à porta da API somente a partir do security group do ALB. No EKS Fargate, o Pod recebe por padrão o security group do cluster; por isso, `11-api-securitygrouppolicy.yaml` declara um `SecurityGroupPolicy` que associa aos Pods com o rótulo da API o security group da API, criado pelo Terraform, junto com o security group do cluster. O security group do cluster é mantido para preservar a comunicação com o CoreDNS e o control plane. O security group da API libera a porta 3000 apenas a partir do security group do ALB, informado ao `Ingress` pela anotação `alb.ingress.kubernetes.io/security-groups`.
 - Cada workload recebe uma role IAM própria por IRSA.
 - Endpoints de gateway evitam que o acesso a S3 e DynamoDB dependa do NAT Gateway.
-- Segredos não são incluídos em imagens nem em manifests versionados.
+- Segredos não são incluídos em imagens nem em manifests versionados; ficam no Secrets Manager e chegam aos Pods por `Secret` Kubernetes criptografado por KMS, conforme a seção 4.1.
 - Imagens são referenciadas por digest e possuem origem rastreável no ECR.
 
 ### 6.2 Escala e disponibilidade
 
 &emsp;A API usa HPA por utilização de CPU, com alvo de 70%, mínimo de duas e máximo de quatro réplicas. O worker usa KEDA com o scaler `aws-sqs-queue`: uma mensagem visível ativa o `Deployment`, cada réplica atende ao alvo de cinco mensagens visíveis ou em processamento, e a escala varia de zero a quatro réplicas. O polling ocorre a cada 30 segundos e a redução para zero aguarda 300 segundos sem demanda. A autenticação do scaler usa IRSA, sem credenciais estáticas. O ALB opera em duas sub-redes públicas e envia tráfego somente a Pods saudáveis.
+
+&emsp;Todo container declara `resources.requests` e `resources.limits` de CPU e memória. No EKS Fargate, os `requests` definem o tamanho da micro-VM de cada Pod: o Fargate soma 256 MiB aos componentes Kubernetes do Pod e arredonda o total para a combinação de vCPU e memória suportada mais próxima. Os `requests` de CPU também são a base do cálculo de utilização do HPA, que não funciona sem eles.
+
+<div align="center">
+
+<sup>Tabela 4: Recursos declarados por workload no EKS Fargate</sup>
+
+</div>
+
+| Workload | `requests` / `limits` de CPU | `requests` / `limits` de memória | Tamanho resultante no Fargate |
+| --- | --- | --- | --- |
+| API (`Deployment`) | `250m` / `250m` | `256Mi` / `256Mi` | 0,25 vCPU e 0,5 GB, o mesmo tamanho da task ECS atual |
+| Worker de análise (`Deployment`) | `250m` / `250m` | - | - |
+| Ingestão (`CronJob`) | `250m` / `250m` | `256Mi` / `256Mi` | 0,25 vCPU e 0,5 GB |
+
+<div align="center">
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
+&emsp;Os valores são o ponto de partida da implantação e são revisados com base nas métricas de CPU e memória por Pod do Container Insights. Como o Fargate não redimensiona um Pod em execução, a alteração de `requests` exige nova revisão do manifest e recriação dos Pods.
 
 &emsp;EKS Fargate não suporta `DaemonSet` nem `topologySpreadConstraints`. Agentes de observabilidade por nó devem ser substituídos por sidecars ou coletores compatíveis. A distribuição da API entre AZs é validada por perfis Fargate separados por sub-rede/AZ e por testes de implantação; ela não é presumida somente pelo scheduler.
 
@@ -223,6 +248,10 @@ helm version
 - ALB em duas sub-redes públicas com targets IP `healthy` no endpoint `/health`;
 - autenticação pelo Amplify, API Gateway e Cognito;
 - API e worker executando com roles IRSA de menor privilégio;
+- Pods do CoreDNS em execução no Fargate e resolução DNS funcional;
+- `SecurityGroupPolicy` aplicada e ENI dos Pods da API com o security group da API, sem acesso à porta 3000 fora do ALB;
+- segredos ausentes de `k8s/` e da imagem, `Secret` Kubernetes criptografado por KMS e ServiceAccounts da aplicação sem permissão de leitura de `Secret`;
+- `resources.requests` dos manifests conferidos contra o tamanho de vCPU e memória exibido na anotação `CapacityProvisioned` dos Pods;
 - manifests da API, do worker e do `CronJob` exibindo URIs ECR por digest `sha256`, conferidas contra os digests publicados;
 - execução do `CronJob`, escrita no S3, envio à SQS, consumo pelo worker e persistência no DynamoDB;
 - mensagem de falha encaminhada à DLQ;
