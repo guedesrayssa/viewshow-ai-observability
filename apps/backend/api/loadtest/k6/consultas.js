@@ -26,23 +26,42 @@
  *     pedida. Os checks aqui exigem 200 mesmo assim — 503 é estado real, não
  *     sucesso de endpoint — então semeie IMEDIATAMENTE antes de cada rodada.
  *     `/incidents` e seus detalhes leem itens físicos e exigem 200 sempre.
- *   - Autenticação é federada (Cognito/OIDC) e não tem `POST /auth/login`;
- *     `lib/session.js` forja o cookie de sessão localmente — exige
+ *   - Autenticação: `-e AUTH_USERNAME=... -e AUTH_PASSWORD=...` faz login de
+ *     senha real contra o Cognito (`POST /auth/login`); sem essas duas
+ *     variáveis, cai para o cookie forjado de `lib/session.js`, que exige
  *     `-e AUTH_COOKIE_SECRET=<mesmo segredo do processo da API sob teste>`.
+ *     Login real é o caminho recomendado contra uma stack onde o segredo
+ *     HMAC nunca sai em texto claro (gerado por `random_password` no
+ *     Terraform) — ver cabeçalho de `lib/session.js`.
  *   - Cada chamada carrega `X-Request-Id` (prefixo `k6-consultas-<MODE>`) para
  *     correlação com os logs da API (ver `loadtest/README.md`, seção
- *     Observabilidade).
+ *     Observabilidade) — e os cenários A/B/C/F/G conferem que a API ecoa o
+ *     mesmo valor de volta (ver `lib/asserts.js`).
+ *   - Os cenários A/B/G também conferem schema mínimo dos itens, ausência de
+ *     campo físico vazado (`pk`/`sk`/`ttl`) e, em G, ausência de duplicidade
+ *     entre as duas páginas do mesmo cursor — os checks de conteúdo mais
+ *     estritos pedidos na Seção 4 de artefatos/sprint4/testes-funcionais.md.
  *
  * USO:
  *   (cd apps/backend/api && node scripts/seed-carga.cjs)
- *   k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<32+ chars> -e MODE=smoke consultas.js
- *   k6 run -e BASE_URL=... -e AUTH_COOKIE_SECRET=... -e MODE=load consultas.js   # grava resumo-load.json
+ *   k6 run -e BASE_URL=http://localhost:3000 -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=smoke consultas.js
+ *   k6 run -e BASE_URL=... -e AUTH_USERNAME=... -e AUTH_PASSWORD=... -e MODE=load consultas.js   # grava resumo-load.json
  */
 
 import http from "k6/http";
 import { check } from "k6";
 import { Counter, Rate, Trend } from "k6/metrics";
-import { forgeSessionCookie, authParams } from "./lib/session.js";
+import {
+  forgeSessionCookie,
+  loginSessionCookie,
+  authParamsWithRequestId,
+} from "./lib/session.js";
+import {
+  checkNoPhysicalFields,
+  checkRequestIdEcho,
+  checkIncidentsSchema,
+  checkNoDuplicateIds,
+} from "./lib/asserts.js";
 
 // Cada sinal em uma métrica diferente, para que um threshold reprovado diga
 // QUAL problema ocorreu:
@@ -73,6 +92,8 @@ const MODE = __ENV.MODE || "smoke";
 const RATE = Number(__ENV.RATE || 137);
 const STRESS_MULTIPLIER = Number(__ENV.STRESS_MULTIPLIER || 3);
 const INCIDENT_COUNT = Number(__ENV.INCIDENT_COUNT || 300);
+const AUTH_USERNAME = __ENV.AUTH_USERNAME;
+const AUTH_PASSWORD = __ENV.AUTH_PASSWORD;
 
 if (!BASE_URL) throw new Error("Faltou -e BASE_URL=http://<host>:3000");
 if (!Number.isFinite(RATE) || RATE <= 0) throw new Error("RATE deve ser um número positivo");
@@ -240,12 +261,18 @@ export const options = {
   // Sem isso o k6 agrega /incidents/inc-000001 e /incidents/inc-000002 como
   // URLs diferentes e o resumo vira ilegível.
   discardResponseBodies: false,
+  // Padrão do k6 não inclui p(99); a Seção 4 do plano de testes funcionais
+  // pede p50/p95/p99 explicitamente.
+  summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
 };
 
 /* ------------------------------- setup -------------------------------- */
 
 export function setup() {
-  const cookie = forgeSessionCookie({ role: "engineer" });
+  const cookie =
+    AUTH_USERNAME && AUTH_PASSWORD
+      ? loginSessionCookie(BASE_URL, AUTH_USERNAME, AUTH_PASSWORD)
+      : forgeSessionCookie({ role: "engineer" });
   return { cookie };
 }
 
@@ -280,44 +307,48 @@ function statusEsperado(res, status) {
 /* ------------------------------ default ------------------------------- */
 
 export default function (data) {
-  const params = (tags) => authParams(data.cookie, tags, `k6-consultas-${MODE}`);
+  const reqParams = (tags) =>
+    authParamsWithRequestId(data.cookie, tags, `k6-consultas-${MODE}`);
   const sorteio = Math.random();
 
   if (sorteio < 0.3) {
     // A — leitura PESADA: window=24h varre até 25 buckets de hora em
     //     paralelo. Pior caso real, o que a tela de incidentes usa.
-    const res = http.get(
-      `${BASE_URL}/api/v1/incidents?window=24h`,
-      params({ cenario: "pesada", name: "GET /api/v1/incidents?window=24h" }),
-    );
+    const { params, requestId } = reqParams({
+      cenario: "pesada",
+      name: "GET /api/v1/incidents?window=24h",
+    });
+    const res = http.get(`${BASE_URL}/api/v1/incidents?window=24h`, params);
     latenciaPesada.add(res.timings.duration);
     contaRateLimit(res, "incidents_24h");
-    check(res, {
-      "pesada: 200": (r) => statusEsperado(r, 200),
-      "pesada: tem items (quando 200)": (r) => {
-        if (r.status !== 200) return true;
-        try { return Array.isArray(r.json("data.items")); } catch { return false; }
-      },
-    });
+    check(res, { "pesada: 200": (r) => statusEsperado(r, 200) });
+    checkIncidentsSchema(res, "pesada");
+    checkNoPhysicalFields(res, "pesada");
+    checkRequestIdEcho(res, requestId, "pesada");
   } else if (sorteio < 0.5) {
     // B — leitura LEVE: window=15m varre só 2 buckets.
     //     ⚠️ Só devolve dado se o seed rodou há menos de ~1 h.
-    const res = http.get(
-      `${BASE_URL}/api/v1/incidents?window=15m`,
-      params({ cenario: "leve", name: "GET /api/v1/incidents?window=15m" }),
-    );
+    const { params, requestId } = reqParams({
+      cenario: "leve",
+      name: "GET /api/v1/incidents?window=15m",
+    });
+    const res = http.get(`${BASE_URL}/api/v1/incidents?window=15m`, params);
     latenciaLeve.add(res.timings.duration);
     contaRateLimit(res, "incidents_15m");
     check(res, { "leve: 200": (r) => statusEsperado(r, 200) });
+    checkIncidentsSchema(res, "leve");
+    checkNoPhysicalFields(res, "leve");
+    checkRequestIdEcho(res, requestId, "leve");
   } else if (sorteio < 0.65) {
     // C — DIAGNÓSTICO: Query única no GSI trace-index (bundle do
     //     incidente). Independe do relógio, não sofre com o envelhecimento
     //     do seed.
     const id = incidentId();
-    const res = http.get(
-      `${BASE_URL}/api/v1/incidents/${id}/diagnosis`,
-      params({ cenario: "diagnostico", name: "GET /api/v1/incidents/:id/diagnosis" }),
-    );
+    const { params, requestId } = reqParams({
+      cenario: "diagnostico",
+      name: "GET /api/v1/incidents/:id/diagnosis",
+    });
+    const res = http.get(`${BASE_URL}/api/v1/incidents/${id}/diagnosis`, params);
     latenciaDiagnostico.add(res.timings.duration);
     contaRateLimit(res, "diagnosis");
     check(res, {
@@ -327,59 +358,91 @@ export default function (data) {
         try { return Array.isArray(r.json("data.evidence")); } catch { return false; }
       },
     });
+    checkNoPhysicalFields(res, "diagnostico");
+    checkRequestIdEcho(res, requestId, "diagnostico");
   } else if (sorteio < 0.75) {
     // D — OVERVIEW: o que a tela de Visão Geral chama ao abrir.
-    const res = http.get(
-      `${BASE_URL}/api/v1/dashboard/overview`,
-      params({ cenario: "overview", name: "GET /api/v1/dashboard/overview" }),
-    );
+    const { params, requestId } = reqParams({
+      cenario: "overview",
+      name: "GET /api/v1/dashboard/overview",
+    });
+    const res = http.get(`${BASE_URL}/api/v1/dashboard/overview`, params);
     contaRateLimit(res, "overview");
     checaProjecao(res, "overview");
+    checkRequestIdEcho(res, requestId, "overview");
   } else if (sorteio < 0.83) {
     // E — MONITORING: novo endpoint (não existia no sprint2). Mesma
     //     dependência de projeção de ingestão que o overview.
-    const res = http.get(
-      `${BASE_URL}/api/v1/monitoring/overview`,
-      params({ cenario: "monitoring", name: "GET /api/v1/monitoring/overview" }),
-    );
+    const { params, requestId } = reqParams({
+      cenario: "monitoring",
+      name: "GET /api/v1/monitoring/overview",
+    });
+    const res = http.get(`${BASE_URL}/api/v1/monitoring/overview`, params);
     contaRateLimit(res, "monitoring");
     checaProjecao(res, "monitoring");
+    checkRequestIdEcho(res, requestId, "monitoring");
   } else if (sorteio < 0.93) {
     // F — EVENTS: lista de eventos do incidente. Resposta é um placeholder
     //     estável hoje (items vazios, avisos fixos de capacidade ainda não
     //     configurada — incident-use-cases.ts events()), mas a rota é
     //     pública, real, e não envelhece — só exige o incidente existir.
     const id = incidentId();
-    const res = http.get(
-      `${BASE_URL}/api/v1/incidents/${id}/events`,
-      params({ cenario: "events", name: "GET /api/v1/incidents/:id/events" }),
-    );
+    const { params, requestId } = reqParams({
+      cenario: "events",
+      name: "GET /api/v1/incidents/:id/events",
+    });
+    const res = http.get(`${BASE_URL}/api/v1/incidents/${id}/events`, params);
     latenciaEvents.add(res.timings.duration);
     contaRateLimit(res, "events");
     check(res, { "events: 200": (r) => statusEsperado(r, 200) });
+    checkNoPhysicalFields(res, "events");
+    checkRequestIdEcho(res, requestId, "events");
   } else {
     // G — PAGINAÇÃO: limit baixo força hasMore=true com os INCIDENT_COUNT
     //     incidentes do seed; segue nextCursor para a página seguinte.
     //     Único cenário que exercita CursorCodec (AES-256-GCM) de ponta a
     //     ponta — um cursor quebrado (ex.: CURSOR_SECRET divergente do
     //     processo da API) só apareceria aqui, não nos outros cenários.
+    const pagina1Params = reqParams({
+      cenario: "paginacao",
+      name: "GET /api/v1/incidents (pagina 1)",
+    });
     const pagina1 = http.get(
       `${BASE_URL}/api/v1/incidents?window=24h&limit=5`,
-      params({ cenario: "paginacao", name: "GET /api/v1/incidents (pagina 1)" }),
+      pagina1Params.params,
     );
     contaRateLimit(pagina1, "paginacao_p1");
     check(pagina1, { "paginacao: pagina 1": (r) => statusEsperado(r, 200) });
+    checkIncidentsSchema(pagina1, "paginacao_p1");
+    checkNoPhysicalFields(pagina1, "paginacao_p1");
+    checkRequestIdEcho(pagina1, pagina1Params.requestId, "paginacao_p1");
     if (pagina1.status === 200) {
       let cursor = null;
-      try { cursor = pagina1.json("data.page.nextCursor"); } catch { /* segue sem cursor */ }
+      let itensPagina1 = [];
+      try {
+        cursor = pagina1.json("data.page.nextCursor");
+        itensPagina1 = pagina1.json("data.items");
+      } catch { /* segue sem cursor */ }
       if (cursor) {
         paginaSeguinte.add(1);
+        const pagina2Params = reqParams({
+          cenario: "paginacao",
+          name: "GET /api/v1/incidents (pagina 2, cursor)",
+        });
         const pagina2 = http.get(
           `${BASE_URL}/api/v1/incidents?window=24h&limit=5&cursor=${encodeURIComponent(cursor)}`,
-          params({ cenario: "paginacao", name: "GET /api/v1/incidents (pagina 2, cursor)" }),
+          pagina2Params.params,
         );
         contaRateLimit(pagina2, "paginacao_p2");
         check(pagina2, { "paginacao: pagina 2, cursor": (r) => statusEsperado(r, 200) });
+        checkIncidentsSchema(pagina2, "paginacao_p2");
+        checkNoPhysicalFields(pagina2, "paginacao_p2");
+        checkRequestIdEcho(pagina2, pagina2Params.requestId, "paginacao_p2");
+        if (pagina2.status === 200) {
+          try {
+            checkNoDuplicateIds(itensPagina1, pagina2.json("data.items"), "paginacao");
+          } catch { /* corpo inesperado já reprovou o schema check acima */ }
+        }
       }
     }
   }
@@ -437,10 +500,10 @@ export function handleSummary(data) {
     `Resumo completo: resumo-${MODE}.json`,
   ];
   // O k6 serializa o retorno de setup() inteiro em `setup_data`, e aqui isso
-  // inclui o cookie de sessão assinado que forgeSessionCookie() gerou. O
-  // resumo é anexado como evidência versionada, então o valor é substituído
-  // por um marcador: gravá-lo colocaria uma credencial válida (8 h) no
-  // repositório. Nenhuma métrica é alterada.
+  // inclui o cookie de sessão (forjado ou emitido por um login real — ver
+  // setup() acima). O resumo é anexado como evidência versionada, então o
+  // valor é substituído por um marcador: gravá-lo colocaria uma credencial
+  // válida (8 h) no repositório. Nenhuma métrica é alterada.
   const semCredenciais = {
     ...data,
     setup_data: data.setup_data

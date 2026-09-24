@@ -1,33 +1,32 @@
 /**
- * Sessão compartilhada pelos scripts desta pasta.
+ * Sessão compartilhada pelos scripts desta pasta. Duas formas de obter uma
+ * sessão válida, escolha do chamador:
  *
- * A identidade é federada (Cognito/OIDC): `GET /auth/login` deveria
- * redirecionar (302) e `GET /auth/callback?code&state` completaria o login,
- * mas hoje as duas respondem 503 FEATURE_UNAVAILABLE — o adaptador
- * (`ConfiguredIdentityProvider` em `src/modules/auth/adapters/`) sempre
- * retorna `null`. Não há `POST /auth/login` nem outra forma de logar via
- * HTTP puro.
+ *   1. `loginSessionCookie()` — login de senha real contra o Cognito
+ *      (`POST /auth/login`, provisionado em `apps/fullstack/cognito.tf`
+ *      desde que o adaptador corporativo deixou de ser fail-closed). É o
+ *      caminho de ponta a ponta de verdade e não exige conhecer nenhum
+ *      segredo do processo da API — só um usuário de teste no User Pool.
+ *   2. `forgeSessionCookie()` — FORJA o cookie diretamente, replicando o
+ *      algoritmo de `SessionCodec`
+ *      (`apps/backend/api/src/modules/auth/domain/session.ts`):
  *
- * Por isso este arquivo não faz nenhuma chamada HTTP: ele FORJA o
- * cookie de sessão diretamente, replicando o algoritmo de `SessionCodec`
- * (`apps/backend/api/src/modules/auth/domain/session.ts`):
+ *        payload = {id, email, name, role, issuedAt, expiresAt, sessionId}
+ *        encoded = base64url(JSON(payload))                    // sem padding
+ *        assinatura = HMAC-SHA256(AUTH_COOKIE_SECRET, encoded), base64url sem padding
+ *        cookie = `${encoded}.${assinatura}`
  *
- *   payload = {id, email, name, role, issuedAt, expiresAt, sessionId}
- *   encoded = base64url(JSON(payload))                    // sem padding
- *   assinatura = HMAC-SHA256(AUTH_COOKIE_SECRET, encoded), base64url sem padding
- *   cookie = `${encoded}.${assinatura}`
- *
- * É o MESMO caminho que `apps/backend/api/tests/live-api.e2e.test.ts` usa
- * internamente (via `new SessionCodec(secret).issue({...})`) — não é um
- * hack deste script, é o padrão sancionado pelo próprio time para tráfego de
- * teste autenticado.
- *
- * Exige `-e AUTH_COOKIE_SECRET=<mesmo segredo do processo da API sob teste>`
- * em todo `k6 run`. Sem isso a API rejeita a assinatura e toda chamada
- * autenticada volta 401, mesmo com o resto do payload correto.
+ *      Útil quando não há um usuário Cognito à mão (ex.: API local sem
+ *      Cognito configurado) mas exige `-e AUTH_COOKIE_SECRET=<mesmo segredo
+ *      do processo da API sob teste>` — indisponível quando o segredo é
+ *      gerado pelo Terraform (`random_password`) e nunca sai em texto
+ *      claro. `GET /auth/login`/`GET /auth/callback` (federado) continuam
+ *      503 FEATURE_UNAVAILABLE enquanto o SSO corporativo não for
+ *      configurado — isso não afeta nenhum dos dois caminhos acima.
  */
 import crypto from "k6/crypto";
 import encoding from "k6/encoding";
+import http from "k6/http";
 
 const DEFAULT_LIFETIME_SECONDS = 8 * 60 * 60; // espelha SessionCodec (8h)
 
@@ -66,6 +65,39 @@ export function forgeSessionCookie({
   const encoded = encoding.b64encode(JSON.stringify(payload), "rawurl");
   const signature = crypto.hmac("sha256", secret, encoded, "base64rawurl");
   return `${encoded}.${signature}`;
+}
+
+/**
+ * Loga de verdade contra `POST /auth/login` e devolve o cookie de sessão que
+ * a API emitiu. Chamar em `setup()` — uma vez por run — igual a
+ * `forgeSessionCookie()`. Lança se o login falhar (credencial errada, User
+ * Pool inexistente nesta stack etc.) para o run abortar cedo em vez de
+ * gastar carga inteira recebendo 401.
+ */
+export function loginSessionCookie(baseUrl, username, password) {
+  if (!username || !password) {
+    throw new Error(
+      "loginSessionCookie exige username e password (-e AUTH_USERNAME=... -e AUTH_PASSWORD=...).",
+    );
+  }
+  const response = http.post(
+    `${baseUrl}/auth/login`,
+    JSON.stringify({ username, password }),
+    { headers: { "Content-Type": "application/json" } },
+  );
+  if (response.status !== 200) {
+    throw new Error(
+      `POST /auth/login falhou (status ${response.status}): ${response.body}`,
+    );
+  }
+  const setCookie = response.headers["Set-Cookie"];
+  const match = setCookie ? setCookie.match(/session=([^;]+)/) : null;
+  if (!match) {
+    throw new Error(
+      `POST /auth/login não devolveu cookie de sessão (Set-Cookie: ${setCookie}).`,
+    );
+  }
+  return match[1];
 }
 
 let requestSequence = 0;
@@ -119,5 +151,28 @@ export function authParams(cookie, tags = {}, prefix = "k6") {
       ...requestIdHeader(prefix),
     },
     tags,
+  };
+}
+
+/**
+ * Igual a `authParams`, mas também devolve o `X-Request-Id` gerado — para
+ * quem precisa comparar o valor enviado com o que a API ecoa de volta
+ * (`consultas.js`, checks de correlação da Seção 4 de
+ * artefatos/sprint4/testes-funcionais.md). `authParams` continua sem esse
+ * retorno para não mudar a assinatura usada por `auth-check.js` e
+ * `ingestao-batch.js`.
+ */
+export function authParamsWithRequestId(cookie, tags = {}, prefix = "k6") {
+  const idHeader = requestIdHeader(prefix);
+  return {
+    params: {
+      headers: {
+        Cookie: `session=${cookie}`,
+        "Content-Type": "application/json",
+        ...idHeader,
+      },
+      tags,
+    },
+    requestId: idHeader["X-Request-Id"],
   };
 }

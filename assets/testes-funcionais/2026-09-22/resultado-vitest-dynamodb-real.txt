@@ -1,0 +1,27 @@
+
+> @view-show/api@2.0.0 pretest
+> npm run build:contracts
+
+
+> @view-show/api@2.0.0 build:contracts
+> npm run build --workspace @view-show/contracts
+
+
+> @view-show/contracts@1.0.0 build
+> tsc -b
+
+
+> @view-show/api@2.0.0 test
+> vitest run tests/dynamodb-real.integration.test.ts --reporter=verbose
+
+
+ RUN  v5.0.0 C:/Users/lcsmi/OneDrive/Documentos/g05/apps/backend/api
+
+ ✓ tests/dynamodb-real.integration.test.ts > IT02 — IncidentUseCases x DynamoDB Local real (Query genuíno, não mockado) > pagina sem duplicar nem pular itens gravados em um DynamoDB real 134ms
+ ✓ tests/dynamodb-real.integration.test.ts > IT02 — IncidentUseCases x DynamoDB Local real (Query genuíno, não mockado) > rejeita um cursor obtido sob um filtro quando reenviado com outro 41ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  17:30:20
+   Duration  1.49s (import 55%, tests 38%, transform 7%)
+

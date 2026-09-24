@@ -1,0 +1,493 @@
+{
+  "metrics": {
+    "vs_events_ms": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "p(95)": 133.99307,
+        "p(99)": 133.99765399999998,
+        "avg": 133.3133,
+        "min": 131.9996,
+        "med": 133.9415,
+        "max": 133.9988,
+        "p(90)": 133.98734
+      }
+    },
+    "http_req_connecting": {
+      "contains": "time",
+      "values": {
+        "p(90)": 0,
+        "p(95)": 38.02277999999964,
+        "p(99)": 127.88129799999999,
+        "avg": 7.29172857142857,
+        "min": 0,
+        "med": 0,
+        "max": 128.4679
+      },
+      "type": "trend"
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 19575,
+        "rate": 635.679641231828
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "fails": 0,
+        "rate": 1,
+        "passes": 122
+      },
+      "thresholds": {
+        "rate==1": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 0,
+        "max": 146.4177,
+        "p(90)": 0,
+        "p(95)": 38.54036999999963,
+        "p(99)": 140.31476799999993,
+        "avg": 7.8538742857142845,
+        "min": 0
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 457719,
+        "rate": 14863.99232209405
+      }
+    },
+    "vs_diagnostico_ms": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "min": 134.2336,
+        "med": 137.4661,
+        "max": 137.8483,
+        "p(90)": 137.77186,
+        "p(95)": 137.81008,
+        "p(99)": 137.840656,
+        "avg": 136.516
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 35
+      },
+      "thresholds": {
+        "rate<0.001": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.04309428571428572,
+        "min": 0,
+        "med": 0,
+        "max": 1.5083,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 0.9954779999999949
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 422.0222299999997,
+        "p(99)": 617.4767659999994,
+        "avg": 220.98535142857142,
+        "min": 131.9996,
+        "med": 182.4011,
+        "max": 676.9496,
+        "p(90)": 336.4821000000001
+      }
+    },
+    "iterations": {
+      "contains": "default",
+      "values": {
+        "count": 31,
+        "rate": 1.0066957281321414
+      },
+      "type": "counter"
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 35,
+        "rate": 1.1365919511169338
+      }
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 3.2049799999999995,
+        "p(99)": 83.90637799999958,
+        "avg": 4.50582857142857,
+        "min": 0,
+        "med": 0.8099,
+        "max": 125.4147,
+        "p(90)": 2.85216
+      }
+    },
+    "rate_limited_rate": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 34
+      }
+    },
+    "vus": {
+      "contains": "default",
+      "values": {
+        "min": 0,
+        "max": 1,
+        "value": 0
+      },
+      "type": "gauge"
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 238.30516129032262,
+        "min": 131.9996,
+        "med": 154.5257,
+        "max": 868.5379,
+        "p(90)": 389.2804,
+        "p(95)": 479.77195,
+        "p(99)": 755.2015299999998
+      }
+    },
+    "pagina_seguinte_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 3,
+        "rate": 0.09742216723859433
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 0,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 0,
+        "avg": 0,
+        "min": 0,
+        "med": 0
+      }
+    },
+    "vs_leve_ms": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 149.33796,
+        "min": 133.9817,
+        "med": 137.4225,
+        "max": 186.4804,
+        "p(90)": 173.69852,
+        "p(95)": 180.08946,
+        "p(99)": 185.202212
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 220.98535142857142,
+        "min": 131.9996,
+        "med": 182.4011,
+        "max": 676.9496,
+        "p(90)": 336.4821000000001,
+        "p(95)": 422.0222299999997,
+        "p(99)": 617.4767659999994
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 216.43642857142856,
+        "min": 131.9996,
+        "med": 179.2503,
+        "max": 676.1143,
+        "p(90)": 286.35790000000003,
+        "p(95)": 405.40204999999963,
+        "p(99)": 616.4126459999994
+      }
+    },
+    "vs_pesada_ms": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "min": 180.2438,
+        "med": 276.17605000000003,
+        "max": 387.7334,
+        "p(90)": 368.30519,
+        "p(95)": 378.019295,
+        "p(99)": 385.79057900000004,
+        "avg": 278.00213
+      }
+    }
+  },
+  "setup_data": {
+    "cookie": "<redigido: cookie de sessão>"
+  },
+  "root_group": {
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [],
+    "checks": [
+        {
+          "path": "::leve: 200",
+          "id": "1d50800c58284effc98f683e1147407b",
+          "passes": 5,
+          "fails": 0,
+          "name": "leve: 200"
+        },
+        {
+          "name": "leve: schema de items",
+          "path": "::leve: schema de items",
+          "id": "718de4c7aab58daeb10755ca2731121c",
+          "passes": 5,
+          "fails": 0
+        },
+        {
+          "name": "leve: sem campo físico vazado",
+          "path": "::leve: sem campo físico vazado",
+          "id": "b0ba7592aa7743c06eccc1f5c3ab3908",
+          "passes": 5,
+          "fails": 0
+        },
+        {
+          "name": "leve: X-Request-Id ecoado",
+          "path": "::leve: X-Request-Id ecoado",
+          "id": "eaf623f23bef2ce7b560cf3d4f68a926",
+          "passes": 5,
+          "fails": 0
+        },
+        {
+          "id": "9d9693df7f19a40a83d8ffa06f03e52a",
+          "passes": 6,
+          "fails": 0,
+          "name": "monitoring: 200",
+          "path": "::monitoring: 200"
+        },
+        {
+          "name": "monitoring: X-Request-Id ecoado",
+          "path": "::monitoring: X-Request-Id ecoado",
+          "id": "481b9219ba388ebecfc5f7b7cc09a16f",
+          "passes": 6,
+          "fails": 0
+        },
+        {
+          "name": "pesada: 200",
+          "path": "::pesada: 200",
+          "id": "8aa5f151e78e52cc02d87b58db46c08e",
+          "passes": 10,
+          "fails": 0
+        },
+        {
+          "passes": 10,
+          "fails": 0,
+          "name": "pesada: schema de items",
+          "path": "::pesada: schema de items",
+          "id": "4e9b6b736373401a9cd1dd6638738779"
+        },
+        {
+          "name": "pesada: sem campo físico vazado",
+          "path": "::pesada: sem campo físico vazado",
+          "id": "b17fe67cfbde5636963c77366a991d3b",
+          "passes": 10,
+          "fails": 0
+        },
+        {
+          "path": "::pesada: X-Request-Id ecoado",
+          "id": "e28bccefd6fd59b9ca8889d3b811bd5b",
+          "passes": 10,
+          "fails": 0,
+          "name": "pesada: X-Request-Id ecoado"
+        },
+        {
+          "name": "diagnostico: 200",
+          "path": "::diagnostico: 200",
+          "id": "a209e55bd48f83a1165df0a7372455a2",
+          "passes": 3,
+          "fails": 0
+        },
+        {
+          "id": "ec2f921360420cddc0cf6141f28c1d36",
+          "passes": 3,
+          "fails": 0,
+          "name": "diagnostico: tem evidence (quando 200)",
+          "path": "::diagnostico: tem evidence (quando 200)"
+        },
+        {
+          "name": "diagnostico: sem campo físico vazado",
+          "path": "::diagnostico: sem campo físico vazado",
+          "id": "e423bf778bf91326a91e9db65a9158a9",
+          "passes": 3,
+          "fails": 0
+        },
+        {
+          "fails": 0,
+          "name": "diagnostico: X-Request-Id ecoado",
+          "path": "::diagnostico: X-Request-Id ecoado",
+          "id": "40e15da8855b26526eb50cadfaf68c63",
+          "passes": 3
+        },
+        {
+          "path": "::events: 200",
+          "id": "c59237082a49fa4706ff3b6d03a3b466",
+          "passes": 3,
+          "fails": 0,
+          "name": "events: 200"
+        },
+        {
+          "passes": 3,
+          "fails": 0,
+          "name": "events: sem campo físico vazado",
+          "path": "::events: sem campo físico vazado",
+          "id": "bbd4719e17202a5ee7c1325c0d70e5b0"
+        },
+        {
+          "passes": 3,
+          "fails": 0,
+          "name": "events: X-Request-Id ecoado",
+          "path": "::events: X-Request-Id ecoado",
+          "id": "fb02f406bce44731a76deab2f5a72bf9"
+        },
+        {
+          "name": "paginacao: pagina 1",
+          "path": "::paginacao: pagina 1",
+          "id": "647ac2aaa463b4b976331a3eb53fade1",
+          "passes": 3,
+          "fails": 0
+        },
+        {
+          "name": "paginacao_p1: schema de items",
+          "path": "::paginacao_p1: schema de items",
+          "id": "5dd0895841a4973c485df34bc5f508af",
+          "passes": 3,
+          "fails": 0
+        },
+        {
+          "name": "paginacao_p1: sem campo físico vazado",
+          "path": "::paginacao_p1: sem campo físico vazado",
+          "id": "b3f8113bc94d170b8e95fcb6530fc274",
+          "passes": 3,
+          "fails": 0
+        },
+        {
+          "passes": 3,
+          "fails": 0,
+          "name": "paginacao_p1: X-Request-Id ecoado",
+          "path": "::paginacao_p1: X-Request-Id ecoado",
+          "id": "191ecd6945e8689384fbb9e1d7abbeac"
+        },
+        {
+          "fails": 0,
+          "name": "paginacao: pagina 2, cursor",
+          "path": "::paginacao: pagina 2, cursor",
+          "id": "4218159028e59751f690a09b34802079",
+          "passes": 3
+        },
+        {
+          "name": "paginacao_p2: schema de items",
+          "path": "::paginacao_p2: schema de items",
+          "id": "1337e332429ea56a9b3dd17ec79029f2",
+          "passes": 3,
+          "fails": 0
+        },
+        {
+          "name": "paginacao_p2: sem campo físico vazado",
+          "path": "::paginacao_p2: sem campo físico vazado",
+          "id": "706007754c45d24cf3441d358d5ba721",
+          "passes": 3,
+          "fails": 0
+        },
+        {
+          "id": "576b571cc8e43014c8abe60cb1fb3f5d",
+          "passes": 3,
+          "fails": 0,
+          "name": "paginacao_p2: X-Request-Id ecoado",
+          "path": "::paginacao_p2: X-Request-Id ecoado"
+        },
+        {
+          "fails": 0,
+          "name": "paginacao: sem duplicidade entre páginas",
+          "path": "::paginacao: sem duplicidade entre páginas",
+          "id": "44198f571a2a9e50791a0ac3d276b669",
+          "passes": 3
+        },
+        {
+          "fails": 0,
+          "name": "overview: 200",
+          "path": "::overview: 200",
+          "id": "0f690b6bd082b84d2a87ab7f037ee014",
+          "passes": 1
+        },
+        {
+          "name": "overview: X-Request-Id ecoado",
+          "path": "::overview: X-Request-Id ecoado",
+          "id": "f50f7776b0897a9d1cd10fc9a324fe92",
+          "passes": 1,
+          "fails": 0
+        }
+      ],
+    "name": ""
+  },
+  "options": {
+    "summaryTimeUnit": "",
+    "noColor": false,
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)",
+      "p(99)"
+    ]
+  },
+  "state": {
+    "isStdErrTTY": false,
+    "testRunDurationMs": 30793.813,
+    "isStdOutTTY": false
+  }
+}
