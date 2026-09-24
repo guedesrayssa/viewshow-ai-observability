@@ -23,6 +23,7 @@ def main() -> None:
                 "peak_relative_margin": round(episode["peakRelativeMargin"], 6),
                 "trigger_metrics": ";".join(episode["triggerMetrics"]),
                 "delivery_increases": ";".join(episode["deliveryIncreases"]),
+                "peak_evidence_json": json.dumps(episode["peakFacts"], ensure_ascii=False, separators=(",", ":")),
                 "is_relevant": "",
                 "probable_layer": "",
                 "evidence_sufficient": "",

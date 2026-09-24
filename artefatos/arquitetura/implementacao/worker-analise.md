@@ -141,6 +141,23 @@ O script `scripts/export-episode-review.py` converte esse relatório em uma fich
 CSV sem respostas pré-preenchidas, com campos para relevância, camada provável,
 suficiência das evidências e observações da revisão humana.
 
+Cada linha da ficha inclui `peak_evidence_json`, com referência, valor corrente,
+direção, unidade e cobertura dos fatos no bucket de maior margem do episódio.
+O revisor preenche `is_relevant` e `evidence_sufficient` com `yes` ou `no`, e
+`probable_layer` com `cdn`, `origin`, `player`, `traffic`, `measurement` ou
+`unknown`. `is_relevant` responde se o episódio merece aparecer para operação;
+`evidence_sufficient` responde se os dados mostrados permitem sustentar a
+camada indicada. Uma anomalia real pode ter evidência insuficiente.
+
+O avaliador recusa fichas incompletas em vez de tratar campos vazios como
+negativos:
+
+```bash
+python3 scripts/evaluate-episode-review.py \
+  --review data/review/episodes-2026-08-26-a-2026-09-01.csv \
+  --output data/review/evaluation-2026-08-26-a-2026-09-01.json
+```
+
 No recorte de 27/08/2026 UTC, os dez canais produziram 960 janelas de detecção,
 todas acima do gate inicial de 25 sessões. Houve 308 sinais acima de algum
 limiar, agrupados em 27 episódios; todos tinham ao menos uma evidência de CDN ou

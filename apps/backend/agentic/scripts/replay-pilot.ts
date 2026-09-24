@@ -51,7 +51,8 @@ async function main(): Promise<void> {
   for (const scope of scopes) {
     const from = Math.floor(start / 86400000) * 86400000 - 7 * 86400000;
     const clean = cleanObservations(rows.get(scope.id)!, model.datasetVersion, scope, from, end + 3600000);
-    type Episode = { start: string; end: string; buckets: number; peakRelativeMargin: number; triggerMetrics: string[]; deliveryAvailable: string[]; deliveryIncreases: string[] };
+    type EpisodeFact = { metric: string; unit: string; reference: number | null; current: number | null; direction: string; coverage: string };
+    type Episode = { start: string; end: string; buckets: number; peakRelativeMargin: number; triggerMetrics: string[]; deliveryAvailable: string[]; deliveryIncreases: string[]; peakFacts: EpisodeFact[] };
     let detectionWindows = 0, materialWindows = 0, alerts = 0, alertsWithDeliveryEvidence = 0, alertsWithDeliveryIncrease = 0, lastAlert: number | null = null;
     const episodeDetails: Episode[] = [];
     const alertsAtMinimumSessions: Record<string, number> = { "25": 0, "100": 0, "500": 0, "1000": 0 };
@@ -69,9 +70,11 @@ async function main(): Promise<void> {
       if (deliveryIncreases.length) alertsWithDeliveryIncrease++;
       const triggerMetric = signal.detector === "univariate-robust-z" ? signal.series.metric : signal.detector;
       const margin = (signal.score - signal.threshold.value) / signal.threshold.value;
-      if (lastAlert === null || at - lastAlert >= (scope.episodeWindowSeconds ?? 3600) * 1000) episodeDetails.push({ start: current.payload.window.start, end: current.payload.window.end, buckets: 1, peakRelativeMargin: margin, triggerMetrics: [triggerMetric], deliveryAvailable, deliveryIncreases });
+      const peakFacts = context.facts.map(fact => ({ metric: fact.metric, unit: fact.unit, reference: fact.reference, current: fact.current, direction: fact.direction, coverage: `${fact.referenceCount}/${fact.expectedPoints};${fact.currentCount}/${fact.expectedPoints}` }));
+      if (lastAlert === null || at - lastAlert >= (scope.episodeWindowSeconds ?? 3600) * 1000) episodeDetails.push({ start: current.payload.window.start, end: current.payload.window.end, buckets: 1, peakRelativeMargin: margin, triggerMetrics: [triggerMetric], deliveryAvailable, deliveryIncreases, peakFacts });
       else {
         const episode = episodeDetails.at(-1)!; episode.end = current.payload.window.end; episode.buckets++;
+        if (margin > episode.peakRelativeMargin) episode.peakFacts = peakFacts;
         episode.peakRelativeMargin = Math.max(episode.peakRelativeMargin, margin);
         episode.triggerMetrics = [...new Set([...episode.triggerMetrics, triggerMetric])];
         episode.deliveryAvailable = [...new Set([...episode.deliveryAvailable, ...deliveryAvailable])];
