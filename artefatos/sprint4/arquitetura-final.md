@@ -20,6 +20,35 @@
 
 &emsp;A infraestrutura AWS é declarada por Terraform. Os recursos da aplicação são declarados em YAML e aplicados com `kubectl`. Não há Helm Chart próprio e não há Kustomize na solução. Helm instala apenas os charts oficiais, com versões fixas, do AWS Load Balancer Controller e do KEDA.
 
+### 1.1 Estado atual e alvo
+
+&emsp;Este documento descreve a arquitetura **alvo**. Ele não descreve o ambiente implantado hoje, que é o da Sprint 3: API no ECS/Fargate, declarada em `apps/fullstack/`. Os itens abaixo ainda não existem no repositório ou diferem do estado atual e são entregues pelas etapas do plano de implantação da seção 5.
+
+<div align="center">
+
+<sup>Tabela 1: Diferenças entre o estado atual e a arquitetura alvo</sup>
+
+</div>
+
+| Item | Estado atual | Alvo | Etapa |
+| --- | --- | --- | --- |
+| Orquestração | API em ECS/Fargate (`ecs.tf`), 1–4 tasks, alvo de 50% de CPU. Não há recurso EKS no Terraform. | API, worker e ingestão em EKS Fargate; HPA da API com 2–4 réplicas e alvo de 70% de CPU. | 3, 6 e 9 |
+| Manifests Kubernetes | O diretório `k8s/` não existe. | Manifests YAML em `k8s/`, conforme a seção 4.1. | 6 |
+| NAT Gateway | Um único NAT na sub-rede pública `a` e uma única tabela de rotas privada (`vpc.tf`). | Um NAT por AZ, cada sub-rede privada com a própria rota de saída. | 2 |
+| Mensageria e histórico | Não há SQS, DLQ nem bucket S3 no Terraform. | SQS com DLQ para a análise e bucket S3 para o histórico da ingestão. | 8 |
+| Worker e ingestão | Existem apenas o núcleo de diagnóstico e os hooks de observabilidade (`apps/backend/agentic`, `apps/backend/ingestion-data`); não há processo que consuma a SQS nem coleta agendada. | `Deployment` do worker escalado pelo KEDA e `CronJob` de ingestão. | 6 e 8 |
+| Autenticação | Cognito com `supported_identity_providers = ["COGNITO"]`; o issuer OIDC está exposto, mas não há IdP corporativo federado. | Cognito com federação corporativa OIDC ou SAML. | Fora do plano da seção 5; depende do IdP corporativo do parceiro. |
+| Segredos | Gerados pelo Terraform e passados como variáveis de ambiente em texto na task definition do ECS. | Secrets Manager como fonte de verdade e `Secret` Kubernetes criptografado por KMS, conforme a seção 4.1. | 3 e 5 |
+| Observabilidade | Stack Grafana, Prometheus, Loki, Tempo e Alloy em EC2 (`observability-aws.tf`). | CloudWatch Logs e Container Insights com ADOT como fonte autoritativa. | 9 e 10 |
+
+<div align="center">
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
+&emsp;A passagem de um NAT único para um NAT por AZ é uma decisão deliberada da arquitetura alvo. A Sprint 3 manteve o NAT único para reduzir custo, aceitando que a perda da AZ `a` interrompe a saída de internet das duas sub-redes privadas. No EKS, essa saída é necessária para o pull de imagens do ECR e para chamadas a STS, SQS e CloudWatch Logs, que não têm endpoint de gateway. O segundo NAT acrescenta cerca de US$ 32 por mês, mais o custo de processamento de dados, em troca de manter a API e o worker funcionais com uma AZ indisponível.
+
 ## 2. Diagrama de implantação
 
 <div align="center">
@@ -37,7 +66,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<sup>Tabela 1: Componentes e responsabilidades da arquitetura final</sup>
+<sup>Tabela 2: Componentes e responsabilidades da arquitetura final</sup>
 
 </div>
 
@@ -127,7 +156,7 @@ helm version
 
 <div align="center">
 
-<sup>Tabela 2: Etapas de provisionamento da arquitetura final na AWS</sup>
+<sup>Tabela 3: Etapas de provisionamento da arquitetura final na AWS</sup>
 
 </div>
 
