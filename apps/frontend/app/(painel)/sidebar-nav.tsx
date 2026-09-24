@@ -29,6 +29,7 @@ import {
   SettingsIcon,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
+import { useSelectedIncidentId } from "@/lib/selected-incident";
 
 type NavItem = {
   label: string;
@@ -65,6 +66,7 @@ export type SidebarNavProps = {
 
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
+  const selectedIncidentId = useSelectedIncidentId();
   // A exportação estática usa trailingSlash: a URL pode chegar com "/" no fim.
   // Rotas internas da seção também pertencem ao mesmo item da navegação.
   const currentPath = pathname.replace(/\/+$/, "") || "/";
@@ -96,7 +98,9 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
             ) : null}
 
             <Link
-              href={item.href}
+              href={selectedIncidentId && (item.href === "/evidencias" || item.href === "/eventos")
+                ? `${item.href}?incidente=${encodeURIComponent(selectedIncidentId)}`
+                : item.href}
               aria-current={active ? "page" : undefined}
               onClick={onNavigate}
               title={collapsed ? item.label : undefined}

@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BufferingChart } from "@/app/(painel)/evidencias/buffering-chart";
 import {
@@ -51,6 +51,7 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
 import { formatCompact } from "@/lib/format";
+import { selectIncident, useSelectedIncidentId } from "@/lib/selected-incident";
 
 const REVIEW_META: Record<
   Exclude<ReviewStatus, "pending">,
@@ -65,17 +66,22 @@ export function EvidenceView() {
   const { profile } = useAccount();
 
   const requestedIncidentId = searchParams.get("incidente") ?? "";
+  const selectedIncidentId = useSelectedIncidentId(requestedIncidentId);
   const incidents = useResource(
     () => fetchIncidents({ period: "1440", deviceType: "all", region: "all", appVersion: "all" }),
     [],
-    { enabled: requestedIncidentId === "" },
+    { enabled: selectedIncidentId === "" },
   );
   const overview = useResource(
     () => fetchOverview({ timeRange: "24h", device: "all", region: "all", appVersion: "all" }),
     [],
-    { enabled: requestedIncidentId === "" },
+    { enabled: selectedIncidentId === "" },
   );
-  const incidentId = requestedIncidentId || incidents.data?.[0]?.id || overview.data?.incidents[0]?.id || "";
+  const incidentId = selectedIncidentId || incidents.data?.[0]?.id || overview.data?.incidents[0]?.id || "";
+
+  useEffect(() => {
+    if (incidentId && !selectedIncidentId) selectIncident(incidentId);
+  }, [incidentId, selectedIncidentId]);
 
   const [review, setReview] = useState<{
     status: ReviewStatus;

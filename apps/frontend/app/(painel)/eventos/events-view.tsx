@@ -42,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
 import type { CorrelatedEvent } from "@/app/(painel)/eventos/events-data";
+import { useSelectedIncidentId } from "@/lib/selected-incident";
 
 const DEFAULT_FILTERS = {
   period: "all" as PeriodKey | "all",
@@ -53,7 +54,7 @@ const DEFAULT_FILTERS = {
 const EMPTY_PAGES: EventsData[] = [];
 
 export function EventsView() {
-  const incidentId = useSearchParams().get("incidente") ?? "";
+  const incidentId = useSelectedIncidentId(useSearchParams().get("incidente") ?? "");
   const [search, setSearch] = useState("");
   const [committedSearch, setCommittedSearch] = useState("");
   const [category, setCategory] = useState<EventCategory | "all">("all");
@@ -208,6 +209,7 @@ export function EventsView() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        eyebrow={`Incidente ${incidentId}`}
         title="Eventos"
         subtitle="Eventos e sessões sem perder o dado original"
         status={

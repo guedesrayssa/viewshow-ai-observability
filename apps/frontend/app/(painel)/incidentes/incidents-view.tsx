@@ -48,12 +48,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
 import { formatInteger } from "@/lib/format";
+import { selectIncident, useSelectedIncidentId } from "@/lib/selected-incident";
 
 /** Releitura automática da lista, no ritmo de acompanhamento de plantão. */
 const REFRESH_MS = 45_000;
 const EMPTY_PAGES: IncidentsPage[] = [];
 
 export function IncidentsView() {
+  const selectedIncidentId = useSelectedIncidentId();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   // O recorte mais largo que a origem sustenta é o de 24 horas: a listagem
@@ -357,7 +359,9 @@ export function IncidentsView() {
                         </td>
                         <td className="py-4">
                           <Link
-                            href={`/evidencias?incidente=${incident.id}`}
+                            href={`/evidencias?incidente=${encodeURIComponent(incident.id)}`}
+                            onClick={() => selectIncident(incident.id)}
+                            aria-current={selectedIncidentId === incident.id ? "true" : undefined}
                             className={buttonClasses({
                               variant: "outline",
                               size: "sm",
