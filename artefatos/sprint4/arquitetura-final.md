@@ -87,7 +87,7 @@ Fonte: Material produzido pelos autores (2026).
 | Identidade AWS | ServiceAccounts e IRSA | Cada workload possui uma ServiceAccount e uma role IAM de privilégio mínimo. A pod execution role do Fargate não concede permissões à aplicação. |
 | Dados | DynamoDB | Armazena as tabelas operacional e Golden Set. |
 | Dados | S3, SQS e DLQ | S3 armazena histórico; SQS desacopla produtores e consumidor; DLQ retém mensagens que excedem as tentativas configuradas. |
-| Autenticação | Cognito e SSO | Cognito centraliza sessão e federação corporativa OIDC ou SAML. |
+| Autenticação | Cognito e SSO | Cognito centraliza a sessão; a federação corporativa OIDC ou SAML é alvo futuro (seção 1.1). |
 | Entrega | ECR | Armazena imagens. Os manifests referenciam cada imagem por digest. |
 | Observabilidade | CloudWatch | É a fonte autoritativa de logs, métricas e alarmes da borda, dos Pods, dos mecanismos de escala e da SQS/DLQ. O roteador nativo do Fargate envia logs e um coletor ADOT compatível com Fargate envia métricas dos Pods. A stack Grafana/Loki/Tempo existente é transitória e não compõe o aceite do EKS. |
 
