@@ -158,6 +158,25 @@ python3 scripts/evaluate-episode-review.py \
   --output data/review/evaluation-2026-08-26-a-2026-09-01.json
 ```
 
+### Triagem assistida por segundo modelo
+
+Uma revisão cega com `gpt-5.6-sol` recebeu apenas a ficha e as regras acima. O
+arquivo original permaneceu intacto; a saída usa `review_source`, confiança e
+justificativa por linha. Das 104 linhas, o modelo marcou 57 episódios relevantes
+e 47 não relevantes. As camadas foram: 18 CDN, 2 origem, 31 player, 35 tráfego,
+1 medição e 17 desconhecida. A evidência foi considerada suficiente em 87 casos.
+
+As regras determinísticas confirmaram preenchimento completo e não encontraram
+atribuição de CDN ou origem sem aumento da métrica correspondente. Nove linhas
+ficaram com confiança abaixo de 0,70. Para medir erro sistemático sem repetir as
+104 classificações, foi criada uma auditoria de 20 casos: os nove incertos mais
+11 casos de alta confiança amostrados entre relevância e camadas diferentes.
+
+Essas classificações servem para triagem e desenvolvimento. Elas não são rótulos
+humanos independentes e não podem, sozinhas, aprovar o detector ou o modelo de
+previsão. A auditoria humana verifica se o segundo modelo aplicou os critérios
+de forma aceitável antes de qualquer calibração baseada nessa ficha.
+
 No recorte de 27/08/2026 UTC, os dez canais produziram 960 janelas de detecção,
 todas acima do gate inicial de 25 sessões. Houve 308 sinais acima de algum
 limiar, agrupados em 27 episódios; todos tinham ao menos uma evidência de CDN ou
