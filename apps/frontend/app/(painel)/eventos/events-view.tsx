@@ -30,6 +30,7 @@ import {
   fetchEventVolume,
   fetchEvents,
 } from "@/app/(painel)/eventos/events-resource";
+import { fetchIncidents } from "@/app/(painel)/incidentes/incidents-resource";
 import { EventsTable } from "@/app/(painel)/eventos/events-table";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { Unavailable } from "@/components/dashboard/unavailable";
@@ -46,17 +47,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
 
-/** Recorte herdado da investigação do INC-4821. */
 const DEFAULT_FILTERS = {
-  period: "30" as PeriodKey | "all",
-  deviceType: "Smart TV",
-  region: "Nordeste",
-  appVersion: "App 4.2.1",
+  period: "all" as PeriodKey | "all",
+  deviceType: "all",
+  region: "all",
+  appVersion: "all",
   source: "all",
 };
 
 export function EventsView() {
-  const incidentId = useSearchParams().get("incidente") ?? "";
+  const requestedIncidentId = useSearchParams().get("incidente") ?? "";
+  const incidents = useResource(
+    () => fetchIncidents({ period: "1440", deviceType: "all", region: "all", appVersion: "all" }),
+    [],
+  );
+  const incidentId = requestedIncidentId || incidents.data?.[0]?.id || "";
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<EventCategory | "all">("all");
   const [period, setPeriod] = useState<PeriodKey | "all">(DEFAULT_FILTERS.period);
@@ -66,7 +71,7 @@ export function EventsView() {
   const [source, setSource] = useState(DEFAULT_FILTERS.source);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [volumePeriod, setVolumePeriod] = useState<VolumePeriodKey>("30");
+  const [volumePeriod, setVolumePeriod] = useState<VolumePeriodKey>("60");
 
   const events = useResource(
     () => fetchEvents({ incidentId, period, category, deviceType, region, appVersion, source }),
@@ -126,6 +131,10 @@ export function EventsView() {
     appVersion,
     source,
   ]);
+  const sources = useMemo(
+    () => Array.from(new Set([...SOURCES, ...(events.data?.events ?? []).map((event) => event.source)])),
+    [events.data],
+  );
 
   function clearFilters() {
     setSearch("");
@@ -274,7 +283,7 @@ export function EventsView() {
                 onValueChange={(value) => setSource(value)}
                 options={[
                   { value: "all", label: `Fonte: todas` },
-                  ...SOURCES.map((name) => ({
+                  ...sources.map((name) => ({
                     value: name,
                     label: `Fonte: ${name}`,
                   })),

@@ -250,6 +250,15 @@ describe("versioned contracts", () => {
     ).toThrow("partNumber não pode se repetir.");
   });
 
+  it("enforces the limit boundaries (1-100, default 20) on incidentsQuerySchema", () => {
+    expect(incidentsQuerySchema.parse({}).limit).toBe(20);
+    expect(incidentsQuerySchema.parse({ limit: "1" }).limit).toBe(1);
+    expect(incidentsQuerySchema.parse({ limit: "100" }).limit).toBe(100);
+    expect(() => incidentsQuerySchema.parse({ limit: "0" })).toThrow();
+    expect(() => incidentsQuerySchema.parse({ limit: "101" })).toThrow();
+    expect(() => incidentsQuerySchema.parse({ limit: "abc" })).toThrow();
+  });
+
   it("builds valid success and error envelopes with request ids", () => {
     const success = successEnvelope(
       {

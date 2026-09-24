@@ -8,12 +8,20 @@
  * vivem na barra superior, também fixa. Toda a montagem está em
  * `components/shell/app-shell.tsx`, que precisa de estado e por isso roda no
  * cliente.
+ *
+ * `PanelGuard` fica por fora: sem sessão (e fora do modo de demonstração),
+ * ninguém vê nem a casca do painel — ver `components/shell/panel-guard.tsx`.
  */
 
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
+import { PanelGuard } from "@/components/shell/panel-guard";
 
 export default function PainelLayout({ children }: { children: ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <PanelGuard>
+      <AppShell>{children}</AppShell>
+    </PanelGuard>
+  );
 }

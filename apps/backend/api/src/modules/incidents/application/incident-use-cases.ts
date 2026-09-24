@@ -42,6 +42,18 @@ const capabilities = {
   },
 };
 
+type EventQuery = {
+  readonly limit: number;
+  readonly window: "15m" | "30m" | "1h" | "6h" | "24h";
+  readonly from?: string | undefined;
+  readonly to?: string | undefined;
+  readonly category?: string | undefined;
+  readonly deviceType?: string | undefined;
+  readonly region?: string | undefined;
+  readonly appVersion?: string | undefined;
+  readonly source?: string | undefined;
+};
+
 function presentDimensions(query: IncidentsQuery): string[] {
   return supportedDimensions.filter(
     (dimension) => query[dimension] !== undefined,
@@ -336,7 +348,7 @@ export class IncidentUseCases {
 
   async events(
     incidentId: string,
-    limit: number,
+    query: EventQuery,
   ): Promise<InternalResponse<EventsData>> {
     const bundle = await this.repository.bundle(incidentId);
     if (!bundle.incident)
@@ -350,6 +362,45 @@ export class IncidentUseCases {
       bundle.children.filter((item) => itemKind(item) === "hypothesis"),
       this.clock(),
     );
+    const range = query.from && query.to
+      ? { from: query.from, to: query.to, preset: null }
+      : resolveWindow(query.window, this.clock());
+    const events = bundle.children
+      .filter((item) => itemKind(item) === "event")
+      .map((item) => item.publicData)
+      .filter((value): value is Record<string, unknown> =>
+        value !== null && typeof value === "object" && !Array.isArray(value),
+      )
+      .filter((event) => {
+        const timestamp = new Date(String(event.timestamp)).getTime();
+        if (Number.isNaN(timestamp) || timestamp < new Date(range.from).getTime() || timestamp > new Date(range.to).getTime()) return false;
+        const dimensions = event.dimensions as Record<string, unknown> | undefined;
+        const source = event.source as Record<string, unknown> | undefined;
+        return (!query.category || event.category === query.category)
+          && (!query.deviceType || dimensions?.deviceType === query.deviceType)
+          && (!query.region || dimensions?.region === query.region)
+          && (!query.appVersion || dimensions?.appVersion === query.appVersion)
+          && (!query.source || source?.name === query.source);
+      })
+      .sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
+    const categories = ["request", "vitals", "screen_view", "video_view", "session", "error"];
+    const categoryStats = [
+      { key: "all", name: "Todos", total: events.length },
+      ...categories.map((key) => ({
+        key,
+        name: key.replaceAll("_", " "),
+        total: events.filter((event) => event.category === key).length,
+      })),
+    ];
+    const volume = new Map<string, number>();
+    for (const event of events) {
+      const timestamp = new Date(String(event.timestamp));
+      if (Number.isNaN(timestamp.getTime())) continue;
+      timestamp.setUTCMinutes(Math.floor(timestamp.getUTCMinutes() / 15) * 15, 0, 0);
+      const bucket = timestamp.toISOString();
+      volume.set(bucket, (volume.get(bucket) ?? 0) + 1);
+    }
+    const available = events.length > 0;
     return {
       data: {
         incident: {
@@ -358,58 +409,49 @@ export class IncidentUseCases {
           title: incident.title,
         },
         capabilities: {
-          aggregateMetrics: { status: "unavailable" },
+          aggregateMetrics: { status: available ? "available" : "unavailable" },
           filtering: {
-            status: "unavailable",
-            supportedDimensions: [],
+            status: "partial",
+            supportedDimensions: ["category", "deviceType", "region", "appVersion", "source"],
             supportedFilterSets: [[]],
           },
           individualEvents: {
-            status: "unavailable",
-            availableCategories: [],
-            unavailableCategories: [
-              "request",
-              "vitals",
-              "screen_view",
-              "video_view",
-              "session",
-              "error",
-            ],
-            reason: "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED",
+            status: available ? "available" : "unavailable",
+            availableCategories: available ? categories : [],
+            unavailableCategories: available ? [] : categories,
+            reason: available ? null : "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED",
           },
           rawPayload: {
             status: "unavailable",
-            reason: "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED",
+            reason: "SEED_CONTAINS_NORMALIZED_EVENTS_ONLY",
           },
         },
-        categoryStats: [],
-        volumeSeries: null,
-        items: [],
+        categoryStats,
+        volumeSeries: available ? {
+          metric: "event_count",
+          bucketSeconds: 900,
+          points: [...volume].sort(([left], [right]) => left.localeCompare(right))
+            .map(([timestamp, value]) => ({ timestamp, value })),
+          anomalyWindows: [],
+        } : null,
+        items: events.slice(0, query.limit),
         facets: {
-          categories: [],
+          categories: categoryStats,
           deviceTypes: [],
           appVersions: [],
           regions: [],
         },
-        page: { limit, hasMore: false, nextCursor: null },
+        page: { limit: query.limit, hasMore: events.length > query.limit, nextCursor: null },
       },
       quality: {
-        window: null,
-        partial: true,
+        window: range,
+        partial: !available,
         refreshAfterSeconds: 900,
         freshness: [],
-        warnings: [
-          {
-            code: "AGGREGATE_EVENTS_UNAVAILABLE",
-            message:
-              "O read model atual não contém agregados de eventos vinculados ao incidente.",
-          },
-          {
-            code: "INDIVIDUAL_EVENTS_UNAVAILABLE",
-            message:
-              "Eventos individuais não possuem uma fonte configurada nesta fase.",
-          },
-        ],
+        warnings: available ? [] : [{
+          code: "INDIVIDUAL_EVENTS_UNAVAILABLE",
+          message: "Este incidente não possui eventos individuais persistidos.",
+        }],
       },
     };
   }

@@ -110,6 +110,36 @@ describe("incident use cases", () => {
     expect(result.quality.warnings[0]?.code).toBe("AGENTIC_RESULT_UNAVAILABLE");
   });
 
+  it("reads incident-scoped events from the repository and excludes physical keys", async () => {
+    const useCases = new IncidentUseCases(
+      repository({
+        bundle: vi.fn(async () => ({
+          incident: items[0] ?? null,
+          children: [{
+            pk: "INC#physical",
+            sk: "EVENT#inc_0#001",
+            ttl: 123,
+            publicData: {
+              id: "evt_1",
+              timestamp: now.toISOString(),
+              category: "error",
+              source: { name: "seed-carga" },
+              dimensions: { deviceType: "smart-tv" },
+            },
+          }],
+        })),
+      }),
+      new CursorCodec("f".repeat(32)),
+      new UnavailableReviewFeedbackPort(),
+      () => now,
+    );
+    const result = await useCases.events("inc_0", { limit: 50, window: "1h" });
+    expect(result.data.items).toMatchObject([{ id: "evt_1", category: "error" }]);
+    expect(result.data.volumeSeries).toMatchObject({ points: [{ value: 1 }] });
+    expect(result.quality.partial).toBe(false);
+    expect(JSON.stringify(result.data)).not.toMatch(/"(?:pk|sk|ttl)"/);
+  });
+
   it("fails closed when reanalysis cannot find an incident or publish its request", async () => {
     const missing = new IncidentUseCases(
       repository({

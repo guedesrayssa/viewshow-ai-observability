@@ -38,7 +38,7 @@ export type DashboardFilters = {
 
 /** Recorte inicial: o mesmo do protótipo de alta fidelidade. */
 export const DEFAULT_DASHBOARD_FILTERS: DashboardFilters = {
-  timeRange: TIME_RANGE_OPTIONS[1].value,
+  timeRange: TIME_RANGE_OPTIONS[3].value,
   device: DEVICE_OPTIONS[0].value,
   region: REGION_OPTIONS[1].value,
   appVersion: APP_VERSION_OPTIONS[0].value,

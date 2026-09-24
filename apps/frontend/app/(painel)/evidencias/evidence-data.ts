@@ -68,6 +68,7 @@ export const TIMELINE_DOT_CLASSES: Record<TimelineTone, string> = {
 
 export type TimelineMark = {
   time: string;
+  timestamp?: string;
   label: string;
   source: string;
   tone: TimelineTone;

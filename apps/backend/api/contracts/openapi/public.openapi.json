@@ -119,7 +119,7 @@
       },
       "post": {
         "operationId": "passwordLogin",
-        "description": "Direct username/password login against the Cognito user pool (USER_PASSWORD_AUTH, server-side). Issues the signed session cookie and returns the ID token. Returns FEATURE_UNAVAILABLE when the identity provider is not configured.",
+        "description": "Direct username/password login against the Cognito user pool (USER_PASSWORD_AUTH, server-side). Issues the signed session cookie; the Cognito tokens never reach the browser. Returns FEATURE_UNAVAILABLE when the identity provider is not configured.",
         "requestBody": {
           "required": true,
           "content": {
@@ -149,11 +149,8 @@
                       "properties": {
                         "data": {
                           "type": "object",
-                          "required": ["token", "tokenType", "expiresInSeconds", "user"],
+                          "required": ["user"],
                           "properties": {
-                            "token": { "type": "string" },
-                            "tokenType": { "type": "string" },
-                            "expiresInSeconds": { "type": "integer" },
                             "user": {
                               "type": "object",
                               "additionalProperties": false,
@@ -673,11 +670,13 @@
           "user": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "name", "email"],
+            "required": ["id", "name", "email", "role", "issuedAt"],
             "properties": {
               "id": { "type": "string" },
               "name": { "type": ["string", "null"] },
-              "email": { "type": "string", "format": "email" }
+              "email": { "type": "string", "format": "email" },
+              "role": { "enum": ["viewer", "engineer", "admin"] },
+              "issuedAt": { "type": "string", "format": "date-time" }
             }
           }
         }

@@ -82,7 +82,7 @@ describe("Visão Geral integrated with the gateway", () => {
     expect(screen.getByText("Buffering em Smart TVs")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "http://operacional.test/api/v1/dashboard/overview?window=30m",
+      "http://operacional.test/api/v1/dashboard/overview?window=24h",
     );
   });
 

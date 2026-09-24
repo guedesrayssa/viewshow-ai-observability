@@ -56,7 +56,7 @@ describe("DynamoDB adapters", () => {
   });
 
   it("queries the current UTC day for a sub-day overview window", async () => {
-    const send = vi.fn(async () => ({ Items: [] }));
+    const send = vi.fn(async () => ({ Items: [{ sk: "T#1788955200000", publicData: { kpis: [] } }] }));
     const client = { send } as unknown as DynamoDBDocumentClient;
     const repository = new DynamoDashboardReadRepository(
       "us-east-1",
@@ -80,6 +80,27 @@ describe("DynamoDB adapters", () => {
       )
       .filter((key): key is string => typeof key === "string");
     expect(partitionKeys).toEqual(["VIEW#OVERVIEW#GLOBAL#20260909"]);
+  });
+
+  it("returns the last retained monitoring snapshot when the requested window has none", async () => {
+    const send = vi.fn(async (command: { input: { ScanIndexForward?: boolean } }) =>
+      command.input.ScanIndexForward === false
+        ? { Items: [{ sk: "T#1788955200000", publicData: { sources: [{ id: "argus" }] }, observedThrough: "2026-09-09T12:00:00Z" }] }
+        : { Items: [] },
+    );
+    const repository = new DynamoDashboardReadRepository(
+      "us-east-1", "table", { send } as unknown as DynamoDBDocumentClient,
+    );
+
+    const read = await repository.latestMonitoring(
+      new Date("2026-09-09T12:45:00Z"),
+      new Date("2026-09-09T13:00:00Z"),
+      ["argus"],
+    );
+
+    expect(read?.observedThrough).toBe("2026-09-09T12:00:00Z");
+    expect(read?.data.sources).toEqual([{ id: "argus" }]);
+    expect(send.mock.calls.some(([command]) => command.input.ScanIndexForward === false)).toBe(true);
   });
 
   it("queries both UTC hour buckets touched by an incident window", async () => {

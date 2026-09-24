@@ -3,7 +3,8 @@
 // SG do ALB". A porta 3000 nunca fica exposta à internet.
 
 resource "aws_security_group" "alb" {
-  name        = "${local.nome_alb}-sg"
+  # Preserva o SG ja criado na tentativa parcial, mesmo com ALB novo isolado.
+  name        = "${var.deployment_namespace}-alb-sg"
   description = "Entrada publica na porta 80 do ALB"
   vpc_id      = aws_vpc.principal.id
 

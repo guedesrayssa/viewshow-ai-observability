@@ -7,7 +7,6 @@ import {
 } from "@/app/(painel)/monitoramento/telemetry-data";
 import { jitter, loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
-import { WARNINGS } from "@/lib/data/warnings";
 
 type Measured = { value: number | null; measurement: { status: string; source: string } };
 type MonitoringResponse = {
@@ -26,7 +25,11 @@ type MonitoringResponse = {
     state: "stable" | "delayed" | "partial";
     records: { read: number; written: number; rejected: number };
     coverage: Measured;
+    ingestionRate?: Measured;
+    processingLatencyP95?: Measured;
+    flowSeries?: Array<{ timestamp: string; processing: number; ingestion: number }>;
   }>;
+  topology?: ServiceTopology;
   geography: {
     areas: Array<{
       code: string;
@@ -62,8 +65,10 @@ export function fetchServiceTopology(window: string): Promise<Resource<ServiceTo
   return loadResource<MonitoringResponse, ServiceTopology>({
     path: ENDPOINTS.monitoringOverview,
     params: { window: monitoringWindow(window) },
-    map: () => {
-      throw new Error("A projeção de monitoramento não publica topologia de serviços.");
+    map: (response) => {
+      if (!response.topology || response.topology.status !== "available")
+        throw new Error("A projeção de monitoramento não publica topologia de serviços.");
+      return response.topology;
     },
   });
 }
@@ -71,18 +76,30 @@ export function fetchServiceTopology(window: string): Promise<Resource<ServiceTo
 export function fetchTelemetrySources(revision = 0): Promise<Resource<TelemetrySource[]>> {
   return loadResource<MonitoringResponse, TelemetrySource[]>({
     path: ENDPOINTS.monitoringOverview,
-    params: { window: "15m" },
-    warnings: [WARNINGS.pipelineSemFila],
-    map: (response) => {
-      const queue = response.kpis.queueDepth.value;
-      const deadLetters = response.kpis.deadLetterQueue.value;
-      const newDeadLetters = response.kpis.deadLetterQueue.newInWindow;
-      if (queue === null || deadLetters === null || newDeadLetters === null) return [];
-      // The public contract has no per-source allocation for these additive
-      // values, so distributing them would fabricate data. Keep the existing
-      // screen in its explicit unavailable state.
-      return [];
-    },
+    params: { window: "6h" },
+    map: (response) => response.sources.flatMap((item) => {
+      const ingestion = item.ingestionRate?.value;
+      const latency = item.processingLatencyP95?.value;
+      if (ingestion === null || ingestion === undefined || latency === null || latency === undefined) return [];
+      const observed = item.observedThrough ? new Date(item.observedThrough).getTime() : NaN;
+      const state = item.state === "delayed" ? "atrasado" : item.state === "partial" ? "parcial" : "estavel";
+      return [{
+        id: item.id,
+        name: item.name,
+        worker: item.workers[0] ?? "—",
+        updatedSecondsAgo: Number.isNaN(observed) ? item.lagSeconds ?? 0 : Math.max(0, Math.round((Date.now() - observed) / 1000)),
+        coverage: Math.round((item.coverage.value ?? 0) * 100),
+        state,
+        ingestionPerMinute: ingestion / 1_000_000,
+        processingLatency: latency / 1000,
+        queueDepth: 0,
+        deadLetters: 0,
+        newDeadLetters: { "15": 0, "30": 0, "60": 0, "360": 0 },
+        ingestionTrend: { "15": 0, "30": 0, "60": 0, "360": 0 },
+        queueTrend: { "15": 0, "30": 0, "60": 0, "360": 0 },
+        flowSeries: item.flowSeries ?? [],
+      }];
+    }),
     fallback: () => SOURCES.map((source, index) =>
       revision === 0
         ? source
@@ -100,7 +117,7 @@ export function fetchTelemetrySources(revision = 0): Promise<Resource<TelemetryS
 export function fetchGeographicConcentration(revision = 0): Promise<Resource<StateTelemetry[]>> {
   return loadResource<MonitoringResponse, StateTelemetry[]>({
     path: ENDPOINTS.monitoringOverview,
-    params: { window: "15m" },
+    params: { window: "6h" },
     map: (response) => response.geography.areas.flatMap((area) => {
       const geometry = STATES.find((state) => state.id === area.code);
       const instability = area.values.instabilityRatio.value;
@@ -113,12 +130,11 @@ export function fetchGeographicConcentration(revision = 0): Promise<Resource<Sta
         name: area.name,
         region: area.region,
         path: geometry.path,
-        values: { instabilidade: instability * 100, latencia: latency, perda: loss * 100 },
+        values: { instabilidade: instability * 100, latencia: latency / 1000, perda: loss * 100 },
         sessions: sessions / 1000,
         topSource: area.values.instabilityRatio.measurement.source,
       }];
     }),
-    warnings: [WARNINGS.metricaSemFonte],
     fallback: () => STATES.map((state, index) =>
       revision === 0
         ? state

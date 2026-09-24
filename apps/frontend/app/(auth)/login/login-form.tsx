@@ -11,7 +11,7 @@ import { useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PasswordField, TextField } from "@/components/ui/input";
-import { authenticateWithPassword } from "@/lib/auth";
+import { authenticateWithPassword, isDemoModeActive } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 
 export function LoginForm({ className }: { className?: string }) {
@@ -43,6 +43,13 @@ export function LoginForm({ className }: { className?: string }) {
       className={cn("flex flex-col gap-6", className)}
       onSubmit={handleSubmit}
     >
+      {isDemoModeActive() ? (
+        <Alert tone="warning">
+          Modo de demonstração: qualquer e-mail e senha abrem o painel com
+          dado de exemplo.
+        </Alert>
+      ) : null}
+
       {formError ? <Alert tone="critical">{formError}</Alert> : null}
 
       <TextField

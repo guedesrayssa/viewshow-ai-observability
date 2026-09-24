@@ -91,6 +91,34 @@ export class DynamoDashboardReadRepository implements DashboardReadRepository {
     return days;
   }
 
+  private async latestRetained(
+    to: Date,
+    partitionPrefixes: readonly string[],
+  ): Promise<ProjectionRead | null> {
+    const retentionStart = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+    for (const day of this.daysBetween(retentionStart, to)) {
+      const pages = await Promise.all(partitionPrefixes.map((prefix) =>
+        this.client.send(new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: "pk = :pk AND sk <= :to",
+          ExpressionAttributeValues: {
+            ":pk": `${prefix}${day}`,
+            ":to": `T#${to.getTime()}`,
+          },
+          ScanIndexForward: false,
+          Limit: 1,
+        })),
+      ));
+      const candidates = pages.flatMap((page) => (page.Items ?? []) as PhysicalItem[])
+        .sort((left, right) => String(right.sk ?? "").localeCompare(String(left.sk ?? "")));
+      for (const candidate of candidates) {
+        const read = toRead(candidate);
+        if (read) return read;
+      }
+    }
+    return null;
+  }
+
   async latestOverview(from: Date, to: Date): Promise<ProjectionRead | null> {
     const pages = await Promise.all(
       this.daysBetween(from, to).map((day) =>
@@ -109,7 +137,7 @@ export class DynamoDashboardReadRepository implements DashboardReadRepository {
       .sort((left, right) =>
         String(right.sk ?? "").localeCompare(String(left.sk ?? "")),
       )[0];
-    return latest ? toRead(latest) : null;
+    return latest ? toRead(latest) : this.latestRetained(to, ["VIEW#OVERVIEW#GLOBAL#"]);
   }
 
   async latestMonitoring(
@@ -140,6 +168,6 @@ export class DynamoDashboardReadRepository implements DashboardReadRepository {
       const read = toRead(candidate);
       if (read) return read;
     }
-    return null;
+    return this.latestRetained(to, sources.map((source) => `VIEW#MONITORING#${source}#`));
   }
 }

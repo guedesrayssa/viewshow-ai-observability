@@ -64,7 +64,13 @@ type DiagnosisResponse = {
     source: { type: string; name: string };
     quality: { status: string; flags: string[] };
   }>;
-  charts: { buffering: BufferingContract | null; concentrations: unknown[] };
+  charts: {
+    buffering: BufferingContract | null;
+    concentrations?: Array<{ label: string; percentage: number }>;
+    concentrationNote?: string;
+  };
+  timeline?: Array<{ timestamp: string; label: string; source: string; tone: "info" | "warning" | "critical" | "navy" }>;
+  changes?: Array<{ label: string; cause: string; percentage: number; tone: "info" | "warning" | "critical" }>;
 };
 
 type BufferingContract = {
@@ -161,11 +167,14 @@ function toData(response: DiagnosisResponse): EvidenceData {
         }
       : null,
     reviewStatus,
-    concentration: [],
-    concentrationNote: "",
+    concentration: response.charts.concentrations ?? [],
+    concentrationNote: response.charts.concentrationNote ?? "",
     sources: response.evidence.map(toEvidence),
-    timeline: [],
-    changes: [],
+    timeline: (response.timeline ?? []).map((mark) => ({
+      ...mark,
+      time: toClock(mark.timestamp),
+    })),
+    changes: response.changes ?? [],
   };
 }
 
@@ -182,6 +191,8 @@ export function fetchEvidence(
 export type BufferingSeries = {
   points: BufferingPoint[];
   marker: { index: number; label: string } | null;
+  historical?: boolean;
+  observedAt?: string;
 };
 
 export function fetchBuffering(
@@ -197,14 +208,16 @@ export function fetchBuffering(
         throw new Error(
           "A série de buffering não está disponível para este incidente.",
         );
-      const points = chart.points.map((point) => ({
+      const recent = chart.points.filter((point) => new Date(point.timestamp).getTime() >= Date.now() - Number(period) * 60_000);
+      const selected = recent.length ? recent : chart.points;
+      const points = selected.map((point) => ({
         time: toClock(point.timestamp),
         value: point.value,
       }));
       const markerIndex = chart.marker
         ? points.findIndex(
             (_, index) =>
-              chart.points[index]?.timestamp === chart.marker?.timestamp,
+              selected[index]?.timestamp === chart.marker?.timestamp,
           )
         : -1;
       return {
@@ -213,6 +226,8 @@ export function fetchBuffering(
           chart.marker && markerIndex >= 0
             ? { index: markerIndex, label: chart.marker.label }
             : null,
+        historical: recent.length === 0,
+        observedAt: selected.at(-1)?.timestamp,
       };
     },
     fallback: () => ({

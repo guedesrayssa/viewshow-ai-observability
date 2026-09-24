@@ -41,10 +41,14 @@ function quality(
           ),
         )
       : null;
+  const stale = observed !== null && !Number.isNaN(observed.getTime()) && observed < new Date(window.from);
+  const qualityWarnings = stale
+    ? [{ code: "STALE_SNAPSHOT", message: "O último snapshot disponível é anterior à janela solicitada; os valores podem estar desatualizados." }, ...warnings]
+    : warnings;
   return {
     window,
     partial:
-      warnings.length > 0 ||
+      qualityWarnings.length > 0 ||
       (read.coverageRatio !== null && read.coverageRatio < 1),
     refreshAfterSeconds: 900,
     freshness: [
@@ -55,12 +59,12 @@ function quality(
         state:
           lagSeconds === null
             ? "partial"
-            : lagSeconds > 1800
+            : stale || lagSeconds > 1800
               ? "delayed"
               : "fresh",
       },
     ],
-    warnings,
+    warnings: qualityWarnings,
   };
 }
 

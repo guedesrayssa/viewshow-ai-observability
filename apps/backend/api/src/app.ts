@@ -205,6 +205,7 @@ export function createApp(deps: AppDependencies) {
     },
   );
   app.use(rateLimiter(config.rateLimitPerMinute));
+  const loginRateLimiter = rateLimiter(config.authLoginRateLimitPerMinute);
 
   app.get(PUBLIC_ROUTES.authLogin.express, async (_request, response, next) => {
     try {
@@ -214,16 +215,22 @@ export function createApp(deps: AppDependencies) {
     }
   });
 
-  // Login direto por usuário/senha (fluxo USER_PASSWORD_AUTH do Cognito, feito
-  // no servidor). Emite a mesma sessão assinada das demais rotas e devolve o
-  // ID token no corpo para clientes que precisem do JWT.
+  // Login direto por usuário/senha (fluxo USER_PASSWORD_AUTH do Cognito,
+  // feito no servidor). Emite a mesma sessão assinada das demais rotas; o
+  // navegador não recebe o ID/access token do Cognito, só o cookie
+  // HttpOnly — um token no corpo da resposta seria alcançável por JS
+  // (inclusive por um XSS) sem que o cliente precise dele para nada.
+  // `loginRateLimiter` soma-se ao limite geral: esta rota é alvo natural de
+  // força bruta, e o throttling do próprio Cognito só entra depois do
+  // round-trip até a AWS.
   app.post(
     PUBLIC_ROUTES.authPasswordLogin.express,
+    loginRateLimiter,
     async (request, response, next) => {
       try {
         const parsed = passwordLoginBodySchema.safeParse(request.body);
         if (!parsed.success) throw validationError(parsed.error);
-        const { identity, tokens } = await auth.passwordLogin.login(
+        const { identity } = await auth.passwordLogin.login(
           parsed.data.username,
           parsed.data.password,
         );
@@ -232,9 +239,6 @@ export function createApp(deps: AppDependencies) {
           successEnvelope(
             {
               data: {
-                token: tokens.idToken,
-                tokenType: tokens.tokenType,
-                expiresInSeconds: tokens.expiresInSeconds,
                 user: {
                   id: identity.id,
                   name: identity.name,
@@ -288,10 +292,10 @@ export function createApp(deps: AppDependencies) {
   });
 
   app.get(PUBLIC_ROUTES.authSession.express, (request, response, next) => {
-    const identity = auth.sessions.verify(
+    const session = auth.sessions.verifyWithIssuedAt(
       parseCookie(request.header("cookie"), "session"),
     );
-    if (!identity)
+    if (!session)
       return next(
         new ServiceError(
           401,
@@ -299,6 +303,7 @@ export function createApp(deps: AppDependencies) {
           "Sessão inválida, ausente ou expirada.",
         ),
       );
+    const { identity, issuedAt } = session;
     response.json(
       successEnvelope(
         {
@@ -308,6 +313,8 @@ export function createApp(deps: AppDependencies) {
               id: identity.id,
               name: identity.name,
               email: identity.email,
+              role: identity.role,
+              issuedAt: new Date(issuedAt * 1000).toISOString(),
             },
           },
           quality: {
@@ -329,11 +336,6 @@ export function createApp(deps: AppDependencies) {
       try {
         const parsed = overviewQuerySchema.safeParse(request.query);
         if (!parsed.success) throw validationError(parsed.error);
-        const actor = auth.sessions.verify(
-          parseCookie(request.header("cookie"), "session"),
-        );
-        if (!actor)
-          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
         const result = await dashboard.overview(parsed.data);
         assertNoPhysicalFields(result.data);
         response.json(
@@ -349,11 +351,6 @@ export function createApp(deps: AppDependencies) {
     try {
       const parsed = incidentsQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
-      const actor = auth.sessions.verify(
-        parseCookie(request.header("cookie"), "session"),
-      );
-      if (!actor)
-        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
       const result = await incidents.list(parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
@@ -367,11 +364,6 @@ export function createApp(deps: AppDependencies) {
   app.get(PUBLIC_ROUTES.diagnosis.express, async (request, response, next) => {
     try {
       const incidentId = opaqueId(request.params.incidentId);
-      const actor = auth.sessions.verify(
-        parseCookie(request.header("cookie"), "session"),
-      );
-      if (!actor)
-        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
       const result = await incidents.diagnosis(incidentId);
       assertNoPhysicalFields(result.data);
       response.json(
@@ -387,12 +379,7 @@ export function createApp(deps: AppDependencies) {
       const incidentId = opaqueId(request.params.incidentId);
       const parsed = eventsQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
-      const actor = auth.sessions.verify(
-        parseCookie(request.header("cookie"), "session"),
-      );
-      if (!actor)
-        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
-      const result = await incidents.events(incidentId, parsed.data.limit);
+      const result = await incidents.events(incidentId, parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
@@ -491,11 +478,6 @@ export function createApp(deps: AppDependencies) {
       try {
         const parsed = monitoringQuerySchema.safeParse(request.query);
         if (!parsed.success) throw validationError(parsed.error);
-        const actor = auth.sessions.verify(
-          parseCookie(request.header("cookie"), "session"),
-        );
-        if (!actor)
-          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
         const result = await dashboard.monitoring(parsed.data);
         assertNoPhysicalFields(result.data);
         response.json(
