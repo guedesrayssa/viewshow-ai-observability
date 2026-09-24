@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 SCRIPT = Path(__file__).parents[1] / "scripts" / "prepare-argus.py"
 SPEC = importlib.util.spec_from_file_location("prepare_argus", SCRIPT)
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -37,10 +36,23 @@ INSERT INTO `incident_label` (`id`,`tier`,`kind`,`ts_start`,`ts_end`,`severity`,
             self.assertEqual(manifest["rows"]["detector_vectors"], 8)
             self.assertEqual(manifest["labels_by_provenance"], {"rca-confirmed": 1})
             self.assertTrue(manifest["gzip_crc_verified"])
-            self.assertEqual(json.loads((output / "manifest.json").read_text())["source_sha256"], manifest["source_sha256"])
-            with gzip.open(output / "detector.csv.gz", "rt", encoding="utf-8") as stream:
+            self.assertEqual(
+                json.loads((output / "manifest.json").read_text())["source_sha256"],
+                manifest["source_sha256"],
+            )
+            with gzip.open(
+                output / "detector.csv.gz", "rt", encoding="utf-8"
+            ) as stream:
                 rows = list(csv.DictReader(stream))
-            self.assertEqual(rows[0], {"timestamp": "1000", "scope_id": "canal-a", "metric": "active_sessions", "value": "8"})
+            self.assertEqual(
+                rows[0],
+                {
+                    "timestamp": "1000",
+                    "scope_id": "canal-a",
+                    "metric": "active_sessions",
+                    "value": "8",
+                },
+            )
             self.assertEqual(len(rows), 8)
 
     def test_refuses_to_overwrite_an_extraction(self):

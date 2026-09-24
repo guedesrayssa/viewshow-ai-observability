@@ -20,9 +20,8 @@ test("DynamoDB Local executa lease, leitura canônica e correlação idempotente
     AttributeDefinitions: [{ AttributeName: "pk", AttributeType: "S" }, { AttributeName: "sk", AttributeType: "S" }],
     KeySchema: [{ AttributeName: "pk", KeyType: "HASH" }, { AttributeName: "sk", KeyType: "RANGE" }],
   }));
-  await waitUntilTableExists({ client: raw, maxWaitTime: 20 }, { TableName: table });
-
   try {
+    await waitUntilTableExists({ client: raw, minDelay: 1, maxDelay: 2, maxWaitTime: 20 }, { TableName: table });
     const store = new DynamoAnalysisStore(client, table, 0.1);
     const now = Date.now();
     assert.equal(await store.acquire("run-contract", "owner-contract", now, 300_000, "fingerprint"), "acquired");

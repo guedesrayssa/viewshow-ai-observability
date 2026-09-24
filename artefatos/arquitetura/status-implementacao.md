@@ -97,8 +97,10 @@ precisam ser provisionados ou confirmados: conectividade com o ARGUS, task e
 Scheduler de ingestão, S3/Glue/Athena, SQS/DLQ, Worker de Análise, Cognito e os
 alarmes ponta a ponta.
 
-O job `validate_analysis_worker` executa typecheck, testes TypeScript, testes dos
-modelos Python e integração contra DynamoDB Local. O job de validação da API executa a suíte regular e o E2E vivo contra
+O job `validate_analysis_worker` executa typecheck, testes TypeScript e integração
+contra DynamoDB Local. Os testes dos modelos Python rodam em
+`validate_python_observability`, com as dependências opcionais `training`.
+O job de validação da API executa a suíte regular e o E2E vivo contra
 DynamoDB Local por `DYNAMODB_ENDPOINT=http://dynamodb:8000`, usando somente
 credenciais dummy. A variante local é `npm run test:e2e-local`; nenhuma delas
 requer acesso a recursos AWS.

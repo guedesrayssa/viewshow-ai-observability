@@ -242,6 +242,13 @@ Depois da aprovação, publique o arquivo e o catálogo no S3, construa a imagem
 
 ## Fechamento independente do módulo
 
+Revisão pré-PR em 24/09/2026: 127 testes TypeScript passaram sem skips, incluindo
+o teste com DynamoDB Local 2.6.1; os quatro testes Python de modelos e dados
+também passaram. Ruff e a sintaxe YAML do CI foram verificados. A revisão
+corrigiu dependências de treinamento ausentes no CI, formatação dos testes
+Python e os intervalos de espera pela tabela no SDK. O pipeline remoto ainda
+precisa executar no GitLab; o teste local não equivale à aprovação desse pipeline.
+
 O módulo pode ser verificado sem esperar frontend, API ou ingestão. A fronteira
 foi congelada por fixtures em `apps/backend/agentic/contracts/fixtures`, e o
 pipeline executa o mesmo parser usado pelo runtime. O teste com DynamoDB Local

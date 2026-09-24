@@ -24,12 +24,16 @@ SQS, DynamoDB, S3, aos modelos determinísticos e ao provider de LLM.
 
 ```bash
 npm install
+python3.13 -m pip install -e '.[training]'
 npm run verify   # typecheck + testes
 ```
 
 Os testes não exigem uma conta AWS. Os testes de integração sobem um servidor
 HTTP local que fala o protocolo do Ollama, enquanto os adaptadores AWS são
-verificados com clientes controlados.
+verificados também com DynamoDB Local quando `DYNAMODB_ENDPOINT` está definido.
+O CI fornece esse endpoint. Para executar apenas essa integração localmente,
+use `DYNAMODB_ENDPOINT=http://localhost:8000 npm run test:integration` com um
+DynamoDB Local descartável ativo.
 
 ### Integração
 
