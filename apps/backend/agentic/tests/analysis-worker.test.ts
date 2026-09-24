@@ -65,3 +65,17 @@ test("bucket de episódio existente persiste análise sem chamar a LLM novamente
   assert.equal(store.state,"SUCCEEDED");assert.equal(store.checkpointValue?.incidentId,"inc-existing");assert.equal(store.checkpointValue?.episodeStarted,false);
   assert.equal(store.results,1);assert.equal(store.diagnoses,0);assert.equal(llmCalls,0);
 });
+
+test("falha transitória libera a mensagem com backoff e marca nova tentativa",async()=>{
+  const store=new MemoryStore(),queue=new MemoryQueue();
+  const worker=new AnalysisWorker({store,queue,reader:{read:async()=>{throw new Error("dynamodb unavailable")}},model,scopes:[scope],llm:{generate:async()=>{throw new Error("unused")}}});
+  await worker.process({id:"m",receipt:"r",body:JSON.stringify(event),receives:2});
+  assert.equal(store.state,"RETRY_PENDING");assert.deepEqual(queue.visibilityCalls,[120]);assert.equal(queue.ack,0);assert.equal(queue.dlq,0);
+});
+
+test("quinta falha de dependência encerra a execução e envia à DLQ",async()=>{
+  const store=new MemoryStore(),queue=new MemoryQueue();
+  const worker=new AnalysisWorker({store,queue,reader:{read:async()=>{throw new Error("dynamodb unavailable")}},model,scopes:[scope],llm:{generate:async()=>{throw new Error("unused")}}});
+  await worker.process({id:"m",receipt:"r",body:JSON.stringify(event),receives:5});
+  assert.equal(store.state,"FAILED");assert.equal(queue.dlq,1);assert.equal(queue.ack,1);assert.deepEqual(queue.visibilityCalls,[]);
+});

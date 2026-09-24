@@ -240,13 +240,42 @@ python3 scripts/approve-model.py \
 
 Depois da aprovação, publique o arquivo e o catálogo no S3, construa a imagem pelo Dockerfile do módulo e habilite `analysis_worker_habilitado` com URIs e checksum no Terraform. O serviço não é habilitado automaticamente.
 
+## Fechamento independente do módulo
+
+O módulo pode ser verificado sem esperar frontend, API ou ingestão. A fronteira
+foi congelada por fixtures em `apps/backend/agentic/contracts/fixtures`, e o
+pipeline executa o mesmo parser usado pelo runtime. O teste com DynamoDB Local
+prova o lease, a leitura do fato canônico e a correlação idempotente de dois
+buckets no mesmo episódio. A suíte também prova os dois destinos de uma falha
+de dependência: `RETRY_PENDING` com backoff antes da quinta entrega e `FAILED`
+com DLQ na quinta.
+
+Critérios de pronto do Worker de Análise:
+
+| Critério | Evidência | Estado |
+| --- | --- | --- |
+| contrato de eventos estável | três fixtures v1 validadas pelo parser de produção | atendido |
+| contrato do fato canônico | fixture v1 e leitura pelo adaptador DynamoDB | atendido |
+| idempotência e episódio | lease e dois buckets correlacionados no DynamoDB Local | atendido |
+| falhas e recuperação | contrato inválido, backoff, quinta tentativa e DLQ | atendido |
+| modelos determinísticos | testes de bundle, detecção, previsão e replay temporal | atendido como candidato |
+| diagnóstico A′ | validação estrutural, ancoragem em fatos e chamada só na abertura | atendido |
+| CI próprio | job `validate_analysis_worker` | atendido |
+| qualidade estatística | recorte temporal medido, sem rótulo humano independente | pendente de validação de produto |
+| ativação produtiva | catálogo de séries e bundle aprovado | pendente de integração |
+
+Assim, “módulo pronto” significa que suas regras e adaptadores funcionam contra
+seus contratos. Não significa que a previsão esteja aprovada para alertar o
+usuário: o modelo continua explicitamente experimental até a validação no fluxo
+integrado.
+
 ## O que falta validar no ambiente real
 
 O código e os testes locais não substituem a validação com as séries canônicas do ARGUS. Antes da ativação, ainda é necessário:
 
 1. integrar a função compartilhada de `seriesId` à escrita de fatos da ingestão e confirmar que os identificadores do catálogo piloto são os realmente gravados;
 2. treinar e avaliar o bundle no corte temporal completo, registrar a decisão e aprová-lo;
-3. executar um teste de integração com DynamoDB Local ou uma tabela temporária e SQS real;
+3. executar o teste já coberto em DynamoDB Local também com uma tabela temporária e SQS reais;
 4. executar replay sem escrita de pelo menos uma semana, medir falsos positivos, falsos negativos, cobertura e custo;
 5. ativar primeiro um único worker e acompanhar DLQ, latência, calibração da previsão e revisões humanas.
 

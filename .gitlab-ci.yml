@@ -100,6 +100,40 @@ validate_python_observability:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
       changes: *python_observability_changes
 
+validate_analysis_worker:
+  stage: validar
+  image: node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
+  services:
+    - name: amazon/dynamodb-local:2.6.1@sha256:1856c05cc66a0e49dc1099e483ad2851477eeebe2135250ac11a1d1227db54b1
+      alias: dynamodb
+  variables:
+    AWS_ACCESS_KEY_ID: "local"
+    AWS_SECRET_ACCESS_KEY: "local"
+    AWS_REGION: "us-east-1"
+    DYNAMODB_ENDPOINT: "http://dynamodb:8000"
+  cache:
+    key:
+      files:
+        - apps/backend/agentic/package-lock.json
+    paths:
+      - .npm/
+    policy: pull-push
+  before_script:
+    - apt-get update
+    - apt-get install --yes --no-install-recommends python3
+    - rm -rf /var/lib/apt/lists/*
+    - cd apps/backend/agentic
+  script:
+    - node --version
+    - npm ci --prefer-offline --no-audit --fund=false
+    - npm run verify
+    - npm run test:integration
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *python_observability_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *python_observability_changes
+
 validate_backend:
   stage: validar
   image: node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94

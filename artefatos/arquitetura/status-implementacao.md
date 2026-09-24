@@ -1,8 +1,8 @@
 # Status de implementação da arquitetura
 
 - **Status:** acompanhamento contínuo
-- **Versão:** 1.2
-- **Última atualização:** 10/09/2026
+- **Versão:** 1.3
+- **Última atualização:** 24/09/2026
 - **Responsáveis:** equipe do projeto
 - **Base auditada:** branch `develop`
 
@@ -26,7 +26,7 @@ para implementação incompleta, **Implementado** para código compatível e
 | Importação de dump | Testado | rotas e validação cobertas; adaptador S3/ingestão falha fechado | disponibilizar upload e tarefa de ingestão |
 | Serviço de ingestão | Definido | placeholder em `apps/backend/ingestion-data` | implementar tarefa Python e projeções |
 | Arquivo S3/Glue/Athena | Definido | contratos aprovados | provisionar e implementar roteamento histórico |
-| SQS e Worker de Análise | Definido | contrato de publicação fail-closed testado e placeholder `apps/backend/agentic` | disponibilizar fila, DLQ, consumidor e modelos |
+| SQS e Worker de Análise | Testado | consumidor, leases, detecção, previsão experimental, episódios, diagnóstico A′, contratos executáveis e testes automatizados em `apps/backend/agentic` | integrar séries produzidas pela ingestão, aprovar bundle e validar em ambiente compartilhado |
 | Revisão de hipótese | Testado | atualização condicional e autorização no módulo `incidents` | integração com o Worker e conjunto real |
 | Infraestrutura AWS | Parcial | API em ECS, DynamoDB, ingresso e CI/CD existentes | recursos de ingestão, análise, histórico e identidade |
 | Observabilidade | Parcial | request ID, logs correlacionados, métricas RED/RUM, OpenTelemetry, dashboards e alertas da API | instrumentar os workers quando seus runtimes existirem |
@@ -71,12 +71,19 @@ Cognito/OIDC e integrações cuja fonte de dados ainda não foi publicada.
 
 ## 5. Ingestão, histórico e análise
 
-`apps/backend/ingestion-data` e `apps/backend/agentic` são placeholders sem
-servidor, worker, seed ou lógica executável. A implementação futura deve seguir
-[Ingestão e dados](ingestao-e-dados.md) e
-[Análise de dados e diagnóstico por IA](analise-e-ia.md): normalização,
-projeções, watermark/outbox, arquivo Parquet, SQS, modelos e Bedrock pertencem a
-esses componentes, não à API operacional.
+O Worker de Análise em `apps/backend/agentic` possui runtime executável em
+TypeScript. Ele consome SQS, aplica leases e checkpoints no DynamoDB, lê fatos
+canônicos, executa detectores e previsão, agrupa sinais em episódios e chama o
+diagnóstico A′ somente na abertura do episódio ou em reanálise explícita. Os
+contratos de entrada e de fato estão congelados em `contracts/fixtures`; a
+suíte cobre duplicidade, falhas permanentes, retentativa e DLQ. Um teste de
+integração opcional executa leases, leitura e correlação contra DynamoDB Local.
+
+O bundle treinado com o recorte disponível permanece candidato e
+`approved: false`. A ativação exige que a ingestão publique os mesmos
+`seriesId`, que a avaliação temporal seja aprovada e que os módulos sejam
+integrados no ambiente compartilhado. O estado da ingestão continua registrado
+separadamente em [Ingestão e dados](ingestao-e-dados.md).
 
 O Terraform não semeia dados sintéticos no DynamoDB. A API lê projeções
 publicadas pelo fluxo de ingestão e declara ausência de forma explícita.
@@ -90,7 +97,8 @@ precisam ser provisionados ou confirmados: conectividade com o ARGUS, task e
 Scheduler de ingestão, S3/Glue/Athena, SQS/DLQ, Worker de Análise, Cognito e os
 alarmes ponta a ponta.
 
-O job de validação do backend executa a suíte regular e o E2E vivo contra
+O job `validate_analysis_worker` executa typecheck, testes TypeScript, testes dos
+modelos Python e integração contra DynamoDB Local. O job de validação da API executa a suíte regular e o E2E vivo contra
 DynamoDB Local por `DYNAMODB_ENDPOINT=http://dynamodb:8000`, usando somente
 credenciais dummy. A variante local é `npm run test:e2e-local`; nenhuma delas
 requer acesso a recursos AWS.
