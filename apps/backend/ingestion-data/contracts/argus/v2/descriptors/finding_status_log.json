@@ -1,0 +1,60 @@
+{
+  "table": "finding_status_log",
+  "recordType": "FindingStatusTransition",
+  "columns": [
+    {
+      "name": "finding_id",
+      "sqlType": "VARCHAR(120)",
+      "nullable": false
+    },
+    {
+      "name": "ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "from_status",
+      "sqlType": "VARCHAR(16)",
+      "nullable": true
+    },
+    {
+      "name": "to_status",
+      "sqlType": "VARCHAR(16)",
+      "nullable": false
+    },
+    {
+      "name": "volume",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "unit",
+      "sqlType": "VARCHAR(16)",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "finding_id",
+    "ts"
+  ],
+  "cursorKey": [
+    "ts",
+    "finding_id"
+  ],
+  "timestampField": "ts",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": null,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "derived_label",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "ts"
+  },
+  "normalizer": "finding_status_log"
+}

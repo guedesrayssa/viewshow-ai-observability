@@ -83,18 +83,18 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
           }),
         });
       } catch (error) {
+        clearTimeout(timer);
         if (error instanceof Error && error.name === "AbortError") {
           throw new OllamaError(`Ollama não respondeu em ${timeoutMs} ms.`, error);
         }
         throw new OllamaError(`Falha ao falar com o Ollama em ${endpoint}.`, error);
-      } finally {
-        clearTimeout(timer);
       }
 
       if (!http.ok) {
         // Trecho do corpo, não o corpo inteiro: erro de servidor às vezes
         // devolve página HTML, e despejá-la no log não ajuda ninguém.
         const trecho = (await http.text().catch(() => "")).slice(0, 200);
+        clearTimeout(timer);
         throw new OllamaError(`Ollama respondeu HTTP ${http.status}: ${trecho}`);
       }
 
@@ -103,6 +103,8 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
         corpo = await http.json();
       } catch (error) {
         throw new OllamaError("Ollama respondeu com corpo que não é JSON.", error);
+      } finally {
+        clearTimeout(timer);
       }
 
       if (typeof corpo !== "object" || corpo === null) {

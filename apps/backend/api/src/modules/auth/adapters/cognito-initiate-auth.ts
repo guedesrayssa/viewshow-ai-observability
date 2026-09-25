@@ -3,9 +3,9 @@ import type { InitiateAuthFn } from "./cognito-password-authenticator.js";
 // O SDK do Cognito é pesado e só é necessário em produção. Carregado sob
 // demanda e uma vez só; este arquivo é o único que o referencia, para que os
 // testes (que injetam um InitiateAuthFn falso) nunca o toquem.
-let cachedSdk:
-  | Promise<typeof import("@aws-sdk/client-cognito-identity-provider")>
-  | null = null;
+let cachedSdk: Promise<
+  typeof import("@aws-sdk/client-cognito-identity-provider")
+> | null = null;
 
 function loadSdk(): Promise<
   typeof import("@aws-sdk/client-cognito-identity-provider")

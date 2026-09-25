@@ -58,7 +58,7 @@
 
 1. **`apps/frontend`:** Painel em **Next.js 16 (App Router)** e **React 19**, compilado como **exportação estática** (`output: "export"` em `apps/frontend/next.config.ts`). Isso muda radicalmente o modelo de log do frontend e é tratado na seção [4.1](#41-restrição-de-arquitetura-exportação-estática).
 2. **`apps/backend/api`:** API HTTP em **Node.js (Express 5)**, com rotas de autenticação, incidentes, golden set, ML e dashboard, acesso ao **Amazon DynamoDB** e integração opcional com o **Amazon Bedrock**.
-3. **`apps/backend/ingestion-data`:** Serviço batch em **Python** (arquitetura hexagonal), ainda **não implementado no repositório**, especificado em [`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md).
+3. **`apps/backend/ingestion-data`:** Serviço batch em **Python** (arquitetura hexagonal), implementado com backfill/sync, checkpoints, leases e outbox, executado pelas tasks ECS `view-show-ingestion-backfill` e `view-show-ingestion-sync`.
 
 > [!IMPORTANT]
 > O MVP básico da Sprint 1 (`apps/basica`, API Flask e frontend estático) está fora deste levantamento, exceto por uma menção: `apps/frontend/lib/data/client.ts` ainda aponta a base `telemetria` para essa API. Enquanto essa dependência existir, as falhas de leitura de telemetria aparecerão nos logs do navegador descritos na seção [4.2](#42-catálogo-de-eventos-de-log-do-navegador).
@@ -67,7 +67,7 @@
 
 &emsp; Assim como nas métricas, os logs operam em dois níveis que **não devem ser misturados no mesmo fluxo**:
 
-* **Evento de negócio persistido (dado do produto):** o incidente, a evidência e a hipótese gravados em `monitoracao-operacional`, e os erros de ingestão gravados em `INGESTION#RUN#<runId> / ERROR#<sequence>`. São **dado do domínio**, consultados pela API, com retenção regida por TTL e pelo contrato de ingestão (90 dias para erros sanitizados). **Não vão para o Loki.**
+* **Evento de negócio persistido (dado do produto):** o incidente, a evidência e a hipótese gravados em `view-show-operacional`, e os erros de ingestão gravados em `INGESTION#RUN#<runId> / ERROR#<sequence>`. São **dado do domínio**, consultados pela API, com retenção regida por TTL e pelo contrato de ingestão (90 dias para erros sanitizados). **Não vão para o Loki.**
 * **Log de execução (telemetria do View Show):** a linha emitida em `stdout` pelas nossas aplicações descrevendo o que a execução fez, quanto demorou e por que falhou. **É o objeto deste documento** e o único que segue para o Loki.
 
 &emsp; A regra prática: se o painel precisa ler aquilo para desenhar uma tela, é dado de domínio e vive no DynamoDB; se apenas um engenheiro de plantão precisa ler para entender uma falha, é log e vive no Loki.
@@ -222,7 +222,7 @@ flowchart TD
 |:---|:---|:---:|:---|:---|
 | `timestamp` | ISO 8601 UTC | Sim | Logger | Instante da emissão, com milissegundos. |
 | `level` | enum | Sim | Logger | Ver seção [3.2](#32-níveis-de-severidade-e-critério-de-uso). |
-| `service_name` | string | Sim | Config | `view-show-api`, `view-show-ingestion` ou `view-show-frontend`. **Deve ser idêntico ao `service.name` do OpenTelemetry.** |
+| `service_name` | string | Sim | Config | `view-show-api`, `view-show-ingestion` ou `view-show-painel`. **Deve ser idêntico ao `service.name` do OpenTelemetry.** |
 | `environment` | enum | Sim | Config | `local`, `dev` ou `prod`. Espelha o `external_labels.environment` do Prometheus. |
 | `event` | string | Sim | Chamador | Identificador estável e em inglês do evento, ex.: `incident.diagnose.failed`. É o que se filtra, não a mensagem. |
 | `message` | string | Sim | Chamador | Frase legível em português para o humano de plantão. |
@@ -274,7 +274,7 @@ flowchart TD
   "bucketsQueried": 7,
   "error": {
     "type": "ProvisionedThroughputExceededException",
-    "message": "Throughput exceeds the current capacity for table monitoracao-operacional",
+    "message": "Throughput exceeds the current capacity for table view-show-operacional",
     "stack": "ProvisionedThroughputExceededException: Throughput exceeds..."
   }
 }
@@ -330,7 +330,7 @@ tracesToLogsV2:
 > [!CAUTION]
 > Este é o achado mais delicado deste mapeamento e precisa ser tratado antes da primeira linha de log estruturado.
 
-&emsp; A tabela `monitoracao-operacional` tem um GSI chamado `trace-index` cuja chave de partição é um atributo **literalmente chamado `trace_id`**. Em `apps/backend/api/src/services/evidenceService.js`:
+&emsp; A tabela `view-show-operacional` tem um GSI chamado `trace-index` cuja chave de partição é um atributo **literalmente chamado `trace_id`**. Em `apps/backend/api/src/services/evidenceService.js`:
 
 ```javascript
 const items = await operationalTable.query({
@@ -550,96 +550,48 @@ module.exports = pino({
 
 &emsp; O `process.started` é a linha mais barata e mais útil do sistema: em qualquer investigação, a primeira pergunta é *"qual versão está rodando e com qual configuração?"*. Incluir `commit_sha` e `bedrock_enabled` responde antes de alguém precisar perguntar. O `index.js` atual imprime apenas a porta.
 
----
+## 6. Logs de `apps/backend/ingestion-data` (ARGUS 2.0)
 
-## 6. Logs de apps/backend/ingestion-data (Data Ingestion Service)
+&emsp; O serviço existe no repositório e é batch-only. O backfill manual possui
+evidência AWS; sync, gate e controle do Scheduler estão implementados, mas
+permanecem desabilitados até prova live. Logs são JSON
+redigido e constituem evidência de operação, mas não substituem o manifesto,
+Athena ou a prova de AWS.
 
-&emsp; O serviço ainda não existe no repositório. A seção 23 do documento de arquitetura já fixa o requisito de log:
+### 6.1 Contrato efetivo
 
-> Logs JSON carregam `runId`, source, stage, duração, contagens e watermark.
+Cada linha contém `timestamp`, `level`, `service_name`, `environment`,
+`event` e `message`. A execução acrescenta `traceId`, `runId`,
+`command`, estado, `datasetVersion`, janela e contagens quando esses valores
+existirem. Campos cujo nome sugere segredo, token, senha, payload, body ou
+conexão são redigidos recursivamente.
 
-&emsp; O mapeamento abaixo detalha esse requisito em eventos nomeados. Como a task roda no ECS sem porta HTTP, acionada pelo EventBridge a cada 15 minutos, **o log é a única janela em tempo real para dentro da execução**: não há endpoint para consultar, não há sessão para inspecionar, e a task termina e desaparece.
+| Evento | Nível | Uso |
+| --- | --- | --- |
+| `ingestion.run.started` | info | início no estado `STARTING` |
+| `ingestion.run.finished` | info | terminal `SUCCEEDED` ou `PARTIAL`, duração e contagens |
+| `ingestion.run.failed` | error | erro sanitizado e terminal `FAILED` |
+| `ingestion.command.invalid` | error | argumentos incompatíveis; processo retorna 2 |
 
-### 6.1 Ciclo de Run e Encerramento
+O logger não deve produzir uma linha por registro. Cada aplicação pode acrescentar
+eventos de lease, schema, archive, partição, ativação e outbox, desde que
+preserve `runId`, não inclua dump/payload bruto e mantenha o vocabulário de
+estados da máquina de run.
 
-| Evento | Nível | Campos | Requisito |
-|:---|:---|:---|:---|
-| `ingestion.run.started` | `info` | `runId`, `command` (`sync`, `backfill`, `reprocess`, `rebuild-projections`, `validate`), `sources_enabled[]`, `commit_sha`, `region` | RNF02 |
-| `ingestion.run.finished` | `info` | `runId`, `status` (`SUCCEEDED`, `PARTIAL`, `FAILED`, `SKIPPED_LOCKED`), `duration_ms`, `sources_succeeded`, `sources_failed`, `records_read`, `records_written`, `records_unmodified`, `records_rejected` | RNF02 |
-| `ingestion.run.partial` | `warn` | `runId`, `failed_sources[]`, `succeeded_sources[]` | RNF03 |
-| `ingestion.run.failed` | `error` | `runId`, `error.type`, `error.message`, `fingerprint` | RNF03 |
-| `ingestion.validate.failed` | `fatal` | `check` (`region`, `iam`, `secret`, `schema`, `ttl`, `pitr`), `detail` | RNF06 |
+### 6.2 Correlação e operação
 
-> [!NOTE]
-> `ingestion.run.finished` sai **sempre**, inclusive quando o status é `FAILED` ou `SKIPPED_LOCKED`. É a linha que sustenta o alarme *"nenhuma execução bem-sucedida em 30 minutos"* da seção 23 da arquitetura: o alerta é a **ausência** dessa linha com `status="SUCCEEDED"`, e ausência só pode ser detectada se a presença for garantida.
+`recordId` usa o prefixo `rid_` seguido do SHA-256 hexadecimal de identidade
+canônica; ele não é derivado de base32. A correlação principal é `runId` +
+`traceId`; `datasetVersion` é derivada do checksum do dump e versões do
+contrato, não de uma importação HTTP. Procure pendências SQS por outbox e GSI
+`outbox-pending-index`; um terminal `PARTIAL` pós-ativação pede
+`publish-outbox`.
 
-&emsp; A rejeição de região merece nível `fatal` e não `error`: a arquitetura determina que a aplicação **rejeite** região diferente de `us-east-1` e configuração que aponte para o golden set. Não é uma falha a tolerar, é uma recusa a executar.
+Os 23 valores permitidos de `source_dataset` são definidos pelo registry
+ARGUS 2.0. Não registre tabela fora dessa lista como métrica/label de alta
+cardinalidade. A referência de contrato é
+[Ingestão e dados](../../../../artefatos/arquitetura/ingestao-e-dados.md).
 
-### 6.2 Por Fonte e Por Estágio do Pipeline
-
-&emsp; Uma linha por fonte no início e no fim, e uma linha por estágio concluído. O fluxo da seção 7 da arquitetura tem os estágios `read`, `normalize`, `detect` (comparação de `payloadHash`) e `write`.
-
-| Evento | Nível | Campos |
-|:---|:---|:---|
-| `ingestion.source.started` | `info` | `runId`, `source_dataset`, `window_start`, `window_end`, `lookback_hours`, `resume_cursor` |
-| `ingestion.source.finished` | `info` | `runId`, `source_dataset`, `duration_ms`, `records_read`, `records_written`, `records_unmodified`, `records_rejected`, `published_watermark` |
-| `ingestion.stage.finished` | `debug` | `runId`, `source_dataset`, `stage`, `duration_ms`, `record_count` |
-| `ingestion.chunk.finished` | `debug` | `runId`, `source_dataset`, `chunk_index`, `chunk_size`, `duration_ms`, `last_natural_key` |
-| `ingestion.source.failed` | `error` | `runId`, `source_dataset`, `stage`, `error.type`, `error.message`, `fingerprint`, `watermark_published: false` |
-| `ingestion.retry.scheduled` | `warn` | `runId`, `source_dataset`, `attempt` (1 a 5), `backoff_ms`, `error.type` |
-
-&emsp; Os `source_dataset` válidos vêm da tabela de datasets do contrato v1: `signal_bucket`, `live_active_15min`, `live_qoe_hourly`, `player_hourly`, `device_hourly`, `geo_hourly`, `live_error_attr_hourly`, `error_cat_hourly`, `incidents`, `signal_meta` e `collector_run`.
-
-> [!WARNING]
-> `ingestion.chunk.finished` é a linha de maior risco de volume de todo o sistema. O backfill percorre um dump de 11 GB paginando por chave natural. Com chunks de mil registros, um backfill completo emite dezenas de milhares de linhas. Por isso ela é `debug`, e o `LOG_LEVEL` do comando `backfill` deve permanecer em `info` salvo durante investigação dirigida. **Jamais** emitir uma linha por registro.
-
-&emsp; O campo `watermark_published: false` em `ingestion.source.failed` não é redundante. A arquitetura determina que falha obrigatória interrompe somente a fonte e **não publica seu watermark**. Registrar isso explicitamente evita a dúvida mais cara da operação: *"o dado dessa janela chegou ou não?"*.
-
-### 6.3 Lease e Concorrência
-
-| Evento | Nível | Campos |
-|:---|:---|:---|
-| `ingestion.lease.acquired` | `info` | `runId`, `scope` (`global` ou `source`), `resource`, `lease_expires_at` |
-| `ingestion.lease.renewed` | `debug` | `runId`, `scope`, `resource`, `lease_expires_at` |
-| `ingestion.lease.released` | `debug` | `runId`, `scope`, `resource` |
-| `ingestion.lease.conflict` | `warn` | `runId`, `scope`, `resource`, `owner_run_id`, `owner_expires_at` |
-| `ingestion.lease.expired_takeover` | `warn` | `runId`, `scope`, `resource`, `previous_owner_run_id`, `expired_by_seconds` |
-
-&emsp; `ingestion.lease.conflict` corresponde ao desfecho `SKIPPED_LOCKED`. É `warn` e não `error` porque o lock funcionando é o comportamento correto: duas sincronizações não devem coincidir. O que exige investigação é a **repetição** do conflito, sinal de que um run anterior travou sem liberar o lease.
-
-&emsp; O `ingestion.lease.expired_takeover` é o par dele: quando aparece, uma task anterior morreu sem liberar o lock e outra assumiu após a expiração. O campo `previous_owner_run_id` dá o `runId` para buscar no Loki o que aconteceu com o run travado, o que é exatamente o tipo de pergunta que só o log responde.
-
-### 6.4 Rejeições, Schema Drift e Erros Sanitizados
-
-| Evento | Nível | Campos | Requisito |
-|:---|:---|:---|:---|
-| `ingestion.record.rejected` | `warn` | `runId`, `source_dataset`, `reason` (`parse_error`, `required_field_invalid`, `contract_violation`), `recordId`, `natural_key` | RNF03 |
-| `ingestion.record.flagged` | `debug` | `runId`, `source_dataset`, `recordId`, `flags[]`, `quality_status` (`partial`, `delayed`) | RNF11 |
-| `ingestion.schema.drift` | `error` | `runId`, `source_dataset`, `expected_columns[]`, `found_columns[]`, `drift_type` (`missing`, `added`, `type_changed`) | RNF11 |
-| `ingestion.error.persisted` | `debug` | `runId`, `sequence`, `fingerprint` | RNF03 |
-
-&emsp; `ingestion.record.rejected` carrega `recordId` e `natural_key`, **nunca o payload**. O `recordId` é determinístico (`rec_` + base32 do SHA-256 da chave natural canônica), o que permite reencontrar o registro na origem sem copiar o conteúdo para o log. É a aplicação direta da regra de sanitização da seção [3.5](#35-sanitização-pii-e-segredos).
-
-&emsp; `ingestion.schema.drift` é `error` e não `warn` porque, segundo a tabela de erros do contrato, schema drift **falha antes da leitura** e não recebe retry automático. É intervenção humana obrigatória, e o alarme correspondente é imediato: mais de zero ocorrências.
-
-&emsp; `ingestion.error.persisted` é a ponte entre os dois mundos descritos na seção [1.2](#12-dualidade-registro-de-evento-de-negócio-vs-log-de-execução): o erro sanitizado vai para `INGESTION#RUN#<runId> / ERROR#<sequence>` no DynamoDB com retenção de 90 dias, e o log guarda apenas o ponteiro (`runId` mais `sequence`) para encontrá-lo. Assim a retenção curta do Loki não apaga a evidência, e o Loki não vira banco de erros.
-
-### 6.5 Projeções e Watermarks
-
-| Evento | Nível | Campos |
-|:---|:---|:---|
-| `ingestion.projection.started` | `debug` | `runId`, `projection_name`, `affected_buckets` |
-| `ingestion.projection.finished` | `info` | `runId`, `projection_name`, `projectionVersion`, `formulaVersion`, `duration_ms`, `buckets_written`, `buckets_unchanged`, `coverage_ratio`, `observed_through` |
-| `ingestion.projection.failed` | `error` | `runId`, `projection_name`, `error.*`, `facts_preserved: true` |
-| `ingestion.watermark.published` | `info` | `runId`, `watermark_type` (`source`, `materialized`, `projection`), `resource`, `watermark_at`, `lag_seconds` |
-
-&emsp; Os `projection_name` seguem as famílias de `pk` da organização lógica do DynamoDB: `VIEW#OVERVIEW`, `VIEW#INCIDENTS`, `VIEW#MONITORING` e `VIEW#GEOGRAPHY`.
-
-&emsp; O `facts_preserved: true` em `ingestion.projection.failed` é literal, não decorativo: a arquitetura garante que falha de projeção não remove fatos nem retrocede o checkpoint da fonte. Deixar isso explícito na linha evita que o plantão inicie um reprocessamento desnecessário.
-
-&emsp; `ingestion.watermark.published` com `lag_seconds` é o insumo do alarme *"fonte além do SLA"* e o log que explica, no painel `/monitoramento`, por que `source.updatedSecondsAgo` subiu.
-
----
 
 ## 7. Retenção, Volume e Limites
 
@@ -650,7 +602,7 @@ module.exports = pino({
 | Metadados estruturados | Habilitados | `limits_config.allow_structured_metadata: true` |
 | Autenticação do Loki | **Desabilitada** | `auth_enabled: false` |
 | Linhas por consulta no Grafana | 1000 | `jsonData.maxLines` no data source Loki |
-| Retenção de logs (AWS) | 90 dias | `CloudWatch /ecs/data-ingestion`, seção 22 da arquitetura |
+| Retenção de logs (AWS) | 7 dias | `CloudWatch /ecs/view-show-ingestion-{backfill,sync}` provisionado pelo Terraform |
 | Retenção de erros de ingestão | 90 dias | Contrato de ingestão, itens `ERROR#<sequence>` |
 
 > [!WARNING]

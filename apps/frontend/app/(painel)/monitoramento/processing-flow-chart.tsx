@@ -52,6 +52,11 @@ export function ProcessingFlowChart({ sources, metric }: ProcessingFlowChartProp
         <div>
           <CardTitle id="fluxo-processamento">Fluxo de processamento</CardTitle>
           <CardDescription className="mt-1">{config.description}</CardDescription>
+          {data.historical && data.observedAt ? (
+            <CardDescription className="mt-1">
+              Última série disponível: {new Date(data.observedAt).toLocaleString("pt-BR")}
+            </CardDescription>
+          ) : null}
         </div>
 
         <Select

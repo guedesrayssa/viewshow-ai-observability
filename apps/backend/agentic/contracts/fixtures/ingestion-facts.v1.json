@@ -1,0 +1,846 @@
+{
+  "datasetVersion": "dsv_contract_v1",
+  "scopeId": "globo-sp1",
+  "items": [
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_080fa94ab0ff442078b946c05e2d076c9654a1173de41f4140982f46f24f2f2b#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_e01d4ee4a517476971f5f81aa0db8ae118c1c84a39200327621129e2f2f82fce"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_e01d4ee4a517476971f5f81aa0db8ae118c1c84a39200327621129e2f2f82fce"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_080fa94ab0ff442078b946c05e2d076c9654a1173de41f4140982f46f24f2f2b"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "jointime_s_avg"
+              },
+              "unit": {
+                "S": "seconds"
+              },
+              "value": {
+                "N": "1.5"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_0f6e18bf8f4ecbcd0c120e6f655f1ff1c592ca1366b67d57af2549c6b5cadd5c#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_a9d523d54d5df0a8348aff8388a2f5e5e6a5598b9d0e09fc052dfdc8135ae46f"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_a9d523d54d5df0a8348aff8388a2f5e5e6a5598b9d0e09fc052dfdc8135ae46f"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_0f6e18bf8f4ecbcd0c120e6f655f1ff1c592ca1366b67d57af2549c6b5cadd5c"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "dropped_frames_avg"
+              },
+              "unit": {
+                "S": "count/session"
+              },
+              "value": {
+                "N": "0.75"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_218e2c33050b3ce752664c315d10ea84a83934e541b8cf7c7282f766d8e24449#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_0841e4e12cd2db8c73f2b04f1f57a4377ea78b876f85455530bc704149f1a09c"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_0841e4e12cd2db8c73f2b04f1f57a4377ea78b876f85455530bc704149f1a09c"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_218e2c33050b3ce752664c315d10ea84a83934e541b8cf7c7282f766d8e24449"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "origin_live_err_rate"
+              },
+              "unit": {
+                "S": "percent"
+              },
+              "value": {
+                "N": "1.25"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_3179e17086539d83fa62712ed9cdd9f0f62d8a74a6cb19915c6e7b9b6ceefec8#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_ade375a87782fd2c3b98e7a5c25a6b4d534f78671d787d67edeffa1d125dc216"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_ade375a87782fd2c3b98e7a5c25a6b4d534f78671d787d67edeffa1d125dc216"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_3179e17086539d83fa62712ed9cdd9f0f62d8a74a6cb19915c6e7b9b6ceefec8"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "active_sessions"
+              },
+              "unit": {
+                "S": "count"
+              },
+              "value": {
+                "N": "120"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_3efb5c27d0e6e37985344afcf721b215c039b94b41f09a827ede595f0e1f8c81#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_2993f3195151e7ff34428a547197a142391ad39349f70b5224a10501f46d4a58"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_2993f3195151e7ff34428a547197a142391ad39349f70b5224a10501f46d4a58"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_3efb5c27d0e6e37985344afcf721b215c039b94b41f09a827ede595f0e1f8c81"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "latency_ms_p95"
+              },
+              "unit": {
+                "S": "ms"
+              },
+              "value": {
+                "N": "480.25"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_41adc42f7582a8ea624cf1b74d89bb3b02712d4e54ebec13122ca1492fcde8ab#20260906"
+      },
+      "sk": {
+        "S": "T#1788703200000#fact_a2d72b57722f5078b2f8bbd0c5a001927866536ccbbf5d88534f9d072616b1c6"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_a2d72b57722f5078b2f8bbd0c5a001927866536ccbbf5d88534f9d072616b1c6"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_41adc42f7582a8ea624cf1b74d89bb3b02712d4e54ebec13122ca1492fcde8ab"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:00:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "3600"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "startup_errors"
+              },
+              "unit": {
+                "S": "count"
+              },
+              "value": {
+                "N": "4"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_64ef233813f76cf510cb67c422c8f708ad50e216eaed85538d6d93be09545f08#20260906"
+      },
+      "sk": {
+        "S": "T#1788703200000#fact_c3bb779616e2b2b0c8bfe5de9a3b150503a59b6c16525dced6af7183e0cc520b"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_c3bb779616e2b2b0c8bfe5de9a3b150503a59b6c16525dced6af7183e0cc520b"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_64ef233813f76cf510cb67c422c8f708ad50e216eaed85538d6d93be09545f08"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:00:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "3600"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "bufferratio_avg"
+              },
+              "unit": {
+                "S": "ratio-unconfirmed"
+              },
+              "value": {
+                "N": "0.1"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_730124817d20183c4d618a6bd446f4068001a5c836c6f9635cedf600928a6b3c#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_69862f0ba1aeb068b133fe29a82643d5cb3aeb6fcd2e74a55ef9117154f89500"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_69862f0ba1aeb068b133fe29a82643d5cb3aeb6fcd2e74a55ef9117154f89500"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_730124817d20183c4d618a6bd446f4068001a5c836c6f9635cedf600928a6b3c"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "joins_in_bucket"
+              },
+              "unit": {
+                "S": "count"
+              },
+              "value": {
+                "N": "40"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_7daebb7e11e42ea19377b7f85630864d20fb3ed5ec94f01f509eee8fd79e37b8#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_2fbc78aef5875699d0f4f497602a2ad8ccea6c2dff99934f6942af2980c24bed"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_2fbc78aef5875699d0f4f497602a2ad8ccea6c2dff99934f6942af2980c24bed"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_7daebb7e11e42ea19377b7f85630864d20fb3ed5ec94f01f509eee8fd79e37b8"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "origin_cdn_live_err_rate"
+              },
+              "unit": {
+                "S": "percent"
+              },
+              "value": {
+                "N": "1.25"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_bff387dc79efe44a075823eb9efb7697b2dc89a8dcc2ef68c0ff1c88ebb2f63d#20260906"
+      },
+      "sk": {
+        "S": "T#1788703200000#fact_421e3bc06373e936c67f684ad0e919aa0476a6f6bf16b02879d3b9079a5cf365"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_421e3bc06373e936c67f684ad0e919aa0476a6f6bf16b02879d3b9079a5cf365"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_bff387dc79efe44a075823eb9efb7697b2dc89a8dcc2ef68c0ff1c88ebb2f63d"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:00:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "3600"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "sessions"
+              },
+              "unit": {
+                "S": "count"
+              },
+              "value": {
+                "N": "900"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_cdc66f1e64944d7122fc0e57d198e0284298cc0ce7437ec9cbf76ef3ee2e9826#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_99e3ae56df19caa74766c3d0f194812d8cceb670cf3fc5a9376c20c8dda9b8c8"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_99e3ae56df19caa74766c3d0f194812d8cceb670cf3fc5a9376c20c8dda9b8c8"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_cdc66f1e64944d7122fc0e57d198e0284298cc0ce7437ec9cbf76ef3ee2e9826"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "cdn_live_err_rate"
+              },
+              "unit": {
+                "S": "percent"
+              },
+              "value": {
+                "N": "1.25"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_d0b3a4988e8db5a1dd0e4d07ad6773c133d5018df7981b3a603dfa1c62768647#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_844f7009a84ec45bbd286ea7b5ce73d7793f97e726ac05d24a484bfd6035b573"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_844f7009a84ec45bbd286ea7b5ce73d7793f97e726ac05d24a484bfd6035b573"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_d0b3a4988e8db5a1dd0e4d07ad6773c133d5018df7981b3a603dfa1c62768647"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "bufferratio_avg"
+              },
+              "unit": {
+                "S": "ratio-unconfirmed"
+              },
+              "value": {
+                "N": "0.12"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_d54657ed26952279d646da288812a8cbb8b156419469e4ebc8d24ca5eee36688#20260906"
+      },
+      "sk": {
+        "S": "T#1788703200000#fact_5b4fde1926d6f3af5f6d077039bbdcb657adb35140a1eedae385206cacd65ed2"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_5b4fde1926d6f3af5f6d077039bbdcb657adb35140a1eedae385206cacd65ed2"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_d54657ed26952279d646da288812a8cbb8b156419469e4ebc8d24ca5eee36688"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:00:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "3600"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "errors"
+              },
+              "unit": {
+                "S": "count"
+              },
+              "value": {
+                "N": "12"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_eeae99fdbe092860190ceaf80af298dbe1470c64c76c42a801a72cab3fdf0085#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_83c74d3096c3a808018cd65ea22b12ce2e31f7f7b95bf93407df084386ab2d61"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_83c74d3096c3a808018cd65ea22b12ce2e31f7f7b95bf93407df084386ab2d61"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_eeae99fdbe092860190ceaf80af298dbe1470c64c76c42a801a72cab3fdf0085"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "active_with_error"
+              },
+              "unit": {
+                "S": "count"
+              },
+              "value": {
+                "N": "3"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "pk": {
+        "S": "DATASET#dsv_contract_v1#FACT#TS#ts_efcbfb30069834c65554f022d273a42306f9c17587d48dccf78c1d0ad7980b67#20260906"
+      },
+      "sk": {
+        "S": "T#1788705900000#fact_863d68405e2d33b433f4d5325d72104d998d456a46455b6cb5aa6cda8437f103"
+      },
+      "itemType": {
+        "S": "time-series-fact"
+      },
+      "recordId": {
+        "S": "fact_863d68405e2d33b433f4d5325d72104d998d456a46455b6cb5aa6cda8437f103"
+      },
+      "datasetVersion": {
+        "S": "dsv_contract_v1"
+      },
+      "seriesId": {
+        "S": "ts_efcbfb30069834c65554f022d273a42306f9c17587d48dccf78c1d0ad7980b67"
+      },
+      "observedAt": {
+        "S": "2026-09-06T14:45:00.000Z"
+      },
+      "grainSeconds": {
+        "N": "900"
+      },
+      "source": {
+        "S": "argus"
+      },
+      "entity": {
+        "S": "globo-sp1"
+      },
+      "dimensions": {
+        "M": {
+          "channel": {
+            "S": "globo-sp1"
+          }
+        }
+      },
+      "payload": {
+        "M": {
+          "metric": {
+            "M": {
+              "name": {
+                "S": "latency_ms_p50"
+              },
+              "unit": {
+                "S": "ms"
+              },
+              "value": {
+                "N": "210.5"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

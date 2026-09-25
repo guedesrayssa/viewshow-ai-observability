@@ -3,6 +3,10 @@
 Roteiro do pipeline que compila o painel (`apps/frontend`) no GitLab CI e publica
 o resultado no AWS Amplify Hosting, dentro do laboratório da AWS Academy.
 
+> Documento histórico: o pipeline e seus scripts de credenciais foram removidos
+> na Sprint 4. Merges não disparam publicação automática; use o provisionamento
+> manual documentado no [README](../../README.md).
+
 Região usada em tudo: **us-east-1**.
 
 ---
@@ -19,9 +23,9 @@ API de deployment manual do Amplify. É o que os arquivos abaixo fazem.
 
 | Arquivo | Papel |
 | --- | --- |
-| `.gitlab-ci.yml` | Valida, compila e chama a publicação |
+| Pipeline GitLab | Descontinuado na Sprint 4 |
 | `apps/frontend/deploy/deploy-amplify.sh` | Empacota o `out/` e entrega ao Amplify |
-| `scripts/sync-aws-gitlab-credentials.sh` | Valida e renova no GitLab as credenciais da sessão |
+| Sincronizador de credenciais GitLab | Descontinuado junto com o pipeline |
 
 O painel é exportado como HTML estático (`output: "export"` em
 `next.config.ts`). Isso é possível porque nenhuma tela usa recurso de servidor:
@@ -35,7 +39,7 @@ publicação é o envio de um zip, sem runtime de computação para configurar.
 
 ### 1. App e branch isolados no Amplify
 
-O Terraform em `apps/fullstack` cria o app `g05-s3-painel` e a branch
+O Terraform em `apps/fullstack` cria o app `view-show-painel` e a branch
 `producao`, ambos com as tags de propriedade da stack. O script de publicação
 resolve o identificador e o domínio pela API do Amplify em `us-east-1`; não
 copie IDs ou domínios opacos para variáveis do GitLab.
@@ -74,45 +78,16 @@ porque o Amplify aqui só recebe arquivos prontos.
 
 ## A rotina de cada sessão do laboratório
 
-As credenciais do laboratório expiram junto com a sessão. Depois de atualizar o
-profile local `default` e confirmar a autenticação do `glab`, valide a renovação
-sem escrever no GitLab e só então sincronize:
-
-```bash
-scripts/sync-aws-gitlab-credentials.sh --dry-run
-scripts/sync-aws-gitlab-credentials.sh
-```
-
-Esse fluxo mantém as variáveis protegidas no escopo `aws-lab`. Se a branch
-`develop` estiver temporariamente desprotegida, use explicitamente o modo
-transitório nas duas etapas:
-
-```bash
-scripts/sync-aws-gitlab-credentials.sh --dry-run --allow-unprotected-develop
-scripts/sync-aws-gitlab-credentials.sh --allow-unprotected-develop
-```
-
-Quando `develop` voltar a ser protegida, execute novamente os comandos sem
-`--allow-unprotected-develop` para restaurar a proteção. O script migra
-credenciais wildcard legadas para `aws-lab`, preserva `hidden`, `masked` e
-`raw`, e nunca imprime os valores.
+As credenciais do laboratório continuam temporárias, mas não são mais enviadas
+ao GitLab: a publicação automática foi descontinuada. Configure o profile local
+da AWS CLI e execute o provisionamento manual indicado no README do projeto.
 
 ---
 
-## O que cada push dispara
+## Automação atual
 
-| Evento | O que roda |
-| --- | --- |
-| Merge request | `lint`, `tipos`, `construir:verificacao` |
-| Push em `develop` | Validação, build e publicação automática em staging |
-| Push em `main` | Validação e build. A publicação em produção fica **manual** |
-
-Produção é manual de propósito: com credenciais que expiram a cada quatro horas,
-um deploy automático em `main` falharia na maior parte das vezes por motivo
-nenhum ligado ao código, e o pipeline vermelho deixaria de significar algo.
-
-Commits que não tocam `apps/frontend` não disparam nada, por conta do filtro
-`changes:` no início do arquivo.
+Nenhum push, merge request ou merge dispara pipeline neste repositório. A
+publicação é uma operação manual e deliberada.
 
 ---
 
@@ -127,7 +102,7 @@ NEXT_PUBLIC_API_BASE_URL=https://<api> npm run build
 ./deploy/deploy-amplify.sh out
 ```
 
-O comando aceita somente o app `g05-s3-painel`, a branch `producao`, a conta
+O comando aceita somente o app `view-show-painel`, a branch `producao`, a conta
 `248880318395`, a role `voclabs` e as tags Terraform esperadas. O ID e o domínio
 são resolvidos durante o preflight, sempre em `us-east-1`.
 

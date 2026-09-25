@@ -1,0 +1,55 @@
+{
+  "table": "cdn_vod_shadow",
+  "recordType": "ShadowObservation",
+  "columns": [
+    {
+      "name": "ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "entity",
+      "sqlType": "VARCHAR(128)",
+      "nullable": false
+    },
+    {
+      "name": "req_2xx",
+      "sqlType": "DOUBLE",
+      "nullable": false
+    },
+    {
+      "name": "err_4xx",
+      "sqlType": "DOUBLE",
+      "nullable": false
+    },
+    {
+      "name": "err_5xx",
+      "sqlType": "DOUBLE",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "ts",
+    "entity"
+  ],
+  "cursorKey": [
+    "ts",
+    "entity"
+  ],
+  "timestampField": "ts",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "retired_experiment",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "ts"
+  },
+  "normalizer": "cdn_vod_shadow"
+}

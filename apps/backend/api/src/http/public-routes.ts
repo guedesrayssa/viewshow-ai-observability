@@ -33,15 +33,50 @@ export const PUBLIC_ROUTES = {
     express: "/auth/logout",
     openapi: "/auth/logout",
   },
+  argusIntegration: {
+    method: "get",
+    express: "/api/v1/integrations/argus",
+    openapi: "/api/v1/integrations/argus",
+  },
+  argusIntegrationUpdate: {
+    method: "patch",
+    express: "/api/v1/integrations/argus",
+    openapi: "/api/v1/integrations/argus",
+  },
   importStart: {
     method: "post",
     express: "/api/v1/imports",
     openapi: "/api/v1/imports",
   },
+  importList: {
+    method: "get",
+    express: "/api/v1/imports",
+    openapi: "/api/v1/imports",
+  },
+  importParts: {
+    method: "get",
+    express: "/api/v1/imports/:importId/parts",
+    openapi: "/api/v1/imports/{importId}/parts",
+  },
+  importSignParts: {
+    method: "post",
+    express: "/api/v1/imports/:importId/parts",
+    openapi: "/api/v1/imports/{importId}/parts",
+  },
+  importRestart: {
+    method: "post",
+    express: "/api/v1/imports/:importId/restart",
+    openapi: "/api/v1/imports/{importId}/restart",
+  },
   importComplete: {
     method: "post",
     express: "/api/v1/imports/:importId/complete",
     openapi: "/api/v1/imports/{importId}/complete",
+  },
+  importActivate: {
+    method: "post",
+    express: "/api/v1/imports/:importId/activate",
+    openapi: "/api/v1/imports/{importId}/activate",
   },
   importStatus: {
     method: "get",
@@ -72,6 +107,16 @@ export const PUBLIC_ROUTES = {
     method: "get",
     express: "/api/v1/incidents/:incidentId/events",
     openapi: "/api/v1/incidents/{incidentId}/events",
+  },
+  globalEvents: {
+    method: "get",
+    express: "/api/v1/events",
+    openapi: "/api/v1/events",
+  },
+  globalEvent: {
+    method: "get",
+    express: "/api/v1/events/:eventId",
+    openapi: "/api/v1/events/{eventId}",
   },
   event: {
     method: "get",

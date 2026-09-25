@@ -1,134 +1,102 @@
-/**
- * @file monitoring-view.tsx
- * Filtros técnicos, indicadores e painéis da tela de Monitoramento.
- *
- * Cobre a seção 5.6 do entendimento de UX: filtros por fonte, métrica, worker
- * e janela de tempo; alerta de atraso de fonte; cartões de ingestão, latência,
- * fila e DLQ; gráfico do fluxo de processamento; tabela de fontes; e o mapa de
- * concentração geográfica. Apoia as US-ENG-04, US-ENG-05 e US-PM-02 a
- * US-PM-05.
- *
- * Os cartões, o gráfico e a tabela derivam das mesmas fontes selecionadas,
- * então os filtros mudam de fato todos os painéis. É a tela que mais se
- * beneficia da releitura automática: é ela que mostra a fila crescendo antes
- * que alguém precise perguntar.
- */
-
 "use client";
 
 import { useMemo, useState } from "react";
-
 import { GeographicMap } from "@/app/(painel)/monitoramento/geographic-map";
 import {
   KpiCard,
   KpiCardSkeleton,
-  type KpiNoteTone,
-  type KpiTone,
 } from "@/app/(painel)/monitoramento/kpi-card";
-import { ProcessingFlowChart } from "@/app/(painel)/monitoramento/processing-flow-chart";
-import { SourcesTable } from "@/app/(painel)/monitoramento/sources-table";
+import { ServiceHealthCard } from "@/app/(painel)/monitoramento/service-health-card";
 import {
-  aggregateKpis,
-  FLOW_METRICS,
+  STATES,
+  WINDOW_LABELS,
   formatIngestion,
   formatLatencySeconds,
   formatQueue,
-  formatSeconds,
-  formatTrend,
-  LATENCY_TARGET,
-  WINDOW_LABELS,
-  type FlowMetric,
   type StateTelemetry,
   type WindowKey,
 } from "@/app/(painel)/monitoramento/telemetry-data";
-import { ServiceHealthCard } from "@/app/(painel)/monitoramento/service-health-card";
 import {
-  fetchGeographicConcentration,
-  fetchServiceTopology,
-  fetchTelemetrySources,
+  fetchMonitoringOverview,
+  type MonitoringResponse,
+  type ServiceTopology,
 } from "@/app/(painel)/monitoramento/telemetry-resource";
+import { TimeSeriesChart } from "@/components/charts/time-series-chart";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Unavailable } from "@/components/dashboard/unavailable";
-import { Reveal } from "@/components/motion/reveal";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
-import { XIcon } from "@/components/ui/icons";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useResource, type UseResourceResult } from "@/hooks/use-resource";
 import { formatInteger } from "@/lib/format";
 
-/** Variação a partir da qual a ingestão deixa de ser lida como estável. */
-const STABLE_TREND = 10;
-
-/** Releitura automática: o pipeline muda de estado em segundos. */
 const REFRESH_MS = 20_000;
+const KPI_TONES = ["info", "critical", "warning", "critical"] as const;
 
-/** Faixas dos quatro indicadores, usadas também no espaço reservado. */
-const KPI_TONES: KpiTone[] = ["info", "critical", "warning", "critical"];
-
-/** Descreve a variação da ingestão em texto, ao lado do percentual. */
-function describeTrend(trend: number): { text: string; tone: KpiNoteTone } {
-  if (Math.abs(trend) < STABLE_TREND) return { text: "estável", tone: "success" };
-  return trend > 0
-    ? { text: "em alta", tone: "warning" }
-    : { text: "em queda", tone: "critical" };
+function geographicStates(data: MonitoringResponse): StateTelemetry[] {
+  return data.geography.areas.flatMap((area) => {
+    const shape = STATES.find((state) => state.id === area.code);
+    const instability = area.values.instabilityRatio.value;
+    const latency = area.values.latencyP95.value;
+    const loss = area.values.eventLossRatio.value;
+    const sessions = area.observedSessions.value;
+    if (
+      !shape ||
+      instability === null ||
+      latency === null ||
+      loss === null ||
+      sessions === null
+    )
+      return [];
+    return [
+      {
+        id: area.code,
+        name: area.name,
+        region: area.region,
+        path: shape.path,
+        values: {
+          instabilidade: instability * 100,
+          latencia: latency / 1000,
+          perda: loss * 100,
+        },
+        sessions: sessions / 1000,
+        topSource: area.values.instabilityRatio.measurement.source,
+      },
+    ];
+  });
 }
 
 export function MonitoringView() {
-  const [source, setSource] = useState<string>("all");
-  const [metric, setMetric] = useState<FlowMetric>("latencia");
-  const [worker, setWorker] = useState<string>("all");
-  const [window, setWindow] = useState<WindowKey>("15");
-
-  const telemetry = useResource((revision) => fetchTelemetrySources(revision), [], {
-    refreshMs: REFRESH_MS,
-  });
-
-  const geography = useResource(
-    (revision) => fetchGeographicConcentration(revision),
-    [],
+  const [window, setWindow] = useState<WindowKey>("360");
+  const [source, setSource] = useState("all");
+  const monitoring = useResource(
+    () =>
+      fetchMonitoringOverview(window, source === "all" ? undefined : source),
+    [window, source],
     { refreshMs: REFRESH_MS },
   );
-
-  // A topologia segue a janela dos filtros técnicos: é a única leitura da
-  // tela com fonte real hoje, e recortá-la junto é o que faz o filtro de
-  // janela ter efeito visível.
-  const topology = useResource(() => fetchServiceTopology(`${window}m`), [window], {
-    refreshMs: REFRESH_MS,
-  });
-
-  const allSources = useMemo(() => telemetry.data ?? [], [telemetry.data]);
-  const workers = useMemo(
-    () => Array.from(new Set(allSources.map((item) => item.worker))).sort(),
-    [allSources],
-  );
-
-  const hasActiveFilters = source !== "all" || worker !== "all" || window !== "15";
-
-  const selectedSources = useMemo(
-    () =>
-      allSources.filter(
-        (item) =>
-          (source === "all" || item.id === source) &&
-          (worker === "all" || item.worker === worker),
-      ),
-    [allSources, source, worker],
-  );
-
-  const kpis = aggregateKpis(selectedSources, window);
-
-  /* O aviso de atraso só aparece quando a fonte atrasada está no recorte. */
-  const delayed = selectedSources.find((item) => item.state === "atrasado");
-
-  function clearFilters() {
-    setSource("all");
-    setWorker("all");
-    setWindow("15");
-  }
+  const data = monitoring.data;
+  const states = useMemo(() => (data ? geographicStates(data) : []), [data]);
+  const topology: UseResourceResult<ServiceTopology> = {
+    ...monitoring,
+    data: data?.topology,
+  };
+  const flow = data?.flow;
+  const flowSeries =
+    flow?.series.filter((series) => series.points.length > 0) ?? [];
+  const labels =
+    flowSeries[0]?.points.map((point) =>
+      new Date(point.timestamp).toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    ) ?? [];
+  const flowDivisor = flow?.unit === "ms" ? 1000 : 1_000_000;
+  const flowFormat =
+    flow?.unit === "ms" ? formatLatencySeconds : formatIngestion;
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,97 +105,84 @@ export function MonitoringView() {
         subtitle="Saúde técnica, distribuição e concentração geográfica"
         status={
           <DataStatus
-            source={telemetry.source}
-            availability={telemetry.availability}
-            warnings={telemetry.warnings}
-            fetchedAt={telemetry.fetchedAt}
-            refreshing={telemetry.refreshing}
-            error={telemetry.error}
-            onRefresh={telemetry.refresh}
+            source={monitoring.source}
+            availability={monitoring.availability}
+            warnings={monitoring.warnings}
+            fetchedAt={monitoring.fetchedAt}
+            refreshing={monitoring.refreshing}
+            error={monitoring.error}
+            onRefresh={monitoring.refresh}
           />
         }
       />
 
-      {telemetry.status === "error" ? (
+      {monitoring.status === "error" ? (
         <Alert tone="critical" title="Não foi possível ler o pipeline">
-          {telemetry.error} Tente atualizar em alguns instantes.
+          {monitoring.error}
         </Alert>
       ) : null}
 
-      <Reveal delay={80}>
-        <Card padding="md">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-label text-ink-muted">Filtros técnicos</p>
+      <Card padding="md" className="flex flex-wrap items-center gap-3">
+        <p className="text-label text-ink-muted">Filtros técnicos</p>
+        <Select
+          aria-label="Filtrar por fonte"
+          value={source}
+          onValueChange={setSource}
+          disabled={
+            !data?.capabilities.filtering.supportedDimensions.includes("source")
+          }
+          options={[
+            { value: "all", label: "Fonte: todas" },
+            ...(data?.sources ?? []).map((item) => ({
+              value: item.id,
+              label: `Fonte: ${item.name}`,
+            })),
+          ]}
+        />
+        <Select
+          aria-label="Métrica em análise"
+          value={flow?.metric ?? "processing_latency"}
+          onValueChange={() => {}}
+          disabled
+          options={[
+            {
+              value: flow?.metric ?? "processing_latency",
+              label:
+                flow?.metric === "ingestion_rate"
+                  ? "Métrica: ingestão"
+                  : "Métrica: latência",
+            },
+          ]}
+        />
+        <Select
+          aria-label="Filtrar por worker"
+          value="all"
+          onValueChange={() => {}}
+          disabled
+          options={[{ value: "all", label: "Worker: todos" }]}
+        />
+        <Select
+          aria-label="Janela de comparação"
+          value={window}
+          onValueChange={(value) => setWindow(value as WindowKey)}
+          options={(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => ({
+            value: key,
+            label: `Janela: ${WINDOW_LABELS[key]}`,
+          }))}
+        />
+        {data?.sources
+          .filter((source) => source.state === "delayed")
+          .map((source) => (
+            <Badge key={source.id} tone="critical" withDot role="status">
+              {source.name} com atraso
+              {source.lagSeconds !== null
+                ? ` de ${Math.round(source.lagSeconds)} s`
+                : ""}
+            </Badge>
+          ))}
+      </Card>
 
-            <Select
-              aria-label="Filtrar por fonte"
-              value={source}
-              onValueChange={(value) => setSource(value)}
-              options={[
-                { value: "all", label: `Fonte: todas` },
-                ...allSources.map((item) => ({
-                  value: item.id,
-                  label: `Fonte: ${item.name}`,
-                })),
-              ]}
-            />
-
-            <Select
-              aria-label="Métrica em análise"
-              value={metric}
-              onValueChange={(value) => setMetric(value as FlowMetric)}
-              options={(Object.keys(FLOW_METRICS) as FlowMetric[]).map((key) => ({
-                value: key,
-                label: `Métrica: ${FLOW_METRICS[key].label}`,
-              }))}
-            />
-
-            <Select
-              aria-label="Filtrar por worker"
-              value={worker}
-              onValueChange={(value) => setWorker(value)}
-              options={[
-                { value: "all", label: `Worker: todos` },
-                ...workers.map((name) => ({
-                  value: name,
-                  label: `Worker: ${name}`,
-                })),
-              ]}
-            />
-
-            <Select
-              aria-label="Janela de comparação"
-              value={window}
-              onValueChange={(value) => setWindow(value as WindowKey)}
-              options={(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => ({
-                value: key,
-                label: `Janela: ${WINDOW_LABELS[key]}`,
-              }))}
-            />
-
-            {delayed ? (
-              <Badge
-                tone="critical"
-                withDot
-                role="status"
-                className="animate-fade-in"
-              >
-                {delayed.name} com atraso de{" "}
-                {formatSeconds(delayed.updatedSecondsAgo)}
-              </Badge>
-            ) : null}
-
-            {hasActiveFilters ? (
-              <Button variant="quiet" size="sm" onClick={clearFilters}>
-                <XIcon size={16} />
-                Limpar filtros
-              </Button>
-            ) : null}
-          </div>
-        </Card>
-      </Reveal>
-
-      {telemetry.status === "loading" ? (
+      {monitoring.status === "loading" ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {KPI_TONES.map((tone, index) => (
@@ -236,141 +191,204 @@ export function MonitoringView() {
           </div>
           <Skeleton className="h-96 w-full" />
         </>
-      ) : kpis === null ? (
-        allSources.length === 0 && telemetry.source !== "exemplo" ? (
-          <>
-            <Unavailable
-              title="A saúde do pipeline ainda não é medida"
-              minHeight={180}
-            >
-              A execução do pipeline de ingestão não registra taxa, latência nem
-              cobertura nesta fase, e fila e DLQ não existem por desenho — o
-              fluxo é em lote, sem SQS. Estes cartões passam a medir quando o
-              serviço de ingestão publicar os metadados de execução.
-            </Unavailable>
-            <div className="grid gap-6 xl:grid-cols-2">
-              <Reveal className="flex">
-                <ServiceHealthCard topology={topology} />
-              </Reveal>
-              <Reveal delay={80} className="flex">
-                <GeographyBlock geography={geography} />
-              </Reveal>
-            </div>
-          </>
-        ) : (
-          <Card padding="lg">
-            <p className="text-center text-body-sm text-ink-muted">
-              Nenhuma fonte corresponde aos filtros aplicados.
-            </p>
-          </Card>
-        )
+      ) : !data ? (
+        <Unavailable title="Monitoramento indisponível" minHeight={240}>
+          A projeção do pipeline ainda não foi publicada para esta janela.
+        </Unavailable>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Reveal index={0}>
-              <KpiCard
-                label="Taxa de ingestão"
-                value={kpis.ingestionPerMinute}
-                format={formatIngestion}
-                note={`${formatTrend(kpis.ingestionTrend)} ${describeTrend(kpis.ingestionTrend).text}`}
-                tone="info"
-                noteTone={describeTrend(kpis.ingestionTrend).tone}
-              />
-            </Reveal>
-
-            <Reveal index={1}>
-              <KpiCard
-                label="Latência de processamento"
-                value={Math.round(kpis.processingLatency)}
-                format={formatLatencySeconds}
-                note={`meta ≤ ${formatLatencySeconds(LATENCY_TARGET)}`}
-                tone="critical"
-                noteTone={
-                  kpis.processingLatency <= LATENCY_TARGET ? "success" : "critical"
-                }
-              />
-            </Reveal>
-
-            <Reveal index={2}>
-              <KpiCard
-                label="Profundidade da fila"
-                value={kpis.queueDepth}
-                format={formatQueue}
-                note={`${formatTrend(kpis.queueTrend)} / ${WINDOW_LABELS[window]}`}
-                tone="warning"
-                noteTone={kpis.queueTrend > 0 ? "warning" : "success"}
-              />
-            </Reveal>
-
-            <Reveal index={3}>
-              <KpiCard
-                label="Fila de falhas · DLQ"
-                value={kpis.deadLetters}
-                format={formatInteger}
-                note={
-                  kpis.newDeadLetters === 1
-                    ? "1 nova mensagem"
-                    : `${formatInteger(kpis.newDeadLetters)} novas mensagens`
-                }
-                tone="critical"
-                noteTone={kpis.newDeadLetters > 0 ? "critical" : "success"}
-              />
-            </Reveal>
+            <KpiCard
+              label="Taxa de ingestão"
+              value={
+                data.kpis.ingestionRate.value === null
+                  ? null
+                  : data.kpis.ingestionRate.value / 1_000_000
+              }
+              format={formatIngestion}
+              note={
+                data.kpis.ingestionRate.value === null
+                  ? "sem medição"
+                  : "medição publicada"
+              }
+              tone="info"
+              noteTone="neutral"
+            />
+            <KpiCard
+              label="Latência de processamento"
+              value={
+                data.kpis.processingLatencyP95.value === null
+                  ? null
+                  : data.kpis.processingLatencyP95.value / 1000
+              }
+              format={formatLatencySeconds}
+              note={
+                data.kpis.processingLatencyP95.value === null
+                  ? "sem medição"
+                  : "p95 publicado"
+              }
+              tone="critical"
+              noteTone="neutral"
+            />
+            <KpiCard
+              label="Profundidade da fila"
+              value={
+                data.kpis.queueDepth.value === null
+                  ? null
+                  : data.kpis.queueDepth.value / 1000
+              }
+              format={formatQueue}
+              note={
+                data.kpis.queueDepth.value === null
+                  ? "não se aplica ao pipeline em lote"
+                  : "medição publicada"
+              }
+              tone="warning"
+              noteTone="neutral"
+            />
+            <KpiCard
+              label="Fila de falhas · DLQ"
+              value={data.kpis.deadLetterQueue.value}
+              format={formatInteger}
+              note={
+                data.kpis.deadLetterQueue.value === null
+                  ? "não se aplica ao pipeline em lote"
+                  : "medição publicada"
+              }
+              tone="critical"
+              noteTone="neutral"
+            />
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <Reveal delay={220} className="flex">
-              <Card padding="lg" className="flex-1">
-                <div className="flex flex-col gap-8">
-                  <ProcessingFlowChart sources={selectedSources} metric={metric} />
-                  <SourcesTable sources={selectedSources} />
-                </div>
-              </Card>
-            </Reveal>
+            <Card padding="lg">
+              <CardTitle>Fluxo de processamento</CardTitle>
+              <CardDescription className="mt-1">
+                {flow?.metric === "ingestion_rate"
+                  ? "Taxa de ingestão"
+                  : "Latência de processamento"}{" "}
+                · {WINDOW_LABELS[window]}
+              </CardDescription>
+              {flowSeries.length > 0 && labels.length > 0 ? (
+                <TimeSeriesChart
+                  className="mt-5"
+                  height={224}
+                  labels={labels}
+                  series={flowSeries.map((series, index) => ({
+                    id: series.stage,
+                    label: series.name,
+                    tone:
+                      index === 0 ? ("critical" as const) : ("info" as const),
+                    area: index === 0,
+                    values: series.points.map(
+                      (point) => point.value / flowDivisor,
+                    ),
+                  }))}
+                  reference={
+                    flow?.target
+                      ? {
+                          value: flow.target.value / flowDivisor,
+                          label: "meta",
+                        }
+                      : undefined
+                  }
+                  showPeak
+                  formatValue={flowFormat}
+                  ariaLabel={`Fluxo de ${flow?.metric === "ingestion_rate" ? "ingestão" : "processamento"} na janela de ${WINDOW_LABELS[window]}.`}
+                />
+              ) : (
+                <Unavailable
+                  title="Série temporal sem medição"
+                  className="mt-5"
+                  minHeight={224}
+                >
+                  A fonte ainda não publicou pontos para esta janela.
+                </Unavailable>
+              )}
 
-            <Reveal delay={300} className="flex">
-              <GeographyBlock geography={geography} />
-            </Reveal>
+              <h3 className="mt-8 text-title text-ink">
+                Fontes e qualidade da telemetria
+              </h3>
+              {data.sources.length === 0 ? (
+                <p className="mt-4 text-body-sm text-ink-muted">
+                  Nenhuma fonte publicada.
+                </p>
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full min-w-[32rem] text-left text-body-sm">
+                    <thead>
+                      <tr className="text-caption uppercase text-ink-brand">
+                        <th className="pb-3">Fonte</th>
+                        <th className="pb-3">Atualização</th>
+                        <th className="pb-3">Cobertura</th>
+                        <th className="pb-3">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.sources.map((source) => (
+                        <tr
+                          key={source.id}
+                          className="border-t border-line-subtle"
+                        >
+                          <th className="py-3 font-medium">{source.name}</th>
+                          <td className="py-3">
+                            {source.observedThrough
+                              ? new Date(source.observedThrough).toLocaleString(
+                                  "pt-BR",
+                                )
+                              : "—"}
+                          </td>
+                          <td className="py-3">
+                            {source.coverage.value === null
+                              ? "—"
+                              : `${Math.round(source.coverage.value * 100)}%`}
+                          </td>
+                          <td className="py-3">
+                            <Badge
+                              tone={
+                                source.state === "stable"
+                                  ? "success"
+                                  : source.state === "delayed"
+                                    ? "critical"
+                                    : "warning"
+                              }
+                            >
+                              {
+                                (
+                                  {
+                                    stable: "Estável",
+                                    delayed: "Atrasada",
+                                    partial: "Parcial",
+                                    unavailable: "Indisponível",
+                                  } as const
+                                )[source.state]
+                              }
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+
+            {states.length > 0 ? (
+              <GeographicMap states={states} />
+            ) : (
+              <Card padding="lg">
+                <CardTitle>Concentração geográfica</CardTitle>
+                <Unavailable title="Sem recorte por estado" className="mt-5">
+                  As métricas geográficas ainda não foram publicadas com todas
+                  as medidas necessárias.
+                </Unavailable>
+              </Card>
+            )}
           </div>
 
-          <Reveal delay={360}>
-            <ServiceHealthCard topology={topology} />
-          </Reveal>
+          <ServiceHealthCard topology={topology} />
         </>
       )}
     </div>
   );
-}
-
-/**
- * Cartão da concentração geográfica, com o estado sem fonte.
- *
- * Ao vivo, nenhuma API segmenta por unidade federativa: o cartão declara isso
- * no lugar do mapa, em vez de deixar um esqueleto girando para sempre.
- */
-function GeographyBlock({
-  geography,
-}: {
-  geography: UseResourceResult<StateTelemetry[]>;
-}) {
-  const empty =
-    geography.status !== "loading" && (geography.data?.length ?? 0) === 0;
-
-  if (empty && geography.source !== "exemplo") {
-    return (
-      <Card padding="lg" className="flex flex-1 flex-col">
-        <CardTitle>Concentração geográfica</CardTitle>
-        <Unavailable
-          title="Sem recorte por unidade federativa"
-          className="mt-5 flex-1"
-        >
-          A segmentação publicada pela telemetria cobre provedor, CDN e tipo de
-          conexão — não há dimensão geográfica. O mapa volta quando a projeção
-          por estado for publicada pelo serviço de ingestão.
-        </Unavailable>
-      </Card>
-    );
-  }
-
-  return <GeographicMap states={geography.data} />;
 }

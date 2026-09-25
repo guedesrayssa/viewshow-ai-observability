@@ -1,0 +1,50 @@
+{
+  "table": "player_hourly",
+  "recordType": "DimensionalMetricAggregate",
+  "columns": [
+    {
+      "name": "hour_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "player",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "sessions",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "hour_ts",
+    "player"
+  ],
+  "cursorKey": [
+    "hour_ts",
+    "player"
+  ],
+  "timestampField": "hour_ts",
+  "grainSeconds": 3600,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "known_upstream_lag",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "hour_ts"
+  },
+  "normalizer": "player_hourly"
+}

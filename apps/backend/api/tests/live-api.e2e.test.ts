@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import {
   CreateTableCommand,
@@ -7,6 +8,7 @@ import {
   ListTablesCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -20,9 +22,42 @@ import {
 } from "../scripts/live-e2e-runtime.mjs";
 import { SessionCodec } from "../src/modules/auth/domain/session.js";
 
-const tableName = "monitoracao-operacional-e2e";
+const tableName = "view-show-operacional-e2e";
+const activeDatasetItem = JSON.parse(
+  readFileSync(
+    new URL("../../contracts/fixtures/active-dataset-v1.json", import.meta.url),
+    "utf8",
+  ),
+) as Record<string, unknown>;
+const activeDatasetKey = { pk: "CONTROL#DATASET", sk: "ACTIVE" };
+const hypothesisKey = {
+  pk: "INC#inc_e2e",
+  sk: "INCIDENT#inc_e2e#HYPOTHESIS#hyp_e2e",
+};
+// require-active-dataset.ts usa esta mensagem, e só ela, quando o ponteiro
+// ACTIVE está ausente, ilegível ou fora do contrato consumido.
+const absentPointerMessage =
+  "Nenhuma versão ativa e compatível do dataset está disponível.";
+const readSurface = [
+  "/api/v1/dashboard/overview",
+  "/api/v1/incidents",
+  "/api/v1/incidents/inc_e2e/diagnosis",
+  "/api/v1/incidents/inc_e2e/events",
+  "/api/v1/incidents/inc_e2e/events/evt_e2e",
+  "/api/v1/monitoring/overview",
+];
 const authSecret = "a".repeat(32);
 const cursorSecret = "c".repeat(32);
+
+function authenticatedReadHeaders(): Record<string, string> {
+  const session = new SessionCodec(authSecret).issue({
+    id: "usr_e2e_reader",
+    email: "reader@example.test",
+    name: "E2E Reader",
+    role: "viewer",
+  });
+  return { cookie: `session=${encodeURIComponent(session)}` };
+}
 
 let client: DynamoDBClient | undefined;
 let documentClient: DynamoDBDocumentClient | undefined;
@@ -100,14 +135,6 @@ async function stopApi(): Promise<void> {
 describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
   "compiled API against DynamoDB Local",
   () => {
-    const now = new Date();
-    const day = now.toISOString().slice(0, 10).replaceAll("-", "");
-    const incidentPk = `INC#${now.toISOString().slice(0, 13)}`;
-    const hypothesisKey = {
-      pk: incidentPk,
-      sk: "INCIDENT#inc_e2e#HYPOTHESIS#hyp_e2e",
-    };
-
     beforeAll(async () => {
       const endpoint = requireDynamoDbEndpoint(process.env);
       client = new DynamoDBClient({
@@ -142,169 +169,6 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
         }),
       );
       tableCreated = true;
-
-      const measurement = {
-        status: "measured",
-        source: "e2e",
-        coverageRatio: 1,
-        observedThrough: now.toISOString(),
-      };
-      const capabilities = {
-        filtering: {
-          status: "partial",
-          supportedDimensions: [],
-          supportedFilterSets: [[]],
-        },
-      };
-      const kpis: unknown[] = [];
-      const experienceHealth = {
-        metric: "errors_per_minute",
-        unit: "errors_per_minute",
-        bucketSeconds: 60,
-        baselineValue: null,
-        measurement,
-        points: [],
-        anomalyWindows: [],
-      };
-      const recentIncidents: unknown[] = [];
-      const facets = {};
-
-      await Promise.all([
-        documentClient.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `VIEW#OVERVIEW#GLOBAL#${day}`,
-              sk: `T#${now.getTime()}`,
-              publicData: {
-                capabilities,
-                kpis,
-                experienceHealth,
-                recentIncidents,
-                facets,
-              },
-              observedThrough: now.toISOString(),
-              coverageRatio: 1,
-              source: "e2e",
-            },
-          }),
-        ),
-        documentClient.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `VIEW#MONITORING#argus#${day}`,
-              sk: `T#${now.getTime()}`,
-              publicData: {
-                capabilities: {
-                  sourceQuality: { status: "available" },
-                  pipelineRuntime: {
-                    status: "partial",
-                    metrics: {
-                      ingestionRate: "available",
-                      processingLatencyP95: "available",
-                      queueDepth: "unavailable",
-                      deadLetterQueue: "unavailable",
-                    },
-                    reason: "BATCH_PIPELINE",
-                  },
-                  geographicMetrics: {
-                    status: "available",
-                    granularity: "state",
-                  },
-                  filtering: capabilities.filtering,
-                },
-                kpis: {},
-                flow: {
-                  metric: "processing_latency",
-                  unit: "milliseconds",
-                  bucketSeconds: 60,
-                  measurement,
-                  target: null,
-                  series: [],
-                  peak: null,
-                },
-                sources: [],
-                geography: {
-                  granularity: "state",
-                  metrics: [],
-                  areas: [],
-                },
-                facets,
-              },
-              observedThrough: now.toISOString(),
-              coverageRatio: 1,
-              source: "e2e",
-            },
-          }),
-        ),
-        documentClient.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: incidentPk,
-              sk: "INCIDENT#inc_e2e",
-              trace_id: "inc_e2e",
-              itemType: "incident",
-              id: "inc_e2e",
-              number: "INC-E2E",
-              title: "Live API incident",
-              priority: "P1",
-              status: "investigating",
-              startedAt: now.toISOString(),
-              updatedAt: now.toISOString(),
-              affectedDevices: 2,
-              affectedSessions: 3,
-              shareOfObservedSessions: 0.5,
-              componentId: "cmp_e2e",
-              componentName: "video-player",
-              coverageRatio: 1,
-              observedThrough: now.toISOString(),
-              source: "e2e",
-            },
-          }),
-        ),
-        documentClient.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              ...hypothesisKey,
-              trace_id: "inc_e2e",
-              itemType: "hypothesis",
-              id: "hyp_e2e",
-              statement: "A live dependency is degraded.",
-              probability: 0.8,
-              rationale: "Seeded by the live API test.",
-              version: 1,
-              reviewVersion: 0,
-              reviewStatus: "pending",
-              generatedAt: now.toISOString(),
-              createdAt: now.toISOString(),
-            },
-          }),
-        ),
-        documentClient.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: incidentPk,
-              sk: "INCIDENT#inc_e2e#EVIDENCE#evi_e2e",
-              trace_id: "inc_e2e",
-              itemType: "evidence",
-              id: "evi_e2e",
-              type: "metric_deviation",
-              title: "Elevated latency",
-              statement: "Latency is above the seeded baseline.",
-              relation: "supports",
-              strength: "strong",
-              observedAt: now.toISOString(),
-              source: "e2e",
-              qualityStatus: "verified",
-              coverageRatio: 1,
-            },
-          }),
-        ),
-      ]);
 
       const port = await freePort();
       apiUrl = `http://127.0.0.1:${port}`;
@@ -350,7 +214,62 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
       });
     });
 
-    it("serves the public runtime contract through real HTTP and repositories", async () => {
+    it("fails closed with DATA_UNAVAILABLE while no dataset version is ACTIVE", async () => {
+      if (!documentClient)
+        throw new Error("DynamoDB document client was not initialized");
+      // A ausência do ponteiro ACTIVE é o estado de partida, garantido aqui
+      // para que o teste não dependa da ordem de execução do arquivo.
+      await documentClient.send(
+        new DeleteCommand({ TableName: tableName, Key: activeDatasetKey }),
+      );
+
+      for (const path of readSurface) {
+        const response = await fetch(`${apiUrl}${path}`, {
+          headers: authenticatedReadHeaders(),
+        });
+        expect(response.status, path).toBe(503);
+        expect(await response.json(), path).toMatchObject({
+          error: {
+            code: "DATA_UNAVAILABLE",
+            message: absentPointerMessage,
+          },
+        });
+      }
+
+      for (const path of ["/health", "/metrics"]) {
+        const response = await fetch(`${apiUrl}${path}`);
+        expect(response.status, path).toBe(200);
+      }
+    });
+
+    it("keeps failing closed after a valid ACTIVE manifest, because no public projection exists yet", async () => {
+      if (!documentClient)
+        throw new Error("DynamoDB document client was not initialized");
+      await documentClient.send(
+        new PutCommand({ TableName: tableName, Item: activeDatasetItem }),
+      );
+
+      for (const path of readSurface) {
+        const response = await fetch(`${apiUrl}${path}`, {
+          headers: authenticatedReadHeaders(),
+        });
+        expect(response.status, path).toBe(503);
+        const body = (await response.json()) as {
+          readonly error: { readonly code: string; readonly message: string };
+        };
+        expect(body.error.code, path).toBe("DATA_UNAVAILABLE");
+        // O manifesto foi realmente consumido: a recusa deixa de citar o
+        // ponteiro ausente e passa a citar a projeção que ainda não existe.
+        expect(body.error.message, path).not.toBe(absentPointerMessage);
+      }
+    });
+
+    it("answers FEATURE_UNAVAILABLE for writes the active physical contract does not support", async () => {
+      if (!documentClient)
+        throw new Error("DynamoDB document client was not initialized");
+      await documentClient.send(
+        new PutCommand({ TableName: tableName, Item: activeDatasetItem }),
+      );
       const session = new SessionCodec(authSecret).issue({
         id: "usr_e2e",
         email: "engineer@example.test",
@@ -358,18 +277,6 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
         role: "engineer",
       });
       const cookie = `session=${encodeURIComponent(session)}`;
-
-      for (const path of [
-        "/api/v1/dashboard/overview",
-        "/api/v1/incidents",
-        "/api/v1/incidents/inc_e2e/diagnosis",
-        "/api/v1/monitoring/overview",
-        "/metrics",
-        "/health",
-      ]) {
-        const response = await fetch(`${apiUrl}${path}`);
-        expect(response.status, path).toBe(200);
-      }
 
       const review = await fetch(
         `${apiUrl}/api/v1/incidents/inc_e2e/hypotheses/hyp_e2e/review`,
@@ -383,33 +290,15 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
           }),
         },
       );
-      expect(review.status).toBe(200);
-      if (!documentClient)
-        throw new Error("DynamoDB document client was not initialized");
+      expect(review.status).toBe(503);
+      expect(await review.json()).toMatchObject({
+        error: { code: "FEATURE_UNAVAILABLE" },
+      });
+      // A recusa não pode deixar rastro: nenhuma revisão é materializada.
       const persistedHypothesis = await documentClient.send(
         new GetCommand({ TableName: tableName, Key: hypothesisKey }),
       );
-      expect(persistedHypothesis.Item?.reviewVersion).toBe(1);
-
-      const events = await fetch(`${apiUrl}/api/v1/incidents/inc_e2e/events`);
-      expect(events.status).toBe(200);
-      expect(await events.json()).toMatchObject({
-        meta: {
-          partial: true,
-          warnings: [
-            { code: "AGGREGATE_EVENTS_UNAVAILABLE" },
-            { code: "INDIVIDUAL_EVENTS_UNAVAILABLE" },
-          ],
-        },
-      });
-
-      const individualEvent = await fetch(
-        `${apiUrl}/api/v1/incidents/inc_e2e/events/evt_e2e`,
-      );
-      expect(individualEvent.status).toBe(503);
-      expect(await individualEvent.json()).toMatchObject({
-        error: { code: "DATA_UNAVAILABLE" },
-      });
+      expect(persistedHypothesis.Item).toBeUndefined();
 
       const importBody = {
         fileName: "e2e.sql.gz",
@@ -425,12 +314,16 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
       expect(unauthenticatedImport.status).toBe(401);
       const authenticatedImport = await fetch(`${apiUrl}/api/v1/imports`, {
         method: "POST",
-        headers: { cookie, "content-type": "application/json" },
+        headers: {
+          cookie,
+          "content-type": "application/json",
+          "idempotency-key": "import_e2e_invalid_legacy_body",
+        },
         body: JSON.stringify(importBody),
       });
-      expect(authenticatedImport.status).toBe(503);
+      expect(authenticatedImport.status).toBe(400);
       expect(await authenticatedImport.json()).toMatchObject({
-        error: { code: "FEATURE_UNAVAILABLE" },
+        error: { code: "VALIDATION_ERROR" },
       });
 
       const reanalysisHeaders = { "idempotency-key": "rea_e2e" };
@@ -466,7 +359,9 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
       expect(await callback.json()).toMatchObject({
         error: { code: "FEATURE_UNAVAILABLE" },
       });
+    });
 
+    it("propagates the request id on an unknown path", async () => {
       const unknown = await fetch(`${apiUrl}/unknown-e2e-path`, {
         headers: { "x-request-id": "req_live_missing" },
       });

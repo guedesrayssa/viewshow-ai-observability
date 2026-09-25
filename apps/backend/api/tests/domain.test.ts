@@ -124,6 +124,30 @@ describe("domain values", () => {
     expect(JSON.stringify(diagnosis)).not.toMatch(/"(?:pk|sk|ttl)"/);
   });
 
+  it("exposes persisted diagnosis charts and timeline in the public response", () => {
+    const timestamp = "2026-01-01T00:00:00Z";
+    const diagnosis = toDiagnosisData({
+      ...incident,
+      diagnosisProjection: {
+        buffering: {
+          points: [{ timestamp, value: 3.2 }],
+          marker: { timestamp, label: "Degradação" },
+        },
+        concentrations: [{ label: "smart-tv", percentage: 68 }],
+        concentrationNote: "Dispositivos afetados",
+        timeline: [{ timestamp, label: "Detecção", source: "Argus", tone: "critical" }],
+        changes: [{ label: "Provável", cause: "player", percentage: 72, tone: "warning" }],
+      },
+    }, [{ itemType: "evidence", id: "evi_1", statement: "Desvio observado" }]);
+
+    expect(diagnosis.charts.buffering?.points).toEqual([{ timestamp: "2026-01-01T00:00:00.000Z", value: 3.2 }]);
+    expect(diagnosis.charts.concentrations).toEqual([{ label: "smart-tv", percentage: 68 }]);
+    expect(diagnosis.timeline).toHaveLength(1);
+    expect(diagnosis.changes).toHaveLength(1);
+    expect(diagnosis.dataQuality.status).toBe("sufficient");
+    expect(JSON.stringify(diagnosis)).not.toMatch(/"(?:pk|sk|ttl|diagnosisProjection)"/);
+  });
+
   it("fails incomplete required incident facts instead of inventing values", () => {
     expect(() =>
       toIncidentDto({ id: "inc_bad", title: "Missing facts" }),

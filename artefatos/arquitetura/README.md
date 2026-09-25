@@ -1,8 +1,8 @@
 # Arquitetura do View Show
 
 - **Status:** fonte oficial para desenvolvimento
-- **Versão:** 1.1
-- **Última atualização:** 10/09/2026
+- **Versão:** 2.0
+- **Última atualização:** 11/09/2026
 - **Responsáveis:** equipe do projeto
 
 ## Objetivo
@@ -14,7 +14,7 @@ A regra editorial é **uma decisão, um único lugar oficial**. Quando um arquiv
 ## Ordem de leitura
 
 1. [Visão geral](visao-geral.md): componentes, comunicação, AWS, segurança e decisões arquiteturais.
-2. [Diagramas de sequência](../modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
+2. [Diagramas de sequência](../sprint3/modelagem.md#5-diagramas-de-sequência): representação acadêmica dos cenários de sucesso, alternativa e falha.
 3. Documento específico da área em desenvolvimento.
 4. [Implementação](implementacao/README.md): como cada componente foi construído, o que a verificação mostrou e como rodar.
 5. [Status de implementação](status-implementacao.md): cobertura atual, responsáveis, evidências e bloqueios.
@@ -48,6 +48,11 @@ Reúne o registro por componente do que está construído: estrutura do código,
 ### [Status de implementação](status-implementacao.md)
 
 Registra somente o que está definido, implementado, testado ou pendente. Ele não redefine contratos.
+
+O [runbook batch](../../apps/backend/ingestion-data/README.md) documenta o
+snapshot ARGUS 2.0, a execução Fargate e a recuperação. O guia canônico de
+infraestrutura, VPC, Cognito e teardown fica em
+[infraestrutura-integracao.md](../sprint3/infraestrutura-integracao.md).
 
 ## Roteiro por área
 

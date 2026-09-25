@@ -3,7 +3,8 @@
 // SG do ALB". A porta 3000 nunca fica exposta à internet.
 
 resource "aws_security_group" "alb" {
-  name        = "${local.nome_alb}-sg"
+  # Preserva o SG ja criado na tentativa parcial, mesmo com ALB novo isolado.
+  name        = "${var.deployment_namespace}-alb-sg"
   description = "Entrada publica na porta 80 do ALB"
   vpc_id      = aws_vpc.principal.id
 
@@ -53,5 +54,31 @@ resource "aws_security_group" "servico" {
 
   tags = {
     Projeto = "view-show"
+  }
+}
+
+// Tasks de ingestão não recebem tráfego externo ou de serviços internos: a
+// comunicação do sidecar MySQL ocorre no namespace localhost da própria task.
+resource "aws_security_group" "ingestion" {
+  name        = "${local.ingestion_name_prefix}-sg"
+  description = "Tasks da ingestao sem trafego de entrada"
+  vpc_id      = local.ingestion_vpc_id
+
+  // O atributo explícito evita que o provider trate ingress como computed e
+  // mantém qualquer regra de entrada removida da configuração.
+  ingress = []
+
+  egress {
+    description = "Saida para ECR, AWS APIs, MySQL live e logs"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Projeto    = "view-show"
+    Componente = "ingestion"
+    Ambiente   = var.ambiente
   }
 }

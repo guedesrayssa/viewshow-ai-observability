@@ -1,0 +1,100 @@
+{
+  "table": "live_qoe_hourly",
+  "recordType": "DimensionalMetricAggregate",
+  "columns": [
+    {
+      "name": "hour_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "sinal",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "sessions",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "startup_errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "latency_ms_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "latency_ms_p50",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "latency_ms_p95",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "bufferratio_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "jointime_s_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "dropped_frames_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "stalls_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "bitrate_mbps_avg",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    },
+    {
+      "name": "bitrate_mbps_p50",
+      "sqlType": "DOUBLE",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "hour_ts",
+    "sinal"
+  ],
+  "cursorKey": [
+    "hour_ts",
+    "sinal"
+  ],
+  "timestampField": "hour_ts",
+  "grainSeconds": 3600,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "known_upstream_lag",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "hour_ts"
+  },
+  "normalizer": "live_qoe_hourly"
+}

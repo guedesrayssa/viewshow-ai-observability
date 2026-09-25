@@ -1,0 +1,21 @@
+{
+  "version": "prospective-comparison-v1",
+  "repetitions": 3,
+  "holdout_cases": 8,
+  "strata": {"increase": 3, "decrease": 3, "stable": 2},
+  "selection_seed": 22092026,
+  "order_seed": 22092027,
+  "review_seed": 22092028,
+  "minimum_ready_fraction": 0.9,
+  "maximum_p95_seconds": 120,
+  "minimum_mean_quality_0_to_8": 6,
+  "maximum_critical_errors_for_adoption": 0,
+  "minimum_case_mean_gain_0_to_8": 0.5,
+  "minimum_net_case_wins": 2,
+  "dimensions": ["factual_support", "contradictions", "uncertainty", "next_step_usefulness"],
+  "critical_error_codes": ["invented_cause_as_fact", "reversed_metric_meaning", "wrong_target_conclusion", "material_numeric_error"],
+  "primary_reviewer": "user",
+  "second_reviewer": null,
+  "causal_accuracy_measurable": false,
+  "decision_scope": "Exploratory local architecture prioritization, not proof of production reliability. Thresholds are project defaults fixed before evaluation; latency default awaits user preference."
+}

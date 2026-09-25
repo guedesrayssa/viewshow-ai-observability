@@ -1,0 +1,16 @@
+{
+  "eventId": "evt_contract_anomaly_001",
+  "eventType": "ANOMALY_DETECTION",
+  "schemaVersion": "1.0",
+  "idempotencyKey": "ana_contract_20260906_1445",
+  "traceId": "trc_contract_001",
+  "occurredAt": "2026-09-06T15:00:00.000Z",
+  "producedAt": "2026-09-06T15:01:12.000Z",
+  "source": "data-ingestion-service",
+  "payload": {
+    "window": { "start": "2026-09-06T14:45:00.000Z", "end": "2026-09-06T15:00:00.000Z", "grainSeconds": 900 },
+    "scope": { "kind": "entity", "dimensions": { "scopeId": "argus:channel:globo-rj" } },
+    "inputWatermark": "2026-09-06T15:00:00.000Z",
+    "datasetVersion": "dsv_contract_v1"
+  }
+}

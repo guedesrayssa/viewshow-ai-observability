@@ -1,8 +1,8 @@
 # Visão geral da arquitetura
 
-- **Status:** aprovado para implementação
-- **Versão:** 1.1
-- **Última atualização:** 07/09/2026
+- **Status:** aprovado para implementação incremental
+- **Versão:** 2.0
+- **Última atualização:** 11/09/2026
 - **Responsáveis:** equipe de arquitetura
 - **Região AWS:** `us-east-1`
 
@@ -76,21 +76,41 @@ flowchart LR
     API --> CW
 ```
 
+O diagrama representa o conjunto atual e o alvo. Já houve um ciclo anterior de
+`apply` e `destroy`; o bucket compatível da ingestão permaneceu como previsto.
+O novo plano integrado e a prova com o dump reduzido de 23 tabelas ainda estão
+pendentes. Esse dump é smoke funcional, não validação de capacidade.
+
 ### 3.1 Dashboard
 
-Aplicação Next.js entregue pelo Amplify. Ela apresenta dados, inicia uploads, consulta o progresso das tarefas e envia decisões humanas. Não acessa o DynamoDB, a SQS ou o ARGUS diretamente.
+Aplicação Next.js entregue pelo Amplify. Ela apresenta dados e envia decisões
+humanas sem acessar DynamoDB, SQS ou ARGUS diretamente. O runtime atual também
+emite RUM; upload e acompanhamento de importação permanecem capacidades-alvo.
 
 ### 3.2 Backend API
 
-Aplicação Node/Express executada em ECS/Fargate. Ela valida a sessão, converte os modelos de leitura em DTOs públicos, inicia importações, publica reanálises e registra revisões. Consultas de até 30 dias usam o DynamoDB; períodos anteriores usam o Athena sobre os arquivos do S3. Quando o intervalo atravessa a fronteira, o Backend combina os resultados sem expor detalhes físicos de armazenamento.
+Aplicação Node/Express executada em ECS/Fargate privado. Ela valida a sessão,
+converte modelos de leitura em DTOs públicos e registra revisões. O runtime atual
+autentica diretamente no Cognito por usuário e senha; federação SSO, importação
+HTTP, reanálise e consultas históricas Athena permanecem integrações parciais ou
+alvo. A adoção do manifesto `ACTIVE` deve preservar as consultas já funcionais
+da `develop` e falhar fechada apenas quando a versão estiver ausente ou
+incompatível.
 
 ### 3.3 Serviço de Ingestão
 
-Aplicação batch Python executada como ECS Task. O EventBridge inicia `sync` a cada 15 minutos; importações e reprocessamentos utilizam tarefas sob demanda. Ela lê o ARGUS ou um MySQL temporário restaurado, normaliza dados, grava a camada quente no DynamoDB, arquiva o histórico em Parquet no S3, atualiza as partições no Glue Data Catalog e publica solicitações de análise pela outbox.
+Aplicação batch Python executada como ECS Task, sem endpoint HTTP. O backfill
+manual restaura um snapshot versionado em MySQL sidecar efêmero, normaliza os 23
+datasets ARGUS 2.0, grava DynamoDB e Parquet, reconcilia Glue/Athena e publica
+pela outbox. O gate live e o controle autenticado do Scheduler estão
+implementados; a agenda nasce desabilitada e a integração não deve ser ativada
+até haver conectividade e prova específicas na AWS.
 
 ### 3.4 Worker de Análise
 
-Consumidor Python da SQS executado como ECS Service. Ele realiza detecção a cada janela de 15 minutos, previsão a cada janela horária e reanálise sob demanda. O orquestrador e o agente diagnóstico são módulos internos deste componente.
+A camada agêntica preservada da `develop` implementa localmente contratos,
+quality gate, providers e prompts. O consumidor SQS como serviço AWS, sua
+persistência integrada e a operação com Bedrock ainda são arquitetura-alvo.
 
 ### 3.5 Persistência
 
@@ -162,13 +182,17 @@ sequenceDiagram
     API-->>U: Resultado e revisão pendente
 ```
 
-Os diagramas completos, com alternativas e falhas, estão na [Seção 5 da modelagem](../modelagem.md#5-diagramas-de-sequência); o [índice de fluxos](fluxos.md) relaciona cada cenário aos contratos técnicos aplicáveis.
+Os diagramas completos, com alternativas e falhas, estão na [Seção 5 da modelagem](../sprint3/modelagem.md#5-diagramas-de-sequência); o [índice de fluxos](fluxos.md) relaciona cada cenário aos contratos técnicos aplicáveis.
 
 ## 6. Decisões arquiteturais
 
 ### D1 — AWS como ambiente de execução
 
-Frontend, APIs, processamento, mensageria, armazenamento, identidade e observabilidade são provisionados na AWS. A comunicação com o ARGUS ocorre por conectividade privada autorizada pela Globo.
+Frontend, APIs, processamento, mensageria, armazenamento, identidade e
+observabilidade pertencem à arquitetura AWS. A stack atual declara VPC dedicada
+em duas AZs, API e workers em sub-redes privadas, ALB, bastion, Flow Logs,
+Cognito e autoscaling. A comunicação live com o ARGUS ainda depende de
+conectividade privada autorizada pela Globo.
 
 ### D2 — Armazenamento temporal em camadas
 
@@ -200,7 +224,11 @@ Diagnósticos confirmados ficam em uma tabela separada. A ingestão não possui 
 
 ### D9 — Importação assíncrona e ativação versionada
 
-O navegador envia o dump diretamente ao S3. O Backend devolve HTTP 202 após iniciar a restauração, e o dashboard acompanha `ImportJob` até `COMPLETED` ou `FAILED`. A tarefa grava a camada quente, o arquivo histórico e os watermarks em um namespace identificado por `candidateDatasetVersion`; somente depois de validar os dois níveis troca condicionalmente o manifesto ativo. O `recordId` permanece estável entre versões.
+Hoje o operador envia o dump ao S3 e dispara `RunTask` por scripts. Upload
+direto pelo navegador, HTTP 202 e acompanhamento de `ImportJob` são o desenho
+alvo. Em ambos os casos, a tarefa grava sob uma `candidateDatasetVersion` e só
+troca o manifesto ativo depois de validar as camadas; o `recordId` permanece
+estável entre versões.
 
 ### D10 — Contratos versionados
 
@@ -208,7 +236,8 @@ Eventos, itens persistidos e respostas públicas possuem versão. Alterações i
 
 ## 7. Segurança
 
-- Usuários são autenticados pelo Cognito federado ao SSO da Globo.
+- Hoje usuários são autenticados diretamente pelo Cognito; federação com o SSO
+  da Globo permanece o modelo-alvo.
 - O navegador recebe cookie de sessão `HttpOnly`, `Secure` e `SameSite`.
 - Workers permanecem em sub-redes privadas e não expõem portas públicas.
 - Cada componente utiliza role IAM de menor privilégio.
@@ -226,7 +255,10 @@ Dumps inválidos não substituem o dataset disponível. Durante uma importação
 
 ## 9. Observabilidade
 
-Todos os componentes propagam `traceId`. Ingestão e análise acrescentam `runId`, `eventId` e identificadores de janela. O CloudWatch reúne logs, métricas e alarmes de atraso, erro, fila, DLQ, duração e disponibilidade. O monitoramento também acompanha falhas de compactação em Parquet, partições ausentes, tempo e volume lido pelo Athena.
+A API propaga request/trace IDs e métricas RED; o frontend emite RUM. Ingestão
+e camada agêntica possuem logs estruturados e hooks OpenTelemetry, acrescentando
+`runId`, `eventId` e identificadores de janela quando aplicáveis. CloudWatch,
+Flow Logs e a stack LGTM opcional reúnem as evidências operacionais.
 
 ## 10. Documentos relacionados
 

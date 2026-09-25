@@ -198,6 +198,65 @@ function evidenceStrength(value: unknown): "strong" | "moderate" | "weak" {
   return "moderate";
 }
 
+const record = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+
+function diagnosisPresentation(
+  item: PhysicalItem,
+): Pick<DiagnosisData, "charts" | "timeline" | "changes"> {
+  const projection = record(item.diagnosisProjection);
+  const buffering = record(projection?.buffering);
+  const points = (Array.isArray(buffering?.points) ? buffering.points : []).flatMap((entry) => {
+    const point = record(entry);
+    const timestamp = iso(point?.timestamp);
+    const value = number(point?.value);
+    return timestamp && value !== null ? [{ timestamp, value }] : [];
+  });
+  const rawMarker = record(buffering?.marker);
+  const markerTimestamp = iso(rawMarker?.timestamp);
+  const markerLabel = text(rawMarker?.label);
+  const concentrations = (Array.isArray(projection?.concentrations) ? projection.concentrations : []).flatMap((entry) => {
+    const slice = record(entry);
+    const label = text(slice?.label);
+    const percentage = number(slice?.percentage);
+    return label && percentage !== null && percentage >= 0 && percentage <= 100
+      ? [{ label, percentage }] : [];
+  });
+  const timeline = (Array.isArray(projection?.timeline) ? projection.timeline : []).flatMap((entry) => {
+    const mark = record(entry);
+    const timestamp = iso(mark?.timestamp);
+    const label = text(mark?.label);
+    const source = text(mark?.source);
+    const tone = mark?.tone;
+    return timestamp && label && source && (tone === "info" || tone === "warning" || tone === "critical" || tone === "navy")
+      ? [{ timestamp, label, source, tone: tone as DiagnosisData["timeline"][number]["tone"] }] : [];
+  });
+  const changes = (Array.isArray(projection?.changes) ? projection.changes : []).flatMap((entry) => {
+    const change = record(entry);
+    const label = text(change?.label);
+    const cause = text(change?.cause);
+    const percentage = number(change?.percentage);
+    const tone = change?.tone;
+    return label && cause && percentage !== null && (tone === "info" || tone === "warning" || tone === "critical")
+      ? [{ label, cause, percentage, tone: tone as DiagnosisData["changes"][number]["tone"] }] : [];
+  });
+  return {
+    charts: {
+      buffering: points.length ? {
+        points,
+        marker: markerTimestamp && markerLabel && points.some((point) => point.timestamp === markerTimestamp)
+          ? { timestamp: markerTimestamp, label: markerLabel } : null,
+      } : null,
+      concentrations,
+      concentrationNote: text(projection?.concentrationNote) ?? "",
+    },
+    timeline,
+    changes,
+  };
+}
+
 export function toDiagnosisData(
   incidentItem: PhysicalItem,
   children: readonly PhysicalItem[],
@@ -236,6 +295,7 @@ export function toDiagnosisData(
       },
     }));
   const latest = latestHypothesis(hypotheses);
+  const presentation = diagnosisPresentation(incidentItem);
   return {
     incident,
     diagnosis: {
@@ -246,38 +306,56 @@ export function toDiagnosisData(
       confidence: latest ? number(latest.probability ?? latest.score) : null,
       hypotheses: ranked,
     },
-    evidence: evidence.map((item) => ({
-      id: text(item.id ?? item.evidenceId) ?? opaquePhysicalId("evi", item.sk),
-      type: text(item.type) ?? "metric_deviation",
-      title: (text(item.title) ?? text(item.description)) as string,
-      statement: text(item.statement ?? item.description) as string,
-      relation:
-        item.relation === "contradicts"
-          ? "contradicts"
-          : item.relation === "context"
-            ? "context"
-            : "supports",
-      hypothesisIds: ranked.map((hypothesis) => hypothesis.id),
-      strength: evidenceStrength(item.strength),
-      observedAt: iso(item.observedAt ?? item.capturedAt),
-      source: {
-        type: text(item.sourceType) ?? "operational_telemetry",
-        name: text(item.source) ?? "Argus",
-      },
-      quality: {
-        status: item.qualityStatus === "verified" ? "verified" : "partial",
-        coverageRatio: number(item.coverageRatio),
-        flags:
-          item.qualityStatus === "verified" ? [] : ["QUALITY_NOT_VERIFIED"],
-      },
-    })),
-    charts: { buffering: null, concentrations: [] },
-    timeline: [],
+    evidence: evidence.map((item) => {
+      const eventId = text(item.eventId) ?? opaquePhysicalId("evt", item.sk);
+      const incidentId = text(item.incidentId ?? incidentItem.id) ?? "unknown";
+      return {
+        id:
+          text(item.id ?? item.evidenceId) ?? opaquePhysicalId("evi", item.sk),
+        eventId,
+        incidentId,
+        type: text(item.type) ?? "metric_deviation",
+        title: (text(item.title) ?? text(item.description)) as string,
+        statement: text(item.statement ?? item.description) as string,
+        relation:
+          item.relation === "contradicts"
+            ? "contradicts"
+            : item.relation === "context"
+              ? "context"
+              : "supports",
+        hypothesisIds: ranked.map((hypothesis) => hypothesis.id),
+        strength: evidenceStrength(item.strength),
+        observedAt: iso(item.observedAt ?? item.capturedAt),
+        source: {
+          type: text(item.sourceType) ?? "operational_telemetry",
+          name: text(item.source) ?? "Argus",
+          dataset: text(item.sourceDataset) ?? "legacy",
+          recordId: text(item.sourceRecordId) ?? String(item.sk ?? "unknown"),
+        },
+        correlation: {
+          correlationId:
+            text(item.correlationId) ?? opaquePhysicalId("cor", item.sk),
+          incidentId,
+          ruleVersion: text(item.ruleVersion) ?? "legacy",
+          timeDistanceSeconds: number(item.timeDistanceSeconds) ?? 0,
+          matchedFields: [],
+        },
+        quality: {
+          status: item.qualityStatus === "verified" ? "verified" : "partial",
+          coverageRatio: number(item.coverageRatio),
+          flags:
+            item.qualityStatus === "verified" ? [] : ["QUALITY_NOT_VERIFIED"],
+        },
+      };
+    }),
+    charts: presentation.charts,
+    timeline: presentation.timeline,
+    changes: presentation.changes,
     dataQuality: {
-      status: evidence.length > 0 ? "limited" : "insufficient",
+      status: evidence.length > 0 && presentation.charts.buffering ? "sufficient" : evidence.length > 0 ? "limited" : "insufficient",
       coverageRatio: number(incidentItem.coverageRatio),
       observedThrough: iso(incidentItem.observedThrough),
-      gaps: ["INGESTION_PROJECTIONS_NOT_AVAILABLE"],
+      gaps: presentation.charts.buffering ? [] : ["INGESTION_PROJECTIONS_NOT_AVAILABLE"],
     },
   };
 }

@@ -1,63 +1,53 @@
+import { createHash } from "node:crypto";
 import {
   ServiceError,
-  fingerprint,
+  assertNoPhysicalFields,
+  diagnosisDataSchema,
+  eventDtoSchema,
+  eventsDataRuntimeSchema,
+  incidentsDataSchema,
   resolveWindow,
   type DiagnosisData,
+  type EventDto,
   type EventsData,
+  type EventsQuery,
+  type IncidentDto,
   type IncidentsData,
   type IncidentsQuery,
   type InternalResponse,
   type ReviewBody,
   type ReviewData,
-  type Warning,
+  type ResolvedWindow,
 } from "@view-show/contracts";
-import { CursorCodec } from "../domain/cursor.js";
-import {
-  hypothesisId,
-  itemKind,
-  latestHypothesis,
-  toDiagnosisData,
-  toIncidentDto,
-  type PhysicalItem,
-} from "../domain/incident.js";
+import { requireActiveDataset } from "../../datasets/application/require-active-dataset.js";
 import type {
+  ActiveDatasetResolver,
+  ActiveDatasetSnapshot,
+} from "../../datasets/ports/active-dataset-resolver.js";
+import type { CursorCodec } from "../domain/cursor.js";
+import type {
+  ActiveIncidentProjection,
+  EventPagePosition,
+  EventProjectionStatus,
+  EventReadRequest,
   IncidentRepository,
   ReanalysisPublisherPort,
   ReviewFeedbackPort,
 } from "../ports/incident-repository.js";
 
-const supportedDimensions = ["deviceType", "region", "appVersion"] as const;
-const supportedFilterSets = [
-  [],
-  ["deviceType"],
-  ["region"],
-  ["appVersion"],
-] as const;
-
-const capabilities = {
-  filtering: {
-    status: "partial" as const,
-    supportedDimensions,
-    supportedFilterSets,
-  },
-};
-
-function presentDimensions(query: IncidentsQuery): string[] {
-  return supportedDimensions.filter(
-    (dimension) => query[dimension] !== undefined,
-  );
-}
-
-function ensureSupported(query: IncidentsQuery): void {
-  if (presentDimensions(query).length > 1) {
+function ensureIncidentFiltersSupported(query: IncidentsQuery): void {
+  if (query.cursor !== undefined)
     throw new ServiceError(
-      422,
-      "UNSUPPORTED_FILTER_COMBINATION",
-      "A origem atual não permite combinar estes filtros.",
+      400,
+      "VALIDATION_ERROR",
+      "O cursor informado não pertence ao contrato versionado atual.",
     );
-  }
   const unsupported = [
+    "search",
+    "deviceType",
     "os",
+    "appVersion",
+    "region",
     "state",
     "isp",
     "cdn",
@@ -65,511 +55,531 @@ function ensureSupported(query: IncidentsQuery): void {
     "component",
     "eventType",
   ].filter((key) => query[key as keyof IncidentsQuery] !== undefined);
-  if (unsupported.length) {
+  if (query.sort === "impact") unsupported.push("sort");
+  if (unsupported.length > 0)
     throw new ServiceError(
       422,
       "UNSUPPORTED_FILTER_COMBINATION",
-      "A origem atual não sustenta um ou mais filtros solicitados.",
+      "A projeção atual não sustenta um ou mais seletores solicitados.",
     );
-  }
 }
 
-function temporalRange(
-  query: IncidentsQuery,
-  now: Date,
-): { readonly from: Date; readonly to: Date; readonly preset: string | null } {
-  if (query.from && query.to)
-    return { from: new Date(query.from), to: new Date(query.to), preset: null };
-  const window = resolveWindow(query.window, now);
+function dataUnavailable(message: string): never {
+  throw new ServiceError(503, "DATA_UNAVAILABLE", message);
+}
+
+function featureUnavailable(message: string): never {
+  throw new ServiceError(503, "FEATURE_UNAVAILABLE", message);
+}
+
+function requireProjectionVersion(
+  active: ActiveDatasetSnapshot,
+  family: "events" | "evidence",
+): void {
+  if (active.projectionVersions[family] !== "1.0")
+    dataUnavailable(
+      `A versão ativa ainda não contém uma projeção pública compatível de ${family}.`,
+    );
+}
+
+const EVENT_DATASETS = [
+  "signal_bucket",
+  "live_event",
+  "live_event_sde",
+] as const;
+
+function canonicalWindow(
+  active: ActiveDatasetSnapshot,
+  datasets: readonly string[],
+): ResolvedWindow {
+  const intervals = datasets.flatMap(
+    (dataset) => active.availableIntervals[dataset] ?? [],
+  );
+  if (intervals.length === 0)
+    dataUnavailable("O dataset ativo não informa o período disponível.");
   return {
-    from: new Date(window.from),
-    to: new Date(window.to),
-    preset: window.preset,
+    preset: "all",
+    from: intervals.reduce(
+      (earliest, interval) =>
+        Date.parse(interval.start) < Date.parse(earliest)
+          ? interval.start
+          : earliest,
+      intervals[0]!.start,
+    ),
+    to: intervals.reduce(
+      (latest, interval) =>
+        Date.parse(interval.end) > Date.parse(latest) ? interval.end : latest,
+      intervals[0]!.end,
+    ),
   };
 }
 
-function filtersMatch(
-  item: PhysicalItem,
-  query: IncidentsQuery,
-  from: Date,
-  to: Date,
+function temporalWindow(
+  query: {
+    readonly window: "15m" | "30m" | "1h" | "6h" | "24h" | "all";
+    readonly from?: string | undefined;
+    readonly to?: string | undefined;
+  },
+  active: ActiveDatasetSnapshot,
+  datasets: readonly string[],
   now: Date,
-): boolean {
-  const incident = toIncidentDto(item, [], now);
-  const started = new Date(incident.startedAt);
-  if (started < from || started > to) return false;
-  if (query.deviceType && item.deviceType !== query.deviceType) return false;
-  if (query.region && item.region !== query.region) return false;
-  if (query.appVersion && item.appVersion !== query.appVersion) return false;
-  if (query.priority && !query.priority.split(",").includes(incident.priority))
-    return false;
-  if (query.status && !query.status.split(",").includes(incident.status))
-    return false;
-  if (query.search) {
-    const haystack = [
-      incident.number,
-      incident.title,
-      incident.primaryComponent?.name,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLocaleLowerCase("pt-BR");
-    if (!haystack.includes(query.search.toLocaleLowerCase("pt-BR")))
-      return false;
+): ResolvedWindow {
+  if (query.from && query.to)
+    return { preset: null, from: query.from, to: query.to };
+  return query.window === "all"
+    ? canonicalWindow(active, datasets)
+    : resolveWindow(query.window, now);
+}
+
+function incidentState(value: string | null): IncidentDto["status"] {
+  switch (value?.toLowerCase()) {
+    case "open":
+    case "investigating":
+      return "investigating";
+    case "confirmed":
+    case "acknowledged":
+      return "confirmed";
+    case "resolved":
+      return "resolved";
+    case "closed":
+      return "closed";
+    default:
+      return "detected";
   }
-  return true;
 }
 
-function sortItems(
-  items: readonly ReturnType<typeof toIncidentDto>[],
-  sort: IncidentsQuery["sort"],
-): ReturnType<typeof toIncidentDto>[] {
-  return [...items].sort((left, right) => {
-    if (sort === "priority")
-      return (
-        left.priority.localeCompare(right.priority) ||
-        right.startedAt.localeCompare(left.startedAt)
-      );
-    if (sort === "impact")
-      return (
-        (right.impact.affectedDevices.value ?? -1) -
-        (left.impact.affectedDevices.value ?? -1)
-      );
-    return right.startedAt.localeCompare(left.startedAt);
-  });
-}
-
-function facets(items: readonly ReturnType<typeof toIncidentDto>[]) {
-  const aggregate = (values: readonly (string | null)[]) =>
-    [...new Set(values.filter((value): value is string => value !== null))].map(
-      (value) => ({
-        value,
-        name: value,
-        count: values.filter((candidate) => candidate === value).length,
-        measurement: {
-          status: "measured" as const,
-          source: "operational-read-model",
-          coverageRatio: null,
-          observedThrough: null,
-        },
-      }),
-    );
+function incidentDto(
+  incident: ActiveIncidentProjection["incidents"][number],
+  observedThrough: string,
+): IncidentDto {
+  const measurement = {
+    status: "unknown" as const,
+    source: "argus:incidents",
+    coverageRatio: null,
+    observedThrough,
+  };
+  const measured = (unit: string) => ({ value: null, unit, measurement });
   return {
-    priorities: aggregate(items.map((item) => item.priority)),
-    statuses: aggregate(items.map((item) => item.status)),
-    deviceTypes: aggregate(
-      items.map(
-        (item) =>
-          item.scopeSummary.find((scope) => scope.dimension === "deviceType")
-            ?.value ?? null,
-      ),
-    ),
-    appVersions: aggregate(
-      items.map(
-        (item) =>
-          item.scopeSummary.find((scope) => scope.dimension === "appVersion")
-            ?.value ?? null,
-      ),
-    ),
-    regions: aggregate(
-      items.map(
-        (item) =>
-          item.scopeSummary.find((scope) => scope.dimension === "region")
-            ?.value ?? null,
-      ),
-    ),
+    id: incident.incidentId,
+    number: incident.number,
+    title: incident.number ?? `Incidente ${incident.incidentId.slice(-8)}`,
+    priority: incident.priority,
+    status: incidentState(incident.state),
+    startedAt: incident.openedAt,
+    detectedAt: null,
+    endedAt: null,
+    impact: {
+      affectedDevices: measured("devices"),
+      affectedSessions: measured("sessions"),
+      shareOfObservedSessions: measured("percent"),
+    },
+    primaryComponent: null,
+    scopeSummary: [],
+    diagnosis: {
+      status: "not_started",
+      primaryHypothesisId: null,
+      confidence: null,
+      reviewStatus: "pending",
+    },
+  };
+}
+
+function cursorFingerprint(
+  active: ActiveDatasetSnapshot,
+  incidentId: string | null,
+  query: EventsQuery,
+  window: { from: string; to: string },
+): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        datasetVersion: active.datasetVersion,
+        incidentId,
+        from: window.from,
+        to: window.to,
+        search: query.search ?? null,
+        category: query.category ?? null,
+        sourceDataset: query.sourceDataset ?? null,
+        correlation: incidentId ? "linked" : query.correlation,
+        sort: query.sort,
+        limit: query.limit,
+      }),
+    )
+    .digest("hex");
+}
+
+function eventPosition(
+  value: unknown,
+  incidentId: string | null,
+): EventPagePosition {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    !("day" in value) ||
+    typeof value.day !== "string" ||
+    !(
+      /^\d{8}$/.test(value.day) ||
+      (incidentId !== null && value.day === "incident")
+    ) ||
+    !("sortKey" in value) ||
+    typeof value.sortKey !== "string" ||
+    !value.sortKey
+  )
+    throw new ServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "O cursor é inválido para estes filtros.",
+    );
+  return { day: value.day, sortKey: value.sortKey };
+}
+
+function eventQuality(
+  status: EventProjectionStatus,
+  to: string,
+): InternalResponse<unknown>["quality"] {
+  const lagSeconds = status.observedThrough
+    ? Math.max(
+        0,
+        Math.round(
+          (Date.parse(to) - Date.parse(status.observedThrough)) / 1000,
+        ),
+      )
+    : null;
+  const delayed = lagSeconds !== null && lagSeconds > 1800;
+  const partial =
+    status.coverage !== "complete" || status.qualityFlags.length > 0;
+  return {
+    window: null,
+    partial,
+    refreshAfterSeconds: 900,
+    freshness: [
+      {
+        source: "argus:events",
+        observedThrough: status.observedThrough,
+        lagSeconds,
+        state: delayed ? "delayed" : partial ? "partial" : "fresh",
+      },
+    ],
+    warnings: status.qualityFlags.map((flag) => ({
+      code: flag,
+      message: flag,
+    })),
   };
 }
 
 export class IncidentUseCases {
   constructor(
     private readonly repository: IncidentRepository,
+    private readonly activeDataset: ActiveDatasetResolver,
     private readonly cursor: CursorCodec,
-    private readonly feedback: ReviewFeedbackPort,
+    _feedback: ReviewFeedbackPort,
     private readonly clock: () => Date = () => new Date(),
-    private readonly reanalysis: ReanalysisPublisherPort = new UnavailableReanalysisPublisherPort(),
+    _reanalysis: ReanalysisPublisherPort = new UnavailableReanalysisPublisherPort(),
   ) {}
 
-  async list(query: IncidentsQuery): Promise<InternalResponse<IncidentsData>> {
-    ensureSupported(query);
-    const now = this.clock();
-    const range = temporalRange(query, now);
-    const physical = await this.repository.listBetween(range.from, range.to);
-    const filtered = physical.filter((item) =>
-      filtersMatch(item, query, range.from, range.to, now),
-    );
-    const incidents = sortItems(
-      filtered.map((item) => toIncidentDto(item, [], now)),
-      query.sort,
-    );
-    const cursorFingerprint = fingerprint({ ...query, cursor: undefined });
-    const offset = query.cursor
-      ? this.cursor.decode(query.cursor, cursorFingerprint)
-      : 0;
-    const items = incidents.slice(offset, offset + query.limit);
-    const nextOffset = offset + items.length;
-    const hasMore = nextOffset < incidents.length;
-    const measuredDevices = items
-      .map((item) => item.impact.affectedDevices.value)
-      .filter((value): value is number => value !== null);
-    const measuredSessions = items
-      .map((item) => item.impact.affectedSessions.value)
-      .filter((value): value is number => value !== null);
-    const selected =
-      query.chartMetric === "affected_devices"
-        ? measuredDevices
-        : measuredSessions;
-    const points = new Map<
-      string,
-      { total: number; byPriority: Record<"P1" | "P2" | "P3" | "P4", number> }
-    >();
-    for (const item of items) {
-      const value =
-        query.chartMetric === "affected_devices"
-          ? item.impact.affectedDevices.value
-          : item.impact.affectedSessions.value;
-      if (value === null) continue;
-      const date = new Date(item.startedAt);
-      date.setUTCMinutes(Math.floor(date.getUTCMinutes() / 15) * 15, 0, 0);
-      const timestamp = date.toISOString();
-      const bucket = points.get(timestamp) ?? {
-        total: 0,
-        byPriority: { P1: 0, P2: 0, P3: 0, P4: 0 },
-      };
-      bucket.total += value;
-      bucket.byPriority[item.priority] += value;
-      points.set(timestamp, bucket);
-    }
-    const warnings: Warning[] =
-      selected.length === 0
-        ? [
-            {
-              code: "IMPACT_MEASUREMENT_UNAVAILABLE",
-              message: "O read model não contém a medição solicitada.",
-            },
-          ]
-        : [];
-    return {
-      data: {
-        capabilities,
-        items,
-        impactSeries: {
-          metric: query.chartMetric,
-          unit:
-            query.chartMetric === "affected_devices" ? "devices" : "sessions",
-          bucketSeconds: 900,
-          measurement: {
-            status: selected.length
-              ? query.chartMetric === "affected_devices"
-                ? "estimated"
-                : "measured"
-              : "unknown",
-            source: "operational-read-model",
-            coverageRatio: null,
-            observedThrough: null,
-          },
-          points: [...points]
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([timestamp, bucket]) => ({ timestamp, ...bucket })),
-        },
-        facets: facets(incidents),
-        page: {
-          limit: query.limit,
-          hasMore,
-          nextCursor: hasMore
-            ? this.cursor.encode(nextOffset, cursorFingerprint)
-            : null,
-        },
-      },
-      quality: {
-        window: {
-          preset: range.preset,
-          from: range.from.toISOString(),
-          to: range.to.toISOString(),
-        },
-        partial: warnings.length > 0,
-        refreshAfterSeconds: 900,
-        freshness: [],
-        warnings,
-      },
-    };
+  private async activeIncidents(
+    active: ActiveDatasetSnapshot,
+  ): Promise<ActiveIncidentProjection> {
+    if (active.projectionVersions.incidents !== "1.0")
+      return dataUnavailable(
+        "A versão ativa ainda não contém uma projeção pública compatível de incidentes.",
+      );
+    const projection = await this.repository.activeProjection(active);
+    if (!projection)
+      return dataUnavailable(
+        "A projeção de incidentes ainda não foi publicada pela ingestão.",
+      );
+    return projection;
   }
 
-  async diagnosis(
+  private async requiredIncident(
+    active: ActiveDatasetSnapshot,
     incidentId: string,
-  ): Promise<InternalResponse<DiagnosisData>> {
-    const bundle = await this.repository.bundle(incidentId);
-    if (!bundle.incident)
+  ): Promise<{
+    dto: IncidentDto;
+    summary: { id: string; number: string | null; title: string };
+  }> {
+    const projection = await this.activeIncidents(active);
+    const incident = projection.incidents.find(
+      (item) => item.incidentId === incidentId,
+    );
+    if (!incident)
       throw new ServiceError(
         404,
         "RESOURCE_NOT_FOUND",
         "Incidente não encontrado.",
       );
-    const data = toDiagnosisData(
-      bundle.incident,
-      bundle.children,
-      this.clock(),
+    const dto = incidentDto(incident, projection.observedThrough);
+    return {
+      dto,
+      summary: { id: dto.id, number: dto.number, title: dto.title },
+    };
+  }
+
+  async list(query: IncidentsQuery): Promise<InternalResponse<IncidentsData>> {
+    ensureIncidentFiltersSupported(query);
+    const active = await requireActiveDataset(this.activeDataset);
+    const projection = await this.activeIncidents(active);
+    const window = temporalWindow(query, active, ["incidents"], this.clock());
+    const from = Date.parse(window.from);
+    const to = Date.parse(window.to);
+    let incidents = projection.incidents
+      .map((incident) => incidentDto(incident, projection.observedThrough))
+      .filter((incident) => {
+        const openedAt = Date.parse(incident.startedAt);
+        return openedAt >= from && openedAt <= to;
+      });
+    if (query.priority)
+      incidents = incidents.filter((item) => item.priority === query.priority);
+    if (query.status)
+      incidents = incidents.filter((item) => item.status === query.status);
+    incidents.sort((left, right) =>
+      query.sort === "priority"
+        ? left.priority.localeCompare(right.priority)
+        : Date.parse(right.startedAt) - Date.parse(left.startedAt),
     );
-    const unavailable = data.diagnosis.status === "not_started";
+    const hasMore = incidents.length > query.limit;
+    const measurement = {
+      status: "unknown" as const,
+      source: "argus:incidents",
+      coverageRatio: projection.coverage === "complete" ? 1 : null,
+      observedThrough: projection.observedThrough,
+    };
+    const data = incidentsDataSchema.parse({
+      capabilities: {
+        filtering: {
+          status: "partial",
+          supportedDimensions: ["priority", "status"],
+          supportedFilterSets: [
+            ["priority"],
+            ["status"],
+            ["priority", "status"],
+          ],
+        },
+      },
+      items: incidents.slice(0, query.limit),
+      impactSeries: {
+        metric: query.chartMetric,
+        unit: query.chartMetric === "affected_devices" ? "devices" : "sessions",
+        bucketSeconds: 3600,
+        measurement,
+        points: [],
+      },
+      facets: {},
+      page: { limit: query.limit, hasMore, nextCursor: null },
+    });
+    assertNoPhysicalFields(data);
+    const lagSeconds = Math.max(
+      0,
+      Math.round(
+        (Date.parse(window.to) - Date.parse(projection.observedThrough)) / 1000,
+      ),
+    );
     return {
       data,
+      datasetVersion: active.datasetVersion,
       quality: {
-        window: null,
-        partial: unavailable || data.dataQuality.status !== "sufficient",
-        refreshAfterSeconds: 900,
-        freshness: [],
-        warnings: unavailable
-          ? [
-              {
-                code: "AGENTIC_RESULT_UNAVAILABLE",
-                message:
-                  "Nenhum diagnóstico agêntico persistido está disponível para este incidente.",
-              },
-            ]
-          : data.dataQuality.gaps.map((code) => ({
-              code,
-              message: "Uma projeção complementar ainda não está disponível.",
-            })),
-      },
-    };
-  }
-
-  async events(
-    incidentId: string,
-    limit: number,
-  ): Promise<InternalResponse<EventsData>> {
-    const bundle = await this.repository.bundle(incidentId);
-    if (!bundle.incident)
-      throw new ServiceError(
-        404,
-        "RESOURCE_NOT_FOUND",
-        "Incidente não encontrado.",
-      );
-    const incident = toIncidentDto(
-      bundle.incident,
-      bundle.children.filter((item) => itemKind(item) === "hypothesis"),
-      this.clock(),
-    );
-    return {
-      data: {
-        incident: {
-          id: incident.id,
-          number: incident.number,
-          title: incident.title,
-        },
-        capabilities: {
-          aggregateMetrics: { status: "unavailable" },
-          filtering: {
-            status: "unavailable",
-            supportedDimensions: [],
-            supportedFilterSets: [[]],
-          },
-          individualEvents: {
-            status: "unavailable",
-            availableCategories: [],
-            unavailableCategories: [
-              "request",
-              "vitals",
-              "screen_view",
-              "video_view",
-              "session",
-              "error",
-            ],
-            reason: "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED",
-          },
-          rawPayload: {
-            status: "unavailable",
-            reason: "INDIVIDUAL_EVENT_FEED_NOT_CONFIGURED",
-          },
-        },
-        categoryStats: [],
-        volumeSeries: null,
-        items: [],
-        facets: {
-          categories: [],
-          deviceTypes: [],
-          appVersions: [],
-          regions: [],
-        },
-        page: { limit, hasMore: false, nextCursor: null },
-      },
-      quality: {
-        window: null,
+        window,
         partial: true,
         refreshAfterSeconds: 900,
-        freshness: [],
+        freshness: [
+          {
+            source: "argus:incidents",
+            observedThrough: projection.observedThrough,
+            lagSeconds,
+            state: lagSeconds > 1800 ? "delayed" : "partial",
+          },
+        ],
         warnings: [
           {
-            code: "AGGREGATE_EVENTS_UNAVAILABLE",
+            code: "IMPACT_COUNTS_UNAVAILABLE",
             message:
-              "O read model atual não contém agregados de eventos vinculados ao incidente.",
-          },
-          {
-            code: "INDIVIDUAL_EVENTS_UNAVAILABLE",
-            message:
-              "Eventos individuais não possuem uma fonte configurada nesta fase.",
+              "A projeção de incidentes ainda não contém contagens de impacto.",
           },
         ],
       },
     };
   }
 
-  event(): never {
-    throw new ServiceError(
-      503,
-      "DATA_UNAVAILABLE",
-      "A fonte de eventos individuais não está configurada.",
-    );
+  private async readEvents(
+    incidentId: string | null,
+    query: EventsQuery,
+  ): Promise<InternalResponse<EventsData>> {
+    const active = await requireActiveDataset(this.activeDataset);
+    requireProjectionVersion(active, "events");
+    const status = await this.repository.eventProjection(active);
+    if (!status)
+      return dataUnavailable(
+        "A projeção de Eventos ainda não foi publicada pela ingestão.",
+      );
+    const incident = incidentId
+      ? (await this.requiredIncident(active, incidentId)).summary
+      : null;
+    const window = temporalWindow(query, active, EVENT_DATASETS, this.clock());
+    const fingerprint = cursorFingerprint(active, incidentId, query, window);
+    const position = query.cursor
+      ? eventPosition(
+          this.cursor.decodeState(query.cursor, fingerprint),
+          incidentId,
+        )
+      : null;
+    const request: EventReadRequest = {
+      incidentId,
+      from: window.from,
+      to: window.to,
+      ...(query.search ? { search: query.search } : {}),
+      ...(query.category ? { category: query.category } : {}),
+      ...(query.sourceDataset ? { sourceDataset: query.sourceDataset } : {}),
+      correlation: incidentId ? "linked" : query.correlation,
+      sort: query.sort,
+      limit: query.limit,
+      position,
+    };
+    const page = await this.repository.listEvents(active, request);
+    const data = eventsDataRuntimeSchema.parse({
+      incident,
+      capabilities: {
+        filtering: {
+          status: "available",
+          supportedDimensions: ["category", "sourceDataset", "correlation"],
+          supportedFilterSets: [["category", "sourceDataset", "correlation"]],
+        },
+      },
+      categoryStats: page.categoryStats,
+      volumeSeries: null,
+      items: page.items,
+      facets: page.facets,
+      page: {
+        limit: query.limit,
+        hasMore: page.next !== null,
+        nextCursor: page.next
+          ? this.cursor.encodeState(page.next, fingerprint)
+          : null,
+      },
+    });
+    assertNoPhysicalFields(data);
+    const quality = eventQuality(status, window.to);
+    return {
+      data,
+      datasetVersion: active.datasetVersion,
+      quality: { ...quality, window },
+    };
+  }
+
+  async globalEvents(
+    query: EventsQuery,
+  ): Promise<InternalResponse<EventsData>> {
+    return this.readEvents(null, query);
+  }
+
+  async events(
+    incidentId: string,
+    query: EventsQuery,
+  ): Promise<InternalResponse<EventsData>> {
+    return this.readEvents(incidentId, query);
+  }
+
+  private async readEvent(
+    incidentId: string | null,
+    eventId: string,
+  ): Promise<InternalResponse<EventDto>> {
+    const active = await requireActiveDataset(this.activeDataset);
+    requireProjectionVersion(active, "events");
+    const status = await this.repository.eventProjection(active);
+    if (!status)
+      return dataUnavailable(
+        "A projeção de Eventos ainda não foi publicada pela ingestão.",
+      );
+    if (incidentId) await this.requiredIncident(active, incidentId);
+    const event = await this.repository.getEvent(active, eventId, incidentId);
+    if (!event)
+      throw new ServiceError(
+        404,
+        "RESOURCE_NOT_FOUND",
+        "Evento não encontrado.",
+      );
+    const data = eventDtoSchema.parse(event);
+    assertNoPhysicalFields(data);
+    return {
+      data,
+      datasetVersion: active.datasetVersion,
+      quality: eventQuality(status, this.clock().toISOString()),
+    };
+  }
+
+  async globalEvent(eventId: string): Promise<InternalResponse<EventDto>> {
+    return this.readEvent(null, eventId);
+  }
+
+  async event(
+    incidentId: string,
+    eventId: string,
+  ): Promise<InternalResponse<EventDto>> {
+    return this.readEvent(incidentId, eventId);
+  }
+
+  async diagnosis(
+    incidentId: string,
+  ): Promise<InternalResponse<DiagnosisData>> {
+    const active = await requireActiveDataset(this.activeDataset);
+    requireProjectionVersion(active, "evidence");
+    const status = await this.repository.eventProjection(active);
+    if (!status)
+      return dataUnavailable(
+        "A projeção de Evidências ainda não foi publicada pela ingestão.",
+      );
+    const incident = (await this.requiredIncident(active, incidentId)).dto;
+    const evidence = await this.repository.listEvidence(active, incidentId);
+    const data = diagnosisDataSchema.parse({
+      incident,
+      diagnosis: {
+        status: "not_started",
+        generatedAt: null,
+        summary: null,
+        primaryHypothesisId: null,
+        confidence: null,
+        hypotheses: [],
+      },
+      evidence,
+      charts: { buffering: null, concentrations: [], concentrationNote: "" },
+      timeline: [],
+      changes: [],
+      dataQuality: {
+        status: evidence.length > 0 ? "sufficient" : "limited",
+        coverageRatio: status.coverage === "complete" ? 1 : null,
+        observedThrough: status.observedThrough,
+        gaps: status.qualityFlags,
+      },
+    }) as DiagnosisData;
+    assertNoPhysicalFields(data);
+    return {
+      data,
+      datasetVersion: active.datasetVersion,
+      quality: eventQuality(status, this.clock().toISOString()),
+    };
   }
 
   async reanalyze(
-    incidentId: string,
-    idempotencyKey: string,
-    requestedBy: string,
+    _incidentId: string,
+    _idempotencyKey: string,
+    _requestedBy: string,
   ): Promise<void> {
-    const bundle = await this.repository.bundle(incidentId);
-    if (!bundle.incident)
-      throw new ServiceError(
-        404,
-        "RESOURCE_NOT_FOUND",
-        "Incidente não encontrado.",
-      );
-    const published = await this.reanalysis.publish({
-      incidentId,
-      idempotencyKey,
-      requestedBy,
-      reason: "MANUAL_REQUEST",
-    });
-    if (published === "unavailable")
-      throw new ServiceError(
-        503,
-        "FEATURE_UNAVAILABLE",
-        "A reanálise manual não está disponível.",
-      );
+    await requireActiveDataset(this.activeDataset);
+    return featureUnavailable(
+      "A reanálise manual não está disponível para o contrato físico ativo.",
+    );
   }
 
   async review(
-    incidentId: string,
-    selectedHypothesisId: string,
-    body: ReviewBody,
-    reviewerId: string,
+    _incidentId: string,
+    _selectedHypothesisId: string,
+    _body: ReviewBody,
+    _reviewerId: string,
   ): Promise<InternalResponse<ReviewData>> {
-    const bundle = await this.repository.bundle(incidentId);
-    if (!bundle.incident)
-      throw new ServiceError(
-        404,
-        "RESOURCE_NOT_FOUND",
-        "Incidente não encontrado.",
-      );
-    const hypotheses = bundle.children.filter(
-      (item) => itemKind(item) === "hypothesis",
+    await requireActiveDataset(this.activeDataset);
+    return featureUnavailable(
+      "A revisão de hipóteses não está disponível para o contrato físico ativo.",
     );
-    const hypothesis = hypotheses.find(
-      (item) => hypothesisId(item) === selectedHypothesisId,
-    );
-    if (!hypothesis)
-      throw new ServiceError(
-        404,
-        "RESOURCE_NOT_FOUND",
-        "Hipótese não encontrada neste incidente.",
-      );
-    const currentVersion =
-      typeof hypothesis.reviewVersion === "number"
-        ? hypothesis.reviewVersion
-        : typeof hypothesis.version === "number"
-          ? hypothesis.version
-          : 0;
-    const currentStatus = hypothesis.reviewStatus;
-    const currentNote =
-      typeof hypothesis.reviewNote === "string" ? hypothesis.reviewNote : null;
-    if (
-      currentStatus === body.status &&
-      currentNote === (body.note ?? null) &&
-      currentVersion === body.expectedVersion + 1
-    ) {
-      return this.reviewResult(
-        incidentId,
-        selectedHypothesisId,
-        body.status,
-        currentNote,
-        typeof hypothesis.reviewedAt === "string"
-          ? hypothesis.reviewedAt
-          : this.clock().toISOString(),
-        currentVersion,
-        false,
-      );
-    }
-    if (currentVersion !== body.expectedVersion)
-      throw new ServiceError(
-        409,
-        "REVIEW_VERSION_CONFLICT",
-        "A hipótese foi revisada por outra sessão.",
-        undefined,
-        { currentVersion },
-      );
-    const key = { pk: hypothesis.pk, sk: hypothesis.sk };
-    if (typeof key.pk !== "string" || typeof key.sk !== "string")
-      throw new ServiceError(
-        500,
-        "INTERNAL_ERROR",
-        "A hipótese persistida não possui chave válida.",
-      );
-    const reviewedAt = this.clock().toISOString();
-    await this.repository.writeReview({
-      key,
-      expectedVersion: body.expectedVersion,
-      status: body.status,
-      note: body.note ?? null,
-      reviewedAt,
-      reviewerId,
-    });
-    const feedback = await this.feedback.publish({
-      incidentId,
-      hypothesisId: selectedHypothesisId,
-      status: body.status,
-    });
-    return this.reviewResult(
-      incidentId,
-      selectedHypothesisId,
-      body.status,
-      body.note ?? null,
-      reviewedAt,
-      body.expectedVersion + 1,
-      feedback === "unavailable",
-    );
-  }
-
-  private reviewResult(
-    incidentId: string,
-    selectedHypothesisId: string,
-    status: ReviewBody["status"],
-    note: string | null,
-    reviewedAt: string,
-    version: number,
-    feedbackUnavailable: boolean,
-  ): InternalResponse<ReviewData> {
-    return {
-      data: {
-        incidentId,
-        hypothesisId: selectedHypothesisId,
-        review: { status, note, reviewedAt, version },
-      },
-      quality: {
-        window: null,
-        partial: feedbackUnavailable,
-        refreshAfterSeconds: null,
-        freshness: [],
-        warnings: feedbackUnavailable
-          ? [
-              {
-                code: "REVIEW_FEEDBACK_DEFERRED",
-                message:
-                  "A revisão foi persistida; a integração futura de feedback está indisponível.",
-              },
-            ]
-          : [],
-      },
-    };
   }
 }
 

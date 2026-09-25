@@ -9,9 +9,15 @@ import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { z } from "zod";
 import {
   ServiceError,
+  activateImportBodySchema,
+  argusLiveSyncUpdateSchema,
   assertNoPhysicalFields,
   authCallbackQuerySchema,
   completeImportBodySchema,
+  importIdSchema,
+  importsQuerySchema,
+  signImportPartsBodySchema,
+  restartImportBodySchema,
   createLogger,
   errorEnvelope,
   eventsQuerySchema,
@@ -33,7 +39,8 @@ import type { AuthModule } from "./modules/auth/index.js";
 import { parseCookie, passwordLoginBodySchema } from "./modules/auth/index.js";
 import type { DashboardQueries } from "./modules/dashboard/index.js";
 import type { IncidentUseCases } from "./modules/incidents/index.js";
-import type { ImportUseCases } from "./modules/imports/index.js";
+import type { ArgusLiveSyncUseCases } from "./modules/argus/index.js";
+import type { ImportControlPort } from "./modules/imports/index.js";
 import { Metrics } from "./observability/metrics.js";
 import { PUBLIC_ROUTES } from "./http/public-routes.js";
 
@@ -44,7 +51,8 @@ export interface AppDependencies {
   readonly config: ApiConfig;
   readonly incidents: IncidentUseCases;
   readonly dashboard: DashboardQueries;
-  readonly imports: ImportUseCases;
+  readonly argus: ArgusLiveSyncUseCases;
+  readonly imports: ImportControlPort;
   readonly auth: AuthModule;
 }
 
@@ -71,6 +79,12 @@ function isMalformedJson(error: unknown): boolean {
     bodyParserError.status === 400 &&
     bodyParserError.type === "entity.parse.failed"
   );
+}
+
+function isPayloadTooLarge(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const parserError = error as Error & { status?: unknown; type?: unknown };
+  return parserError.status === 413 && parserError.type === "entity.too.large";
 }
 
 function isMalformedPathParameter(error: unknown): boolean {
@@ -108,7 +122,7 @@ function rateLimiter(limit: number): express.RequestHandler {
 }
 
 export function createApp(deps: AppDependencies) {
-  const { config, incidents, dashboard, imports, auth } = deps;
+  const { config, incidents, dashboard, imports, argus, auth } = deps;
   const app = express();
   const metrics = new Metrics(SERVICE_NAME);
   const sessionCookieSecure = auth.nodeEnv === "production";
@@ -164,6 +178,14 @@ export function createApp(deps: AppDependencies) {
       ],
     }),
   );
+  // A 10 GiB ZIP has 640 parts. At 1024 ETag characters with six-byte JSON
+  // escapes, the complete canonical manifest is 3,991,583 bytes (< 4 MiB).
+  // Parse it first; express.json skips the consumed body in the global parser.
+  app.post(
+    PUBLIC_ROUTES.importComplete.express,
+    express.json({ limit: 4 * 1024 * 1024 }),
+  );
+
   app.use(express.json({ limit: "64kb" }));
   app.use(metrics.middleware());
 
@@ -205,6 +227,7 @@ export function createApp(deps: AppDependencies) {
     },
   );
   app.use(rateLimiter(config.rateLimitPerMinute));
+  const loginRateLimiter = rateLimiter(config.authLoginRateLimitPerMinute);
 
   app.get(PUBLIC_ROUTES.authLogin.express, async (_request, response, next) => {
     try {
@@ -214,16 +237,22 @@ export function createApp(deps: AppDependencies) {
     }
   });
 
-  // Login direto por usuário/senha (fluxo USER_PASSWORD_AUTH do Cognito, feito
-  // no servidor). Emite a mesma sessão assinada das demais rotas e devolve o
-  // ID token no corpo para clientes que precisem do JWT.
+  // Login direto por usuário/senha (fluxo USER_PASSWORD_AUTH do Cognito,
+  // feito no servidor). Emite a mesma sessão assinada das demais rotas; o
+  // navegador não recebe o ID/access token do Cognito, só o cookie
+  // HttpOnly — um token no corpo da resposta seria alcançável por JS
+  // (inclusive por um XSS) sem que o cliente precise dele para nada.
+  // `loginRateLimiter` soma-se ao limite geral: esta rota é alvo natural de
+  // força bruta, e o throttling do próprio Cognito só entra depois do
+  // round-trip até a AWS.
   app.post(
     PUBLIC_ROUTES.authPasswordLogin.express,
+    loginRateLimiter,
     async (request, response, next) => {
       try {
         const parsed = passwordLoginBodySchema.safeParse(request.body);
         if (!parsed.success) throw validationError(parsed.error);
-        const { identity, tokens } = await auth.passwordLogin.login(
+        const { identity } = await auth.passwordLogin.login(
           parsed.data.username,
           parsed.data.password,
         );
@@ -232,9 +261,6 @@ export function createApp(deps: AppDependencies) {
           successEnvelope(
             {
               data: {
-                token: tokens.idToken,
-                tokenType: tokens.tokenType,
-                expiresInSeconds: tokens.expiresInSeconds,
                 user: {
                   id: identity.id,
                   name: identity.name,
@@ -242,6 +268,7 @@ export function createApp(deps: AppDependencies) {
                   role: identity.role,
                 },
               },
+              datasetVersion: null,
               quality: {
                 window: null,
                 partial: false,
@@ -288,10 +315,10 @@ export function createApp(deps: AppDependencies) {
   });
 
   app.get(PUBLIC_ROUTES.authSession.express, (request, response, next) => {
-    const identity = auth.sessions.verify(
+    const session = auth.sessions.verifyWithIssuedAt(
       parseCookie(request.header("cookie"), "session"),
     );
-    if (!identity)
+    if (!session)
       return next(
         new ServiceError(
           401,
@@ -299,6 +326,7 @@ export function createApp(deps: AppDependencies) {
           "Sessão inválida, ausente ou expirada.",
         ),
       );
+    const { identity, issuedAt } = session;
     response.json(
       successEnvelope(
         {
@@ -308,8 +336,11 @@ export function createApp(deps: AppDependencies) {
               id: identity.id,
               name: identity.name,
               email: identity.email,
+              role: identity.role,
+              issuedAt: new Date(issuedAt * 1000).toISOString(),
             },
           },
+          datasetVersion: null,
           quality: {
             window: null,
             partial: false,
@@ -324,16 +355,55 @@ export function createApp(deps: AppDependencies) {
   });
 
   app.get(
-    PUBLIC_ROUTES.dashboardOverview.express,
+    PUBLIC_ROUTES.argusIntegration.express,
     async (request, response, next) => {
       try {
-        const parsed = overviewQuerySchema.safeParse(request.query);
+        const actor = auth.sessions.verify(
+          parseCookie(request.header("cookie"), "session"),
+        );
+        if (!actor)
+          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
+        response.json(
+          successEnvelope(
+            await argus.get(),
+            response.locals.requestId as string,
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.patch(
+    PUBLIC_ROUTES.argusIntegrationUpdate.express,
+    async (request, response, next) => {
+      try {
+        const parsed = argusLiveSyncUpdateSchema.safeParse(request.body);
         if (!parsed.success) throw validationError(parsed.error);
         const actor = auth.sessions.verify(
           parseCookie(request.header("cookie"), "session"),
         );
         if (!actor)
           throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
+        response.json(
+          successEnvelope(
+            await argus.set(parsed.data.enabled),
+            response.locals.requestId as string,
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.get(
+    PUBLIC_ROUTES.dashboardOverview.express,
+    async (request, response, next) => {
+      try {
+        const parsed = overviewQuerySchema.safeParse(request.query);
+        if (!parsed.success) throw validationError(parsed.error);
         const result = await dashboard.overview(parsed.data);
         assertNoPhysicalFields(result.data);
         response.json(
@@ -349,11 +419,6 @@ export function createApp(deps: AppDependencies) {
     try {
       const parsed = incidentsQuerySchema.safeParse(request.query);
       if (!parsed.success) throw validationError(parsed.error);
-      const actor = auth.sessions.verify(
-        parseCookie(request.header("cookie"), "session"),
-      );
-      if (!actor)
-        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
       const result = await incidents.list(parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
@@ -367,11 +432,6 @@ export function createApp(deps: AppDependencies) {
   app.get(PUBLIC_ROUTES.diagnosis.express, async (request, response, next) => {
     try {
       const incidentId = opaqueId(request.params.incidentId);
-      const actor = auth.sessions.verify(
-        parseCookie(request.header("cookie"), "session"),
-      );
-      if (!actor)
-        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
       const result = await incidents.diagnosis(incidentId);
       assertNoPhysicalFields(result.data);
       response.json(
@@ -381,6 +441,49 @@ export function createApp(deps: AppDependencies) {
       next(error);
     }
   });
+
+  app.get(
+    PUBLIC_ROUTES.globalEvents.express,
+    async (request, response, next) => {
+      try {
+        const parsed = eventsQuerySchema.safeParse(request.query);
+        if (!parsed.success) throw validationError(parsed.error);
+        const actor = auth.sessions.verify(
+          parseCookie(request.header("cookie"), "session"),
+        );
+        if (!actor)
+          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
+        const result = await incidents.globalEvents(parsed.data);
+        assertNoPhysicalFields(result.data);
+        response.json(
+          successEnvelope(result, response.locals.requestId as string),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.get(
+    PUBLIC_ROUTES.globalEvent.express,
+    async (request, response, next) => {
+      try {
+        const eventId = opaqueId(request.params.eventId);
+        const actor = auth.sessions.verify(
+          parseCookie(request.header("cookie"), "session"),
+        );
+        if (!actor)
+          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
+        const result = await incidents.globalEvent(eventId);
+        assertNoPhysicalFields(result.data);
+        response.json(
+          successEnvelope(result, response.locals.requestId as string),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   app.get(PUBLIC_ROUTES.events.express, async (request, response, next) => {
     try {
@@ -392,7 +495,7 @@ export function createApp(deps: AppDependencies) {
       );
       if (!actor)
         throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
-      const result = await incidents.events(incidentId, parsed.data.limit);
+      const result = await incidents.events(incidentId, parsed.data);
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
@@ -402,11 +505,20 @@ export function createApp(deps: AppDependencies) {
     }
   });
 
-  app.get(PUBLIC_ROUTES.event.express, (request, response, next) => {
+  app.get(PUBLIC_ROUTES.event.express, async (request, response, next) => {
     try {
-      opaqueId(request.params.incidentId);
-      opaqueId(request.params.eventId);
-      incidents.event();
+      const incidentId = opaqueId(request.params.incidentId);
+      const eventId = opaqueId(request.params.eventId);
+      const actor = auth.sessions.verify(
+        parseCookie(request.header("cookie"), "session"),
+      );
+      if (!actor)
+        throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
+      const result = await incidents.event(incidentId, eventId);
+      assertNoPhysicalFields(result.data);
+      response.json(
+        successEnvelope(result, response.locals.requestId as string),
+      );
     } catch (error) {
       next(error);
     }
@@ -491,11 +603,6 @@ export function createApp(deps: AppDependencies) {
       try {
         const parsed = monitoringQuerySchema.safeParse(request.query);
         if (!parsed.success) throw validationError(parsed.error);
-        const actor = auth.sessions.verify(
-          parseCookie(request.header("cookie"), "session"),
-        );
-        if (!actor)
-          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
         const result = await dashboard.monitoring(parsed.data);
         assertNoPhysicalFields(result.data);
         response.json(
@@ -509,16 +616,136 @@ export function createApp(deps: AppDependencies) {
 
   app.post(
     PUBLIC_ROUTES.importStart.express,
-    async (request, _response, next) => {
+    async (request, response, next) => {
       try {
+        const actor = importActor(request);
         const parsed = startImportBodySchema.safeParse(request.body);
         if (!parsed.success) throw validationError(parsed.error);
-        const actor = auth.sessions.verify(
-          parseCookie(request.header("cookie"), "session"),
+        const result = await imports.start({
+          ...parsed.data,
+          requestedBy: actor.id,
+          author: { id: actor.id, name: actor.name, email: actor.email },
+          idempotencyKey: importIdempotencyKey(request),
+        });
+        response
+          .status(201)
+          .json(successEnvelope(result, response.locals.requestId as string));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  function importActor(request: Request) {
+    const actor = auth.sessions.verify(
+      parseCookie(request.header("cookie"), "session"),
+    );
+    if (!actor)
+      throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
+    return actor;
+  }
+  function importIdempotencyKey(request: Request) {
+    const parsed = idempotencyKeySchema.safeParse(
+      request.header("idempotency-key"),
+    );
+    if (!parsed.success) throw validationError(parsed.error);
+    return parsed.data;
+  }
+  function importIdentifier(request: Request) {
+    const parsed = importIdSchema.safeParse(request.params.importId);
+    if (!parsed.success) throw validationError(parsed.error);
+    return parsed.data;
+  }
+
+  app.get(PUBLIC_ROUTES.importList.express, async (request, response, next) => {
+    try {
+      const actor = importActor(request);
+      const query = importsQuerySchema.safeParse(request.query);
+      if (!query.success) throw validationError(query.error);
+      const result = await imports.list({
+        ...query.data,
+        requestedBy: actor.id,
+      });
+      response
+        .status(200)
+        .json(successEnvelope(result, response.locals.requestId as string));
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.get(
+    PUBLIC_ROUTES.importParts.express,
+    async (request, response, next) => {
+      try {
+        const actor = importActor(request);
+        const result = await imports.listParts(
+          importIdentifier(request),
+          actor.id,
         );
-        if (!actor)
-          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
-        await imports.start({ ...parsed.data, requestedBy: actor.id });
+        response
+          .status(200)
+          .json(successEnvelope(result, response.locals.requestId as string));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  app.post(
+    PUBLIC_ROUTES.importSignParts.express,
+    async (request, response, next) => {
+      try {
+        const actor = importActor(request);
+        const parsed = signImportPartsBodySchema.safeParse(request.body);
+        if (!parsed.success) throw validationError(parsed.error);
+        const result = await imports.signParts({
+          importId: importIdentifier(request),
+          requestedBy: actor.id,
+          ...parsed.data,
+        });
+        response
+          .status(200)
+          .json(successEnvelope(result, response.locals.requestId as string));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  app.post(
+    PUBLIC_ROUTES.importActivate.express,
+    async (request, response, next) => {
+      try {
+        const actor = importActor(request);
+        const body = activateImportBodySchema.safeParse(request.body);
+        if (!body.success) throw validationError(body.error);
+        const result = await imports.activate({
+          importId: importIdentifier(request),
+          requestedBy: actor.id,
+          idempotencyKey: importIdempotencyKey(request),
+        });
+        response
+          .status(200)
+          .json(successEnvelope(result, response.locals.requestId as string));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.post(
+    PUBLIC_ROUTES.importRestart.express,
+    async (request, response, next) => {
+      try {
+        const actor = importActor(request);
+        const parsed = restartImportBodySchema.safeParse(request.body);
+        if (!parsed.success) throw validationError(parsed.error);
+        const result = await imports.restart({
+          importId: importIdentifier(request),
+          requestedBy: actor.id,
+          idempotencyKey: importIdempotencyKey(request),
+        });
+        response
+          .status(202)
+          .json(successEnvelope(result, response.locals.requestId as string));
       } catch (error) {
         next(error);
       }
@@ -527,22 +754,21 @@ export function createApp(deps: AppDependencies) {
 
   app.post(
     PUBLIC_ROUTES.importComplete.express,
-    async (request, _response, next) => {
+    async (request, response, next) => {
       try {
-        const importId = opaqueIdSchema.safeParse(request.params.importId);
-        if (!importId.success) throw validationError(importId.error);
+        const actor = importActor(request);
+        const importId = importIdentifier(request);
         const parsed = completeImportBodySchema.safeParse(request.body);
         if (!parsed.success) throw validationError(parsed.error);
-        const actor = auth.sessions.verify(
-          parseCookie(request.header("cookie"), "session"),
-        );
-        if (!actor)
-          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
-        await imports.complete({
-          importId: importId.data,
+        const result = await imports.complete({
+          importId,
           parts: parsed.data.parts,
           requestedBy: actor.id,
+          idempotencyKey: importIdempotencyKey(request),
         });
+        response
+          .status(202)
+          .json(successEnvelope(result, response.locals.requestId as string));
       } catch (error) {
         next(error);
       }
@@ -551,16 +777,13 @@ export function createApp(deps: AppDependencies) {
 
   app.get(
     PUBLIC_ROUTES.importStatus.express,
-    async (request, _response, next) => {
+    async (request, response, next) => {
       try {
-        const importId = opaqueIdSchema.safeParse(request.params.importId);
-        if (!importId.success) throw validationError(importId.error);
-        const actor = auth.sessions.verify(
-          parseCookie(request.header("cookie"), "session"),
-        );
-        if (!actor)
-          throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
-        await imports.get(importId.data, actor.id);
+        const actor = importActor(request);
+        const result = await imports.get(importIdentifier(request), actor.id);
+        response
+          .status(200)
+          .json(successEnvelope(result, response.locals.requestId as string));
       } catch (error) {
         next(error);
       }
@@ -578,43 +801,51 @@ export function createApp(deps: AppDependencies) {
       _next: NextFunction,
     ) => {
       const malformedJson = isMalformedJson(error);
+      const payloadTooLarge = isPayloadTooLarge(error);
       const malformedPathParameter = isMalformedPathParameter(error);
       const serviceError =
         error instanceof ServiceError
           ? error
-          : malformedJson
+          : payloadTooLarge
             ? new ServiceError(
-                400,
+                413,
                 "VALIDATION_ERROR",
-                "O corpo JSON da requisição é inválido.",
-                [
-                  {
-                    field: "body",
-                    code: "invalid_json",
-                    message: "O corpo deve conter JSON válido.",
-                  },
-                ],
+                "O corpo da requisição excede o limite permitido.",
               )
-            : malformedPathParameter
+            : malformedJson
               ? new ServiceError(
                   400,
                   "VALIDATION_ERROR",
-                  "Um ou mais parâmetros são inválidos.",
+                  "O corpo JSON da requisição é inválido.",
                   [
                     {
-                      field: "path",
-                      code: "invalid_uri",
-                      message: "A rota contém codificação inválida.",
+                      field: "body",
+                      code: "invalid_json",
+                      message: "O corpo deve conter JSON válido.",
                     },
                   ],
                 )
-              : new ServiceError(
-                  500,
-                  "INTERNAL_ERROR",
-                  "Falha interna na API.",
-                );
+              : malformedPathParameter
+                ? new ServiceError(
+                    400,
+                    "VALIDATION_ERROR",
+                    "Um ou mais parâmetros são inválidos.",
+                    [
+                      {
+                        field: "path",
+                        code: "invalid_uri",
+                        message: "A rota contém codificação inválida.",
+                      },
+                    ],
+                  )
+                : new ServiceError(
+                    500,
+                    "INTERNAL_ERROR",
+                    "Falha interna na API.",
+                  );
       if (
         !(error instanceof ServiceError) &&
+        !payloadTooLarge &&
         !malformedJson &&
         !malformedPathParameter
       ) {

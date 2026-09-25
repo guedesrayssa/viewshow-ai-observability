@@ -1,3 +1,5 @@
+import type { ActiveDatasetSnapshot } from "../../datasets/ports/active-dataset-resolver.js";
+
 export type PublicProjection = Readonly<Record<string, unknown>>;
 
 export interface ProjectionRead {
@@ -8,8 +10,9 @@ export interface ProjectionRead {
 }
 
 export interface DashboardReadRepository {
-  latestOverview(from: Date, to: Date): Promise<ProjectionRead | null>;
+  activeOverview(active: ActiveDatasetSnapshot): Promise<ProjectionRead | null>;
   latestMonitoring(
+    active: ActiveDatasetSnapshot,
     from: Date,
     to: Date,
     sources: readonly string[],

@@ -1,5 +1,7 @@
 data "aws_caller_identity" "atual" {}
 
+data "aws_partition" "current" {}
+
 data "aws_region" "atual" {}
 
 data "aws_availability_zones" "disponiveis" {

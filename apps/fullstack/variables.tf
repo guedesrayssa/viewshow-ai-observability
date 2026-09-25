@@ -15,12 +15,12 @@ variable "regiao" {
 variable "deployment_namespace" {
   description = "Namespace isolado desta entrega da Sprint 3."
   type        = string
-  default     = "g05-s3"
+  default     = "view-show"
   nullable    = false
 
   validation {
-    condition     = var.deployment_namespace == "g05-s3"
-    error_message = "Esta stack só pode ser aplicada com deployment_namespace=g05-s3."
+    condition     = var.deployment_namespace == "view-show"
+    error_message = "Esta stack só pode ser aplicada com deployment_namespace=view-show."
   }
 }
 
@@ -108,10 +108,131 @@ variable "bedrock_habilitado" {
   default     = false
 }
 
+variable "analysis_worker_habilitado" {
+  description = "Cria o serviço do worker de análise, que consome a fila de análise da ingestão. Exige um modelo aprovado e o catálogo de séries (arquivos locais ou URIs s3://) e só é suportado no perfil learner-lab."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.analysis_worker_habilitado || var.ambiente == "learner-lab"
+    error_message = "O worker de análise ainda não tem roles de produção; habilite-o apenas com ambiente learner-lab."
+  }
+}
+
+variable "analysis_worker_image_uri" {
+  description = "Imagem imutável do worker. Vazia, o Terraform constrói e publica a imagem de apps/backend/agentic no ECR do Learner Lab durante o apply."
+  type        = string
+  default     = ""
+}
+
+variable "analysis_model_file" {
+  description = "Caminho local do bundle de modelo aprovado. Com ele, o Terraform publica o arquivo no bucket da ingestão e calcula o SHA-256. Deve vir junto com analysis_scope_catalog_file."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.analysis_worker_habilitado || (var.analysis_model_file == "") == (var.analysis_scope_catalog_file == "")
+    error_message = "Informe analysis_model_file e analysis_scope_catalog_file juntos."
+  }
+
+  validation {
+    condition     = !var.analysis_worker_habilitado || var.analysis_model_file == "" || fileexists(var.analysis_model_file)
+    error_message = "O arquivo do modelo informado em analysis_model_file não existe."
+  }
+}
+
+variable "analysis_scope_catalog_file" {
+  description = "Caminho local do catálogo de séries, publicado no bucket da ingestão. Deve vir junto com analysis_model_file."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.analysis_worker_habilitado || var.analysis_scope_catalog_file == "" || fileexists(var.analysis_scope_catalog_file)
+    error_message = "O arquivo do catálogo informado em analysis_scope_catalog_file não existe."
+  }
+}
+
+variable "analysis_model_location" {
+  description = "URI s3:// de um bundle aprovado já publicado. Alternativa a analysis_model_file."
+  type        = string
+  default     = ""
+
+  validation {
+    condition = !var.analysis_worker_habilitado || var.analysis_model_file != "" || (
+      startswith(var.analysis_model_location, "s3://") &&
+      startswith(var.analysis_scope_catalog_location, "s3://") &&
+      can(regex("^[a-f0-9]{64}$", var.analysis_model_sha256))
+    )
+    error_message = "Com o worker habilitado, informe os arquivos locais do modelo e do catálogo, ou as URIs s3:// já publicadas e o SHA-256 do modelo."
+  }
+
+  validation {
+    condition = var.analysis_model_file == "" || (
+      var.analysis_model_location == "" &&
+      var.analysis_scope_catalog_location == "" &&
+      var.analysis_model_sha256 == ""
+    )
+    error_message = "Use os arquivos locais do modelo e do catálogo ou as URIs s3://, não os dois."
+  }
+}
+
+variable "analysis_scope_catalog_location" {
+  description = "URI s3:// de um catálogo de séries já publicado. Alternativa a analysis_scope_catalog_file."
+  type        = string
+  default     = ""
+}
+
+variable "analysis_model_sha256" {
+  description = "SHA-256 do bundle aprovado já publicado no S3. Obrigatório com analysis_model_location."
+  type        = string
+  default     = ""
+}
+
+variable "analysis_llm_provider" {
+  description = "Provider de interpretação A'. `none` desliga o LLM (o Learner Lab não tem Bedrock): a detecção e a previsão seguem e o diagnóstico é registrado como falha permanente, sem retentativas."
+  type        = string
+  default     = "bedrock"
+  validation {
+    condition     = contains(["bedrock", "ollama", "none"], var.analysis_llm_provider)
+    error_message = "Use bedrock, ollama ou none."
+  }
+}
+
+variable "analysis_llm_model_id" {
+  description = "Identificador do modelo de linguagem."
+  type        = string
+  default     = "anthropic.claude-3-haiku-20240307-v1:0"
+}
+
+variable "analysis_ollama_base_url" {
+  description = "URL do Ollama quando esse provider for selecionado."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.analysis_llm_provider != "ollama" || length(var.analysis_ollama_base_url) > 0
+    error_message = "Informe analysis_ollama_base_url para Ollama."
+  }
+}
+
 variable "retencao_logs_dias" {
   description = "Retenção do log group do ECS."
   type        = number
   default     = 7
+}
+
+variable "api_task_role_arn" {
+  description = "Task role preexistente da API. É obrigatória em production; o Learner Lab continua usando LabRole."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.api_task_role_arn == null || can(regex(
+      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
+      var.api_task_role_arn,
+    ))
+    error_message = "api_task_role_arn deve ser null ou um ARN IAM de role válido."
+  }
 }
 
 variable "observabilidade_habilitada" {

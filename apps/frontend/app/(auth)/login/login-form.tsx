@@ -1,55 +1,123 @@
 /**
  * @file login-form.tsx
- * Entrada federada para a conta corporativa.
+ * Entrada com e-mail e senha validados pelo Cognito através do backend.
  */
 
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, type FormEvent } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { DiamondIcon } from "@/components/ui/icons";
-import { beginAuthentication } from "@/lib/auth";
+import { PasswordField, TextField } from "@/components/ui/input";
+import { useAccount } from "@/components/account/account-provider";
+import {
+  AUTH_UNAVAILABLE_MESSAGE,
+  authenticateWithPassword,
+  isDemoModeActive,
+} from "@/lib/auth";
 import { cn } from "@/lib/cn";
 
-export function LoginForm({ className }: { className?: string }) {
-  const router = useRouter();
-  const [formError, setFormError] = useState<string>();
+const DEFAULT_DESTINATION = "/visao-geral";
 
-  function handleAuthentication() {
-    const decision = beginAuthentication();
-    if (decision.kind === "redirect") {
-      window.location.assign(decision.url);
-      return;
+function safeReturnTo(value: string | undefined): string {
+  if (!value?.startsWith("/") || value.startsWith("//"))
+    return DEFAULT_DESTINATION;
+  try {
+    const parsed = new URL(value, "https://view-show.invalid");
+    if (
+      parsed.origin !== "https://view-show.invalid" ||
+      parsed.pathname === "/login"
+    )
+      return DEFAULT_DESTINATION;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return DEFAULT_DESTINATION;
+  }
+}
+
+export function LoginForm({
+  className,
+  returnTo,
+}: {
+  className?: string;
+  returnTo?: string;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { refreshSession } = useAccount();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [formError, setFormError] = useState<string>();
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(undefined);
+    setSubmitting(true);
+    try {
+      const decision = await authenticateWithPassword(email, password);
+      setPassword("");
+      if (decision.kind === "demo") {
+        router.push(
+          safeReturnTo(returnTo ?? searchParams.get("returnTo") ?? undefined),
+        );
+        return;
+      }
+      if (decision.kind === "authenticated") {
+        const session = await refreshSession();
+        if (!session) {
+          setFormError(AUTH_UNAVAILABLE_MESSAGE);
+          return;
+        }
+        router.push(
+          safeReturnTo(returnTo ?? searchParams.get("returnTo") ?? undefined),
+        );
+        return;
+      }
+      setFormError(decision.message);
+    } finally {
+      setSubmitting(false);
     }
-    if (decision.kind === "demo") {
-      router.push("/visao-geral");
-      return;
-    }
-    setFormError(decision.message);
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
+    <form
+      className={cn("flex flex-col gap-6", className)}
+      onSubmit={handleSubmit}
+    >
+      {isDemoModeActive() ? (
+        <Alert tone="warning">
+          Modo de demonstração: qualquer e-mail e senha abrem o painel com
+          dado de exemplo.
+        </Alert>
+      ) : null}
+
       {formError ? <Alert tone="critical">{formError}</Alert> : null}
 
-      <div className="flex flex-col items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          fullWidth
-          leadingIcon={<DiamondIcon size={16} />}
-          onClick={handleAuthentication}
-        >
-          Entrar com SSO Globo
-        </Button>
+      <TextField
+        label="E-mail"
+        type="email"
+        autoComplete="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        required
+        disabled={submitting}
+      />
 
-        <p className="text-center text-caption text-ink-muted">
-          Você será direcionada para a autenticação corporativa Globo.
-        </p>
-      </div>
-    </div>
+      <PasswordField
+        label="Senha"
+        autoComplete="current-password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        required
+        disabled={submitting}
+      />
+
+      <Button type="submit" fullWidth loading={submitting}>
+        Entrar
+      </Button>
+    </form>
   );
 }

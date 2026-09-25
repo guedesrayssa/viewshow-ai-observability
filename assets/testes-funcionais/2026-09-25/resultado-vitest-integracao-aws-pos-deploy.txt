@@ -1,0 +1,19 @@
+Execução final aprofundada: 2026-09-25 00:46 (America/Sao_Paulo)
+Ambiente: AWS real, após terraform apply
+Comando: npm run test:integration:aws -- --reporter=verbose
+
+PASS IT-AWS-01: Amplify e API Gateway/ECS entregam o painel e o health check (556 ms)
+PASS IT-AWS-02: a guarda HTTP bloqueia a consulta de sessão sem cookie (199 ms)
+PASS IT-AWS-03: Cognito, API, caso de uso e DynamoDB entregam a mesma projeção (1367 ms)
+EVIDENCE IT-AWS-03: requestId=req_it_incidents_1790307969109; responseMs=143.12; itemCount=5; datasetVersion=dsv_16d55422bc79d94f64b23c438bdfa1b205f6fce04ba07fc8d9cae936923cb454; projectionItemCount=300; physicalFieldsExposed=false
+PASS IT-AWS-04: rota de dashboard lê as projeções semeadas no DynamoDB (164 ms)
+PASS IT-AWS-05: API reserva a importação no DynamoDB e prepara multipart real no S3 (2276 ms)
+EVIDENCE IT-AWS-05: requestId=req_it_import_1790307970778; responseMs=1286.55; importId=imp_01M3BAQBNS7B8FREYS5AJTFMV7; dynamoState=UPLOADING; s3Key=staging/imports/imp_01M3BAQBNS7B8FREYS5AJTFMV7/source; multipartUploads=1; replayReturnedSameImport=true; concurrentStartStatus=409
+
+Test Files  1 passed (1)
+Tests       5 passed (5)
+Duration    6.34s
+
+IT-AWS-03 correlacionou os cinco IDs públicos com a projeção ACTIVE lida diretamente do DynamoDB.
+IT-AWS-05 verificou estado antes/depois e removeu somente os recursos criados pelo teste: multipart, lock, ImportJob e mapeamento de idempotência.
+Credenciais e senhas foram omitidas desta evidência.

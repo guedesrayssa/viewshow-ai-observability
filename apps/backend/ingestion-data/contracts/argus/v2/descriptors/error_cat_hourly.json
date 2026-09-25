@@ -1,0 +1,62 @@
+{
+  "table": "error_cat_hourly",
+  "recordType": "DimensionalMetricAggregate",
+  "columns": [
+    {
+      "name": "hour_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "kind",
+      "sqlType": "ENUM('live','vod')",
+      "nullable": false
+    },
+    {
+      "name": "category",
+      "sqlType": "VARCHAR(32)",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "top_names",
+      "sqlType": "TEXT",
+      "nullable": true
+    },
+    {
+      "name": "errors_bot",
+      "sqlType": "INT",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "hour_ts",
+    "kind",
+    "category"
+  ],
+  "cursorKey": [
+    "hour_ts",
+    "kind",
+    "category"
+  ],
+  "timestampField": "hour_ts",
+  "grainSeconds": 3600,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "known_upstream_lag",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "hour_ts"
+  },
+  "normalizer": "error_cat_hourly"
+}

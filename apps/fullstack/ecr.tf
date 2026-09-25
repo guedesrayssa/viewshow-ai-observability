@@ -1,14 +1,14 @@
 // Repositório da imagem, mais o build e o push.
 //
-// O pipeline do GitLab (scripts/ci/publish-backend-image.sh) faz isto a cada
-// push na develop. Aqui o mesmo trabalho precisa acontecer pelo menos uma vez,
+// O provisionamento local usa o Terraform para preparar a imagem. Esse trabalho
+// precisa acontecer pelo menos uma vez antes de criar o serviço,
 // senão o serviço ECS sobe apontando para uma imagem que não existe e as tasks
 // ficam em CannotPullContainerError.
 
 resource "aws_ecr_repository" "api" {
   name = local.nome_repositorio_ecr
 
-  // Mutável porque o pipeline reaproveita a tag de cache do buildx.
+  // Mutável para permitir que o build local reutilize a tag de cache do buildx.
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

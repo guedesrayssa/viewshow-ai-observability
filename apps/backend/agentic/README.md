@@ -2,13 +2,12 @@
 
 Ownership: futuro time da camada agêntica.
 
-Dois pacotes convivem neste diretório, com responsabilidades separadas e nenhum
-acoplamento entre si:
+Dois pacotes convivem neste diretório com responsabilidades separadas:
 
 | Pacote | Linguagem | O que é |
 | --- | --- | --- |
-| núcleo de diagnóstico (`package.json`) | TypeScript | decide se um sinal de ML merece investigação e produz hipóteses de causa raiz ancoradas em evidência |
-| `view_show_agentic` (`pyproject.toml`) | Python | hooks de observabilidade que o futuro Worker de Análise deve usar |
+| worker e núcleo de diagnóstico (`package.json`) | TypeScript | consome SQS, executa detecção e previsão, persiste resultados e produz hipóteses A′ ancoradas em evidência |
+| `view_show_agentic` (`pyproject.toml`) | Python | biblioteca de hooks de observabilidade preservada para consumidores Python |
 
 **A documentação completa do núcleo está em
 [`artefatos/arquitetura/implementacao/camada-agentica/`](../../../artefatos/arquitetura/implementacao/camada-agentica/camada-agentica.md)**
@@ -17,20 +16,24 @@ verificação, implantação e pendências. Este arquivo é só o guia de quem v
 mexer no código. A fonte normativa de ambos é
 [`artefatos/arquitetura/analise-e-ia.md`](../../../artefatos/arquitetura/analise-e-ia.md).
 
-## Núcleo de diagnóstico (TypeScript)
+## Worker e núcleo de diagnóstico (TypeScript)
 
-Módulo autocontido, sem nenhuma dependência de runtime. `investigate()` recebe o
-pacote pronto e devolve o diagnóstico; não toca banco, fila nem rede, nem
-através de port. Quem integra faz `ler → investigate → gravar`.
+`investigate()` continua sendo um núcleo puro: recebe o pacote pronto e devolve
+o diagnóstico. O runtime em `src/worker/` e `src/bootstrap/` liga esse núcleo ao
+SQS, DynamoDB, S3, aos modelos determinísticos e ao provider de LLM.
 
 ```bash
 npm install
+python3.13 -m pip install -e '.[training]'
 npm run verify   # typecheck + testes
 ```
 
-Sem AWS, sem rede e sem banco. Os testes de integração sobem um servidor HTTP
-local que fala o protocolo do Ollama, então o caminho de rede é exercitado de
-verdade — o único faz-de-conta é o modelo.
+Os testes não exigem uma conta AWS. Os testes de integração sobem um servidor
+HTTP local que fala o protocolo do Ollama, enquanto os adaptadores AWS são
+verificados também com DynamoDB Local quando `DYNAMODB_ENDPOINT` está definido.
+O CI fornece esse endpoint. Para executar apenas essa integração localmente,
+use `DYNAMODB_ENDPOINT=http://localhost:8000 npm run test:integration` com um
+DynamoDB Local descartável ativo.
 
 ### Integração
 
@@ -59,6 +62,10 @@ const provider = createLlmProvider({
 
 `fake` só é construído com `environment === "test"`; em qualquer outro a fábrica
 lança na inicialização.
+
+`none` desliga o LLM: o worker mantém a detecção e a previsão, e o diagnóstico é
+registrado como falha permanente `LLM_DISABLED`, sem retentativa nem DLQ. É o
+modo do Learner Lab, que não tem Bedrock.
 
 ### Avaliação com modelo real
 
@@ -118,13 +125,11 @@ teste com `python3.13 -m pip install -e .` e
 
 ## Estado do runtime
 
-Este diretório **não** contém consumidor SQS nem o Worker de Análise. O núcleo
-de diagnóstico é biblioteca, não serviço: não tem ponto de entrada, servidor HTTP
-nem consumidor de fila. O módulo `incidents` da API apenas lê diagnósticos
-persistidos e declara `AGENTIC_RESULT_UNAVAILABLE` quando não existem, e as
-métricas e traces do pacote Python começam a aparecer quando o futuro worker
-importar e invocar os hooks.
-
-Os impedimentos para a implantação e a lista de pendências estão nas seções 7 e 8
-de
-[`camada-agentica.md`](../../../artefatos/arquitetura/implementacao/camada-agentica/camada-agentica.md).
+O consumidor SQS, o worker, os adaptadores AWS e o ponto de entrada estão
+implementados. O catálogo piloto de dez canais foi gerado e a ingestão já grava os fatos
+dessas séries quando `ANALYSIS_FACT_CATALOG_LOCATION` está definida (contrato em
+`contracts/fixtures/ingestion-*.json`). O deploy continua desabilitado até a
+aprovação do bundle. O guia operacional está em
+[`worker-analise.md`](../../../artefatos/arquitetura/implementacao/worker-analise.md)
+e a primeira avaliação com o dump real está em
+[`avaliacao-worker-argus.md`](../../../artefatos/arquitetura/implementacao/avaliacao-worker-argus.md).

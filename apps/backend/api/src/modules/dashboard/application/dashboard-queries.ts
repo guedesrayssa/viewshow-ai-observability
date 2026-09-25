@@ -5,9 +5,10 @@ import {
   type InternalResponse,
   type Warning,
 } from "@view-show/contracts";
+import { requireActiveDataset } from "../../datasets/application/require-active-dataset.js";
+import type { ActiveDatasetResolver } from "../../datasets/ports/active-dataset-resolver.js";
 import type {
   DashboardReadRepository,
-  ProjectionRead,
   PublicProjection,
 } from "../ports/dashboard-read-repository.js";
 
@@ -19,6 +20,7 @@ type OverviewQuery = {
   readonly appVersion?: string | undefined;
   readonly incidentLimit?: number | undefined;
 };
+
 type MonitoringQuery = {
   readonly window: "15m" | "30m" | "1h" | "6h";
   readonly source?: string | undefined;
@@ -26,8 +28,12 @@ type MonitoringQuery = {
   readonly flowMetric: "ingestion_rate" | "processing_latency" | "queue_depth";
 };
 
+function dataUnavailable(message: string): never {
+  throw new ServiceError(503, "DATA_UNAVAILABLE", message);
+}
+
 function quality(
-  read: ProjectionRead,
+  read: import("../ports/dashboard-read-repository.js").ProjectionRead,
   window: ReturnType<typeof resolveWindow>,
   warnings: readonly Warning[],
 ): InternalResponse<PublicProjection>["quality"] {
@@ -36,15 +42,17 @@ function quality(
     observed && !Number.isNaN(observed.getTime())
       ? Math.max(
           0,
-          Math.round(
-            (new Date(window.to).getTime() - observed.getTime()) / 1000,
-          ),
+          Math.round((Date.parse(window.to) - observed.getTime()) / 1000),
         )
       : null;
+  const stale = observed !== null && !Number.isNaN(observed.getTime()) && observed < new Date(window.from);
+  const qualityWarnings = stale
+    ? [{ code: "STALE_SNAPSHOT", message: "O último snapshot disponível é anterior à janela solicitada; os valores podem estar desatualizados." }, ...warnings]
+    : warnings;
   return {
     window,
     partial:
-      warnings.length > 0 ||
+      qualityWarnings.length > 0 ||
       (read.coverageRatio !== null && read.coverageRatio < 1),
     refreshAfterSeconds: 900,
     freshness: [
@@ -55,19 +63,20 @@ function quality(
         state:
           lagSeconds === null
             ? "partial"
-            : lagSeconds > 1800
+            : stale || lagSeconds > 1800
               ? "delayed"
               : "fresh",
       },
     ],
-    warnings,
+    warnings: qualityWarnings,
   };
 }
 
 export class DashboardQueries {
   constructor(
     private readonly repository: DashboardReadRepository,
-    private readonly monitoringSources: readonly string[],
+    private readonly activeDataset: ActiveDatasetResolver,
+    _monitoringSources: readonly string[],
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
@@ -80,21 +89,22 @@ export class DashboardQueries {
       query.region ? "region" : null,
       query.appVersion ? "appVersion" : null,
     ].filter(Boolean);
-    if (unsupportedFilters.length > 0)
+    if (unsupportedFilters.length > 0) {
       throw new ServiceError(
         422,
         "UNSUPPORTED_FILTER_COMBINATION",
         "A projeção atual não sustenta os filtros solicitados.",
       );
-    const window = resolveWindow(query.window, this.clock());
-    const read = await this.repository.latestOverview(
-      new Date(window.from),
-      new Date(window.to),
-    );
+    }
+
+    const active = await requireActiveDataset(this.activeDataset);
+    if (active.projectionVersions.overview !== "1.0")
+      return dataUnavailable(
+        "A versão ativa ainda não contém uma projeção pública compatível para a visão geral.",
+      );
+    const read = await this.repository.activeOverview(active);
     if (!read)
-      throw new ServiceError(
-        503,
-        "DATA_UNAVAILABLE",
+      return dataUnavailable(
         "A projeção de visão geral ainda não foi publicada pela ingestão.",
       );
     const recentIncidents = read.data.recentIncidents;
@@ -106,43 +116,39 @@ export class DashboardQueries {
           }
         : read.data;
     assertNoPhysicalFields(data);
-    return { data, quality: quality(read, window, []) };
+    const window = resolveWindow(query.window, this.clock());
+    const warnings: Warning[] = [];
+    if (
+      read.observedThrough &&
+      Date.parse(read.observedThrough) < Date.parse(window.from)
+    ) {
+      warnings.push({
+        code: "ACTIVE_SNAPSHOT_OUTSIDE_WINDOW",
+        message:
+          "O dataset ativo é anterior à janela selecionada; exibindo a medição mais recente importada.",
+      });
+    }
+    return {
+      data,
+      datasetVersion: active.datasetVersion,
+      quality: quality(read, window, warnings),
+    };
   }
 
   async monitoring(
     query: MonitoringQuery,
   ): Promise<InternalResponse<PublicProjection>> {
-    if (query.flowMetric === "queue_depth")
+    if (query.worker || query.flowMetric === "queue_depth") {
       throw new ServiceError(
         422,
         "UNSUPPORTED_FILTER_COMBINATION",
-        "O pipeline batch atual não possui fila.",
+        "A projeção atual não sustenta o seletor de monitoramento solicitado.",
       );
-    const window = resolveWindow(query.window, this.clock());
-    const sources = query.source
-      ? query.source
-          .split(",")
-          .map((source) => source.trim())
-          .filter(Boolean)
-      : this.monitoringSources;
-    const read = await this.repository.latestMonitoring(
-      new Date(window.from),
-      new Date(window.to),
-      sources,
+    }
+
+    await requireActiveDataset(this.activeDataset);
+    return dataUnavailable(
+      "A versão ativa ainda não contém uma projeção pública compatível para o monitoramento.",
     );
-    if (!read)
-      throw new ServiceError(
-        503,
-        "DATA_UNAVAILABLE",
-        "A projeção de monitoramento ainda não foi publicada pela ingestão.",
-      );
-    assertNoPhysicalFields(read.data);
-    const warnings = [
-      {
-        code: "QUEUELESS_BATCH_PIPELINE",
-        message: "Fila e DLQ não se aplicam ao pipeline batch atual.",
-      },
-    ];
-    return { data: read.data, quality: quality(read, window, warnings) };
   }
 }

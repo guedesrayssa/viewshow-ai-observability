@@ -76,7 +76,8 @@ export function EvidenceView() {
   }>({ status: "pending" });
   const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
   const [timelineWindow, setTimelineWindow] = useState<WindowKey>("90");
-  const [bufferingPeriod, setBufferingPeriod] = useState<BufferingPeriodKey>("120");
+  const [bufferingPeriod, setBufferingPeriod] =
+    useState<BufferingPeriodKey>("120");
 
   const evidence = useResource(
     () => fetchEvidence(incidentId ?? ""),
@@ -116,10 +117,13 @@ export function EvidenceView() {
           title="Evidências"
           subtitle="Hipótese de causa provável e evidências do diagnóstico"
         />
-        <Unavailable title="Escolha um incidente para investigar" minHeight={280}>
+        <Unavailable
+          title="Escolha um incidente para investigar"
+          minHeight={280}
+        >
           Esta tela monta o diagnóstico de um incidente específico, e abrir um
-          por conta própria apresentaria um caso qualquer como se fosse o da
-          sua investigação. Venha pela lista de Incidentes.
+          por conta própria apresentaria um caso qualquer como se fosse o da sua
+          investigação. Venha pela lista de Incidentes.
         </Unavailable>
         <Link
           href="/incidentes"
@@ -134,7 +138,9 @@ export function EvidenceView() {
   // A revisão registrada na API vale como estado inicial; a feita nesta sessão
   // tem prioridade, porque acabou de acontecer diante da pessoa.
   const reviewStatus =
-    review.status !== "pending" ? review.status : (data?.reviewStatus ?? "pending");
+    review.status !== "pending"
+      ? review.status
+      : (data?.reviewStatus ?? "pending");
 
   return (
     <div className="flex flex-col gap-6">
@@ -179,16 +185,22 @@ export function EvidenceView() {
                   <h2 className="text-h2 text-ink">{data.incident.title}</h2>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge tone="critical">{data.incident.severity}</Badge>
-                    <Badge tone="info">{data.incident.investigationStatus}</Badge>
+                    <Badge tone="info">
+                      {data.incident.investigationStatus}
+                    </Badge>
                   </div>
                 </div>
 
                 <div>
                   <p className="text-display text-ink">
-                    <AnimatedNumber
-                      value={data.incident.affectedDevices}
-                      format={formatCompact}
-                    />
+                    {data.incident.affectedDevices === null ? (
+                      "Não medido"
+                    ) : (
+                      <AnimatedNumber
+                        value={data.incident.affectedDevices}
+                        format={formatCompact}
+                      />
+                    )}
                   </p>
                   <p className="mt-1 text-body-sm text-ink-brand">
                     dispositivos afetados
@@ -211,14 +223,15 @@ export function EvidenceView() {
         </Reveal>
 
         <Reveal delay={90} className="flex">
-          <Card accent="info" padding="lg" className="flex flex-1 flex-col gap-5">
+          <Card
+            accent="info"
+            padding="lg"
+            className="flex flex-1 flex-col gap-5"
+          >
             {data && data.hypothesis === null ? (
               <>
                 <CardTitle>Hipótese</CardTitle>
-                <Unavailable
-                  title="Ainda sem diagnóstico"
-                  className="flex-1"
-                >
+                <Unavailable title="Ainda sem diagnóstico" className="flex-1">
                   Este incidente ainda não passou pelo diagnóstico automático.
                   Quando ele rodar, a hipótese aparece aqui com o grau de
                   confiança e as evidências que a sustentam.
@@ -291,13 +304,18 @@ export function EvidenceView() {
                     {reviewStatus !== "pending" ? (
                       <span className="animate-fade-in text-caption text-ink-muted">
                         {REVIEW_META[reviewStatus].label}
-                        {review.by ? ` por ${review.by} · agora` : " anteriormente"}
+                        {review.by
+                          ? ` por ${review.by} · agora`
+                          : " anteriormente"}
                       </span>
                     ) : null}
                   </div>
 
                   {review.error ? (
-                    <p className="text-caption text-critical-strong" role="alert">
+                    <p
+                      className="text-caption text-critical-strong"
+                      role="alert"
+                    >
                       {review.error}
                     </p>
                   ) : reviewStatus === "pending" ? (
@@ -328,6 +346,8 @@ export function EvidenceView() {
         <Reveal delay={150} className="flex">
           <BufferingChart
             points={buffering.data?.points}
+            status={buffering.status}
+            error={buffering.error}
             marker={buffering.data?.marker ?? null}
             period={bufferingPeriod}
             onPeriodChange={setBufferingPeriod}
@@ -346,8 +366,8 @@ export function EvidenceView() {
                 title="Sem segmentação disponível"
                 className="mt-5 flex-1"
               >
-                A telemetria não respondeu a segmentação de erros por modelo,
-                ou não há erros na janela para repartir.
+                A telemetria não respondeu a segmentação de erros por modelo, ou
+                não há erros na janela para repartir.
               </Unavailable>
             ) : null}
 
@@ -403,7 +423,12 @@ export function EvidenceView() {
                   const meta = STRENGTH_META[item.strength];
 
                   return (
-                    <Reveal as="li" key={item.id} index={index} variant="rise-sm">
+                    <Reveal
+                      as="li"
+                      key={item.id}
+                      index={index}
+                      variant="rise-sm"
+                    >
                       <button
                         type="button"
                         aria-expanded={expanded}
@@ -433,9 +458,22 @@ export function EvidenceView() {
                         )}
                       >
                         <div className="overflow-hidden">
-                          <p className="pb-3 text-caption text-ink-muted">
+                          <p className="text-caption text-ink-muted">
                             {item.detail}
                           </p>
+                          <p className="mt-2 text-caption text-ink-subtle">
+                            Horário: {item.observedAt ?? "ausente na origem"} ·
+                            qualidade: {item.qualityStatus}
+                            {item.qualityFlags.length > 0
+                              ? ` · ${item.qualityFlags.join(", ")}`
+                              : ""}
+                          </p>
+                          <Link
+                            href={`/eventos?incidente=${encodeURIComponent(item.incidentId)}&evento=${encodeURIComponent(item.eventId)}`}
+                            className="focus-ring mb-3 mt-2 inline-flex rounded-field text-caption font-semibold text-ink-brand hover:underline"
+                          >
+                            Abrir evento {item.eventId}
+                          </Link>
                         </div>
                       </div>
                     </Reveal>
@@ -469,15 +507,20 @@ export function EvidenceView() {
               aria-label="Janela da linha do tempo"
               value={timelineWindow}
               onValueChange={(value) => setTimelineWindow(value as WindowKey)}
-              options={(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => ({
-                value: key,
-                label: WINDOW_LABELS[key],
-              }))}
+              options={(Object.keys(WINDOW_LABELS) as WindowKey[]).map(
+                (key) => ({
+                  value: key,
+                  label: WINDOW_LABELS[key],
+                }),
+              )}
             />
           </div>
 
           {data && data.timeline.length === 0 ? (
-            <Unavailable title="Sem linha do tempo de mudanças" className="mt-6">
+            <Unavailable
+              title="Sem linha do tempo de mudanças"
+              className="mt-6"
+            >
               Nenhuma das origens atuais registra deploys ou mudanças
               correlacionadas a este incidente. A linha do tempo volta quando o
               serviço de ingestão publicar esses marcos.
