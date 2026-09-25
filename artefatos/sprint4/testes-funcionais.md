@@ -220,11 +220,11 @@ Fonte: Material produzido pelos autores (2026).
 
 #### Reprodução dos testes IT-AWS-01 a IT-AWS-05
 
-&emsp;Esses testes acessam a stack implantada na AWS, por isso precisam saber onde ela está e com qual usuário entrar. Essas informações são passadas por variáveis de ambiente, descritas na Tabela 7A e reunidas no modelo [`apps/backend/api/.env.aws.example`](../../apps/backend/api/.env.aws.example). A variável `RUN_LIVE_AWS=true` funciona como uma trava: sem ela, o arquivo de teste é pulado por inteiro, de modo que o `npm test` comum, executado no dia a dia e na CI, nunca acessa a AWS nem cria recursos por engano. Além das variáveis, é preciso ter uma sessão válida do AWS Academy Learner Lab em `~/.aws/credentials`, porque o teste lê o DynamoDB e o S3 diretamente para conferir o que a API gravou.
+&emsp;Esses testes acessam a stack implantada na AWS, por isso precisam saber onde ela está e com qual usuário entrar. Essas informações são passadas por variáveis de ambiente, descritas na Tabela 7.1 e reunidas no modelo [`apps/backend/api/.env.aws.example`](../../apps/backend/api/.env.aws.example). A variável `RUN_LIVE_AWS=true` funciona como uma trava: sem ela, o arquivo de teste é pulado por inteiro, de modo que o `npm test` comum, executado no dia a dia e na CI, nunca acessa a AWS nem cria recursos por engano. Além das variáveis, é preciso ter uma sessão válida do AWS Academy Learner Lab em `~/.aws/credentials`, porque o teste lê o DynamoDB e o S3 diretamente para conferir o que a API gravou.
 
 <div align="center">
 
-<strong>Tabela 7A: Variáveis de ambiente dos testes IT-AWS-01 a IT-AWS-05</strong>
+<strong>Tabela 7.1: Variáveis de ambiente dos testes IT-AWS-01 a IT-AWS-05</strong>
 
 </div>
 
@@ -253,7 +253,7 @@ cd apps/backend/api
 #    então a senha preenchida nele não é versionada por engano.
 cp .env.aws.example .env.aws.local
 
-# 3. Preencher .env.aws.local com os valores da Tabela 7A.
+# 3. Preencher .env.aws.local com os valores da Tabela 7.1.
 #    Os outputs podem ser consultados com: terraform -chdir=../../fullstack output
 
 # 4. Carregar as variáveis no shell atual. O Vitest não lê esse arquivo sozinho:
