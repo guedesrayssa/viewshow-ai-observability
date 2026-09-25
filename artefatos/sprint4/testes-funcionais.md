@@ -147,7 +147,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 2. Testes de Integração
 
-&emsp;A rodada final de 25/09/2026 foi executada após o deploy contra a infraestrutura implantada na AWS, e não contra serviços locais. A stack `apps/fullstack` foi aplicada, a tabela `view-show-iac-operacional` recebeu 300 incidentes, 4.110 itens de domínio, 10 snapshots legados e 3 itens do contrato versionado (manifesto `ACTIVE` e projeções de incidentes/overview). O usuário técnico do Cognito foi usado apenas para obter uma sessão real pela rota pública de login.
+&emsp;A rodada final de 25/09/2026 foi executada após o deploy contra a infraestrutura implantada na AWS, e não contra serviços locais. A stack `apps/fullstack` foi aplicada e o banco operacional recebeu uma massa sintética de 300 incidentes, com suas evidências e hipóteses, além dos registros que indicam à API qual versão desses dados está ativa e das visões já prontas para a lista de incidentes e o dashboard. Sem esses registros de versão ativa, a API não teria o que mostrar; com eles, os testes conseguem comparar a resposta da API com o que está de fato gravado no banco. No detalhe, a tabela `view-show-iac-operacional` recebeu 4.110 itens de domínio, 10 snapshots legados e 3 itens do contrato versionado (manifesto `ACTIVE` e projeções de incidentes/overview). O usuário técnico do Cognito foi usado apenas para obter uma sessão real pela rota pública de login.
 
 ### 2.1 Matriz dos testes executados
 
@@ -159,11 +159,11 @@ Fonte: Material produzido pelos autores (2026).
 
 | ID | Objetivo / componentes | Pré-condições e entrada | Procedimento | Resultado esperado | Resultado obtido | Situação |
 | --- | --- | --- | --- | --- | --- | --- |
-| IT-AWS-01 | Verificar a disponibilidade integrada de Amplify → painel e API Gateway → ECS/Express. | Stack aplicada; URLs públicas do painel e da API. | Requisitar em paralelo `/dados/importacoes/` no Amplify e `/health` na API. | Ambos respondem `200`; painel devolve HTML do View Show e health devolve `{status: "ok"}`. | Painel e health responderam `200`, com os conteúdos esperados. | Aprovado |
-| IT-AWS-02 | Verificar a integração da borda HTTP com o módulo de sessão. | API publicada; requisição sem cookie. | Executar `GET /auth/session` sem autenticação. | `401 UNAUTHENTICATED`. | Retornou `401 UNAUTHENTICATED`. | Aprovado |
-| IT-AWS-03 | Verificar Cognito → API Gateway → ECS → caso de uso de incidentes → DynamoDB, correlacionando a resposta com a projeção física ativa. | Usuário técnico confirmado no Cognito; dataset ativo semeado; credenciais de leitura do ambiente; entrada `window=24h&limit=5`. | Fazer login real, consultar a API, ler diretamente manifesto e projeção `ACTIVE` no DynamoDB e comparar todos os IDs devolvidos; conferir request ID, tempo e ausência de chaves físicas. | `200`, cinco ou menos itens pertencentes à mesma projeção persistida, sem `pk`, `sk`, `ttl` ou `trace_id`. | `200` em 143,12 ms; 5/5 IDs presentes na projeção de 300 itens do dataset `dsv_16d…cb454`; nenhum campo físico exposto; request ID correlacionado. | Aprovado |
-| IT-AWS-04 | Verificar API/caso de uso de dashboard → projeções versionadas no DynamoDB. | Mesma sessão e manifesto `ACTIVE`; entrada `window=24h`. | Executar `GET /api/v1/dashboard/overview?window=24h` e validar o envelope público. | `200`, propriedade `data` presente e nenhuma chave física exposta. | Projeção semeada foi lida com `200` e envelope público válido. | Aprovado |
-| IT-AWS-05 | Verificar API Gateway/ECS → `ImportUseCases` → DynamoDB → S3 em uma importação real, incluindo idempotência, concorrência e limpeza. | Sessão Cognito válida; tabela e bucket da stack; nenhuma importação ativa; tamanho aleatório válido informado como metadado de GZIP, sem concluir o upload. | Confirmar ausência de lock; iniciar importação; ler diretamente `ImportJob`/lock no DynamoDB e multipart no S3; repetir a mesma chave; disputar com outra chave; abortar o multipart e remover apenas os itens criados; confirmar ausência do lock. | `201 UPLOADING`, exatamente um registro e um multipart; replay com mesmo `importId`; concorrência `409`; nenhuma sobra após a limpeza. | Na execução registrada anteriormente, `201` em 1.286,55 ms; `ImportJob` `imp_01M3…MV7` em `UPLOADING`; um multipart na chave correlacionada; replay idempotente; concorrência `409`; lock, registro, mapeamento e multipart removidos ao final. | Aprovado |
+| IT-AWS-01 | Verificar que o painel publicado no Amplify e a API publicada (API Gateway → ECS/Express) estão no ar ao mesmo tempo. | Stack aplicada; URLs públicas do painel e da API. | Abrir a página de importações do painel e o endereço de saúde (`/health`) da API. | Ambos respondem `200`; painel devolve HTML do View Show e health devolve `{status: "ok"}`. | Painel e health responderam `200`, com os conteúdos esperados. | Aprovado |
+| IT-AWS-02 | Verificar que a API publicada recusa quem não fez login (integração da borda HTTP com o módulo de sessão). | API publicada; requisição sem cookie. | Executar `GET /auth/session` sem autenticação. | `401 UNAUTHENTICATED`. | Retornou `401 UNAUTHENTICATED`. | Aprovado |
+| IT-AWS-03 | Verificar que os incidentes que a API devolve a um usuário logado são exatamente os que estão gravados no banco, passando por login (Cognito), API e banco (DynamoDB). | Usuário técnico confirmado no Cognito; dataset ativo semeado; credenciais de leitura do ambiente; entrada `window=24h&limit=5`. | Fazer login, pedir os incidentes das últimas 24 h à API e conferir, lendo o banco diretamente, que cada incidente devolvido existe na versão ativa dos dados. | `200`, cinco ou menos itens pertencentes à mesma projeção persistida, sem `pk`, `sk`, `ttl` ou `trace_id`. | `200` em 143,12 ms; os 5 incidentes devolvidos estão entre os 300 do dataset ativo; nenhum campo interno do banco exposto. | Aprovado |
+| IT-AWS-04 | Verificar que o dashboard da API consegue ler do banco os dados resumidos da versão ativa (caso de uso de dashboard → projeções versionadas no DynamoDB). | Mesma sessão e manifesto `ACTIVE`; entrada `window=24h`. | Executar `GET /api/v1/dashboard/overview?window=24h` e validar o envelope público. | `200`, propriedade `data` presente e nenhuma chave física exposta. | Projeção semeada foi lida com `200` e envelope público válido. | Aprovado |
+| IT-AWS-05 | Verificar que iniciar uma importação pela API cria de fato o registro no banco (DynamoDB) e prepara o envio do arquivo no armazenamento (S3), que repetir o mesmo pedido não duplica nada e que uma segunda importação simultânea é recusada. | Sessão Cognito válida; tabela e bucket da stack; nenhuma importação ativa; tamanho aleatório válido informado como metadado de GZIP, sem concluir o upload. | Iniciar uma importação, conferir no banco e no S3 o que foi criado, repetir o mesmo pedido, tentar uma segunda importação e, ao final, apagar só o que o teste criou. | `201 UPLOADING`, exatamente um registro e um multipart; replay com mesmo `importId`; concorrência `409`; nenhuma sobra após a limpeza. | `201` em 1.286,55 ms; a importação criada no teste ficou em `UPLOADING`, com um único envio preparado no S3; a repetição devolveu a mesma importação e a concorrente recebeu `409`; nada restou após a limpeza. | Aprovado |
 | IT-UPLOAD-01 | Verificar `ImportsView` → `ImportUploadDialog` → `ImportUploadProvider` → cliente de importação. | Página renderizada com provider real e cliente/upload runner controlados. | Abrir o diálogo; selecionar `argus_dump.sql.gz`; revisar; confirmar o upload. | Nome e tamanho seguem até `client.start`, uma chave de idempotência é criada e o runner de upload é iniciado uma vez. | Fluxo completo executado; `client.start` e o runner receberam o arquivo uma única vez. | Aprovado |
 | IT-UPLOAD-02 | Verificar a composição UI/provider ao separar falha física de upload e falha posterior de leitura. | Respostas controladas das dependências HTTP. | Simular as duas falhas consecutivas e observar os estados publicados. | A falha física é preservada e a falha de leitura aparece separadamente. | Estados permaneceram separados conforme o contrato. | Aprovado |
 | IT-UPLOAD-03 | Verificar a atualização do provider durante polling de uma importação concorrente. | Conflito inicial e resposta terminal posterior. | Iniciar polling e devolver estado terminal. | O aviso de conflito deve desaparecer. | Aviso removido após a publicação do estado terminal. | Aprovado |
@@ -176,7 +176,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.2 Profundidade, correlação e isolamento
 
-&emsp;IT-AWS-03 e IT-AWS-05 não consideram um `200` isolado como prova suficiente: cada resposta pública é confrontada com o estado real da dependência posterior. A leitura direta usa as mesmas chaves físicas previstas pelos adaptadores, enquanto as asserções da resposta garantem que essas chaves não vazem para o cliente.
+&emsp;IT-AWS-03 e IT-AWS-05 não consideram um `200` isolado como prova suficiente: depois de cada resposta da API, o teste vai direto ao banco (e, na importação, ao S3) e confere se o que a API disse corresponde ao que foi realmente gravado. Para essa conferência, o teste lê o banco com as mesmas chaves internas que o sistema usa; ao mesmo tempo, verifica que essas chaves internas nunca aparecem na resposta entregue ao usuário.
 
 <div align="center">
 
@@ -186,8 +186,8 @@ Fonte: Material produzido pelos autores (2026).
 
 | Teste | Fronteiras comprovadas | Evidência cruzada | Isolamento e pós-condição |
 | --- | --- | --- | --- |
-| IT-AWS-03 | Cognito → cookie → API Gateway → ECS/Express → `IncidentUseCases` → resolvedor do dataset → DynamoDB → DTO público | `X-Request-Id`; tempo HTTP; versão do dataset; 5 IDs públicos encontrados diretamente entre os 300 itens da projeção persistida; campos físicos ausentes | Somente leitura; não altera a massa semeada |
-| IT-AWS-05 | Cognito → API Gateway → ECS/Express → `ImportUseCases` → transação/lock DynamoDB → `CreateMultipartUpload` S3 → resposta pública | Mesmo `importId` na resposta, no item `IMPORTS/IMPORT#…`, no lock e na chave S3; exatamente um multipart; replay igual; conflito `409` com o ID ativo | `finally` aborta o multipart e remove, com condições pelo `importId`, somente lock, registro e idempotência criados; uma leitura final comprova que não restou lock |
+| IT-AWS-03 | A requisição percorre todo o caminho de uma consulta real: o usuário faz login no Cognito e recebe um cookie de sessão; a API recebe o pedido, descobre qual versão dos dados está ativa, busca os incidentes no banco e devolve só os campos públicos. Caminho técnico: Cognito → cookie → API Gateway → ECS/Express → `IncidentUseCases` → resolvedor do dataset → DynamoDB → DTO público | Identificador da requisição (`X-Request-Id`); tempo HTTP; versão do dataset; os 5 incidentes devolvidos foram encontrados diretamente entre os 300 gravados no banco; nenhum campo interno exposto | Somente leitura; não altera a massa semeada |
+| IT-AWS-05 | A requisição percorre o caminho de início de uma importação: com a sessão do Cognito, a API reserva a vaga de importação no banco (uma só por vez) e pede ao S3 que prepare o recebimento do arquivo em partes. Caminho técnico: Cognito → API Gateway → ECS/Express → `ImportUseCases` → transação/lock DynamoDB → `CreateMultipartUpload` S3 → resposta pública | O mesmo identificador da importação aparece na resposta, no registro do banco, na reserva da vaga e no caminho do arquivo no S3; existe exatamente um envio preparado; a repetição devolve a mesma importação; a tentativa concorrente recebe `409` informando qual importação está ativa | Ao final, mesmo em caso de falha, o teste cancela o envio no S3 e apaga só os registros que ele mesmo criou (reserva, importação e chave de idempotência); uma última leitura confirma que a vaga ficou livre |
 
 <div align="center">
 
@@ -195,7 +195,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;O tempo `responseMs` mede apenas a operação HTTP principal; o tempo mostrado pelo Vitest inclui também as leituras independentes no DynamoDB/S3, replay, conflito e limpeza. Essa separação evita apresentar o custo da coleta de evidência como latência da API. O teste não envia conteúdo nem dispara o worker: ele para deliberadamente em `UPLOADING`, que é a pós-condição do UC-09, e aborta o multipart no `finally`.
+&emsp;Os tempos das tabelas (`responseMs`) medem só a resposta da API. O tempo total que o Vitest mostra para cada teste é maior porque inclui também as conferências no banco e no S3, a repetição, a disputa e a limpeza; separar os dois evita apresentar o custo da verificação como se fosse lentidão da API. O IT-AWS-05 também não envia o arquivo nem aciona o processamento posterior: ele para de propósito no estado `UPLOADING`, que é exatamente onde o UC-09 termina, e cancela o envio preparado ao final.
 
 ### 2.3 Localização, evidências e reprodução
 
@@ -207,7 +207,7 @@ Fonte: Material produzido pelos autores (2026).
 
 | IDs | Código utilizado | Evidência |
 | --- | --- | --- |
-| IT-AWS-01 a IT-AWS-05 | [`apps/backend/api/tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), com um `it` identificado para cada linha da matriz | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) — 5/5 aprovados, com IDs, tempos e estado cruzado redigidos |
+| IT-AWS-01 a IT-AWS-05 | [`apps/backend/api/tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), com um `it` identificado para cada linha da matriz | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) — 5/5 aprovados, com os identificadores completos, os tempos e o resultado das conferências no banco e no S3 |
 | IT-UPLOAD-01, IT-UPLOAD-02 e IT-UPLOAD-03 | [`apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx`](../../apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx), com um `it` para cada linha | [`resultado-vitest-integracao-upload.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-upload.txt) — 3/3 aprovados |
 
 <div align="center">
@@ -282,11 +282,11 @@ npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.
 
 ## 3. Testes de Caso de Uso e Análise de Valor Limite
 
-&emsp;Caso de uso escolhido: **[UC-09 — Iniciar importação manual de snapshot do ARGUS](../sprint3/modelagem.md#39-uc-09--iniciar-importação-manual-de-snapshot-do-argus)**, extensão operacional do UC-08 e relacionado a RF01, RF02, RF03, RNF04 e RIE02. O UC-09 foi separado do processamento assíncrono porque possui ator, término e pós-condições próprios: ao final, deve existir exatamente um `ImportJob` em `UPLOADING`, uma reserva global e um multipart preparado; restauração, normalização e ativação continuam no UC-08. O detalhamento DS-01B já estabelecia `argus_dump.sql.gz` ou ZIP como entradas dessa operação.
+&emsp;Caso de uso escolhido: **[UC-09 — Iniciar importação manual de snapshot do ARGUS](../sprint3/modelagem.md#39-uc-09--iniciar-importação-manual-de-snapshot-do-argus)**, extensão operacional do UC-08 e relacionado a RF01, RF02, RF03, RNF04 e RIE02. O UC-09 foi separado do processamento assíncrono porque possui ator, término e pós-condições próprios. Ele termina quando o sistema está pronto para receber o arquivo: existe um único registro de importação aguardando o envio (`ImportJob` em `UPLOADING`), a vaga de importação está reservada para ele, já que só uma importação pode acontecer por vez, e o S3 está preparado para receber o arquivo em partes (multipart). Restaurar, normalizar e ativar os dados continuam sendo responsabilidade do UC-08. O detalhamento DS-01B já estabelecia `argus_dump.sql.gz` ou ZIP como entradas dessa operação.
 
 &emsp;A suíte cobre o fluxo básico, os dois fluxos alternativos, todos os fluxos de exceção do UC-09, suas pós-condições e os limites de tamanho, nome e corpo HTTP. Os identificadores `CU-IMP-01` a `CU-IMP-06` são casos de teste do mesmo UC-09. A execução filtrada produziu **8/8 testes Vitest aprovados** — dois identificadores são parametrizados — além das 15 combinações internas de GZIP e ZIP.
 
-&emsp;Foi escolhida a técnica de **caixa-preta**. Os testes enviam requisições HTTP reais a uma instância Express efêmera e verificam status, envelope e efeitos observáveis nos ports do caso de uso. Assim, validam rota → schema → aplicação → repositório/armazenamento sem depender da implementação interna de uma função específica.
+&emsp;Foi escolhida a técnica de **caixa-preta**: os testes olham apenas o que entra e o que sai, sem depender de como cada função é implementada por dentro. Cada teste sobe uma instância temporária da API (Express), envia requisições HTTP reais e verifica o código de resposta, o corpo devolvido e o que o sistema tentou gravar no banco e no armazenamento. Como o banco e o armazenamento são substituídos por versões controladas, dá para simular falhas e confirmar, por exemplo, que um pedido inválido não gravou nada. A requisição passa pelas mesmas camadas da produção: rota → validação do pedido (schema) → regra de negócio → banco/armazenamento.
 
 ### CU-IMP-01 — Iniciar importação de GZIP
 
@@ -374,10 +374,10 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `CU-IMP-04` (duas parametrizações) |
-| Objetivo e requisito/caso de uso | Cobrir a exceção 4c do UC-09: falhar de modo fechado quando uma disputa é detectada, mas o registro ativo não pode ser confirmado. |
-| Pré-condições e dados de entrada | Uma importação previamente bloqueada; nova solicitação válida com outra chave; `getActive` retorna ausente ou lança falha privada. |
+| Objetivo e requisito/caso de uso | Cobrir a exceção 4c do UC-09: se duas importações disputam a vaga e o sistema não consegue confirmar qual delas está ativa, ele recusa a nova (`503`) em vez de arriscar aceitar as duas. |
+| Pré-condições e dados de entrada | Uma importação já ocupando a vaga; nova solicitação válida com outra chave de idempotência; a consulta da importação ativa (`getActive`) não encontra o registro ou falha com um erro interno. |
 | Procedimento | Disputar a reserva nos dois modos e inspecionar status e envelope público. |
-| Resultado esperado | `503 DATA_UNAVAILABLE` completo e estável, sem expor detalhes internos. |
+| Resultado esperado | `503 DATA_UNAVAILABLE` com a resposta de erro padrão da API, sem expor detalhes internos. |
 | Resultado obtido | As duas parametrizações retornaram `503`; nenhum texto privado apareceu no envelope. |
 | Situação | **Aprovado** |
 | Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-04` na saída Vitest. |
@@ -424,9 +424,9 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `CU-IMP-06` |
-| Objetivo e requisito/caso de uso | Cobrir a exceção 5a e a garantia mínima do UC-09 quando o armazenamento falha durante a preparação. |
-| Pré-condições e dados de entrada | Sessão e GZIP válidos; `store.create` configurado para falhar com uma mensagem privada. |
-| Procedimento | Enviar `POST /api/v1/imports`, inspecionar envelope, registro terminal e lock ativo. |
+| Objetivo e requisito/caso de uso | Cobrir a exceção 5a e a garantia mínima do UC-09: se o S3 falhar ao preparar o recebimento do arquivo, a importação deve ser marcada como falha e a vaga liberada, para que o usuário possa tentar de novo. |
+| Pré-condições e dados de entrada | Sessão e GZIP válidos; a preparação do armazenamento (`store.create`) configurada para falhar com uma mensagem interna. |
+| Procedimento | Enviar `POST /api/v1/imports` e verificar a resposta de erro, o estado final da importação e se a vaga ficou livre. |
 | Resultado esperado | `503 UPLOAD_PREPARATION_FAILED`; nenhuma informação privada; registro `FAILED`; lock liberado para recuperação segura. |
 | Resultado obtido | O status/código coincidiram, a mensagem privada não vazou, o registro terminou `FAILED` e `getActive()` retornou nulo. |
 | Situação | **Aprovado** |
