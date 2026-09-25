@@ -1,0 +1,26 @@
+Execução: 2026-09-25 00:31 (America/Sao_Paulo)
+Técnica: caixa-preta pela fronteira HTTP pública
+Comando: npm test -- --run tests/gateway-http.integration.test.ts -t "CU-IMP" --reporter=verbose
+
+PASS CU-IMP-01: aplica os limites do GZIP antes de reservar a importação (187 ms)
+PASS CU-IMP-02: aplica os limites do ZIP e do nome antes de reservar a importação (97 ms)
+PASS CU-IMP-03: autentica, garante idempotência e protege a importação ativa (195 ms)
+PASS CU-IMP-04: retorna 503 seguro quando a disputa tem registro ativo ausente (10 ms)
+PASS CU-IMP-04: retorna 503 seguro quando a consulta do registro ativo falha (17 ms)
+PASS CU-IMP-05: retorna envelope 413 acima do limite do parser de complete (139 ms)
+PASS CU-IMP-05: retorna envelope 413 acima do limite do parser de start (25 ms)
+PASS CU-IMP-06: terminaliza com segurança quando o multipart não pode ser preparado (17 ms)
+
+Test Files  1 passed (1)
+Tests       8 passed | 27 skipped (35)
+Duration    5.26s
+
+CU-IMP-01: 7 combinações internas verificadas.
+CU-IMP-02: 8 combinações internas verificadas.
+Entradas inválidas: 400 VALIDATION_ERROR, sem registro e sem chamada ao armazenamento.
+Entradas válidas: 201, registro UPLOADING e uma chamada ao armazenamento.
+Repetição idempotente: mesmo importId e apenas uma criação de multipart.
+Concorrência: 409 IMPORT_IN_PROGRESS, preservando a importação ativa.
+Sessão ausente: 401 antes de qualquer criação.
+Estado ativo indeterminável: 503 sem detalhe interno.
+Falha do armazenamento: 503 UPLOAD_PREPARATION_FAILED, registro FAILED e lock liberado.
