@@ -12,8 +12,9 @@ import { createFakeProvider, type FakeProviderOptions } from "../adapters/llm/fa
 import { createOllamaProvider } from "../adapters/llm/ollama-provider.js";
 import { createBedrockProvider, type ConverseInput, type ConverseOutput } from "../adapters/llm/bedrock-provider.js";
 import type { LlmProvider } from "../ports/llm-provider.js";
+import { AnalysisError } from "../worker/types.js";
 
-export type LlmProviderKind = "bedrock" | "ollama" | "fake";
+export type LlmProviderKind = "bedrock" | "ollama" | "fake" | "none";
 
 export interface LlmProviderConfig {
   readonly kind: LlmProviderKind;
@@ -68,6 +69,17 @@ export function createLlmProvider(config: LlmProviderConfig): LlmProvider {
         ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}),
         ...(config.temperature !== undefined ? { temperature: config.temperature } : {}),
       });
+    }
+
+    case "none": {
+      // Ambiente sem modelo de linguagem (Learner Lab não tem Bedrock). A
+      // detecção e a previsão seguem; o diagnóstico falha de forma permanente e
+      // fica registrado como `failed`, sem retentativa nem DLQ.
+      return {
+        generate: async () => {
+          throw new AnalysisError("LLM_DISABLED", true);
+        },
+      };
     }
 
     case "fake": {

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { createLlmProvider, ProviderConfigError } from "../src/bootstrap/llm-provider-factory.js";
+import { AnalysisError } from "../src/worker/types.js";
 
 test("recusa o provider falso fora de ambiente de teste", () => {
   for (const ambiente of ["production", "staging", "development", ""]) {
@@ -37,6 +38,16 @@ test("bedrock sem a função converse é erro de configuração", () => {
     () => createLlmProvider({ kind: "bedrock", modelId: "m", environment: "production" }),
     /exige a função `converse`/,
   );
+});
+
+test("none falha de forma permanente em qualquer ambiente, sem chamar modelo algum", async () => {
+  for (const ambiente of ["production", "test"]) {
+    const provider = createLlmProvider({ kind: "none", modelId: "none", environment: ambiente });
+    await assert.rejects(
+      () => provider.generate({ systemPrompt: "s", userPrompt: "u" }),
+      (erro: unknown) => erro instanceof AnalysisError && erro.code === "LLM_DISABLED" && erro.permanent,
+    );
+  }
 });
 
 test("constrói ollama quando a configuração está completa", () => {

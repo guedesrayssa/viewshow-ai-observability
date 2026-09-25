@@ -186,6 +186,12 @@ const LEARNER_LAB_PLAN_VARIABLES = Object.freeze({
   force_delete_ecr_ingestao: true,
   acoes_alarme_ingestao: [],
 });
+// The analysis worker is opt-in. The model and catalog are local files that
+// Terraform publishes to the ingestion bucket; Bedrock is unavailable in the
+// Learner Lab, so the worker always runs with the LLM disabled.
+const ANALYSIS_MODEL_MAX_BYTES = 128 * 1024 * 1024;
+const ANALYSIS_CATALOG_MAX_BYTES = 8 * 1024 * 1024;
+const ANALYSIS_LLM_PROVIDER = "none";
 // Provenance of the canonical fixture used only by the reduced smoke workflow.
 // Real snapshots must provide their own extraction date to upload_snapshot.py.
 const REDUCED_FIXTURE_EXTRACTED_ON = "2026-09-01";
@@ -238,7 +244,8 @@ const IMPORT_CANARY_DATASET_VERSION = /^dsv_[0-9a-f]{64}$/;
 const IMPORT_CANARY_TIMESTAMP =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$/;
 const HELP = `Usage: node scripts/aws-learner-lab.mjs <command>
-       node scripts/aws-learner-lab.mjs setup [--profile <name>] [--yes]
+       node scripts/aws-learner-lab.mjs setup [--profile <name>] [--yes] [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
+       node scripts/aws-learner-lab.mjs deploy [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
        node scripts/aws-learner-lab.mjs destroy
        node scripts/aws-learner-lab.mjs seed --snapshot <file.sql.gz> --extracted-on <YYYY-MM-DD> --label <slug> --timeout-seconds <n>
        node scripts/aws-learner-lab.mjs import-canary --snapshot <argus_dump.sql.gz> --extracted-on <YYYY-MM-DD> --username <email> --label <slug> --timeout-seconds <n> [--stop-at-stage <stage>]
@@ -256,26 +263,84 @@ Commands:
   evidence        Print the durable ingestion run evidence
   all             Run check, build-snapshot, deploy, seed and evidence`;
 
-function parseSetupConfiguration(extraArguments) {
-  if (!Array.isArray(extraArguments)) throw new Error("setup arguments must be an array");
+function readAnalysisArtifact(rawPath, label, maxBytes, { root, lstat, accessFile, readFile }) {
+  const resolved = path.resolve(root, rawPath);
+  let metadata;
+  try {
+    metadata = lstat(resolved);
+  } catch {
+    throw new Error(`analysis ${label} does not exist or cannot be inspected`);
+  }
+  if (metadata.isSymbolicLink() || !metadata.isFile()) {
+    throw new Error(`analysis ${label} must be a regular non-symlink file`);
+  }
+  if (metadata.size > maxBytes) {
+    throw new Error(`analysis ${label} exceeds ${Math.floor(maxBytes / (1024 * 1024))} MiB`);
+  }
+  try {
+    accessFile(resolved, fsConstants.R_OK);
+  } catch {
+    throw new Error(`analysis ${label} must be readable`);
+  }
+  let document;
+  try {
+    document = JSON.parse(readFile(resolved, "utf8"));
+  } catch {
+    throw new Error(`analysis ${label} must be a valid JSON file`);
+  }
+  return { resolved, document };
+}
+
+function parseAnalysisWorkerFiles(rawModel, rawCatalog, files) {
+  if (rawModel === undefined && rawCatalog === undefined) return null;
+  if (rawModel === undefined || rawCatalog === undefined) {
+    throw new Error("--analysis-model and --analysis-catalog must be passed together");
+  }
+  const model = readAnalysisArtifact(rawModel, "model", ANALYSIS_MODEL_MAX_BYTES, files);
+  if (
+    model.document === null ||
+    typeof model.document !== "object" ||
+    Array.isArray(model.document) ||
+    model.document.approved !== true
+  ) {
+    throw new Error(
+      "analysis model must be an approved bundle (approved: true); approve it with apps/backend/agentic/scripts/approve-model.py",
+    );
+  }
+  const catalog = readAnalysisArtifact(rawCatalog, "catalog", ANALYSIS_CATALOG_MAX_BYTES, files);
+  if (
+    !Array.isArray(catalog.document) ||
+    catalog.document.length === 0 ||
+    catalog.document.length > 32
+  ) {
+    throw new Error("analysis catalog must be a JSON array with 1 to 32 scopes");
+  }
+  return { model: model.resolved, catalog: catalog.resolved };
+}
+
+function parseSetupConfiguration(extraArguments, files, { command = "setup" } = {}) {
+  if (!Array.isArray(extraArguments)) throw new Error(`${command} arguments must be an array`);
+  const acceptsProfile = command === "setup";
   let profile = "default";
   let autoApprove = false;
   let profileSeen = false;
+  let analysisModel;
+  let analysisCatalog;
   for (let index = 0; index < extraArguments.length; index += 1) {
     const argument = extraArguments[index];
-    if (argument === "--yes") {
-      if (autoApprove) throw new Error("setup option --yes may only be passed once");
+    if (acceptsProfile && argument === "--yes") {
+      if (autoApprove) throw new Error(`${command} option --yes may only be passed once`);
       autoApprove = true;
       continue;
     }
-    if (argument === "--profile") {
-      if (profileSeen) throw new Error("setup option --profile may only be passed once");
+    if (acceptsProfile && argument === "--profile") {
+      if (profileSeen) throw new Error(`${command} option --profile may only be passed once`);
       const value = extraArguments[index + 1];
       if (typeof value !== "string" || value.startsWith("--") || value.length === 0) {
-        throw new Error("setup requires a value after --profile");
+        throw new Error(`${command} requires a value after --profile`);
       }
       if (!/^[A-Za-z0-9_+=,.@-]{1,128}$/.test(value)) {
-        throw new Error("setup profile contains unsupported characters");
+        throw new Error(`${command} profile contains unsupported characters`);
       }
       if (value.toLowerCase() === "nora") {
         throw new Error("the nora AWS profile is not allowed for this project");
@@ -285,9 +350,24 @@ function parseSetupConfiguration(extraArguments) {
       index += 1;
       continue;
     }
-    throw new Error(`setup does not support option: ${String(argument)}`);
+    if (argument === "--analysis-model" || argument === "--analysis-catalog") {
+      const seen = argument === "--analysis-model" ? analysisModel : analysisCatalog;
+      if (seen !== undefined) {
+        throw new Error(`${command} option ${argument} may only be passed once`);
+      }
+      const value = extraArguments[index + 1];
+      if (typeof value !== "string" || value.startsWith("--") || value.length === 0) {
+        throw new Error(`${command} requires a value after ${argument}`);
+      }
+      if (argument === "--analysis-model") analysisModel = value;
+      else analysisCatalog = value;
+      index += 1;
+      continue;
+    }
+    throw new Error(`${command} does not support option: ${String(argument)}`);
   }
-  return { profile, autoApprove };
+  const analysisWorker = parseAnalysisWorkerFiles(analysisModel, analysisCatalog, files);
+  return { profile, autoApprove, analysisWorker };
 }
 
 function validateInitialUser(email, password) {
@@ -687,7 +767,46 @@ function assertNoAutomaticVariableFiles({ readDirectory, root }) {
   }
 }
 
-function validateLearnerLabPlan(plan) {
+function analysisWorkerVariables(analysisWorker) {
+  return [
+    "-var=analysis_worker_habilitado=true",
+    `-var=analysis_llm_provider=${ANALYSIS_LLM_PROVIDER}`,
+    `-var=analysis_model_file=${analysisWorker.model}`,
+    `-var=analysis_scope_catalog_file=${analysisWorker.catalog}`,
+  ];
+}
+
+function validateAnalysisWorkerPlan(plan, analysisWorker) {
+  const variables = plan.variables ?? {};
+  const enabled = variables.analysis_worker_habilitado?.value;
+  const planEnablesWorker = enabled === true || enabled === "true";
+  if (!analysisWorker) {
+    if (planEnablesWorker) {
+      throw new Error(
+        "the saved plan enables the analysis worker without --analysis-model and --analysis-catalog",
+      );
+    }
+    return;
+  }
+  const expected = {
+    analysis_worker_habilitado: [true, "true"],
+    analysis_llm_provider: [ANALYSIS_LLM_PROVIDER],
+    analysis_model_file: [analysisWorker.model],
+    analysis_scope_catalog_file: [analysisWorker.catalog],
+  };
+  const mismatches = Object.entries(expected)
+    .filter(([name, allowed]) => !allowed.includes(variables[name]?.value))
+    .map(([name]) => name)
+    .sort();
+  if (mismatches.length > 0) {
+    throw new Error(
+      `the saved plan does not match the requested analysis worker: ${mismatches.join(", ")}`,
+    );
+  }
+}
+
+function validateLearnerLabPlan(plan, analysisWorker = null) {
+  validateAnalysisWorkerPlan(plan, analysisWorker);
   const mismatches = Object.entries(LEARNER_LAB_PLAN_VARIABLES)
     .filter(([name, expected]) => {
       if (!Object.hasOwn(plan.variables ?? {}, name)) return true;
@@ -1510,6 +1629,7 @@ function buildSnapshot({ execute, log, root, venv }) {
 
 async function deploy(context) {
   const { execute, log, root, makeDirectory, identity, confirmDeploy, autoApprove, profile } = context;
+  const analysisWorker = context.analysisWorker ?? null;
   const stack = path.join("apps", "fullstack");
   const plan = path.join(".terraform-artifacts", `${NAMESPACE}.tfplan`);
   const variables = [
@@ -1533,6 +1653,7 @@ async function deploy(context) {
     "-var=scheduler_ingestao_habilitado=false",
     "-var=force_destroy_bucket_ingestao=true",
     "-var=force_delete_ecr_ingestao=true",
+    ...(analysisWorker ? analysisWorkerVariables(analysisWorker) : []),
   ];
 
   log("terraform init");
@@ -1569,7 +1690,7 @@ async function deploy(context) {
   );
   if (json.status !== 0) throw new Error(`terraform show failed: ${json.stderr}`);
   const planJson = parseJsonObject(json.stdout, "terraform show -json");
-  validateLearnerLabPlan(planJson);
+  validateLearnerLabPlan(planJson, analysisWorker);
   const gate = execute(
     "node",
     [path.join(root, "scripts", "ci", "validate-terraform-create-plan.mjs")],
@@ -1594,6 +1715,11 @@ async function deploy(context) {
   log("  Bastion:      t3.micro, SSH DISABLED (SSM only)");
   log("  LGTM on EC2:  DISABLED");
   log("  Scheduler:    DISABLED");
+  log(
+    analysisWorker
+      ? `  Analysis:     worker ENABLED, LLM DISABLED (model ${path.basename(analysisWorker.model)}, catalog ${path.basename(analysisWorker.catalog)})`
+      : "  Analysis:     worker DISABLED",
+  );
   log("  Plan policy:  create/no-op only");
   log("  Cost notice:  AWS resources keep generating charges until they are destroyed");
   log("");
@@ -1934,6 +2060,12 @@ function printSetupOutputs(context, outputs) {
   if (typeof bucket === "string") context.log(`  Ingestion S3:   ${bucket}`);
   if (typeof cluster === "string") context.log(`  ECS cluster:    ${cluster}`);
   if (typeof table === "string") context.log(`  DynamoDB:       ${table}`);
+  if (context.analysisWorker) {
+    context.log(`  Analysis:       ${NAMESPACE}-analysis-worker (LLM disabled)`);
+    context.log(
+      `  Worker logs:    aws logs tail /ecs/${NAMESPACE}-analysis-worker --follow --region ${REGION}`,
+    );
+  }
 }
 
 function updatePlanVariables(preset) {
@@ -4440,11 +4572,31 @@ export async function runLearnerLab(options = {}) {
       return { status: 2 };
     }
     try {
-      setupConfiguration = parseSetupConfiguration(extraArguments);
+      setupConfiguration = parseSetupConfiguration(extraArguments, {
+        root,
+        lstat,
+        accessFile,
+        readFile,
+      });
       const email = String(await readInput("Initial user email: ")).trim();
       const password = await readSecret("Initial user password: ");
       validateInitialUser(email, password);
       initialUser = { email, password };
+    } catch (error) {
+      log(error instanceof Error ? error.message : String(error));
+      return { status: 2 };
+    }
+  } else if (step === "deploy") {
+    if (hasPresetArgument) {
+      log("deploy options must be passed as named arguments");
+      return { status: 2 };
+    }
+    try {
+      setupConfiguration = parseSetupConfiguration(
+        extraArguments,
+        { root, lstat, accessFile, readFile },
+        { command: "deploy" },
+      );
     } catch (error) {
       log(error instanceof Error ? error.message : String(error));
       return { status: 2 };
@@ -4557,6 +4709,7 @@ export async function runLearnerLab(options = {}) {
     environment,
     profile: setupConfiguration?.profile ?? "default",
     autoApprove: setupConfiguration?.autoApprove ?? false,
+    analysisWorker: setupConfiguration?.analysisWorker ?? null,
     step,
     preset,
     seedConfiguration,

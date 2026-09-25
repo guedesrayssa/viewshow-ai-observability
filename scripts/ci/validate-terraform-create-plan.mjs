@@ -134,11 +134,22 @@ const ingestionExpectedAddresses = [
   "terraform_data.ingestion_guardrails",
   "terraform_data.ingestion_image[0]",
 ];
-const expectedAddresses = [
+// Só entram no plano quando analysis_worker_habilitado=true (todos com count).
+const analysisWorkerExpectedAddresses = [
+  "aws_cloudwatch_log_group.analysis_worker[0]",
+  "aws_ecr_repository.analysis_worker[0]",
+  "aws_ecs_service.analysis_worker[0]",
+  "aws_ecs_task_definition.analysis_worker[0]",
+  "aws_s3_object.analysis_catalog[0]",
+  "aws_s3_object.analysis_model[0]",
+  "terraform_data.analysis_worker_image[0]",
+];
+const baseExpectedAddresses = [
   ...apiExpectedAddresses,
   ...ingestionExpectedAddresses,
 ].sort();
-const expectedAddressSet = new Set(expectedAddresses);
+let expectedAddresses = baseExpectedAddresses;
+let expectedAddressSet = new Set(expectedAddresses);
 const allowedDataAddresses = new Set([
   "data.archive_file.painel",
   "data.aws_availability_zones.disponiveis",
@@ -152,6 +163,11 @@ const allowedDataAddresses = new Set([
 
 function isAllowedDataAddress(address) {
   return allowedDataAddresses.has(address);
+}
+
+function analysisWorkerEnabled(plan) {
+  const value = plan.variables?.analysis_worker_habilitado?.value;
+  return value === true || value === "true";
 }
 
 function reject(reason, address) {
@@ -218,6 +234,14 @@ if (process.exitCode === undefined) {
 }
 
 if (process.exitCode === undefined) {
+  if (analysisWorkerEnabled(plan)) {
+    expectedAddresses = [
+      ...baseExpectedAddresses,
+      ...analysisWorkerExpectedAddresses,
+    ].sort();
+    expectedAddressSet = new Set(expectedAddresses);
+  }
+
   const seenAddresses = new Set();
   let auxiliaryDataReadCount = 0;
   const resourceChanges = [...plan.resource_changes].sort((left, right) => {

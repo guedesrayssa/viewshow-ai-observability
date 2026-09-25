@@ -62,6 +62,26 @@ Para validar uma stack que já existe, incluindo pré-requisitos, state e output
 node scripts/aws-learner-lab.mjs check
 ```
 
+## Worker de análise (opcional)
+
+O worker consome a fila de análise que a ingestão publica (uma única fila e uma única DLQ, `view-show-ingestion-analysis`), detecta anomalias, prevê o risco de QoE e grava incidentes e previsões que a API lê. Ele nasce desabilitado. Para habilitá-lo em uma stack nova, informe um bundle de modelo já aprovado e o catálogo de séries, tanto no `setup` quanto no `deploy`:
+
+```bash
+node scripts/aws-learner-lab.mjs setup \
+  --analysis-model apps/backend/agentic/models/approved.json \
+  --analysis-catalog apps/backend/agentic/config/scope-catalog.pilot.json
+```
+
+O script valida os dois arquivos antes de qualquer chamada externa (o modelo precisa ter `approved: true`). Durante o `apply`, o Terraform constrói a imagem do worker no ECR e publica o modelo e o catálogo no bucket da ingestão, em `analysis/models/<sha256>.json` e `analysis/catalogs/<sha256>.json`. O bundle aprovado é gerado fora do repositório (a pasta `models/` é ignorada pelo git); veja o [guia do worker](../../artefatos/arquitetura/implementacao/worker-analise.md).
+
+O Learner Lab não tem Bedrock, então o worker roda com `LLM_PROVIDER=none`: a detecção e a previsão funcionam e o diagnóstico é registrado como `failed` com o código `LLM_DISABLED`, sem retentativas nem mensagens na DLQ. Para acompanhar o serviço:
+
+```bash
+aws logs tail /ecs/view-show-analysis-worker --follow --region us-east-1
+```
+
+Limites atuais: o worker só é suportado no perfil `learner-lab`, e os presets de `update` ainda não o preservam. Em uma stack que já existe, faça o destroy e crie o ambiente de novo com os dois arquivos.
+
 ## Destroy
 
 > Atenção: este comando remove todos os recursos gerenciados pelo Terraform, incluindo os dados do bucket de ingestão e as imagens do ECR. A ação é irreversível.

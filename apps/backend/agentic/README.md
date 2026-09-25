@@ -63,6 +63,10 @@ const provider = createLlmProvider({
 `fake` só é construído com `environment === "test"`; em qualquer outro a fábrica
 lança na inicialização.
 
+`none` desliga o LLM: o worker mantém a detecção e a previsão, e o diagnóstico é
+registrado como falha permanente `LLM_DISABLED`, sem retentativa nem DLQ. É o
+modo do Learner Lab, que não tem Bedrock.
+
 ### Avaliação com modelo real
 
 Os testes automatizados provam que o código faz o que foi escrito. O avaliador

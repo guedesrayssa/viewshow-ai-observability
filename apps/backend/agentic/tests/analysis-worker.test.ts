@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { AnalysisWorker, validateWindow } from "../src/worker/orchestrator.js";
+import { createLlmProvider } from "../src/bootstrap/llm-provider-factory.js";
 import type { AnalysisQueue, AnalysisScope, AnalysisStore, Delivery, Lease, Observation, ScopeCheckpoint } from "../src/worker/types.js";
 import type { WindowedEvent } from "../src/contracts/analysis-event.js";
 import type { ModelBundle } from "../src/worker/models.js";
@@ -40,6 +41,16 @@ test("previsão elevada é persistida e diagnosticada sem criar incidente", asyn
   assert.equal(store.state,"SUCCEEDED"); assert.equal(queue.ack,1); assert.equal(queue.dlq,0); assert.equal(store.results,1); assert.equal(store.diagnoses,1); assert.equal(store.validations,1); assert.equal(llmCalls,1);
   assert.equal(store.checkpointValue?.incidentId,null); assert.ok(store.checkpointValue?.predictionId); assert.equal(store.checkpointValue?.diagnosis?.status,"ready");
   assert.equal(store.checkpointValue?.result.signals.find(signal=>signal.detector==="qoe-forecast")?.experimental,true);
+});
+
+test("sem LLM o diagnóstico vira falha permanente e a análise conclui sem DLQ", async()=>{
+  const store=new MemoryStore(), queue=new MemoryQueue();
+  const worker=new AnalysisWorker({store,queue,reader:{read:async()=>rows},model,scopes:[scope],now:()=>Date.parse("2026-01-01T04:02:00Z"),
+    llm:createLlmProvider({kind:"none",modelId:"none",environment:"production"})});
+  await worker.process({id:"m",receipt:"r",body:JSON.stringify(event),receives:1});
+  assert.equal(store.state,"SUCCEEDED"); assert.equal(queue.ack,1); assert.equal(queue.dlq,0); assert.deepEqual(queue.visibilityCalls,[]);
+  assert.equal(store.results,1); assert.equal(store.diagnoses,1);
+  assert.equal(store.checkpointValue?.diagnosis,undefined); assert.equal(store.checkpointValue?.diagnosticFailure,"LLM_DISABLED");
 });
 
 test("evento inválido vai direto à DLQ sem modelo nem LLM", async()=>{

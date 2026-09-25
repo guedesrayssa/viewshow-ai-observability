@@ -3486,3 +3486,128 @@ test("canonical-first rollout is default-off, explicitly approved in production,
     assert.doesNotMatch(dimensions, /status\s*=/);
   }
 });
+
+// A fila de análise é uma só: a ingestão publica nela, o worker consome dela e a
+// API publica a reanálise nela. Duas filas deixariam a ingestão sem consumidor.
+function terraformSources() {
+  return fs
+    .readdirSync(fullstackPath)
+    .filter((name) => name.endsWith(".tf"))
+    .map((name) => ({
+      name,
+      source: stripHclComments(
+        fs.readFileSync(path.join(fullstackPath, name), "utf8"),
+      ),
+    }));
+}
+
+test("the analysis queue and its DLQ are declared once, by the ingestion messaging", () => {
+  const declarations = terraformSources().flatMap(({ name, source }) =>
+    [...source.matchAll(/resource\s+"aws_sqs_queue"\s+"([^"]+)"/g)].map(
+      (match) => `${name}:${match[1]}`,
+    ),
+  );
+
+  assert.deepEqual(
+    declarations.filter((entry) => /analysis|analise/.test(entry)).sort(),
+    [
+      "ingestion-messaging.tf:analysis",
+      "ingestion-messaging.tf:analysis_dlq",
+    ],
+  );
+  assert.ok(
+    terraformSources().every(
+      ({ source }) => !/aws_sqs_queue\.analise(?:_dlq)?\b/.test(source),
+    ),
+    "no Terraform file may reference the removed duplicate analysis queue",
+  );
+});
+
+test("the analysis worker consumes the ingestion queue and every worker resource is conditional", () => {
+  const worker = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "analysis-worker.tf")),
+  );
+
+  assert.match(worker, /name = "ANALYSIS_QUEUE_URL", value = aws_sqs_queue\.analysis\.url/);
+  assert.match(worker, /name = "ANALYSIS_DLQ_URL", value = aws_sqs_queue\.analysis_dlq\.url/);
+  assert.doesNotMatch(worker, /resource\s+"aws_sqs_queue"/);
+
+  const resources = [...worker.matchAll(/resource\s+"([^"]+)"\s+"([^"]+)"\s*\{/g)];
+  assert.deepEqual(
+    resources.map((match) => `${match[1]}.${match[2]}`).sort(),
+    [
+      "aws_cloudwatch_log_group.analysis_worker",
+      "aws_ecr_repository.analysis_worker",
+      "aws_ecs_service.analysis_worker",
+      "aws_ecs_task_definition.analysis_worker",
+      "aws_s3_object.analysis_catalog",
+      "aws_s3_object.analysis_model",
+      "terraform_data.analysis_worker_image",
+    ],
+  );
+  for (const match of resources) {
+    const body = worker.slice(match.index, match.index + 400);
+    assert.match(
+      body,
+      /\bcount\s*=\s*(?:var\.analysis_worker_habilitado|local\.analysis_worker_(?:builds_image|uploads_artifacts))\s*\?\s*1\s*:\s*0/,
+      `${match[1]}.${match[2]} must not exist while the worker is disabled`,
+    );
+  }
+});
+
+test("the analysis worker image is built and pinned by content, and starts only after its inputs exist", () => {
+  const worker = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "analysis-worker.tf")),
+  );
+
+  assert.match(worker, /image_tag_mutability\s*=\s*"IMMUTABLE"/);
+  assert.match(worker, /scan_on_push\s*=\s*true/);
+  assert.match(worker, /scripts\/publicar-imagem\.mjs/);
+  assert.match(worker, /triggers_replace\s*=\s*\[local\.analysis_worker_image_hash\]/);
+  const service = worker.match(
+    /resource\s+"aws_ecs_service"\s+"analysis_worker"[\s\S]*$/,
+  )?.[0];
+  assert.ok(service, "the worker service must be declared");
+  for (const dependency of [
+    "terraform_data.analysis_worker_image",
+    "aws_s3_object.analysis_model",
+    "aws_s3_object.analysis_catalog",
+  ]) {
+    assert.ok(
+      service.includes(dependency),
+      `the worker service must wait for ${dependency}`,
+    );
+  }
+});
+
+test("the API only receives the analysis queue when a worker consumes it", () => {
+  const ecs = stripHclComments(readIfPresent(path.join(fullstackPath, "ecs.tf")));
+
+  assert.match(
+    ecs,
+    /\{\s*name\s*=\s*"ANALYSIS_QUEUE_URL",\s*value\s*=\s*var\.analysis_worker_habilitado\s*\?\s*aws_sqs_queue\.analysis\.url\s*:\s*""\s*\}/,
+  );
+});
+
+test("the analysis worker is limited to Learner Lab and can run without an LLM", () => {
+  const variables = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "variables.tf")),
+  );
+  const block = (name) =>
+    new RegExp(`variable\\s+"${name}"\\s*\\{([\\s\\S]*?)\\n\\}`).exec(variables)?.[1] ??
+    "";
+
+  assert.match(
+    block("analysis_worker_habilitado"),
+    /!var\.analysis_worker_habilitado \|\| var\.ambiente == "learner-lab"/,
+  );
+  assert.match(
+    block("analysis_llm_provider"),
+    /contains\(\["bedrock", "ollama", "none"\], var\.analysis_llm_provider\)/,
+  );
+  assert.match(block("analysis_model_file"), /fileexists\(var\.analysis_model_file\)/);
+  assert.match(
+    block("analysis_model_location"),
+    /var\.analysis_model_file == "" \|\| \(/,
+  );
+});

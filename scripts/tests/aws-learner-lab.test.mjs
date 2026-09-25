@@ -5009,3 +5009,233 @@ for (const scenario of [
     assert.equal(a.evidenceWrites.length, 0);
   });
 }
+
+const ANALYSIS_MODEL = path.join(ROOT, "models", "approved-model.json");
+const ANALYSIS_CATALOG = path.join(ROOT, "config", "scope-catalog.pilot.json");
+const ANALYSIS_ARGUMENTS = [
+  "--analysis-model",
+  ANALYSIS_MODEL,
+  "--analysis-catalog",
+  ANALYSIS_CATALOG,
+];
+const ANALYSIS_PLAN_VARIABLES = {
+  analysis_worker_habilitado: true,
+  analysis_llm_provider: "none",
+  analysis_model_file: ANALYSIS_MODEL,
+  analysis_scope_catalog_file: ANALYSIS_CATALOG,
+};
+
+function analysisFiles(
+  a,
+  {
+    model = { approved: true, datasetVersion: "dsv-1" },
+    catalog = [{ id: "canal-a" }],
+    symlink = false,
+    invalidJson = false,
+  } = {},
+) {
+  const documents = new Map([
+    [ANALYSIS_MODEL, model],
+    [ANALYSIS_CATALOG, catalog],
+  ]);
+  return {
+    lstat: (target) =>
+      documents.has(String(target))
+        ? { isFile: () => true, isSymbolicLink: () => symlink, size: 1024 }
+        : a.options.lstat(target),
+    accessFile: () => {},
+    readFile: (target, encoding) =>
+      documents.has(String(target))
+        ? invalidJson
+          ? "{"
+          : JSON.stringify(documents.get(String(target)))
+        : a.options.readFile(target, encoding),
+  };
+}
+
+test("deploy with the analysis worker validates the files and passes the worker variables to Terraform", async () => {
+  const a = testEnvironment({ planVariableOverrides: ANALYSIS_PLAN_VARIABLES });
+
+  const result = await runLearnerLab({
+    ...a.options,
+    ...analysisFiles(a),
+    step: "deploy",
+    extraArguments: ANALYSIS_ARGUMENTS,
+  });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const plan = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
+  for (const variable of [
+    "-var=analysis_worker_habilitado=true",
+    "-var=analysis_llm_provider=none",
+    `-var=analysis_model_file=${ANALYSIS_MODEL}`,
+    `-var=analysis_scope_catalog_file=${ANALYSIS_CATALOG}`,
+  ]) {
+    assert.ok(plan.args.includes(variable), variable);
+  }
+  assert.match(
+    a.logs.join("\n"),
+    /Analysis:\s+worker ENABLED, LLM DISABLED \(model approved-model\.json, catalog scope-catalog\.pilot\.json\)/,
+  );
+  assert.ok(
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+  );
+});
+
+test("deploy without the flags keeps the analysis worker disabled and out of the plan variables", async () => {
+  const a = testEnvironment();
+
+  const result = await runLearnerLab({ ...a.options, step: "deploy" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const plan = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
+  assert.equal(
+    plan.args.some((argument) => String(argument).includes("analysis_")),
+    false,
+  );
+  assert.match(a.logs.join("\n"), /Analysis:\s+worker DISABLED/);
+});
+
+test("setup with the analysis worker prints where to follow its logs", async () => {
+  const a = testEnvironment({
+    environment: {},
+    planVariableOverrides: ANALYSIS_PLAN_VARIABLES,
+  });
+
+  const result = await runLearnerLab({
+    ...a.options,
+    ...analysisFiles(a),
+    step: "setup",
+    extraArguments: ["--profile", "team-profile", ...ANALYSIS_ARGUMENTS],
+    readInput: async () => "admin@example.com",
+    readSecret: async () => "SafePassword123!",
+    confirmDeploy: async () => true,
+  });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const output = a.logs.join("\n");
+  assert.match(output, /Analysis:\s+view-show-analysis-worker \(LLM disabled\)/);
+  assert.match(
+    output,
+    /aws logs tail \/ecs\/view-show-analysis-worker --follow --region us-east-1/,
+  );
+});
+
+test("analysis worker flags are rejected before prompts or external calls when incomplete or unsafe", async () => {
+  const cases = [
+    { name: "model without catalog", args: ["--analysis-model", ANALYSIS_MODEL] },
+    { name: "catalog without model", args: ["--analysis-catalog", ANALYSIS_CATALOG] },
+    { name: "missing value", args: ["--analysis-model"] },
+    {
+      name: "flag used as a value",
+      args: ["--analysis-model", "--analysis-catalog", ANALYSIS_CATALOG],
+    },
+    {
+      name: "duplicate model",
+      args: [
+        "--analysis-model",
+        ANALYSIS_MODEL,
+        "--analysis-model",
+        ANALYSIS_MODEL,
+        "--analysis-catalog",
+        ANALYSIS_CATALOG,
+      ],
+    },
+    {
+      name: "unapproved model",
+      files: { model: { approved: false } },
+      message: /approved bundle/,
+    },
+    { name: "model that is not an object", files: { model: [] }, message: /approved bundle/ },
+    { name: "empty catalog", files: { catalog: [] }, message: /1 to 32 scopes/ },
+    { name: "catalog that is not an array", files: { catalog: {} }, message: /1 to 32 scopes/ },
+    {
+      name: "symbolic link",
+      files: { symlink: true },
+      message: /regular non-symlink file/,
+    },
+    { name: "invalid JSON", files: { invalidJson: true }, message: /valid JSON file/ },
+  ];
+
+  for (const step of ["setup", "deploy"]) {
+    for (const { name, args = ANALYSIS_ARGUMENTS, files, message } of cases) {
+      const a = testEnvironment();
+      let promptCount = 0;
+      const result = await runLearnerLab({
+        ...a.options,
+        ...analysisFiles(a, files),
+        step,
+        extraArguments: args,
+        readInput: async () => {
+          promptCount += 1;
+          return "admin@example.com";
+        },
+        readSecret: async () => {
+          promptCount += 1;
+          return "SafePassword123!";
+        },
+      });
+
+      assert.equal(result.status, 2, `${step}: ${name}`);
+      assert.equal(promptCount, 0, `${step}: ${name}`);
+      assert.deepEqual(a.calls, [], `${step}: ${name}`);
+      if (message) assert.match(a.logs.join("\n"), message, `${step}: ${name}`);
+    }
+  }
+});
+
+test("deploy does not accept the setup-only options", async () => {
+  for (const extraArguments of [["--profile", "team-profile"], ["--yes"]]) {
+    const a = testEnvironment();
+
+    const result = await runLearnerLab({ ...a.options, step: "deploy", extraArguments });
+
+    assert.equal(result.status, 2, extraArguments.join(" "));
+    assert.deepEqual(a.calls, [], extraArguments.join(" "));
+    assert.match(a.logs.join("\n"), /deploy does not support option/);
+  }
+});
+
+test("deploy refuses to apply a plan whose analysis worker variables diverge from the request", async () => {
+  for (const { name, overrides, options, message } of [
+    {
+      name: "plan enables the worker without the flags",
+      overrides: { analysis_worker_habilitado: true },
+      options: {},
+      message: /enables the analysis worker without/,
+    },
+    {
+      name: "plan points to a different model file",
+      overrides: { ...ANALYSIS_PLAN_VARIABLES, analysis_model_file: "/tmp/other.json" },
+      options: { extraArguments: ANALYSIS_ARGUMENTS },
+      message: /does not match the requested analysis worker: analysis_model_file/,
+    },
+    {
+      name: "plan enables an LLM provider",
+      overrides: { ...ANALYSIS_PLAN_VARIABLES, analysis_llm_provider: "bedrock" },
+      options: { extraArguments: ANALYSIS_ARGUMENTS },
+      message: /does not match the requested analysis worker: analysis_llm_provider/,
+    },
+  ]) {
+    const a = testEnvironment({ planVariableOverrides: overrides });
+
+    const result = await runLearnerLab({
+      ...a.options,
+      ...(options.extraArguments ? analysisFiles(a) : {}),
+      step: "deploy",
+      ...options,
+    });
+
+    assert.equal(result.status, 1, name);
+    assert.match(a.logs.join("\n"), message, name);
+    assert.equal(
+      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+      false,
+      name,
+    );
+  }
+});
