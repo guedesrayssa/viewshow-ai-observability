@@ -68,6 +68,7 @@ const activeProjectionItemSchema = z
       })
       .strict(),
     payloadFingerprint: z.string().regex(/^[0-9a-f]{64}$/),
+    ttl: z.number().int().positive().optional(),
   })
   .strict();
 
@@ -86,6 +87,7 @@ const eventProjectionItemSchema = z
     materializationRevision: z.string().regex(/^pmr_[0-9a-f]{64}$/),
     payload: z.record(z.string(), z.unknown()),
     payloadFingerprint: z.string().regex(/^[0-9a-f]{64}$/),
+    ttl: z.number().int().positive().optional(),
   })
   .strict();
 
@@ -636,14 +638,28 @@ export class DynamoIncidentRepository implements IncidentRepository {
   }
 
   async listBetween(from: Date, to: Date): Promise<readonly PhysicalItem[]> {
-    const manifest = await this.client.send(new GetCommand({ TableName: this.tableName, Key: { pk: "CONTROL#DATASET", sk: "ACTIVE" }, ConsistentRead: true }));
-    const activeDataset = typeof manifest.Item?.activeDatasetVersion === "string" ? manifest.Item.activeDatasetVersion : null;
+    const manifest = await this.client.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { pk: "CONTROL#DATASET", sk: "ACTIVE" },
+        ConsistentRead: true,
+      }),
+    );
+    const activeDataset =
+      typeof manifest.Item?.activeDatasetVersion === "string"
+        ? manifest.Item.activeDatasetVersion
+        : null;
     const partitions: { readonly pk: string; readonly prefix?: string }[] = [];
     if (!activeDataset) {
-      const firstHour = new Date(from); firstHour.setUTCMinutes(0, 0, 0);
-      const hour = new Date(to); hour.setUTCMinutes(0, 0, 0);
+      const firstHour = new Date(from);
+      firstHour.setUTCMinutes(0, 0, 0);
+      const hour = new Date(to);
+      hour.setUTCMinutes(0, 0, 0);
       while (hour >= firstHour) {
-        partitions.push({ pk: `INC#${hour.toISOString().slice(0, 13)}`, prefix: "INCIDENT#" });
+        partitions.push({
+          pk: `INC#${hour.toISOString().slice(0, 13)}`,
+          prefix: "INCIDENT#",
+        });
         hour.setUTCHours(hour.getUTCHours() - 1);
       }
     }
@@ -652,8 +668,10 @@ export class DynamoIncidentRepository implements IncidentRepository {
     const day = new Date(to);
     day.setUTCHours(0, 0, 0, 0);
     while (day >= firstDay) {
-      const suffix=`VIEW#INCIDENTS#DAY#${day.toISOString().slice(0, 10).replaceAll("-", "")}`;
-      partitions.push({ pk: activeDataset ? `DATASET#${activeDataset}#${suffix}` : suffix });
+      const suffix = `VIEW#INCIDENTS#DAY#${day.toISOString().slice(0, 10).replaceAll("-", "")}`;
+      partitions.push({
+        pk: activeDataset ? `DATASET#${activeDataset}#${suffix}` : suffix,
+      });
       day.setUTCDate(day.getUTCDate() - 1);
     }
 

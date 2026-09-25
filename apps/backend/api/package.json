@@ -18,6 +18,7 @@
     "format:check": "prettier --check \"{src,contracts,tests}/**/*.{ts,json,yaml,md}\"",
     "pretest": "npm run build:contracts",
     "test": "vitest run",
+    "test:integration:aws": "RUN_LIVE_AWS=true vitest run tests/live-aws.integration.test.ts",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/live-e2e-runtime.mjs && npm run build && RUN_LIVE_E2E=true vitest run tests/live-api.e2e.test.ts",
     "test:e2e-local": "bash ../../../scripts/ci/test-live-api-local.sh",

@@ -17,7 +17,7 @@ import {
   localIsoDate,
 } from "@/components/imports/import-presentation";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { FieldError, FieldHint, Input, Label } from "@/components/ui/input";
 import { XIcon } from "@/components/ui/icons";
 import { ApiError } from "@/lib/data/client";
@@ -248,19 +248,43 @@ export function ImportUploadDialog({
 
             <div className="flex flex-col gap-2">
               <Label htmlFor={fileId}>Arquivo do dump</Label>
-              <Input
-                ref={fileInputRef}
-                id={fileId}
-                type="file"
-                accept=".gz,.zip"
-                fieldSize="md"
-                invalid={Boolean(errors.file)}
-                aria-describedby={errors.file ? fileErrorId : fileHintId}
-                onChange={(event) => {
-                  setFile(event.currentTarget.files?.[0] ?? null);
-                  setErrors((current) => ({ ...current, file: undefined }));
-                }}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="relative inline-flex">
+                  <Input
+                    ref={fileInputRef}
+                    id={fileId}
+                    type="file"
+                    accept=".gz,.zip"
+                    aria-label="Selecionar arquivo"
+                    className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                    invalid={Boolean(errors.file)}
+                    aria-describedby={errors.file ? fileErrorId : fileHintId}
+                    onChange={(event) => {
+                      setFile(event.currentTarget.files?.[0] ?? null);
+                      setErrors((current) => ({
+                        ...current,
+                        file: undefined,
+                      }));
+                    }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className={buttonClasses({
+                      variant: "outline",
+                      className:
+                        "pointer-events-none peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-blue",
+                    })}
+                  >
+                    Selecionar arquivo
+                  </span>
+                </span>
+                <span
+                  className="min-w-0 break-all text-body-sm text-ink-muted"
+                  aria-live="polite"
+                >
+                  {file?.name ?? "Nenhum arquivo selecionado"}
+                </span>
+              </div>
               {errors.file ? (
                 <FieldError id={fileErrorId} role="alert">
                   {errors.file}
@@ -271,11 +295,6 @@ export function ImportUploadDialog({
                   considerado.
                 </FieldHint>
               )}
-              {file ? (
-                <p className="text-caption font-medium text-ink-muted">
-                  Arquivo selecionado: {file.name}
-                </p>
-              ) : null}
             </div>
 
             <div className="flex flex-col gap-2">

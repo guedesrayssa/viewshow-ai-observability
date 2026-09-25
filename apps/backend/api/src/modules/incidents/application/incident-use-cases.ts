@@ -320,9 +320,15 @@ export class IncidentUseCases {
     ensureIncidentFiltersSupported(query);
     const active = await requireActiveDataset(this.activeDataset);
     const projection = await this.activeIncidents(active);
-    let incidents = projection.incidents.map((incident) =>
-      incidentDto(incident, projection.observedThrough),
-    );
+    const window = temporalWindow(query, active, ["incidents"], this.clock());
+    const from = Date.parse(window.from);
+    const to = Date.parse(window.to);
+    let incidents = projection.incidents
+      .map((incident) => incidentDto(incident, projection.observedThrough))
+      .filter((incident) => {
+        const openedAt = Date.parse(incident.startedAt);
+        return openedAt >= from && openedAt <= to;
+      });
     if (query.priority)
       incidents = incidents.filter((item) => item.priority === query.priority);
     if (query.status)
@@ -363,7 +369,6 @@ export class IncidentUseCases {
       page: { limit: query.limit, hasMore, nextCursor: null },
     });
     assertNoPhysicalFields(data);
-    const window = temporalWindow(query, active, ["incidents"], this.clock());
     const lagSeconds = Math.max(
       0,
       Math.round(

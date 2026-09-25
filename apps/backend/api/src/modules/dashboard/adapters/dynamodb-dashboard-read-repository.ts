@@ -81,6 +81,7 @@ const physicalProjectionSchema = z
     ),
     payload: z.unknown(),
     payloadFingerprint: z.string().regex(/^[0-9a-f]{64}$/),
+    ttl: z.number().int().positive().optional(),
   })
   .strict();
 

@@ -1,0 +1,15 @@
+Execução: 2026-09-24 23:44 (America/Sao_Paulo)
+Ambiente: AWS real (Amplify, API Gateway, ECS Fargate, Cognito e DynamoDB)
+Comando: npm run test:integration:aws -- --reporter=verbose
+
+PASS tests/live-aws.integration.test.ts
+  PASS IT-AWS-01: Amplify e API Gateway/ECS entregam o painel e o health check
+  PASS IT-AWS-02: a guarda HTTP bloqueia a consulta de sessão sem cookie
+  PASS IT-AWS-03: rota, caso de uso e DynamoDB retornam incidentes semeados
+  PASS IT-AWS-04: rota de dashboard lê as projeções semeadas no DynamoDB
+
+Test Files  1 passed (1)
+Tests       4 passed (4)
+Duration    2.89s
+
+Observação: segredos e credenciais foram omitidos desta evidência.

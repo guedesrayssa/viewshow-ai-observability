@@ -1,0 +1,12 @@
+Execução: 2026-09-24 23:44 (America/Sao_Paulo)
+Ambiente: Vitest + jsdom, componentes reais do frontend
+Comando: npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.tsx" --reporter=verbose
+
+PASS imports-view.integration.test.tsx
+  PASS abre o diálogo e aciona o seletor de arquivo pelo botão de upload
+  PASS preserva falha física e mostra separadamente falha posterior de leitura
+  PASS limpa warning de conflito quando o polling publica terminal
+
+Test Files  1 passed (1)
+Tests       3 passed (3)
+Duration    2.70s

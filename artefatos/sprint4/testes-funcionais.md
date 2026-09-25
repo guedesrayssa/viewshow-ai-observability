@@ -13,7 +13,9 @@
 
 &emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
 
-&emsp;A suíte atual (`npm test`, Vitest) tem 13 arquivos e roda **71 testes passando, 15 ignorados** (86 no total) sem nenhuma credencial AWS — 12 dos ignorados são os casos da Seção 3 (`tests/incidents-aws-live.functional.test.ts`, exige `RUN_AWS_FUNCTIONAL=true` contra a stack real) e 2 são o IT02 da Seção 2 (`tests/dynamodb-real.integration.test.ts`, exige `RUN_LIVE_E2E=true` contra DynamoDB Local — 100% local, sem AWS). As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
+&emsp;Além de registrar resultados, o documento explica por que cada cenário foi escolhido. Nesta atualização, o foco está nos riscos percebidos por quem usa o sistema: comunicação entre interface, API e persistência; reserva segura de uma importação; e rejeição de arquivos inválidos exatamente nas fronteiras aceitas. Para esses fluxos foi adotada a técnica de **caixa-preta**, porque o comportamento público da rota HTTP e suas pós-condições são mais relevantes do que detalhes internos como getters, setters ou métodos auxiliares.
+
+&emsp;Na execução mais recente, os recortes solicitados foram executados separadamente para deixar a evidência objetiva: **5/5 integrações AWS**, **3/3 integrações do upload** e **8/8 execuções automatizadas do UC-09**, incluindo 15 combinações internas de valor limite para GZIP e ZIP. As credenciais e senhas nunca são gravadas nos arquivos de evidência.
 
 ## Priorização de execução
 
@@ -99,41 +101,162 @@
 
 ## 2. Testes de Integração
 
-&emsp;Dois testes cruzando camadas diferentes: um já coberto pela suíte de integração HTTP existente, outro que expunha uma lacuna real (persistência mockada, nunca exercitada contra um banco de verdade) e foi escrito nesta rodada. Os dois foram executados e os dois passaram.
+&emsp;A rodada final de 25/09/2026 foi executada após o deploy contra a infraestrutura implantada na AWS, e não contra serviços locais. A stack `apps/fullstack` foi aplicada, a tabela `view-show-iac-operacional` recebeu 300 incidentes, 4.110 itens de domínio, 10 snapshots legados e 3 itens do contrato versionado (manifesto `ACTIVE` e projeções de incidentes/overview). O usuário técnico do Cognito foi usado apenas para obter uma sessão real pela rota pública de login.
 
-### IT01 — Camada HTTP (Express) × módulo de autenticação/sessão
+### 2.1 Matriz dos testes executados
 
-| Campo | Descrição |
-| --- | --- |
-| Componentes verificados | `createApp` (Express, [`src/app.ts`](../../apps/backend/api/src/app.ts)) integrado de ponta a ponta com o módulo de auth real (`SessionCodec`, `IdentityUseCases`) — servidor HTTP real ouvindo em porta efêmera, requisição feita via `node:http` |
-| Objetivo e requisito relacionado | Garantir que uma sessão emitida pela camada de domínio é aceita pela camada HTTP e que as rotas de login (federada e direta) respondem conforme o contrato documentado. RF04 (autenticação corporativa: sessão válida libera acesso, ausência/invalidez bloqueia) |
-| Já existe? | **Sim** — `tests/gateway-http.integration.test.ts:145` (`"returns authenticated session details through the public success envelope"`) e `:175` (`"exposes the federated routes and direct password login"`) |
-| Pré-condições e dados de entrada | App montado com `createApp`, `AUTH_COOKIE_SECRET` de teste (32+ chars), repositórios de incidentes/dashboard falsos (não é o alvo desta integração); cookie de sessão emitido pelo próprio `SessionCodec` do processo |
-| Procedimento | 1. Subir o app em `127.0.0.1:0` (porta livre) com `createServer`. 2. Emitir uma sessão válida com `SessionCodec.issue(...)`. 3. Requisitar `GET /auth/session` com o cookie e conferir envelope de sucesso com a identidade. 4. Requisitar as rotas de login federado (`GET /auth/login`, `GET /auth/callback`) e `POST /auth/login` e conferir os contratos de resposta expostos pelo gateway HTTP |
-| Resultado esperado | O cookie emitido pela camada de domínio é aceito pela camada HTTP e devolve a identidade correta no envelope público padronizado; as rotas de login (federada e direta) respondem com o contrato documentado, sem vazar campos internos |
-| Resultado obtido | 11 de 11 testes do arquivo passaram: sessão emitida por `SessionCodec` aceita em `GET /auth/session` com a identidade correta; rotas de login federado e direto respondem conforme o contrato; nenhum campo interno vazado |
-| Situação | Aprovado |
-| Evidências / reprodução | `npm test -- gateway-http.integration.test.ts`. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt) |
+| ID | Objetivo / componentes | Pré-condições e entrada | Procedimento | Resultado esperado | Resultado obtido | Situação |
+| --- | --- | --- | --- | --- | --- | --- |
+| IT-AWS-01 | Verificar a disponibilidade integrada de Amplify → painel e API Gateway → ECS/Express. | Stack aplicada; URLs públicas do painel e da API. | Requisitar em paralelo `/dados/importacoes/` no Amplify e `/health` na API. | Ambos respondem `200`; painel devolve HTML do View Show e health devolve `{status: "ok"}`. | Painel e health responderam `200`, com os conteúdos esperados. | Aprovado |
+| IT-AWS-02 | Verificar a integração da borda HTTP com o módulo de sessão. | API publicada; requisição sem cookie. | Executar `GET /auth/session` sem autenticação. | `401 UNAUTHENTICATED`. | Retornou `401 UNAUTHENTICATED`. | Aprovado |
+| IT-AWS-03 | Verificar Cognito → API Gateway → ECS → caso de uso de incidentes → DynamoDB, correlacionando a resposta com a projeção física ativa. | Usuário técnico confirmado no Cognito; dataset ativo semeado; credenciais de leitura do ambiente; entrada `window=24h&limit=5`. | Fazer login real, consultar a API, ler diretamente manifesto e projeção `ACTIVE` no DynamoDB e comparar todos os IDs devolvidos; conferir request ID, tempo e ausência de chaves físicas. | `200`, cinco ou menos itens pertencentes à mesma projeção persistida, sem `pk`, `sk`, `ttl` ou `trace_id`. | `200` em 143,12 ms; 5/5 IDs presentes na projeção de 300 itens do dataset `dsv_16d…cb454`; nenhum campo físico exposto; request ID correlacionado. | Aprovado |
+| IT-AWS-04 | Verificar API/caso de uso de dashboard → projeções versionadas no DynamoDB. | Mesma sessão e manifesto `ACTIVE`; entrada `window=24h`. | Executar `GET /api/v1/dashboard/overview?window=24h` e validar o envelope público. | `200`, propriedade `data` presente e nenhuma chave física exposta. | Projeção semeada foi lida com `200` e envelope público válido. | Aprovado |
+| IT-AWS-05 | Verificar API Gateway/ECS → `ImportUseCases` → DynamoDB → S3 em uma importação real, incluindo idempotência, concorrência e limpeza. | Sessão Cognito válida; tabela e bucket da stack; nenhuma importação ativa; tamanho aleatório válido informado como metadado de GZIP, sem concluir o upload. | Confirmar ausência de lock; iniciar importação; ler diretamente `ImportJob`/lock no DynamoDB e multipart no S3; repetir a mesma chave; disputar com outra chave; abortar o multipart e remover apenas os itens criados; confirmar ausência do lock. | `201 UPLOADING`, exatamente um registro e um multipart; replay com mesmo `importId`; concorrência `409`; nenhuma sobra após a limpeza. | Na execução registrada anteriormente, `201` em 1.286,55 ms; `ImportJob` `imp_01M3…MV7` em `UPLOADING`; um multipart na chave correlacionada; replay idempotente; concorrência `409`; lock, registro, mapeamento e multipart removidos ao final. | Aprovado |
+| IT-UPLOAD-01 | Verificar `ImportsView` → `ImportUploadDialog` → `ImportUploadProvider` → cliente de importação. | Página renderizada com provider real e cliente/upload runner controlados. | Abrir o diálogo; selecionar `argus_dump.sql.gz`; revisar; confirmar o upload. | Nome e tamanho seguem até `client.start`, uma chave de idempotência é criada e o runner de upload é iniciado uma vez. | Fluxo completo executado; `client.start` e o runner receberam o arquivo uma única vez. | Aprovado |
+| IT-UPLOAD-02 | Verificar a composição UI/provider ao separar falha física de upload e falha posterior de leitura. | Respostas controladas das dependências HTTP. | Simular as duas falhas consecutivas e observar os estados publicados. | A falha física é preservada e a falha de leitura aparece separadamente. | Estados permaneceram separados conforme o contrato. | Aprovado |
+| IT-UPLOAD-03 | Verificar a atualização do provider durante polling de uma importação concorrente. | Conflito inicial e resposta terminal posterior. | Iniciar polling e devolver estado terminal. | O aviso de conflito deve desaparecer. | Aviso removido após a publicação do estado terminal. | Aprovado |
 
-### IT02 — Aplicação (`IncidentUseCases`) × DynamoDB real (DynamoDB Local)
+### 2.2 Profundidade, correlação e isolamento
 
-| Campo | Descrição |
-| --- | --- |
-| Componentes verificados | `IncidentUseCases` + `DynamoIncidentRepository` ([`src/modules/incidents/adapters/dynamodb-incident-repository.ts`](../../apps/backend/api/src/modules/incidents/adapters/dynamodb-incident-repository.ts)) contra uma instância **real** de DynamoDB Local — não o cliente AWS mockado |
-| Objetivo e requisito relacionado | Garantir que incidentes gravados em um banco DynamoDB real são lidos e paginados corretamente pela aplicação, sem duplicatas nem campos físicos vazados. RF01/RF02 (evento persistido fica disponível para consulta) e RF09 (consulta filtrada e paginada sobre dado realmente gravado) |
-| Já existe? | **Sim — escrito nesta rodada.** `tests/dynamodb-adapters.test.ts` cobre os mesmos adaptadores, mas com `client.send` inteiramente mockado; o novo [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) fecha a lacuna, reusando o guarda de segurança já existente (`requireDynamoDbEndpoint` de `scripts/live-e2e-runtime.mjs`, mesmo usado por `tests/live-api.e2e.test.ts`) — só aceita endpoint local, nunca a AWS real |
-| Pré-condições e dados de entrada | DynamoDB Local efêmero via Docker (`amazon/dynamodb-local:2.6.1`, porta host aleatória); tabela criada com o esquema de `apps/fullstack/dynamodb.tf` (`pk`/`sk`, GSI `trace-index`); 25 incidentes sintéticos gravados via `PutCommand` no mesmo bucket de hora |
-| Procedimento | 1. Subir DynamoDB Local (container efêmero) e criar a tabela operacional com o schema do Terraform. 2. Gravar 25 incidentes sintéticos determinísticos (`inc-it02-001`…`inc-it02-025`). 3. Instanciar `DynamoIncidentRepository` apontando para o endpoint local e `IncidentUseCases` com um `CursorCodec` real. 4. Paginar com `limit=7` seguindo `nextCursor` até `hasMore=false`, conferindo a cada página ausência de duplicata e de campo físico (`pk`/`sk`/`trace_id`/`itemType`). 5. Repetir o teste de cursor cruzado da Seção 3 (UT01/CT-11) nesta camada: cursor obtido com `deviceType=Web` rejeitado ao ser reenviado com `region=Sudeste` |
-| Resultado esperado | Os itens persistidos no DynamoDB real são lidos, convertidos para DTO (sem campos físicos) e paginados corretamente: união das páginas = total gravado, sem duplicatas, `hasMore`/`nextCursor` coerentes com o fim da lista; cursor de outro filtro rejeitado com 400 |
-| Resultado obtido | 25 incidentes gravados, 4 páginas (7+7+7+4) percorridas via `nextCursor`, união das páginas = 25 sem duplicata, `nextCursor=null` na última página; nenhum item com `pk`/`sk`/`trace_id`/`itemType`; cursor obtido com `deviceType=Web` rejeitado (400) ao ser reenviado com `region=Sudeste` — 2 de 2 testes passaram |
-| Situação | Aprovado |
-| Evidências / reprodução | `bash scripts/ci/test-dynamodb-real-local.sh` (a partir da raiz do repositório) — sobe e derruba o DynamoDB Local automaticamente. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
+&emsp;IT-AWS-03 e IT-AWS-05 são os dois testes principais exigidos pelo barema. Eles não consideram um `200` isolado como prova suficiente: cada resposta pública é confrontada com o estado real da dependência posterior. A leitura direta usa as mesmas chaves físicas previstas pelos adaptadores, enquanto as asserções da resposta garantem que essas chaves não vazem para o cliente.
+
+| Teste | Fronteiras comprovadas | Evidência cruzada | Isolamento e pós-condição |
+| --- | --- | --- | --- |
+| IT-AWS-03 | Cognito → cookie → API Gateway → ECS/Express → `IncidentUseCases` → resolvedor do dataset → DynamoDB → DTO público | `X-Request-Id`; tempo HTTP; versão do dataset; 5 IDs públicos encontrados diretamente entre os 300 itens da projeção persistida; campos físicos ausentes | Somente leitura; não altera a massa semeada |
+| IT-AWS-05 | Cognito → API Gateway → ECS/Express → `ImportUseCases` → transação/lock DynamoDB → `CreateMultipartUpload` S3 → resposta pública | Mesmo `importId` na resposta, no item `IMPORTS/IMPORT#…`, no lock e na chave S3; exatamente um multipart; replay igual; conflito `409` com o ID ativo | `finally` aborta o multipart e remove, com condições pelo `importId`, somente lock, registro e idempotência criados; uma leitura final comprova que não restou lock |
+
+&emsp;O tempo `responseMs` mede apenas a operação HTTP principal; o tempo mostrado pelo Vitest inclui também as leituras independentes no DynamoDB/S3, replay, conflito e limpeza. Essa separação evita apresentar o custo da coleta de evidência como latência da API. O teste não envia conteúdo nem dispara o worker: ele para deliberadamente em `UPLOADING`, que é a pós-condição do UC-09, e aborta o multipart no `finally`.
+
+### 2.3 Localização, evidências e reprodução
+
+| IDs | Código utilizado | Evidência |
+| --- | --- | --- |
+| IT-AWS-01 a IT-AWS-05 | [`apps/backend/api/tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), com um `it` identificado para cada linha da matriz | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) — 5/5 aprovados, com IDs, tempos e estado cruzado redigidos |
+| IT-UPLOAD-01, IT-UPLOAD-02 e IT-UPLOAD-03 | [`apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx`](../../apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx), com um `it` para cada linha | [`resultado-vitest-integracao-upload.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-upload.txt) — 3/3 aprovados |
+
+- Reprodução AWS: com uma sessão AWS temporária válida no ambiente, executar `RUN_LIVE_AWS=true LIVE_AWS_API_URL=<api> LIVE_AWS_PANEL_URL=<painel> LIVE_AWS_USERNAME=<usuario> LIVE_AWS_PASSWORD=<senha> LIVE_AWS_OPERATIONAL_TABLE=<tabela> LIVE_AWS_IMPORT_BUCKET=<bucket> AWS_REGION=us-east-1 npm run test:integration:aws -- --reporter=verbose` em `apps/backend/api`.
+- Reprodução do upload: `npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.tsx" --reporter=verbose` em `apps/frontend`.
+- Seed compatível com a integração atual: [`apps/backend/api/scripts/seed-carga.cjs`](../../apps/backend/api/scripts/seed-carga.cjs), executado com `ALLOW_REMOTE_SEED=1` e `OPERATIONAL_TABLE_NAME=view-show-iac-operacional`. Não foi usada a opção destrutiva `CLEAN=1`.
+- Verificação adicional no site publicado: o botão principal abriu o diálogo e o console permaneceu sem erros. A implementação foi reforçada para usar diretamente o input nativo sobre o controle visual, removendo a dependência de `input.click()`.
 
 ---
 
 ## 3. Testes de Caso de Uso e Análise de Valor Limite
 
-&emsp;Caso de uso escolhido: **consulta filtrada e paginada de incidentes** (RF09, rota `GET /api/v1/incidents`, exposta em [`src/http/public-routes.ts`](../../apps/backend/api/src/http/public-routes.ts) como `incidents`). É o único caso de uso do projeto com uma entrada numérica de faixa explícita e documentada em código: `limit` — inteiro entre **1 e 100**, padrão **20** (`incidentsQuerySchema`, `contracts/src/index.ts:295`) — combinada com um cursor opaco de paginação (`CursorCodec`, Seção 1/UT01) e com a regra de exclusividade entre `window` e o par `from`/`to` (`validateTemporalQuery`, `contracts/src/index.ts:251-262`).
+&emsp;Caso de uso escolhido: **[UC-09 — Iniciar importação manual de snapshot do ARGUS](../sprint3/modelagem.md#39-uc-09--iniciar-importação-manual-de-snapshot-do-argus)**, extensão operacional do UC-08 e relacionado a RF01, RF02, RF03, RNF04 e RIE02. O UC-09 foi separado do processamento assíncrono porque possui ator, término e pós-condições próprios: ao final, deve existir exatamente um `ImportJob` em `UPLOADING`, uma reserva global e um multipart preparado; restauração, normalização e ativação continuam no UC-08. O detalhamento DS-01B já estabelecia `argus_dump.sql.gz` ou ZIP como entradas dessa operação.
+
+&emsp;A suíte cobre o fluxo básico, os dois fluxos alternativos, todos os fluxos de exceção do UC-09, suas pós-condições e os limites de tamanho, nome e corpo HTTP. Os identificadores `CU-IMP-01` a `CU-IMP-06` são casos de teste do mesmo UC-09. A execução filtrada produziu **8/8 testes Vitest aprovados** — dois identificadores são parametrizados — além das 15 combinações internas de GZIP e ZIP.
+
+&emsp;Foi escolhida a técnica de **caixa-preta**. Os testes enviam requisições HTTP reais a uma instância Express efêmera e verificam status, envelope e efeitos observáveis nos ports do caso de uso. Assim, validam rota → schema → aplicação → repositório/armazenamento sem depender da implementação interna de uma função específica.
+
+### CU-IMP-01 — Iniciar importação de GZIP
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-01` |
+| Objetivo e requisito/caso de uso | Validar o fluxo básico e os limites do GZIP no **UC-09**, relacionado a RF01, RF02 e RF03: `argus_dump.sql.gz` só deve reservar a importação quando nome, data e tamanho obedecem ao contrato. |
+| Pré-condições e dados de entrada | Sessão `engineer` válida; API Express real em porta efêmera; repositório e armazenamento controlados. Tamanhos `0`, `1`, `5 GiB - 1`, `5 GiB` e `5 GiB + 1`; nome inválido; data civil inválida. |
+| Procedimento | Para cada entrada, enviar `POST /api/v1/imports` com JSON e chave de idempotência. Conferir status/envelope e verificar se `store.create` e o registro `UPLOADING` existem somente nos casos válidos. |
+| Resultado esperado | `1`, `5 GiB - 1` e `5 GiB` retornam `201`; `0`, `5 GiB + 1`, nome incorreto e data inválida retornam `400 VALIDATION_ERROR`. Nenhum caso inválido reserva a vaga ou cria multipart. |
+| Resultado obtido | Todos os sete cenários produziram o status esperado. Nos três válidos houve exatamente uma criação e registro `UPLOADING`; nos quatro inválidos não houve escrita nem chamada ao armazenamento. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Código em [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-01`. Executar `npm test -- --run tests/gateway-http.integration.test.ts -t "CU-IMP" --reporter=verbose` em `apps/backend/api`. Saída em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+
+### CU-IMP-02 — Iniciar importação de ZIP
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-02` |
+| Objetivo e requisito/caso de uso | Validar o fluxo alternativo 1a do **UC-09**, relacionado a RF01, RF02 e RF03: aceitar ZIP dentro de 10 GiB e com nome seguro, rejeitando caminho ou nome fora da faixa. |
+| Pré-condições e dados de entrada | Mesma sessão e API do CU-IMP-01. Tamanhos `1`, `10 GiB - 1`, `10 GiB` e `10 GiB + 1`; nomes `.zip`, 251 caracteres + `.zip`, 252 caracteres + `.zip` e `pasta/argus.zip`. |
+| Procedimento | Enviar cada combinação a `POST /api/v1/imports`; conferir status/envelope; verificar criação do multipart e registro `UPLOADING` apenas quando tamanho e nome são válidos. |
+| Resultado esperado | Limite inferior, imediatamente abaixo do máximo e máximo retornam `201`; `10 GiB + 1`, nome vazio, nome com 252 caracteres antes da extensão e caminho retornam `400 VALIDATION_ERROR`. O nome com 251 caracteres é aceito. |
+| Resultado obtido | Os oito cenários passaram. Quatro entradas válidas reservaram a importação; quatro inválidas foram rejeitadas sem qualquer efeito persistente ou chamada ao armazenamento. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo e comando do CU-IMP-01, teste `CU-IMP-02`. Evidência em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+
+### CU-IMP-03 — Autenticação, idempotência e exclusão mútua
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-03` |
+| Objetivo e requisito/caso de uso | Cobrir o fluxo básico, a repetição idempotente 4a e as exceções 3a, 3b e 4b do UC-09, incluindo RNF04. |
+| Pré-condições e dados de entrada | API Express real; sessão `engineer`; arquivo GZIP válido; mesma chave `start-http` repetida e uma chave concorrente diferente; chamadas sem sessão e sem chave. |
+| Procedimento | Enviar chamadas HTTP sem sessão, sem chave, com corpo extra inválido, válida, repetida com a mesma chave e concorrente com chave diferente; observar status, `importId`, estado e quantidade de chamadas ao armazenamento. |
+| Resultado esperado | Sem sessão: `401`; sem chave/corpo estrito inválido: `400`; primeira válida: `201 UPLOADING`; repetição: mesmo `importId` e nenhum multipart adicional; concorrente: `409 IMPORT_IN_PROGRESS`, preservando a ativa. |
+| Resultado obtido | Todos os status coincidiram; a repetição devolveu o mesmo `importId`, `store.create` permaneceu com uma chamada e a tentativa concorrente recebeu `409` com o identificador ativo. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-03`; executar o comando comum indicado em CU-IMP-01. Saída na evidência consolidada de 25/09/2026. |
+
+### CU-IMP-04 — Estado ativo indeterminável
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-04` (duas parametrizações) |
+| Objetivo e requisito/caso de uso | Cobrir a exceção 4c do UC-09: falhar de modo fechado quando uma disputa é detectada, mas o registro ativo não pode ser confirmado. |
+| Pré-condições e dados de entrada | Uma importação previamente bloqueada; nova solicitação válida com outra chave; `getActive` retorna ausente ou lança falha privada. |
+| Procedimento | Disputar a reserva nos dois modos e inspecionar status e envelope público. |
+| Resultado esperado | `503 DATA_UNAVAILABLE` completo e estável, sem expor detalhes internos. |
+| Resultado obtido | As duas parametrizações retornaram `503`; nenhum texto privado apareceu no envelope. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-04` na saída Vitest. |
+
+### CU-IMP-05 — Limite do corpo HTTP
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-05` (duas parametrizações; a de `start` pertence ao UC-09) |
+| Objetivo e requisito/caso de uso | Verificar o requisito especial do UC-09 que limita o corpo inicial a 64 KiB e impede efeitos antes da validação. |
+| Pré-condições e dados de entrada | Corpo JSON imediatamente acima de 64 KiB em `POST /api/v1/imports`; a parametrização de regressão também verifica 4 MiB em `complete`. |
+| Procedimento | Enviar os corpos acima dos respectivos limites e verificar resposta e chamadas ao repositório/armazenamento. |
+| Resultado esperado | `413 VALIDATION_ERROR`, request ID preservado e nenhuma criação ou conclusão chamada. |
+| Resultado obtido | As duas parametrizações retornaram o envelope `413` esperado; `store.create` e `store.complete` não foram chamados. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-05` na saída Vitest. |
+
+### CU-IMP-06 — Falha ao preparar multipart
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-06` |
+| Objetivo e requisito/caso de uso | Cobrir a exceção 5a e a garantia mínima do UC-09 quando o armazenamento falha durante a preparação. |
+| Pré-condições e dados de entrada | Sessão e GZIP válidos; `store.create` configurado para falhar com uma mensagem privada. |
+| Procedimento | Enviar `POST /api/v1/imports`, inspecionar envelope, registro terminal e lock ativo. |
+| Resultado esperado | `503 UPLOAD_PREPARATION_FAILED`; nenhuma informação privada; registro `FAILED`; lock liberado para recuperação segura. |
+| Resultado obtido | O status/código coincidiram, a mensagem privada não vazou, o registro terminou `FAILED` e `getActive()` retornou nulo. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo, comando e [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+
+### Tabela de rastreabilidade — fluxos e limites
+
+| Fluxo/condição | Caso | Entrada | Resultado esperado e obtido | Pós-condição | Situação |
+| --- | --- | --- | --- | --- | --- |
+| Principal GZIP | CU-IMP-01.1 | `argus_dump.sql.gz`, `1 byte`, data válida | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
+| Limite GZIP: abaixo do máximo | CU-IMP-01.2 | `5 GiB - 1` | `201` | Reserva criada | Aprovado |
+| Limite GZIP: máximo | CU-IMP-01.3 | `5 GiB` | `201` | Reserva criada | Aprovado |
+| Exceção GZIP: acima do máximo | CU-IMP-01.4 | `5 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: abaixo do mínimo | CU-IMP-01.5 | `0 byte` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: formato | CU-IMP-01.6 | `argus_dump.sql` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: data | CU-IMP-01.7 | `2026-02-29` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Alternativo ZIP | CU-IMP-02.1 | `argus.zip`, `1 byte` | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
+| Limite ZIP: abaixo do máximo | CU-IMP-02.2 | `10 GiB - 1` | `201` | Reserva criada | Aprovado |
+| Limite ZIP: máximo | CU-IMP-02.3 | `10 GiB` | `201` | Reserva criada | Aprovado |
+| Exceção ZIP: acima do máximo | CU-IMP-02.4 | `10 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Limite do nome | CU-IMP-02.5/6/7 | 0, 251 e 252 caracteres antes de `.zip` | `400`, `201`, `400`, respectivamente | Escrita somente no limite válido | Aprovado |
+| Exceção ZIP: caminho | CU-IMP-02.8 | `pasta/argus.zip` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Alternativo 4a — repetição idempotente | CU-IMP-03 | Mesma solicitação e chave `start-http` | `201`, mesmo `importId` | Um único `ImportJob` e um único multipart | Aprovado |
+| Exceção 3a — sem sessão | CU-IMP-03 | Requisição sem cookie | `401 UNAUTHENTICATED` | Nenhum multipart adicional | Aprovado |
+| Exceção 3b — sem chave | CU-IMP-03 | Sessão válida sem `Idempotency-Key` | `400 VALIDATION_ERROR` | Nenhum multipart adicional | Aprovado |
+| Exceção 4b — concorrência | CU-IMP-03 | Nova chave durante importação ativa | `409 IMPORT_IN_PROGRESS` | Importação original preservada | Aprovado |
+| Exceção 4c — ativo indeterminável | CU-IMP-04 | Registro ativo ausente ou repositório indisponível após disputa | `503 DATA_UNAVAILABLE` seguro | Nenhum falso sucesso | Aprovado |
+| Limite do corpo inicial | CU-IMP-05 | JSON acima de 64 KiB | `413 VALIDATION_ERROR` | Nenhum registro e nenhum multipart | Aprovado |
+| Exceção 5a — armazenamento falha | CU-IMP-06 | Falha privada em `store.create` | `503 UPLOAD_PREPARATION_FAILED` | Registro `FAILED`, lock liberado, sem vazamento | Aprovado |
+
+### Evidência complementar anterior — consulta de incidentes
+
+&emsp;A rodada anterior também documentou a **consulta filtrada e paginada de incidentes** (RF09). Ela permanece abaixo apenas como evidência histórica adicional. O atendimento atual ao barema está concentrado no UC-09 e nos casos CU-IMP-01 a CU-IMP-06 acima.
+
+&emsp;Caso de uso complementar: **consulta filtrada e paginada de incidentes** (RF09, rota `GET /api/v1/incidents`, exposta em [`src/http/public-routes.ts`](../../apps/backend/api/src/http/public-routes.ts) como `incidents`).
 
 ### 3.1 Pré-condições e dados de entrada comuns
 
@@ -311,11 +434,11 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 &emsp;A Seção 1 (Testes Unitários) já foi executada: os quatro testes (UT01–UT04) passaram, com evidência em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) e na saída completa da suíte em [`assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt) (71 testes passando, 1 ignorado, de 11 arquivos).
 
-&emsp;A Seção 3 (CT-01 a CT-12) também já foi executada — os 12 casos passaram contra a API implantada de verdade na AWS (não localmente), com evidência em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) e passo a passo de reprodução na Seção 3.7.
+&emsp;A Seção 3 agora cobre integralmente o UC-09 por caixa-preta com CU-IMP-01 a CU-IMP-06: fluxo básico, formatos GZIP/ZIP, idempotência, autenticação, concorrência, indisponibilidade, falha do armazenamento, pós-condições e limites imediatamente abaixo, nos extremos e imediatamente acima. As oito execuções automatizadas passaram; a análise anterior CT-01 a CT-12 foi mantida apenas como evidência histórica adicional.
 
 &emsp;A Seção 4 (Níveis 1 a 3) também já foi executada contra a mesma stack AWS — resultados, análise e evidência (`resumo-nivel{1,2,3}.json`) em cada tabela da Seção 4. Resumo: correção de conteúdo (schema, ausência de campo físico, ausência de duplicidade entre páginas) aprovada nos três níveis, 100% das vezes que uma resposta chegou; desempenho aprovado só no Nível 1, e mesmo assim com ressalva no p95 — Níveis 2 e 3 expuseram que uma única task Fargate de 1 vCPU sem autoscaling reagindo a tempo não sustenta os alvos de RNF09/RNF14 nesta configuração.
 
-&emsp;A Seção 2 (IT01 e IT02) também já foi executada — os dois aprovados. IT01 (11/11 testes) confirma que uma sessão emitida pelo domínio é aceita pela camada HTTP; IT02, escrito nesta rodada, fecha a lacuna que só existia mockada: 25 incidentes gravados num DynamoDB Local real, paginados em 4 páginas sem duplicata nem campo físico vazado.
+&emsp;A Seção 2 foi reexecutada após o deploy de 25/09/2026: 5/5 testes passaram contra a stack AWS real e 3/3 testes passaram na integração dos componentes do upload. A rodada aprofundada correlacionou a resposta de incidentes com a projeção física ativa e comprovou a criação real de `ImportJob`/lock no DynamoDB e multipart no S3, incluindo idempotência, concorrência e limpeza. A execução também revelou anteriormente que o seed legado não publicava o manifesto `ACTIVE`; o script foi compatibilizado com o contrato versionado antes da rodada final aprovada.
 
 &emsp;Com isso, todas as linhas de "Situação" deste documento (Seções 1 a 4) estão preenchidas com aprovado/reprovado — não há mais item pendente no plano.
 
@@ -325,9 +448,10 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 | Item | Onde foi implementado | Onde está a evidência |
 | --- | --- | --- |
-| IT01 (HTTP × sessão) | Já existia — [`tests/gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt) |
-| IT02 (`IncidentUseCases` × DynamoDB Local) | Escrito nesta rodada — [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) + [`scripts/ci/test-dynamodb-real-local.sh`](../../scripts/ci/test-dynamodb-real-local.sh) (novo) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
-| Seção 3 — casos CT-01 a CT-12 | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) (novo) | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
+| IT-AWS-01 a IT-AWS-05 | [`tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), executado contra Amplify, API Gateway, ECS, Cognito, DynamoDB e S3 reais | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) |
+| IT-UPLOAD-01 a IT-UPLOAD-03 | [`imports-view.integration.test.tsx`](../../apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx), usando `ImportsView`, provider e diálogo reais | [`resultado-vitest-integracao-upload.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-upload.txt) |
+| CU-IMP-01 a CU-IMP-06 (UC-09) | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), rota HTTP real com ports controlados | [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt) |
+| Evidência complementar CT-01 a CT-12 | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
 | Seção 4 — Níveis 1, 2 e 3 | `consultas.js` estendido in-place + [`lib/asserts.js`](../../apps/backend/api/loadtest/k6/lib/asserts.js) (novo) | `assets/testes-funcionais/2026-09-21/resumo-nivel{1,2,3}.json` |
 
 <div align="center">
