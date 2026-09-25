@@ -578,11 +578,14 @@ terraform show -json .terraform-artifacts/g05-s3.tfplan \
 terraform apply -input=false .terraform-artifacts/g05-s3.tfplan
 
 # 3. Semear a massa de teste (300 incidentes sintéticos) no DynamoDB.
-#    OPERATIONAL_TABLE_NAME: output tabelas_dynamodb, campo "operacional".
+#    <tabela_operacional>: output tabelas_dynamodb, campo "operacional".
+#    O nome depende do namespace da stack; com o namespace padrão, é
+#    view-show-iac-operacional. Consulte com:
+#      terraform -chdir=../../fullstack output tabelas_dynamodb
 #    ALLOW_REMOTE_SEED=1 autoriza explicitamente gravar em uma tabela da AWS.
 cd ../backend/api
 ALLOW_REMOTE_SEED=1 \
-OPERATIONAL_TABLE_NAME=g05-s3-operacional \
+OPERATIONAL_TABLE_NAME=<tabela_operacional> \
   node scripts/seed-carga.cjs
 
 # 4. Criar o usuário de teste no Cognito (uma vez por stack).
