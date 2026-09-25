@@ -116,7 +116,7 @@ As variáveis obrigatórias são:
 - `ANALYSIS_MODEL_LOCATION`, `ANALYSIS_SCOPE_CATALOG_LOCATION` e, no S3, `ANALYSIS_MODEL_SHA256`;
 - `LLM_PROVIDER`, `LLM_MODEL_ID` e `OLLAMA_BASE_URL` quando aplicável. Com `LLM_PROVIDER=none`, o worker não chama modelo de linguagem algum e dispensa `LLM_MODEL_ID`: a detecção e a previsão seguem e o diagnóstico é registrado como `failed` com o código `LLM_DISABLED`, sem retentativa nem DLQ. É o modo do Learner Lab, que não tem Bedrock.
 
-O catálogo mapeia métricas para os `seriesId` produzidos pela ingestão. A função pública `seriesId`, em `apps/backend/agentic/src/worker/series-id.ts`, é o contrato único: aplica SHA-256 à identidade canônica formada por dataset lógico, fonte, entidade, métrica e dimensões ordenadas. A ingestão deve usar essa função ao gravar cada série. O worker apenas consome o identificador; uma divergência entre catálogo e fato impede a análise.
+O catálogo mapeia métricas para os `seriesId` produzidos pela ingestão. A função pública `seriesId`, em `apps/backend/agentic/src/worker/series-id.ts`, é o contrato único: aplica SHA-256 à identidade canônica formada por dataset lógico, fonte, entidade, métrica e dimensões ordenadas. A ingestão aplica a mesma regra em `apps/backend/ingestion-data/domain/analysis_facts.py` e, quando `ANALYSIS_FACT_CATALOG_LOCATION` aponta para o catálogo (`s3://…` ou caminho absoluto), grava os fatos das séries do catálogo na tabela operacional junto com as projeções do painel, tanto no `import-dump`/`backfill` quanto no `rebuild-projections`, sempre a partir do arquivo confirmado. O worker apenas consome o identificador; uma divergência entre catálogo e fato impede a análise. Os testes de contrato de ingestão reproduzem os 150 `seriesId` do piloto e gravam `contracts/fixtures/ingestion-facts.v1.json` e `ingestion-events.v1.json` a partir do código de ingestão; o teste `ingestion-contract.test.ts` lê esses arquivos com o adaptador do worker no DynamoDB Local. Os eventos `QOE_FORECAST` declaram o modelo pela configuração `ANALYSIS_FORECAST_MODEL_NAME` e `ANALYSIS_FORECAST_MODEL_VERSION`, que devem ser iguais ao nome e à versão do bundle aprovado (o padrão é `qoe-random-forest` e `2026.09.1`, o valor de `--version` do exemplo de treino).
 
 O piloto real está em `apps/backend/agentic/config/scope-catalog.pilot.json`. Ele contém os dez canais de maior volume que também aparecem no modelo treinado e possuem cobertura nas três fontes de entrega: CDN, origem e origem-CDN. Cada escopo reúne QoE de 15 minutos, features horárias da previsão e taxas de erro de entrega no mesmo canal. O script `scripts/build-pilot-catalog.py` regenera o arquivo a partir dos agregados preparados e do bundle avaliado, sem versionar o dump.
 
@@ -263,6 +263,7 @@ Critérios de pronto do Worker de Análise:
 | --- | --- | --- |
 | contrato de eventos estável | três fixtures v1 validadas pelo parser de produção | atendido |
 | contrato do fato canônico | fixture v1 e leitura pelo adaptador DynamoDB | atendido |
+| fatos e eventos da ingestão | fixtures geradas pela ingestão e lidas pelo worker no DynamoDB Local | atendido |
 | idempotência e episódio | lease e dois buckets correlacionados no DynamoDB Local | atendido |
 | falhas e recuperação | contrato inválido, backoff, quinta tentativa e DLQ | atendido |
 | modelos determinísticos | testes de bundle, detecção, previsão e replay temporal | atendido como candidato |
@@ -280,7 +281,7 @@ integrado.
 
 O código e os testes locais não substituem a validação com as séries canônicas do ARGUS. Antes da ativação, ainda é necessário:
 
-1. integrar a função compartilhada de `seriesId` à escrita de fatos da ingestão e confirmar que os identificadores do catálogo piloto são os realmente gravados;
+1. confirmar, com o dump real importado no ambiente, que os fatos gravados pela ingestão (habilitada por `ANALYSIS_FACT_CATALOG_LOCATION`) cobrem as 150 séries do catálogo piloto; o código e os testes de contrato já reproduzem os identificadores, mas a configuração da tarefa de importação no Terraform ainda não os habilita;
 2. treinar e avaliar o bundle no corte temporal completo, registrar a decisão e aprová-lo;
 3. executar o teste já coberto em DynamoDB Local também com uma tabela temporária e SQS reais;
 4. executar replay sem escrita de pelo menos uma semana, medir falsos positivos, falsos negativos, cobertura e custo;

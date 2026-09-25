@@ -420,6 +420,19 @@ variáveis `SNAPSHOT_*` não são entradas desse comando: são derivadas do obje
 validado antes de montar o backfill. Mesmo que o ambiente contenha
 `ACTIVATE_CANDIDATE=true`, o handler substitui o valor por `false`.
 
+Para alimentar o worker de análise, `ANALYSIS_FACT_CATALOG_LOCATION` (opcional)
+aponta para o catálogo de séries do worker, em `s3://bucket/chave` ou caminho
+absoluto. Quando definida, `import-dump`, `backfill` e `rebuild-projections`
+gravam na tabela operacional os fatos `DATASET#<versão>#FACT#TS#<seriesId>#<dia>`
+das séries do catálogo, sempre a partir do arquivo confirmado e de forma
+idempotente. `sync` e `ingest-incremental` ainda não gravam esses fatos.
+`ANALYSIS_FORECAST_MODEL_NAME` e `ANALYSIS_FORECAST_MODEL_VERSION`, sempre em
+par, definem o modelo declarado nos eventos `QOE_FORECAST` e precisam coincidir
+com o bundle aprovado do worker; sem elas vale `qoe-random-forest` e
+`2026.09.1`. A regra de identidade e o formato do item estão em
+`domain/analysis_facts.py`, e `tests/contracts/test_worker_contract.py` congela o
+que a ingestão grava e publica nos arquivos lidos pelo teste do worker.
+
 ### Estados, progresso e falhas
 
 O registro compartilhado percorre `PREPARING`, `UPLOADING`, `UPLOADED`,

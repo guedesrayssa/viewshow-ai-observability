@@ -107,7 +107,7 @@ Mensagem sem campo obrigatório, com versão incompatível ou janela inválida �
 ```json
 {
   "model": {
-    "name": "qoe-forecast",
+    "name": "qoe-random-forest",
     "version": "2026.09.1"
   },
   "targetWindow": {
@@ -116,6 +116,8 @@ Mensagem sem campo obrigatório, com versão incompatível ou janela inválida �
   }
 }
 ```
+
+`model.name` e `model.version` identificam o bundle aprovado que o worker carrega e precisam ser iguais a ele; a ingestão os recebe das variáveis `ANALYSIS_FORECAST_MODEL_NAME` e `ANALYSIS_FORECAST_MODEL_VERSION`. Uma divergência é erro permanente (`MODEL_VERSION_MISMATCH`).
 
 ### 4.3 Reanálise
 

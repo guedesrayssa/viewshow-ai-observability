@@ -44,7 +44,7 @@ from application.read_canonical_set import ArchiveRecords, CanonicalRecordSource
 from application.rebuild_projections import ProjectionBuildResult, ProjectionService
 from contracts.argus.v2.normalizers import NormalizationContext, normalize_row
 from contracts.registry import DatasetRegistry
-from domain.analysis import canonical_utc_text
+from domain.analysis import DEFAULT_FORECAST_MODEL, ForecastModel, canonical_utc_text
 from domain.archive import (
     canonical_archive_key,
     canonical_set_marker_key,
@@ -1515,6 +1515,7 @@ class Backfill:
         snapshot_preparer: SnapshotPreparer | None = None,
         canonical_sets: CanonicalSetStore | None = None,
         canonical_source_factory: CanonicalRecordSourceFactory | None = None,
+        forecast_model: ForecastModel = DEFAULT_FORECAST_MODEL,
     ) -> None:
         """Inicializa a instância com as dependências e configurações fornecidas.
 
@@ -1545,6 +1546,7 @@ class Backfill:
             pela anotação de tipo e validada antes do uso.
             analysis_dependencies: Entrada ``analysis_dependencies``; a forma aceita é definida
             pela anotação de tipo e validada antes do uso.
+            forecast_model: Identidade do modelo declarada nos eventos ``QOE_FORECAST``.
 
         Returns:
             Não produz valor de retorno; conclui após aplicar ou validar a operação.
@@ -1556,6 +1558,7 @@ class Backfill:
         self._restorer = restorer
         self._reader_factory = reader_factory
         self._hot_sink = hot_sink
+        self._forecast_model = forecast_model
         self._checkpoints = checkpoints
         self._leases = leases
         self._runs = runs
@@ -2947,7 +2950,9 @@ class Backfill:
             # A execução comum prova que não há lacuna de dependência até esta marca d'água.
             # O evento consome apenas seu último bucket canônico, cuja duração precisa ser
             # exatamente igual à granularidade declarada.
-            events.append(self._analysis_event(candidate, event_type, watermark, grain))
+            events.append(
+                self._analysis_event(candidate, event_type, watermark, grain, self._forecast_model)
+            )
         return tuple(events)
 
     @staticmethod
@@ -2956,6 +2961,7 @@ class Backfill:
         event_type: str,
         watermark: datetime,
         grain: int,
+        forecast_model: ForecastModel = DEFAULT_FORECAST_MODEL,
     ) -> OutboxEvent:
         """Executa a etapa interna ``analysis_event`` e devolve o resultado validado indicado
         pela assinatura.
@@ -2968,6 +2974,7 @@ class Backfill:
             validada antes do uso.
             grain: Entrada ``grain``; a forma aceita é definida pela anotação de tipo e validada
             antes do uso.
+            forecast_model: Identidade do modelo declarada em eventos ``QOE_FORECAST``.
 
         Returns:
             Valor ``OutboxEvent`` produzido pela operação após as validações.
@@ -2990,7 +2997,7 @@ class Backfill:
         if event_type == "QOE_FORECAST":
             payload.update(
                 {
-                    "model": {"name": "qoe-forecast", "version": "2026.09.1"},
+                    "model": forecast_model.payload(),
                     "targetWindow": {
                         "start": canonical_utc_text(watermark, "target.start"),
                         "end": canonical_utc_text(watermark + timedelta(hours=1), "target.end"),
@@ -3149,7 +3156,11 @@ class Backfill:
                 grain,
             )
             if window is not None:
-                events.append(self._analysis_event(candidate, event_type, window.end, grain))
+                events.append(
+                    self._analysis_event(
+                        candidate, event_type, window.end, grain, self._forecast_model
+                    )
+                )
         return tuple(events)
 
     def _drain_pending(self, limit: int, *, maximum_batches: int = 100) -> PublishResult:

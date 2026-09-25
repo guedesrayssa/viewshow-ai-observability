@@ -17,6 +17,7 @@ from application.ingest_incremental import IngestIncrementalResult
 from bootstrap.config import ConfigurationError, Settings
 from bootstrap.container import _dataset_version, build_container
 from contracts.registry import DatasetRegistry
+from domain.analysis import DEFAULT_FORECAST_MODEL, ForecastModel
 from domain.disk_budget import FARGATE_EPHEMERAL_STORAGE_BYTES
 from domain.identity import canonical_dataset_version
 from domain.models import TimeWindow
@@ -1721,3 +1722,69 @@ def test_metrics_namespace_accepts_the_value_injected_by_terraform(
     settings = _settings(monkeypatch, METRICS_NAMESPACE="view-show/Ingestion")
 
     assert settings.metrics_namespace == "view-show/Ingestion"
+
+
+def test_analysis_worker_settings_default_to_no_facts_and_the_trainer_model_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(monkeypatch, **REBUILD_ENV)
+
+    assert settings.analysis_fact_catalog_location is None
+    assert settings.analysis_forecast_model == DEFAULT_FORECAST_MODEL
+
+
+def test_analysis_worker_settings_accept_a_catalog_and_the_model_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(
+        monkeypatch,
+        **REBUILD_ENV,
+        ANALYSIS_FACT_CATALOG_LOCATION="s3://bucket-ingestao/analysis/catalogs/abc.json",
+        ANALYSIS_FORECAST_MODEL_NAME="qoe-random-forest",
+        ANALYSIS_FORECAST_MODEL_VERSION="2026.09.2",
+    )
+
+    assert settings.analysis_fact_catalog_location == (
+        "s3://bucket-ingestao/analysis/catalogs/abc.json"
+    )
+    assert settings.analysis_forecast_model == ForecastModel("qoe-random-forest", "2026.09.2")
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"ANALYSIS_FORECAST_MODEL_NAME": "modelo"}, "set together"),
+        ({"ANALYSIS_FORECAST_MODEL_VERSION": "1"}, "set together"),
+        (
+            {"ANALYSIS_FORECAST_MODEL_NAME": "com espaço", "ANALYSIS_FORECAST_MODEL_VERSION": "1"},
+            "identity is invalid",
+        ),
+        ({"ANALYSIS_FACT_CATALOG_LOCATION": "relativo/catalogo.json"}, "absolute path"),
+        ({"ANALYSIS_FACT_CATALOG_LOCATION": "s3://bucket-ingestao"}, "object key"),
+    ],
+)
+def test_analysis_worker_settings_reject_invalid_values(
+    monkeypatch: pytest.MonkeyPatch, overrides: dict[str, str], message: str
+) -> None:
+    with pytest.raises(ConfigurationError, match=message):
+        _settings(monkeypatch, **REBUILD_ENV, **overrides)
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_projection_commands_resolve_the_fact_sink_only_with_a_catalog(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, configured: bool
+) -> None:
+    extra = {"ANALYSIS_FACT_CATALOG_LOCATION": "/catalogo.json"} if configured else {}
+    rebuild = _settings(monkeypatch, **REBUILD_ENV, **extra)
+    backfill = Settings.from_env(
+        {**IMPORT_ENV, **SNAPSHOT_ENV, "ARCHIVE_WORKDIR": str(tmp_path), **extra},
+        command="backfill",
+    )
+    for command, settings in (("rebuild-projections", rebuild), ("backfill", backfill)):
+        factories = {name: object for name in container._capabilities(command, no_write=False)}
+        factories["registry"] = DatasetRegistry.load_argus_v2
+        factories["analysis_facts"] = object
+
+        runtime = build_container(settings, factories=factories).resolve(command)
+
+        assert ("analysis_facts" in runtime.dependencies) is configured, command

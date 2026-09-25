@@ -39,6 +39,8 @@ stages:
 .mudou-ingestion: &ingestion_changes
   - apps/backend/ingestion-data/**/*
   - apps/backend/contracts/**/*
+  - apps/backend/agentic/config/scope-catalog.pilot.json
+  - apps/backend/agentic/contracts/fixtures/*
   - scripts/ci/publish-ingestion-image.sh
   - scripts/ci/ingestion-container-smoke.py
   - scripts/ci/smoke-ingestion-container.sh

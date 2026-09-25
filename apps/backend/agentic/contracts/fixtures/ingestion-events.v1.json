@@ -1,0 +1,62 @@
+{
+  "forecastModel": {
+    "name": "qoe-random-forest",
+    "version": "candidate"
+  },
+  "events": {
+    "ANOMALY_DETECTION": {
+      "eventId": "evt_14ca5b7aebef55b760dd45ffe76a6fb1d976af45a73ec575d47a91516c3edf5b",
+      "eventType": "ANOMALY_DETECTION",
+      "idempotencyKey": "ana_14ca5b7aebef55b760dd45ffe76a6fb1d976af45a73ec575d47a91516c3edf5b",
+      "occurredAt": "2026-09-06T15:00:00.000Z",
+      "payload": {
+        "datasetVersion": "dsv_contract_v1",
+        "inputWatermark": "2026-09-06T15:00:00.000Z",
+        "scope": {
+          "dimensions": {},
+          "kind": "global"
+        },
+        "window": {
+          "end": "2026-09-06T15:00:00.000Z",
+          "grainSeconds": 900,
+          "start": "2026-09-06T14:45:00.000Z"
+        }
+      },
+      "producedAt": "2026-09-06T15:01:12.000Z",
+      "schemaVersion": "1.0",
+      "source": "data-ingestion-service",
+      "traceId": "trc_14ca5b7aebef55b760dd45ffe76a6fb1d976af45a73ec575d47a91516c3edf5b"
+    },
+    "QOE_FORECAST": {
+      "eventId": "evt_c76718c13356e1fb6baac425c21eae0aad7cb387576d48c80c0ac48448680b17",
+      "eventType": "QOE_FORECAST",
+      "idempotencyKey": "ana_c76718c13356e1fb6baac425c21eae0aad7cb387576d48c80c0ac48448680b17",
+      "occurredAt": "2026-09-06T15:00:00.000Z",
+      "payload": {
+        "datasetVersion": "dsv_contract_v1",
+        "inputWatermark": "2026-09-06T15:00:00.000Z",
+        "model": {
+          "name": "qoe-random-forest",
+          "version": "candidate"
+        },
+        "scope": {
+          "dimensions": {},
+          "kind": "global"
+        },
+        "targetWindow": {
+          "end": "2026-09-06T16:00:00.000Z",
+          "start": "2026-09-06T15:00:00.000Z"
+        },
+        "window": {
+          "end": "2026-09-06T15:00:00.000Z",
+          "grainSeconds": 3600,
+          "start": "2026-09-06T14:00:00.000Z"
+        }
+      },
+      "producedAt": "2026-09-06T15:01:12.000Z",
+      "schemaVersion": "1.0",
+      "source": "data-ingestion-service",
+      "traceId": "trc_c76718c13356e1fb6baac425c21eae0aad7cb387576d48c80c0ac48448680b17"
+    }
+  }
+}

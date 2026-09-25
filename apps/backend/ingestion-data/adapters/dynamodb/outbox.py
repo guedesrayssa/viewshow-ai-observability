@@ -29,8 +29,10 @@ from adapters.dynamodb.client import (
 from adapters.dynamodb.codec import serialize_item, serialized_item_bytes
 from domain.analysis import (
     ALLOWED_ANALYSIS_EVENT_TYPES,
+    DEFAULT_FORECAST_MODEL,
     MAX_OUTBOX_ITEM_BYTES,
     PENDING_OUTBOX_PARTITION_KEY,
+    ForecastModel,
     canonical_utc_text,
     parse_canonical_utc_text,
     pending_analysis_outbox_item,
@@ -235,6 +237,7 @@ def build_analysis_event(
     window: TimeWindow,
     *,
     created_at: datetime,
+    forecast_model: ForecastModel = DEFAULT_FORECAST_MODEL,
 ) -> OutboxEvent:
     """Constrói análise evento a partir das entradas validadas.
 
@@ -244,6 +247,7 @@ def build_analysis_event(
         validada antes do uso.
         window: Janela temporal UTC, fechada no início e aberta no fim.
         created_at: Instante UTC com fuso horário usado pela regra temporal.
+        forecast_model: Identidade do modelo declarada em eventos ``QOE_FORECAST``.
 
     Returns:
         Valor ``OutboxEvent`` produzido pela operação após as validações.
@@ -272,7 +276,7 @@ def build_analysis_event(
     if kind == "QOE_FORECAST":
         payload.update(
             {
-                "model": {"name": "qoe-forecast", "version": "2026.09.1"},
+                "model": forecast_model.payload(),
                 "targetWindow": _target_window(window),
             }
         )
