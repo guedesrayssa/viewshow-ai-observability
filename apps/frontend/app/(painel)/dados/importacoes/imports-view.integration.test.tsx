@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -60,6 +61,52 @@ async function ready() {
 }
 
 describe("ImportsView com provider real", () => {
+  it("seleciona, revisa e confirma o arquivo pelo controle nativo de upload", async () => {
+    const user = userEvent.setup();
+    const client = clientFixture();
+    const uploadFile = vi.fn<ImportUploadRunner>(async () =>
+      active({ state: "UPLOADED", version: 2 }),
+    );
+    render(
+      <ImportUploadProvider
+        client={client}
+        uploadFile={uploadFile}
+        pollIntervalMs={60_000}
+      >
+        <CaptureContext />
+        <ImportsView />
+      </ImportUploadProvider>,
+    );
+    await ready();
+
+    await user.click(
+      screen.getByRole("button", { name: "Importar dump do ARGUS" }),
+    );
+    const file = new File(["dump"], "argus_dump.sql.gz", {
+      type: "application/gzip",
+    });
+    await user.upload(
+      screen.getByLabelText("Selecionar arquivo"),
+      file,
+    );
+    expect(screen.getByText("argus_dump.sql.gz")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Revisar importação" }));
+    expect(
+      screen.getByRole("heading", { name: "Confirmar importação" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Confirmar e iniciar upload" }),
+    );
+    await waitFor(() => expect(client.start).toHaveBeenCalledTimes(1));
+    expect(client.start).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: file.name, sizeBytes: file.size }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) }),
+    );
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
+  });
+
   it("preserva falha física e mostra separadamente falha posterior de leitura", async () => {
     const client = clientFixture();
     const putError = new ApiError(

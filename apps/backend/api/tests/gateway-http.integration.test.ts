@@ -527,7 +527,9 @@ describe("api monolith over HTTP", () => {
       name: "Engineer",
       email: "engineer@example.test",
       role: "engineer",
-      issuedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$/),
+      issuedAt: expect.stringMatching(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$/,
+      ),
     });
   });
 
@@ -1039,7 +1041,7 @@ describe("api monolith over HTTP", () => {
     { path: "complete", limit: 4 * 1024 * 1024 },
     { path: "start", limit: 64 * 1024 },
   ])(
-    "returns a stable 413 envelope above the $path parser limit",
+    "CU-IMP-05: retorna envelope 413 estável acima do limite do parser de $path",
     async ({ path, limit }) => {
       const { fixture, url, headers } = await importHttpFixture();
       const route =
@@ -1063,8 +1065,189 @@ describe("api monolith over HTTP", () => {
     },
   );
 
+  it("CU-IMP-01: aplica os limites do GZIP antes de reservar a importação", async () => {
+    const limit = 5 * 1024 ** 3;
+    const cases = [
+      { label: "mínimo válido", sizeBytes: 1, expectedStatus: 201 },
+      {
+        label: "imediatamente abaixo do máximo",
+        sizeBytes: limit - 1,
+        expectedStatus: 201,
+      },
+      { label: "máximo válido", sizeBytes: limit, expectedStatus: 201 },
+      {
+        label: "imediatamente acima do máximo",
+        sizeBytes: limit + 1,
+        expectedStatus: 400,
+      },
+      {
+        label: "imediatamente abaixo do mínimo",
+        sizeBytes: 0,
+        expectedStatus: 400,
+      },
+      {
+        label: "formato não aceito",
+        sizeBytes: 1024,
+        fileName: "argus_dump.sql",
+        expectedStatus: 400,
+      },
+      {
+        label: "data civil inválida",
+        sizeBytes: 1024,
+        snapshotExtractedOn: "2026-02-29",
+        expectedStatus: 400,
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const { fixture, url, headers } = await importHttpFixture();
+      const response = await fetch(`${url}/api/v1/imports`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          fileName:
+            "fileName" in testCase ? testCase.fileName : "argus_dump.sql.gz",
+          sizeBytes: testCase.sizeBytes,
+          snapshotExtractedOn:
+            "snapshotExtractedOn" in testCase
+              ? testCase.snapshotExtractedOn
+              : "2026-09-25",
+        }),
+      });
+
+      expect(response.status, testCase.label).toBe(testCase.expectedStatus);
+      if (testCase.expectedStatus === 201) {
+        expect(fixture.store.create, testCase.label).toHaveBeenCalledTimes(1);
+        expect(fixture.current(), testCase.label).toMatchObject({
+          fileName: "argus_dump.sql.gz",
+          sizeBytes: testCase.sizeBytes,
+          state: "UPLOADING",
+        });
+      } else {
+        expect(await response.json(), testCase.label).toMatchObject({
+          error: { code: "VALIDATION_ERROR" },
+        });
+        expect(fixture.store.create, testCase.label).not.toHaveBeenCalled();
+        expect(fixture.current(), testCase.label).toBeNull();
+      }
+    }
+  });
+
+  it("CU-IMP-02: aplica os limites do ZIP e do nome antes de reservar a importação", async () => {
+    const sizeLimit = 10 * 1024 ** 3;
+    const maxName = `${"a".repeat(251)}.zip`;
+    const cases = [
+      {
+        label: "mínimo válido",
+        fileName: "argus.zip",
+        sizeBytes: 1,
+        expectedStatus: 201,
+      },
+      {
+        label: "imediatamente abaixo do tamanho máximo",
+        fileName: "argus.zip",
+        sizeBytes: sizeLimit - 1,
+        expectedStatus: 201,
+      },
+      {
+        label: "tamanho máximo válido",
+        fileName: "argus.zip",
+        sizeBytes: sizeLimit,
+        expectedStatus: 201,
+      },
+      {
+        label: "imediatamente acima do tamanho máximo",
+        fileName: "argus.zip",
+        sizeBytes: sizeLimit + 1,
+        expectedStatus: 400,
+      },
+      {
+        label: "nome vazio",
+        fileName: ".zip",
+        sizeBytes: 1024,
+        expectedStatus: 400,
+      },
+      {
+        label: "nome no máximo",
+        fileName: maxName,
+        sizeBytes: 1024,
+        expectedStatus: 201,
+      },
+      {
+        label: "nome imediatamente acima do máximo",
+        fileName: `${"a".repeat(252)}.zip`,
+        sizeBytes: 1024,
+        expectedStatus: 400,
+      },
+      {
+        label: "nome com caminho",
+        fileName: "pasta/argus.zip",
+        sizeBytes: 1024,
+        expectedStatus: 400,
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const { fixture, url, headers } = await importHttpFixture();
+      const response = await fetch(`${url}/api/v1/imports`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          fileName: testCase.fileName,
+          sizeBytes: testCase.sizeBytes,
+          snapshotExtractedOn: "2026-09-25",
+        }),
+      });
+
+      expect(response.status, testCase.label).toBe(testCase.expectedStatus);
+      if (testCase.expectedStatus === 201) {
+        expect(fixture.store.create, testCase.label).toHaveBeenCalledTimes(1);
+        expect(fixture.current(), testCase.label).toMatchObject({
+          fileName: testCase.fileName,
+          sizeBytes: testCase.sizeBytes,
+          state: "UPLOADING",
+        });
+      } else {
+        expect(await response.json(), testCase.label).toMatchObject({
+          error: { code: "VALIDATION_ERROR" },
+        });
+        expect(fixture.store.create, testCase.label).not.toHaveBeenCalled();
+        expect(fixture.current(), testCase.label).toBeNull();
+      }
+    }
+  });
+
+  it("CU-IMP-06: terminaliza com segurança quando o multipart não pode ser preparado", async () => {
+    const { fixture, url, headers } = await importHttpFixture();
+    fixture.store.create.mockRejectedValueOnce(
+      new Error("detalhe privado do armazenamento"),
+    );
+
+    const response = await fetch(`${url}/api/v1/imports`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        fileName: "argus_dump.sql.gz",
+        sizeBytes: 1024,
+        snapshotExtractedOn: "2026-09-25",
+      }),
+    });
+    const envelope = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(envelope).toMatchObject({
+      error: { code: "UPLOAD_PREPARATION_FAILED" },
+    });
+    expect(JSON.stringify(envelope)).not.toContain("detalhe privado");
+    expect(fixture.current()).toMatchObject({
+      state: "FAILED",
+      error: { code: "UPLOAD_PREPARATION_FAILED" },
+    });
+    expect(await fixture.repository.getActive()).toBeNull();
+  });
+
   it.each(["missing", "unavailable"])(
-    "returns a complete 503 envelope when contested start has %s active record",
+    "CU-IMP-04: retorna 503 seguro quando a disputa tem registro ativo %s",
     async (mode) => {
       const { fixture, url, headers } = await importHttpFixture();
       await fixture.useCases.start(startInput);
@@ -1164,7 +1347,7 @@ describe("api monolith over HTTP", () => {
     expect(fixture.store.complete).not.toHaveBeenCalled();
   });
 
-  it("authenticates, validates and serves the durable multipart workflow", async () => {
+  it("CU-IMP-03: autentica, garante idempotência e protege a importação ativa", async () => {
     const fixture = importFixture();
     const auth = createAuthModule({
       AUTH_COOKIE_SECRET: secret,
@@ -1227,6 +1410,18 @@ describe("api monolith over HTTP", () => {
       },
     });
     const importId = result.data.importId;
+    expect(fixture.store.create).toHaveBeenCalledTimes(1);
+    const replayed = await fetch(`${url}/api/v1/imports`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "content-type": "application/json",
+        "idempotency-key": "start-http",
+      },
+      body: JSON.stringify(start),
+    });
+    expect(replayed.status).toBe(201);
+    expect(await replayed.json()).toMatchObject({ data: { importId } });
     expect(fixture.store.create).toHaveBeenCalledTimes(1);
     const authenticatedJson = {
       ...headers,

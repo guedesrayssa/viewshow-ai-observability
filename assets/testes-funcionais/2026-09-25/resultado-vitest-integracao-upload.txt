@@ -1,0 +1,10 @@
+Execução: 2026-09-25 00:03 (America/Sao_Paulo)
+Comando: npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.tsx" --reporter=verbose
+
+PASS seleciona, revisa e confirma o arquivo pelo controle nativo de upload (470 ms)
+PASS preserva falha física e mostra separadamente falha posterior de leitura
+PASS limpa warning de conflito quando o polling publica terminal
+
+Test Files  1 passed (1)
+Tests       3 passed (3)
+Duration    3.68s

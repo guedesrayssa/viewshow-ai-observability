@@ -1231,7 +1231,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 11.4 Nota sobre a suíte de política de CI
 
-&emsp;`npm run test:ci-policy` reprova **113 de 321 casos** neste host (`pass 208 · fail 113`). A causa dominante é `mapfile: command not found` (~68 ocorrências), seguida de `declare: -A: invalid option` (~35) e de assertivas em cascata dessas duas: os scripts de `scripts/ci/` usam builtins de bash 4+ e o host traz bash 3.2.57. É incompatibilidade de ambiente, não regressão — nenhum arquivo em `scripts/` ou `tests/ci/` foi tocado. `npm run build` e `npm test` (70 passaram, 1 ignorado, 11 arquivos) passam normalmente.
+&emsp;Naquele host, `npm run test:ci-policy` reprovava **113 de 321 casos** (`pass 208 · fail 113`) porque a automação de CI então existente usava builtins do bash 4+, enquanto o host trazia bash 3.2.57. Esse fluxo foi descontinuado na Sprint 4; a observação permanece apenas como registro histórico.
 
 &emsp;Uma versão anterior deste documento dizia "227 casos": aquele era o número de linhas com marcador de falha na saída, que inclui os nós de agrupamento, e não a contagem de casos.
 

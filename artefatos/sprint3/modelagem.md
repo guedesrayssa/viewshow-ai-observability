@@ -30,7 +30,7 @@ A modelagem utiliza diagramas UML e descrições textuais para representar:
 
 ### 1.2 Escopo da modelagem
 
-A modelagem de casos de uso contempla a aplicação web interna do View Show, utilizada por equipes do Globoplay para consultar telemetria, analisar incidentes, investigar falhas técnicas e acompanhar a qualidade da experiência (QoE). O recorte corresponde às telas de Login, Visão Geral, Incidentes, Evidências, Eventos e Monitoramento previstas para o MVP e para a Sprint 3. O recorte também contempla o ponto de entrada dos dados: a sincronização e a normalização dos registros do ARGUS (UC-08), iniciada por um ator técnico em vez de por um usuário final, pois RF01, RF02, RF03 e RIE02 definem um contrato observável que não pode ficar sem representação em nenhum caso de uso.
+A modelagem de casos de uso contempla a aplicação web interna do View Show, utilizada por equipes do Globoplay para consultar telemetria, analisar incidentes, investigar falhas técnicas e acompanhar a qualidade da experiência (QoE). O recorte corresponde às telas de Login, Visão Geral, Incidentes, Evidências, Eventos, Monitoramento e Importações previstas para o MVP. O recorte também contempla o ponto de entrada dos dados: a sincronização e a normalização dos registros do ARGUS (UC-08), iniciada por um ator técnico, e o início manual de uma importação pelo operador (UC-09), pois RF01, RF02, RF03 e RIE02 definem contratos observáveis que não podem ficar sem representação.
 
 Não fazem parte da modelagem de casos de uso:
 
@@ -81,7 +81,7 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 
 ### 2.2 Catálogo de casos de uso
 
-&emsp;O catálogo apresenta oito objetivos observáveis dos atores do View Show. Cada caso de uso reúne as interações que conduzem a um resultado relevante para o ator principal, desde o acesso ao sistema até a análise de incidentes, a investigação técnica, a avaliação da qualidade da experiência, o acompanhamento da telemetria e a recepção dos eventos que alimentam essa telemetria.
+&emsp;O catálogo apresenta nove objetivos observáveis dos atores do View Show. Cada caso de uso reúne as interações que conduzem a um resultado relevante para o ator principal, desde o acesso ao sistema até a análise de incidentes, a investigação técnica, a avaliação da qualidade da experiência, o acompanhamento da telemetria e a recepção dos eventos que alimentam essa telemetria.
 
 <div align="center">
 
@@ -97,12 +97,13 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 | UC-06 | Analisar qualidade da experiência | Product Manager | RF07, RF08, RF09, RNF05, RNF14, RNF15 |
 | UC-07 | Monitorar a telemetria | Engenheira de Software | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 |
 | UC-08 | Sincronizar e normalizar dados do ARGUS | Temporizador de sincronização (EventBridge) | RF01, RF02, RF03, RIE02 |
+| UC-09 | Iniciar importação manual de snapshot do ARGUS | Operador de dados (Engenheira de Software) | RF01, RF02, RF03, RNF04, RIE02 |
 
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
 
 </div>
 
-&emsp;A consulta ao dashboard abrange a aplicação de filtros e a exportação de resultados. A análise de incidentes compreende a priorização das ocorrências, a consulta das hipóteses e evidências e o registro da avaliação humana. A investigação técnica aprofunda a inspeção de eventos e as comparações entre recortes. Os demais casos tratam da avaliação posterior a correções, da análise agregada de QoE, da verificação da integridade das fontes e do processamento da telemetria e, por fim, da sincronização e normalização dos dados do ARGUS, que é o ponto de entrada de dados sobre o qual todos os demais casos de uso operam. Diferentemente dos demais, o UC-08 não é iniciado por um usuário final: seu ator principal é um temporizador técnico, o que o qualifica como subfunção de suporte, e não como objetivo de usuário (ver 3.8).
+&emsp;A consulta ao dashboard abrange a aplicação de filtros e a exportação de resultados. A análise de incidentes compreende a priorização das ocorrências, a consulta das hipóteses e evidências e o registro da avaliação humana. A investigação técnica aprofunda a inspeção de eventos e as comparações entre recortes. Os demais casos tratam da avaliação posterior a correções, da análise agregada de QoE, da verificação da integridade das fontes e do processamento da telemetria e, por fim, da sincronização e normalização dos dados do ARGUS, que é o ponto de entrada de dados sobre o qual todos os demais casos de uso operam. Diferentemente dos demais, o UC-08 não é iniciado por um usuário final: seu ator principal é um temporizador técnico, o que o qualifica como subfunção de suporte. O UC-09 separa a etapa observável iniciada pelo operador — validar o snapshot, reservar a importação e preparar o upload — do processamento assíncrono posterior descrito no UC-08.
 
 ### 2.3 Diagrama
 
@@ -112,7 +113,22 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 
 <sup>Figura 1: Casos de uso do View Show — fronteira funcional do sistema e associações entre os atores e seus objetivos</sup>
 
-![Diagrama de casos de uso do View Show](/assets/modelagem/casos-de-uso.png)
+```mermaid
+flowchart LR
+    U[Usuário corporativo] --> UC01([UC-01 Consultar dashboard])
+    U --> UC02([UC-02 Autenticar-se])
+    N1[Analista N1] --> UC03([UC-03 Analisar incidente])
+    ENG[Engenheira de Software] --> UC04([UC-04 Investigar falha técnica])
+    ENG --> UC05([UC-05 Avaliar recuperação])
+    ENG --> UC07([UC-07 Monitorar telemetria])
+    ENG --> UC09([UC-09 Iniciar importação manual])
+    PM[Product Manager] --> UC05
+    PM --> UC06([UC-06 Analisar QoE])
+    SSO[Provedor de identidade] --> UC02
+    TIMER[Temporizador] --> UC08([UC-08 Sincronizar e normalizar ARGUS])
+    ARGUS[ARGUS] --> UC08
+    UC09 -. extensão manual .-> UC08
+```
 
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
 
@@ -141,13 +157,13 @@ Esses elementos viabilizam o produto, mas não constituem objetivos iniciados di
 | AT-04 | Generalização | AT-01 | A Product Manager também executa os objetivos comuns. |
 | AT-01 | Associação | UC-01 e UC-02 | Todo perfil autorizado pode autenticar-se e consultar o dashboard. |
 | AT-02 | Associação | UC-03 | O Analista N1 prioriza o incidente, consulta as evidências e avalia a hipótese apresentada. |
-| AT-03 | Associação | UC-04, UC-05 e UC-07 | A Engenheira investiga falhas, avalia a recuperação e monitora a telemetria. |
+| AT-03 | Associação | UC-04, UC-05, UC-07 e UC-09 | A Engenheira investiga falhas, avalia a recuperação, monitora a telemetria e, no papel de operadora de dados, inicia uma importação manual. |
 | AT-04 | Associação | UC-05 | A Product Manager avalia os indicadores posteriores a uma correção. |
 | AT-04 | Associação | UC-06 | A Product Manager inicia a análise de QoE. |
 | AT-05 | Associação | UC-02 | O provedor externo participa da autenticação corporativa. |
 | AT-06 | Associação | UC-08 | O temporizador inicia periodicamente a sincronização dos dados do ARGUS. |
 | AT-07 | Associação | UC-08 | O ARGUS fornece os dados operacionais consumidos pela sincronização. |
-| AT-03 | Associação | UC-08 | A Engenheira de Software pode, no papel de operador de dados, importar manualmente um snapshot do ARGUS. |
+| UC-09 | Extensão | UC-08 | A importação manual fornece ao UC-08 uma origem alternativa ao sincronismo periódico, encerrando quando o upload multipart está preparado. |
 
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
 
@@ -830,9 +846,87 @@ A cada 15 minutos, automaticamente; a importação manual ocorre sob demanda, ti
 
 > **Substituição tecnológica documentada.** RIE02 descreve originalmente uma API de ingestão que recebe eventos diretamente dos frontends do Globoplay e confirma o recebimento somente após a publicação na fila. A arquitetura-alvo substitui esse contrato por um modelo de leitura periódica do ARGUS — sistema interno da Globo que já recebe essa telemetria antes do View Show, fora de sua fronteira. A garantia comportamental de RIE02 (nenhuma confirmação sem persistência prévia) é preservada pelo par checkpoint + outbox transacional do Serviço de Ingestão (DS-01A), mesmo sem uma API de recebimento própria dos frontends.
 
-### 3.9 Síntese das descrições
+### 3.9 UC-09 — Iniciar importação manual de snapshot do ARGUS
 
-&emsp;As oito narrativas delimitam os objetivos dos atores e os resultados que o View Show deve oferecer. Sete delas descrevem objetivos de usuário, no nível definido por Larman (2007) para casos de uso primários; a oitava (UC-08) descreve uma subfunção técnica, iniciada por um temporizador em vez de por um usuário final, mas necessária para que RF01, RF02, RF03 e RIE02 tenham representação explícita no modelo. Os fluxos básicos descrevem os cenários de sucesso, enquanto os fluxos alternativos registram indisponibilidades, ausência de dados, amostras insuficientes e demais condições que modificam o percurso principal.
+&emsp;Este caso de uso especializa a entrada manual prevista no fluxo 1a do UC-08. Seu término ocorre quando o sistema aceita o snapshot e prepara de forma durável o upload multipart; restauração, normalização e ativação são assíncronas e permanecem no UC-08. Essa separação torna explícito o objetivo observável do operador e permite verificar integralmente suas entradas, exceções e pós-condições sem declarar que o processamento posterior já terminou.
+
+#### Escopo
+
+Sistema View Show.
+
+#### Nível
+
+Objetivo do usuário, extensão operacional do UC-08.
+
+#### Atores
+
+- **Ator principal:** Operador de dados, papel exercido pela Engenheira de Software autenticada.
+- **Atores secundários:** armazenamento de snapshots e repositório operacional.
+
+#### Requisitos relacionados
+
+- **RF01 — Ingestão de eventos multiplataforma:** o snapshot preserva registros oriundos das plataformas atendidas pelo ARGUS.
+- **RF02 — Ingestão de eventos:** a importação manual oferece uma origem controlada para reprocessamento ou recuperação.
+- **RF03 — Normalização dos dados:** o snapshot aceito será normalizado pelo processamento assíncrono do UC-08.
+- **RNF04 — Segurança e confidencialidade:** somente uma sessão autenticada pode iniciar a operação.
+- **RIE02 — Entrada da telemetria:** a importação preserva a origem ARGUS adotada pela arquitetura.
+
+#### Pré-condições
+
+- O operador possui uma sessão autenticada.
+- O snapshot está disponível localmente como `argus_dump.sql.gz` ou como arquivo `.zip` sem componentes de caminho.
+- Não existe outra importação ativa, exceto quando a chamada repete a mesma chave de idempotência.
+
+#### Pós-condições
+
+- **Em caso de sucesso:** existe exatamente um `ImportJob` no estado `UPLOADING`, associado ao operador e aos metadados validados; a vaga global está reservada e existe exatamente um upload multipart preparado no armazenamento.
+- **Garantia mínima:** uma entrada inválida ou uma requisição não autenticada não cria `ImportJob` nem upload multipart; uma tentativa concorrente não substitui a importação ativa; repetir a mesma solicitação com a mesma chave de idempotência devolve o mesmo `ImportJob` sem criar outro multipart.
+
+#### Fluxo básico
+
+1. O operador abre a importação manual e seleciona `argus_dump.sql.gz`.
+2. O operador informa a data civil de extração do snapshot e confirma o envio.
+3. O sistema valida sessão, chave de idempotência, nome, data e tamanho do arquivo.
+4. O sistema reserva de forma exclusiva a importação ativa e registra o `ImportJob` como `PREPARING`.
+5. O sistema prepara um upload multipart no armazenamento.
+6. O sistema registra a geometria do upload e transiciona o `ImportJob` para `UPLOADING`.
+7. O sistema devolve ao operador o identificador e o estado público da importação, sem expor identificadores físicos do armazenamento.
+
+#### Fluxos alternativos
+
+- **1a. Snapshot ZIP:** o operador seleciona um arquivo `.zip`; o fluxo segue no passo 2, aplicando o limite próprio do ZIP.
+- **4a. Repetição idempotente:** já existe uma importação criada pelo mesmo operador com a mesma chave de idempotência; o sistema devolve o `ImportJob` original e segue para o passo 7 sem criar outro multipart.
+
+#### Fluxos de exceção
+
+- **3a. Sessão ausente ou inválida:** o sistema responde `401 UNAUTHENTICATED`; o fluxo termina sem efeitos persistentes.
+- **3b. Chave de idempotência ausente ou inválida:** o sistema responde `400 VALIDATION_ERROR`; o fluxo termina sem criar importação ou multipart.
+- **3c. Nome, tamanho ou data inválidos:** o sistema responde `400 VALIDATION_ERROR`; o fluxo termina sem criar importação ou multipart.
+- **4b. Outra importação em andamento:** o sistema responde `409 IMPORT_IN_PROGRESS`, preserva a importação ativa e não cria outro multipart.
+- **4c. Estado ativo não pode ser confirmado após uma disputa:** o sistema responde `503 DATA_UNAVAILABLE` sem expor a falha interna.
+- **5a. Falha ao preparar o upload:** o sistema não informa sucesso; registra a preparação como falha quando consegue adquirir a cerca de versão e deixa a limpeza para reconciliação quando o resultado da escrita é incerto.
+
+#### Requisitos especiais e limites
+
+- `argus_dump.sql.gz`: tamanho inteiro entre **1 byte e 5 GiB**, inclusive.
+- `.zip`: nome com **1 a 251 caracteres antes da extensão**, sem `/` ou `\`, e tamanho inteiro entre **1 byte e 10 GiB**, inclusive.
+- O corpo inicial da requisição tem limite de **64 KiB**.
+- A data de extração deve ser uma data civil real no formato `YYYY-MM-DD`.
+- Toda tentativa de criação deve possuir uma chave de idempotência válida.
+- A resposta pública não deve expor `uploadId`, bucket, chave física, URL assinada ou checksum interno.
+
+#### Lista de variantes
+
+- **1a. Formato do snapshot:** GZIP canônico ou ZIP que contenha o dump do ARGUS.
+- **3a. Limite por formato:** 5 GiB para GZIP e 10 GiB para ZIP.
+
+#### Frequência de ocorrência
+
+Sob demanda, para carga inicial, reprocessamento ou recuperação de dados.
+
+### 3.10 Síntese das descrições
+
+&emsp;As nove narrativas delimitam os objetivos dos atores e os resultados que o View Show deve oferecer. O UC-08 descreve uma subfunção técnica iniciada por um temporizador; o UC-09 torna explícito o objetivo operacional do usuário que inicia a alternativa manual de snapshot e termina antes do processamento assíncrono. Os fluxos básicos descrevem os cenários de sucesso, enquanto os fluxos alternativos e de exceção registram indisponibilidades, entradas inválidas, concorrência e demais condições que modificam o percurso principal.
 
 &emsp;A descrição em caixa-preta mantém o foco nas responsabilidades observáveis do sistema, conforme a abordagem de Larman (2007). Dessa forma, os casos de uso fornecem uma base comum para a análise dos requisitos, a definição das interações e a verificação posterior do comportamento esperado.
 
@@ -2376,6 +2470,7 @@ A rastreabilidade relaciona os casos de uso aos requisitos, às necessidades de 
 | Indicadores, segmentos e histórico de QoE | UC-06 | RF07, RF08, RF09, RNF05, RNF14, RNF15 | US-PM-01 a US-PM-05 | Indicador de QoE, segmento, série temporal e degradação | DS-01A, DS-01B, DS-03A, DS-03B, DS-04 |
 | Integridade da telemetria | UC-07 | RF07, RF08, RNF01, RNF02, RNF03, RNF09, RNF15 | US-ENG-06 e tela de Monitoramento | Fonte de telemetria, métrica operacional, cobertura e alerta | DS-01A, DS-01B, DS-03C |
 | Sincronização e normalização dos dados do ARGUS | UC-08 | RF01, RF02, RF03, RIE02 | Não modelado: o temporizador e o ARGUS são atores técnicos, sem persona de usuário associada | Registro do ARGUS, checkpoint, watermark e outbox | DS-01A, DS-01B |
+| Início da importação manual de snapshot | UC-09 | RF01, RF02, RF03, RNF04, RIE02 | Tela de Importações | Operador, ImportJob e upload multipart | DS-01B |
 
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
 

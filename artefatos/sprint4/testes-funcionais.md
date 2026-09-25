@@ -11,17 +11,19 @@
 - **Testes de caso de uso e valor limite** — validam um fluxo de negócio completo e o comportamento nos extremos de uma entrada numérica.
 - **Testes de carga funcional** — validam que a resposta permanece correta (não necessariamente rápida) conforme a concorrência aumenta.
 
-&emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
+&emsp;Além de registrar resultados, o documento explica por que cada cenário foi escolhido. Nesta atualização, o foco está nos riscos percebidos por quem usa o sistema: comunicação entre interface, API e persistência; reserva segura de uma importação; e rejeição de arquivos inválidos exatamente nas fronteiras aceitas. Para esses fluxos foi adotada a técnica de **caixa-preta**, porque o comportamento público da rota HTTP e suas pós-condições são mais relevantes do que detalhes internos como getters, setters ou métodos auxiliares.
 
-&emsp;A suíte atual (`npm test`, Vitest) tem 13 arquivos e roda **71 testes passando, 15 ignorados** (86 no total) sem nenhuma credencial AWS — 12 dos ignorados são os casos da Seção 3 (`tests/incidents-aws-live.functional.test.ts`, exige `RUN_AWS_FUNCTIONAL=true` contra a stack real) e 2 são o IT02 da Seção 2 (`tests/dynamodb-real.integration.test.ts`, exige `RUN_LIVE_E2E=true` contra DynamoDB Local — 100% local, sem AWS). As Seções 1 e 2 apontam, teste a teste, o que já está coberto por essa suíte — para reaproveitar como evidência — e o que precisa ser escrito.
+&emsp;Na execução mais recente, os recortes solicitados foram executados separadamente para deixar a evidência objetiva: **5/5 integrações AWS**, **3/3 integrações do upload** e **8/8 execuções automatizadas do UC-09**, incluindo 15 combinações internas de valor limite para GZIP e ZIP. As credenciais e senhas nunca são gravadas nos arquivos de evidência.
+
+&emsp;Os comandos de reprodução apresentados ao longo do documento foram escritos para um terminal compatível com Bash. Dependendo do sistema operacional e do terminal utilizados, a forma de definir variáveis de ambiente e de executar alguns comandos pode mudar.
 
 ## Priorização de execução
 
-&emsp;A ordem de implementação e execução desta suíte segue o risco funcional de cada fluxo, não a ordem de apresentação das seções:
+&emsp;A prioridade de cada grupo de testes segue o risco funcional do fluxo, não a ordem de apresentação das seções:
 
-1. **Prioridade 1 — a consulta paginada como fluxo completo (Seção 3: fluxo principal CT-01, paginação subsequente A1/CT-02, pós-condições; e IT02).** O caso de uso de consulta filtrada e paginada de incidentes (RF09) é o de maior risco funcional do sistema: combina filtros cumulativos, cursor assinado (`CursorCodec`) e paginação sobre dado real em DynamoDB. Uma falha aqui — cursor aceito para filtro errado, página duplicada/pulada, ou paginação incorreta contra o banco real — compromete diretamente a confiabilidade do dado usado na análise de falhas críticas (RF09) e no dashboard (RF07). Por isso, o fluxo completo de consulta paginada e a integração real com o DynamoDB Local (IT02) foram implementados e executados primeiro — os dois aprovados.
-2. **Prioridade 2 — valores de fronteira do `limit` (UT04 e os casos CT-05 a CT-09).** A validação isolada do `limit` no schema apoia a análise de valor limite exigida pelo barema e já está implementada e passando (UT04), mas cobre sozinha apenas a camada de schema: um `limit` inválido nunca chega ao banco, então o risco de dado incorreto exposto ao usuário é menor do que o risco coberto pela Prioridade 1. Por isso esses casos, embora necessários, vêm depois do fluxo completo na ordem de execução.
-3. **Prioridade 3 — fluxos de exceção e de sessão (E1, E2, E4 / CT-10 a CT-12) e Testes de Carga (Seção 4).** Guardas de validação (janela temporal, cursor de outra combinação de filtros, sessão ausente) e os testes de carga dependem do fluxo principal e da massa de dados (N=150 incidentes) já estarem consolidados, e seu risco funcional é menor — rejeitar corretamente uma entrada inválida é menos crítico do que corromper ou misturar dados retornados como válidos.
+1. **Prioridade 1 — a importação de snapshot do ARGUS (Seção 3: UC-09, casos CU-IMP-01 a CU-IMP-06; Seção 2: IT-AWS-05 e IT-UPLOAD-01 a IT-UPLOAD-03).** A importação é o fluxo de maior risco funcional do sistema porque é por ela que os dados entram: todo incidente consultado depois, no dashboard (RF07) ou na análise de falhas críticas (RF09), depende de uma importação que tenha começado certo. Uma falha aqui — duas importações rodando ao mesmo tempo, uma repetição que duplica o registro, uma vaga de importação que fica presa, um envio preparado no S3 que fica órfão ou um falso sucesso quando o banco está indisponível — contamina tudo o que vem depois. Por isso o UC-09 foi o caso de uso escolhido para a Seção 3, e a criação real do registro no DynamoDB e do envio no S3 foi comprovada contra a stack publicada (IT-AWS-05). Todos foram aprovados.
+2. **Prioridade 2 — a leitura dos dados publicados (Seção 2: IT-AWS-01 a IT-AWS-04; Seção 1: UT01 a UT04).** Depois de garantir que os dados entram corretamente, o próximo risco é a API devolver um dado diferente do que está gravado ou expor campos internos do banco. Os testes de integração comparam a resposta da API com o que está no DynamoDB, e os unitários protegem as peças usadas nessa leitura (cursor assinado, login no Cognito, validação do `limit`). O risco é menor do que o da Prioridade 1 porque um erro de leitura não altera o dado gravado.
+3. **Prioridade 3 — evidência complementar da consulta paginada (Seção 3: CT-01 a CT-12) e Testes de Carga (Seção 4).** A consulta filtrada e paginada de incidentes (RF09) foi testada numa rodada anterior, de 21/09/2026, e passou a servir de evidência complementar ao UC-09. Os testes de carga dependem da mesma massa de dados (300 incidentes sintéticos) e verificam se as respostas continuam corretas quando a concorrência sobe. O risco funcional é menor porque esses testes só leem dados e não alteram a base.
 
 ## Sumário
 
@@ -37,9 +39,15 @@
 
 ## 1. Testes Unitários
 
-&emsp;Quatro testes unitários, cobrindo função/método isolado com pelo menos um caso válido e um caso de erro cada. Três das quatro já existiam na suíte Vitest; o quarto (UT04) expunha uma lacuna real (limite de paginação nunca testado nos seus extremos) e foi escrito nesta rodada, também alimentando a análise de valor limite da Seção 3. Os quatro testes foram executados e os quatro passaram.
+&emsp;Quatro testes unitários, cobrindo função/método isolado com pelo menos um caso válido e um caso de erro cada. Três deles já existiam na suíte Vitest; o quarto (UT04) cobre os extremos do limite de paginação e também alimenta a análise de valor limite da Seção 3. Os quatro testes foram executados e os quatro passaram.
 
 ### UT01 — `CursorCodec.encode` / `CursorCodec.decode`
+
+<div align="center">
+
+<strong>Tabela 1: Especificação do teste unitário UT01 — <code>CursorCodec.encode</code> / <code>CursorCodec.decode</code></strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -53,7 +61,19 @@
 | Situação | Aprovado |
 | Evidências / reprodução | `npm test -- domain.test.ts`, teste `"encrypts cursors and binds them to filters"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### UT02 — `CognitoPasswordAuthenticator.authenticate`
+
+<div align="center">
+
+<strong>Tabela 2: Especificação do teste unitário UT02 — <code>CognitoPasswordAuthenticator.authenticate</code></strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -67,7 +87,19 @@
 | Situação | Aprovado |
 | Evidências / reprodução | `npm test -- auth-password-login.test.ts`, bloco `"CognitoPasswordAuthenticator"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### UT03 — `PasswordLoginUseCases.login` (tradução de falha em HTTP)
+
+<div align="center">
+
+<strong>Tabela 3: Especificação do teste unitário UT03 — <code>PasswordLoginUseCases.login</code></strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -81,7 +113,19 @@
 | Situação | Aprovado |
 | Evidências / reprodução | `npm test -- auth-password-login.test.ts`, bloco `"PasswordLoginUseCases"`. Mesma saída da UT02, registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### UT04 — `incidentsQuerySchema` (validação do parâmetro `limit`)
+
+<div align="center">
+
+<strong>Tabela 4: Especificação do teste unitário UT04 — <code>incidentsQuerySchema</code></strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -95,49 +139,353 @@
 | Situação | Aprovado |
 | Evidências / reprodução | Teste adicionado em `tests/contracts.test.ts`. `npm test -- contracts.test.ts`, teste `"enforces the limit boundaries (1-100, default 20) on incidentsQuerySchema"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ---
 
 ## 2. Testes de Integração
 
-&emsp;Dois testes cruzando camadas diferentes: um já coberto pela suíte de integração HTTP existente, outro que expunha uma lacuna real (persistência mockada, nunca exercitada contra um banco de verdade) e foi escrito nesta rodada. Os dois foram executados e os dois passaram.
+&emsp;A rodada final de 25/09/2026 foi executada após o deploy contra a infraestrutura implantada na AWS, e não contra serviços locais. A stack `apps/fullstack` foi aplicada e o banco operacional recebeu uma massa sintética de 300 incidentes, com suas evidências e hipóteses, além dos registros que indicam à API qual versão desses dados está ativa e das visões já prontas para a lista de incidentes e o dashboard. Sem esses registros de versão ativa, a API não teria o que mostrar; com eles, os testes conseguem comparar a resposta da API com o que está de fato gravado no banco. No detalhe, a tabela `view-show-iac-operacional` recebeu 4.110 itens de domínio, 10 snapshots legados e 3 itens do contrato versionado (manifesto `ACTIVE` e projeções de incidentes/overview). O usuário técnico do Cognito foi usado apenas para obter uma sessão real pela rota pública de login.
 
-### IT01 — Camada HTTP (Express) × módulo de autenticação/sessão
+### 2.1 Matriz dos testes executados
 
-| Campo | Descrição |
-| --- | --- |
-| Componentes verificados | `createApp` (Express, [`src/app.ts`](../../apps/backend/api/src/app.ts)) integrado de ponta a ponta com o módulo de auth real (`SessionCodec`, `IdentityUseCases`) — servidor HTTP real ouvindo em porta efêmera, requisição feita via `node:http` |
-| Objetivo e requisito relacionado | Garantir que uma sessão emitida pela camada de domínio é aceita pela camada HTTP e que as rotas de login (federada e direta) respondem conforme o contrato documentado. RF04 (autenticação corporativa: sessão válida libera acesso, ausência/invalidez bloqueia) |
-| Já existe? | **Sim** — `tests/gateway-http.integration.test.ts:145` (`"returns authenticated session details through the public success envelope"`) e `:175` (`"exposes the federated routes and direct password login"`) |
-| Pré-condições e dados de entrada | App montado com `createApp`, `AUTH_COOKIE_SECRET` de teste (32+ chars), repositórios de incidentes/dashboard falsos (não é o alvo desta integração); cookie de sessão emitido pelo próprio `SessionCodec` do processo |
-| Procedimento | 1. Subir o app em `127.0.0.1:0` (porta livre) com `createServer`. 2. Emitir uma sessão válida com `SessionCodec.issue(...)`. 3. Requisitar `GET /auth/session` com o cookie e conferir envelope de sucesso com a identidade. 4. Requisitar as rotas de login federado (`GET /auth/login`, `GET /auth/callback`) e `POST /auth/login` e conferir os contratos de resposta expostos pelo gateway HTTP |
-| Resultado esperado | O cookie emitido pela camada de domínio é aceito pela camada HTTP e devolve a identidade correta no envelope público padronizado; as rotas de login (federada e direta) respondem com o contrato documentado, sem vazar campos internos |
-| Resultado obtido | 11 de 11 testes do arquivo passaram: sessão emitida por `SessionCodec` aceita em `GET /auth/session` com a identidade correta; rotas de login federado e direto respondem conforme o contrato; nenhum campo interno vazado |
-| Situação | Aprovado |
-| Evidências / reprodução | `npm test -- gateway-http.integration.test.ts`. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt) |
+<div align="center">
 
-### IT02 — Aplicação (`IncidentUseCases`) × DynamoDB real (DynamoDB Local)
+<strong>Tabela 5: Matriz dos testes de integração executados</strong>
 
-| Campo | Descrição |
-| --- | --- |
-| Componentes verificados | `IncidentUseCases` + `DynamoIncidentRepository` ([`src/modules/incidents/adapters/dynamodb-incident-repository.ts`](../../apps/backend/api/src/modules/incidents/adapters/dynamodb-incident-repository.ts)) contra uma instância **real** de DynamoDB Local — não o cliente AWS mockado |
-| Objetivo e requisito relacionado | Garantir que incidentes gravados em um banco DynamoDB real são lidos e paginados corretamente pela aplicação, sem duplicatas nem campos físicos vazados. RF01/RF02 (evento persistido fica disponível para consulta) e RF09 (consulta filtrada e paginada sobre dado realmente gravado) |
-| Já existe? | **Sim — escrito nesta rodada.** `tests/dynamodb-adapters.test.ts` cobre os mesmos adaptadores, mas com `client.send` inteiramente mockado; o novo [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) fecha a lacuna, reusando o guarda de segurança já existente (`requireDynamoDbEndpoint` de `scripts/live-e2e-runtime.mjs`, mesmo usado por `tests/live-api.e2e.test.ts`) — só aceita endpoint local, nunca a AWS real |
-| Pré-condições e dados de entrada | DynamoDB Local efêmero via Docker (`amazon/dynamodb-local:2.6.1`, porta host aleatória); tabela criada com o esquema de `apps/fullstack/dynamodb.tf` (`pk`/`sk`, GSI `trace-index`); 25 incidentes sintéticos gravados via `PutCommand` no mesmo bucket de hora |
-| Procedimento | 1. Subir DynamoDB Local (container efêmero) e criar a tabela operacional com o schema do Terraform. 2. Gravar 25 incidentes sintéticos determinísticos (`inc-it02-001`…`inc-it02-025`). 3. Instanciar `DynamoIncidentRepository` apontando para o endpoint local e `IncidentUseCases` com um `CursorCodec` real. 4. Paginar com `limit=7` seguindo `nextCursor` até `hasMore=false`, conferindo a cada página ausência de duplicata e de campo físico (`pk`/`sk`/`trace_id`/`itemType`). 5. Repetir o teste de cursor cruzado da Seção 3 (UT01/CT-11) nesta camada: cursor obtido com `deviceType=Web` rejeitado ao ser reenviado com `region=Sudeste` |
-| Resultado esperado | Os itens persistidos no DynamoDB real são lidos, convertidos para DTO (sem campos físicos) e paginados corretamente: união das páginas = total gravado, sem duplicatas, `hasMore`/`nextCursor` coerentes com o fim da lista; cursor de outro filtro rejeitado com 400 |
-| Resultado obtido | 25 incidentes gravados, 4 páginas (7+7+7+4) percorridas via `nextCursor`, união das páginas = 25 sem duplicata, `nextCursor=null` na última página; nenhum item com `pk`/`sk`/`trace_id`/`itemType`; cursor obtido com `deviceType=Web` rejeitado (400) ao ser reenviado com `region=Sudeste` — 2 de 2 testes passaram |
-| Situação | Aprovado |
-| Evidências / reprodução | `bash apps/scripts/tests/test-dynamodb-real-local.sh` (a partir da raiz do repositório) — sobe e derruba o DynamoDB Local automaticamente. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
+</div>
+
+| ID | Objetivo / componentes | Pré-condições e entrada | Procedimento | Resultado esperado | Resultado obtido | Situação |
+| --- | --- | --- | --- | --- | --- | --- |
+| IT-AWS-01 | Verificar que o painel publicado no Amplify e a API publicada (API Gateway → ALB → ECS Fargate/Express) estão no ar ao mesmo tempo. | Stack aplicada; URLs públicas do painel e da API. | Abrir a página de importações do painel e o endereço de saúde (`/health`) da API. | Ambos respondem `200`; painel devolve HTML do View Show e health devolve `{status: "ok"}`. | Painel e health responderam `200`, com os conteúdos esperados. | Aprovado |
+| IT-AWS-02 | Verificar que a API publicada recusa quem não fez login (integração da borda HTTP com o módulo de sessão). | API publicada; requisição sem cookie. | Executar `GET /auth/session` sem autenticação. | `401 UNAUTHENTICATED`. | Retornou `401 UNAUTHENTICATED`. | Aprovado |
+| IT-AWS-03 | Verificar que os incidentes que a API devolve a um usuário logado são exatamente os que estão gravados no banco, passando por login (Cognito), API e banco (DynamoDB). | Usuário técnico confirmado no Cognito; dataset ativo semeado; credenciais de leitura do ambiente; entrada `window=24h&limit=5`. | Fazer login, pedir os incidentes das últimas 24 h à API e conferir, lendo o banco diretamente, que cada incidente devolvido existe na versão ativa dos dados. | `200`, cinco ou menos itens pertencentes à mesma projeção persistida, sem `pk`, `sk`, `ttl` ou `trace_id`. | `200` em 143,12 ms; os 5 incidentes devolvidos estão entre os 300 do dataset ativo; nenhum campo interno do banco exposto. | Aprovado |
+| IT-AWS-04 | Verificar que o dashboard da API consegue ler do banco os dados resumidos da versão ativa (caso de uso de dashboard → projeções versionadas no DynamoDB). | Mesma sessão e manifesto `ACTIVE`; entrada `window=24h`. | Executar `GET /api/v1/dashboard/overview?window=24h` e validar o envelope público. | `200`, propriedade `data` presente e nenhuma chave física exposta. | Projeção semeada foi lida com `200` e envelope público válido. | Aprovado |
+| IT-AWS-05 | Verificar que iniciar uma importação pela API cria de fato o registro no banco (DynamoDB) e prepara o envio do arquivo no armazenamento (S3), que repetir o mesmo pedido não duplica nada e que uma segunda importação simultânea é recusada. | Sessão Cognito válida; tabela e bucket da stack; nenhuma importação ativa; tamanho aleatório válido informado como metadado de GZIP, sem concluir o upload. | Iniciar uma importação, conferir no banco e no S3 o que foi criado, repetir o mesmo pedido, tentar uma segunda importação e, ao final, apagar só o que o teste criou. | `201 UPLOADING`, exatamente um registro e um multipart; replay com mesmo `importId`; concorrência `409`; nenhuma sobra após a limpeza. | `201` em 1.286,55 ms; a importação criada no teste ficou em `UPLOADING`, com um único envio preparado no S3; a repetição devolveu a mesma importação e a concorrente recebeu `409`; nada restou após a limpeza. | Aprovado |
+| IT-UPLOAD-01 | Verificar `ImportsView` → `ImportUploadDialog` → `ImportUploadProvider` → cliente de importação. | Página renderizada com provider real e cliente/upload runner controlados. | Abrir o diálogo; selecionar `argus_dump.sql.gz`; revisar; confirmar o upload. | Nome e tamanho seguem até `client.start`, uma chave de idempotência é criada e o runner de upload é iniciado uma vez. | Fluxo completo executado; `client.start` e o runner receberam o arquivo uma única vez. | Aprovado |
+| IT-UPLOAD-02 | Verificar a composição UI/provider ao separar falha física de upload e falha posterior de leitura. | Respostas controladas das dependências HTTP. | Simular as duas falhas consecutivas e observar os estados publicados. | A falha física é preservada e a falha de leitura aparece separadamente. | Estados permaneceram separados conforme o contrato. | Aprovado |
+| IT-UPLOAD-03 | Verificar a atualização do provider durante polling de uma importação concorrente. | Conflito inicial e resposta terminal posterior. | Iniciar polling e devolver estado terminal. | O aviso de conflito deve desaparecer. | Aviso removido após a publicação do estado terminal. | Aprovado |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### 2.2 Profundidade, correlação e isolamento
+
+&emsp;IT-AWS-03 e IT-AWS-05 não consideram um `200` isolado como prova suficiente: depois de cada resposta da API, o teste vai direto ao banco (e, na importação, ao S3) e confere se o que a API disse corresponde ao que foi realmente gravado. Para essa conferência, o teste lê o banco com as mesmas chaves internas que o sistema usa; ao mesmo tempo, verifica que essas chaves internas nunca aparecem na resposta entregue ao usuário.
+
+<div align="center">
+
+<strong>Tabela 6: Profundidade, correlação e isolamento dos testes de integração</strong>
+
+</div>
+
+| Teste | Fronteiras comprovadas | Evidência cruzada | Isolamento e pós-condição |
+| --- | --- | --- | --- |
+| IT-AWS-03 | A requisição percorre todo o caminho de uma consulta real: o usuário faz login no Cognito e recebe um cookie de sessão; a API recebe o pedido, descobre qual versão dos dados está ativa, busca os incidentes no banco e devolve só os campos públicos. Caminho técnico: Cognito → cookie → API Gateway → ALB → ECS Fargate/Express → `IncidentUseCases` → resolvedor do dataset → DynamoDB → DTO público | Identificador da requisição (`X-Request-Id`); tempo HTTP; versão do dataset; os 5 incidentes devolvidos foram encontrados diretamente entre os 300 gravados no banco; nenhum campo interno exposto | Somente leitura; não altera a massa semeada |
+| IT-AWS-05 | A requisição percorre o caminho de início de uma importação: com a sessão do Cognito, a API reserva a vaga de importação no banco (uma só por vez) e pede ao S3 que prepare o recebimento do arquivo em partes. Caminho técnico: Cognito → API Gateway → ALB → ECS Fargate/Express → `ImportUseCases` → transação/lock DynamoDB → `CreateMultipartUpload` S3 → resposta pública | O mesmo identificador da importação aparece na resposta, no registro do banco, na reserva da vaga e no caminho do arquivo no S3; existe exatamente um envio preparado; a repetição devolve a mesma importação; a tentativa concorrente recebe `409` informando qual importação está ativa | Ao final, mesmo em caso de falha, o teste cancela o envio no S3 e apaga só os registros que ele mesmo criou (reserva, importação e chave de idempotência); uma última leitura confirma que a vaga ficou livre |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+&emsp;Os tempos das tabelas (`responseMs`) medem só a resposta da API. O tempo total que o Vitest mostra para cada teste é maior porque inclui também as conferências no banco e no S3, a repetição, a disputa e a limpeza; separar os dois evita apresentar o custo da verificação como se fosse lentidão da API. O IT-AWS-05 também não envia o arquivo nem aciona o processamento posterior: ele para de propósito no estado `UPLOADING`, que é exatamente onde o UC-09 termina, e cancela o envio preparado ao final.
+
+### 2.3 Localização, evidências e reprodução
+
+<div align="center">
+
+<strong>Tabela 7: Localização, evidências e reprodução dos testes de integração</strong>
+
+</div>
+
+| IDs | Código utilizado | Evidência |
+| --- | --- | --- |
+| IT-AWS-01 a IT-AWS-05 | [`apps/backend/api/tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), com um `it` identificado para cada linha da matriz | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) — 5/5 aprovados, com os identificadores completos, os tempos e o resultado das conferências no banco e no S3 |
+| IT-UPLOAD-01, IT-UPLOAD-02 e IT-UPLOAD-03 | [`apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx`](../../apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx), com um `it` para cada linha | [`resultado-vitest-integracao-upload.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-upload.txt) — 3/3 aprovados |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+#### Reprodução dos testes IT-AWS-01 a IT-AWS-05
+
+&emsp;Esses testes acessam a stack implantada na AWS, por isso precisam saber onde ela está e com qual usuário entrar. Essas informações são passadas por variáveis de ambiente, descritas na Tabela 7.1 e reunidas no modelo [`apps/backend/api/.env.aws.example`](../../apps/backend/api/.env.aws.example). A variável `RUN_LIVE_AWS=true` funciona como uma trava: sem ela, o arquivo de teste é pulado por inteiro, de modo que o `npm test` comum, executado no dia a dia e na CI, nunca acessa a AWS nem cria recursos por engano. Além das variáveis, é preciso ter uma sessão válida do AWS Academy Learner Lab em `~/.aws/credentials`, porque o teste lê o DynamoDB e o S3 diretamente para conferir o que a API gravou.
+
+<div align="center">
+
+<strong>Tabela 7.1: Variáveis de ambiente dos testes IT-AWS-01 a IT-AWS-05</strong>
+
+</div>
+
+| Variável | O que é | Onde obter |
+| --- | --- | --- |
+| `RUN_LIVE_AWS` | Trava que liga a suíte; precisa valer `true` | Já vem preenchida no modelo e também é definida pelo script `npm run test:integration:aws` |
+| `LIVE_AWS_API_URL` | Endereço público da API | Output `api_url_https` do Terraform em `apps/fullstack` (endereço HTTPS do API Gateway, que repassa para o ALB). Não confundir com `api_url`, que é o endereço HTTP direto do ALB usado na Seção 3.7 |
+| `LIVE_AWS_PANEL_URL` | Endereço público do painel no Amplify | Output `painel_url` do Terraform |
+| `LIVE_AWS_USERNAME` | Usuário de teste do Cognito | Usuário criado no passo 4 da Seção 3.7 |
+| `LIVE_AWS_PASSWORD` | Senha permanente desse usuário | Senha definida no passo 4 da Seção 3.7 |
+| `LIVE_AWS_OPERATIONAL_TABLE` | Tabela do DynamoDB onde ficam incidentes e importações | Output `tabelas_dynamodb`, campo `operacional` |
+| `LIVE_AWS_IMPORT_BUCKET` | Bucket S3 que recebe os arquivos de importação | Output `ingestion_runbook`, campo `imports.bucket` |
+| `AWS_REGION` | Região da stack (opcional) | Padrão `us-east-1` quando omitida |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+```bash
+# 1. Entrar na pasta da API
+cd apps/backend/api
+
+# 2. Criar a cópia local do modelo. O nome .env.aws.local é ignorado pelo Git,
+#    então a senha preenchida nele não é versionada por engano.
+cp .env.aws.example .env.aws.local
+
+# 3. Preencher .env.aws.local com os valores da Tabela 7.1.
+#    Os outputs podem ser consultados com: terraform -chdir=../../fullstack output
+
+# 4. Carregar as variáveis no shell atual. O Vitest não lê esse arquivo sozinho:
+#    "set -a" exporta automaticamente tudo o que o "source" definir.
+set -a
+source .env.aws.local
+set +a
+
+# 5. Rodar os cinco testes, listando o resultado de cada um (--reporter=verbose)
+npm run test:integration:aws -- --reporter=verbose
+```
+
+#### Reprodução dos testes IT-UPLOAD-01 a IT-UPLOAD-03
+
+&emsp;Esses testes rodam localmente, sem AWS e sem variáveis de ambiente. O caminho indica o único arquivo de teste a executar, `--run` executa uma única vez (sem ficar observando alterações) e `--reporter=verbose` lista o resultado de cada teste individualmente.
+
+```bash
+cd apps/frontend
+npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.tsx" --reporter=verbose
+```
+
+#### Massa de dados
+
+- Seed compatível com a integração atual: [`apps/backend/api/scripts/seed-carga.cjs`](../../apps/backend/api/scripts/seed-carga.cjs). Ele foi executado com `OPERATIONAL_TABLE_NAME=view-show-iac-operacional`, que indica a tabela de destino, e com `ALLOW_REMOTE_SEED=1`, que autoriza explicitamente gravar em uma tabela na AWS (sem essa variável, o script só grava em um banco local). Não foi usada a opção `CLEAN=1`, que apaga dados.
+- Verificação adicional no site publicado: o botão principal abriu o diálogo e o console permaneceu sem erros. A implementação foi reforçada para usar diretamente o input nativo sobre o controle visual, removendo a dependência de `input.click()`.
 
 ---
 
 ## 3. Testes de Caso de Uso e Análise de Valor Limite
 
-&emsp;Caso de uso escolhido: **consulta filtrada e paginada de incidentes** (RF09, rota `GET /api/v1/incidents`, exposta em [`src/http/public-routes.ts`](../../apps/backend/api/src/http/public-routes.ts) como `incidents`). É o único caso de uso do projeto com uma entrada numérica de faixa explícita e documentada em código: `limit` — inteiro entre **1 e 100**, padrão **20** (`incidentsQuerySchema`, `contracts/src/index.ts:295`) — combinada com um cursor opaco de paginação (`CursorCodec`, Seção 1/UT01) e com a regra de exclusividade entre `window` e o par `from`/`to` (`validateTemporalQuery`, `contracts/src/index.ts:251-262`).
+&emsp;Caso de uso escolhido: **[UC-09 — Iniciar importação manual de snapshot do ARGUS](../sprint3/modelagem.md#39-uc-09--iniciar-importação-manual-de-snapshot-do-argus)**, extensão operacional do UC-08 e relacionado a RF01, RF02, RF03, RNF04 e RIE02. O UC-09 foi separado do processamento assíncrono porque possui ator, término e pós-condições próprios. Ele termina quando o sistema está pronto para receber o arquivo: existe um único registro de importação aguardando o envio (`ImportJob` em `UPLOADING`), a vaga de importação está reservada para ele, já que só uma importação pode acontecer por vez, e o S3 está preparado para receber o arquivo em partes (multipart). Restaurar, normalizar e ativar os dados continuam sendo responsabilidade do UC-08. O detalhamento DS-01B já estabelecia `argus_dump.sql.gz` ou ZIP como entradas dessa operação.
+
+&emsp;A suíte cobre o fluxo básico, os dois fluxos alternativos, todos os fluxos de exceção do UC-09, suas pós-condições e os limites de tamanho, nome e corpo HTTP. Os identificadores `CU-IMP-01` a `CU-IMP-06` são casos de teste do mesmo UC-09. A execução filtrada produziu **8/8 testes Vitest aprovados** — dois identificadores são parametrizados — além das 15 combinações internas de GZIP e ZIP.
+
+&emsp;Foi escolhida a técnica de **caixa-preta**: os testes olham apenas o que entra e o que sai, sem depender de como cada função é implementada por dentro. Cada teste sobe uma instância temporária da API (Express), envia requisições HTTP reais e verifica o código de resposta, o corpo devolvido e o que o sistema tentou gravar no banco e no armazenamento. Como o banco e o armazenamento são substituídos por versões controladas, dá para simular falhas e confirmar, por exemplo, que um pedido inválido não gravou nada. A requisição passa pelas mesmas camadas da produção: rota → validação do pedido (schema) → regra de negócio → banco/armazenamento.
+
+### CU-IMP-01 — Iniciar importação de GZIP
+
+<div align="center">
+
+<strong>Tabela 8: Especificação do caso de uso CU-IMP-01 — Iniciar importação de GZIP</strong>
+
+</div>
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-01` |
+| Objetivo e requisito/caso de uso | Validar o fluxo básico e os limites do GZIP no **UC-09**, relacionado a RF01, RF02 e RF03: `argus_dump.sql.gz` só deve reservar a importação quando nome, data e tamanho obedecem ao contrato. |
+| Pré-condições e dados de entrada | Sessão `engineer` válida; API Express real em porta efêmera; repositório e armazenamento controlados. Tamanhos `0`, `1`, `5 GiB - 1`, `5 GiB` e `5 GiB + 1`; nome inválido; data civil inválida. |
+| Procedimento | Para cada entrada, enviar `POST /api/v1/imports` com JSON e chave de idempotência. Conferir status/envelope e verificar se `store.create` e o registro `UPLOADING` existem somente nos casos válidos. |
+| Resultado esperado | `1`, `5 GiB - 1` e `5 GiB` retornam `201`; `0`, `5 GiB + 1`, nome incorreto e data inválida retornam `400 VALIDATION_ERROR`. Nenhum caso inválido reserva a vaga ou cria multipart. |
+| Resultado obtido | Todos os sete cenários produziram o status esperado. Nos três válidos houve exatamente uma criação e registro `UPLOADING`; nos quatro inválidos não houve escrita nem chamada ao armazenamento. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Código em [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-01`. Executar `npm test -- --run tests/gateway-http.integration.test.ts -t "CU-IMP" --reporter=verbose` em `apps/backend/api`. Saída em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### CU-IMP-02 — Iniciar importação de ZIP
+
+<div align="center">
+
+<strong>Tabela 9: Especificação do caso de uso CU-IMP-02 — Iniciar importação de ZIP</strong>
+
+</div>
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-02` |
+| Objetivo e requisito/caso de uso | Validar o fluxo alternativo 1a do **UC-09**, relacionado a RF01, RF02 e RF03: aceitar ZIP dentro de 10 GiB e com nome seguro, rejeitando caminho ou nome fora da faixa. |
+| Pré-condições e dados de entrada | Mesma sessão e API do CU-IMP-01. Tamanhos `1`, `10 GiB - 1`, `10 GiB` e `10 GiB + 1`; nomes `.zip`, 251 caracteres + `.zip`, 252 caracteres + `.zip` e `pasta/argus.zip`. |
+| Procedimento | Enviar cada combinação a `POST /api/v1/imports`; conferir status/envelope; verificar criação do multipart e registro `UPLOADING` apenas quando tamanho e nome são válidos. |
+| Resultado esperado | Limite inferior, imediatamente abaixo do máximo e máximo retornam `201`; `10 GiB + 1`, nome vazio, nome com 252 caracteres antes da extensão e caminho retornam `400 VALIDATION_ERROR`. O nome com 251 caracteres é aceito. |
+| Resultado obtido | Os oito cenários passaram. Quatro entradas válidas reservaram a importação; quatro inválidas foram rejeitadas sem qualquer efeito persistente ou chamada ao armazenamento. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo e comando do CU-IMP-01, teste `CU-IMP-02`. Evidência em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### CU-IMP-03 — Autenticação, idempotência e exclusão mútua
+
+<div align="center">
+
+<strong>Tabela 10: Especificação do caso de uso CU-IMP-03 — Autenticação, idempotência e exclusão mútua</strong>
+
+</div>
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-03` |
+| Objetivo e requisito/caso de uso | Cobrir o fluxo básico, a repetição idempotente 4a e as exceções 3a, 3b e 4b do UC-09, incluindo RNF04. |
+| Pré-condições e dados de entrada | API Express real; sessão `engineer`; arquivo GZIP válido; mesma chave `start-http` repetida e uma chave concorrente diferente; chamadas sem sessão e sem chave. |
+| Procedimento | Enviar chamadas HTTP sem sessão, sem chave, com corpo extra inválido, válida, repetida com a mesma chave e concorrente com chave diferente; observar status, `importId`, estado e quantidade de chamadas ao armazenamento. |
+| Resultado esperado | Sem sessão: `401`; sem chave/corpo estrito inválido: `400`; primeira válida: `201 UPLOADING`; repetição: mesmo `importId` e nenhum multipart adicional; concorrente: `409 IMPORT_IN_PROGRESS`, preservando a ativa. |
+| Resultado obtido | Todos os status coincidiram; a repetição devolveu o mesmo `importId`, `store.create` permaneceu com uma chamada e a tentativa concorrente recebeu `409` com o identificador ativo. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-03`; executar o comando comum indicado em CU-IMP-01. Saída na evidência consolidada de 25/09/2026. |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### CU-IMP-04 — Estado ativo indeterminável
+
+<div align="center">
+
+<strong>Tabela 11: Especificação do caso de uso CU-IMP-04 — Estado ativo indeterminável</strong>
+
+</div>
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-04` (duas parametrizações) |
+| Objetivo e requisito/caso de uso | Cobrir a exceção 4c do UC-09: se duas importações disputam a vaga e o sistema não consegue confirmar qual delas está ativa, ele recusa a nova (`503`) em vez de arriscar aceitar as duas. |
+| Pré-condições e dados de entrada | Uma importação já ocupando a vaga; nova solicitação válida com outra chave de idempotência; a consulta da importação ativa (`getActive`) não encontra o registro ou falha com um erro interno. |
+| Procedimento | Disputar a reserva nos dois modos e inspecionar status e envelope público. |
+| Resultado esperado | `503 DATA_UNAVAILABLE` com a resposta de erro padrão da API, sem expor detalhes internos. |
+| Resultado obtido | As duas parametrizações retornaram `503`; nenhum texto privado apareceu no envelope. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-04` na saída Vitest. |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### CU-IMP-05 — Limite do corpo HTTP
+
+<div align="center">
+
+<strong>Tabela 12: Especificação do caso de uso CU-IMP-05 — Limite do corpo HTTP</strong>
+
+</div>
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-05` (duas parametrizações; a de `start` pertence ao UC-09) |
+| Objetivo e requisito/caso de uso | Verificar o requisito especial do UC-09 que limita o corpo inicial a 64 KiB e impede efeitos antes da validação. |
+| Pré-condições e dados de entrada | Corpo JSON imediatamente acima de 64 KiB em `POST /api/v1/imports`; a parametrização de regressão também verifica 4 MiB em `complete`. |
+| Procedimento | Enviar os corpos acima dos respectivos limites e verificar resposta e chamadas ao repositório/armazenamento. |
+| Resultado esperado | `413 VALIDATION_ERROR`, request ID preservado e nenhuma criação ou conclusão chamada. |
+| Resultado obtido | As duas parametrizações retornaram o envelope `413` esperado; `store.create` e `store.complete` não foram chamados. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-05` na saída Vitest. |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### CU-IMP-06 — Falha ao preparar multipart
+
+<div align="center">
+
+<strong>Tabela 13: Especificação do caso de uso CU-IMP-06 — Falha ao preparar multipart</strong>
+
+</div>
+
+| Campo | Descrição |
+| --- | --- |
+| Identificador | `CU-IMP-06` |
+| Objetivo e requisito/caso de uso | Cobrir a exceção 5a e a garantia mínima do UC-09: se o S3 falhar ao preparar o recebimento do arquivo, a importação deve ser marcada como falha e a vaga liberada, para que o usuário possa tentar de novo. |
+| Pré-condições e dados de entrada | Sessão e GZIP válidos; a preparação do armazenamento (`store.create`) configurada para falhar com uma mensagem interna. |
+| Procedimento | Enviar `POST /api/v1/imports` e verificar a resposta de erro, o estado final da importação e se a vaga ficou livre. |
+| Resultado esperado | `503 UPLOAD_PREPARATION_FAILED`; nenhuma informação privada; registro `FAILED`; lock liberado para recuperação segura. |
+| Resultado obtido | O status/código coincidiram, a mensagem privada não vazou, o registro terminou `FAILED` e `getActive()` retornou nulo. |
+| Situação | **Aprovado** |
+| Evidências e reprodução | Mesmo arquivo, comando e [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### Tabela de rastreabilidade — fluxos e limites
+
+<div align="center">
+
+<strong>Tabela 14: Rastreabilidade dos fluxos e limites da importação</strong>
+
+</div>
+
+| Fluxo/condição | Caso | Entrada | Resultado esperado e obtido | Pós-condição | Situação |
+| --- | --- | --- | --- | --- | --- |
+| Principal GZIP | CU-IMP-01.1 | `argus_dump.sql.gz`, `1 byte`, data válida | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
+| Limite GZIP: abaixo do máximo | CU-IMP-01.2 | `5 GiB - 1` | `201` | Reserva criada | Aprovado |
+| Limite GZIP: máximo | CU-IMP-01.3 | `5 GiB` | `201` | Reserva criada | Aprovado |
+| Exceção GZIP: acima do máximo | CU-IMP-01.4 | `5 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: abaixo do mínimo | CU-IMP-01.5 | `0 byte` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: formato | CU-IMP-01.6 | `argus_dump.sql` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: data | CU-IMP-01.7 | `2026-02-29` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Alternativo ZIP | CU-IMP-02.1 | `argus.zip`, `1 byte` | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
+| Limite ZIP: abaixo do máximo | CU-IMP-02.2 | `10 GiB - 1` | `201` | Reserva criada | Aprovado |
+| Limite ZIP: máximo | CU-IMP-02.3 | `10 GiB` | `201` | Reserva criada | Aprovado |
+| Exceção ZIP: acima do máximo | CU-IMP-02.4 | `10 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Limite do nome | CU-IMP-02.5/6/7 | 0, 251 e 252 caracteres antes de `.zip` | `400`, `201`, `400`, respectivamente | Escrita somente no limite válido | Aprovado |
+| Exceção ZIP: caminho | CU-IMP-02.8 | `pasta/argus.zip` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Alternativo 4a — repetição idempotente | CU-IMP-03 | Mesma solicitação e chave `start-http` | `201`, mesmo `importId` | Um único `ImportJob` e um único multipart | Aprovado |
+| Exceção 3a — sem sessão | CU-IMP-03 | Requisição sem cookie | `401 UNAUTHENTICATED` | Nenhum multipart adicional | Aprovado |
+| Exceção 3b — sem chave | CU-IMP-03 | Sessão válida sem `Idempotency-Key` | `400 VALIDATION_ERROR` | Nenhum multipart adicional | Aprovado |
+| Exceção 4b — concorrência | CU-IMP-03 | Nova chave durante importação ativa | `409 IMPORT_IN_PROGRESS` | Importação original preservada | Aprovado |
+| Exceção 4c — ativo indeterminável | CU-IMP-04 | Registro ativo ausente ou repositório indisponível após disputa | `503 DATA_UNAVAILABLE` seguro | Nenhum falso sucesso | Aprovado |
+| Limite do corpo inicial | CU-IMP-05 | JSON acima de 64 KiB | `413 VALIDATION_ERROR` | Nenhum registro e nenhum multipart | Aprovado |
+| Exceção 5a — armazenamento falha | CU-IMP-06 | Falha privada em `store.create` | `503 UPLOAD_PREPARATION_FAILED` | Registro `FAILED`, lock liberado, sem vazamento | Aprovado |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+### Evidência complementar anterior — consulta de incidentes
+
+&emsp;A rodada anterior também documentou a **consulta filtrada e paginada de incidentes** (RF09). Ela permanece abaixo como evidência complementar ao UC-09 e aos casos CU-IMP-01 a CU-IMP-06 acima.
+
+&emsp;Caso de uso complementar: **consulta filtrada e paginada de incidentes** (RF09, rota `GET /api/v1/incidents`, exposta em [`src/http/public-routes.ts`](../../apps/backend/api/src/http/public-routes.ts) como `incidents`).
 
 ### 3.1 Pré-condições e dados de entrada comuns
 
-- Sessão autenticada válida — sem ela a rota responde `401` antes de qualquer validação de query; este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão. Na execução real (ver 3.6), a sessão vem de um login de senha real contra o Cognito (`POST /auth/login`), não de um cookie forjado com `SessionCodec`.
+- Sessão autenticada válida — sem ela a rota responde `401` antes de qualquer validação de query; este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão. Na execução real (ver 3.6), a sessão vem de um login de senha real contra o Cognito (`POST /auth/login`).
 - Base de incidentes conhecida (300 incidentes sintéticos gravados via `scripts/seed-carga.cjs` com `ALLOW_REMOTE_SEED=1` direto na tabela DynamoDB real), para que `hasMore`/`nextCursor` tenham um valor determinístico em cada consulta.
 
 ### 3.2 Fluxo principal
@@ -168,7 +516,13 @@
 
 &emsp;Procedimento comum a todos os casos abaixo: autenticar uma sessão válida, enviar a requisição indicada na coluna "Entrada" para `GET /api/v1/incidents` e comparar o corpo e o status da resposta com o "Resultado esperado".
 
-&emsp;**Execução real** (não simulada): os 12 casos rodam como requisições HTTP `fetch` reais em [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts), contra a API implantada de verdade na AWS (ALB → ECS Fargate → DynamoDB, stack `apps/fullstack`, namespace `g05-s3`), autenticando com um login de senha real no Cognito (`POST /auth/login`) — não um `createApp()` local nem um cookie forjado. Como `GET /api/v1/incidents` só sustenta uma das três dimensões `deviceType`/`region`/`appVersion` por vez, CT-04 e CT-11 usam `deviceType=Mobile`/`deviceType=Web` (vocabulário real gerado por `seed-carga.cjs`), não `android`/`ios` como no rascunho original. Ver 3.7 para o passo a passo de reprodução.
+&emsp;**Execução:** os 12 casos rodam como requisições HTTP `fetch` em [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts), contra a API implantada na AWS (stack `apps/fullstack`, namespace `g05-s3`). O caminho completo de produção é API Gateway → ALB → ECS Fargate → DynamoDB: o API Gateway fica na frente do ALB só para oferecer HTTPS ao painel no Amplify (ver `apps/fullstack/apigateway.tf`). Nesta rodada, porém, as requisições foram enviadas direto ao ALB, por HTTP, e o caminho percorrido foi ALB → ECS Fargate → DynamoDB. A infraestrutura é a mesma dos testes IT-AWS da Seção 2; muda só a porta de entrada. Os testes foram autenticados com login de senha no Cognito (`POST /auth/login`). Como `GET /api/v1/incidents` só sustenta uma das três dimensões `deviceType`/`region`/`appVersion` por vez, CT-04 e CT-11 usam `deviceType=Mobile`/`deviceType=Web` (vocabulário gerado por `seed-carga.cjs`). Ver 3.7 para o passo a passo de reprodução.
+
+<div align="center">
+
+<strong>Tabela 15: Rastreabilidade dos fluxos/condições × casos de teste da consulta de incidentes</strong>
+
+</div>
 
 | Fluxo/condição | Caso de teste | Entrada | Resultado esperado | Resultado obtido | Situação | Evidências / reprodução |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -187,49 +541,85 @@
 
 <div align="center">
 
-<sup>Fonte: Material produzido pelos autores (2026), com base em `contracts/src/index.ts` e `src/modules/incidents/`.</sup>
+Fonte: Material produzido pelos autores (2026).
 
 </div>
 
 ### 3.7 Reprodução contra a AWS real
 
-&emsp;Nesta rodada (2026-09-21), a stack foi aplicada do zero na conta `080158589617` (`aws sts get-caller-identity`) do Learner Lab então ativo — 56 recursos criados, 0 alterados, 0 destruídos (`terraform apply`), com `GET /health` respondendo `200` logo em seguida. O estado local de uma sessão anterior, de outra conta (`985109744788`), foi preservado sem reaproveitamento em `apps/fullstack/.terraform-state-backup-985109744788/`, conforme a regra do README do projeto ("o estado legado pertence a outra conta e não pode ser adotado"). A massa de dados foi semeada com `scripts/seed-carga.cjs` (`ALLOW_REMOTE_SEED=1`) direto na tabela `g05-s3-operacional`: 300 incidentes / 2303 itens (incidentes + evidências + hipóteses), no mesmo formato de item já usado pelos testes de carga do sprint 3. A saída bruta do `vitest run` fica em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt); o passo a passo abaixo permite reproduzir do zero em qualquer sessão do Learner Lab.
+&emsp;Nesta rodada (2026-09-21), a stack foi aplicada do zero em uma sessão do Learner Lab — 56 recursos criados, 0 alterados, 0 destruídos (`terraform apply`), com `GET /health` respondendo `200` logo em seguida. A massa de dados foi semeada com `scripts/seed-carga.cjs` (`ALLOW_REMOTE_SEED=1`) direto na tabela `g05-s3-operacional`: 300 incidentes / 2303 itens (incidentes + evidências + hipóteses), no mesmo formato de item já usado pelos testes de carga do sprint 3. Esse era o nome da tabela na versão da infraestrutura usada nesta rodada; na versão atual, o nome é gerado a partir do namespace da stack (por padrão, `view-show-iac-operacional`, o mesmo da Seção 2), por isso o passo 3 abaixo lê o nome do output do Terraform em vez de fixá-lo. A saída bruta do `vitest run` fica em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt); o passo a passo abaixo permite reproduzir do zero em qualquer sessão do Learner Lab.
+
+&emsp;Os passos 1 e 2 são de infraestrutura e só são necessários quando a stack ainda não está implantada. O passo 4 é feito uma única vez por stack. Com a stack no ar e o usuário criado, basta repetir o passo 5.
 
 ```bash
-# 1. Sessão válida do AWS Academy Learner Lab em ~/.aws/credentials
+# 1. [Infraestrutura] Confirmar que há uma sessão válida do AWS Academy Learner Lab.
+#    As credenciais ficam em ~/.aws/credentials; o comando mostra em qual conta
+#    você está e falha se a sessão tiver expirado.
 aws sts get-caller-identity --region us-east-1
 
-# 2. Provisionar a stack (apps/fullstack) — fluxo controlado do README do projeto
+# 2. [Infraestrutura] Provisionar a stack apps/fullstack
+#    (mesmo fluxo controlado descrito no README do projeto).
 cd apps/fullstack
+
+# 2a. Baixar os providers do Terraform, usando estado local (sem backend remoto).
 terraform init -backend=false -input=false
-terraform plan -input=false -out=.terraform-artifacts/g05-s3.tfplan
-terraform show -json .terraform-artifacts/g05-s3.tfplan | \
-  node ../../apps/scripts/terraform/validate-create-plan.mjs
+
+# 2b. Calcular o que será criado e salvar esse plano em arquivo.
+terraform plan -input=false \
+  -out=.terraform-artifacts/g05-s3.tfplan
+
+# 2c. Conferir o plano antes de aplicar: o validador só aceita um plano que cria
+#     recursos (ou os deixa como estão), sem alterar nem destruir nada, e que tem
+#     exatamente a lista de recursos esperada da stack, sem faltar nem sobrar.
+terraform show -json .terraform-artifacts/g05-s3.tfplan \
+  | node ../../scripts/ci/validate-terraform-create-plan.mjs
+
+# 2d. Aplicar exatamente o plano que foi conferido.
 terraform apply -input=false .terraform-artifacts/g05-s3.tfplan
 
-# 3. Semear dados (nome da tabela sai do output tabelas_dynamodb)
+# 3. Semear a massa de teste (300 incidentes sintéticos) no DynamoDB.
+#    <tabela_operacional>: output tabelas_dynamodb, campo "operacional".
+#    O nome depende do namespace da stack; com o namespace padrão, é
+#    view-show-iac-operacional. Consulte com:
+#      terraform -chdir=../../fullstack output tabelas_dynamodb
+#    ALLOW_REMOTE_SEED=1 autoriza explicitamente gravar em uma tabela da AWS.
 cd ../backend/api
-ALLOW_REMOTE_SEED=1 OPERATIONAL_TABLE_NAME=g05-s3-operacional \
+ALLOW_REMOTE_SEED=1 \
+OPERATIONAL_TABLE_NAME=<tabela_operacional> \
   node scripts/seed-carga.cjs
 
-# 4. Criar o usuário de teste no Cognito (user pool id sai do output cognito_user_pool_id)
+# 4. Criar o usuário de teste no Cognito (uma vez por stack).
+#    <cognito_user_pool_id>: output cognito_user_pool_id.
+#    4a. Criar o usuário já com e-mail verificado, sem enviar e-mail de convite.
 aws cognito-idp admin-create-user \
   --user-pool-id <cognito_user_pool_id> \
   --username "teste-funcional@viewshow.local" \
-  --user-attributes Name=email,Value=teste-funcional@viewshow.local Name=email_verified,Value=true \
-  --message-action SUPPRESS --region us-east-1
+  --user-attributes \
+    Name=email,Value=teste-funcional@viewshow.local \
+    Name=email_verified,Value=true \
+  --message-action SUPPRESS \
+  --region us-east-1
+
+#    4b. Definir uma senha permanente, para que o login não peça troca de senha.
 aws cognito-idp admin-set-user-password \
   --user-pool-id <cognito_user_pool_id> \
   --username "teste-funcional@viewshow.local" \
   --password "<senha-forte-com-maiuscula-minuscula-numero>" \
-  --permanent --region us-east-1
+  --permanent \
+  --region us-east-1
 
-# 5. Rodar os 12 casos contra a API real (api_url do output do terraform)
+# 5. Rodar os 12 casos (CT-01 a CT-12) contra a API implantada.
+#    RUN_AWS_FUNCTIONAL=true liga a suíte (sem ela, o arquivo é pulado).
+#    <api_url>: output api_url do Terraform (endereço HTTP direto do ALB).
+#    Esta rodada entrou pelo ALB; os testes IT-AWS da Seção 2 usam o
+#    output api_url_https (API Gateway), que chega ao mesmo ALB.
+#    Usuário e senha: os mesmos definidos no passo 4.
 RUN_AWS_FUNCTIONAL=true \
 AWS_API_BASE_URL=<api_url> \
 AWS_TEST_USERNAME=teste-funcional@viewshow.local \
 AWS_TEST_PASSWORD=<a mesma senha do passo 4> \
-npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
+  npx vitest run tests/incidents-aws-live.functional.test.ts \
+  --reporter=verbose
 ```
 
 &emsp;Sem `RUN_AWS_FUNCTIONAL=true`, o arquivo de teste é pulado inteiro (inclusive o `beforeAll` que faz login) — `npm test` normal nunca tenta acessar a AWS.
@@ -238,26 +628,44 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 
 ## 4. Testes de Carga Funcional
 
-&emsp;O objetivo de cada nível é duplo: (1) confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe; e (2) registrar, em cada um dos três níveis, os **tempos de resposta** (`http_req_duration`, p50/p95/p99) e a **taxa de erros** (`http_req_failed`), conforme pede o barema.
+&emsp;O objetivo de cada nível é duplo: (1) confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe; e (2) registrar, em cada um dos três níveis, os **tempos de resposta** (`http_req_duration`, p50/p95/p99) e a **taxa de erros** (`http_req_failed`).
 
-&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; a ela somam-se checks de conteúdo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo) — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido; essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) faz parte da implementação destes testes. Além dos checks de conteúdo, cada nível reporta as métricas nativas do k6 — tempo de resposta e taxa de erros — extraídas do resumo JSON de cada execução (`resumo-nivelN.json`), com `429`/`503` contabilizados à parte, como proteção esperada, e não como falha funcional.
+&emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (obtém a sessão com login real no Cognito, via `POST /auth/login`, quando `AUTH_USERNAME` e `AUTH_PASSWORD` são informados — como nos três níveis abaixo; só forja o cookie localmente quando essas credenciais faltam). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; a ela somam-se checks de conteúdo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo) — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido; essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) faz parte da implementação destes testes. Além dos checks de conteúdo, cada nível reporta as métricas nativas do k6 — tempo de resposta e taxa de erros — extraídas do resumo JSON de cada execução (`resumo-nivelN.json`), com `429`/`503` contabilizados à parte, como proteção esperada, e não como falha funcional.
 
 ### Nível 1 — Carga leve
+
+<div align="center">
+
+<strong>Tabela 16: Especificação do teste de carga funcional — Nível 1 (carga leve)</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
 | Objetivo e requisito relacionado | Confirmar que, sob baixa concorrência, todas as respostas da API de consultas permanecem corretas (schema, dados, paginação) — execução real, via HTTP, das rotas ligadas a RF01/RF02/RF07/RF09 |
 | Pré-condições e dados de entrada | Suíte k6 (`consultas.js` + `lib/session.js`) disponível; base de incidentes populada; endpoint da API acessível |
-| Procedimento | Executar `consultas.js` em `MODE=smoke`, com 1–2 VUs em modelo de chegada aberto a ~1 req/s por ~30 s (ordem de grandeza: 34 requisições em 31 s), sorteando os cenários A–G; validar o corpo de cada resposta contra o contrato Zod correspondente |
-| Critérios de sucesso | 100% das respostas `200` com corpo aderente ao contrato (funcional) **e** p95 de `http_req_duration` < 300 ms **e** taxa de erros (`http_req_failed`, respostas não-2xx) = 0% — nesta carga leve não há contenção esperada, logo nem `429` nem `503` deveriam ocorrer |
-| Resultado esperado | 100% das respostas `200` trazem corpo aderente ao contrato Zod correspondente (`incidentsQuerySchema`/`IncidentsData` etc.), sem campo físico (`pk`, `sk`, `ttl`) vazado, `page.limit` bate com o `limit` pedido (ou o padrão), e as métricas de carga atendem aos critérios de sucesso acima |
+| Procedimento | Executar `consultas.js` em `MODE=smoke`, com 1–2 VUs em modelo de chegada aberto a ~1 req/s por ~30 s (ordem de grandeza: 34 requisições em 31 s), sorteando os cenários A–G; validar em cada resposta `200` o formato mínimo esperado da resposta: `data.items` é uma lista em que cada item tem `id` (texto), `priority` (`P1` a `P4`), `startedAt` (data válida), `scopeSummary` (lista) e `impact` (objeto); o corpo não contém `pk`, `sk`, `ttl` nem `trace_id`; o `X-Request-Id` enviado volta igual no cabeçalho da resposta; e as duas páginas obtidas com o mesmo cursor no cenário G não repetem nenhum `id`. Essa verificação é manual, feita em `lib/asserts.js`, porque o k6 não executa a biblioteca Zod usada no backend |
+| Critérios de sucesso | 100% das respostas `200` com corpo no formato mínimo esperado da resposta (funcional) **e** p95 de `http_req_duration` < 300 ms **e** taxa de erros (`http_req_failed`, respostas não-2xx) = 0% — nesta carga leve não há contenção esperada, logo nem `429` nem `503` deveriam ocorrer |
+| Resultado esperado | 100% das respostas `200` trazem corpo no formato mínimo esperado da resposta, sem campo físico (`pk`, `sk`, `ttl`) vazado, `page.limit` bate com o `limit` pedido (ou o padrão), e as métricas de carga atendem aos critérios de sucesso acima |
 | Tempos de resposta e taxa de erros (medidos) | `http_req_duration`: p50=182,4 ms · p95=422,0 ms · p99=617,5 ms · max=676,9 ms. `http_req_failed`=0% (0 de 35). `429`=0, `503`=0 |
-| Resultado obtido | 35 requisições em ~31 s contra a API real na AWS (ALB `g05-s3-alb`); `checks`=100% (schema de `data.items`, ausência de `pk`/`sk`/`ttl`, eco de `X-Request-Id` e paginação sem duplicidade todos aprovados); nenhum `429`/`503` |
+| Resultado obtido | 35 requisições em ~31 s contra a API real na AWS (ALB `g05-s3-alb`); `checks`=100% (formato mínimo esperado da resposta, ausência de `pk`/`sk`/`ttl`, eco de `X-Request-Id` e paginação sem duplicidade todos aprovados); nenhum `429`/`503` |
 | Situação | Aprovado quanto à corretude funcional e à taxa de erros (0%); **reprovado quanto ao critério de latência** — p95 medido (422 ms) excede o limite de 300 ms do critério de sucesso |
 | Análise e conclusão | O conteúdo das respostas está sempre correto sob carga leve — os quatro checks de conteúdo (schema, campo físico, duplicidade, `X-Request-Id`) passaram em 100% das chamadas. A latência, porém, não atende ao critério de 300 ms: mesmo sem contenção (~1 req/s), o p95 já é 422 ms, refletindo o RTT real até o ALB na AWS e uma task Fargate única de 1 vCPU — não um bug funcional. O critério de 300 ms do plano provavelmente assumia execução local; vale revisá-lo à luz do ambiente real de implantação. |
 | Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=smoke consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel1.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel1.json) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### Nível 2 — Carga progressiva moderada
+
+<div align="center">
+
+<strong>Tabela 17: Especificação do teste de carga funcional — Nível 2 (carga progressiva moderada)</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -265,14 +673,26 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Pré-condições e dados de entrada | Suíte k6 (`consultas.js`) configurada para taxa elevada de requisições por IP (janela controlada), de modo que a carga chegue à API em vez de ser barrada pelo limite de taxa (429); base de incidentes populada |
 | Procedimento | Executar `consultas.js` em rampa até 137 req/s, sustentada por ~3–4 min (~30 mil requisições), com múltiplos VUs percorrendo o cenário G (paginação por cursor) concorrentemente |
 | Critérios de sucesso | Cenário G sem itens repetidos/pulados entre páginas (funcional) **e** p95 de `http_req_duration` < 800 ms **e** taxa de erros "duros" (códigos diferentes de `200`/`429`/`503`) < 1% — sob 137 req/s sustentados alguma rejeição por limite de taxa é aceitável, desde que sinalizada como `429`, não como corpo incorreto |
-| Resultado esperado | Cenário G percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo divergente do schema esperado; métricas de carga dentro dos critérios de sucesso acima |
+| Resultado esperado | Cenário G percorrido de ponta a ponta sem repetir nem pular itens entre páginas, mesmo com múltiplos VUs paginando concorrentemente sobre a mesma base; nenhuma resposta `200` com corpo fora do formato mínimo esperado da resposta; métricas de carga dentro dos critérios de sucesso acima |
 | Tempos de resposta e taxa de erros (medidos) | Todas as respostas: `http_req_duration` p50=10.132 ms · p95=60.000 ms (teto do timeout) · p99=60.000 ms. Só `status:200`: p50=11.796 ms · p95=27.368 ms · p99=53.832 ms. `http_req_failed` (exclui `429`/`503`)=84,38%; `429`=0 (0%); vazão útil (`status:200`)=5,83 req/s, muito abaixo do alvo de 137 req/s; `dropped_iterations`=18.307 de ~28 mil ofertadas |
-| Resultado obtido | `rate_limit_por_minuto` elevado para 20000 antes da rodada (nova revisão da task ECS, ver Seção 4.1) para isolar o rate limiter como variável. Com o limite fora do caminho, `429`=0 confirma que o gargalo passou a ser a capacidade computacional: a CPU da task ECS (`g05-s3-cluster/g05-s3-api-service`, CloudWatch) ficou entre 99% e 100% por ~4 min sustentados durante a rodada, e o autoscaling (min 1 / máx 4, alvo 50% CPU) **não escalou** dentro da janela do teste — `runningCount`/`desiredCount` permaneceram 1/1 o tempo todo. Apesar disso, os checks de conteúdo (schema de `data.items`, ausência de campo físico, cenário G sem duplicidade entre páginas) passaram em 100% das respostas que chegaram a se completar — nenhuma corrupção de dado, só indisponibilidade por saturação |
+| Resultado obtido | `rate_limit_por_minuto` elevado para 20000 antes da rodada (nova revisão da task ECS, ver Seção 4.1) para isolar o rate limiter como variável. Com o limite fora do caminho, `429`=0 confirma que o gargalo passou a ser a capacidade computacional: a CPU da task ECS (`g05-s3-cluster/g05-s3-api-service`, CloudWatch) ficou entre 99% e 100% por ~4 min sustentados durante a rodada, e o autoscaling (min 1 / máx 4, alvo 50% CPU) **não escalou** dentro da janela do teste — `runningCount`/`desiredCount` permaneceram 1/1 o tempo todo. Apesar disso, os checks de conteúdo (formato mínimo esperado da resposta, ausência de campo físico, cenário G sem duplicidade entre páginas) passaram em 100% das respostas que chegaram a se completar — nenhuma corrupção de dado, só indisponibilidade por saturação |
 | Situação | **Aprovado quanto à corretude** (paginação sem itens repetidos/pulados, 100% dos checks de schema/conteúdo). **Reprovado quanto ao desempenho** — p95 medido (27,4 s em `status:200`; 60 s incluindo timeouts) muito acima do limite de 800 ms, e taxa de erros "duros" (84,38%) muito acima do limite de 1% |
 | Análise e conclusão | A paginação nunca devolveu dado incorreto sob carga — o RF09 se sustenta funcionalmente mesmo saturado. Mas a configuração atual (1 task Fargate de 1 vCPU, autoscaling que não reage dentro de poucos minutos) não comprova RNF09/RNF14 na taxa alvo de 137 req/s: a vazão útil real ficou em ~5,8 req/s, e a maioria das requisições nem chegou a ser enviada (`dropped_iterations`) porque os VUs ficaram presos aguardando respostas lentas. Próximo passo natural, fora do escopo desta rodada: medir com `ecs_capacidade_minima>1` e/ou cooldown de scale-out menor. |
 | Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=load consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel2.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel2.json) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### Nível 3 — Carga alta (equivalente a `breakpoint`/`estresse`)
+
+<div align="center">
+
+<strong>Tabela 18: Especificação do teste de carga funcional — Nível 3 (carga alta)</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -286,6 +706,12 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Situação | **Aprovado quanto à corretude** — nenhuma resposta `200` veio corrompida ou trocada em nenhum ponto da rampa, incluindo além do ponto de saturação. **Reprovado quanto ao critério de erros "duros" = 0%** — 2,48% medido, concentrado nos estágios finais da rampa (timeouts, não `429`/`503`) |
 | Análise e conclusão | O ponto de saturação (~70–110 req/s) é consistente com o achado do Nível 2 (vazão útil de ~5,8 req/s a 137 req/s de alvo): a mesma causa raiz — uma única task Fargate de 1 vCPU e autoscaling que não reage dentro de poucos minutos — explica os dois níveis. O resultado mais importante para RF01/RF02/RF09 é qualitativo: em nenhum momento da rampa, mesmo bem além do ponto de saturação, a API misturou ou corrompeu dado entre requisições concorrentes; ela degrada por indisponibilidade (timeout), não por incorreção. `estresse` (137→411 req/s sustentado) não foi executado nesta rodada — o `breakpoint` já expõe o mesmo teto de capacidade com uma rampa mais curta. |
 | Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=breakpoint consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel3.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel3.json) |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
 
 ### 4.1 Rate limit elevado durante a janela de carga
 
@@ -311,27 +737,32 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 &emsp;A Seção 1 (Testes Unitários) já foi executada: os quatro testes (UT01–UT04) passaram, com evidência em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) e na saída completa da suíte em [`assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt) (71 testes passando, 1 ignorado, de 11 arquivos).
 
-&emsp;A Seção 3 (CT-01 a CT-12) também já foi executada — os 12 casos passaram contra a API implantada de verdade na AWS (não localmente), com evidência em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) e passo a passo de reprodução na Seção 3.7.
+&emsp;A Seção 3 agora cobre integralmente o UC-09 por caixa-preta com CU-IMP-01 a CU-IMP-06: fluxo básico, formatos GZIP/ZIP, idempotência, autenticação, concorrência, indisponibilidade, falha do armazenamento, pós-condições e limites imediatamente abaixo, nos extremos e imediatamente acima. As oito execuções automatizadas passaram; a análise anterior CT-01 a CT-12 foi mantida como evidência complementar.
 
-&emsp;A Seção 4 (Níveis 1 a 3) também já foi executada contra a mesma stack AWS — resultados, análise e evidência (`resumo-nivel{1,2,3}.json`) em cada tabela da Seção 4. Resumo: correção de conteúdo (schema, ausência de campo físico, ausência de duplicidade entre páginas) aprovada nos três níveis, 100% das vezes que uma resposta chegou; desempenho aprovado só no Nível 1, e mesmo assim com ressalva no p95 — Níveis 2 e 3 expuseram que uma única task Fargate de 1 vCPU sem autoscaling reagindo a tempo não sustenta os alvos de RNF09/RNF14 nesta configuração.
+&emsp;A Seção 4 (Níveis 1 a 3) também já foi executada contra a mesma stack AWS — resultados, análise e evidência (`resumo-nivel{1,2,3}.json`) em cada tabela da Seção 4. Resumo: correção de conteúdo (schema, ausência de campo físico, ausência de duplicidade entre páginas) aprovada nos três níveis, 100% das vezes que uma resposta chegou; nenhum nível atendeu integralmente aos critérios de desempenho; no Nível 1, apenas corretude e taxa de erros foram aprovadas — Níveis 2 e 3 expuseram que uma única task Fargate de 1 vCPU sem autoscaling reagindo a tempo não sustenta os alvos de RNF09/RNF14 nesta configuração.
 
-&emsp;A Seção 2 (IT01 e IT02) também já foi executada — os dois aprovados. IT01 (11/11 testes) confirma que uma sessão emitida pelo domínio é aceita pela camada HTTP; IT02, escrito nesta rodada, fecha a lacuna que só existia mockada: 25 incidentes gravados num DynamoDB Local real, paginados em 4 páginas sem duplicata nem campo físico vazado.
-
-&emsp;Com isso, todas as linhas de "Situação" deste documento (Seções 1 a 4) estão preenchidas com aprovado/reprovado — não há mais item pendente no plano.
+&emsp;A Seção 2 foi reexecutada após o deploy de 25/09/2026: 5/5 testes passaram contra a stack AWS real e 3/3 testes passaram na integração dos componentes do upload. A rodada aprofundada correlacionou a resposta de incidentes com a projeção física ativa e comprovou a criação real de `ImportJob`/lock no DynamoDB e multipart no S3, incluindo idempotência, concorrência e limpeza. A execução também revelou anteriormente que o seed legado não publicava o manifesto `ACTIVE`; o script foi compatibilizado com o contrato versionado antes da rodada final aprovada.
 
 ### 5.1 Histórico de implementação
 
-&emsp;Registro de onde cada item foi implementado, para rastreabilidade — não há mais pendência em aberto:
+&emsp;Registro de onde cada item foi implementado, para rastreabilidade:
+
+<div align="center">
+
+<strong>Tabela 19: Histórico de implementação dos testes</strong>
+
+</div>
 
 | Item | Onde foi implementado | Onde está a evidência |
 | --- | --- | --- |
-| IT01 (HTTP × sessão) | Já existia — [`tests/gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt) |
-| IT02 (`IncidentUseCases` × DynamoDB Local) | Escrito nesta rodada — [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) + [`apps/scripts/tests/test-dynamodb-real-local.sh`](../../apps/scripts/tests/test-dynamodb-real-local.sh) (novo) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
-| Seção 3 — casos CT-01 a CT-12 | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) (novo) | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
+| IT-AWS-01 a IT-AWS-05 | [`tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), executado contra Amplify, API Gateway, ALB, ECS, Cognito, DynamoDB e S3 reais | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) |
+| IT-UPLOAD-01 a IT-UPLOAD-03 | [`imports-view.integration.test.tsx`](../../apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx), usando `ImportsView`, provider e diálogo reais | [`resultado-vitest-integracao-upload.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-upload.txt) |
+| CU-IMP-01 a CU-IMP-06 (UC-09) | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), rota HTTP real com ports controlados | [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt) |
+| Evidência complementar CT-01 a CT-12 | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
 | Seção 4 — Níveis 1, 2 e 3 | `consultas.js` estendido in-place + [`lib/asserts.js`](../../apps/backend/api/loadtest/k6/lib/asserts.js) (novo) | `assets/testes-funcionais/2026-09-21/resumo-nivel{1,2,3}.json` |
 
 <div align="center">
 
-<sup>Fonte: Material produzido pelos autores (2026).</sup>
+Fonte: Material produzido pelos autores (2026).
 
 </div>
