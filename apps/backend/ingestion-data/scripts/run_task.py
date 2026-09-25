@@ -514,9 +514,11 @@ class RunTaskConfig:
             raise OperationalError("only the namespaced ingestion backfill task may be run")
         if self.task_family != expected_task_family:
             raise OperationalError("Terraform task family must match the deployment namespace")
-        if cluster is None or cluster.group("name") != f"{self.deployment_namespace}-cluster":
+        # Espelha apps/fullstack/names.tf: cluster e tabela operacional usam o sufixo -iac.
+        runtime_namespace = f"{self.deployment_namespace}-iac"
+        if cluster is None or cluster.group("name") != f"{runtime_namespace}-cluster":
             raise OperationalError("Terraform cluster must match the deployment namespace")
-        if self.operational_table != f"{self.deployment_namespace}-operacional":
+        if self.operational_table != f"{runtime_namespace}-operacional":
             raise OperationalError(
                 "Terraform operational table must match the deployment namespace"
             )

@@ -255,7 +255,7 @@ class FakeEcs:
         return self.clock() >= expires_at
 
     def describe_clusters(self, **kwargs: object) -> Mapping[str, object]:
-        assert kwargs["clusters"] == [f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-cluster"]
+        assert kwargs["clusters"] == [f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster"]
         return {"clusters": [{"status": "ACTIVE"}], "failures": []}
 
     def describe_task_definition(self, **kwargs: object) -> Mapping[str, object]:
@@ -386,11 +386,11 @@ def _config() -> RunTaskConfig:
                     "deployment_namespace": "view-show",
                     "storage": {"bucket": BUCKET},
                     "data": {
-                        "operational_table": "view-show-operacional",
+                        "operational_table": "view-show-iac-operacional",
                         "snapshot_secret_arn": SNAPSHOT_SECRET_ARN,
                     },
                     "runtime": {
-                        "cluster_arn": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-cluster",
+                        "cluster_arn": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster",
                         "backfill_task_arn": BACKFILL_TASK_ARN,
                         "backfill_task_family": "view-show-ingestion-backfill",
                         "security_group_id": "sg-0123456789abcdef0",
@@ -764,7 +764,7 @@ def test_run_task_rotates_secret_in_memory_and_limits_overrides() -> None:
     assert len(str(call["clientToken"])) <= 64
     assert ecs.describe_task_calls == [
         {
-            "cluster": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-cluster",
+            "cluster": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster",
             "tasks": [f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:task/abc"],
         }
     ]
@@ -1457,7 +1457,7 @@ def test_run_task_releases_its_lease_when_containers_never_reach_running() -> No
     assert len(dynamodb.delete_calls) == 1
     assert ecs.stop_calls == [
         {
-            "cluster": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-cluster",
+            "cluster": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster",
             "task": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:task/abc",
             "reason": "run-task readiness failed",
         }
