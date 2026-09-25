@@ -15,6 +15,8 @@
 
 &emsp;Na execução mais recente, os recortes solicitados foram executados separadamente para deixar a evidência objetiva: **5/5 integrações AWS**, **3/3 integrações do upload** e **8/8 execuções automatizadas do UC-09**, incluindo 15 combinações internas de valor limite para GZIP e ZIP. As credenciais e senhas nunca são gravadas nos arquivos de evidência.
 
+&emsp;Os comandos de reprodução apresentados ao longo do documento foram escritos para um terminal compatível com Bash. Dependendo do sistema operacional e do terminal utilizados, a forma de definir variáveis de ambiente e de executar alguns comandos pode mudar.
+
 ## Priorização de execução
 
 &emsp;A ordem de implementação e execução desta suíte segue o risco funcional de cada fluxo, não a ordem de apresentação das seções:
