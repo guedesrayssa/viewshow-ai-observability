@@ -231,7 +231,7 @@ Fonte: Material produzido pelos autores (2026).
 | Variável | O que é | Onde obter |
 | --- | --- | --- |
 | `RUN_LIVE_AWS` | Trava que liga a suíte; precisa valer `true` | Já vem preenchida no modelo e também é definida pelo script `npm run test:integration:aws` |
-| `LIVE_AWS_API_URL` | Endereço público da API | Output `api_url_https` do Terraform em `apps/fullstack` |
+| `LIVE_AWS_API_URL` | Endereço público da API | Output `api_url_https` do Terraform em `apps/fullstack` (endereço HTTPS do API Gateway, que repassa para o ALB). Não confundir com `api_url`, que é o endereço HTTP direto do ALB usado na Seção 3.7 |
 | `LIVE_AWS_PANEL_URL` | Endereço público do painel no Amplify | Output `painel_url` do Terraform |
 | `LIVE_AWS_USERNAME` | Usuário de teste do Cognito | Usuário criado no passo 4 da Seção 3.7 |
 | `LIVE_AWS_PASSWORD` | Senha permanente desse usuário | Senha definida no passo 4 da Seção 3.7 |
@@ -610,7 +610,9 @@ aws cognito-idp admin-set-user-password \
 
 # 5. Rodar os 12 casos (CT-01 a CT-12) contra a API implantada.
 #    RUN_AWS_FUNCTIONAL=true liga a suíte (sem ela, o arquivo é pulado).
-#    <api_url>: output api_url do Terraform.
+#    <api_url>: output api_url do Terraform (endereço HTTP direto do ALB).
+#    Esta rodada entrou pelo ALB; os testes IT-AWS da Seção 2 usam o
+#    output api_url_https (API Gateway), que chega ao mesmo ALB.
 #    Usuário e senha: os mesmos definidos no passo 4.
 RUN_AWS_FUNCTIONAL=true \
 AWS_API_BASE_URL=<api_url> \
