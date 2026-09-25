@@ -216,9 +216,66 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-- Reprodução AWS: com uma sessão AWS temporária válida no ambiente, executar `RUN_LIVE_AWS=true LIVE_AWS_API_URL=<api> LIVE_AWS_PANEL_URL=<painel> LIVE_AWS_USERNAME=<usuario> LIVE_AWS_PASSWORD=<senha> LIVE_AWS_OPERATIONAL_TABLE=<tabela> LIVE_AWS_IMPORT_BUCKET=<bucket> AWS_REGION=us-east-1 npm run test:integration:aws -- --reporter=verbose` em `apps/backend/api`.
-- Reprodução do upload: `npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.tsx" --reporter=verbose` em `apps/frontend`.
-- Seed compatível com a integração atual: [`apps/backend/api/scripts/seed-carga.cjs`](../../apps/backend/api/scripts/seed-carga.cjs), executado com `ALLOW_REMOTE_SEED=1` e `OPERATIONAL_TABLE_NAME=view-show-iac-operacional`. Não foi usada a opção destrutiva `CLEAN=1`.
+#### Reprodução dos testes IT-AWS-01 a IT-AWS-05
+
+&emsp;Esses testes acessam a stack implantada na AWS, por isso precisam saber onde ela está e com qual usuário entrar. Essas informações são passadas por variáveis de ambiente, descritas na Tabela 7A e reunidas no modelo [`apps/backend/api/.env.aws.example`](../../apps/backend/api/.env.aws.example). A variável `RUN_LIVE_AWS=true` funciona como uma trava: sem ela, o arquivo de teste é pulado por inteiro, de modo que o `npm test` comum, executado no dia a dia e na CI, nunca acessa a AWS nem cria recursos por engano. Além das variáveis, é preciso ter uma sessão válida do AWS Academy Learner Lab em `~/.aws/credentials`, porque o teste lê o DynamoDB e o S3 diretamente para conferir o que a API gravou.
+
+<div align="center">
+
+<strong>Tabela 7A: Variáveis de ambiente dos testes IT-AWS-01 a IT-AWS-05</strong>
+
+</div>
+
+| Variável | O que é | Onde obter |
+| --- | --- | --- |
+| `RUN_LIVE_AWS` | Trava que liga a suíte; precisa valer `true` | Já vem preenchida no modelo e também é definida pelo script `npm run test:integration:aws` |
+| `LIVE_AWS_API_URL` | Endereço público da API | Output `api_url_https` do Terraform em `apps/fullstack` |
+| `LIVE_AWS_PANEL_URL` | Endereço público do painel no Amplify | Output `painel_url` do Terraform |
+| `LIVE_AWS_USERNAME` | Usuário de teste do Cognito | Usuário criado no passo 4 da Seção 3.7 |
+| `LIVE_AWS_PASSWORD` | Senha permanente desse usuário | Senha definida no passo 4 da Seção 3.7 |
+| `LIVE_AWS_OPERATIONAL_TABLE` | Tabela do DynamoDB onde ficam incidentes e importações | Output `tabelas_dynamodb`, campo `operacional` |
+| `LIVE_AWS_IMPORT_BUCKET` | Bucket S3 que recebe os arquivos de importação | Output `ingestion_runbook`, campo `imports.bucket` |
+| `AWS_REGION` | Região da stack (opcional) | Padrão `us-east-1` quando omitida |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+```bash
+# 1. Entrar na pasta da API
+cd apps/backend/api
+
+# 2. Criar a cópia local do modelo. O nome .env.aws.local é ignorado pelo Git,
+#    então a senha preenchida nele não é versionada por engano.
+cp .env.aws.example .env.aws.local
+
+# 3. Preencher .env.aws.local com os valores da Tabela 7A.
+#    Os outputs podem ser consultados com: terraform -chdir=../../fullstack output
+
+# 4. Carregar as variáveis no shell atual. O Vitest não lê esse arquivo sozinho:
+#    "set -a" exporta automaticamente tudo o que o "source" definir.
+set -a
+source .env.aws.local
+set +a
+
+# 5. Rodar os cinco testes, listando o resultado de cada um (--reporter=verbose)
+npm run test:integration:aws -- --reporter=verbose
+```
+
+#### Reprodução dos testes IT-UPLOAD-01 a IT-UPLOAD-03
+
+&emsp;Esses testes rodam localmente, sem AWS e sem variáveis de ambiente. O caminho indica o único arquivo de teste a executar, `--run` executa uma única vez (sem ficar observando alterações) e `--reporter=verbose` lista o resultado de cada teste individualmente.
+
+```bash
+cd apps/frontend
+npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.tsx" --reporter=verbose
+```
+
+#### Massa de dados
+
+- Seed compatível com a integração atual: [`apps/backend/api/scripts/seed-carga.cjs`](../../apps/backend/api/scripts/seed-carga.cjs). Ele foi executado com `OPERATIONAL_TABLE_NAME=view-show-iac-operacional`, que indica a tabela de destino, e com `ALLOW_REMOTE_SEED=1`, que autoriza explicitamente gravar em uma tabela na AWS (sem essa variável, o script só grava em um banco local). Não foi usada a opção `CLEAN=1`, que apaga dados.
 - Verificação adicional no site publicado: o botão principal abriu o diálogo e o console permaneceu sem erros. A implementação foi reforçada para usar diretamente o input nativo sobre o controle visual, removendo a dependência de `input.click()`.
 
 ---
