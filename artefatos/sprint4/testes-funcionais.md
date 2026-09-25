@@ -541,6 +541,12 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 
 ### Nível 1 — Carga leve
 
+<div align="center">
+
+<strong>Tabela 16: Especificação do teste de carga funcional — Nível 1 (carga leve)</strong>
+
+</div>
+
 | Campo | Descrição |
 | --- | --- |
 | Objetivo e requisito relacionado | Confirmar que, sob baixa concorrência, todas as respostas da API de consultas permanecem corretas (schema, dados, paginação) — execução real, via HTTP, das rotas ligadas a RF01/RF02/RF07/RF09 |
@@ -554,7 +560,19 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Análise e conclusão | O conteúdo das respostas está sempre correto sob carga leve — os quatro checks de conteúdo (schema, campo físico, duplicidade, `X-Request-Id`) passaram em 100% das chamadas. A latência, porém, não atende ao critério de 300 ms: mesmo sem contenção (~1 req/s), o p95 já é 422 ms, refletindo o RTT real até o ALB na AWS e uma task Fargate única de 1 vCPU — não um bug funcional. O critério de 300 ms do plano provavelmente assumia execução local; vale revisá-lo à luz do ambiente real de implantação. |
 | Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=smoke consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel1.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel1.json) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### Nível 2 — Carga progressiva moderada
+
+<div align="center">
+
+<strong>Tabela 17: Especificação do teste de carga funcional — Nível 2 (carga progressiva moderada)</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -569,7 +587,19 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Análise e conclusão | A paginação nunca devolveu dado incorreto sob carga — o RF09 se sustenta funcionalmente mesmo saturado. Mas a configuração atual (1 task Fargate de 1 vCPU, autoscaling que não reage dentro de poucos minutos) não comprova RNF09/RNF14 na taxa alvo de 137 req/s: a vazão útil real ficou em ~5,8 req/s, e a maioria das requisições nem chegou a ser enviada (`dropped_iterations`) porque os VUs ficaram presos aguardando respostas lentas. Próximo passo natural, fora do escopo desta rodada: medir com `ecs_capacidade_minima>1` e/ou cooldown de scale-out menor. |
 | Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=load consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel2.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel2.json) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### Nível 3 — Carga alta (equivalente a `breakpoint`/`estresse`)
+
+<div align="center">
+
+<strong>Tabela 18: Especificação do teste de carga funcional — Nível 3 (carga alta)</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -583,6 +613,12 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 | Situação | **Aprovado quanto à corretude** — nenhuma resposta `200` veio corrompida ou trocada em nenhum ponto da rampa, incluindo além do ponto de saturação. **Reprovado quanto ao critério de erros "duros" = 0%** — 2,48% medido, concentrado nos estágios finais da rampa (timeouts, não `429`/`503`) |
 | Análise e conclusão | O ponto de saturação (~70–110 req/s) é consistente com o achado do Nível 2 (vazão útil de ~5,8 req/s a 137 req/s de alvo): a mesma causa raiz — uma única task Fargate de 1 vCPU e autoscaling que não reage dentro de poucos minutos — explica os dois níveis. O resultado mais importante para RF01/RF02/RF09 é qualitativo: em nenhum momento da rampa, mesmo bem além do ponto de saturação, a API misturou ou corrompeu dado entre requisições concorrentes; ela degrada por indisponibilidade (timeout), não por incorreção. `estresse` (137→411 req/s sustentado) não foi executado nesta rodada — o `breakpoint` já expõe o mesmo teto de capacidade com uma rampa mais curta. |
 | Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=breakpoint consultas.js`. Resumo completo em [`assets/testes-funcionais/2026-09-21/resumo-nivel3.json`](../../assets/testes-funcionais/2026-09-21/resumo-nivel3.json) |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
 
 ### 4.1 Rate limit elevado durante a janela de carga
 
@@ -620,6 +656,12 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 &emsp;Registro de onde cada item foi implementado, para rastreabilidade — não há mais pendência em aberto:
 
+<div align="center">
+
+<strong>Tabela 19: Histórico de implementação dos testes</strong>
+
+</div>
+
 | Item | Onde foi implementado | Onde está a evidência |
 | --- | --- | --- |
 | IT-AWS-01 a IT-AWS-05 | [`tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), executado contra Amplify, API Gateway, ECS, Cognito, DynamoDB e S3 reais | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) |
@@ -630,6 +672,6 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 <div align="center">
 
-<sup>Fonte: Material produzido pelos autores (2026).</sup>
+Fonte: Material produzido pelos autores (2026).
 
 </div>
