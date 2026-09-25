@@ -34,6 +34,7 @@ rectangle "Sistema View Show" {
   usecase "UC-06\nAnalisar qualidade\nda experiência" as UC06
   usecase "UC-07\nMonitorar a telemetria" as UC07
   usecase "UC-08\nSincronizar e normalizar\ndados do ARGUS" as UC08
+  usecase "UC-09\nIniciar importação manual\nde snapshot do ARGUS" as UC09
 }
 
 Usuario -- UC01
@@ -44,10 +45,12 @@ Engenharia -- UC04
 Engenharia -- UC05
 Engenharia -- UC07
 Engenharia -- UC08
+Engenharia -- UC09
 PM -- UC05
 PM -- UC06
 Temporizador -- UC08
 Argus -- UC08
+UC09 ..> UC08 : <<extend>>
 
 UC01 -[hidden]down- UC03
 UC03 -[hidden]down- UC04
@@ -55,4 +58,5 @@ UC04 -[hidden]down- UC05
 UC05 -[hidden]right- UC06
 UC06 -[hidden]up- UC07
 UC07 -[hidden]down- UC08
+UC08 -[hidden]down- UC09
 @enduml
