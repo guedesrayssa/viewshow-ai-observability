@@ -235,6 +235,12 @@ Fonte: Material produzido pelos autores (2026).
 
 ### CU-IMP-01 — Iniciar importação de GZIP
 
+<div align="center">
+
+<strong>Tabela 8: Especificação do caso de uso CU-IMP-01 — Iniciar importação de GZIP</strong>
+
+</div>
+
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `CU-IMP-01` |
@@ -246,7 +252,19 @@ Fonte: Material produzido pelos autores (2026).
 | Situação | **Aprovado** |
 | Evidências e reprodução | Código em [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-01`. Executar `npm test -- --run tests/gateway-http.integration.test.ts -t "CU-IMP" --reporter=verbose` em `apps/backend/api`. Saída em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### CU-IMP-02 — Iniciar importação de ZIP
+
+<div align="center">
+
+<strong>Tabela 9: Especificação do caso de uso CU-IMP-02 — Iniciar importação de ZIP</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -259,7 +277,19 @@ Fonte: Material produzido pelos autores (2026).
 | Situação | **Aprovado** |
 | Evidências e reprodução | Mesmo arquivo e comando do CU-IMP-01, teste `CU-IMP-02`. Evidência em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### CU-IMP-03 — Autenticação, idempotência e exclusão mútua
+
+<div align="center">
+
+<strong>Tabela 10: Especificação do caso de uso CU-IMP-03 — Autenticação, idempotência e exclusão mútua</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -272,7 +302,19 @@ Fonte: Material produzido pelos autores (2026).
 | Situação | **Aprovado** |
 | Evidências e reprodução | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-03`; executar o comando comum indicado em CU-IMP-01. Saída na evidência consolidada de 25/09/2026. |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### CU-IMP-04 — Estado ativo indeterminável
+
+<div align="center">
+
+<strong>Tabela 11: Especificação do caso de uso CU-IMP-04 — Estado ativo indeterminável</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -285,7 +327,19 @@ Fonte: Material produzido pelos autores (2026).
 | Situação | **Aprovado** |
 | Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-04` na saída Vitest. |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### CU-IMP-05 — Limite do corpo HTTP
+
+<div align="center">
+
+<strong>Tabela 12: Especificação do caso de uso CU-IMP-05 — Limite do corpo HTTP</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -298,7 +352,19 @@ Fonte: Material produzido pelos autores (2026).
 | Situação | **Aprovado** |
 | Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-05` na saída Vitest. |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### CU-IMP-06 — Falha ao preparar multipart
+
+<div align="center">
+
+<strong>Tabela 13: Especificação do caso de uso CU-IMP-06 — Falha ao preparar multipart</strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -311,7 +377,19 @@ Fonte: Material produzido pelos autores (2026).
 | Situação | **Aprovado** |
 | Evidências e reprodução | Mesmo arquivo, comando e [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### Tabela de rastreabilidade — fluxos e limites
+
+<div align="center">
+
+<strong>Tabela 14: Rastreabilidade dos fluxos e limites da importação</strong>
+
+</div>
 
 | Fluxo/condição | Caso | Entrada | Resultado esperado e obtido | Pós-condição | Situação |
 | --- | --- | --- | --- | --- | --- |
@@ -335,6 +413,12 @@ Fonte: Material produzido pelos autores (2026).
 | Exceção 4c — ativo indeterminável | CU-IMP-04 | Registro ativo ausente ou repositório indisponível após disputa | `503 DATA_UNAVAILABLE` seguro | Nenhum falso sucesso | Aprovado |
 | Limite do corpo inicial | CU-IMP-05 | JSON acima de 64 KiB | `413 VALIDATION_ERROR` | Nenhum registro e nenhum multipart | Aprovado |
 | Exceção 5a — armazenamento falha | CU-IMP-06 | Falha privada em `store.create` | `503 UPLOAD_PREPARATION_FAILED` | Registro `FAILED`, lock liberado, sem vazamento | Aprovado |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
 
 ### Evidência complementar anterior — consulta de incidentes
 
@@ -377,6 +461,12 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;**Execução real** (não simulada): os 12 casos rodam como requisições HTTP `fetch` reais em [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts), contra a API implantada de verdade na AWS (ALB → ECS Fargate → DynamoDB, stack `apps/fullstack`, namespace `g05-s3`), autenticando com um login de senha real no Cognito (`POST /auth/login`) — não um `createApp()` local nem um cookie forjado. Como `GET /api/v1/incidents` só sustenta uma das três dimensões `deviceType`/`region`/`appVersion` por vez, CT-04 e CT-11 usam `deviceType=Mobile`/`deviceType=Web` (vocabulário real gerado por `seed-carga.cjs`), não `android`/`ios` como no rascunho original. Ver 3.7 para o passo a passo de reprodução.
 
+<div align="center">
+
+<strong>Tabela 15: Rastreabilidade dos fluxos/condições × casos de teste da consulta de incidentes</strong>
+
+</div>
+
 | Fluxo/condição | Caso de teste | Entrada | Resultado esperado | Resultado obtido | Situação | Evidências / reprodução |
 | --- | --- | --- | --- | --- | --- | --- |
 | Fluxo principal | CT-01 | `GET /api/v1/incidents?window=1h` (sem `limit`) | `page.limit=20` (default); ≤ 20 itens; página coerente com o total | `page.limit=20`, itens ≤ 20, sem campo físico vazado | Aprovado | [`resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt) |
@@ -394,7 +484,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<sup>Fonte: Material produzido pelos autores (2026), com base em `contracts/src/index.ts` e `src/modules/incidents/`.</sup>
+Fonte: Material produzido pelos autores (2026).
 
 </div>
 
