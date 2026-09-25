@@ -22,7 +22,7 @@
 &emsp;A ordem de implementação e execução desta suíte segue o risco funcional de cada fluxo, não a ordem de apresentação das seções:
 
 1. **Prioridade 1 — a consulta paginada como fluxo completo (Seção 3: fluxo principal CT-01, paginação subsequente A1/CT-02, pós-condições; e IT02).** O caso de uso de consulta filtrada e paginada de incidentes (RF09) é o de maior risco funcional do sistema: combina filtros cumulativos, cursor assinado (`CursorCodec`) e paginação sobre dado real em DynamoDB. Uma falha aqui — cursor aceito para filtro errado, página duplicada/pulada, ou paginação incorreta contra o banco real — compromete diretamente a confiabilidade do dado usado na análise de falhas críticas (RF09) e no dashboard (RF07). Por isso, o fluxo completo de consulta paginada e a integração real com o DynamoDB Local (IT02) foram implementados e executados primeiro — os dois aprovados.
-2. **Prioridade 2 — valores de fronteira do `limit` (UT04 e os casos CT-05 a CT-09).** A validação isolada do `limit` no schema apoia a análise de valor limite exigida pelo barema e já está implementada e passando (UT04), mas cobre sozinha apenas a camada de schema: um `limit` inválido nunca chega ao banco, então o risco de dado incorreto exposto ao usuário é menor do que o risco coberto pela Prioridade 1. Por isso esses casos, embora necessários, vêm depois do fluxo completo na ordem de execução.
+2. **Prioridade 2 — valores de fronteira do `limit` (UT04 e os casos CT-05 a CT-09).** A validação isolada do `limit` no schema apoia a análise de valor limite e já está implementada e passando (UT04), mas cobre sozinha apenas a camada de schema: um `limit` inválido nunca chega ao banco, então o risco de dado incorreto exposto ao usuário é menor do que o risco coberto pela Prioridade 1. Por isso esses casos, embora necessários, vêm depois do fluxo completo na ordem de execução.
 3. **Prioridade 3 — fluxos de exceção e de sessão (E1, E2, E4 / CT-10 a CT-12) e Testes de Carga (Seção 4).** Guardas de validação (janela temporal, cursor de outra combinação de filtros, sessão ausente) e os testes de carga dependem do fluxo principal e da massa de dados (N=150 incidentes) já estarem consolidados, e seu risco funcional é menor — rejeitar corretamente uma entrada inválida é menos crítico do que corromper ou misturar dados retornados como válidos.
 
 ## Sumário
@@ -178,7 +178,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.2 Profundidade, correlação e isolamento
 
-&emsp;IT-AWS-03 e IT-AWS-05 são os dois testes principais exigidos pelo barema. Eles não consideram um `200` isolado como prova suficiente: cada resposta pública é confrontada com o estado real da dependência posterior. A leitura direta usa as mesmas chaves físicas previstas pelos adaptadores, enquanto as asserções da resposta garantem que essas chaves não vazem para o cliente.
+&emsp;IT-AWS-03 e IT-AWS-05 não consideram um `200` isolado como prova suficiente: cada resposta pública é confrontada com o estado real da dependência posterior. A leitura direta usa as mesmas chaves físicas previstas pelos adaptadores, enquanto as asserções da resposta garantem que essas chaves não vazem para o cliente.
 
 <div align="center">
 
@@ -422,7 +422,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### Evidência complementar anterior — consulta de incidentes
 
-&emsp;A rodada anterior também documentou a **consulta filtrada e paginada de incidentes** (RF09). Ela permanece abaixo apenas como evidência histórica adicional. O atendimento atual ao barema está concentrado no UC-09 e nos casos CU-IMP-01 a CU-IMP-06 acima.
+&emsp;A rodada anterior também documentou a **consulta filtrada e paginada de incidentes** (RF09). Ela permanece abaixo como evidência complementar ao UC-09 e aos casos CU-IMP-01 a CU-IMP-06 acima.
 
 &emsp;Caso de uso complementar: **consulta filtrada e paginada de incidentes** (RF09, rota `GET /api/v1/incidents`, exposta em [`src/http/public-routes.ts`](../../apps/backend/api/src/http/public-routes.ts) como `incidents`).
 
@@ -535,7 +535,7 @@ npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
 
 ## 4. Testes de Carga Funcional
 
-&emsp;O objetivo de cada nível é duplo: (1) confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe; e (2) registrar, em cada um dos três níveis, os **tempos de resposta** (`http_req_duration`, p50/p95/p99) e a **taxa de erros** (`http_req_failed`), conforme pede o barema.
+&emsp;O objetivo de cada nível é duplo: (1) confirmar que a resposta continua **correta** (schema certo, dado certo, sem mistura entre requisições concorrentes) conforme a concorrência sobe; e (2) registrar, em cada um dos três níveis, os **tempos de resposta** (`http_req_duration`, p50/p95/p99) e a **taxa de erros** (`http_req_failed`).
 
 &emsp;**Reaproveitamento explícito de ferramenta.** Os três níveis reaproveitam a suíte k6 já existente em [`apps/backend/api/loadtest/k6/`](../../apps/backend/api/loadtest/k6/) — especialmente `consultas.js` (cenários A–G: lista de incidentes, diagnóstico, eventos, overview, monitoring e paginação) e `lib/session.js` (forja o cookie de sessão). A **carga gerada** (VUs, taxa de chegada, cenários sorteados) é a mesma ferramenta; a ela somam-se checks de conteúdo mais estritos do que os hoje existentes em `consultas.js` (que verificam presença de campos como "tem items"/"tem evidence", mas não o conteúdo) — schema da resposta, ausência de duplicidade entre páginas, ausência de campo físico vazado, correlação entre `X-Request-Id` enviado e devolvido; essa extensão do script (ou um script irmão, ex. `loadtest/k6/consultas-funcionais.js`) faz parte da implementação destes testes. Além dos checks de conteúdo, cada nível reporta as métricas nativas do k6 — tempo de resposta e taxa de erros — extraídas do resumo JSON de cada execução (`resumo-nivelN.json`), com `429`/`503` contabilizados à parte, como proteção esperada, e não como falha funcional.
 
