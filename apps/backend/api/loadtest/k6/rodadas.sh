@@ -5,11 +5,12 @@
 #       MODOS="smoke load breakpoint" ./rodadas.sh   # bateria menor
 #
 # Antes de rodar, semeie o ambiente da API (a partir de apps/backend/api):
-#   CLEAN=1 node scripts/seed-carga.cjs
+#   CLEAN=1 node scripts/seed-carga.cjs             # local
+#   ALLOW_REMOTE_SEED=1 node scripts/seed-carga.cjs # AWS real (sem CLEAN)
 #
-# Exige AUTH_COOKIE_SECRET no ambiente (mesmo segredo do processo da API sob
-# teste, 32+ chars) — lib/session.js forja o cookie de sessão com ele, já que
-# POST /auth/login não existe mais (ver README.md).
+# Autenticação (ver README.md): informe AUTH_USERNAME + AUTH_PASSWORD para
+# login real contra o Cognito, OU AUTH_COOKIE_SECRET para cookie forjado
+# (mesmo segredo do processo da API sob teste, 32+ chars).
 #
 # Espera a API drenar entre as rodadas: depois de saturar, ela leva minutos
 # para voltar, e medir em cima do backlog contamina a rodada seguinte.
@@ -17,8 +18,17 @@
 set -u
 
 BASE="${BASE_URL:?informe BASE_URL=http://<host>:3000}"
-SECRET="${AUTH_COOKIE_SECRET:?informe AUTH_COOKIE_SECRET=<mesmo segredo do processo da API sob teste>}"
 MODOS="${MODOS:-smoke load breakpoint estresse spike soak}"
+
+AUTH_ARGS=()
+if [ -n "${AUTH_USERNAME:-}" ] && [ -n "${AUTH_PASSWORD:-}" ]; then
+  AUTH_ARGS=(-e "AUTH_USERNAME=$AUTH_USERNAME" -e "AUTH_PASSWORD=$AUTH_PASSWORD")
+elif [ -n "${AUTH_COOKIE_SECRET:-}" ]; then
+  AUTH_ARGS=(-e "AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET")
+else
+  echo "erro: informe AUTH_USERNAME+AUTH_PASSWORD (login real) ou AUTH_COOKIE_SECRET (cookie forjado)." >&2
+  exit 2
+fi
 
 if ! command -v k6 >/dev/null 2>&1; then
   echo "erro: k6 não encontrado." >&2
@@ -58,7 +68,7 @@ for modo in $MODOS; do
 
   esperar_api
   echo "──────── $modo ────────"
-  if ! k6 run -e BASE_URL="$BASE" -e AUTH_COOKIE_SECRET="$SECRET" -e MODE="$modo" consultas.js; then
+  if ! k6 run -e BASE_URL="$BASE" "${AUTH_ARGS[@]}" -e MODE="$modo" consultas.js; then
     status=1
     echo "aviso: $modo terminou com falha; a bateria continuará." >&2
   fi

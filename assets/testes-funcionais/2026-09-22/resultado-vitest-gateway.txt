@@ -1,0 +1,80 @@
+
+> @view-show/api@2.0.0 pretest
+> npm run build:contracts
+
+
+> @view-show/api@2.0.0 build:contracts
+> npm run build --workspace @view-show/contracts
+
+
+> @view-show/contracts@1.0.0 build
+> tsc -b
+
+
+> @view-show/api@2.0.0 test
+> vitest run gateway-http.integration.test.ts --reporter=verbose
+
+
+ RUN  v5.0.0 C:/Users/lcsmi/OneDrive/Documentos/g05/apps/backend/api
+
+{"request_id":"req_session","method":"GET","route":"/auth/session","status":200,"duration_ms":3.6921,"timestamp":"2026-09-22T20:26:29.793Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_f40661f616d74b8fa9d87f73d05b9476","method":"GET","route":"/auth/login","status":503,"duration_ms":1.1707,"timestamp":"2026-09-22T20:26:29.811Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_e0a378a19a734520a43a7575f1a38184","method":"GET","route":"/auth/callback","status":400,"duration_ms":1.5222,"timestamp":"2026-09-22T20:26:29.815Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_3e3a947eb3a94f30ad28196a48923328","method":"GET","route":"/auth/callback","status":503,"duration_ms":0.6868,"timestamp":"2026-09-22T20:26:29.830Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_060e436d18a646c88cd6d95c0a8009f3","method":"POST","route":"/auth/login","status":400,"duration_ms":1.1442,"timestamp":"2026-09-22T20:26:29.847Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_207dd37f2b854a1b9de751df45633d19","method":"POST","route":"/auth/login","status":503,"duration_ms":7.3146,"timestamp":"2026-09-22T20:26:29.870Z","level":"info","service_name":"view-show-api","message":"request completed"}
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > returns authenticated session details through the public success envelope 35ms
+{"request_id":"req_integration","method":"GET","route":"/api/v1/incidents","status":200,"duration_ms":1.8745,"timestamp":"2026-09-22T20:26:29.876Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_1f9c1d92356546f893825e5e4d0b800c","method":"GET","route":"/health","status":200,"duration_ms":0.6569,"timestamp":"2026-09-22T20:26:29.880Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_e07e513fea284255b22f4a3dc77617cc","method":"GET","route":"/api/v1/incidents","status":400,"duration_ms":0.8658,"timestamp":"2026-09-22T20:26:29.883Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_44b944a0455442c7bf9cd62dbeeef2c9","method":"GET","route":"/api/v1/dashboard/overview","status":503,"duration_ms":0.89,"timestamp":"2026-09-22T20:26:29.894Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5f2333a891d844458a324d4706dfe5f5","method":"GET","route":"/api/v1/incidents","status":403,"duration_ms":0.2795,"timestamp":"2026-09-22T20:26:29.909Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_90f64b12ef6e43758d4f3fc1aaa1df9e","method":"GET","route":"/metrics","status":200,"duration_ms":1.7847,"timestamp":"2026-09-22T20:26:29.926Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_10c91dd574f34e1b9523e0de81a5c6cb","method":"POST","route":"/api/v1/telemetry/rum","status":202,"duration_ms":1.2254,"timestamp":"2026-09-22T20:26:29.941Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_b86950d3bbca40688f5fcad021cc4bd7","method":"GET","route":"/metrics","status":200,"duration_ms":1.4203,"timestamp":"2026-09-22T20:26:29.957Z","level":"info","service_name":"view-show-api","message":"request completed"}
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > exposes the federated routes and direct password login 71ms
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > calls a module in-process, wraps quality metadata, and keeps physical fields private 6ms
+{"request_id":"req_a221e48a0e29416aaaf007625acfab96","method":"POST","route":"/api/v1/telemetry/rum","status":400,"duration_ms":1.0917,"timestamp":"2026-09-22T20:26:29.973Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_forbidden_origin","method":"GET","route":"/api/v1/incidents","status":403,"duration_ms":0.2486,"timestamp":"2026-09-22T20:26:29.976Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_malformed_json","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":0.5897,"timestamp":"2026-09-22T20:26:29.978Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_f62e87f838b748daa231da59f38332ed","method":"GET","route":"/api/v1/incidents/:incidentId/diagnosis","status":400,"duration_ms":0.5174,"timestamp":"2026-09-22T20:26:29.983Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_4700661946184cf7802367fe5dc1121e","method":"GET","route":"/api/v1/incidents/:incidentId/events","status":400,"duration_ms":0.3625,"timestamp":"2026-09-22T20:26:29.984Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_b8fdc553665c419c8317fa26a5dead39","method":"GET","route":"/api/v1/incidents/:incidentId/events/:eventId","status":400,"duration_ms":0.3361,"timestamp":"2026-09-22T20:26:29.986Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_41035ebea0f447068e4c70f7d6d2a05d","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":400,"duration_ms":0.6693,"timestamp":"2026-09-22T20:26:30.002Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_f99403d460c04f809e6e274b488c64be","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":400,"duration_ms":0.439,"timestamp":"2026-09-22T20:26:30.004Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_bad_incident_encoding","method":"GET","route":"/api/v1/incidents/%/diagnosis","status":400,"duration_ms":0.3026,"timestamp":"2026-09-22T20:26:30.010Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_bad_event_encoding","method":"GET","route":"/api/v1/incidents/inc_1/events/%","status":400,"duration_ms":0.2205,"timestamp":"2026-09-22T20:26:30.011Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_bad_import_encoding","method":"GET","route":"/api/v1/imports/%","status":400,"duration_ms":0.2029,"timestamp":"2026-09-22T20:26:30.012Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_0ce246f6468b47ecaa00a5db63c4cc51","method":"GET","route":"/auth/session","status":401,"duration_ms":0.2568,"timestamp":"2026-09-22T20:26:30.015Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_6c3d6fcf01e14636a0d10f5604b373ed","method":"PATCH","route":"/api/v1/incidents/:incidentId/hypotheses/:hypothesisId/review","status":401,"duration_ms":0.9135,"timestamp":"2026-09-22T20:26:30.019Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_9742ae491ffd45b28900a9b66588f959","method":"GET","route":"/api/v1/dashboard/overview","status":503,"duration_ms":0.3483,"timestamp":"2026-09-22T20:26:30.024Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_a92b59945a904a7c801775dae4394afe","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":0.4007,"timestamp":"2026-09-22T20:26:30.028Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_2419f46baede483eaf864236f004da10","method":"POST","route":"/api/v1/imports","status":401,"duration_ms":0.6184,"timestamp":"2026-09-22T20:26:30.029Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_68c3f4a3020c476ebcd6d778034be27e","method":"POST","route":"/api/v1/imports","status":400,"duration_ms":0.6055,"timestamp":"2026-09-22T20:26:30.033Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_aefb195a387c4cd4ae3c4c8e3aba3fb0","method":"POST","route":"/api/v1/imports","status":503,"duration_ms":0.5414,"timestamp":"2026-09-22T20:26:30.048Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_11c0cd059b974fcb8bd5fb71ea1bfe15","method":"POST","route":"/api/v1/imports/:importId/complete","status":400,"duration_ms":1.6528,"timestamp":"2026-09-22T20:26:30.066Z","level":"info","service_name":"view-show-api","message":"request completed"}
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > returns cheap health, stable validation, CORS, dependency errors, and metrics 97ms
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > assigns the request id before CORS and JSON parsing can fail 6ms
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > returns validation envelopes for every invalid incident path id 26ms
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > returns validation envelopes when Express cannot decode route parameters 8ms
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > treats malformed cookie encoding as an invalid session 8ms
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > surfaces a module DATA_UNAVAILABLE as a 503 envelope 5ms
+{"request_id":"req_2857e44ef8cc49ecb88711e94b74ea76","method":"POST","route":"/api/v1/imports/:importId/complete","status":503,"duration_ms":1.0059,"timestamp":"2026-09-22T20:26:30.080Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_e6d94a309786414d88d4101a7275fd06","method":"GET","route":"/api/v1/imports/:importId","status":503,"duration_ms":0.4326,"timestamp":"2026-09-22T20:26:30.094Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_d69cab7410eb4cd3bbe4780e9cf76fea","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.598,"timestamp":"2026-09-22T20:26:30.098Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_5ac00e4381fa4075835131bdb3d4e95d","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.2721,"timestamp":"2026-09-22T20:26:30.099Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_303a6117135246e8aafe8ce9418f8839","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.3572,"timestamp":"2026-09-22T20:26:30.109Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_3a0b153c500d40938f529e6015ee96e5","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":401,"duration_ms":0.3093,"timestamp":"2026-09-22T20:26:30.124Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_b280c293797649fba3c043141c9755a5","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.8048,"timestamp":"2026-09-22T20:26:30.141Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_65fc5856bf934f05b1c233f94677d57f","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.9255,"timestamp":"2026-09-22T20:26:30.157Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_9ee3a60e66414b7b97830d0deee121fa","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.9487,"timestamp":"2026-09-22T20:26:30.173Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_2e83b06ce16247459ca2579bb9b8549d","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":400,"duration_ms":0.6798,"timestamp":"2026-09-22T20:26:30.188Z","level":"info","service_name":"view-show-api","message":"request completed"}
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > validates and authenticates import routes before calling the unavailable control 70ms
+{"request_id":"req_55a50af6f32841ea92fe238877b21945","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":404,"duration_ms":0.7553,"timestamp":"2026-09-22T20:26:30.203Z","level":"info","service_name":"view-show-api","message":"request completed"}
+{"request_id":"req_56d60942e76148408230df6e5cc5eff3","method":"POST","route":"/api/v1/incidents/:incidentId/reanalyze","status":503,"duration_ms":0.6115,"timestamp":"2026-09-22T20:26:30.219Z","level":"info","service_name":"view-show-api","message":"request completed"}
+ ✓ tests/gateway-http.integration.test.ts > api monolith over HTTP > validates authenticated reanalysis requests and fails closed without a publisher 125ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  17:26:28
+   Duration  1.56s (import 57%, tests 31%, transform 11%)

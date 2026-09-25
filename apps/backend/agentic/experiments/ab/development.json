@@ -1,0 +1,138 @@
+{
+  "kind": "synthetic-development-only",
+  "cases": [
+    {
+      "id": "dev-01",
+      "synthetic": true,
+      "cutoff": "2026-01-01T04:00:00Z",
+      "signal": {
+        "metric": "bufferratio",
+        "trigger": "QOE_FORECAST",
+        "predictedValue": 4.1,
+        "unit": "percent",
+        "target_window": "2026-01-01T04:00:00Z/2026-01-01T05:00:00Z",
+        "model": "synthetic-fixed-output-not-trained"
+      },
+      "reference_window": {
+        "start": "2026-01-01T00:00:00Z",
+        "end": "2026-01-01T02:00:00Z",
+        "expected_points": 2
+      },
+      "current_window": {
+        "start": "2026-01-01T02:00:00Z",
+        "end": "2026-01-01T04:00:00Z",
+        "expected_points": 2
+      },
+      "records": [
+        {
+          "id": "dev-bufferratio-0",
+          "timestamp": "2026-01-01T00:00:00Z",
+          "metric": "bufferratio",
+          "scope": "signal:development",
+          "value": 1.2,
+          "unit": "percent",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-bufferratio-1",
+          "timestamp": "2026-01-01T01:00:00Z",
+          "metric": "bufferratio",
+          "scope": "signal:development",
+          "value": 1.1,
+          "unit": "percent",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-bufferratio-2",
+          "timestamp": "2026-01-01T02:00:00Z",
+          "metric": "bufferratio",
+          "scope": "signal:development",
+          "value": 3.2,
+          "unit": "percent",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-bufferratio-3",
+          "timestamp": "2026-01-01T03:00:00Z",
+          "metric": "bufferratio",
+          "scope": "signal:development",
+          "value": 3.6,
+          "unit": "percent",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-sessions-0",
+          "timestamp": "2026-01-01T00:00:00Z",
+          "metric": "sessions",
+          "scope": "signal:development",
+          "value": 100,
+          "unit": "count",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-sessions-1",
+          "timestamp": "2026-01-01T01:00:00Z",
+          "metric": "sessions",
+          "scope": "signal:development",
+          "value": 110,
+          "unit": "count",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-sessions-2",
+          "timestamp": "2026-01-01T02:00:00Z",
+          "metric": "sessions",
+          "scope": "signal:development",
+          "value": 165,
+          "unit": "count",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-sessions-3",
+          "timestamp": "2026-01-01T03:00:00Z",
+          "metric": "sessions",
+          "scope": "signal:development",
+          "value": 180,
+          "unit": "count",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-error_rate-0",
+          "timestamp": "2026-01-01T00:00:00Z",
+          "metric": "error_rate",
+          "scope": "signal:development",
+          "value": 0.3,
+          "unit": "percent",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-error_rate-1",
+          "timestamp": "2026-01-01T01:00:00Z",
+          "metric": "error_rate",
+          "scope": "signal:development",
+          "value": 0.4,
+          "unit": "percent",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-error_rate-2",
+          "timestamp": "2026-01-01T02:00:00Z",
+          "metric": "error_rate",
+          "scope": "signal:development",
+          "value": 0.4,
+          "unit": "percent",
+          "source": "synthetic-development"
+        },
+        {
+          "id": "dev-error_rate-3",
+          "timestamp": "2026-01-01T03:00:00Z",
+          "metric": "error_rate",
+          "scope": "signal:development",
+          "value": 0.5,
+          "unit": "percent",
+          "source": "synthetic-development"
+        }
+      ]
+    }
+  ]
+}

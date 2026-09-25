@@ -1,0 +1,20 @@
+
+ RUN  v5.0.0 C:/Users/lcsmi/OneDrive/Documentos/g05/apps/backend/api
+
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-01: fluxo principal — window=1h sem limit usa o default 20 447ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-02: A1 — paginação subsequente não repete itens da primeira página 308ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-03: A2 — janela absoluta (from/to) sem window 276ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-04: A3 — filtro por deviceType (única dimensão suportada por vez) + limit=50 501ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-05: limit=1 (extremo inferior válido) 144ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-06: limit=0 (abaixo do mínimo) é rejeitado antes de qualquer consulta 220ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-07: limit=100 (extremo superior válido) 529ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-08: limit=101 (acima do máximo) é rejeitado 144ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-09: limit=abc (tipo inválido) é rejeitado 145ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-10: E1 — window e from/to juntos são rejeitados 138ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-11: E2 — cursor obtido com um filtro é rejeitado sob outro filtro 416ms
+ ✓ tests/incidents-aws-live.functional.test.ts > GET /api/v1/incidents — casos de uso e valor limite (AWS real, Seção 3) > CT-12: E4 — sem sessão a rota responde 401 antes de qualquer validação 137ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  17:31:21
+   Duration  4.15s (tests 99%, transform 1%)

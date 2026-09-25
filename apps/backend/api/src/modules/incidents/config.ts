@@ -9,6 +9,7 @@ const schema = z
     OPERATIONAL_TABLE_NAME: z.string().min(1).default("view-show-operacional"),
     DYNAMODB_ENDPOINT: z.url().optional(),
     CURSOR_SECRET: z.string().min(32),
+    ANALYSIS_QUEUE_URL: z.url().optional(),
   })
   .passthrough();
 
@@ -18,6 +19,7 @@ export type IncidentsConfig = {
   readonly tableName: string;
   readonly endpoint: string | undefined;
   readonly cursorSecret: string;
+  readonly analysisQueueUrl: string | undefined;
 };
 
 export function loadConfig(
@@ -30,5 +32,6 @@ export function loadConfig(
     tableName: value.OPERATIONAL_TABLE_NAME,
     endpoint: value.DYNAMODB_ENDPOINT,
     cursorSecret: value.CURSOR_SECRET,
+    analysisQueueUrl: value.ANALYSIS_QUEUE_URL,
   };
 }

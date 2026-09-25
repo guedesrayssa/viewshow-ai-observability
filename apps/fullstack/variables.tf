@@ -108,6 +108,78 @@ variable "bedrock_habilitado" {
   default     = false
 }
 
+variable "analysis_worker_habilitado" {
+  description = "Cria o serviço do worker após imagem e artefatos aprovados estarem disponíveis."
+  type        = bool
+  default     = false
+}
+
+variable "analysis_worker_image_uri" {
+  description = "Imagem imutável do worker."
+  type        = string
+  default     = ""
+  validation {
+    condition     = !var.analysis_worker_habilitado || length(var.analysis_worker_image_uri) > 0
+    error_message = "Informe analysis_worker_image_uri ao habilitar o worker."
+  }
+}
+
+variable "analysis_model_location" {
+  description = "URI s3:// do bundle aprovado."
+  type        = string
+  default     = ""
+  validation {
+    condition     = !var.analysis_worker_habilitado || startswith(var.analysis_model_location, "s3://")
+    error_message = "Informe uma URI s3:// para o modelo."
+  }
+}
+
+variable "analysis_scope_catalog_location" {
+  description = "URI s3:// do catálogo de séries."
+  type        = string
+  default     = ""
+  validation {
+    condition     = !var.analysis_worker_habilitado || startswith(var.analysis_scope_catalog_location, "s3://")
+    error_message = "Informe uma URI s3:// para o catálogo."
+  }
+}
+
+variable "analysis_model_sha256" {
+  description = "SHA-256 do bundle aprovado armazenado no S3."
+  type        = string
+  default     = ""
+  validation {
+    condition     = !var.analysis_worker_habilitado || can(regex("^[a-f0-9]{64}$", var.analysis_model_sha256))
+    error_message = "Informe o SHA-256 hexadecimal do bundle aprovado."
+  }
+}
+
+variable "analysis_llm_provider" {
+  description = "Provider de interpretação A'."
+  type        = string
+  default     = "bedrock"
+  validation {
+    condition     = contains(["bedrock", "ollama"], var.analysis_llm_provider)
+    error_message = "Use bedrock ou ollama."
+  }
+}
+
+variable "analysis_llm_model_id" {
+  description = "Identificador do modelo de linguagem."
+  type        = string
+  default     = "anthropic.claude-3-haiku-20240307-v1:0"
+}
+
+variable "analysis_ollama_base_url" {
+  description = "URL do Ollama quando esse provider for selecionado."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.analysis_llm_provider != "ollama" || length(var.analysis_ollama_base_url) > 0
+    error_message = "Informe analysis_ollama_base_url para Ollama."
+  }
+}
+
 variable "retencao_logs_dias" {
   description = "Retenção do log group do ECS."
   type        = number

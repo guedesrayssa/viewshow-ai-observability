@@ -37,6 +37,9 @@ hipóteses de causa raiz ancoradas em evidência.
 - [`avaliacao-modelos.md`](camada-agentica/avaliacao-modelos.md): medição de dois
   modelos e duas versões de prompt sobre cinco casos, com recomendação e
   limitações.
+- [`avaliacao-worker-argus.md`](avaliacao-worker-argus.md): extração segura do
+  dump real, treino temporal, métricas da previsão, carga de alertas do detector
+  e critérios que ainda impedem aprovar o bundle.
 
 Fonte normativa: [`analise-e-ia.md`](../analise-e-ia.md).
 

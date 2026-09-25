@@ -34,7 +34,7 @@ type DiagnosisResponse = {
       id: string;
       statement: string;
       component: { id: string; name: string } | null;
-      probability: number;
+      probability: number | null;
       rationale: string | null;
       review: { status: ReviewStatus | "inconclusive"; version: number };
     }>;
@@ -184,7 +184,7 @@ function toData(response: DiagnosisResponse): EvidenceData {
       ? {
           title: hypothesis.statement,
           component: hypothesis.component?.name ?? "—",
-          confidence: Math.round(hypothesis.probability * 100),
+          confidence: hypothesis.probability === null ? null : Math.round(hypothesis.probability * 100),
           summary: hypothesis.rationale ?? response.diagnosis.summary ?? "",
         }
       : null,

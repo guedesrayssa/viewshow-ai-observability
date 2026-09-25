@@ -20,7 +20,17 @@ const meta = {
 const measured = (value: number | null) => ({ value, measurement: { status: value === null ? "unknown" : "measured", source: "seed-carga" } });
 
 describe("published dashboard projections", () => {
-  it("renders available batch metrics, sources, topology and geographic measurements", async () => {
+  it("uses explicitly enabled example monitoring data when no gateway is configured", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_ALLOW_EXAMPLE_DATA", "true");
+    const { fetchMonitoringOverview } = await import("@/app/(painel)/monitoramento/telemetry-resource");
+    const resource = await fetchMonitoringOverview("15");
+    expect(resource.source).toBe("exemplo");
+    expect(resource.data?.sources.length).toBeGreaterThan(0);
+    expect(resource.data?.flow.series[0]?.points.length).toBeGreaterThan(0);
+  });
+
+  it("preserves sources with missing metrics and reads the flow from the published projection", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://gateway.test");
     const urls: string[] = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
@@ -28,21 +38,21 @@ describe("published dashboard projections", () => {
       return new Response(JSON.stringify({
         data: {
           kpis: { ingestionRate: measured(9800), processingLatencyP95: measured(1200), queueDepth: measured(null), deadLetterQueue: { ...measured(null), newInWindow: null } },
-          sources: [{ id: "argus", name: "Argus", workers: ["argus-worker-1"], observedThrough: new Date().toISOString(), lagSeconds: 0, state: "stable", records: { read: 15000, written: 14950, rejected: 50 }, coverage: measured(0.99), ingestionRate: measured(9800), processingLatencyP95: measured(1200), flowSeries: [] }],
+          sources: [{ id: "argus", name: "Argus", workers: ["argus-worker-1"], observedThrough: new Date().toISOString(), lagSeconds: 0, state: "stable", records: { read: 15000, written: 14950, rejected: 50 }, coverage: measured(0.99), ingestionRate: measured(9800), processingLatencyP95: measured(null) }],
+          flow: { metric: "processing_latency", unit: "ms", series: [{ stage: "processing", name: "Processamento", points: [{ timestamp: new Date().toISOString(), value: 1200 }] }], peak: null, target: null, measurement: { status: "measured", source: "seed-carga" } },
           geography: { areas: [{ code: "SP", name: "São Paulo", region: "Sudeste", observedSessions: measured(18000), values: { instabilityRatio: measured(0.02), latencyP95: measured(1200), eventLossRatio: measured(0.003) } }] },
           topology: { status: "available", services: [{ service: "Player", status: "healthy", calls: 100, errors: 0, errorRate: 0, latencyP95: 120 }], dependencies: [] },
         },
         meta,
       }), { status: 200 });
     }));
-    const { fetchTelemetrySources, fetchGeographicConcentration, fetchServiceTopology } = await import("@/app/(painel)/monitoramento/telemetry-resource");
-    const sources = await fetchTelemetrySources();
-    const geography = await fetchGeographicConcentration();
-    const topology = await fetchServiceTopology("360m");
-    expect(sources.data).toMatchObject([{ name: "Argus", ingestionPerMinute: 0.0098, processingLatency: 1.2, coverage: 99 }]);
-    expect(geography.data).toMatchObject([{ id: "SP", values: { latencia: 1.2 } }]);
-    expect(topology.data?.services).toHaveLength(1);
-    expect(urls).toHaveLength(3);
+    const { fetchMonitoringOverview } = await import("@/app/(painel)/monitoramento/telemetry-resource");
+    const monitoring = await fetchMonitoringOverview("360");
+    expect(monitoring.data?.sources).toHaveLength(1);
+    expect(monitoring.data?.sources[0]?.processingLatencyP95?.value).toBeNull();
+    expect(monitoring.data?.flow.series[0]?.points[0]?.value).toBe(1200);
+    expect(monitoring.data?.topology?.services).toHaveLength(1);
+    expect(urls).toHaveLength(1);
     expect(urls.every((url) => url.includes("window=6h"))).toBe(true);
   });
 

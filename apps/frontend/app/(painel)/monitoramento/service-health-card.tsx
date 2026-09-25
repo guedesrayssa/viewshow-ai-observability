@@ -2,8 +2,7 @@
  * @file service-health-card.tsx
  * Cartão "Saúde dos serviços".
  *
- * É a leitura real da tela de Monitoramento: os serviços e as dependências
- * derivados dos traces que chegam com eventos e erros. Cada linha da tabela é
+ * Mostra os serviços e as dependências publicados na projeção. Cada linha da tabela é
  * um serviço observado, com chamadas, erros e latência; abaixo, as chamadas
  * entre serviços, com a taxa de erro de cada aresta — é onde se vê qual
  * dependência está derrubando quem.
@@ -42,7 +41,9 @@ export function ServiceHealthCard({
         <div>
           <CardTitle>Saúde dos serviços</CardTitle>
           <CardDescription className="mt-1">
-            Derivada dos traces reportados com eventos e erros
+            {data?.provenance === "seed-carga"
+              ? "Dados de demonstração; traces reais ainda não integrados"
+              : "Derivada dos traces reportados com eventos e erros"}
           </CardDescription>
         </div>
 

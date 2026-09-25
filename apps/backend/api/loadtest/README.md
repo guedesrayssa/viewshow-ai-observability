@@ -16,17 +16,28 @@ Este README cobre apenas o operacional — como rodar e o que esperar.
 | `k6/auth-check.js`                                       | RNF04 — controle de acesso em todas as rotas, incluindo `auth/session`, `auth/login`, `auth/callback`, `auth/logout`, `reanalyze` e `imports*` | Sim                                                                        |
 | `k6/ingestao-batch.js`                                   | RNF01/RNF02/RNF03 — drenagem de 10k eventos/min, acúmulo (backlog), frescor ponta a ponta                                                      | Não — adaptador de import fail-closed por design (ver cabeçalho do script) |
 | `k6/rodadas.sh`                                          | Bateria `smoke → load → breakpoint → estresse → spike → soak` de `consultas.js`                                                                | Sim                                                                        |
-| `k6/lib/session.js`                                      | Forja o cookie de sessão (HMAC) e o header `X-Request-Id`, compartilhado pelos três scripts                                                    | —                                                                          |
+| `k6/lib/session.js`                                      | Sessão (login real ou cookie forjado) e o header `X-Request-Id`, compartilhado pelos três scripts                                                | —                                                                          |
+| `k6/lib/asserts.js`                                      | Checks de conteúdo de `consultas.js`: schema mínimo, campo físico vazado, duplicidade entre páginas, eco de `X-Request-Id`                      | —                                                                          |
 | [`../scripts/seed-carga.cjs`](../scripts/seed-carga.cjs) | Popula incidentes, evidências, hipóteses e projeções de overview/monitoring no DynamoDB                                                        | Sim                                                                        |
 
 ## Autenticação
 
-A identidade é federada (Cognito/OIDC); não existe `POST /auth/login`, e
-`GET /auth/login`/`GET /auth/callback` respondem `503 FEATURE_UNAVAILABLE`
-enquanto o adaptador não for configurado. `k6/lib/session.js` forja o cookie
-de sessão localmente (HMAC, mesmo algoritmo de `SessionCodec`). **Todo
-`k6 run` exige `-e AUTH_COOKIE_SECRET=<mesmo segredo do processo da API sob
-teste>`** (mínimo 32 caracteres).
+Duas formas, a escolha de quem chama `k6 run` — `k6/lib/session.js` decide
+sozinho em `setup()`, conforme as variáveis presentes:
+
+- **Login real** (`-e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha>`):
+  `POST /auth/login` de verdade contra o Cognito (`apps/fullstack/cognito.tf`
+  provisiona o User Pool). Recomendado contra qualquer stack aplicada pelo
+  Terraform, porque o segredo HMAC (`AUTH_COOKIE_SECRET`) é gerado por
+  `random_password` e nunca sai em texto claro.
+- **Cookie forjado** (`-e AUTH_COOKIE_SECRET=<segredo>`, mínimo 32
+  caracteres): `k6/lib/session.js` forja o cookie localmente (HMAC, mesmo
+  algoritmo de `SessionCodec`), sem chamada HTTP. Útil só quando o segredo é
+  conhecido de outra forma (ex.: `.env` local).
+
+`GET /auth/login`/`GET /auth/callback` (SSO federado) continuam
+`503 FEATURE_UNAVAILABLE` enquanto o SSO corporativo não for configurado —
+isso não afeta nenhuma das duas formas acima, que usam login de senha direto.
 
 ## Como rodar
 
@@ -34,7 +45,7 @@ teste>`** (mínimo 32 caracteres).
 # 1. Semear (a partir de apps/backend/api)
 CLEAN=1 node scripts/seed-carga.cjs
 
-# 2. k6 (a partir de apps/backend/api/loadtest/k6)
+# 2. k6 (a partir de apps/backend/api/loadtest/k6) — cookie forjado
 export BASE_URL=http://localhost:3000
 export AUTH_COOKIE_SECRET=<mesmo segredo do processo da API>   # 32+ chars
 
@@ -42,6 +53,11 @@ k6 run -e BASE_URL=$BASE_URL -e AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET -e MODE=s
 k6 run -e BASE_URL=$BASE_URL -e AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET auth-check.js
 ./rodadas.sh   # bateria completa de consultas.js (lê AUTH_COOKIE_SECRET do ambiente)
 ```
+
+`consultas.js` também aceita `-e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha>`
+no lugar de `AUTH_COOKIE_SECRET`, para logar de verdade (ver seção
+Autenticação) — `auth-check.js` e `ingestao-batch.js` continuam só com
+cookie forjado por enquanto.
 
 Variáveis de `consultas.js`: `RATE` (padrão 137 req/s), `INCIDENT_COUNT`
 (300), `STRESS_MULTIPLIER` (3). Variáveis de `ingestao-batch.js`:
@@ -55,18 +71,28 @@ RNF09/RNF14 (a API não sabe se o item veio do seed ou de ingestão real), mas
 não passa pelo caminho de ingestão de verdade. Para rodar contra a stack real:
 
 ```bash
-# 1. Descobrir o endpoint e os segredos da stack aplicada (a partir de apps/fullstack)
+# 1. Descobrir o endpoint e a tabela da stack aplicada (a partir de apps/fullstack)
 terraform output api_url            # BASE_URL para k6 (HTTP direto no ALB)
 terraform output -raw tabelas_dynamodb
 
-# 2. AUTH_COOKIE_SECRET é o mesmo valor configurado na task ECS/Fargate
-#    (variável de ambiente da API real) — pegue com o time ou:
-aws ecs describe-task-definition --task-definition <family> \
-  --query 'taskDefinition.containerDefinitions[0].secrets'
+# 2. Criar (uma vez) um usuário de teste no Cognito da stack —
+#    user pool id sai de `terraform output cognito_user_pool_id`
+aws cognito-idp admin-create-user \
+  --user-pool-id <cognito_user_pool_id> --username "<email-de-teste>" \
+  --user-attributes Name=email,Value=<email-de-teste> Name=email_verified,Value=true \
+  --message-action SUPPRESS --region us-east-1
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <cognito_user_pool_id> --username "<email-de-teste>" \
+  --password "<senha>" --permanent --region us-east-1
 
 # 3. k6 aponta para qualquer BASE_URL — é HTTP puro, não usa credenciais AWS
-k6 run -e BASE_URL=http://<dns-do-alb> -e AUTH_COOKIE_SECRET=<segredo-real> -e MODE=smoke consultas.js
+k6 run -e BASE_URL=http://<dns-do-alb> -e AUTH_USERNAME=<email-de-teste> -e AUTH_PASSWORD=<senha> -e MODE=smoke consultas.js
 ```
+
+(`AUTH_COOKIE_SECRET` continua funcionando como alternativa se o segredo HMAC
+da task ECS for conhecido por outra via, mas não é mais necessário: o
+Terraform gera esse segredo com `random_password` e não o expõe como output
+em texto claro.)
 
 Dois pontos que mudam de verdade ao sair do localhost:
 
@@ -110,8 +136,18 @@ isso não acontecer sem querer.
 3. **`ingestao-batch.js` está bloqueado por design** — o adaptador de import
    é fail-closed (503) até S3 e a tarefa de ingestão serem configurados;
    `setup()` detecta isso e aborta com mensagem clara.
-4. **Autenticação é forjada, não federada** — mede o comportamento da API
-   para uma sessão válida, não o fluxo Cognito/OIDC em si.
+4. **Autenticação testa uma sessão válida, não o fluxo de login em si** —
+   com `AUTH_USERNAME`/`AUTH_PASSWORD` o `POST /auth/login` roda uma vez em
+   `setup()` (login real, contra o Cognito), não a cada iteração; com
+   `AUTH_COOKIE_SECRET` nem isso, o cookie é forjado direto. Nenhum dos dois
+   mede o fluxo de login sob carga — para isso, ver `auth-check.js`.
+5. **`consultas.js` confere schema mínimo, não o contrato Zod completo** —
+   os checks de `lib/asserts.js` (schema de `data.items`, campo físico
+   vazado, duplicidade entre páginas, eco de `X-Request-Id`) são uma forma
+   manual enxuta: o runtime do k6 (goja) não roda os schemas Zod de
+   `@view-show/contracts`. A validação completa do contrato é feita pelos
+   testes funcionais HTTP em Vitest/Node
+   (`apps/backend/api/tests/incidents-aws-live.functional.test.ts`).
 
 ## Observabilidade
 

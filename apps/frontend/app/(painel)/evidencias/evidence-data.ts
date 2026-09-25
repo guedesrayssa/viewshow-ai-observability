@@ -24,7 +24,7 @@ export type IncidentSummary = {
 export type Hypothesis = {
   title: string;
   component: string;
-  confidence: number;
+  confidence: number | null;
   summary: string;
 };
 

@@ -263,11 +263,13 @@ describe("DynamoDB adapters", () => {
       new Date("2026-09-09T12:15:00Z"),
     );
 
-    const partitionKeys = send.mock.calls.map(
-      ([command]) =>
-        (command as { input: { ExpressionAttributeValues: { ":pk": string } } })
-          .input.ExpressionAttributeValues[":pk"],
-    );
+    const partitionKeys = send.mock.calls
+      .filter(([command]) => command instanceof QueryCommand)
+      .map(
+        ([command]) =>
+          (command as { input: { ExpressionAttributeValues: { ":pk": string } } })
+            .input.ExpressionAttributeValues[":pk"],
+      );
     expect(partitionKeys.filter((key) => key.startsWith("INC#"))).toEqual([
       "INC#2026-09-09T12",
       "INC#2026-09-09T11",
@@ -278,6 +280,7 @@ describe("DynamoDB adapters", () => {
     const send = vi
       .fn()
       .mockResolvedValue({ Items: [] })
+      .mockResolvedValueOnce({ Item: undefined })
       .mockResolvedValueOnce({
         Items: [
           {

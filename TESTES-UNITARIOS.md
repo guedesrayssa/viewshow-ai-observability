@@ -106,12 +106,9 @@ npx vitest run tests/domain.test.ts tests/auth-password-login.test.ts tests/cont
 
 ---
 
-## Próximos passos (fora do escopo desta rodada)
+## Próximos passos
 
-Conforme o plano em [`artefatos/sprint4/testes-funcionais.md`](artefatos/sprint4/testes-funcionais.md), ainda faltam (não cobertos aqui):
-- **IT02** — integração `IncidentUseCases` × DynamoDB Local real (hoje só há mock).
-- **Seção 3 (CT-01 a CT-12)** — casos de uso/valor limite via HTTP.
-- **Seção 4** — extensão dos scripts k6 com checks de conteúdo mais estritos.
+Este arquivo cobre só a Seção 1 (Testes Unitários). As Seções 2, 3 e 4 do plano em [`artefatos/sprint4/testes-funcionais.md`](artefatos/sprint4/testes-funcionais.md) — IT01/IT02, casos CT-01 a CT-12 e os três níveis de carga funcional — já foram implementadas e executadas em rodadas posteriores; resultados e evidências estão nas tabelas do próprio plano, não aqui.
 
 <div align="center">
 <sup>Fonte: Material produzido pelos autores (2026).</sup>
