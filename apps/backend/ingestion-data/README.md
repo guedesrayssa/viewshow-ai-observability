@@ -187,7 +187,7 @@ relógio monotônico e não encerra a task ECS, deixando o ARN para retomada pel
 comando `evidence`:
 
 ```bash
-node scripts/aws-learner-lab.mjs seed \
+node apps/scripts/aws-learner-lab.mjs seed \
   --snapshot .artifacts/argus-benchmarks/100k/argus_dump.sql.gz \
   --extracted-on 2026-09-01 \
   --label phase1-100k \
@@ -206,7 +206,7 @@ fechada `snapshotSha256`, `importId`, `runId`, `label`, `datasetVersion` e
 
 ```bash
 AWS_PROFILE=default AWS_REGION=us-east-1 \
-node scripts/aws-learner-lab.mjs import-canary \
+node apps/scripts/aws-learner-lab.mjs import-canary \
   --snapshot .artifacts/argus-benchmarks/100k/argus_dump.sql.gz \
   --extracted-on 2026-09-01 \
   --username operador@example.com \
@@ -506,7 +506,7 @@ python -m bootstrap --help
 Na raiz do repositório, execute o comando oficial de provisionamento:
 
 ```bash
-node scripts/aws-learner-lab.mjs deploy
+node apps/scripts/aws-learner-lab.mjs deploy
 ```
 
 O script verifica Terraform `>=1.7,<2.0`, Node.js 22, npm, Docker, AWS CLI v2,
@@ -548,7 +548,7 @@ imagens do ECR, execute no checkout original que contém o mesmo state:
 
 ```bash
 AWS_PROFILE=default AWS_REGION=us-east-1 \
-node scripts/aws-learner-lab.mjs destroy
+node apps/scripts/aws-learner-lab.mjs destroy
 ```
 
 O comando só requer Terraform e AWS CLI com credenciais `voclabs` ativas. Ele
@@ -562,16 +562,16 @@ Para provisionar, gerar o snapshot, executar o backfill sem ativação e consult
 as evidências em uma única operação, use:
 
 ```bash
-node scripts/aws-learner-lab.mjs all
+node apps/scripts/aws-learner-lab.mjs all
 ```
 
 Para retomar etapas individualmente após uma interrupção:
 
 ```bash
-node scripts/aws-learner-lab.mjs check
-node scripts/aws-learner-lab.mjs build-snapshot
-node scripts/aws-learner-lab.mjs seed
-node scripts/aws-learner-lab.mjs evidence
+node apps/scripts/aws-learner-lab.mjs check
+node apps/scripts/aws-learner-lab.mjs build-snapshot
+node apps/scripts/aws-learner-lab.mjs seed
+node apps/scripts/aws-learner-lab.mjs evidence
 ```
 
 O script gera `terraform-output.json` e `upload-result.json`, espera a task ECS
@@ -618,7 +618,7 @@ execuções, inclusive com `--no-activate`; o exemplo usa
   tabela operacional e não altera onde as credenciais são guardadas.
 - Não habilite `incremental_s3_enabled` antes de homologar conectividade, schema,
   credenciais e capacidade contra o ARGUS real e validar alarmes/FIFO/DLQ.
-- Para remover a stack, use `node scripts/aws-learner-lab.mjs destroy` somente de
+- Para remover a stack, use `node apps/scripts/aws-learner-lab.mjs destroy` somente de
   forma deliberada, usando o mesmo state; ele alcança a stack fullstack completa,
   não apenas a ingestão.
 

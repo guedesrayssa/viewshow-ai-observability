@@ -101,6 +101,7 @@ real. A nova prova reduzida na AWS ainda está pendente. Consulte o
 | `/apps/backend` | API operacional em TypeScript/Express, worker batch ARGUS 2.0 e camada agêntica |
 | `/apps/frontend` | Painel definitivo em Next.js |
 | `/apps/fullstack` | IaC da stack AWS e da observabilidade local ou opcional em EC2, com documentação e scripts auxiliares |
+| `/apps/scripts` | Comandos locais de provisionamento, validadores Terraform e testes de integração |
 | `/assets` | Imagens e logos usados na documentação |
 | `/slides` | Apresentações das sprints |
 
@@ -115,6 +116,9 @@ real. A nova prova reduzida na AWS ainda está pendente. Consulte o
 │   │   ├── documentation/              arquitetura e runbook da IaC
 │   │   ├── observability/              configurações Grafana/Loki/Prometheus/Tempo
 │   │   └── docker-compose.observability.yml
+│   ├── scripts/                         automação local e validadores de infraestrutura
+│   │   ├── terraform/                   gates do plano Terraform
+│   │   └── tests/                       testes locais com DynamoDB Local
 │   └── basica/                         MVP legado da Sprint 1
 ├── artefatos/sprint{1,2,3}/             documentação organizada por sprint
 ├── assets/
@@ -229,8 +233,11 @@ copiado, importado ou migrado para esta stack. A implantação isolada cria um
 novo estado local em `apps/fullstack`; preserve-o, pois ele é necessário para
 diagnóstico e para um teardown posterior explicitamente solicitado.
 
+Na raiz do repositório, com Docker em execução e a sessão do AWS Academy ativa,
+o provisionamento completo é feito por um único comando:
+
 ```bash
-node scripts/aws-learner-lab.mjs setup
+node apps/scripts/aws-learner-lab.mjs setup
 ```
 
 O comando usa o profile `default`; aceite outro com `--profile <nome>`. Ele pede
@@ -240,6 +247,17 @@ confirma o usuário no Cognito e imprime os links do painel e da API. Ele també
 cria, quando ausente, a senha aleatória de operação interna do serviço de
 ingestão no Secrets Manager e confirma a versão `AWSCURRENT`; esse valor não
 aparece em argumentos, logs ou state. `--yes` pula somente a confirmação.
+
+Comandos locais mais usados:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs check    # valida pré-requisitos sem alterar a AWS
+node apps/scripts/aws-learner-lab.mjs deploy   # aplica a infraestrutura sem criar novo usuário
+node apps/scripts/aws-learner-lab.mjs destroy  # remove a stack após confirmação explícita
+```
+
+O repositório não executa pipeline automático em merges; esses comandos devem
+ser executados manualmente quando uma alteração de infraestrutura for desejada.
 
 Para diagnóstico ou operação avançada, o fluxo manual equivalente continua
 aplicando somente o plano salvo e validado:
@@ -253,7 +271,7 @@ terraform -chdir=apps/fullstack plan \
   -out=.terraform-artifacts/view-show.tfplan
 terraform -chdir=apps/fullstack show -json \
   .terraform-artifacts/view-show.tfplan | \
-  node scripts/ci/validate-terraform-create-plan.mjs
+  node apps/scripts/terraform/validate-create-plan.mjs
 terraform -chdir=apps/fullstack apply \
   -input=false \
   .terraform-artifacts/view-show.tfplan

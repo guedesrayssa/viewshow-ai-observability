@@ -1,15 +1,17 @@
+// Contract tests for the local Terraform update-plan validator.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const VALIDATOR = path.join(
   ROOT,
+  "apps",
   "scripts",
-  "ci",
-  "validate-terraform-learner-update-plan.mjs",
+  "terraform",
+  "validate-learner-update-plan.mjs",
 );
 
 const BASE_VARIABLES = Object.freeze({

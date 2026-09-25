@@ -238,7 +238,7 @@ python3 scripts/approve-model.py \
   --output models/approved.json
 ```
 
-Depois da aprovação, o worker é habilitado no Learner Lab pelo script de implantação, em uma stack nova: `node scripts/aws-learner-lab.mjs setup --analysis-model <bundle aprovado> --analysis-catalog <catálogo>` (o mesmo vale para `deploy`). O script valida os arquivos e fixa `LLM_PROVIDER=none`; o Terraform constrói a imagem pelo Dockerfile do módulo, publica o bundle e o catálogo no bucket da ingestão e cria o serviço, que consome a mesma fila e a mesma DLQ em que a ingestão publica. Artefatos já publicados no S3 também servem, pelas variáveis `analysis_model_location`, `analysis_scope_catalog_location` e `analysis_model_sha256`. O serviço não é habilitado automaticamente e o ambiente `production` ainda o recusa, porque falta a role própria do worker.
+Depois da aprovação, o worker é habilitado no Learner Lab pelo script de implantação, em uma stack nova: `node apps/scripts/aws-learner-lab.mjs setup --analysis-model <bundle aprovado> --analysis-catalog <catálogo>` (o mesmo vale para `deploy`). O script valida os arquivos e fixa `LLM_PROVIDER=none`; o Terraform constrói a imagem pelo Dockerfile do módulo, publica o bundle e o catálogo no bucket da ingestão e cria o serviço, que consome a mesma fila e a mesma DLQ em que a ingestão publica. Artefatos já publicados no S3 também servem, pelas variáveis `analysis_model_location`, `analysis_scope_catalog_location` e `analysis_model_sha256`. O serviço não é habilitado automaticamente e o ambiente `production` ainda o recusa, porque falta a role própria do worker.
 
 ## Fechamento independente do módulo
 

@@ -4,13 +4,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const dockerfile = fs.readFileSync(path.resolve(__dirname, "../Dockerfile"), "utf8");
-const smokeHelper = fs.readFileSync(
-  path.resolve(__dirname, "../../../../scripts/ci/smoke-container.sh"),
-  "utf8",
-);
 const liveE2eHelperPath = path.resolve(
   __dirname,
-  "../../../../scripts/ci/test-live-api-local.sh",
+  "../../../../apps/scripts/tests/test-live-api-local.sh",
 );
 
 test("Dockerfile defines a reproducible non-root Node 22 runtime", () => {
@@ -34,27 +30,6 @@ test("Dockerfile defines a reproducible non-root Node 22 runtime", () => {
   assert.match(dockerfile, /^ENTRYPOINT \["dumb-init", "--"\]$/m);
   assert.match(dockerfile, /^CMD \["node", "dist\/index\.js"\]$/m);
   assert.doesNotMatch(dockerfile, /^COPY \. \.$/m);
-});
-
-test("smoke helper requires an exact HTTP 200 health response", () => {
-  assert.match(smokeHelper, /response\.status\s*!==\s*200/);
-  assert.doesNotMatch(smokeHelper, /response\.ok/);
-});
-
-test("smoke helper supplies every secret required to bootstrap the API", () => {
-  assert.match(smokeHelper, /--env AUTH_COOKIE_SECRET=/);
-  assert.match(smokeHelper, /--env CURSOR_SECRET=/);
-  for (const name of [
-    "IMPORT_BUCKET",
-    "IMPORT_EXPECTED_BUCKET_OWNER",
-    "IMPORT_CURSOR_SECRET",
-    "IMPORT_INGESTION_CLUSTER_ARN",
-    "IMPORT_INGESTION_TASK_DEFINITION_ARN",
-    "IMPORT_INGESTION_SUBNET_IDS",
-    "IMPORT_INGESTION_SECURITY_GROUP_ID",
-    "IMPORT_INGESTION_CONTAINER_NAME",
-  ])
-    assert.match(smokeHelper, new RegExp(`--env ${name}=`));
 });
 
 test("live E2E helper pins DynamoDB Local and guarantees container cleanup", () => {

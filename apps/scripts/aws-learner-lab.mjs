@@ -1,6 +1,6 @@
 // Manage the AWS Academy Learner Lab workflow through explicit, repeatable commands.
 //
-//   node scripts/aws-learner-lab.mjs <command>
+//   node apps/scripts/aws-learner-lab.mjs <command>
 //
 // Node keeps the workflow portable across Linux, macOS and Windows. Each command
 // can be retried independently:
@@ -243,12 +243,12 @@ const IMPORT_CANARY_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IMPORT_CANARY_DATASET_VERSION = /^dsv_[0-9a-f]{64}$/;
 const IMPORT_CANARY_TIMESTAMP =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$/;
-const HELP = `Usage: node scripts/aws-learner-lab.mjs <command>
-       node scripts/aws-learner-lab.mjs setup [--profile <name>] [--yes] [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
-       node scripts/aws-learner-lab.mjs deploy [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
-       node scripts/aws-learner-lab.mjs destroy
-       node scripts/aws-learner-lab.mjs seed --snapshot <file.sql.gz> --extracted-on <YYYY-MM-DD> --label <slug> --timeout-seconds <n>
-       node scripts/aws-learner-lab.mjs import-canary --snapshot <argus_dump.sql.gz> --extracted-on <YYYY-MM-DD> --username <email> --label <slug> --timeout-seconds <n> [--stop-at-stage <stage>]
+const HELP = `Usage: node apps/scripts/aws-learner-lab.mjs <command>
+       node apps/scripts/aws-learner-lab.mjs setup [--profile <name>] [--yes] [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
+       node apps/scripts/aws-learner-lab.mjs deploy [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
+       node apps/scripts/aws-learner-lab.mjs destroy
+       node apps/scripts/aws-learner-lab.mjs seed --snapshot <file.sql.gz> --extracted-on <YYYY-MM-DD> --label <slug> --timeout-seconds <n>
+       node apps/scripts/aws-learner-lab.mjs import-canary --snapshot <argus_dump.sql.gz> --extracted-on <YYYY-MM-DD> --username <email> --label <slug> --timeout-seconds <n> [--stop-at-stage <stage>]
 
 Commands:
   setup           Deploy the full stack and provision the initial Cognito user
@@ -723,7 +723,7 @@ function assertProtectedUpdateEnvironment({ environment, root, lstat, realpath }
   ) {
     throw new Error("AWS_DEFAULT_PROFILE must be absent or exactly default");
   }
-  if (environment.AWS_REGION !== REGION) {
+  if (Object.hasOwn(environment, "AWS_REGION") && environment.AWS_REGION !== REGION) {
     throw new Error(`AWS_REGION must be exactly ${REGION}`);
   }
   if (
@@ -1693,7 +1693,7 @@ async function deploy(context) {
   validateLearnerLabPlan(planJson, analysisWorker);
   const gate = execute(
     "node",
-    [path.join(root, "scripts", "ci", "validate-terraform-create-plan.mjs")],
+    [path.join(root, "apps", "scripts", "terraform", "validate-create-plan.mjs")],
     { cwd: root, input: json.stdout },
   );
   if (gate.status !== 0) {
@@ -2606,7 +2606,7 @@ async function updateExistingStack(context, existingStack) {
     const validated = execute(
       "node",
       [
-        path.join(root, "scripts", "ci", "validate-terraform-learner-update-plan.mjs"),
+        path.join(root, "apps", "scripts", "terraform", "validate-learner-update-plan.mjs"),
         preset,
       ],
       { cwd: root, input: shown.stdout },
@@ -4538,7 +4538,8 @@ export async function runLearnerLab(options = {}) {
     removeSensitiveFile = unlinkSync,
     removeSensitiveDirectory = rmdirSync,
     environment = process.env,
-    root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
+    // The command lives under apps/scripts; resolve project paths from the repository root.
+    root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.."),
   } = options;
 
   const hasPresetArgument = preset !== undefined && preset !== null && preset !== "";

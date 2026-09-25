@@ -222,10 +222,175 @@ export function ensureIngestionBucket(environment = process.env, aws = runAws) {
   return bucketAlreadyOwned ? "adopted" : "created";
 }
 
+function parseAwsJson(output, description) {
+  try {
+    return JSON.parse(output);
+  } catch {
+    throw new Error(`${description} retornou JSON inválido`);
+  }
+}
+
+function assertExpectedBucketTags(environment, aws) {
+  const { AWS_REGION, BUCKET_NAME, EXPECTED_ACCOUNT_ID } = environment;
+  const response = parseAwsJson(
+    aws([
+      "s3api",
+      "get-bucket-tagging",
+      "--bucket",
+      BUCKET_NAME,
+      "--expected-bucket-owner",
+      EXPECTED_ACCOUNT_ID,
+      "--region",
+      AWS_REGION,
+      "--output",
+      "json",
+    ]),
+    "get-bucket-tagging",
+  );
+  const tags = new Map(
+    Array.isArray(response.TagSet)
+      ? response.TagSet
+          .filter((tag) => typeof tag?.Key === "string" && typeof tag?.Value === "string")
+          .map((tag) => [tag.Key, tag.Value])
+      : [],
+  );
+  const expected = {
+    Projeto: "view-show",
+    ManagedBy: "terraform",
+    Componente: "ingestion",
+    Ambiente: "learner-lab",
+  };
+  if (Object.entries(expected).some(([key, value]) => tags.get(key) !== value)) {
+    throw new Error("o bucket não possui as tags esperadas da stack View Show");
+  }
+}
+
+function deleteBucketVersions(environment, aws) {
+  const { AWS_REGION, BUCKET_NAME, EXPECTED_ACCOUNT_ID } = environment;
+  const response = parseAwsJson(
+    aws([
+      "s3api",
+      "list-object-versions",
+      "--bucket",
+      BUCKET_NAME,
+      "--expected-bucket-owner",
+      EXPECTED_ACCOUNT_ID,
+      "--region",
+      AWS_REGION,
+      "--output",
+      "json",
+    ]),
+    "list-object-versions",
+  );
+  const entries = [...(response.Versions ?? []), ...(response.DeleteMarkers ?? [])];
+  const objects = entries.map((entry) => {
+    if (typeof entry?.Key !== "string" || typeof entry?.VersionId !== "string") {
+      throw new Error("list-object-versions retornou uma versão inválida");
+    }
+    return { Key: entry.Key, VersionId: entry.VersionId };
+  });
+  for (let start = 0; start < objects.length; start += 1000) {
+    aws([
+      "s3api",
+      "delete-objects",
+      "--bucket",
+      BUCKET_NAME,
+      "--delete",
+      JSON.stringify({ Objects: objects.slice(start, start + 1000), Quiet: true }),
+      "--expected-bucket-owner",
+      EXPECTED_ACCOUNT_ID,
+      "--region",
+      AWS_REGION,
+      "--output",
+      "json",
+    ]);
+  }
+}
+
+function abortMultipartUploads(environment, aws) {
+  const { AWS_REGION, BUCKET_NAME, EXPECTED_ACCOUNT_ID } = environment;
+  const response = parseAwsJson(
+    aws([
+      "s3api",
+      "list-multipart-uploads",
+      "--bucket",
+      BUCKET_NAME,
+      "--expected-bucket-owner",
+      EXPECTED_ACCOUNT_ID,
+      "--region",
+      AWS_REGION,
+      "--output",
+      "json",
+    ]),
+    "list-multipart-uploads",
+  );
+  for (const upload of response.Uploads ?? []) {
+    if (typeof upload?.Key !== "string" || typeof upload?.UploadId !== "string") {
+      throw new Error("list-multipart-uploads retornou um upload inválido");
+    }
+    aws([
+      "s3api",
+      "abort-multipart-upload",
+      "--bucket",
+      BUCKET_NAME,
+      "--key",
+      upload.Key,
+      "--upload-id",
+      upload.UploadId,
+      "--expected-bucket-owner",
+      EXPECTED_ACCOUNT_ID,
+      "--region",
+      AWS_REGION,
+    ]);
+  }
+}
+
+export function destroyIngestionBucket(environment = process.env, aws = runAws) {
+  validateEnvironment(environment);
+  const { AWS_REGION, BUCKET_NAME, EXPECTED_ACCOUNT_ID } = environment;
+  const activeAccountId = aws([
+    "sts",
+    "get-caller-identity",
+    "--query",
+    "Account",
+    "--output",
+    "text",
+  ]);
+  if (activeAccountId !== EXPECTED_ACCOUNT_ID) {
+    throw new Error(
+      `a conta AWS ativa (${activeAccountId}) difere da conta esperada (${EXPECTED_ACCOUNT_ID})`,
+    );
+  }
+
+  assertExpectedBucketTags(environment, aws);
+  abortMultipartUploads(environment, aws);
+  deleteBucketVersions(environment, aws);
+  aws([
+    "s3api",
+    "delete-bucket",
+    "--bucket",
+    BUCKET_NAME,
+    "--expected-bucket-owner",
+    EXPECTED_ACCOUNT_ID,
+    "--region",
+    AWS_REGION,
+  ]);
+  aws(["s3api", "wait", "bucket-not-exists", "--bucket", BUCKET_NAME, "--region", AWS_REGION]);
+  return "destroyed";
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const result = ensureIngestionBucket();
-    console.log(`bucket de ingestão ${result === "created" ? "criado" : "adotado"}`);
+    const action = process.env.INGESTION_BUCKET_ACTION ?? "ensure";
+    if (action === "destroy") {
+      destroyIngestionBucket();
+      console.log("bucket de ingestão removido");
+    } else if (action === "ensure") {
+      const result = ensureIngestionBucket();
+      console.log(`bucket de ingestão ${result === "created" ? "criado" : "adotado"}`);
+    } else {
+      throw new Error("INGESTION_BUCKET_ACTION deve ser ensure ou destroy");
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

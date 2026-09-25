@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
+# IT02 (artefatos/sprint4/testes-funcionais.md, Seção 2): mesma ideia de
+# test-live-api-local.sh (DynamoDB Local efêmero via Docker), mas para
+# tests/dynamodb-real.integration.test.ts — IncidentUseCases contra Query()
+# genuíno, sem precisar compilar nem subir o processo HTTP da API.
+# Executado localmente; o container é sempre removido ao terminar o teste.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repository_root="$(cd "$script_dir/../.." && pwd)"
+repository_root="$(cd "$script_dir/../../.." && pwd)"
 api_dir="$repository_root/apps/backend/api"
 image="amazon/dynamodb-local:2.6.1@sha256:990211fe3cbb507c52512522b5e71538802f086393f5b0d009d03a18c8bc04a6"
-container_name="view-show-dynamodb-e2e-${CI_PIPELINE_ID:-local}-$$"
+container_name="view-show-dynamodb-it02-${CI_PIPELINE_ID:-local}-$$"
 
 cleanup() { docker rm -f "$container_name" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -20,5 +25,4 @@ export AWS_ACCESS_KEY_ID=local
 export AWS_SECRET_ACCESS_KEY=local
 
 cd "$api_dir"
-npm run build
-npx vitest run tests/live-api.e2e.test.ts
+npm test -- tests/dynamodb-real.integration.test.ts --reporter=verbose

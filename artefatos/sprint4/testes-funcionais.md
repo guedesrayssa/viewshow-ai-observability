@@ -127,7 +127,7 @@
 | Resultado esperado | Os itens persistidos no DynamoDB real são lidos, convertidos para DTO (sem campos físicos) e paginados corretamente: união das páginas = total gravado, sem duplicatas, `hasMore`/`nextCursor` coerentes com o fim da lista; cursor de outro filtro rejeitado com 400 |
 | Resultado obtido | 25 incidentes gravados, 4 páginas (7+7+7+4) percorridas via `nextCursor`, união das páginas = 25 sem duplicata, `nextCursor=null` na última página; nenhum item com `pk`/`sk`/`trace_id`/`itemType`; cursor obtido com `deviceType=Web` rejeitado (400) ao ser reenviado com `region=Sudeste` — 2 de 2 testes passaram |
 | Situação | Aprovado |
-| Evidências / reprodução | `bash scripts/ci/test-dynamodb-real-local.sh` (a partir da raiz do repositório) — sobe e derruba o DynamoDB Local automaticamente. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
+| Evidências / reprodução | `bash apps/scripts/tests/test-dynamodb-real-local.sh` (a partir da raiz do repositório) — sobe e derruba o DynamoDB Local automaticamente. Saída em [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
 
 ---
 
@@ -204,7 +204,7 @@ cd apps/fullstack
 terraform init -backend=false -input=false
 terraform plan -input=false -out=.terraform-artifacts/g05-s3.tfplan
 terraform show -json .terraform-artifacts/g05-s3.tfplan | \
-  node ../../scripts/ci/validate-terraform-create-plan.mjs
+  node ../../apps/scripts/terraform/validate-create-plan.mjs
 terraform apply -input=false .terraform-artifacts/g05-s3.tfplan
 
 # 3. Semear dados (nome da tabela sai do output tabelas_dynamodb)
@@ -326,7 +326,7 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 | Item | Onde foi implementado | Onde está a evidência |
 | --- | --- | --- |
 | IT01 (HTTP × sessão) | Já existia — [`tests/gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-gateway.txt) |
-| IT02 (`IncidentUseCases` × DynamoDB Local) | Escrito nesta rodada — [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) + [`scripts/ci/test-dynamodb-real-local.sh`](../../scripts/ci/test-dynamodb-real-local.sh) (novo) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
+| IT02 (`IncidentUseCases` × DynamoDB Local) | Escrito nesta rodada — [`tests/dynamodb-real.integration.test.ts`](../../apps/backend/api/tests/dynamodb-real.integration.test.ts) + [`apps/scripts/tests/test-dynamodb-real-local.sh`](../../apps/scripts/tests/test-dynamodb-real-local.sh) (novo) | [`assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt`](../../assets/testes-funcionais/2026-09-22/resultado-vitest-dynamodb-real.txt) |
 | Seção 3 — casos CT-01 a CT-12 | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) (novo) | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
 | Seção 4 — Níveis 1, 2 e 3 | `consultas.js` estendido in-place + [`lib/asserts.js`](../../apps/backend/api/loadtest/k6/lib/asserts.js) (novo) | `assets/testes-funcionais/2026-09-21/resumo-nivel{1,2,3}.json` |
 

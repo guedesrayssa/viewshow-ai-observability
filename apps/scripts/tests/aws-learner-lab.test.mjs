@@ -20,9 +20,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+// Integration-style tests for the repository-level Learner Lab command.
 import { isExactConfirmation, runLearnerLab } from "../aws-learner-lab.mjs";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const ORIGINAL_ROOT = ROOT;
 const SAFE_PLAN_VARIABLES = {
   deployment_namespace: "view-show",
@@ -171,7 +172,7 @@ function testEnvironment({
     }
     if (
       command === "node" &&
-      args.some((item) => String(item).includes("validate-terraform-create-plan"))
+      args.some((item) => String(item).includes("validate-create-plan"))
     ) {
       return gateAccepted
         ? { status: 0, stdout: "plan accepted\n", stderr: "" }
@@ -179,7 +180,7 @@ function testEnvironment({
     }
     if (
       command === "node" &&
-      args.some((item) => String(item).includes("validate-terraform-learner-update-plan"))
+      args.some((item) => String(item).includes("validate-learner-update-plan"))
     ) {
       return updateGateAccepted
         ? { status: 0, stdout: "update plan accepted\n", stderr: "" }
@@ -1491,7 +1492,7 @@ test("terraform apply runs only after the create-only gate accepts the plan", as
 
   const indices = a.calls.map((c, i) => ({ c, i }));
   const gate = indices.find(({ c }) =>
-    c.args.some((x) => String(x).includes("validate-terraform-create-plan")),
+    c.args.some((x) => String(x).includes("validate-create-plan")),
   );
   const apply = indices.find(({ c }) => c.command === "terraform" && c.args.includes("apply"));
   assert.ok(gate, "the create-only gate must run");
@@ -2382,7 +2383,7 @@ test("update presets are hardcoded and the validated saved plan is the only appl
       (call) =>
         call.command === "node" &&
         call.args.some((arg) =>
-          String(arg).includes("validate-terraform-learner-update-plan"),
+          String(arg).includes("validate-learner-update-plan"),
         ),
     );
     assert.ok(gate, preset);
@@ -2876,6 +2877,18 @@ test("protected commands accept the primary checkout at a portable path", async 
   });
 
   assert.equal(result.status, 0, a.logs.join("\n"));
+});
+
+test("protected commands accept an omitted AWS_REGION and pin the canonical region internally", async () => {
+  const a = testEnvironment({ environment: { AWS_PROFILE: "default" } });
+
+  const result = await runLearnerLab({ ...a.options, step: "check" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  for (const call of a.calls.filter((call) => call.command === "aws" && call.args[0] !== "--version")) {
+    assert.equal(call.args.includes("--region"), true);
+    assert.equal(call.args[call.args.indexOf("--region") + 1], "us-east-1");
+  }
 });
 
 test("seed fails closed on an unsafe checkout or AWS binding before any tool call", async () => {

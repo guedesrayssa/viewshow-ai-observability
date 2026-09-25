@@ -1,3 +1,5 @@
+// Validate the limited, stateless Terraform update presets allowed in the Learner Lab.
+// It is invoked by the local provisioning command, not by a CI pipeline.
 import fs from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 

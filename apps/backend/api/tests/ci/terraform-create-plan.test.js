@@ -6,7 +6,7 @@ const { spawn, spawnSync } = require("node:child_process");
 const repositoryRoot = path.resolve(__dirname, "../../../../../");
 const validatorPath = path.join(
   repositoryRoot,
-  "scripts/ci/validate-terraform-create-plan.mjs",
+  "apps/scripts/terraform/validate-create-plan.mjs",
 );
 const maxPlanBytes = 20 * 1024 * 1024;
 const auxiliaryDataAddresses = [

@@ -1,3 +1,5 @@
+// Reject Terraform plans that create anything outside the approved Learner Lab stack.
+// It is a local provisioning guard, independent from any CI pipeline.
 import fs from "node:fs";
 
 const MAX_INPUT_BYTES = 20 * 1024 * 1024;

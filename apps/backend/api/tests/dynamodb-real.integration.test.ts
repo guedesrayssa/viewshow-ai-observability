@@ -15,7 +15,7 @@
  * diferente.
  *
  * USO (a partir de apps/backend/api/loadtest/../.. == apps/backend/api):
- *   bash ../../../scripts/ci/test-dynamodb-real-local.sh
+ *   bash ../../scripts/tests/test-dynamodb-real-local.sh
  * ou manualmente, com um DynamoDB Local já rodando:
  *   RUN_LIVE_E2E=true DYNAMODB_ENDPOINT=http://127.0.0.1:<porta> \
  *     AWS_REGION=us-east-1 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local \

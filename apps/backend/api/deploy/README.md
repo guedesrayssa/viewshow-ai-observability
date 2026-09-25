@@ -1,19 +1,16 @@
 # Deploy do backend no ECS
 
-Este documento explica como o backend é testado, publicado no ECR e implantado
-no ECS quando uma alteração é enviada para a branch `develop`.
+O repositório não possui pipeline automático de GitLab. Este documento explica
+como verificar e provisionar manualmente a infraestrutura que publica o backend
+no ECS.
 
 ## Como o fluxo funciona
 
-1. Um merge request para `develop` executa os testes e valida a imagem localmente.
-2. Um push de backend em `develop` executa os testes novamente.
-3. O pipeline constrói a imagem `linux/amd64` usando cache.
-4. A imagem é publicada no ECR com o SHA completo do commit.
-5. O ECS recebe uma nova revisão da task definition.
-6. O pipeline espera o serviço estabilizar e testa a rota `/health`.
-7. Se algo falhar, o serviço tenta voltar para a revisão anterior.
-
-Alterações somente em frontend ou documentação não implantam o backend.
+1. Execute os testes locais da API.
+2. Valide as credenciais temporárias do AWS Academy.
+3. Na raiz do repositório, execute `node apps/scripts/aws-learner-lab.mjs deploy`.
+4. O comando cria e valida o plano Terraform, pede confirmação e aplica a stack.
+5. Confirme a rota `/health` com a URL gerada pelo Terraform.
 
 ## Recursos utilizados
 
@@ -28,29 +25,7 @@ Alterações somente em frontend ou documentação não implantam o backend.
 - Task definition: `view-show-api-task`
 - Container: `view-show-api`
 - Load Balancer: `view-show-alb`
-- Ambiente protegido do GitLab: `aws-lab`
-
-## Configuração inicial
-
-### Branch e variáveis
-
-1. Mantenha a branch `develop` protegida sempre que possível.
-2. Crie as variáveis abaixo no ambiente `aws-lab`:
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
-   - `AWS_SESSION_TOKEN`
-3. Por padrão, marque as três como protegidas, mascaradas, ocultas e raw.
-
-Nunca coloque credenciais AWS ou tokens do GitLab no repositório.
-
-### Runners
-
-O pipeline usa o runner compartilhado institucional identificado pela tag
-`inteli-gitlab-runner-prd`. Os jobs de imagem usam Docker-in-Docker pela rede
-interna do job, na porta `2375`, porque esse runner não compartilha certificados
-TLS com o container do cliente.
-
-## Renovação das credenciais do AWS Academy Lab
+## Credenciais do AWS Academy Lab
 
 As credenciais expiram sempre que o Lab é encerrado. Depois de iniciar um novo Lab:
 
@@ -65,48 +40,18 @@ As credenciais expiram sempre que o Lab é encerrado. Depois de iniciar um novo 
    `voclabs`. Não fixe um ID de conta no código ou no runbook: cada Learner Lab
    pode usar uma conta diferente.
 
-3. Confirme que o `glab` está autenticado:
+3. Execute o deploy manual a partir da raiz:
 
    ```bash
-   glab auth status --hostname git.inteli.edu.br
+   node apps/scripts/aws-learner-lab.mjs deploy
    ```
 
-4. Se a `develop` estiver temporariamente sem proteção, valide o modo temporário
-   sem alterar o GitLab:
-
-   ```bash
-   scripts/sync-aws-gitlab-credentials.sh --dry-run --allow-unprotected-develop
-   ```
-
-5. Se a validação passar, atualize as variáveis no mesmo modo temporário:
-
-   ```bash
-   scripts/sync-aws-gitlab-credentials.sh --allow-unprotected-develop
-   ```
-
-O script atualiza somente as três variáveis AWS e não mostra seus valores. Quando
-a `develop` voltar a ser protegida, execute o script sem a opção temporária para
-restaurar a proteção das variáveis.
-
-## Deploy normal
-
-Depois que uma alteração relevante é integrada à `develop`, acompanhe estes jobs:
-
-1. `validate_backend`: instala as dependências e executa os testes.
-2. `publish_backend_image`: constrói, testa e publica a imagem no ECR.
-3. `deploy_backend_ecs`: atualiza o ECS, espera a estabilização e valida `/health`.
-
-A imagem é publicada com o SHA completo do commit e implantada por digest. Isso
-evita que uma tag seja alterada depois da validação.
-
-Somente um deploy pode executar por vez. Antes de alterar o ECS, o job também
-confirma que ainda representa o commit mais recente da `develop`.
+Nunca coloque credenciais AWS em argumentos, logs ou no repositório.
 
 ## Como verificar se funcionou
 
-No GitLab, confirme que os três jobs terminaram com sucesso. Na AWS, o serviço
-`view-show-api-service` deve estar `ACTIVE`, sem tasks pendentes e com a quantidade
-esperada de tasks em execução.
+Na AWS, o serviço `view-show-api-service` deve estar `ACTIVE`, sem tasks pendentes
+e com a quantidade esperada de tasks em execução.
 
 Teste também a rota pública usando a URL produzida pelo Terraform:
 
