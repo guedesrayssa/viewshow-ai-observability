@@ -11,6 +11,7 @@
 5. [Integração entre os módulos](#5-integração-entre-os-módulos)
 6. [Plano de implantação do cenário](#6-plano-de-implantação-do-cenário)
 7. [Segurança, escala, observabilidade e validação](#7-segurança-escala-observabilidade-e-validação)
+8. [Plano de recuperação de falhas](#8-plano-de-recuperação-de-falhas)
 
 ---
 
@@ -19,8 +20,6 @@
 &emsp;O objetivo deste artefato é detalhar uma alternativa de implantação em Kubernetes para a API, a ingestão e o Worker de Análise do View Show. No cenário documentado, esses workloads são executados em Pods do Amazon EKS sobre AWS Fargate, dentro de sub-redes privadas distribuídas em duas zonas de disponibilidade. O frontend Next.js permanece no AWS Amplify e os serviços gerenciados de identidade, dados, mensageria, inteligência artificial e observabilidade continuam na AWS.
 
 &emsp;O EKS é tratado como cenário arquitetural para o artefato de conteinerização. A equipe continuará utilizando a implantação existente em ECS com Fargate para o desenvolvimento e a demonstração do projeto. Portanto, não há corte de tráfego, desativação do ECS ou evidência de cluster EKS provisionado como parte do MVP. Nas seções seguintes, o cenário é descrito como se fosse implantado para permitir a análise completa de rede, workloads, segurança, escala e operação.
-
-&emsp;A substituição do runtime não altera os contratos funcionais definidos nos documentos canônicos do repositório. Permanecem válidas as responsabilidades registradas em [Visão geral da arquitetura](../arquitetura/visao-geral.md), [API do dashboard](../arquitetura/api-dashboard.md), [Ingestão e dados](../arquitetura/ingestao-e-dados.md) e [Análise de dados e diagnóstico por IA](../arquitetura/analise-e-ia.md). O documento da [Sprint 3](../sprint3/infraestrutura-integracao.md) continua sendo a referência da implantação efetivamente utilizada em ECS com Fargate.
 
 ## 2. Diagramas de implantação
 
@@ -305,14 +304,79 @@ kubectl apply -f k8s/
 - publicação e rollback usam manifests versionados e imagens identificadas por digest;
 - o caráter documental do EKS e a continuidade operacional do ECS com Fargate estão explicitados.
 
-## Referências técnicas
+## 8. Plano de recuperação de falhas
 
-- [Gerenciamento declarativo com `kubectl apply`](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/)
-- [AWS Load Balancer Controller no EKS](https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html)
-- [Amazon EKS com AWS Fargate](https://docs.aws.amazon.com/eks/latest/userguide/fargate.html)
-- [IAM Roles for Service Accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
-- [Metrics Server no Amazon EKS](https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html)
-- [Logs do Amazon EKS Fargate](https://docs.aws.amazon.com/eks/latest/userguide/fargate-logging.html)
-- [Container Insights com ADOT no EKS Fargate](https://aws-otel.github.io/docs/getting-started/container-insights/eks-fargate/)
-- [Escala orientada a eventos com KEDA no Amazon EKS](https://docs.aws.amazon.com/solutions/event-driven-application-autoscaling-with-keda-on-amazon-eks/)
-- [Scaler AWS SQS do KEDA](https://keda.sh/docs/latest/scalers/aws-sqs/)
+&emsp;O plano de recuperação de falhas do cenário EKS protege a disponibilidade da API, a continuidade dos fluxos assíncronos e a integridade dos dados processados pela aplicação. A estratégia separa falhas locais de contêineres e Pods, tratadas automaticamente pelo Kubernetes, de falhas em dependências externas, que exigem interrupção segura, persistência do estado e retomada controlada.
+
+&emsp;A API, a ingestão e o Worker não mantêm estado de negócio exclusivamente em memória. Execuções, watermarks, outbox, previsões, incidentes, evidências e hipóteses são persistidos nos serviços de dados da AWS. Dessa forma, a recriação de um contêiner ou Pod não elimina o estado necessário para concluir, repetir ou investigar uma operação.
+
+### 8.1 Estratégias de replicação de serviços
+
+&emsp;O Backend API é o workload com requisito direto de disponibilidade ao usuário. Ele utiliza um `Deployment` com mínimo de duas réplicas e HPA configurado entre duas e quatro réplicas, com escala orientada pela utilização de CPU. A existência de duas réplicas garante que a perda isolada de um Pod, de um contêiner ou de uma instância de execução não interrompa integralmente o acesso ao dashboard.
+
+&emsp;O ALB encaminha requisições somente para targets saudáveis. Quando uma réplica deixa de estar pronta para receber tráfego, ela é removida do conjunto de destinos até recuperar sua disponibilidade. As demais réplicas continuam atendendo as chamadas, sem que o frontend precise identificar a falha ou escolher uma rota alternativa.
+
+&emsp;A implantação deve distribuir a capacidade do Fargate entre sub-redes de mais de uma zona de disponibilidade. Como o EKS Fargate não suporta `topologySpreadConstraints`, essa distribuição depende dos perfis Fargate e das sub-redes associadas a eles, devendo ser confirmada durante a implantação. A presença de múltiplas zonas reduz o impacto de uma falha localizada de infraestrutura.
+
+&emsp;Para interrupções planejadas, como atualização de plataforma ou manutenção, o cenário deve declarar um `PodDisruptionBudget` para a API com pelo menos uma réplica disponível. Esse recurso limita indisponibilidades voluntárias simultâneas, sem substituir a replicação em zonas distintas nem proteger contra falhas involuntárias de infraestrutura.
+
+&emsp;O Worker de Análise usa uma estratégia diferente. Ele não atende requisições HTTP e pode permanecer com zero réplicas quando não houver demanda. A durabilidade é fornecida pela SQS: a mensagem permanece armazenada até que o processamento seja concluído com sucesso. Quando há mensagens pendentes, o KEDA cria ou amplia réplicas do Worker; caso uma delas falhe, outra réplica pode retomar o consumo da fila.
+
+&emsp;A ingestão periódica não é replicada de forma concorrente, pois duas execuções sobre a mesma janela podem provocar processamento duplicado ou disputa pelo watermark. O `CronJob` utiliza política de concorrência controlada e Jobs sob demanda usam identificadores de execução e idempotência para assegurar que a mesma janela seja materializada uma única vez.
+
+### 8.2 Fallback automático e degradação controlada
+
+&emsp;O fallback automático da API é realizado pela combinação entre probes, `Service`, ALB e réplicas do `Deployment`. Uma réplica temporariamente indisponível deixa de receber novas chamadas; o tráfego segue para as réplicas restantes que permanecem prontas. Esse mecanismo é transparente para o dashboard e não depende de troca manual de endereço, reinicialização do navegador ou alteração do frontend.
+
+&emsp;O fluxo assíncrono possui fallback orientado pela fila. Se o Worker falhar antes de concluir uma mensagem, a mensagem volta a ficar disponível após o tempo de visibilidade configurado na SQS. O Worker reprocessa a solicitação usando `eventId`, `idempotencyKey` e o estado persistido, evitando que uma nova tentativa crie registros duplicados. Mensagens que excedem o número de tentativas definido são enviadas para a DLQ, onde permanecem isoladas até análise e reprocessamento controlado.
+
+&emsp;A indisponibilidade do Bedrock não impede a preservação dos resultados determinísticos do pipeline. O Worker grava previsões, incidentes e evidências já calculados e registra a hipótese diagnóstica como pendente. Quando o serviço de IA voltar a responder, somente a etapa de diagnóstico é reexecutada. Dessa forma, a aplicação degrada a funcionalidade de hipótese automatizada sem descartar o resultado analítico anterior.
+
+&emsp;Uma falha de origem no ARGUS não autoriza a publicação de dados parciais. A ingestão encerra a execução sem avançar o watermark nem gravar uma referência de outbox para uma janela incompleta. Após a normalização da origem, a mesma janela pode ser executada novamente; quando houver um snapshot validado, ele pode ser utilizado como origem alternativa de recuperação.
+
+&emsp;Falhas temporárias em DynamoDB, S3, Athena, SQS ou Bedrock devem receber novas tentativas limitadas, com espera progressiva e registro de telemetria. A aplicação não deve transformar a falha de uma dependência externa em reinicialização contínua dos Pods. Se a dependência continuar indisponível, a operação é interrompida de forma controlada, sem inventar resultados, sem apagar registros já confirmados e sem marcar a execução como concluída.
+
+### 8.3 Reinicialização de contêineres e recomposição de Pods
+
+&emsp;Os `Deployments` da API e do Worker devem utilizar probes distintas para inicialização, disponibilidade e atividade. A probe de inicialização protege aplicações que ainda estão carregando configuração, estabelecendo conexões ou preparando recursos internos. Enquanto ela não for concluída, o Kubernetes não trata o contêiner como disponível para tráfego ou como falha de atividade.
+
+&emsp;A probe de disponibilidade verifica se a API pode atender requisições com segurança. Quando ela falha, o Pod continua existindo, mas deixa de receber novas chamadas pelo `Service` e pelo ALB. Essa separação permite que uma indisponibilidade transitória, como uma conexão ainda não estabelecida, seja tratada sem reinicializar imediatamente o processo.
+
+&emsp;A probe de atividade identifica situações em que o contêiner continua em execução, mas não consegue mais progredir, como bloqueios permanentes, deadlocks ou perda irrecuperável de comunicação interna. Após o número de falhas configurado, o kubelet encerra e reinicia o contêiner. Como os `Deployments` usam política de reinicialização contínua, o processo é recomposto automaticamente sem intervenção manual.
+
+&emsp;A probe de atividade deve verificar apenas a saúde local do processo. Dependências externas, como Bedrock, SQS ou DynamoDB, não devem provocar sua falha direta, pois isso poderia reiniciar simultaneamente todas as réplicas durante uma indisponibilidade externa e ampliar o incidente. Essas dependências são tratadas pela lógica de fallback e pelas tentativas controladas da aplicação.
+
+&emsp;A finalização de Pods deve respeitar um período de encerramento gracioso. Antes de terminar, a API deixa de aceitar novas requisições e conclui as chamadas em andamento dentro do limite configurado. Jobs de ingestão utilizam limite de tentativas e duração máxima de execução, evitando que um processo falho permaneça indefinidamente em execução ou seja iniciado em paralelo a uma execução ainda ativa.
+
+### 8.4 Contingência para falhas críticas
+
+<div align="center">
+
+<sup>Tabela 4: Resposta a falhas críticas</sup>
+
+</div>
+
+| Cenário | Resposta automática | Contingência operacional | Preservação de dados |
+| --- | --- | --- | --- |
+| Falha de um contêiner da API | A probe de atividade reinicia o contêiner; a probe de disponibilidade remove o Pod do tráfego. | Investigar logs, eventos do Pod e métricas quando houver reinicializações recorrentes. | A API não mantém estado de negócio exclusivamente no contêiner. |
+| Perda de um Pod ou indisponibilidade localizada | O `Deployment` recompõe a réplica e o ALB mantém o tráfego em targets saudáveis. | Confirmar a distribuição dos Pods entre zonas e ampliar temporariamente o número de réplicas, se necessário. | O estado continua em DynamoDB, S3 e SQS. |
+| Acúmulo ou falha de mensagens | O KEDA ajusta a capacidade do Worker; a SQS mantém as mensagens pendentes. | Investigar a causa, corrigir o processamento e reencaminhar mensagens da DLQ. | A idempotência impede duplicidade em reprocessamentos. |
+| Falha da origem de ingestão | O Job não publica janela parcial nem avança watermark e outbox. | Reexecutar a janela após normalização da origem ou utilizar snapshot validado. | A última versão consistente permanece disponível. |
+| Indisponibilidade do Bedrock | A hipótese fica pendente; os resultados determinísticos permanecem persistidos. | Reexecutar somente o diagnóstico após a recuperação do serviço. | Previsões, incidentes e evidências não são removidos. |
+| Release ou imagem defeituosa | Pods que não ficam saudáveis não recebem tráfego. | Reaplicar a revisão anterior dos manifests e os digests de imagem validados. | O rollback altera a aplicação, não remove dados operacionais. |
+| Erro de dados, exclusão acidental ou corrupção | A operação afetada é interrompida antes de confirmar novos resultados. | Restaurar o ponto consistente mais recente e reprocessar somente as janelas necessárias. | DynamoDB deve possuir recuperação pontual habilitada e o S3 deve manter versionamento dos objetos históricos. |
+| Indisponibilidade prolongada de serviço AWS | Alarmes identificam a dependência afetada; operações passam a falhar de forma controlada. | Suspender Jobs que dependam do serviço, preservar a fila e retomar o processamento após a normalização. | Mensagens, versões de dataset e resultados já confirmados permanecem preservados. |
+
+<div align="center">
+
+<sup>Fonte: Material produzido pelos autores (2026).</sup>
+
+</div>
+
+### 8.5 Procedimento operacional durante incidentes
+
+&emsp;Os alarmes do CloudWatch devem identificar indisponibilidade de targets do ALB, aumento de erros HTTP, reinicializações recorrentes de Pods, saturação do HPA, crescimento ou envelhecimento de mensagens da SQS, volume de mensagens na DLQ, falhas de ingestão e erros de integração com Bedrock ou serviços de dados.
+
+&emsp;Diante de um incidente, a equipe deve primeiro classificar a falha como local ao workload, relacionada a uma dependência externa, relacionada à integridade dos dados ou relacionada a uma versão publicada. Em seguida, deve conter o impacto sem destruir evidências: suspender Jobs de ingestão quando a origem estiver inconsistente, preservar mensagens na SQS quando o Worker não puder concluir o processamento e impedir a publicação de novas versões enquanto o rollback estiver em curso.
+
+&emsp;A recuperação deve utilizar o menor escopo necessário. Falhas de contêiner são tratadas pela reinicialização automática; falhas de mensagem exigem reprocessamento pela DLQ; falhas de versão exigem retorno ao digest anterior; e falhas de dados exigem restauração do ponto consistente e reprocessamento da janela afetada. Após a recuperação, logs, métricas, mensagens e identificadores de execução devem permanecer disponíveis para análise da causa e prevenção de recorrência.
