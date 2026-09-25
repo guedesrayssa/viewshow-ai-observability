@@ -545,43 +545,74 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 3.7 Reprodução contra a AWS real
 
-&emsp;Nesta rodada (2026-09-21), a stack foi aplicada do zero na conta `080158589617` (`aws sts get-caller-identity`) do Learner Lab então ativo — 56 recursos criados, 0 alterados, 0 destruídos (`terraform apply`), com `GET /health` respondendo `200` logo em seguida. O estado local de uma sessão anterior, de outra conta (`985109744788`), foi preservado sem reaproveitamento em `apps/fullstack/.terraform-state-backup-985109744788/`, conforme a regra do README do projeto ("o estado legado pertence a outra conta e não pode ser adotado"). A massa de dados foi semeada com `scripts/seed-carga.cjs` (`ALLOW_REMOTE_SEED=1`) direto na tabela `g05-s3-operacional`: 300 incidentes / 2303 itens (incidentes + evidências + hipóteses), no mesmo formato de item já usado pelos testes de carga do sprint 3. A saída bruta do `vitest run` fica em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt); o passo a passo abaixo permite reproduzir do zero em qualquer sessão do Learner Lab.
+&emsp;Nesta rodada (2026-09-21), a stack foi aplicada do zero em uma sessão do Learner Lab — 56 recursos criados, 0 alterados, 0 destruídos (`terraform apply`), com `GET /health` respondendo `200` logo em seguida. A massa de dados foi semeada com `scripts/seed-carga.cjs` (`ALLOW_REMOTE_SEED=1`) direto na tabela `g05-s3-operacional`: 300 incidentes / 2303 itens (incidentes + evidências + hipóteses), no mesmo formato de item já usado pelos testes de carga do sprint 3. A saída bruta do `vitest run` fica em [`assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt`](../../assets/testes-funcionais/2026-09-21/resultado-vitest-ct-01-a-12-aws.txt); o passo a passo abaixo permite reproduzir do zero em qualquer sessão do Learner Lab.
+
+&emsp;Os passos 1 e 2 são de infraestrutura e só são necessários quando a stack ainda não está implantada. O passo 4 é feito uma única vez por stack. Com a stack no ar e o usuário criado, basta repetir o passo 5.
 
 ```bash
-# 1. Sessão válida do AWS Academy Learner Lab em ~/.aws/credentials
+# 1. [Infraestrutura] Confirmar que há uma sessão válida do AWS Academy Learner Lab.
+#    As credenciais ficam em ~/.aws/credentials; o comando mostra em qual conta
+#    você está e falha se a sessão tiver expirado.
 aws sts get-caller-identity --region us-east-1
 
-# 2. Provisionar a stack (apps/fullstack) — fluxo controlado do README do projeto
+# 2. [Infraestrutura] Provisionar a stack apps/fullstack
+#    (mesmo fluxo controlado descrito no README do projeto).
 cd apps/fullstack
+
+# 2a. Baixar os providers do Terraform, usando estado local (sem backend remoto).
 terraform init -backend=false -input=false
-terraform plan -input=false -out=.terraform-artifacts/g05-s3.tfplan
-terraform show -json .terraform-artifacts/g05-s3.tfplan | \
-  node ../../scripts/ci/validate-terraform-create-plan.mjs
+
+# 2b. Calcular o que será criado e salvar esse plano em arquivo.
+terraform plan -input=false \
+  -out=.terraform-artifacts/g05-s3.tfplan
+
+# 2c. Conferir o plano antes de aplicar: o validador só aceita um plano que cria
+#     recursos (ou os deixa como estão), sem alterar nem destruir nada, e que tem
+#     exatamente a lista de recursos esperada da stack, sem faltar nem sobrar.
+terraform show -json .terraform-artifacts/g05-s3.tfplan \
+  | node ../../scripts/ci/validate-terraform-create-plan.mjs
+
+# 2d. Aplicar exatamente o plano que foi conferido.
 terraform apply -input=false .terraform-artifacts/g05-s3.tfplan
 
-# 3. Semear dados (nome da tabela sai do output tabelas_dynamodb)
+# 3. Semear a massa de teste (300 incidentes sintéticos) no DynamoDB.
+#    OPERATIONAL_TABLE_NAME: output tabelas_dynamodb, campo "operacional".
+#    ALLOW_REMOTE_SEED=1 autoriza explicitamente gravar em uma tabela da AWS.
 cd ../backend/api
-ALLOW_REMOTE_SEED=1 OPERATIONAL_TABLE_NAME=g05-s3-operacional \
+ALLOW_REMOTE_SEED=1 \
+OPERATIONAL_TABLE_NAME=g05-s3-operacional \
   node scripts/seed-carga.cjs
 
-# 4. Criar o usuário de teste no Cognito (user pool id sai do output cognito_user_pool_id)
+# 4. Criar o usuário de teste no Cognito (uma vez por stack).
+#    <cognito_user_pool_id>: output cognito_user_pool_id.
+#    4a. Criar o usuário já com e-mail verificado, sem enviar e-mail de convite.
 aws cognito-idp admin-create-user \
   --user-pool-id <cognito_user_pool_id> \
   --username "teste-funcional@viewshow.local" \
-  --user-attributes Name=email,Value=teste-funcional@viewshow.local Name=email_verified,Value=true \
-  --message-action SUPPRESS --region us-east-1
+  --user-attributes \
+    Name=email,Value=teste-funcional@viewshow.local \
+    Name=email_verified,Value=true \
+  --message-action SUPPRESS \
+  --region us-east-1
+
+#    4b. Definir uma senha permanente, para que o login não peça troca de senha.
 aws cognito-idp admin-set-user-password \
   --user-pool-id <cognito_user_pool_id> \
   --username "teste-funcional@viewshow.local" \
   --password "<senha-forte-com-maiuscula-minuscula-numero>" \
-  --permanent --region us-east-1
+  --permanent \
+  --region us-east-1
 
-# 5. Rodar os 12 casos contra a API real (api_url do output do terraform)
+# 5. Rodar os 12 casos (CT-01 a CT-12) contra a API implantada.
+#    RUN_AWS_FUNCTIONAL=true liga a suíte (sem ela, o arquivo é pulado).
+#    <api_url>: output api_url do Terraform.
+#    Usuário e senha: os mesmos definidos no passo 4.
 RUN_AWS_FUNCTIONAL=true \
 AWS_API_BASE_URL=<api_url> \
 AWS_TEST_USERNAME=teste-funcional@viewshow.local \
 AWS_TEST_PASSWORD=<a mesma senha do passo 4> \
-npx vitest run tests/incidents-aws-live.functional.test.ts --reporter=verbose
+  npx vitest run tests/incidents-aws-live.functional.test.ts \
+  --reporter=verbose
 ```
 
 &emsp;Sem `RUN_AWS_FUNCTIONAL=true`, o arquivo de teste é pulado inteiro (inclusive o `beforeAll` que faz login) — `npm test` normal nunca tenta acessar a AWS.
