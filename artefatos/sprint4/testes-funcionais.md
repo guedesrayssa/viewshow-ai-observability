@@ -153,6 +153,12 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.1 Matriz dos testes executados
 
+<div align="center">
+
+<strong>Tabela 5: Matriz dos testes de integração executados</strong>
+
+</div>
+
 | ID | Objetivo / componentes | Pré-condições e entrada | Procedimento | Resultado esperado | Resultado obtido | Situação |
 | --- | --- | --- | --- | --- | --- | --- |
 | IT-AWS-01 | Verificar a disponibilidade integrada de Amplify → painel e API Gateway → ECS/Express. | Stack aplicada; URLs públicas do painel e da API. | Requisitar em paralelo `/dados/importacoes/` no Amplify e `/health` na API. | Ambos respondem `200`; painel devolve HTML do View Show e health devolve `{status: "ok"}`. | Painel e health responderam `200`, com os conteúdos esperados. | Aprovado |
@@ -164,23 +170,53 @@ Fonte: Material produzido pelos autores (2026).
 | IT-UPLOAD-02 | Verificar a composição UI/provider ao separar falha física de upload e falha posterior de leitura. | Respostas controladas das dependências HTTP. | Simular as duas falhas consecutivas e observar os estados publicados. | A falha física é preservada e a falha de leitura aparece separadamente. | Estados permaneceram separados conforme o contrato. | Aprovado |
 | IT-UPLOAD-03 | Verificar a atualização do provider durante polling de uma importação concorrente. | Conflito inicial e resposta terminal posterior. | Iniciar polling e devolver estado terminal. | O aviso de conflito deve desaparecer. | Aviso removido após a publicação do estado terminal. | Aprovado |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### 2.2 Profundidade, correlação e isolamento
 
 &emsp;IT-AWS-03 e IT-AWS-05 são os dois testes principais exigidos pelo barema. Eles não consideram um `200` isolado como prova suficiente: cada resposta pública é confrontada com o estado real da dependência posterior. A leitura direta usa as mesmas chaves físicas previstas pelos adaptadores, enquanto as asserções da resposta garantem que essas chaves não vazem para o cliente.
+
+<div align="center">
+
+<strong>Tabela 6: Profundidade, correlação e isolamento dos testes de integração</strong>
+
+</div>
 
 | Teste | Fronteiras comprovadas | Evidência cruzada | Isolamento e pós-condição |
 | --- | --- | --- | --- |
 | IT-AWS-03 | Cognito → cookie → API Gateway → ECS/Express → `IncidentUseCases` → resolvedor do dataset → DynamoDB → DTO público | `X-Request-Id`; tempo HTTP; versão do dataset; 5 IDs públicos encontrados diretamente entre os 300 itens da projeção persistida; campos físicos ausentes | Somente leitura; não altera a massa semeada |
 | IT-AWS-05 | Cognito → API Gateway → ECS/Express → `ImportUseCases` → transação/lock DynamoDB → `CreateMultipartUpload` S3 → resposta pública | Mesmo `importId` na resposta, no item `IMPORTS/IMPORT#…`, no lock e na chave S3; exatamente um multipart; replay igual; conflito `409` com o ID ativo | `finally` aborta o multipart e remove, com condições pelo `importId`, somente lock, registro e idempotência criados; uma leitura final comprova que não restou lock |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 &emsp;O tempo `responseMs` mede apenas a operação HTTP principal; o tempo mostrado pelo Vitest inclui também as leituras independentes no DynamoDB/S3, replay, conflito e limpeza. Essa separação evita apresentar o custo da coleta de evidência como latência da API. O teste não envia conteúdo nem dispara o worker: ele para deliberadamente em `UPLOADING`, que é a pós-condição do UC-09, e aborta o multipart no `finally`.
 
 ### 2.3 Localização, evidências e reprodução
+
+<div align="center">
+
+<strong>Tabela 7: Localização, evidências e reprodução dos testes de integração</strong>
+
+</div>
 
 | IDs | Código utilizado | Evidência |
 | --- | --- | --- |
 | IT-AWS-01 a IT-AWS-05 | [`apps/backend/api/tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), com um `it` identificado para cada linha da matriz | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) — 5/5 aprovados, com IDs, tempos e estado cruzado redigidos |
 | IT-UPLOAD-01, IT-UPLOAD-02 e IT-UPLOAD-03 | [`apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx`](../../apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx), com um `it` para cada linha | [`resultado-vitest-integracao-upload.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-upload.txt) — 3/3 aprovados |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
 
 - Reprodução AWS: com uma sessão AWS temporária válida no ambiente, executar `RUN_LIVE_AWS=true LIVE_AWS_API_URL=<api> LIVE_AWS_PANEL_URL=<painel> LIVE_AWS_USERNAME=<usuario> LIVE_AWS_PASSWORD=<senha> LIVE_AWS_OPERATIONAL_TABLE=<tabela> LIVE_AWS_IMPORT_BUCKET=<bucket> AWS_REGION=us-east-1 npm run test:integration:aws -- --reporter=verbose` em `apps/backend/api`.
 - Reprodução do upload: `npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.tsx" --reporter=verbose` em `apps/frontend`.
