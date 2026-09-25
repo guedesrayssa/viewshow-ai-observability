@@ -192,6 +192,61 @@ describe("DynamoDB adapters", () => {
     });
   });
 
+  it("reads monitoring only from the versioned namespace selected by ACTIVE", async () => {
+    const datasetVersion = `dsv_${"a".repeat(64)}`;
+    const send = vi.fn().mockResolvedValueOnce({
+      Items: [
+        {
+          pk: `DATASET#${datasetVersion}#VIEW#MONITORING#argus#20260909`,
+          sk: "T#1788948000000",
+          entityType: "PROJECTION",
+          datasetVersion,
+          partition: "year=2026/month=09/day=09",
+          projectionPartitionKey: "VIEW#MONITORING#argus#20260909",
+          projectionKey: "MONITORING#argus",
+          projectionVersion: "1.0",
+          materializationRevision: `pmr_${"b".repeat(64)}`,
+          requiredArchives: [],
+          payload: { observedThrough: "2026-09-09T12:00:00.000Z", sources: [] },
+          payloadFingerprint: "c".repeat(64),
+        },
+      ],
+    });
+    const repository = new DynamoDashboardReadRepository("us-east-1", "table", {
+      send,
+    } as unknown as DynamoDBDocumentClient);
+    const from = new Date("2026-09-09T11:00:00.000Z");
+    const to = new Date("2026-09-09T13:00:00.000Z");
+
+    const result = await repository.latestMonitoring(
+      {
+        datasetVersion,
+        formulaVersions: {},
+        projectionVersions: {},
+        availableIntervals: {},
+        hotFrom: {},
+      },
+      from,
+      to,
+      ["argus"],
+    );
+
+    expect(result).toEqual({
+      data: { observedThrough: "2026-09-09T12:00:00.000Z", sources: [] },
+      observedThrough: "2026-09-09T12:00:00.000Z",
+      coverageRatio: null,
+      source: "argus",
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(
+      (send.mock.calls[0]![0] as QueryCommand).input.ExpressionAttributeValues,
+    ).toEqual({
+      ":pk": `DATASET#${datasetVersion}#VIEW#MONITORING#argus#20260909`,
+      ":from": `T#${from.getTime()}`,
+      ":to": `T#${to.getTime()}`,
+    });
+  });
+
   it("reads the active incident projection and normalizes numeric priorities", async () => {
     const datasetVersion = `dsv_${"f".repeat(64)}`;
     const send = vi.fn(async () => ({
@@ -267,8 +322,11 @@ describe("DynamoDB adapters", () => {
       .filter(([command]) => command instanceof QueryCommand)
       .map(
         ([command]) =>
-          (command as { input: { ExpressionAttributeValues: { ":pk": string } } })
-            .input.ExpressionAttributeValues[":pk"],
+          (
+            command as {
+              input: { ExpressionAttributeValues: { ":pk": string } };
+            }
+          ).input.ExpressionAttributeValues[":pk"],
       );
     expect(partitionKeys.filter((key) => key.startsWith("INC#"))).toEqual([
       "INC#2026-09-09T12",

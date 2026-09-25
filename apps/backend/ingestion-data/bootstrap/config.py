@@ -19,6 +19,7 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from domain.analysis import DEFAULT_FORECAST_MODEL, ForecastModel
 from domain.disk_budget import (
     DEFAULT_INGESTION_DISK_BUDGET_BYTES,
     MAX_INGESTION_DISK_BUDGET_BYTES,
@@ -251,6 +252,57 @@ def _queue_url(value: str) -> str:
     return value
 
 
+def _analysis_fact_catalog_location(value: str) -> str:
+    """Valida a localização do catálogo de séries que a ingestão materializa para o worker.
+
+    Args:
+        value: ``s3://bucket/chave`` ou caminho absoluto do JSON do catálogo.
+
+    Returns:
+        A própria localização, quando válida.
+
+    Raises:
+        ConfigurationError: Se a localização não for uma URI S3 nem um caminho absoluto.
+    """
+    if value.startswith("s3://"):
+        bucket, _, key = value[len("s3://") :].partition("/")
+        _bucket(bucket, "ANALYSIS_FACT_CATALOG_LOCATION")
+        if not key or any(character.isspace() for character in key):
+            raise ConfigurationError("ANALYSIS_FACT_CATALOG_LOCATION must name an S3 object key")
+        return value
+    if not Path(value).is_absolute():
+        raise ConfigurationError(
+            "ANALYSIS_FACT_CATALOG_LOCATION must be an s3:// URI or an absolute path"
+        )
+    return value
+
+
+def _forecast_model(values: Mapping[str, str]) -> ForecastModel:
+    """Lê a identidade do modelo de previsão declarada nos eventos ``QOE_FORECAST``.
+
+    Args:
+        values: Variáveis de ambiente já normalizadas.
+
+    Returns:
+        A identidade configurada ou a padrão quando nenhuma das duas variáveis existir.
+
+    Raises:
+        ConfigurationError: Se só uma das variáveis existir ou o valor for inválido.
+    """
+    name = _optional_text(values, "ANALYSIS_FORECAST_MODEL_NAME")
+    version = _optional_text(values, "ANALYSIS_FORECAST_MODEL_VERSION")
+    if name is None and version is None:
+        return DEFAULT_FORECAST_MODEL
+    if name is None or version is None:
+        raise ConfigurationError(
+            "ANALYSIS_FORECAST_MODEL_NAME and ANALYSIS_FORECAST_MODEL_VERSION must be set together"
+        )
+    try:
+        return ForecastModel(name, version)
+    except ValueError as error:
+        raise ConfigurationError(f"forecast model identity is invalid: {error}") from error
+
+
 def _incremental_queue_url(value: str) -> str:
     """Validates the dedicated FIFO queue used only for immutable batch references."""
     parsed = urlsplit(value)
@@ -419,6 +471,9 @@ class Settings:
         athena_output_location: Entrada ``athena_output_location``; a forma aceita é definida
         pela anotação de tipo e validada antes do uso.
         analysis_queue_url: URL validada do serviço ou recurso externo.
+        analysis_fact_catalog_location: Catálogo de séries do worker; quando definido, a
+        ingestão grava os fatos dessas séries junto das projeções.
+        analysis_forecast_model: Identidade do modelo declarada nos eventos ``QOE_FORECAST``.
     """
 
     environment: str
@@ -469,6 +524,8 @@ class Settings:
     athena_workgroup: str | None = None
     athena_output_location: str | None = None
     analysis_queue_url: str | None = None
+    analysis_fact_catalog_location: str | None = None
+    analysis_forecast_model: ForecastModel = DEFAULT_FORECAST_MODEL
     incremental_batch_bucket: str | None = None
     incremental_batch_queue_url: str | None = None
     incremental_batch_expected_bucket_owner: str | None = None
@@ -599,6 +656,9 @@ class Settings:
         queue_url = _optional_text(values, "ANALYSIS_QUEUE_URL")
         if queue_url is not None:
             _queue_url(queue_url)
+        fact_catalog = _optional_text(values, "ANALYSIS_FACT_CATALOG_LOCATION")
+        if fact_catalog is not None:
+            _analysis_fact_catalog_location(fact_catalog)
         incremental_bucket = _optional_text(values, "INCREMENTAL_BATCH_BUCKET")
         if incremental_bucket is not None:
             _bucket(incremental_bucket, "INCREMENTAL_BATCH_BUCKET")
@@ -681,6 +741,8 @@ class Settings:
             athena_workgroup=workgroup,
             athena_output_location=output_location,
             analysis_queue_url=queue_url,
+            analysis_fact_catalog_location=fact_catalog,
+            analysis_forecast_model=_forecast_model(values),
             incremental_batch_bucket=incremental_bucket,
             incremental_batch_queue_url=incremental_queue,
             incremental_batch_expected_bucket_owner=incremental_owner,

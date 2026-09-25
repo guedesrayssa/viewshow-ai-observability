@@ -9,7 +9,12 @@ const schema = z
     OPERATIONAL_TABLE_NAME: z.string().min(1).default("view-show-operacional"),
     DYNAMODB_ENDPOINT: z.url().optional(),
     CURSOR_SECRET: z.string().min(32),
-    ANALYSIS_QUEUE_URL: z.url().optional(),
+    // Vazio significa "sem worker": o Terraform mantém a lista de ambiente
+    // literal e envia "" quando não há consumidor da fila.
+    ANALYSIS_QUEUE_URL: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.url().optional(),
+    ),
   })
   .passthrough();
 

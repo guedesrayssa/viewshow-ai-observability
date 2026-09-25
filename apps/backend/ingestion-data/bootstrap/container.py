@@ -24,6 +24,7 @@ from typing import Any, Literal, Protocol, cast
 
 from bootstrap.config import ConfigurationError, Settings
 from domain.run import RunPipeline
+from ports.analysis_facts import AnalysisFactSink
 
 type Factory = Callable[[], object]
 type CommandHandler = Callable[[Namespace], object]
@@ -164,6 +165,11 @@ class RuntimeContainer:
         """
         self.settings.require_for_command(command, no_write=no_write)
         capabilities = _capabilities(command, no_write=no_write)
+        if (
+            self.settings.analysis_fact_catalog_location is not None
+            and command in _ANALYSIS_FACT_COMMANDS
+        ):
+            capabilities = (*capabilities, "analysis_facts")
         dependencies = {capability: self.get(capability) for capability in capabilities}
         if command == "sync":
             dependencies["live_reader_factory"] = lambda: self.get("live_reader")
@@ -187,6 +193,10 @@ class RuntimeContainer:
                 outbox_backlog=dependencies.get("outbox"),
             ),
         )
+
+
+# Comandos que reconstroem projeções a partir do arquivo e, por isso, também gravam os fatos.
+_ANALYSIS_FACT_COMMANDS = frozenset({"backfill", "import-dump", "rebuild-projections"})
 
 
 def _capabilities(command: str, *, no_write: bool) -> tuple[str, ...]:
@@ -633,6 +643,7 @@ def _backfill_handler(
         return datetime.now(UTC)
 
     service = Backfill(
+        forecast_model=settings.analysis_forecast_model,
         registry=registry,
         restorer=restorer,
         reader_factory=lambda: reader,
@@ -644,6 +655,7 @@ def _backfill_handler(
         projections=ProjectionService(
             cast(ProjectionRepository, dependencies["projections"]),
             event_correlation_window_seconds=settings.event_correlation_window_seconds,
+            fact_sink=cast(AnalysisFactSink | None, dependencies.get("analysis_facts")),
         ),
         archive_encoder=ArchivePartitionEncoder(parquet),
         archive_publisher=ArchivePartitionPublisher(
@@ -853,6 +865,7 @@ def _sync_handler(settings: Settings, dependencies: Mapping[str, object]) -> Com
         leases=cast(LeaseRepository, control),
         manifests=manifests,
         disk_budget_bytes=settings.ingestion_disk_budget_bytes,
+        forecast_model=settings.analysis_forecast_model,
     )
     catchup = SyncCatchup(
         service, cast(LiveSyncConfiguration, dependencies["live_sync_configuration"])
@@ -1081,6 +1094,7 @@ def _rebuild_handler(settings: Settings, dependencies: Mapping[str, object]) -> 
         ProjectionService(
             cast(ProjectionRepository, dependencies["projections"]),
             event_correlation_window_seconds=settings.event_correlation_window_seconds,
+            fact_sink=cast(AnalysisFactSink | None, dependencies.get("analysis_facts")),
         ),
         cast(ManifestRepository, dependencies["manifests"]),
         canonical_sets=cast(CanonicalSetStore, dependencies["canonical_sets"]),
@@ -1270,6 +1284,7 @@ def _ingest_incremental_handler(
             leases=cast(LeaseRepository, control),
             manifests=manifests,
             disk_budget_bytes=settings.ingestion_disk_budget_bytes,
+            forecast_model=settings.analysis_forecast_model,
         )
 
     service = IngestIncremental(
@@ -1647,6 +1662,24 @@ def _default_factories(settings: Settings) -> Mapping[str, Factory]:
 
         return DynamoOutboxRepository(aws("dynamodb"), cast(str, settings.operational_table_name))
 
+    def analysis_facts() -> object:
+        """Cria o destino dos fatos de série a partir do catálogo configurado para o worker.
+
+        Returns:
+            Valor ``object`` produzido pela operação após as validações.
+        """
+        from adapters.analysis_catalog import load_fact_catalog
+        from adapters.dynamodb.analysis_facts import DynamoAnalysisFactSink
+
+        catalog = load_fact_catalog(
+            cast(str, settings.analysis_fact_catalog_location),
+            s3_client=aws("s3"),
+            expected_bucket_owner=settings.archive_bucket_owner,
+        )
+        return DynamoAnalysisFactSink(
+            aws("dynamodb"), cast(str, settings.operational_table_name), catalog
+        )
+
     def projections() -> object:
         """Executa a etapa interna ``projections`` e devolve o resultado validado indicado pela
         assinatura.
@@ -1815,6 +1848,7 @@ def _default_factories(settings: Settings) -> Mapping[str, Factory]:
     return MappingProxyType(
         {
             "registry": registry,
+            "analysis_facts": analysis_facts,
             "import_jobs": import_jobs,
             "staging_downloader": staging_downloader,
             "snapshot_promoter": snapshot_promoter,

@@ -6,7 +6,7 @@ const { spawn, spawnSync } = require("node:child_process");
 const repositoryRoot = path.resolve(__dirname, "../../../../../");
 const validatorPath = path.join(
   repositoryRoot,
-  "scripts/ci/validate-terraform-create-plan.mjs",
+  "apps/scripts/terraform/validate-create-plan.mjs",
 );
 const maxPlanBytes = 20 * 1024 * 1024;
 const auxiliaryDataAddresses = [
@@ -160,8 +160,22 @@ const expectedAddresses = [
   ...ingestionExpectedAddresses,
 ].sort();
 
-function createPlan(overrides = {}) {
-  const resourceChanges = expectedAddresses.map((address) => ({
+const analysisWorkerAddresses = [
+  "aws_cloudwatch_log_group.analysis_worker[0]",
+  "aws_ecr_repository.analysis_worker[0]",
+  "aws_ecs_service.analysis_worker[0]",
+  "aws_ecs_task_definition.analysis_worker[0]",
+  "aws_s3_object.analysis_catalog[0]",
+  "aws_s3_object.analysis_model[0]",
+  "terraform_data.analysis_worker_image[0]",
+];
+const workerExpectedAddresses = [
+  ...expectedAddresses,
+  ...analysisWorkerAddresses,
+].sort();
+
+function createPlan(overrides = {}, addresses = expectedAddresses) {
+  const resourceChanges = addresses.map((address) => ({
     address,
     mode: "managed",
     type: address.split(".")[0],
@@ -415,4 +429,88 @@ test("stops reading an oversized stdin stream without waiting for EOF", async ()
   assert.notEqual(result.status, 0);
   assert.match(result.stdout + result.stderr, /20 MiB/);
   assert.doesNotMatch(result.stdout + result.stderr, /sensitive-stream-canary/);
+});
+
+function withWorkerVariable(value) {
+  return { variables: { analysis_worker_habilitado: { value } } };
+}
+
+test("accepts the base plan when the analysis worker is explicitly disabled", () => {
+  const result = runValidator(
+    JSON.stringify(createPlan(withWorkerVariable(false))),
+  );
+
+  assert.equal(result.status, 0);
+  assert.match(
+    result.stdout,
+    new RegExp(`accepted: ${expectedAddresses.length} resources`),
+  );
+  assert.doesNotMatch(result.stdout, /analysis_worker/);
+});
+
+test("requires exactly the worker addresses when the analysis worker is enabled", () => {
+  for (const value of [true, "true"]) {
+    const result = runValidator(
+      JSON.stringify(
+        createPlan(withWorkerVariable(value), workerExpectedAddresses),
+      ),
+    );
+
+    assert.equal(result.status, 0, String(value));
+    assert.equal(result.stderr, "");
+    const lines = result.stdout.trim().split("\n");
+    assert.deepEqual(
+      lines.slice(0, -1).map((line) => line.replace(/: create or no-op$/, "")),
+      workerExpectedAddresses,
+    );
+    assert.equal(
+      lines.at(-1),
+      `create/no-op plan accepted: ${workerExpectedAddresses.length} resources; auxiliary data reads/no-ops: 0`,
+    );
+  }
+});
+
+test("rejects an enabled worker plan that misses a worker address", () => {
+  for (const missing of analysisWorkerAddresses) {
+    const addresses = workerExpectedAddresses.filter(
+      (address) => address !== missing,
+    );
+    const result = runValidator(
+      JSON.stringify(createPlan(withWorkerVariable(true), addresses)),
+    );
+
+    assert.notEqual(result.status, 0, missing);
+    assert.match(result.stderr, /rejected missing address/);
+    assert.equal(result.stdout, "");
+  }
+});
+
+test("rejects worker addresses when the analysis worker is not enabled", () => {
+  for (const overrides of [
+    {},
+    withWorkerVariable(false),
+    withWorkerVariable("false"),
+  ]) {
+    const result = runValidator(
+      JSON.stringify(createPlan(overrides, workerExpectedAddresses)),
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /rejected unexpected address/);
+    assert.equal(result.stdout, "");
+  }
+});
+
+test("keeps the create-or-no-op rule for worker resources", () => {
+  const plan = createPlan(withWorkerVariable(true), workerExpectedAddresses);
+  const service = plan.resource_changes.find(
+    (change) => change.address === "aws_ecs_service.analysis_worker[0]",
+  );
+  service.change.actions = ["delete", "create"];
+
+  const result = runValidator(JSON.stringify(plan));
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /aws_ecs_service\.analysis_worker\[0\]/);
+  assert.match(result.stderr, /action must be create or no-op/);
 });

@@ -72,7 +72,7 @@ p95 remains below 120 seconds for a complete 15-minute window. Never mark a
 partial run successful to silence the alert.
 
 Rollback canonical-first from the original checkout with
-`AWS_PROFILE=default AWS_REGION=us-east-1 node scripts/aws-learner-lab.mjs update phase1-10000`.
+`AWS_PROFILE=default AWS_REGION=us-east-1 node apps/scripts/aws-learner-lab.mjs update phase1-10000`.
 This reserves `legacy-v1` only for imports created after the update. It does not
 change an existing import's pipeline version, stop its worker, remove lifecycle
 or alarms, or delete any object. Never delete `staging/canonical/` or

@@ -187,7 +187,7 @@ relógio monotônico e não encerra a task ECS, deixando o ARN para retomada pel
 comando `evidence`:
 
 ```bash
-node scripts/aws-learner-lab.mjs seed \
+node apps/scripts/aws-learner-lab.mjs seed \
   --snapshot .artifacts/argus-benchmarks/100k/argus_dump.sql.gz \
   --extracted-on 2026-09-01 \
   --label phase1-100k \
@@ -206,7 +206,7 @@ fechada `snapshotSha256`, `importId`, `runId`, `label`, `datasetVersion` e
 
 ```bash
 AWS_PROFILE=default AWS_REGION=us-east-1 \
-node scripts/aws-learner-lab.mjs import-canary \
+node apps/scripts/aws-learner-lab.mjs import-canary \
   --snapshot .artifacts/argus-benchmarks/100k/argus_dump.sql.gz \
   --extracted-on 2026-09-01 \
   --username operador@example.com \
@@ -420,6 +420,19 @@ variáveis `SNAPSHOT_*` não são entradas desse comando: são derivadas do obje
 validado antes de montar o backfill. Mesmo que o ambiente contenha
 `ACTIVATE_CANDIDATE=true`, o handler substitui o valor por `false`.
 
+Para alimentar o worker de análise, `ANALYSIS_FACT_CATALOG_LOCATION` (opcional)
+aponta para o catálogo de séries do worker, em `s3://bucket/chave` ou caminho
+absoluto. Quando definida, `import-dump`, `backfill` e `rebuild-projections`
+gravam na tabela operacional os fatos `DATASET#<versão>#FACT#TS#<seriesId>#<dia>`
+das séries do catálogo, sempre a partir do arquivo confirmado e de forma
+idempotente. `sync` e `ingest-incremental` ainda não gravam esses fatos.
+`ANALYSIS_FORECAST_MODEL_NAME` e `ANALYSIS_FORECAST_MODEL_VERSION`, sempre em
+par, definem o modelo declarado nos eventos `QOE_FORECAST` e precisam coincidir
+com o bundle aprovado do worker; sem elas vale `qoe-random-forest` e
+`2026.09.1`. A regra de identidade e o formato do item estão em
+`domain/analysis_facts.py`, e `tests/contracts/test_worker_contract.py` congela o
+que a ingestão grava e publica nos arquivos lidos pelo teste do worker.
+
 ### Estados, progresso e falhas
 
 O registro compartilhado percorre `PREPARING`, `UPLOADING`, `UPLOADED`,
@@ -493,7 +506,7 @@ python -m bootstrap --help
 Na raiz do repositório, execute o comando oficial de provisionamento:
 
 ```bash
-node scripts/aws-learner-lab.mjs deploy
+node apps/scripts/aws-learner-lab.mjs deploy
 ```
 
 O script verifica Terraform `>=1.7,<2.0`, Node.js 22, npm, Docker, AWS CLI v2,
@@ -535,7 +548,7 @@ imagens do ECR, execute no checkout original que contém o mesmo state:
 
 ```bash
 AWS_PROFILE=default AWS_REGION=us-east-1 \
-node scripts/aws-learner-lab.mjs destroy
+node apps/scripts/aws-learner-lab.mjs destroy
 ```
 
 O comando só requer Terraform e AWS CLI com credenciais `voclabs` ativas. Ele
@@ -549,16 +562,16 @@ Para provisionar, gerar o snapshot, executar o backfill sem ativação e consult
 as evidências em uma única operação, use:
 
 ```bash
-node scripts/aws-learner-lab.mjs all
+node apps/scripts/aws-learner-lab.mjs all
 ```
 
 Para retomar etapas individualmente após uma interrupção:
 
 ```bash
-node scripts/aws-learner-lab.mjs check
-node scripts/aws-learner-lab.mjs build-snapshot
-node scripts/aws-learner-lab.mjs seed
-node scripts/aws-learner-lab.mjs evidence
+node apps/scripts/aws-learner-lab.mjs check
+node apps/scripts/aws-learner-lab.mjs build-snapshot
+node apps/scripts/aws-learner-lab.mjs seed
+node apps/scripts/aws-learner-lab.mjs evidence
 ```
 
 O script gera `terraform-output.json` e `upload-result.json`, espera a task ECS
@@ -605,7 +618,7 @@ execuções, inclusive com `--no-activate`; o exemplo usa
   tabela operacional e não altera onde as credenciais são guardadas.
 - Não habilite `incremental_s3_enabled` antes de homologar conectividade, schema,
   credenciais e capacidade contra o ARGUS real e validar alarmes/FIFO/DLQ.
-- Para remover a stack, use `node scripts/aws-learner-lab.mjs destroy` somente de
+- Para remover a stack, use `node apps/scripts/aws-learner-lab.mjs destroy` somente de
   forma deliberada, usando o mesmo state; ele alcança a stack fullstack completa,
   não apenas a ingestão.
 

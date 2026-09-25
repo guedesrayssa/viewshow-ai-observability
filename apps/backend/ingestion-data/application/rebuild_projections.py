@@ -46,6 +46,7 @@ from ports import (
     Projection,
     ProjectionRepository,
 )
+from ports.analysis_facts import AnalysisFactSink
 
 type ProjectionTarget = tuple[str, str, str]
 
@@ -1178,10 +1179,14 @@ class ProjectionService:
 
     Attributes:
         repository: Porta de persistência usada pelo caso de uso.
+        event_correlation_window_seconds: Janela máxima de correlação entre eventos.
+        fact_sink: Destino opcional dos fatos de série do worker de análise. Recebe cada lote
+            de registros lido do arquivo confirmado, junto com as projeções do painel.
     """
 
     repository: ProjectionRepository
     event_correlation_window_seconds: int = 18_000
+    fact_sink: AnalysisFactSink | None = None
 
     def __post_init__(self) -> None:
         if not 1 <= self.event_correlation_window_seconds <= 18_000:
@@ -1445,6 +1450,9 @@ class ProjectionService:
                 try:
                     active_store.load(raw_active_incidents)
                     for day_records in batches:
+                        if self.fact_sink is not None:
+                            for values in day_records.values():
+                                self.fact_sink.write(values, dataset_version)
                         for key, values in sorted(day_records.items()):
                             if current is None or key != current.key:
                                 if current is not None:

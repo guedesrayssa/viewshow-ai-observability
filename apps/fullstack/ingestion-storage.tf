@@ -237,6 +237,22 @@ resource "terraform_data" "ingestion_bucket_learner_lab" {
       FRONTEND_ORIGIN        = local.painel_url
     }
   }
+
+  provisioner "local-exec" {
+    when        = destroy
+    command     = self.input.script_path
+    interpreter = [self.input.script_interpreter]
+
+    environment = {
+      INGESTION_BUCKET_ACTION = "destroy"
+      AWS_REGION              = self.input.region
+      BUCKET_NAME             = self.input.bucket_name
+      DEPLOYMENT_ENVIRONMENT  = "learner-lab"
+      EXPECTED_ACCOUNT_ID     = self.input.account_id
+      DEPLOYMENT_NAMESPACE    = self.input.deployment_namespace
+      FRONTEND_ORIGIN         = self.input.frontend_origin
+    }
+  }
 }
 
 resource "aws_s3_bucket_cors_configuration" "ingestion" {

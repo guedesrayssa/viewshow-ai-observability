@@ -9,7 +9,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { LoginForm } from "@/app/(auth)/login/login-form";
-import { AccountProvider } from "@/components/account/account-provider";
 import { LogoMark } from "@/components/ui/logo";
 import { Wordmark } from "@/components/ui/wordmark";
 
@@ -34,9 +33,7 @@ export default function LoginPage() {
       </h1>
 
       <Suspense fallback={null}>
-        <AccountProvider>
-          <LoginForm className="mt-8 w-full animate-rise" />
-        </AccountProvider>
+        <LoginForm className="mt-8 w-full animate-rise" />
       </Suspense>
     </div>
   );

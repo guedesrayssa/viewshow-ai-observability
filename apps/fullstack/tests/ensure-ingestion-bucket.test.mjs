@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ensureIngestionBucket } from "../scripts/ensure-ingestion-bucket.mjs";
+import {
+  destroyIngestionBucket,
+  ensureIngestionBucket,
+} from "../scripts/ensure-ingestion-bucket.mjs";
 
 const baseEnvironment = {
   AWS_REGION: "us-east-1",
@@ -112,6 +115,50 @@ test("cria, identifica e aguarda um bucket ausente em us-east-1", () => {
     "--region",
     "us-east-1",
   ]);
+});
+
+test("remove todas as versões antes de apagar o bucket compatível", () => {
+  const calls = [];
+  const aws = (arguments_) => {
+    calls.push(arguments_);
+    if (arguments_[0] === "sts") return baseEnvironment.EXPECTED_ACCOUNT_ID;
+    if (arguments_[1] === "get-bucket-tagging") {
+      return JSON.stringify({
+        TagSet: [
+          { Key: "Projeto", Value: "view-show" },
+          { Key: "ManagedBy", Value: "terraform" },
+          { Key: "Componente", Value: "ingestion" },
+          { Key: "Ambiente", Value: "learner-lab" },
+        ],
+      });
+    }
+    if (arguments_[1] === "list-object-versions") {
+      return JSON.stringify({
+        Versions: [{ Key: "dumps/a", VersionId: "version-a" }],
+        DeleteMarkers: [{ Key: "dumps/b", VersionId: "marker-b" }],
+      });
+    }
+    if (arguments_[1] === "list-multipart-uploads") return JSON.stringify({ Uploads: [] });
+    return "";
+  };
+
+  const result = destroyIngestionBucket(baseEnvironment, aws);
+
+  assert.equal(result, "destroyed");
+  const deleteObjects = calls.find((arguments_) => arguments_[1] === "delete-objects");
+  assert.ok(deleteObjects, "as versões devem ser apagadas antes do bucket");
+  assert.deepEqual(JSON.parse(deleteObjects[deleteObjects.indexOf("--delete") + 1]), {
+    Objects: [
+      { Key: "dumps/a", VersionId: "version-a" },
+      { Key: "dumps/b", VersionId: "marker-b" },
+    ],
+    Quiet: true,
+  });
+  assert.ok(
+    calls.findIndex((arguments_) => arguments_[1] === "delete-objects") <
+      calls.findIndex((arguments_) => arguments_[1] === "delete-bucket"),
+    "o bucket só pode ser apagado após as versões",
+  );
 });
 
 test("informa LocationConstraint ao criar fora de us-east-1", () => {

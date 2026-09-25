@@ -35,7 +35,7 @@ export async function main(): Promise<void> {
   const documentClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region, maxAttempts: 4 }), { marshallOptions: { removeUndefinedValues: true } });
   const provider = required("LLM_PROVIDER") as LlmProviderKind;
   const bedrock = provider === "bedrock" ? new BedrockRuntimeClient({ region, maxAttempts: 4 }) : null;
-  const llm = createLlmProvider({ kind: provider, environment: process.env.NODE_ENV ?? "production", modelId: required("LLM_MODEL_ID"),
+  const llm = createLlmProvider({ kind: provider, environment: process.env.NODE_ENV ?? "production", modelId: provider === "none" ? "none" : required("LLM_MODEL_ID"),
     maxTokens: positive("LLM_MAX_TOKENS", 2500), temperature: Number(process.env.LLM_TEMPERATURE ?? 0.1), timeoutMs: positive("LLM_TIMEOUT_MS", 120000),
     ...(provider === "ollama" ? { baseUrl: required("OLLAMA_BASE_URL") } : {}),
     ...(bedrock ? { converse: async (input: ConverseInput): Promise<ConverseOutput> => {

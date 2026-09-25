@@ -131,7 +131,7 @@ terraform plan \
 chmod 600 .terraform-artifacts/view-show.tfplan
 terraform show -json \
   .terraform-artifacts/view-show.tfplan | \
-  node ../../scripts/ci/validate-terraform-create-plan.mjs
+  node ../../apps/scripts/terraform/validate-create-plan.mjs
 terraform apply \
   -input=false \
   .terraform-artifacts/view-show.tfplan
@@ -217,14 +217,14 @@ script orquestrador executa etapas independentes a partir da raiz do
 repositório:
 
 ```bash
-node scripts/aws-learner-lab.mjs check
-node scripts/aws-learner-lab.mjs build-snapshot
-node scripts/aws-learner-lab.mjs deploy
-node scripts/aws-learner-lab.mjs seed
-node scripts/aws-learner-lab.mjs evidence
+node apps/scripts/aws-learner-lab.mjs check
+node apps/scripts/aws-learner-lab.mjs build-snapshot
+node apps/scripts/aws-learner-lab.mjs deploy
+node apps/scripts/aws-learner-lab.mjs seed
+node apps/scripts/aws-learner-lab.mjs evidence
 
 # Executa as cinco etapas, na ordem.
-node scripts/aws-learner-lab.mjs all
+node apps/scripts/aws-learner-lab.mjs all
 ```
 
 &emsp;`check` não provisiona recursos: confirma Terraform, Node.js, Docker em
@@ -271,7 +271,7 @@ ativação deliberada permanecem no
 
 | Sintoma | Conferência e retomada segura |
 | --- | --- |
-| O preflight recusa o ambiente | Execute `node scripts/aws-learner-lab.mjs check`; confirme Python 3.12.x, Docker ativo, ferramentas instaladas e novas credenciais temporárias. |
+| O preflight recusa o ambiente | Execute `node apps/scripts/aws-learner-lab.mjs check`; confirme Python 3.12.x, Docker ativo, ferramentas instaladas e novas credenciais temporárias. |
 | O gate recusa o plano | Leia a mensagem e `terraform show` do plano salvo. Não aplique fora do gate; resolva mudanças que não sejam `create/no-op` ou endereços divergentes usando o mesmo state. |
 | A task não chega a `STOPPED` | Consulte `aws ecs describe-tasks` e os comandos de logs fornecidos pelo Terraform; não dispare outra task antes de reconciliar o ARN retornado. |
 | Um contêiner termina com exit code diferente de zero | Preserve logs redigidos, confira restauração, espaço efêmero e contrato do snapshot; corrija a causa e repita `seed` com o mesmo dump. |

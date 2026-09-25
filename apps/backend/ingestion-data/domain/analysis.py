@@ -11,7 +11,9 @@ Garantias e limites:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
@@ -22,6 +24,39 @@ ALLOWED_ANALYSIS_EVENT_TYPES = frozenset({"ANOMALY_DETECTION", "QOE_FORECAST"})
 MAX_ANALYSIS_MESSAGE_BYTES = 256 * 1024
 MAX_OUTBOX_ITEM_BYTES = 200 * 1024
 PENDING_OUTBOX_PARTITION_KEY = "OUTBOX#PENDING"
+
+_MODEL_TEXT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+
+
+@dataclass(frozen=True)
+class ForecastModel:
+    """Identidade do modelo de previsão que o worker exige que coincida com o seu bundle.
+
+    Attributes:
+        name: Nome do modelo, o mesmo do bundle aprovado.
+        version: Versão do modelo, a mesma do bundle aprovado.
+    """
+
+    name: str
+    version: str
+
+    def __post_init__(self) -> None:
+        """Rejeita nomes ou versões fora do alfabeto seguro e do limite de 64 caracteres.
+
+        Raises:
+            ValueError: Se ``name`` ou ``version`` forem inválidos.
+        """
+        for label, value in (("name", self.name), ("version", self.version)):
+            if not isinstance(value, str) or _MODEL_TEXT.fullmatch(value) is None:
+                raise ValueError(f"forecast model {label} is invalid")
+
+    def payload(self) -> dict[str, str]:
+        """Devolve o objeto ``model`` do payload de ``QOE_FORECAST``."""
+        return {"name": self.name, "version": self.version}
+
+
+# O nome é o do bundle gerado por ``train-models.py``; a versão vem da configuração do ambiente.
+DEFAULT_FORECAST_MODEL = ForecastModel("qoe-random-forest", "2026.09.1")
 
 
 class AnalysisEvent(Protocol):
@@ -254,8 +289,12 @@ def validate_analysis_event(
     if event_type == "QOE_FORECAST":
         model = event.payload.get("model")
         target = event.payload.get("targetWindow")
-        if model != {"name": "qoe-forecast", "version": "2026.09.1"}:
+        if not isinstance(model, Mapping) or set(model) != {"name", "version"}:
             raise ValueError("outbox forecast model is invalid")
+        model_name, model_version = model["name"], model["version"]
+        if not isinstance(model_name, str) or not isinstance(model_version, str):
+            raise ValueError("outbox forecast model is invalid")
+        ForecastModel(model_name, model_version)
         if not isinstance(target, Mapping) or set(target) != {"start", "end"}:
             raise ValueError("outbox forecast targetWindow has an invalid shape")
         target_start = parse_canonical_utc_text(target.get("start"), "payload.targetWindow.start")
@@ -464,6 +503,8 @@ def validate_publish_request(event: AnalysisEvent, idempotency_key: object) -> b
 __all__ = [
     "ALLOWED_ANALYSIS_EVENT_TYPES",
     "AnalysisEvent",
+    "DEFAULT_FORECAST_MODEL",
+    "ForecastModel",
     "MAX_ANALYSIS_MESSAGE_BYTES",
     "MAX_OUTBOX_ITEM_BYTES",
     "PENDING_OUTBOX_PARTITION_KEY",

@@ -39,12 +39,19 @@ describe("LoginPage", () => {
         return new Response(JSON.stringify({ data, meta: {} }), { status: 200 });
       }),
     );
-    const { default: LoginPage } = await import("./page");
+    const [{ default: LoginPage }, { AccountProvider }] = await Promise.all([
+      import("./page"),
+      import("@/components/account/account-provider"),
+    ]);
     searchParams.set(
       "returnTo",
       "/dados/importacoes/?origem=menu#historico",
     );
-    render(LoginPage());
+    render(
+      <AccountProvider>
+        <LoginPage />
+      </AccountProvider>,
+    );
 
     await userEvent.type(
       screen.getByRole("textbox", { name: /e-mail/i }),

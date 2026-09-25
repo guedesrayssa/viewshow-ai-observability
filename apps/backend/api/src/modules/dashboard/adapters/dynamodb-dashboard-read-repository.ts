@@ -403,32 +403,57 @@ export class DynamoDashboardReadRepository implements DashboardReadRepository {
   }
 
   async latestMonitoring(
+    active: ActiveDatasetSnapshot,
     from: Date,
     to: Date,
     sources: readonly string[],
   ): Promise<ProjectionRead | null> {
     const reads = await Promise.all(
-      sources.flatMap((source) =>
-        this.daysBetween(from, to).map((day) =>
-          this.queryAll({
-            KeyConditionExpression: "pk = :pk AND sk BETWEEN :from AND :to",
-            ExpressionAttributeValues: {
-              ":pk": `VIEW#MONITORING#${source}#${day}`,
-              ":from": `T#${from.getTime()}`,
-              ":to": `T#${to.getTime()}`,
-            },
+      sources
+        .filter((source) => /^[^#\s]+$/.test(source))
+        .flatMap((source) =>
+          this.daysBetween(from, to).map(async (day) => {
+            const items = await this.queryAll({
+              KeyConditionExpression: "pk = :pk AND sk BETWEEN :from AND :to",
+              ExpressionAttributeValues: {
+                ":pk": `DATASET#${active.datasetVersion}#VIEW#MONITORING#${source}#${day}`,
+                ":from": `T#${from.getTime()}`,
+                ":to": `T#${to.getTime()}`,
+              },
+              ConsistentRead: true,
+            });
+            return items.map((item) => ({ item, source }));
           }),
         ),
-      ),
     );
     const candidates = reads
       .flat()
       .sort((left, right) =>
-        String(right.sk ?? "").localeCompare(String(left.sk ?? "")),
+        String(right.item.sk ?? "").localeCompare(String(left.item.sk ?? "")),
       );
-    for (const candidate of candidates) {
-      const read = toRead(candidate);
-      if (read) return read;
+    for (const { item, source } of candidates) {
+      const parsed = physicalProjectionSchema.safeParse(item);
+      if (
+        !parsed.success ||
+        parsed.data.datasetVersion !== active.datasetVersion ||
+        parsed.data.projectionKey !== `MONITORING#${source}`
+      )
+        continue;
+      const payload = parsed.data.payload;
+      if (
+        typeof payload !== "object" ||
+        payload === null ||
+        Array.isArray(payload)
+      )
+        continue;
+      return {
+        data: payload as PublicProjection,
+        observedThrough: text(
+          (payload as Record<string, unknown>).observedThrough,
+        ),
+        coverageRatio: null,
+        source,
+      };
     }
     return null;
   }

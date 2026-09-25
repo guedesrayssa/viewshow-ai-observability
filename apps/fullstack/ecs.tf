@@ -75,7 +75,7 @@ resource "aws_ecs_task_definition" "api" {
         }
       ]
 
-      environment = concat([
+      environment = [
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3000" },
         { name = "AWS_REGION", value = var.regiao },
@@ -116,7 +116,12 @@ resource "aws_ecs_task_definition" "api" {
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da
         // mesma origem, então FRONTEND_ORIGIN é a URL do Amplify.
         { name = "FRONTEND_ORIGIN", value = local.painel_url },
-      ], var.analysis_worker_habilitado ? [{ name = "ANALYSIS_QUEUE_URL", value = aws_sqs_queue.analise.url }] : [])
+
+        // A reanálise publica na mesma fila de análise que a ingestão alimenta.
+        // Sem o worker consumindo, o valor vai vazio e a API mantém a rota
+        // fechada (FEATURE_UNAVAILABLE), em vez de aceitar pedidos sem consumidor.
+        { name = "ANALYSIS_QUEUE_URL", value = var.analysis_worker_habilitado ? aws_sqs_queue.analysis.url : "" },
+      ]
 
       logConfiguration = {
         logDriver = "awslogs"

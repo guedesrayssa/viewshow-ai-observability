@@ -24,6 +24,7 @@ from application.rebuild_projections import (
 from domain.models import CanonicalRecord, CanonicalValue, RecordType, Scalar, TimeWindow
 from domain.quality import CoverageStatus
 from ports import ArchiveDependency
+from ports.analysis_facts import AnalysisFactSink
 from tests.fakes import FakeCanonicalSetStore, FakeManifestRepository, FakeProjectionRepository
 from tests.unit.application.test_read_canonical_set import PARTITION, _canonical_set, _record
 
@@ -425,3 +426,54 @@ def test_rebuild_falls_back_to_legacy_facts_when_canonical_marker_is_missing() -
 
     assert result.catalog_item_counts == {("app_error", PARTITION): 2}
     assert repository.backend.projections
+
+
+def _rebuild_with_fact_sink(sink: AnalysisFactSink) -> RebuildProjections:
+    marker = _canonical_set()
+
+    class Source(CanonicalRecordSource):
+        def iter_batches(self, canonical_set, *, batch_size=2_048):  # type: ignore[no-untyped-def]
+            yield {("app_error", PARTITION): (_record(),)}
+
+    store = FakeCanonicalSetStore()
+    store.values[marker.dataset_version] = marker
+    return RebuildProjections(
+        ProjectionService(FakeProjectionRepository(), fact_sink=sink),
+        FakeManifestRepository(),
+        canonical_sets=store,
+        canonical_source=Source(),
+    )
+
+
+def _rebuild_request() -> RebuildProjectionsRequest:
+    version = _canonical_set().dataset_version
+    return RebuildProjectionsRequest(
+        version,
+        (f"DATASET#{version}#FACT#TS#app_error#20260901",),
+        {"app_error": PARTITION},
+    )
+
+
+def test_rebuild_feeds_the_analysis_fact_sink_once_per_committed_batch() -> None:
+    class Sink(AnalysisFactSink):
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, int]] = []
+
+        def write(self, records, dataset_version):  # type: ignore[no-untyped-def]
+            batch = tuple(records)
+            self.calls.append((dataset_version, len(batch)))
+            return len(batch)
+
+    sink = Sink()
+    _rebuild_with_fact_sink(sink).execute(_rebuild_request())
+
+    assert sink.calls == [(_canonical_set().dataset_version, 1)]
+
+
+def test_rebuild_fails_when_the_analysis_fact_sink_fails() -> None:
+    class BrokenSink(AnalysisFactSink):
+        def write(self, records, dataset_version):  # type: ignore[no-untyped-def]
+            raise RuntimeError("facts unavailable")
+
+    with pytest.raises(RuntimeError, match="facts unavailable"):
+        _rebuild_with_fact_sink(BrokenSink()).execute(_rebuild_request())

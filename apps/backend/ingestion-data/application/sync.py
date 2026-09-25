@@ -24,7 +24,7 @@ from application.lease_guard import LeaseGuard
 from application.publish_outbox import OutboxPublisher
 from contracts.argus.v2.normalizers import NormalizationContext, normalize_row
 from contracts.registry import DatasetRegistry
-from domain.analysis import canonical_utc_text
+from domain.analysis import DEFAULT_FORECAST_MODEL, ForecastModel, canonical_utc_text
 from domain.archive import candidate_manifest_pipeline
 from domain.disk_budget import (
     DEFAULT_INGESTION_DISK_BUDGET_BYTES,
@@ -594,6 +594,7 @@ class Sync:
         analysis_dependencies: Mapping[str, tuple[str, ...]] | None = None,
         disk_budget_bytes: int = DEFAULT_INGESTION_DISK_BUDGET_BYTES,
         disk_free_bytes: FreeBytes | None = None,
+        forecast_model: ForecastModel = DEFAULT_FORECAST_MODEL,
     ) -> None:
         """Inicializa a instância com as dependências e configurações fornecidas.
 
@@ -618,6 +619,7 @@ class Sync:
             pela anotação de tipo e validada antes do uso.
             disk_budget_bytes: Quantidade de bytes usada como tamanho ou limite.
             disk_free_bytes: Quantidade de bytes usada como tamanho ou limite.
+            forecast_model: Identidade do modelo declarada nos eventos ``QOE_FORECAST``.
 
         Returns:
             Não produz valor de retorno; conclui após aplicar ou validar a operação.
@@ -627,6 +629,7 @@ class Sync:
             ValueError: Se um valor estiver fora das invariantes aceitas.
         """
         self._registry = registry
+        self._forecast_model = forecast_model
         self._reader_factory = reader_factory
         self._hot_sink = hot_sink
         self._checkpoints = checkpoints
@@ -741,7 +744,7 @@ class Sync:
             source = _analysis_source(event_type)
             if self._window_commits.get_watermark(request.dataset_version, source) is not None:
                 continue
-            event = self._event(request.dataset_version, event_type, legacy)
+            event = self._event(request.dataset_version, event_type, legacy, self._forecast_model)
             if self._window_commits.get_outbox_event(event.event_id) != event:
                 continue
             self._window_commits.commit_watermark_and_outboxes(
@@ -764,6 +767,7 @@ class Sync:
         dataset_version: str,
         event_type: str,
         watermark: datetime,
+        forecast_model: ForecastModel = DEFAULT_FORECAST_MODEL,
     ) -> OutboxEvent:
         """Executa a etapa interna ``event`` e devolve o resultado validado indicado pela
         assinatura.
@@ -774,6 +778,7 @@ class Sync:
             e validada antes do uso.
             watermark: Entrada ``watermark``; a forma aceita é definida pela anotação de tipo e
             validada antes do uso.
+            forecast_model: Identidade do modelo declarada em eventos ``QOE_FORECAST``.
 
         Returns:
             Valor ``OutboxEvent`` produzido pela operação após as validações.
@@ -796,7 +801,7 @@ class Sync:
         if event_type == "QOE_FORECAST":
             payload.update(
                 {
-                    "model": {"name": "qoe-forecast", "version": "2026.09.1"},
+                    "model": forecast_model.payload(),
                     "targetWindow": {
                         "start": canonical_utc_text(watermark, "target.start"),
                         "end": canonical_utc_text(watermark + timedelta(hours=1), "target.end"),
@@ -1046,7 +1051,9 @@ class Sync:
                 if previous is not None and watermark <= previous:
                     continue
                 event = (
-                    self._event(request.dataset_version, event_type, watermark)
+                    self._event(
+                        request.dataset_version, event_type, watermark, self._forecast_model
+                    )
                     if completed_window is not None and completed_window.end == watermark
                     else None
                 )
