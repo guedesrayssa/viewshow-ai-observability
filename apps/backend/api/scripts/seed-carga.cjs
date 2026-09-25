@@ -44,6 +44,7 @@ try {
   /* sem dotenv instalado: segue lendo apenas process.env já exportado */
 }
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { createHash } = require("node:crypto");
 const {
   DynamoDBDocumentClient,
   BatchWriteCommand,
@@ -220,17 +221,46 @@ function buildItems(incident) {
 
   const { minutesAgo, ...incidentFields } = incident;
   const referenceNow = new Date();
-  const bufferingPoints = [0.8, 0.9, 1.1, 1.4, 2.1, 3.2, 4.0, 3.6].map((value, index) => ({
-    timestamp: new Date(referenceNow.getTime() - (7 - index) * 15 * 60_000).toISOString(),
-    value,
-  }));
+  const bufferingPoints = [0.8, 0.9, 1.1, 1.4, 2.1, 3.2, 4.0, 3.6].map(
+    (value, index) => ({
+      timestamp: new Date(
+        referenceNow.getTime() - (7 - index) * 15 * 60_000,
+      ).toISOString(),
+      value,
+    }),
+  );
   const timeline = [
-    { offset: -10, label: `Versão ${incident.appVersion}`, source: "seed-carga", tone: "info" },
-    { offset: -5, label: "Aumento de buffering", source: incident.component, tone: "warning" },
-    { offset: 0, label: "Incidente detectado", source: "Argus", tone: "critical" },
-    { offset: 5, label: "Evidências coletadas", source: "seed-carga", tone: "navy" },
+    {
+      offset: -10,
+      label: `Versão ${incident.appVersion}`,
+      source: "seed-carga",
+      tone: "info",
+    },
+    {
+      offset: -5,
+      label: "Aumento de buffering",
+      source: incident.component,
+      tone: "warning",
+    },
+    {
+      offset: 0,
+      label: "Incidente detectado",
+      source: "Argus",
+      tone: "critical",
+    },
+    {
+      offset: 5,
+      label: "Evidências coletadas",
+      source: "seed-carga",
+      tone: "navy",
+    },
   ].map((mark) => ({
-    timestamp: new Date(Math.min(referenceNow.getTime(), new Date(incident.startedAt).getTime() + mark.offset * 60_000)).toISOString(),
+    timestamp: new Date(
+      Math.min(
+        referenceNow.getTime(),
+        new Date(incident.startedAt).getTime() + mark.offset * 60_000,
+      ),
+    ).toISOString(),
     label: mark.label,
     source: mark.source,
     tone: mark.tone,
@@ -240,7 +270,13 @@ function buildItems(incident) {
     sk: incidentSk(incident.id),
     ...incidentFields,
     diagnosisProjection: {
-      buffering: { points: bufferingPoints, marker: { timestamp: bufferingPoints[5].timestamp, label: "Início da degradação" } },
+      buffering: {
+        points: bufferingPoints,
+        marker: {
+          timestamp: bufferingPoints[5].timestamp,
+          label: "Início da degradação",
+        },
+      },
       concentrations: [
         { label: incident.deviceType, percentage: 68 },
         { label: incident.appVersion, percentage: 54 },
@@ -249,8 +285,18 @@ function buildItems(incident) {
       concentrationNote: "Distribuição sintética dos dispositivos afetados",
       timeline,
       changes: [
-        { label: "Provável", cause: incident.component, percentage: 72, tone: "critical" },
-        { label: "Possível", cause: incident.appVersion, percentage: 28, tone: "warning" },
+        {
+          label: "Provável",
+          cause: incident.component,
+          percentage: 72,
+          tone: "critical",
+        },
+        {
+          label: "Possível",
+          cause: incident.appVersion,
+          percentage: 28,
+          tone: "warning",
+        },
       ],
     },
   });
@@ -276,7 +322,11 @@ function buildItems(incident) {
 
   // ~70% dos incidentes já têm hipótese registrada; o resto exercita o
   // caminho "not_started" / AGENTIC_RESULT_UNAVAILABLE de /diagnosis.
-  if (incident.id.endsWith("000001") || incident.id.endsWith("000002") || rand() < 0.7) {
+  if (
+    incident.id.endsWith("000001") ||
+    incident.id.endsWith("000002") ||
+    rand() < 0.7
+  ) {
     items.push({
       ...base,
       sk: hypothesisSk(incident.id, 1),
@@ -290,13 +340,19 @@ function buildItems(incident) {
     });
   }
 
-  const categories = ["request", "vitals", "screen_view", "video_view", "session", "error"];
+  const categories = [
+    "request",
+    "vitals",
+    "screen_view",
+    "video_view",
+    "session",
+    "error",
+  ];
   for (let i = 1; i <= categories.length; i += 1) {
     const category = categories[i - 1];
-    const timestamp = new Date(Math.min(
-      Date.now(),
-      new Date(incident.startedAt).getTime() + i * 60_000,
-    )).toISOString();
+    const timestamp = new Date(
+      Math.min(Date.now(), new Date(incident.startedAt).getTime() + i * 60_000),
+    ).toISOString();
     items.push({
       ...base,
       sk: eventSk(incident.id, i),
@@ -398,7 +454,10 @@ function buildOverviewProjection(now, incidents = []) {
       },
       {
         key: "affected_sessions",
-        value: recentIncidents.reduce((sum, incident) => sum + incident.affectedSessions.value, 0),
+        value: recentIncidents.reduce(
+          (sum, incident) => sum + incident.affectedSessions.value,
+          0,
+        ),
         unit: "sessions",
         status: "warning",
         comparison: null,
@@ -431,24 +490,39 @@ function buildMonitoringProjection(source, now) {
     value,
     unit,
     status,
-    measurement: value === null ? { ...measurementNow(now), status: "unknown" } : measurementNow(now),
+    measurement:
+      value === null
+        ? { ...measurementNow(now), status: "unknown" }
+        : measurementNow(now),
   });
-  const measured = (value, unit) => ({ value, unit, measurement: measurementNow(now) });
-  const flowSeries = [1.1, 1.0, 1.2, 1.4, 1.3, 1.5, 1.2, 1.1].map((processing, index) => ({
-    timestamp: new Date(now.getTime() - (7 - index) * 10 * 60_000).toISOString(),
-    processing,
-    ingestion: Number((processing * 0.35).toFixed(2)),
-  }));
-  const peakFlow = flowSeries.reduce((peak, point) => point.processing > peak.processing ? point : peak);
+  const measured = (value, unit) => ({
+    value,
+    unit,
+    measurement: measurementNow(now),
+  });
+  const flowSeries = [1.1, 1.0, 1.2, 1.4, 1.3, 1.5, 1.2, 1.1].map(
+    (processing, index) => ({
+      timestamp: new Date(
+        now.getTime() - (7 - index) * 10 * 60_000,
+      ).toISOString(),
+      processing,
+      ingestion: Number((processing * 0.35).toFixed(2)),
+    }),
+  );
+  const peakFlow = flowSeries.reduce((peak, point) =>
+    point.processing > peak.processing ? point : peak,
+  );
   const areas = [
     ["SP", "São Paulo", "Sudeste", 0.021, 1400, 0.002],
     ["RJ", "Rio de Janeiro", "Sudeste", 0.017, 1300, 0.003],
     ["MG", "Minas Gerais", "Sudeste", 0.012, 1200, 0.001],
     ["BA", "Bahia", "Nordeste", 0.029, 1700, 0.004],
     ["PE", "Pernambuco", "Nordeste", 0.024, 1550, 0.003],
-    ["RS", "Rio Grande do Sul", "Sul", 0.010, 1100, 0.001],
+    ["RS", "Rio Grande do Sul", "Sul", 0.01, 1100, 0.001],
   ].map(([code, name, region, instability, latency, loss]) => ({
-    code, name, region,
+    code,
+    name,
+    region,
     observedSessions: measured(18000, "sessions"),
     coverageRatio: measured(0.99, "ratio"),
     values: {
@@ -481,7 +555,10 @@ function buildMonitoringProjection(source, now) {
       ingestionRate: kpi(9800, "events_per_minute", "healthy"),
       processingLatencyP95: kpi(1200, "ms", "healthy"),
       queueDepth: kpi(null, "messages", "unknown"),
-      deadLetterQueue: { ...kpi(null, "messages", "unknown"), newInWindow: null },
+      deadLetterQueue: {
+        ...kpi(null, "messages", "unknown"),
+        newInWindow: null,
+      },
     },
     flow: {
       metric: "processing_latency",
@@ -489,12 +566,21 @@ function buildMonitoringProjection(source, now) {
       bucketSeconds: 900,
       measurement: measurementNow(now),
       target: null,
-      series: [{
+      series: [
+        {
+          stage: "processing",
+          name: "Processamento",
+          points: flowSeries.map((point) => ({
+            timestamp: point.timestamp,
+            value: Math.round(point.processing * 1000),
+          })),
+        },
+      ],
+      peak: {
+        timestamp: peakFlow.timestamp,
         stage: "processing",
-        name: "Processamento",
-        points: flowSeries.map((point) => ({ timestamp: point.timestamp, value: Math.round(point.processing * 1000) })),
-      }],
-      peak: { timestamp: peakFlow.timestamp, stage: "processing", value: Math.round(peakFlow.processing * 1000) },
+        value: Math.round(peakFlow.processing * 1000),
+      },
     },
     sources: [
       {
@@ -522,21 +608,51 @@ function buildMonitoringProjection(source, now) {
         },
       },
     ],
-    geography: { granularity: "state", metrics: [
-      { key: "instability_ratio", unit: "ratio", status: "available" },
-      { key: "latency_p95", unit: "ms", status: "available" },
-      { key: "event_loss_ratio", unit: "ratio", status: "available" },
-    ], areas },
+    geography: {
+      granularity: "state",
+      metrics: [
+        { key: "instability_ratio", unit: "ratio", status: "available" },
+        { key: "latency_p95", unit: "ms", status: "available" },
+        { key: "event_loss_ratio", unit: "ratio", status: "available" },
+      ],
+      areas,
+    },
     topology: {
       status: "available",
       provenance: "seed-carga",
       services: [
-        { service: "Player", status: "healthy", calls: 12000, errors: 42, errorRate: 0.0035, latencyP95: 120 },
-        { service: "API GraphQL", status: "degraded", calls: 8200, errors: 410, errorRate: 0.05, latencyP95: 950 },
-        { service: "CDN", status: "healthy", calls: 18000, errors: 54, errorRate: 0.003, latencyP95: 85 },
+        {
+          service: "Player",
+          status: "healthy",
+          calls: 12000,
+          errors: 42,
+          errorRate: 0.0035,
+          latencyP95: 120,
+        },
+        {
+          service: "API GraphQL",
+          status: "degraded",
+          calls: 8200,
+          errors: 410,
+          errorRate: 0.05,
+          latencyP95: 950,
+        },
+        {
+          service: "CDN",
+          status: "healthy",
+          calls: 18000,
+          errors: 54,
+          errorRate: 0.003,
+          latencyP95: 85,
+        },
       ],
       dependencies: [
-        { source: "Player", target: "API GraphQL", calls: 8000, errorRate: 0.05 },
+        {
+          source: "Player",
+          target: "API GraphQL",
+          calls: 8000,
+          errorRate: 0.05,
+        },
         { source: "Player", target: "CDN", calls: 17000, errorRate: 0.003 },
       ],
     },
@@ -577,6 +693,143 @@ function buildViewItems(referenceNow, incidents = []) {
     }
   }
   return items;
+}
+
+/* ---------- contrato versionado consumido pela API atual --------------- */
+
+function compareUnicode(left, right) {
+  const leftPoints = Array.from(left, (value) => value.codePointAt(0) || 0);
+  const rightPoints = Array.from(right, (value) => value.codePointAt(0) || 0);
+  for (
+    let index = 0;
+    index < Math.min(leftPoints.length, rightPoints.length);
+    index += 1
+  ) {
+    const difference = leftPoints[index] - rightPoints[index];
+    if (difference !== 0) return difference;
+  }
+  return leftPoints.length - rightPoints.length;
+}
+
+function canonicalJson(value) {
+  if (value === null || typeof value === "boolean" || typeof value === "string")
+    return JSON.stringify(value);
+  if (typeof value === "number") return String(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const entries = Object.entries(value).sort(([left], [right]) =>
+    compareUnicode(left, right),
+  );
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+}
+
+const sha256 = (value) =>
+  createHash("sha256")
+    .update(typeof value === "string" ? value : canonicalJson(value), "utf8")
+    .digest("hex");
+
+function buildVersionedItems(referenceNow, incidents) {
+  const observedThrough = referenceNow.toISOString();
+  const start = new Date(
+    referenceNow.getTime() - HOURS_BACK * 60 * 60 * 1000,
+  ).toISOString();
+  const end = new Date(referenceNow.getTime() + 60_000).toISOString();
+  const datasetVersion = `dsv_${sha256(`seed-carga:${SEED_RUN_ID || observedThrough}`)}`;
+  const materializationRevision = `pmr_${sha256(`${datasetVersion}:projections`)}`;
+  const sourceDataset = "incidents";
+  const day = referenceNow.toISOString().slice(0, 10).replaceAll("-", "");
+  const incidentPayload = {
+    projectionVersion: "1.0",
+    formulaVersion: "seed-carga-1.0",
+    inputWatermarks: { [sourceDataset]: observedThrough },
+    observedThrough,
+    coverage: "complete",
+    qualityFlags: [],
+    incidents: incidents.map((incident) => ({
+      incidentId: incident.id,
+      number: null,
+      openedAt: incident.startedAt,
+      state: incident.status === "success" ? "resolved" : "investigating",
+      priority: incident.urgency,
+    })),
+  };
+  const overviewPayload = {
+    projectionVersion: "1.0",
+    formulaVersion: "seed-carga-1.0",
+    inputWatermarks: { [sourceDataset]: observedThrough },
+    observedThrough,
+    coverage: "complete",
+    qualityFlags: [],
+    metrics: {
+      sessions: incidents.reduce(
+        (total, item) => total + item.affectedSessions,
+        0,
+      ),
+      errors: incidents.length,
+      startupErrors: Math.round(incidents.length * 0.2),
+      botErrors: Math.round(incidents.length * 0.1),
+      humanErrors: Math.round(incidents.length * 0.9),
+      errorRate: Math.min(
+        1,
+        incidents.length /
+          Math.max(
+            1,
+            incidents.reduce((total, item) => total + item.affectedSessions, 0),
+          ),
+      ),
+    },
+  };
+  const projectionBase = {
+    entityType: "PROJECTION",
+    datasetVersion,
+    projectionVersion: "1.0",
+    materializationRevision,
+    requiredArchives: [],
+  };
+  const incidentsPk = `DATASET#${datasetVersion}#VIEW#INCIDENTS#ACTIVE`;
+  const overviewPk = `DATASET#${datasetVersion}#VIEW#OVERVIEW#${sourceDataset}#${day}`;
+  const metadata = {
+    availableIntervals: { [sourceDataset]: [{ start, end }] },
+    formulaVersions: {
+      incidents: "seed-carga-1.0",
+      overview: "seed-carga-1.0",
+    },
+    hotFrom: { [sourceDataset]: start },
+    projectionVersions: { incidents: "1.0", overview: "1.0" },
+  };
+
+  return [
+    {
+      pk: incidentsPk,
+      sk: "CURRENT",
+      ...projectionBase,
+      partition: "ACTIVE",
+      projectionPartitionKey: incidentsPk,
+      projectionKey: "INCIDENTS#ACTIVE",
+      payload: incidentPayload,
+      payloadFingerprint: sha256(incidentPayload),
+    },
+    {
+      pk: overviewPk,
+      sk: `T#${referenceNow.getTime()}`,
+      ...projectionBase,
+      partition: day,
+      projectionPartitionKey: overviewPk,
+      projectionKey: `OVERVIEW#${sourceDataset}`,
+      payload: overviewPayload,
+      payloadFingerprint: sha256(overviewPayload),
+    },
+    {
+      pk: "CONTROL#DATASET",
+      sk: "ACTIVE",
+      entityType: "ACTIVE_MANIFEST",
+      activeDatasetVersion: datasetVersion,
+      manifest: {
+        datasetVersion,
+        metadata,
+        fingerprint: sha256({ datasetVersion, metadata }),
+      },
+    },
+  ];
 }
 
 /* ---------- limpeza ---------- */
@@ -736,6 +989,12 @@ async function main() {
       `/monitoring/overview (fontes: ${MONITORING_SOURCES.join(", ")}).`,
   );
 
+  const versionedItems = buildVersionedItems(now, incidentes);
+  await batchWrite(OPERATIONAL_TABLE, versionedItems);
+  console.log(
+    `  ${versionedItems.length} itens do dataset versionado gravados (manifesto ACTIVE + projeções de incidentes e overview).`,
+  );
+
   console.log("\nPronto. Para o k6:");
   console.log(`  INCIDENT_COUNT=${total}`);
   console.log("\n⚠️  Os buckets são relativos ao INSTANTE do seed.");
@@ -751,9 +1010,7 @@ async function main() {
   console.log(
     "    as janelas logo após o seed; depois a API mostra o último snapshot retido",
   );
-  console.log(
-    "    com aviso STALE_SNAPSHOT, até o TTL removê-lo do DynamoDB.",
-  );
+  console.log("    com aviso STALE_SNAPSHOT, até o TTL removê-lo do DynamoDB.");
 }
 
 if (require.main === module) {
