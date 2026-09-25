@@ -13,6 +13,9 @@ const integrationGuidePath = path.join(
   "artefatos/sprint3/infraestrutura-integracao.md",
 );
 const pipeline = fs.readFileSync(pipelinePath, "utf8");
+const observabilityUserDataValidator = readIfPresent(
+  path.join(fullstackPath, "observability/aws/validate-user-data.sh"),
+);
 
 function readIfPresent(filePath) {
   return fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
@@ -587,6 +590,101 @@ function topLevelAttributeValues(source) {
   });
 }
 
+function directJsonencodePolicyStatement(source, policyName, sid) {
+  const uncommented = stripHclComments(source);
+  const localsMatch = topLevelOutsideStringMatch(uncommented, /^locals\s*\{/);
+  assert.ok(localsMatch, "Terraform imports must contain a locals block");
+  const localsBody = balancedContent(
+    uncommented,
+    localsMatch.index + localsMatch.text.lastIndexOf("{"),
+    "{",
+    "}",
+  );
+  assert.ok(localsBody, "Terraform imports locals block must be balanced");
+
+  const policies = topLevelAttributeValues(localsBody.content).filter(
+    (attribute) => attribute.name === policyName,
+  );
+  assert.equal(policies.length, 1, `missing unique ${policyName} local`);
+  const encodedMatch = /^jsonencode\s*\(/.exec(policies[0].value);
+  assert.ok(
+    encodedMatch,
+    `${policyName} must be a direct jsonencode expression`,
+  );
+  const encoded = balancedContent(
+    policies[0].value,
+    encodedMatch[0].lastIndexOf("("),
+    "(",
+    ")",
+  );
+  assert.ok(encoded, `${policyName} jsonencode expression must be balanced`);
+  const policySource = encoded.content.trim();
+  assert.equal(policySource[0], "{", `${policyName} must encode an object`);
+  const policy = balancedContent(policySource, 0, "{", "}");
+  assert.ok(policy, `${policyName} policy object must be balanced`);
+
+  const statementExpression = topLevelAttributeValues(policy.content).find(
+    (attribute) => attribute.name === "Statement",
+  )?.value;
+  assert.ok(statementExpression, `${policyName} must declare Statement`);
+  assert.equal(
+    statementExpression[0],
+    "[",
+    `${policyName} Statement must be a list`,
+  );
+  const statements = balancedContent(statementExpression, 0, "[", "]");
+  assert.ok(statements, `${policyName} Statement list must be balanced`);
+  const matching = directLiteralObjectList(
+    statements.content,
+    `${policyName} Statement`,
+  ).filter((statement) => {
+    const statementSid = topLevelAttributeValues(statement).find(
+      (attribute) => attribute.name === "Sid",
+    )?.value;
+    return statementSid === JSON.stringify(sid);
+  });
+  assert.equal(
+    matching.length,
+    1,
+    `${policyName} must contain unique Sid ${sid}`,
+  );
+  return new Map(
+    topLevelAttributeValues(matching[0]).map((attribute) => [
+      attribute.name,
+      attribute.value,
+    ]),
+  );
+}
+
+function directHclStringList(expression, context) {
+  assert.equal(expression?.[0], "[", `${context} must be a direct list`);
+  const list = balancedContent(expression, 0, "[", "]");
+  assert.ok(list, `${context} list must be balanced`);
+  assert.equal(
+    list.end,
+    expression.length,
+    `${context} must be only a direct list`,
+  );
+  const values = [];
+  let remainder = list.content;
+  for (const match of list.content.matchAll(/"((?:\\.|[^"\\])*)"/g)) {
+    values.push(JSON.parse(match[0]));
+    remainder = remainder.replace(match[0], "");
+  }
+  assert.match(remainder, /^[\s,]*$/, `${context} must contain only strings`);
+  return values;
+}
+
+function methodBody(source, methodName) {
+  const method = new RegExp(`\\basync\\s+${methodName}\\s*\\(`).exec(source);
+  assert.ok(method, `missing ${methodName} method`);
+  const openBrace = source.indexOf("{", method.index + method[0].length);
+  assert.notEqual(openBrace, -1, `${methodName} body must exist`);
+  const body = balancedContent(source, openBrace, "{", "}");
+  assert.ok(body, `${methodName} body must be balanced`);
+  return body.content;
+}
+
 function containerEnvironmentEntries(ecs) {
   const resource = topLevelOutsideStringMatch(
     ecs,
@@ -781,7 +879,7 @@ const observabilityValidationCommands = [
   ],
   [
     "standalone observability user-data rendering validation",
-    /^RENDER_AWS_ACCOUNT_ID=000000000000 RENDER_AWS_REGION=us-east-1 RENDER_GRAFANA_PASSWORD=ci-placeholder sh apps\/fullstack\/observability\/aws\/validate-user-data\.sh \/tmp\/view-show-user-data\.sh$/,
+    /^RENDER_AWS_ACCOUNT_ID=ci-account-id RENDER_AWS_REGION=us-east-1 RENDER_GRAFANA_PASSWORD=ci-placeholder sh apps\/fullstack\/observability\/aws\/validate-user-data\.sh \/tmp\/view-show-user-data\.sh$/,
   ],
 ];
 
@@ -823,16 +921,16 @@ test("fullstack Terraform can plan from the active AWS profile without required 
     .filter((name) => name.endsWith(".tf"))
     .map((name) => readIfPresent(path.join(fullstackPath, name)))
     .join("\n");
-  const namespaceBlock = /variable "deployment_namespace"\s*\{([\s\S]*?)^\}/m.exec(
-    variables,
-  )?.[1];
+  const namespaceBlock =
+    /variable "deployment_namespace"\s*\{([\s\S]*?)^\}/m.exec(variables)?.[1];
   assert.match(variables, /variable "deployment_namespace"/);
   assert.ok(namespaceBlock, "deployment_namespace must have a variable block");
-  assert.match(namespaceBlock, /default\s*=\s*"g05-s3"/);
-  assert.match(namespaceBlock, /var\.deployment_namespace == "g05-s3"/);
+  assert.match(namespaceBlock, /default\s*=\s*"view-show"/);
+  assert.match(namespaceBlock, /var\.deployment_namespace == "view-show"/);
   assert.doesNotMatch(variables, /variable "aws_account_id"/);
   assert.doesNotMatch(activeTerraform, /var\.aws_account_id/);
   assert.doesNotMatch(versions, /allowed_account_ids\s*=/);
+  assert.doesNotMatch(versions, /248880318395/);
   assert.match(versions, /Stack\s*=\s*"g05-sprint3-entrega"/);
   assert.match(versions, /ManagedBy\s*=\s*"terraform"/);
 
@@ -873,10 +971,194 @@ test("fullstack Terraform can plan from the active AWS profile without required 
     );
   }
 
-  assert.match(names, /nome_log_group\s*=\s*"\/ecs\/\$\{local\.nome_repositorio_ecr\}"/);
+  assert.match(
+    names,
+    /nome_log_group\s*=\s*"\/ecs\/\$\{local\.nome_repositorio_ecr\}"/,
+  );
   assert.match(names, /nome_api_gateway\s*=\s*"\$\{local\.nome_servico\}-tls"/);
-  assert.doesNotMatch(activeTerraform, /var\.nome_/);
-  assert.doesNotMatch(activeTerraform, /variable "nome_/);
+  const coreTerraform = activeTerraform.replace(
+    readIfPresent(path.join(fullstackPath, "ingestion-variables.tf")),
+    "",
+  );
+  assert.doesNotMatch(coreTerraform, /var\.nome_/);
+  assert.doesNotMatch(coreTerraform, /variable "nome_/);
+});
+
+test("ingestion-only physical names derive from the deployment namespace", () => {
+  const ingestionVariables = readIfPresent(
+    path.join(fullstackPath, "ingestion-variables.tf"),
+  );
+  const ingestionTerraform = fs
+    .readdirSync(fullstackPath)
+    .filter((name) => name.startsWith("ingestion-") && name.endsWith(".tf"))
+    .map((name) => readIfPresent(path.join(fullstackPath, name)))
+    .join("\n");
+  const network = readIfPresent(path.join(fullstackPath, "network.tf"));
+
+  for (const variableName of [
+    "nome_repositorio_ecr_ingestao",
+    "nome_bucket_ingestao",
+    "nome_database_glue_ingestao",
+    "nome_workgroup_athena_ingestao",
+    "nome_fila_analysis",
+    "nome_fila_analysis_dlq",
+    "nome_fila_scheduler_dlq_ingestao",
+    "nome_segredo_snapshot_mysql_ingestao",
+    "nome_segredo_live_mysql_ingestao",
+    "namespace_metricas_ingestao",
+  ]) {
+    const block = new RegExp(
+      `variable "${variableName}"\\s*\\{([\\s\\S]*?)^\\}`,
+      "m",
+    ).exec(ingestionVariables)?.[1];
+    assert.ok(block, `${variableName} must have a variable block`);
+    assert.match(block, /default\s*=\s*null/);
+    assert.match(block, /nullable\s*=\s*true/);
+  }
+
+  for (const namespaceDerivedLocal of [
+    /ingestion_name_prefix\s*=\s*"\$\{var\.deployment_namespace\}-ingestion"/,
+    /ingestion_ecr_repository\s*=\s*coalesce\(var\.nome_repositorio_ecr_ingestao, "\$\{local\.ingestion_name_prefix\}"\)/,
+    /ingestion_glue_database\s*=\s*coalesce\(var\.nome_database_glue_ingestao, "\$\{replace\(var\.deployment_namespace, "-", "_"\)\}_ingestion"\)/,
+    /ingestion_workgroup\s*=\s*coalesce\(var\.nome_workgroup_athena_ingestao, "\$\{local\.ingestion_name_prefix\}"\)/,
+    /ingestion_analysis_queue\s*=\s*coalesce\(var\.nome_fila_analysis, "\$\{local\.ingestion_name_prefix\}-analysis"\)/,
+    /ingestion_analysis_dlq\s*=\s*coalesce\(var\.nome_fila_analysis_dlq, "\$\{local\.ingestion_name_prefix\}-analysis-dlq"\)/,
+    /ingestion_scheduler_dlq\s*=\s*coalesce\(var\.nome_fila_scheduler_dlq_ingestao, "\$\{local\.ingestion_name_prefix\}-scheduler-dlq"\)/,
+    /ingestion_scheduler_group\s*=\s*local\.ingestion_name_prefix/,
+    /ingestion_backfill_family\s*=\s*"\$\{local\.ingestion_name_prefix\}-backfill"/,
+    /ingestion_sync_family\s*=\s*"\$\{local\.ingestion_name_prefix\}-sync"/,
+    /ingestion_metrics_namespace\s*=\s*coalesce\(\s*var\.namespace_metricas_ingestao,\s*"\$\{var\.deployment_namespace\}\/Ingestion",?\s*\)/,
+  ]) {
+    assert.match(ingestionVariables, namespaceDerivedLocal);
+  }
+
+  assert.match(
+    ingestionVariables,
+    /ingestion_default_bucket_name\s*=\s*"\$\{local\.ingestion_name_prefix\}-\$\{data\.aws_caller_identity\.atual\.account_id\}-\$\{data\.aws_region\.atual\.name\}"/,
+  );
+  assert.match(
+    ingestionVariables,
+    /ingestion_bucket_name\s*=\s*local\.ingestion_default_bucket_name/,
+  );
+  assert.match(
+    ingestionVariables,
+    /ingestion_name_overrides_match_namespace\s*=\s*alltrue/,
+  );
+  assert.match(
+    ingestionVariables,
+    /var\.namespace_metricas_ingestao\s*==\s*null\s*\|\|\s*startswith\(var\.namespace_metricas_ingestao, "\$\{var\.deployment_namespace\}\/"\)/,
+  );
+  assert.match(
+    ingestionVariables,
+    /condition\s*=\s*var\.nome_bucket_ingestao\s*==\s*null/,
+  );
+  assert.match(network, /name\s*=\s*"\$\{local\.ingestion_name_prefix\}-sg"/);
+  assert.doesNotMatch(
+    ingestionTerraform +
+      network +
+      readIfPresent(
+        path.join(fullstackPath, "scripts", "ensure-ingestion-bucket.mjs"),
+      ),
+    /view-show-ingestion|view_show_ingestion|data-ingestion-(?:backfill|sync|scheduler|service|sg)|view-show-analysis/,
+  );
+  assert.doesNotMatch(
+    ingestionTerraform,
+    /namespace\s*=\s*var\.namespace_metricas_ingestao/,
+  );
+});
+
+test("Scheduler state is owned by the application and its identity reaches the API", () => {
+  const schedulerSource = readIfPresent(
+    path.join(fullstackPath, "ingestion-scheduler.tf"),
+  );
+  const ingestionEcsSource = readIfPresent(
+    path.join(fullstackPath, "ingestion-ecs.tf"),
+  );
+  const apiEcsSource = readIfPresent(path.join(fullstackPath, "ecs.tf"));
+
+  assert.match(schedulerSource, /ignore_changes\s*=\s*\[state\]/);
+  assert.doesNotMatch(ingestionEcsSource, /LIVE_SYNC_ENABLED/);
+  assert.match(apiEcsSource, /INGESTION_SCHEDULER_GROUP_NAME/);
+  assert.match(apiEcsSource, /INGESTION_SCHEDULER_NAME/);
+});
+
+test("learner-lab resolves the ingestion image only after publishing it", () => {
+  const ingestionEcsSource = readIfPresent(
+    path.join(fullstackPath, "ingestion-ecs.tf"),
+  );
+
+  assert.match(
+    ingestionEcsSource,
+    /data\s+"aws_ecr_image"\s+"ingestion"\s*\{[\s\S]*?depends_on\s*=\s*\[\s*terraform_data\.ingestion_image\s*,?\s*\]/,
+  );
+});
+
+test("unrelated updates never replace the bastion when the rolling AMI advances", () => {
+  const bastionSource = readIfPresent(path.join(fullstackPath, "bastion.tf"));
+
+  assert.match(
+    bastionSource,
+    /resource\s+"aws_instance"\s+"bastion"[\s\S]*?lifecycle\s*\{[\s\S]*?ignore_changes\s*=\s*\[ami\]/,
+  );
+});
+
+test("production gives the API an explicit least-privilege ARGUS control policy", () => {
+  const apiEcsSource = readIfPresent(path.join(fullstackPath, "ecs.tf"));
+  const variablesSource = readIfPresent(
+    path.join(fullstackPath, "ingestion-variables.tf"),
+  );
+
+  assert.match(variablesSource, /variable "ecs_task_role_arn_api"/);
+  assert.match(
+    apiEcsSource,
+    /task_role_arn\s*=\s*local\.api_ecs_task_role_arn/,
+  );
+  assert.match(
+    apiEcsSource,
+    /resource "aws_iam_role_policy" "api_argus_live_sync"/,
+  );
+  for (const action of [
+    "dynamodb:GetItem",
+    "dynamodb:PutItem",
+    "scheduler:GetSchedule",
+    "scheduler:UpdateSchedule",
+    "iam:PassRole",
+  ]) {
+    assert.match(apiEcsSource, new RegExp(`"${action}"`));
+  }
+  assert.match(
+    apiEcsSource,
+    /Resource\s*=\s*aws_dynamodb_table\.operacional\.arn/,
+  );
+  assert.match(
+    apiEcsSource,
+    /Resource\s*=\s*aws_scheduler_schedule\.ingestion_sync\.arn/,
+  );
+  assert.match(
+    apiEcsSource,
+    /Resource\s*=\s*local\.ingestion_scheduler_execution_role_arn/,
+  );
+  assert.match(
+    apiEcsSource,
+    /"iam:PassedToService"\s*=\s*"scheduler\.amazonaws\.com"/,
+  );
+});
+
+test("ingestion Terraform test runs use the isolated namespace and current shared resources", () => {
+  for (const name of [
+    "ingestion_defaults.tftest.hcl",
+    "ingestion_production.tftest.hcl",
+  ]) {
+    const fixture = readIfPresent(path.join(fullstackPath, "tests", name));
+    assert.match(
+      fixture,
+      /variables\s*\{\s*deployment_namespace\s*=\s*"view-show"/,
+    );
+    assert.doesNotMatch(
+      fixture,
+      /monitoracao-operacional|data-ingestion-cluster/,
+    );
+  }
 });
 
 test("AWS observability stays opt-in and inside the isolated namespace", () => {
@@ -896,9 +1178,10 @@ test("AWS observability stays opt-in and inside the isolated namespace", () => {
     readIfPresent(path.join(fullstackPath, "outputs.tf")),
   );
 
-  const enabledBlock = /variable "observabilidade_habilitada"\s*\{([\s\S]*?)^\}/m.exec(
-    variables,
-  )?.[1];
+  const enabledBlock =
+    /variable "observabilidade_habilitada"\s*\{([\s\S]*?)^\}/m.exec(
+      variables,
+    )?.[1];
   assert.ok(enabledBlock, "observabilidade_habilitada must be declared");
   assert.match(enabledBlock, /type\s*=\s*bool/);
   assert.match(enabledBlock, /default\s*=\s*false/);
@@ -927,13 +1210,13 @@ test("AWS observability stays opt-in and inside the isolated namespace", () => {
     );
   }
 
-  assert.match(observability, /name\s*=\s*"\$\{local\.nome_observabilidade\}-sg"/);
+  assert.match(
+    observability,
+    /name\s*=\s*"\$\{local\.nome_observabilidade\}-sg"/,
+  );
   assert.match(observability, /Name\s*=\s*local\.nome_observabilidade/);
   assert.doesNotMatch(observability, /var\.nome_/);
-  assert.match(
-    ecs,
-    /OTEL_SERVICE_NAME"?,\s*value\s*=\s*local\.nome_container/,
-  );
+  assert.match(ecs, /OTEL_SERVICE_NAME"?,\s*value\s*=\s*local\.nome_container/);
   assert.match(
     ecs,
     /var\.observabilidade_habilitada\s*\?\s*"http:\/\/\$\{aws_instance\.observabilidade\[0\]\.private_ip\}:4318"\s*:\s*""/,
@@ -963,6 +1246,31 @@ test("AWS observability stays opt-in and inside the isolated namespace", () => {
   assert.match(passwordOutput, /sensitive\s*=\s*true/);
 });
 
+test("standalone observability validation renders every dashboard payload", () => {
+  for (const [variable, fileName, placeholder] of [
+    ["DASHBOARD_GZIP", "view-show-aws.json", "dashboard_gzip"],
+    [
+      "APPLICATION_DASHBOARD_GZIP",
+      "view-show-overview.json",
+      "application_dashboard_gzip",
+    ],
+    ["API_DASHBOARD_GZIP", "view-show-api.json", "api_dashboard_gzip"],
+  ]) {
+    assert.match(
+      observabilityUserDataValidator,
+      new RegExp(
+        `${variable}=\\$\\(encode_file [^\\n]*${fileName.replace(".", "\\.")}[^\\n]*\\)`,
+      ),
+    );
+    assert.ok(
+      observabilityUserDataValidator.includes(
+        "s|\\${" + placeholder + "}|${" + variable + "}|g",
+      ),
+      `${placeholder} must be replaced by ${variable}`,
+    );
+  }
+});
+
 test("fullstack Terraform accepts only us-east-1", () => {
   const variables = stripHclComments(
     readIfPresent(path.join(fullstackPath, "variables.tf")),
@@ -983,6 +1291,9 @@ test("dedicated VPC requires two AZs and never discovers the default VPC", () =>
   const vpc = stripHclComments(
     readIfPresent(path.join(fullstackPath, "vpc.tf")),
   );
+  const ingestionVariables = stripHclComments(
+    readIfPresent(path.join(fullstackPath, "ingestion-variables.tf")),
+  );
 
   assert.match(
     data,
@@ -994,14 +1305,28 @@ test("dedicated VPC requires two AZs and never discovers the default VPC", () =>
   );
   assert.match(vpc, /resource\s+"aws_vpc"\s+"principal"/);
   assert.match(vpc, /cidr_block\s*=\s*"10\.0\.0\.0\/16"/);
-  assert.doesNotMatch(data + vpc, /data\s+"aws_vpc"\s+"default"/);
+  assert.doesNotMatch(
+    data + vpc + ingestionVariables,
+    /data\s+"aws_(?:vpc|subnets)"\s+"default"/,
+  );
+  assert.match(
+    ingestionVariables,
+    /ingestion_vpc_id\s*=\s*aws_vpc\.principal\.id/,
+  );
+  assert.match(
+    ingestionVariables,
+    /ingestion_subnet_ids\s*=\s*values\(aws_subnet\.privada\)\[\*\]\.id/,
+  );
+  assert.match(ingestionVariables, /ingestion_assign_public_ip\s*=\s*false/);
 });
 
 test("cost output preserves the stack until an explicit destroy request", () => {
   const outputs = stripHclComments(
     readIfPresent(path.join(fullstackPath, "outputs.tf")),
   );
-  const costOutput = /output "aviso_custo"\s*\{([\s\S]*?)^\}/m.exec(outputs)?.[1];
+  const costOutput = /output "aviso_custo"\s*\{([\s\S]*?)^\}/m.exec(
+    outputs,
+  )?.[1];
 
   assert.ok(costOutput, "aviso_custo must exist");
   assert.match(costOutput, /preserv/i);
@@ -1012,19 +1337,22 @@ test("cost output preserves the stack until an explicit destroy request", () => 
 test("root README applies only the saved plan accepted by the create-only gate", () => {
   const readme = readIfPresent(rootReadmePath);
 
-  assert.match(readme, /estado legado[\s\S]*outra conta[\s\S]*não pode ser adotado/i);
+  assert.match(
+    readme,
+    /estado legado[\s\S]*outra conta[\s\S]*não pode ser adotado/i,
+  );
   assert.match(readme, /novo estado local[\s\S]*preserv/i);
   assert.match(
     readme,
-    /terraform -chdir=apps\/fullstack plan \\\n+\s+-input=false \\\n+\s+-out=\.terraform-artifacts\/g05-s3\.tfplan/,
+    /terraform -chdir=apps\/fullstack plan \\\n+\s+-input=false \\\n+\s+-out=\.terraform-artifacts\/view-show\.tfplan/,
   );
   assert.match(
     readme,
-    /terraform -chdir=apps\/fullstack show -json \\\n+\s+\.terraform-artifacts\/g05-s3\.tfplan \| \\\n+\s+node scripts\/ci\/validate-terraform-create-plan\.mjs/,
+    /terraform -chdir=apps\/fullstack show -json \\\n+\s+\.terraform-artifacts\/view-show\.tfplan \| \\\n+\s+node scripts\/ci\/validate-terraform-create-plan\.mjs/,
   );
   assert.match(
     readme,
-    /terraform -chdir=apps\/fullstack apply \\\n+\s+-input=false \\\n+\s+\.terraform-artifacts\/g05-s3\.tfplan/,
+    /terraform -chdir=apps\/fullstack apply \\\n+\s+-input=false \\\n+\s+\.terraform-artifacts\/view-show\.tfplan/,
   );
   assert.doesNotMatch(readme, /seguir primeiro a seção de migração/i);
 });
@@ -1041,7 +1369,10 @@ test("saved Terraform plans must pass the local create-plan gate before apply", 
   ].join("\n");
 
   assert.ok(fs.existsSync(validatorPath), "create-plan validator must exist");
-  assert.ok(validator.length > 0, "create-plan validator must be versioned source");
+  assert.ok(
+    validator.length > 0,
+    "create-plan validator must be versioned source",
+  );
   assert.match(
     operationalGuidance,
     /terraform show -json <saved plan> \| node scripts\/ci\/validate-terraform-create-plan\.mjs/,
@@ -1227,7 +1558,7 @@ test("isolated deployment guide rejects legacy state and records teardown state"
   );
   assert.match(
     guide,
-    /terraform plan \\\n+  -input=false \\\n+  -out=\.terraform-artifacts\/g05-s3\.tfplan/,
+    /terraform plan \\\n+  -input=false \\\n+  -out=\.terraform-artifacts\/view-show\.tfplan/,
   );
 });
 
@@ -1272,11 +1603,7 @@ test("Terraform describes federated runtime secrets without demo passwords", () 
 });
 
 test("production IaC does not expose the development-only example-data toggle", () => {
-  const deploymentContract = [
-    "variables.tf",
-    "amplify.tf",
-    "README.md",
-  ]
+  const deploymentContract = ["variables.tf", "amplify.tf", "README.md"]
     .map((name) => readIfPresent(path.join(fullstackPath, name)))
     .concat(readIfPresent(integrationGuidePath))
     .join("\n");
@@ -2424,3 +2751,738 @@ for (const inertScript of [
     );
   });
 }
+
+// Os dois testes abaixo existem porque `terraform validate` e `terraform test`
+// não conhecem os limites da API da AWS: os dois defeitos que eles travam
+// passaram por fmt, validate e 32 runs de teste, e só apareceram no apply
+// real, com a stack meio criada.
+
+test("security group descriptions stay ASCII, because CreateSecurityGroup rejects anything else", () => {
+  // api error InvalidParameterValue: Value (...) for parameter GroupDescription
+  // is invalid. Character sets beyond ASCII are not supported.
+  const offenders = [];
+  for (const file of fs.readdirSync(fullstackPath)) {
+    if (!file.endsWith(".tf")) continue;
+    const source = fs.readFileSync(path.join(fullstackPath, file), "utf8");
+    const blocks = source.split(/resource\s+"aws_security_group"\s+"/).slice(1);
+    for (const block of blocks) {
+      const body = block.slice(
+        0,
+        block.indexOf("\nresource ") === -1
+          ? undefined
+          : block.indexOf("\nresource "),
+      );
+      for (const [, value] of body.matchAll(/description\s*=\s*"([^"]*)"/g)) {
+        // eslint-disable-next-line no-control-regex
+        if (/[^\x00-\x7F]/.test(value)) offenders.push(`${file}: ${value}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test("container health check retries stay within the ECS maximum of 10", () => {
+  // ClientException: Health check retries must be less than or equal to the
+  // maximum allowed value 10 for container '...'
+  const offenders = [];
+  for (const file of fs.readdirSync(fullstackPath)) {
+    if (!file.endsWith(".tf")) continue;
+    const source = fs.readFileSync(path.join(fullstackPath, file), "utf8");
+    for (const [, value] of source.matchAll(/\bretries\s*=\s*(\d+)/g)) {
+      if (Number(value) > 10) offenders.push(`${file}: retries = ${value}`);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test("import CORS is identical, origin-bound, and reconciled in native and Learner Lab paths", () => {
+  const storage = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-storage.tf"),
+    "utf8",
+  );
+  const learnerScript = fs.readFileSync(
+    path.join(fullstackPath, "scripts/ensure-ingestion-bucket.mjs"),
+    "utf8",
+  );
+
+  assert.match(
+    storage,
+    /resource\s+"aws_s3_bucket_cors_configuration"\s+"ingestion"/,
+  );
+  assert.match(storage, /allowed_origins\s*=\s*\[local\.painel_url\]/);
+  assert.match(storage, /allowed_methods\s*=\s*\["PUT",\s*"HEAD"\]/);
+  assert.match(
+    storage,
+    /allowed_headers\s*=\s*\["content-type",\s*"x-amz-checksum-sha256"\]/,
+  );
+  assert.match(
+    storage,
+    /expose_headers\s*=\s*\["ETag",\s*"x-amz-checksum-sha256"\]/,
+  );
+  assert.doesNotMatch(storage, /allowed_origins\s*=\s*\[[^\]]*"\*"/);
+  assert.match(
+    storage,
+    /expected_bucket_owner\s*=\s*data\.aws_caller_identity\.atual\.account_id/,
+  );
+  assert.match(storage, /FRONTEND_ORIGIN\s*=\s*local\.painel_url/);
+  assert.match(learnerScript, /"FRONTEND_ORIGIN"/);
+  assert.match(learnerScript, /"put-bucket-cors"/);
+  assert.match(learnerScript, /"--expected-bucket-owner"/);
+});
+
+test("import runtime wires the complete API and fail-closed worker environment", () => {
+  const api = fs.readFileSync(path.join(fullstackPath, "ecs.tf"), "utf8");
+  const worker = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-ecs.tf"),
+    "utf8",
+  );
+
+  for (const name of [
+    "IMPORT_BUCKET",
+    "IMPORT_EXPECTED_BUCKET_OWNER",
+    "IMPORT_CURSOR_SECRET",
+    "IMPORT_INGESTION_CLUSTER_ARN",
+    "IMPORT_INGESTION_TASK_DEFINITION_ARN",
+    "IMPORT_INGESTION_SUBNET_IDS",
+    "IMPORT_INGESTION_SECURITY_GROUP_ID",
+    "IMPORT_INGESTION_CONTAINER_NAME",
+    "IMPORT_CANONICAL_FIRST_ENABLED",
+  ]) {
+    assert.match(api, new RegExp(`name = "${name}"`));
+  }
+  assert.match(
+    worker,
+    /name = "ARCHIVE_BUCKET_OWNER", value = data\.aws_caller_identity\.atual\.account_id/,
+  );
+  assert.match(
+    worker,
+    /name = "INGESTION_DISK_BUDGET_BYTES", value = tostring\(local\.ingestion_snapshot_disk_budget_bytes\)/,
+  );
+  assert.match(worker, /name = "IMPORT_HOT_MATERIALIZATION_ENABLED"/);
+  assert.match(worker, /name = "ACTIVATE_CANDIDATE", value = "false"/);
+  assert.doesNotMatch(worker, /name = "ACTIVATE_CANDIDATE", value = "true"/);
+  assert.match(
+    worker,
+    /ephemeral_storage[\s\S]*?size_in_gib\s*=\s*var\.ingestion_backfill_ephemeral_storage_gib/,
+  );
+  assert.match(
+    worker,
+    /resource\s+"aws_ecs_task_definition"\s+"ingestion_import"/,
+  );
+  assert.match(worker, /command\s*=\s*\["import-dump"\]/);
+});
+
+test("import IAM is production-only and scopes ECS launch and PassRole resources", () => {
+  const imports = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-imports.tf"),
+    "utf8",
+  );
+  const variables = fs.readFileSync(
+    path.join(fullstackPath, "variables.tf"),
+    "utf8",
+  );
+  const importRepository = fs.readFileSync(
+    path.join(
+      repositoryRoot,
+      "apps/backend/api/src/modules/imports/adapters/dynamodb-import-repository.ts",
+    ),
+    "utf8",
+  );
+  const importRecords = directJsonencodePolicyStatement(
+    imports,
+    "api_import_policy",
+    "ImportRecordsAndControl",
+  );
+  const importRecordActions = directHclStringList(
+    importRecords.get("Action"),
+    "ImportRecordsAndControl Action",
+  );
+
+  assert.match(
+    variables,
+    /variable\s+"api_task_role_arn"[\s\S]*?default\s*=\s*null[\s\S]*?nullable\s*=\s*true/,
+  );
+  assert.match(
+    imports,
+    /resource\s+"aws_iam_role_policy"\s+"api_import"[\s\S]*?count\s*=\s*local\.ingestion_is_production\s*\?\s*1\s*:\s*0/,
+  );
+  assert.match(imports, /"ecs:RunTask"/);
+  assert.match(imports, /aws_ecs_task_definition\.ingestion_import\.arn/);
+  assert.match(imports, /"ecs:DescribeTasks"/);
+  assert.match(imports, /task\/\$\{aws_ecs_cluster\.principal\.name\}\/\*/);
+  assert.match(imports, /"iam:PassRole"/);
+  assert.match(
+    imports,
+    /Sid\s*=\s*"DenyOtherImportTasks"[\s\S]*?Action\s*=\s*\["ecs:RunTask"\][\s\S]*?NotResource\s*=\s*\[aws_ecs_task_definition\.ingestion_import\.arn\]/,
+  );
+  assert.match(
+    imports,
+    /Sid\s*=\s*"DenyOtherPassedRoles"[\s\S]*?Action\s*=\s*\["iam:PassRole"\][\s\S]*?NotResource\s*=\s*distinct\(\[local\.ingestion_ecs_execution_role_arn, local\.ingestion_import_task_role_arn\]\)/,
+  );
+  assert.match(imports, /local\.ingestion_ecs_execution_role_arn/);
+  assert.match(imports, /local\.ingestion_import_task_role_arn/);
+  for (const leadingKey of [
+    "IMPORTS",
+    "CONTROL#IMPORT",
+    "IMPORT_IDEMPOTENCY#*",
+    "IMPORT_RESTART#*",
+    "IMPORT_COMPLETION#*",
+  ]) {
+    assert.ok(imports.includes(`"${leadingKey}"`));
+  }
+  assert.match(imports, /"s3:GetObjectVersion"/);
+  assert.match(imports, /staging\/imports\/\*/);
+  assert.match(imports, /dumps\/\*/);
+  assert.deepEqual(
+    new Set(importRecordActions),
+    new Set([
+      "dynamodb:ConditionCheckItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:Query",
+      "dynamodb:UpdateItem",
+    ]),
+  );
+  assert.equal(
+    importRecordActions.includes("dynamodb:TransactWriteItems"),
+    false,
+  );
+  for (const methodName of ["recordCompletionReplay", "recordRestartReplay"]) {
+    assert.match(
+      methodBody(importRepository, methodName),
+      /\bConditionCheck\s*:/,
+    );
+  }
+  assert.match(imports, /"ForAllValues:StringLike"/);
+  assert.match(imports, /"ForAnyValue:StringNotLike"/);
+  assert.match(imports, /"CANDIDATE#DATASET#\*"/);
+  assert.match(imports, /"CONTROL#DATASET"/);
+  assert.match(
+    imports,
+    /Sid\s*=\s*"DenyActiveManifestWrites"[\s\S]*?NotAction\s*=\s*\["dynamodb:GetItem"\]/,
+  );
+  assert.match(
+    imports,
+    /Sid\s*=\s*"DenyUnapprovedCandidateActions"[\s\S]*?NotAction\s*=\s*local\.import_dynamodb_permitted_actions/,
+  );
+  assert.match(
+    imports,
+    /import_readable_leading_keys\s*=\s*concat\([\s\S]*?local\.import_mutable_leading_keys,[\s\S]*?\["CONTROL#DATASET"\]/,
+  );
+  assert.match(imports, /Sid\s*=\s*"DenyReadsOutsideImportNamespaces"/);
+  assert.match(imports, /Sid\s*=\s*"DenyReadsWithoutLeadingKeys"/);
+  assert.match(
+    imports,
+    /Sid\s*=\s*"DenyScanOperationalData"[\s\S]*?Action\s*=\s*\["dynamodb:Scan"\][\s\S]*?\$\{local\.ingestion_table_arn\}\/index\/\*/,
+  );
+  assert.match(
+    imports,
+    /Sid\s*=\s*"DenyNonQueryIndexActions"[\s\S]*?NotAction\s*=\s*\["dynamodb:Query"\][\s\S]*?\$\{local\.ingestion_table_arn\}\/index\/\*/,
+  );
+  assert.match(
+    imports,
+    /Sid\s*=\s*"DenyQueryOutsidePendingOutboxIndex"[\s\S]*?Action\s*=\s*\["dynamodb:Query"\][\s\S]*?NotResource\s*=\s*\[local\.ingestion_table_arn,\s*"\$\{local\.ingestion_table_arn\}\/index\/outbox-pending-index"\]/,
+  );
+  assert.match(imports, /"s3:GetBucketVersioning"/);
+  assert.doesNotMatch(imports, /"dynamodb:TransactGetItems"/);
+  assert.doesNotMatch(imports, /"dynamodb:BatchWriteItem"/);
+  assert.doesNotMatch(
+    imports,
+    /"Action"\s*:\s*\[(?:.|\n)*?"(?:ecs:RunTask|ecs:DescribeTasks|iam:PassRole)"(?:.|\n)*?"Resource"\s*:\s*"\*"/,
+  );
+  assert.doesNotMatch(imports, /Resource\s*=\s*(?:"\*"|\[\s*"\*"\s*\])/);
+  assert.doesNotMatch(imports, /ACTIVATE_CANDIDATE\s*=\s*true/);
+});
+
+test("API dataset activation IAM is least-privilege and isolated from upload records", () => {
+  const imports = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-imports.tf"),
+    "utf8",
+  );
+  const reads = directJsonencodePolicyStatement(
+    imports,
+    "api_import_policy",
+    "ReadDatasetActivationRecords",
+  );
+  const writes = directJsonencodePolicyStatement(
+    imports,
+    "api_import_policy",
+    "ActivateDatasetAtomically",
+  );
+  const projectionReads = directJsonencodePolicyStatement(
+    imports,
+    "api_import_policy",
+    "ReadActiveDatasetProjections",
+  );
+
+  assert.deepEqual(
+    new Set(
+      directHclStringList(reads.get("Action"), "activation read actions"),
+    ),
+    new Set(["dynamodb:GetItem"]),
+  );
+  assert.deepEqual(
+    new Set(
+      directHclStringList(writes.get("Action"), "activation write actions"),
+    ),
+    new Set(["dynamodb:ConditionCheckItem", "dynamodb:PutItem"]),
+  );
+  assert.deepEqual(
+    new Set(
+      directHclStringList(
+        projectionReads.get("Action"),
+        "active projection read actions",
+      ),
+    ),
+    new Set(["dynamodb:GetItem", "dynamodb:Query"]),
+  );
+  assert.match(
+    reads.get("Condition"),
+    /"DATASET#\*#INGESTION#PROJECTION_FENCE"/,
+  );
+  assert.doesNotMatch(reads.get("Condition"), /"DATASET#\*"/);
+  assert.match(
+    projectionReads.get("Condition"),
+    /"dynamodb:LeadingKeys"\s*=\s*\["DATASET#\*#VIEW#\*"\]/,
+  );
+  for (const leadingKey of [
+    "CONTROL#DATASET",
+    "CANDIDATE#DATASET#*",
+    "DATASET#*",
+    "DATASET_ACTIVATION_IDEMPOTENCY#*",
+    "AUDIT#DATASET_ACTIVATION",
+  ]) {
+    assert.ok(imports.includes(`"${leadingKey}"`), leadingKey);
+  }
+  assert.doesNotMatch(
+    writes.get("Action"),
+    /DeleteItem|UpdateItem|BatchWriteItem|TransactWriteItems/,
+  );
+});
+
+test("import worker IAM covers the real archive staging layout without broad staging access", () => {
+  const imports = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-imports.tf"),
+    "utf8",
+  );
+  const archiveStatement =
+    imports.match(
+      /\{\s*Sid\s*=\s*"UseArchiveStagingObjects"[\s\S]*?\n\s*\},/,
+    )?.[0] ?? "";
+  const archivePattern = "staging/run_id=*/dataset=*/date=*/*.parquet";
+  const archiveKey =
+    "staging/run_id=run_import_01K5/dataset=alarm/date=2026-09-17/" +
+    `${"a".repeat(64)}.parquet`;
+  const wildcardMatches = (pattern, value) => {
+    const escaped = pattern
+      .split("*")
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join(".*");
+    return new RegExp(`^${escaped}$`).test(value);
+  };
+
+  assert.notEqual(archiveStatement, "");
+  assert.ok(
+    imports.includes(`\${local.ingestion_bucket_arn}/${archivePattern}`),
+  );
+  for (const action of [
+    "s3:AbortMultipartUpload",
+    "s3:GetObject",
+    "s3:GetObjectVersion",
+    "s3:PutObject",
+  ]) {
+    assert.ok(archiveStatement.includes(`"${action}"`));
+  }
+  assert.doesNotMatch(
+    archiveStatement,
+    /s3:(?:DeleteObject|ListMultipartUploadParts)/,
+  );
+  assert.ok(wildcardMatches(archivePattern, archiveKey));
+  assert.equal(
+    wildcardMatches(
+      archivePattern,
+      "staging/imports/imp_01K59Z5XE00000000000000000/source",
+    ),
+    false,
+  );
+  assert.equal(
+    wildcardMatches(
+      archivePattern,
+      `staging/run_id=run/dataset=alarm/date=2026-09-17/${"a".repeat(64)}.sql`,
+    ),
+    false,
+  );
+  assert.doesNotMatch(imports, /ingestion_bucket_arn\}\/staging\/\*/);
+});
+
+test("canonical import staging IAM is exact and grants only runtime object actions", () => {
+  const imports = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-imports.tf"),
+    "utf8",
+  );
+  const statement = directJsonencodePolicyStatement(
+    imports,
+    "ingestion_import_policy",
+    "UseCanonicalArchiveStagingObjects",
+  );
+
+  assert.deepEqual(
+    new Set(
+      directHclStringList(
+        statement.get("Action"),
+        "canonical staging actions",
+      ),
+    ),
+    new Set([
+      "s3:AbortMultipartUpload",
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:PutObject",
+    ]),
+  );
+  assert.deepEqual(
+    directHclStringList(
+      statement.get("Resource"),
+      "canonical staging resources",
+    ),
+    ["${local.ingestion_bucket_arn}/staging/canonical/*"],
+  );
+  assert.doesNotMatch(
+    statement.get("Action") ?? "",
+    /s3:(?:DeleteObject|ListBucket|ListMultipartUploadParts)/,
+  );
+  assert.doesNotMatch(imports, /ingestion_bucket_arn\}\/staging\/\*/);
+});
+
+test("Athena result IAM separates bucket discovery, prefix listing, and object multipart access", () => {
+  const imports = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-imports.tf"),
+    "utf8",
+  );
+  const statement = (sid) =>
+    imports.match(
+      new RegExp(`\\{\\s*Sid\\s*=\\s*"${sid}"[\\s\\S]*?\\n\\s*\\},`),
+    )?.[0] ?? "";
+  const location = statement("LocateAthenaResultsBucket");
+  const listing = statement("ListAthenaResultsPrefix");
+  const objects = statement("UseAthenaResultObjects");
+  const wildcardMatches = (pattern, value) => {
+    const escaped = pattern
+      .split("*")
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join(".*");
+    return new RegExp(`^${escaped}$`).test(value);
+  };
+  const listPatterns = ["athena-results/", "athena-results/*"];
+  const objectPattern = "athena-results/*";
+
+  assert.notEqual(location, "");
+  assert.match(location, /"s3:GetBucketLocation"/);
+  assert.match(location, /Resource\s*=\s*\[local\.ingestion_bucket_arn\]/);
+  assert.notEqual(listing, "");
+  assert.match(listing, /"s3:ListBucket"/);
+  assert.match(listing, /"s3:prefix"/);
+  assert.ok(listing.includes("local.ingestion_athena_results_prefix"));
+  assert.ok(listing.includes(`\${local.ingestion_athena_results_prefix}*`));
+  assert.notEqual(objects, "");
+  for (const action of [
+    "s3:AbortMultipartUpload",
+    "s3:GetObject",
+    "s3:GetObjectVersion",
+    "s3:ListMultipartUploadParts",
+    "s3:PutObject",
+  ]) {
+    assert.ok(objects.includes(`"${action}"`));
+  }
+  assert.ok(
+    objects.includes(
+      `\${local.ingestion_bucket_arn}/\${local.ingestion_athena_results_prefix}*`,
+    ),
+  );
+  assert.ok(
+    listPatterns.some((pattern) => wildcardMatches(pattern, "athena-results/")),
+  );
+  assert.ok(
+    listPatterns.some((pattern) =>
+      wildcardMatches(pattern, "athena-results/query-id.csv"),
+    ),
+  );
+  for (const denied of [
+    "athena-resultsevil/query-id.csv",
+    "staging/run_id=run/dataset=alarm/date=2026-09-17/part.parquet",
+    "canonical/query-id.csv",
+  ]) {
+    assert.equal(
+      listPatterns.some((pattern) => wildcardMatches(pattern, denied)),
+      false,
+    );
+    assert.equal(wildcardMatches(objectPattern, denied), false);
+  }
+  assert.doesNotMatch(
+    objects,
+    /staging\/run_id|staging\/imports|canonical\/|dumps\//,
+  );
+});
+
+test("production role ARNs are concrete and bound to the active partition and account", () => {
+  const data = fs.readFileSync(path.join(fullstackPath, "data.tf"), "utf8");
+  const variables = fs.readFileSync(
+    path.join(fullstackPath, "variables.tf"),
+    "utf8",
+  );
+  const ingestionVariables = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-variables.tf"),
+    "utf8",
+  );
+
+  assert.match(data, /data\s+"aws_partition"\s+"current"/);
+  assert.match(
+    ingestionVariables,
+    /ingestion_expected_role_arn_pattern\s*=\s*"\^arn:\$\{data\.aws_partition\.current\.partition\}:iam::\$\{data\.aws_caller_identity\.atual\.account_id\}:role\//,
+  );
+  assert.match(variables, /\[A-Za-z0-9\+=,.@_-\]\{1,64\}/);
+  assert.doesNotMatch(variables, /\^arn:\[\^:\]\+:iam::/);
+  assert.doesNotMatch(ingestionVariables, /\^arn:\[\^:\]\+:iam::/);
+});
+
+test("import alarms consume stable Task 8 events and existing worker EMF without a new scheduler", () => {
+  const imports = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-imports.tf"),
+    "utf8",
+  );
+
+  assert.match(imports, /import_reconciliation_failed/);
+  assert.match(imports, /import_active_upload_age/);
+  assert.match(imports, /\$\.active_upload_age_seconds/);
+  assert.match(imports, /command\s*=\s*"import-dump"/);
+  assert.match(imports, /source_mode\s*=\s*"snapshot"/);
+  assert.match(imports, /status\s*=\s*"FAILED"/);
+  assert.doesNotMatch(
+    imports,
+    /resource\s+"aws_(?:lambda_function|scheduler_schedule)"/,
+  );
+});
+
+test("import runbook output contains operational metadata but never cursor material", () => {
+  const outputs = fs.readFileSync(
+    path.join(fullstackPath, "outputs.tf"),
+    "utf8",
+  );
+  const importsBlock =
+    outputs.match(
+      /\n\s*imports\s*=\s*\{[\s\S]*?\n\s*\}\n\s*runtime\s*=/,
+    )?.[0] ?? "";
+
+  assert.notEqual(importsBlock, "");
+  assert.match(importsBlock, /cors_origin\s*=\s*local\.painel_url/);
+  assert.match(
+    importsBlock,
+    /expected_bucket_owner\s*=\s*data\.aws_caller_identity\.atual\.account_id/,
+  );
+  assert.doesNotMatch(
+    importsBlock,
+    /random_password|cursor_secret|IMPORT_CURSOR_SECRET/,
+  );
+});
+
+test("snapshot import infrastructure fixes resilient defaults and safe disposable MySQL tuning", () => {
+  const ecs = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-ecs.tf"),
+    "utf8",
+  );
+  const variables = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-variables.tf"),
+    "utf8",
+  );
+  const observability = [
+    "ingestion-imports.tf",
+    "ingestion-observability.tf",
+  ]
+    .map((file) => fs.readFileSync(path.join(fullstackPath, file), "utf8"))
+    .join("\n");
+
+  assert.match(
+    variables,
+    /variable "ingestion_snapshot_page_size"[\s\S]*?default\s*=\s*500/,
+  );
+  assert.match(
+    variables,
+    /variable "ingestion_snapshot_prepare_enabled"[\s\S]*?default\s*=\s*false/,
+  );
+  for (const [name, value] of Object.entries({
+    PAGE_SIZE: "var.ingestion_snapshot_page_size",
+    MYSQL_CONNECT_TIMEOUT_SECONDS: "10",
+    MYSQL_READ_TIMEOUT_SECONDS: "300",
+    MYSQL_WRITE_TIMEOUT_SECONDS: "300",
+    MYSQL_DDL_TIMEOUT_SECONDS: "1800",
+    MYSQL_QUERY_MAX_ATTEMPTS: "4",
+    MYSQL_QUERY_RETRY_BASE_MS: "250",
+    MYSQL_QUERY_RETRY_MAX_MS: "4000",
+    MYSQL_SNAPSHOT_PREPARE_ENABLED: "var.ingestion_snapshot_prepare_enabled",
+  })) {
+    assert.match(
+      ecs,
+      new RegExp(`name\\s*=\\s*"${name}"[\\s\\S]*?value\\s*=\\s*(?:tostring\\()?\\s*"?${value.replaceAll(".", "\\.")}"?`),
+      name,
+    );
+  }
+
+  for (const option of [
+    "--innodb-buffer-pool-size=3221225472",
+    "--innodb-redo-log-capacity=1073741824",
+    "--innodb-flush-log-at-trx-commit=2",
+    "--skip-log-bin",
+    "--sync-binlog=0",
+    "--max-allowed-packet=1073741824",
+    "--net-read-timeout=600",
+    "--net-write-timeout=600",
+    "--wait-timeout=600",
+    "--performance-schema=OFF",
+  ]) {
+    assert.ok(ecs.includes(`"${option}"`), option);
+  }
+  assert.doesNotMatch(ecs, /--innodb-doublewrite=0|--innodb-redo-log-enabled=OFF/);
+  assert.match(variables, /mysql@sha256:[0-9a-f]{64}/);
+  assert.match(
+    variables,
+    /variable "ingestion_backfill_ephemeral_storage_gib"[\s\S]*?default\s*=\s*200/,
+  );
+
+  for (const [resource, metric] of Object.entries({
+    ingestion_mysql_retries: "MySqlRetries",
+    ingestion_mysql_preflight_failures: "MySqlPreflightFailures",
+    ingestion_mysql_page_duration: "MySqlPageDurationMs",
+  })) {
+    assert.match(
+      observability,
+      new RegExp(`resource "aws_cloudwatch_metric_alarm" "${resource}"[\\s\\S]*?metric_name\\s*=\\s*"${metric}"`),
+      resource,
+    );
+  }
+});
+
+test("canonical-first rollout is default-off, explicitly approved in production, and operationally guarded", () => {
+  const apiEcs = fs.readFileSync(path.join(fullstackPath, "ecs.tf"), "utf8");
+  const ingestionEcs = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-ecs.tf"),
+    "utf8",
+  );
+  const variables = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-variables.tf"),
+    "utf8",
+  );
+  const storage = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-storage.tf"),
+    "utf8",
+  );
+  const observability = fs.readFileSync(
+    path.join(fullstackPath, "ingestion-observability.tf"),
+    "utf8",
+  );
+  const outputs = fs.readFileSync(path.join(fullstackPath, "outputs.tf"), "utf8");
+  const apiConfig = fs.readFileSync(
+    path.join(repositoryRoot, "apps/backend/api/src/config.ts"),
+    "utf8",
+  );
+  const reconciler = fs.readFileSync(
+    path.join(
+      repositoryRoot,
+      "apps/backend/api/src/modules/imports/application/import-reconciler.ts",
+    ),
+    "utf8",
+  );
+
+  for (const name of [
+    "import_canonical_first_enabled",
+    "import_hot_materialization_enabled",
+    "import_canonical_first_production_approved",
+  ]) {
+    assert.match(
+      variables,
+      new RegExp(`variable "${name}"[\\s\\S]*?default\\s*=\\s*false`),
+      name,
+    );
+  }
+  assert.match(
+    variables,
+    /!local\.ingestion_is_production\s*\|\|\s*!var\.import_canonical_first_enabled\s*\|\|\s*var\.import_canonical_first_production_approved/,
+  );
+  assert.match(
+    apiEcs,
+    /name = "IMPORT_CANONICAL_FIRST_ENABLED", value = tostring\(var\.import_canonical_first_enabled\)/,
+  );
+  assert.match(
+    ingestionEcs,
+    /name = "IMPORT_HOT_MATERIALIZATION_ENABLED", value = tostring\(var\.import_hot_materialization_enabled\)/,
+  );
+  assert.match(
+    ingestionEcs,
+    /name = "INGESTION_DISK_BUDGET_BYTES", value = tostring\(local\.ingestion_snapshot_disk_budget_bytes\)/,
+  );
+  assert.equal(
+    (
+      ingestionEcs.match(
+        /name = "INGESTION_DISK_BUDGET_BYTES", value = tostring\(local\.ingestion_continuous_disk_budget_bytes\)/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.match(
+    ingestionEcs,
+    /name = "INGESTION_DISK_BUDGET_BYTES", value = tostring\(local\.ingestion_incremental_disk_budget_bytes\)/,
+  );
+  assert.match(apiConfig, /IMPORT_CANONICAL_FIRST_ENABLED:[\s\S]*?default\("false"\)/);
+  assert.match(
+    reconciler,
+    /record\.pipelineVersion === undefined[\s\S]*?reservePipeline[\s\S]*?canonicalFirstEnabled[\s\S]*?"canonical-v2"[\s\S]*?: "legacy-v1"/,
+  );
+
+  assert.match(storage, /"staging-canonical-expiration"/);
+  assert.match(storage, /prefix\s*=\s*"staging\/canonical\/"/);
+  assert.match(storage, /expiration_days\s*=\s*7/);
+  assert.match(storage, /abort_multipart_days\s*=\s*1/);
+  assert.doesNotMatch(
+    storage,
+    /prefix\s*=\s*local\.ingestion_canonical_prefix/,
+  );
+  assert.doesNotMatch(storage, /prefix\s*=\s*null/);
+  assert.match(storage, /ingestion_lifecycle_rules_isolated_from_canonical/);
+  assert.match(
+    variables,
+    /condition\s*=\s*local\.ingestion_lifecycle_rules_isolated_from_canonical/,
+  );
+  assert.equal((ingestionEcs.match(/ephemeral_storage\s*\{/g) ?? []).length, 5);
+  assert.match(
+    outputs,
+    /disk_budget_bytes\s*=\s*local\.ingestion_snapshot_disk_budget_bytes/,
+  );
+
+  for (const [resource, metric] of Object.entries({
+    ingestion_disk_usage_warning: "LocalDiskPeakBytes",
+    ingestion_disk_usage_critical: "LocalDiskPeakBytes",
+    ingestion_canonical_archive_failures: "ArchiveFailures",
+  })) {
+    assert.match(
+      observability,
+      new RegExp(`resource "aws_cloudwatch_metric_alarm" "${resource}"[\\s\\S]*?metric_name\\s*=\\s*"${metric}"`),
+      resource,
+    );
+  }
+  assert.match(observability, /ingestion_disk_usage_warning[\s\S]*?threshold\s*=\s*local\.ingestion_snapshot_disk_budget_bytes\s*\*\s*0\.80/);
+  assert.match(observability, /ingestion_disk_usage_critical[\s\S]*?threshold\s*=\s*local\.ingestion_snapshot_disk_budget_bytes\s*\*\s*0\.90/);
+  for (const resource of [
+    "ingestion_disk_usage_warning",
+    "ingestion_disk_usage_critical",
+  ]) {
+    const dimensions =
+      observability.match(
+        new RegExp(
+          `resource "aws_cloudwatch_metric_alarm" "${resource}"[\\s\\S]*?dimensions\\s*=\\s*\\{([\\s\\S]*?)\\n\\s*\\}`,
+        ),
+      )?.[1] ?? "";
+    assert.match(dimensions, /command\s*=\s*"import-dump"/);
+    assert.match(dimensions, /source_mode\s*=\s*"snapshot"/);
+    assert.doesNotMatch(dimensions, /status\s*=/);
+  }
+});

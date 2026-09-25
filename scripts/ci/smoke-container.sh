@@ -4,7 +4,7 @@ set -Eeuo pipefail
 image="${1:?usage: smoke-container.sh IMAGE}"
 attempts="${SMOKE_ATTEMPTS:-30}"
 delay_seconds="${SMOKE_DELAY_SECONDS:-1}"
-container_name="g05-s3-api-smoke-${CI_PIPELINE_ID:-local}-$$"
+container_name="view-show-api-smoke-${CI_PIPELINE_ID:-local}-$$"
 
 image_architecture="$(docker image inspect "$image" --format '{{.Architecture}}')"
 if [[ "$image_architecture" != "amd64" ]]; then
@@ -19,8 +19,20 @@ trap cleanup EXIT
 
 docker run --detach --name "$container_name" \
   --env NODE_ENV=test \
+  --env AWS_REGION=us-east-1 \
+  --env OPERATIONAL_TABLE_NAME=view-show-operacional-smoke \
+  --env INGESTION_SCHEDULER_GROUP_NAME=view-show-ingestion-smoke \
+  --env INGESTION_SCHEDULER_NAME=view-show-ingestion-sync-smoke \
   --env AUTH_COOKIE_SECRET=ci-smoke-cookie-secret-at-least-32-bytes \
   --env CURSOR_SECRET=ci-smoke-cursor-secret-at-least-32-bytes \
+  --env IMPORT_BUCKET=local-imports-smoke \
+  --env IMPORT_EXPECTED_BUCKET_OWNER=000000000000 \
+  --env IMPORT_CURSOR_SECRET=ci-smoke-import-cursor-secret-at-least-32-bytes \
+  --env IMPORT_INGESTION_CLUSTER_ARN=arn:aws:ecs:us-east-1:000000000000:cluster/local-ingestion \
+  --env IMPORT_INGESTION_TASK_DEFINITION_ARN=arn:aws:ecs:us-east-1:000000000000:task-definition/local-import:1 \
+  --env IMPORT_INGESTION_SUBNET_IDS=subnet-local-a \
+  --env IMPORT_INGESTION_SECURITY_GROUP_ID=sg-local-import \
+  --env IMPORT_INGESTION_CONTAINER_NAME=ingestion \
   "$image" >/dev/null
 
 for ((attempt = 1; attempt <= attempts; attempt += 1)); do

@@ -17,14 +17,17 @@ Alterações somente em frontend ou documentação não implantam o backend.
 
 ## Recursos utilizados
 
-- Conta AWS: `248880318395`
+- Conta AWS: a conta ativa do Learner Lab, confirmada por
+  `aws sts get-caller-identity`
 - Região: `us-east-1`
-- ECR: `monitoracao-api`
-- Cluster ECS: `data-ingestion-cluster`
-- Serviço ECS: `monitoracao-api-service`
-- Task definition: `monitoracao-api-task`
-- Container: `monitoracao-api-container`
-- Load Balancer: `data-ingestion-alb`
+- Namespace do Terraform: `view-show` (consulte
+  `terraform output -raw deployment_namespace`)
+- ECR: `view-show-api`
+- Cluster ECS: `view-show-cluster`
+- Serviço ECS: `view-show-api-service`
+- Task definition: `view-show-api-task`
+- Container: `view-show-api`
+- Load Balancer: `view-show-alb`
 - Ambiente protegido do GitLab: `aws-lab`
 
 ## Configuração inicial
@@ -58,7 +61,9 @@ As credenciais expiram sempre que o Lab é encerrado. Depois de iniciar um novo 
    aws sts get-caller-identity
    ```
 
-   A conta deve ser `248880318395` e a role deve conter `voclabs`.
+   Registre a conta retornada para a sessão atual e confirme que a role contém
+   `voclabs`. Não fixe um ID de conta no código ou no runbook: cada Learner Lab
+   pode usar uma conta diferente.
 
 3. Confirme que o `glab` está autenticado:
 
@@ -100,14 +105,14 @@ confirma que ainda representa o commit mais recente da `develop`.
 ## Como verificar se funcionou
 
 No GitLab, confirme que os três jobs terminaram com sucesso. Na AWS, o serviço
-`monitoracao-api-service` deve estar `ACTIVE`, sem tasks pendentes e com a quantidade
+`view-show-api-service` deve estar `ACTIVE`, sem tasks pendentes e com a quantidade
 esperada de tasks em execução.
 
-Teste também a rota pública:
+Teste também a rota pública usando a URL produzida pelo Terraform:
 
 ```bash
-curl --fail --silent --show-error \
-  http://data-ingestion-alb-1869738103.us-east-1.elb.amazonaws.com/health
+api_url="$(terraform -chdir=apps/fullstack output -raw api_url)"
+curl --fail --silent --show-error "${api_url}/health"
 ```
 
 Resposta esperada:
@@ -134,9 +139,11 @@ iniciou e está acessível em `docker:2375`.
 ### Rollback não confirmado
 
 Não inicie outro deploy. Verifique os eventos do serviço ECS, a task definition
-ativa, as tasks pendentes e os logs `/ecs/monitoracao-api`. Com credenciais válidas,
-restaure manualmente a revisão anterior somente depois de confirmar qual era a
-última revisão estável.
+ativa, as tasks pendentes e os logs `/ecs/view-show-api`. O comando exato para acompanhar
+os logs está em
+`terraform -chdir=apps/fullstack output -raw comando_logs`. Com credenciais
+válidas, restaure manualmente a revisão anterior somente depois de confirmar qual
+era a última revisão estável.
 
 ### Pipeline antigo na fila
 

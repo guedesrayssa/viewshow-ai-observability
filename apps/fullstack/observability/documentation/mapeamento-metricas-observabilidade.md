@@ -52,7 +52,7 @@
 
 1. **`apps/frontend`:** Aplicação web construída em **Next.js 16 (App Router)** e **React 19**, responsável por renderizar o painel de visualização de incidentes, gráficos temporais de QoE, evidências causais, eventos normalizados e monitoramento do pipeline de telemetria.
 2. **`apps/backend`:**
-   - **`apps/backend/api`:** Microsserviço de API HTTP construído em **Node.js (Express)**, responsável por servir o dashboard, autenticar usuários (`@globo.com`), orquestrar o diagnóstico causal através de agentes e modelos de linguagem (Amazon Bedrock / Claude 3 Haiku), acessar o **Amazon DynamoDB** (`monitoracao-operacional` e `monitoracao-golden-set`) e expor endpoints REST.
+   - **`apps/backend/api`:** Microsserviço de API HTTP construído em **Node.js (Express)**, responsável por servir o dashboard, autenticar usuários (`@globo.com`), orquestrar o diagnóstico causal através de agentes e modelos de linguagem (Amazon Bedrock / Claude 3 Haiku), acessar o **Amazon DynamoDB** (`view-show-operacional` e `view-show-golden-set`) e expor endpoints REST.
    - **`apps/backend/ingestion-data`:** Serviço em **Python (arquitetura hexagonal/DDD)** responsável pela ingestão de dados agregados e de telemetria do Argus/MySQL, controle de checkpoints e *leases*, normalização para schemas canônicos e gravação dos *read models* no DynamoDB.
 
 > [!IMPORTANT]
@@ -89,10 +89,13 @@
 │     bedrockService (com fallback).   │   - Endpoints do novo contrato:      │
 │   - Persistência DynamoDB com GSI    │     /overview, /events, /monitoring. │
 │     trace-index e PAY_PER_REQUEST.   │ • apps/backend/ingestion-data:       │
-│ • apps/fullstack/observability (LGTM Stack):   │   - Implementação das portas e CLI de│
-│   - Docker Compose com Grafana       │     sincronização periódica (15 min).│
-│     (3002), Prometheus (9090),       │   - Checkpoints e locks via DynamoDB.│
-│     Loki (3100) e Tempo (3200/4318). │   - Métricas de execução batch.      │
+│ • apps/backend/ingestion-data:       │   - Instrumentação OTel exportada para│
+│   - Backfill/sync, checkpoints,      │     o Tempo, após prova de operação. │
+│     leases e métricas EMF.            │                                     │
+│ • apps/fullstack/observability (LGTM Stack):   │                                     │
+│   - Docker Compose com Grafana       │                                     │
+│     (3002), Prometheus (9090),       │                                     │
+│     Loki (3100) e Tempo (3200/4318). │                                     │
 └──────────────────────────────────────┴──────────────────────────────────────┘
 ```
 
@@ -308,59 +311,46 @@ Buckets recomendados para o histograma de latência:
 
 ---
 
-## 5. Métricas de apps/backend/ingestion-data (Data Ingestion Service)
+## 5. Métricas de `apps/backend/ingestion-data` (ARGUS 2.0)
 
-&emsp; Mede a execução periódica do worker modular em Python responsável por transferir e consolidar os dados do Argus no DynamoDB.
+&emsp; Esta seção é canônica para a ingestão. O serviço batch já emite métricas
+EMF para CloudWatch; não se deve inventar uma família Prometheus paralela ou
+tornar a observabilidade local prova de operação AWS. As dimensões têm
+cardinalidade controlada: `command`, `status`, `source_mode` e, quando
+allowlisted, `dataset`.
 
-### 5.1 Vazão, Volume e Eficiência de Ingestão
+| Métrica EMF | Semântica | Dimensões |
+| --- | --- | --- |
+| `Runs` | uma execução por comando e terminal | `command`, `status`, `source_mode`, `dataset?` |
+| `RunDurationMs` | duração da execução | mesmas dimensões |
+| `RecordsRead` | registros físicos lidos | mesmas dimensões |
+| `RecordsWritten` | fatos/projeções efetivamente escritos | mesmas dimensões |
+| `RecordsRejected` | registros recusados pelo contrato | mesmas dimensões |
+| `RecordsUnchanged` | registros idempotentes sem nova escrita | mesmas dimensões |
 
-| Métrica / Nome Técnico | Tipo | Labels | Descrição |
-|:---|:---|:---|:---|
-| `ingestion_records_read_total` | Contador | `source_dataset` | Total de registros lidos da origem (ex.: `signal_bucket`, `live_active_15min`, `geo_hourly`). |
-| `ingestion_records_written_total` | Contador | `source_dataset` | Registros canônicos gravados na tabela `monitoracao-operacional`. |
-| `ingestion_records_unmodified_total` | Contador | `source_dataset` | Registros cujo `payloadHash` coincidiu com o estado anterior (escrita evitada). |
-| `ingestion_records_rate_per_minute` | Gauge | `worker`, `source_dataset` | Vazão efetiva de processamento de registros por minuto de execução. |
-| `ingestion_bytes_transferred_total` | Contador | `direction: read \| write` | Volume em bytes trafegado na rede durante a sincronização. |
+Os estados observáveis são `STARTING`, `RESTORING`, `VALIDATING`,
+`INGESTING`, `PROJECTING`, `ARCHIVING`, `ACTIVATING`, `PUBLISHING`,
+`SUCCEEDED`, `PARTIAL`, `FAILED` e `SKIPPED_LOCKED`. `PARTIAL` é
+esperado quando a ativação já ocorreu, mas SQS permanece pendente; o alarme e a
+operação devem encaminhar para `publish-outbox`, não para rollback.
 
-### 5.2 Latência por Etapa do Pipeline Batch (Meta RNF02)
+CloudWatch complementa o runtime com profundidade/idade de SQS e DLQs, schema
+drift, falhas de task, target Scheduler e idade da outbox. A fila principal e
+DLQs retêm mensagens por 14 dias. O Scheduler de sync nasce `DISABLED`; o
+controle operacional em runtime fica no registro DynamoDB
+`CONTROL#ARGUS`/`LIVE_SYNC`, que a aplicação usa para habilitar ou desabilitar
+o schedule. Nesta versão, o alarme de ausência de sync ainda é criado ou
+removido somente no deploy pela seed `scheduler_ingestao_habilitado`; o
+controle `CONTROL#ARGUS`/`LIVE_SYNC` não o cria nem o remove dinamicamente.
+Assim, habilitar o sync em runtime com a seed padrão `false` não cria esse
+alarme.
 
-| Métrica / Nome Técnico | Tipo | Labels | Descrição / SLA |
-|:---|:---|:---|:---|
-| `ingestion_pipeline_run_duration_seconds`| Histograma | `command: sync \| backfill` | Duração total da task ECS do ciclo. **Meta RNF02: ≤ 120 segundos** para disponibilidade do dado. |
-| `ingestion_stage_duration_seconds` | Histograma | `stage: read \| normalize \| detect \| write` | Tempo consumido individualmente em cada porta da arquitetura hexagonal. |
-| `ingestion_chunk_processing_seconds` | Histograma | `source_dataset` | Duração de processamento de cada chunk paginado por chave natural (sem `OFFSET`). |
-| `ingestion_projections_rebuild_seconds` | Histograma | `projection_name` | Tempo de reconstrução dos read models (`VIEW#OVERVIEW`, `VIEW#INCIDENTS`, etc.). |
+O dashboard deve mostrar disponibilidade baseada em `availableIntervals`, não
+em uma promessa de 12 meses. O catálogo de datasets é fechado em 23 tabelas
+ARGUS 2.0, incluindo `app_error`, `app_error_model`,
+`app_error_version`, `cdn_vod_shadow`, `finding_status_log`,
+`live_event_sde` e `live_event`.
 
-### 5.3 Frescor, Lag da Fonte e Cobertura
-
-| Métrica / Nome Técnico | Tipo | Labels | Descrição / Alerta |
-|:---|:---|:---|:---|
-| `ingestion_source_lag_seconds` | Gauge | `source_dataset` | Diferença temporal entre `now()` e o `observedThrough` da fonte. Alerta se ultrapassar o SLA da fonte. |
-| `ingestion_coverage_ratio` | Gauge | `source_dataset` | Razão entre buckets de tempo íntegros recebidos e esperados (0,0 a 1,0). |
-| `ingestion_watermark_timestamp_seconds` | Gauge | `watermark_type: source \| materialized \| projection` | Posição temporal do cursor de checkpoint consolidado no banco. |
-| `ingestion_last_successful_sync_timestamp`| Gauge | `source_dataset` | Epoch timestamp do último run concluído com status `SUCCEEDED`. |
-
-### 5.4 Resiliência, Leases e Rejeições de Schema
-
-| Métrica / Nome Técnico | Tipo | Labels | Descrição |
-|:---|:---|:---|:---|
-| `ingestion_records_rejected_total` | Contador | `source_dataset`, `reason` | Registros rejeitados por falha de parse ou quebra de contrato. **Atende ao RNF03 (isolamento sem parar o lote).** |
-| `ingestion_schema_drift_total` | Contador | `source_dataset` | Ocorrências de incompatibilidade de colunas no schema físico da origem. |
-| `ingestion_lease_acquisitions_total` | Contador | `scope: global \| source` | Total de locks distribuídos adquiridos via escrita condicional no DynamoDB. |
-| `ingestion_lease_conflicts_total` | Contador | `scope` | Execuções concorrentes barradas com status `SKIPPED_LOCKED`. |
-| `ingestion_runs_total` | Contador | `status: SUCCEEDED \| PARTIAL \| FAILED` | Contagem de ciclos de execução por status final. |
-
-### 5.5 Métricas de Mensageria Assíncrona (SQS / DLQ)
-
-*Modelagem para quando o desacoplamento por fila for ativado no pipeline (conforme RNF01 e RNF03):*
-
-| Métrica / Nome Técnico | Tipo | Unidade | Descrição |
-|:---|:---|:---|:---|
-| `sqs_queue_depth_messages` | Gauge | mensagens | Profundidade da fila principal (*ApproximateNumberOfMessagesVisible*). |
-| `sqs_dead_letter_queue_messages` | Gauge | mensagens | Mensagens corrompidas isoladas na DLQ (*ApproximateNumberOfMessagesVisible*). |
-| `sqs_oldest_message_age_seconds` | Gauge | segundos | Idade da mensagem mais antiga na fila sem processamento. |
-
----
 
 ## 6. Matriz de Rastreabilidade: Requisitos ↔ Métricas ↔ Alarmes
 

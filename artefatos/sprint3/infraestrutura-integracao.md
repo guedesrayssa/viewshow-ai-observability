@@ -18,6 +18,8 @@
 
 &emsp;Para preservar a rastreabilidade, o documento distingue dois momentos. O **estado atual** corresponde aos recursos declarados em Terraform e passíveis de evidência na conta AWS; a **arquitetura-alvo** representa a evolução já definida nos documentos canônicos, mas ainda sujeita a implementação e validação. Nenhum recurso planejado deve ser apresentado nos vídeos como se estivesse provisionado.
 
+&emsp;Quanto à evidência AWS, além do ciclo anterior de `apply` e `destroy`, a stack integrada atual foi aplicada e validada no Learner Lab em 12/09/2026. O backfill reduzido terminou sem ativar a candidata e o plano posterior confirmou 103 recursos sem mudanças. Essa prova funcional não substitui uma prova de capacidade com volume representativo.
+
 &emsp;A arquitetura mantém AWS Amplify, Amazon ECS com AWS Fargate e Amazon DynamoDB. Portanto, não prevê migração para EC2 Auto Scaling Group nem para Amazon RDS. A decisão evita contradizer a arquitetura inicial e a modelagem de dados, que adotam processamento em contêineres gerenciados e persistência distribuída. O CloudFront é tratado somente como evolução opcional da entrega do frontend.
 
 ## 2. Diagramas de implantação
@@ -66,11 +68,11 @@ Fonte: Material produzido pelos autores (2026).
 | Amplify Hosting | Atual e alvo | Publica o export estático do Next.js, fornece HTTPS e mantém o proxy same-origin para a API, reduzindo problemas de CORS e sessão. |
 | API Gateway e ALB | Atual e alvo | O API Gateway expõe HTTPS e o ALB público distribui tráfego apenas para tasks privadas saudáveis, verificadas em `/health`. |
 | ECS/Fargate — API | Atual e alvo | Executa o backend sem administrar instâncias EC2. ECS Service Auto Scaling mantém de uma a quatro tasks e usa target tracking de 50% de CPU por padrão. |
-| ECS/Fargate — ingestão | Alvo | Executa cargas agendadas ou sob demanda de forma isolada e idempotente, sem manter capacidade ociosa entre execuções. |
+| ECS/Fargate — ingestão | Testado na AWS | Executa cargas batch sob demanda de forma isolada, sem manter capacidade ociosa. O backfill reduzido foi validado; a agenda segue desabilitada e o modo live não está autorizado. |
 | ECS/Fargate — worker | Alvo | Consome a fila de análise de forma assíncrona e permite escalar consumidores conforme a profundidade da fila. |
-| EventBridge, SQS e DLQ | Alvo | O EventBridge agenda a ingestão; SQS desacopla produtores e consumidores; a DLQ preserva mensagens que excedem as tentativas de processamento. |
+| EventBridge, SQS e DLQ | Parcial testado | SQS/DLQs e Scheduler foram provisionados; a prova sem ativação confirmou fila vazia e agenda `DISABLED`. O consumo analítico completo continua no alvo. |
 | DynamoDB | Atual e alvo | Armazena dados operacionais e o Golden Set em tabelas separadas, com baixa latência e cobrança sob demanda, conforme a modelagem. |
-| S3, Glue e Athena | S3 atual para logs; dados no alvo | O S3 já recebe Flow Logs privados em Parquet. No pipeline-alvo, também mantém dados históricos; o Glue cataloga os conjuntos e o Athena executa consultas analíticas. |
+| S3, Glue e Athena | Testado na AWS | O S3 versionado preserva snapshots e archives Parquet. O smoke reconciliou os 23 datasets no S3, Glue e Athena; volume e custo em escala representativa continuam pendentes. |
 | Cognito e SSO | Cognito atual; federação no alvo | Centraliza autenticação e, no alvo, integra a identidade corporativa do Grupo Globo sem armazenar credenciais na aplicação. |
 | Bedrock | Configurável; desativado padrão | O runtime possui integração opcional para apoio à geração de hipóteses, mas permanece desligada porque o Learner Lab não disponibiliza o serviço. |
 | ECR | Atual e alvo | Armazena imagens da API com tag derivada do conteúdo do build, permitindo rastrear a versão usada pela task definition. |
@@ -88,13 +90,13 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 4.1 Pré-requisitos e estado Terraform
 
-&emsp;O deploy requer Terraform 1.7 ou superior, Docker em execução, Node.js 22, npm, AWS CLI e a key pair `vockey` na região `us-east-1`. O Terraform usa a cadeia padrão de credenciais da AWS; portanto, `AWS_PROFILE` deve apontar para o perfil do Learner Lab quando ele não for o perfil padrão. A equipe deve conferir a identidade antes de gerar o plano:
+&emsp;O deploy requer Terraform `>=1.7,<2.0`, Docker em execução, Node.js 22, npm, AWS CLI v2 e a key pair `vockey` na região `us-east-1`. O Terraform usa a cadeia padrão de credenciais da AWS; portanto, `AWS_PROFILE` deve apontar para o perfil do Learner Lab quando ele não for o perfil padrão. A equipe deve conferir a identidade antes de gerar o plano:
 
 ```bash
 aws sts get-caller-identity --region us-east-1
 ```
 
-&emsp;Não existe mais a variável obrigatória `aws_account_id`. O namespace `g05-s3` e a região `us-east-1` já são os padrões aceitos, de modo que a stack pode ser planejada sem arquivo `terraform.tfvars`. O estado legado pertence a outra conta e não pode ser adotado. O novo estado local é necessário para o teardown e precisa ser preservado até sua execução explícita.
+&emsp;Não existe mais a variável obrigatória `aws_account_id`. O namespace `view-show` e a região `us-east-1` já são os padrões aceitos, de modo que a stack pode ser planejada sem arquivo `terraform.tfvars`. O estado legado pertence a outra conta e não pode ser adotado. O novo estado local é necessário para o teardown e precisa ser preservado até sua execução explícita.
 
 #### 4.1.1 Execução manual simplificada
 
@@ -121,18 +123,21 @@ terraform validate
 npm --prefix ../backend/api run test:ci-policy
 
 mkdir -p .terraform-artifacts
+chmod 700 .terraform-artifacts
+umask 077
 terraform plan \
   -input=false \
-  -out=.terraform-artifacts/g05-s3.tfplan
+  -out=.terraform-artifacts/view-show.tfplan
+chmod 600 .terraform-artifacts/view-show.tfplan
 terraform show -json \
-  .terraform-artifacts/g05-s3.tfplan | \
+  .terraform-artifacts/view-show.tfplan | \
   node ../../scripts/ci/validate-terraform-create-plan.mjs
 terraform apply \
   -input=false \
-  .terraform-artifacts/g05-s3.tfplan
+  .terraform-artifacts/view-show.tfplan
 ```
 
-&emsp;Os argumentos `-backend=false` e `-input=false` evitam, respectivamente, a configuração de um backend remoto e as solicitações interativas. O argumento `-out` registra o plano em um arquivo binário, que é inspecionado pelo gate antes de ser fornecido ao `terraform apply`. O gate aceita somente o conjunto conhecido de criações; qualquer alteração, substituição, remoção, importação ou endereço inesperado interrompe o procedimento.
+&emsp;Os comandos `chmod` e `umask` restringem os artefatos em Linux/macOS. No Windows, recomenda-se a CLI oficial em um worktree privado do usuário, pois o plano herda a ACL do diretório. Os argumentos `-backend=false` e `-input=false` evitam, respectivamente, a configuração de um backend remoto e as solicitações interativas. O argumento `-out` registra o plano em um arquivo binário, que é inspecionado pelo gate antes de ser fornecido ao `terraform apply`. O gate aceita somente o conjunto conhecido de criações; qualquer alteração, substituição, remoção, importação ou endereço inesperado interrompe o procedimento.
 
 &emsp;O `apply` executa scripts locais para construir e publicar a imagem da API, compilar e publicar o frontend e gerenciar o bucket dos Flow Logs. Por isso, Docker, Node.js e AWS CLI precisam permanecer disponíveis durante toda a execução.
 
@@ -142,7 +147,7 @@ terraform apply \
 terraform plan \
   -input=false \
   -var='bastion_admin_cidr=203.0.113.10/32' \
-  -out=.terraform-artifacts/g05-s3.tfplan
+  -out=.terraform-artifacts/view-show.tfplan
 ```
 
 &emsp;O endereço acima é ilustrativo e deve ser substituído pelo IPv4 público do responsável. A validação rejeita `0.0.0.0/0`.
@@ -165,7 +170,7 @@ terraform plan \
 | 6. Dados e autenticação | Atual | Criar tabelas DynamoDB operacional e Golden Set e configurar o Cognito. | Tabelas ativas e variáveis do Cognito presentes na task definition. |
 | 7. Frontend | Atual | Compilar o Next.js, publicar o pacote no Amplify e configurar rewrites para `/api/*`, `/auth/*` e `/health`. | Navegação e chamadas same-origin funcionais. |
 | 8. Telemetria da aplicação | Parcial | Enviar logs ao CloudWatch e, por opt-in, criar a EC2 privada com LGTM e acesso por túnel SSM. | Logs consultáveis; stack opcional acessível sem exposição pública. |
-| 9. Pipeline de dados | Alvo | Adicionar ingestão Fargate, EventBridge, SQS, DLQ, worker, S3 histórico, Glue e Athena. | Fluxo assíncrono e consultas históricas validados antes de serem apresentados como implementados. |
+| 9. Pipeline de dados | Parcial atual | Operar ingestão Fargate, Scheduler, SQS/DLQs, S3 histórico, Glue e Athena; o worker de análise permanece alvo. | Backfill reduzido reconciliado; ativação, worker e prova de capacidade ainda pendentes. |
 
 <div align="center">
 
@@ -205,6 +210,85 @@ terraform output flow_logs
 
 &emsp;Os quatro últimos outputs apoiam a gravação das evidências de rede, segurança, escala e observabilidade. Se a migração opcional for implementada, o Terraform deverá expor também o domínio do CloudFront e o alias do Route 53. Esses comandos apenas consultam o estado e não alteram recursos.
 
+### 4.5 Prova reduzida da ingestão
+
+&emsp;A primeira prova da ingestão é um backfill batch manual e sem ativação. O
+script orquestrador executa etapas independentes a partir da raiz do
+repositório:
+
+```bash
+node scripts/aws-learner-lab.mjs check
+node scripts/aws-learner-lab.mjs build-snapshot
+node scripts/aws-learner-lab.mjs deploy
+node scripts/aws-learner-lab.mjs seed
+node scripts/aws-learner-lab.mjs evidence
+
+# Executa as cinco etapas, na ordem.
+node scripts/aws-learner-lab.mjs all
+```
+
+&emsp;`check` não provisiona recursos: confirma Terraform, Node.js, Docker em
+execução, Python 3.12, AWS CLI, uma sessão ativa do Learner Lab e a role
+temporária `voclabs`, sem fixar número de conta. `build-snapshot` é inteiramente local,
+exige apenas Python 3.12 e cria `reduced-argus.sql.gz`; se necessário, prepara o
+ambiente virtual do worker. O dump determinístico contém fixture para as 23
+tabelas do contrato ARGUS 2.0. Ele é um smoke de restauração e integração, não
+uma prova de capacidade, volume, custo ou retenção do dump real.
+
+&emsp;Em sistemas POSIX, `deploy` cria, com permissão `0700`, o diretório
+`apps/fullstack/.terraform-artifacts`, executa `init`, salva o plano com a seed
+do Scheduler desabilitada e o item live ausente (estado autoritativo desligado), submete o JSON ao gate
+`create/no-op`, apresenta o resumo operacional e exige `APPLY view-show` antes de
+aplicar exatamente o plano aceito. O gate recusa update, substituição, remoção,
+importação ou endereço inesperado; não deve ser contornado. Se ele recusar o
+plano, nada é aplicado: revise o state e o plano, renove credenciais quando
+necessário e corrija a divergência antes de repetir a etapa. Não apague ou
+importe recursos manualmente para forçar a passagem.
+
+&emsp;No Windows, a CLI não trata `chmod` como equivalente a uma ACL privada; o
+worktree deve permanecer em uma pasta de acesso restrito ao usuário.
+
+&emsp;`seed` relê o output `ingestion_runbook`, envia o mesmo conteúdo para a
+chave derivada do SHA-256, registra no resultado a data de extração conhecida
+do fixture reduzido e dispara a task de backfill com `--no-activate`. O
+script não oferece opção de ativação. Ele espera a task ECS parar, exige exit
+code zero dos contêineres `mysql-snapshot` e `ingestion` e confirma, por leitura
+consistente no DynamoDB, que o run durável terminou em `SUCCEEDED`. Por fim,
+`evidence` lista os runs e suas contagens na tabela operacional. Os arquivos
+locais `terraform-output.json` e `upload-result.json` apoiam essa passagem e
+não devem ser versionados nem copiados para tickets.
+
+&emsp;Sucesso do script prova apenas que a candidata foi materializada sem trocar
+o manifesto `ACTIVE`. Antes de promover qualquer versão, confira manualmente os
+logs indicados pelo output `comandos_logs_ingestao`, a candidata no DynamoDB,
+as 23 partições/datasets esperados, os objetos Parquet, o catálogo Glue, as
+consultas Athena e a outbox. A ativação é uma decisão operacional separada e
+não faz parte desta prova reduzida. O procedimento detalhado e os comandos de
+ativação deliberada permanecem no
+[runbook da ingestão](../../apps/backend/ingestion-data/README.md).
+
+#### 4.5.1 Diagnóstico e retomada
+
+| Sintoma | Conferência e retomada segura |
+| --- | --- |
+| O preflight recusa o ambiente | Execute `node scripts/aws-learner-lab.mjs check`; confirme Python 3.12.x, Docker ativo, ferramentas instaladas e novas credenciais temporárias. |
+| O gate recusa o plano | Leia a mensagem e `terraform show` do plano salvo. Não aplique fora do gate; resolva mudanças que não sejam `create/no-op` ou endereços divergentes usando o mesmo state. |
+| A task não chega a `STOPPED` | Consulte `aws ecs describe-tasks` e os comandos de logs fornecidos pelo Terraform; não dispare outra task antes de reconciliar o ARN retornado. |
+| Um contêiner termina com exit code diferente de zero | Preserve logs redigidos, confira restauração, espaço efêmero e contrato do snapshot; corrija a causa e repita `seed` com o mesmo dump. |
+| O run durável não fica `SUCCEEDED` | Consulte `INGESTION#RUN#<runId>/META`. Estados `FAILED` ou `PARTIAL` exigem retomada idempotente; não ative a candidata e não reverta o manifesto manualmente. |
+| A credencial expira durante a execução | Renove a sessão do Learner Lab, rode `check` e continue pelo mesmo state. Não recrie a stack nem remova o bucket persistente como atalho. |
+
+&emsp;A prova reduzida foi registrada em 12/09/2026. O dump de 4.906 bytes gerou
+uma candidata com 29 registros reconciliados em 23 datasets; a task e o run
+terminaram em `SUCCEEDED`, os 23 archives ficaram `AVAILABLE` e as cinco
+validações do manifesto ficaram `PASSED`. Os 23 objetos Parquet, as 23
+tabelas/partições Glue e as 23 consultas Athena foram conferidos. `ACTIVE`,
+projection fence e outbox permaneceram ausentes, a SQS ficou vazia e o
+Scheduler continuou `DISABLED`. A retomada reaproveitou checkpoints e objetos
+anteriores sem limpeza manual. Um plano final confirmou 103 recursos `no-op`.
+Essa evidência é um smoke funcional; dump representativo, capacidade e custo
+continuam fora de seu escopo.
+
 ## 5. Evidências e vídeos
 
 &emsp;O Vídeo 2 já está disponível e documenta a integração entre frontend e backend. O link do Vídeo 1 deve ser incluído após a gravação e a conferência das evidências de infraestrutura.
@@ -212,7 +296,7 @@ terraform output flow_logs
 ### 5.1 Vídeo 1 — infraestrutura provisionada (5 a 7 minutos)
 
 **Link:** [Assistir no Google Drive](
-https://drive.google.com/file/d/1i22UD_KOaWiOhof0n1x6uWQMuVJFgd8P/view?usp=sharing) · 
+https://drive.google.com/file/d/1i22UD_KOaWiOhof0n1x6uWQMuVJFgd8P/view?usp=sharing) ·
 
 
 &emsp;O vídeo apresenta a infraestrutura provisionada na AWS, incluindo a organização da VPC, as sub-redes públicas e privadas, o NAT Gateway, o bastion host, o balanceamento de carga, o autoescalonamento no ECS Fargate, o DynamoDB e os recursos de observabilidade.

@@ -3,10 +3,7 @@ import { z } from "zod";
 const schema = z
   .object({
     AWS_REGION: z.string().default("us-east-1"),
-    OPERATIONAL_TABLE_NAME: z
-      .string()
-      .min(1)
-      .default("monitoracao-operacional"),
+    OPERATIONAL_TABLE_NAME: z.string().min(1).default("view-show-operacional"),
     DYNAMODB_ENDPOINT: z.url().optional(),
     MONITORING_SOURCES: z.string().default("argus"),
   })

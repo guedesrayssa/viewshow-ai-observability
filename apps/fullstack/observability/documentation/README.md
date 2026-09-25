@@ -1,16 +1,23 @@
-# Documentação de Observabilidade
+# Documentação canônica de observabilidade
+
+Esta pasta é a fonte canônica para métricas, logs e traces da stack. Os
+artefatos acadêmicos apenas referenciam estes documentos para evitar cópias
+divergentes. Para o ARGUS 2.0, a fonte de dados/estados é
+[`artefatos/arquitetura/ingestao-e-dados.md`](../../../../artefatos/arquitetura/ingestao-e-dados.md).
 
 ## Documentos
 
 | Documento | Sinal | Destino | Cobre |
 |---|---|---|---|
-| [Mapeamento de Métricas](./mapeamento-metricas-observabilidade.md) | Métricas | Prometheus (`:9090`) | QoE do Globoplay por tela do painel, padrão RED da API, runtime do Node.js, camada agêntica e Bedrock, cliente DynamoDB, pipeline batch de ingestão e mensageria SQS/DLQ. |
+| [Mapeamento de Métricas](./mapeamento-metricas-observabilidade.md) | Métricas | Prometheus e EMF/CloudWatch | QoE/RED, runtime e o contrato efetivo EMF do batch ARGUS 2.0, SQS e DLQs. |
 | [Mapeamento de Logs](./mapeamento-logs-observabilidade.md) | Logs | Loki (`:3100`) | Contrato canônico da linha JSON, rótulos versus metadados estruturados, sanitização e PII, catálogo de eventos por rota e serviço, ciclo de run da ingestão e consultas LogQL. |
 | [Mapeamento de Traces](./mapeamento-traces-observabilidade.md) | Traces | Tempo (`:4317` gRPC, `:4318` HTTP) | Convenções de span e atributos de recurso, propagação W3C e CORS, amostragem, árvores de span da API e do batch, correlação entre os três sinais e consultas TraceQL. |
 
 Os três compartilham a mesma matriz de requisitos (RNF01 a RNF15) e as mesmas
 decisões de arquitetura (ADR-002, ADR-004 e ADR-005), cada um pelo ângulo do seu
-sinal.
+sinal. Backfill é manual; o controle de sync/Scheduler está implementado, mas a
+integração nasce `DISABLED` e aguarda evidência de conectividade live. A fila
+principal e suas DLQs retêm mensagens por 14 dias.
 
 ## Estado da implementação
 
@@ -48,7 +55,7 @@ métricas RED e o mapa de serviços sem nenhum código adicional.
 
 Registrados aqui porque afetam decisões de implementação em mais de um sinal:
 
-- **O nome `trace_id` está sobrecarregado.** A tabela `monitoracao-operacional`
+- **O nome `trace_id` está sobrecarregado.** A tabela `view-show-operacional`
   tem um GSI `trace-index` sobre um atributo chamado `trace_id` cujo valor é o
   `incidentId`, não um trace ID W3C. Os campos derivados do Loki provisionados
   em `datasources.yml` transformam qualquer `trace_id` em link para o Tempo, o

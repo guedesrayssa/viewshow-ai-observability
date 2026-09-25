@@ -90,13 +90,13 @@ fi
     AWS_DEFAULT_REGION: "us-east-1",
     AWS_REGION: "us-east-1",
     FAKE_COMMAND_LOG: commandLog,
-    FAKE_ACCOUNT: overrides.account ?? "248880318395",
+    FAKE_ACCOUNT: overrides.account ?? "999999999999",
     FAKE_ARN:
       overrides.arn ??
-      "arn:aws:sts::248880318395:assumed-role/voclabs/session-123",
+      "arn:aws:sts::999999999999:assumed-role/voclabs/session-123",
     FAKE_APPS:
       overrides.apps ??
-      "isolated-app-id\tarn:aws:amplify:us-east-1:248880318395:apps/isolated-app-id\texample.amplifyapp.com\n",
+      "isolated-app-id\tarn:aws:amplify:us-east-1:999999999999:apps/isolated-app-id\texample.amplifyapp.com\n",
     FAKE_STACK_TAG: overrides.stackTag ?? "g05-sprint3-entrega",
     FAKE_MANAGED_BY_TAG: overrides.managedByTag ?? "terraform",
     FAKE_CURL_FAIL: overrides.curlFails ? "true" : "false",
@@ -132,7 +132,7 @@ test("resolves one tagged isolated app before deploying its production branch", 
   assert.ok(mutation > tagCheck, "must validate ownership before deployment");
   assert.match(
     result.commands,
-    /amplify list-apps .*apps\[\?name==`g05-s3-painel`\]/,
+    /amplify list-apps .*apps\[\?name==`view-show-painel`\]/,
   );
   assert.match(result.commands, /amplify start-deployment/);
   assert.match(result.commands, /curl first=--disable upload/);
@@ -153,11 +153,27 @@ test("passes --disable as curl's first argument", () => {
 });
 
 for (const [name, overrides, expectedError] of [
-  ["wrong account", { account: "111122223333" }, /conta AWS ativa/i],
+  // A conta deixou de ser um literal do repositório: ela vem da própria
+  // identidade. O que sobra, e é mais forte, é a CONSISTÊNCIA da identidade —
+  // conta e ARN têm de concordar — e o app Amplify pertencer à conta do
+  // chamador. Os dois casos abaixo travam essas duas propriedades.
+  [
+    "identity whose account disagrees with its ARN",
+    { account: "111122223333" },
+    /caller AWS ativo/i,
+  ],
+  [
+    "Amplify app owned by another account",
+    {
+      apps:
+        "isolated-app-id\tarn:aws:amplify:us-east-1:111122223333:apps/isolated-app-id\texample.amplifyapp.com\n",
+    },
+    /ARN inesperado para o app Amplify/i,
+  ],
   [
     "wrong caller role",
     {
-      arn: "arn:aws:sts::248880318395:assumed-role/other-role/session-123",
+      arn: "arn:aws:sts::999999999999:assumed-role/other-role/session-123",
     },
     /caller AWS ativo/i,
   ],
@@ -166,8 +182,8 @@ for (const [name, overrides, expectedError] of [
     "ambiguous Amplify app",
     {
       apps:
-        "app-one\tarn:aws:amplify:us-east-1:248880318395:apps/app-one\tone.amplifyapp.com\n" +
-        "app-two\tarn:aws:amplify:us-east-1:248880318395:apps/app-two\ttwo.amplifyapp.com\n",
+        "app-one\tarn:aws:amplify:us-east-1:999999999999:apps/app-one\tone.amplifyapp.com\n" +
+        "app-two\tarn:aws:amplify:us-east-1:999999999999:apps/app-two\ttwo.amplifyapp.com\n",
     },
     /exatamente um app Amplify/i,
   ],

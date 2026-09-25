@@ -144,7 +144,7 @@ flowchart TD
     end
 
     subgraph EXT["Dependências externas"]
-        DDB[("DynamoDB<br/>monitoracao-operacional<br/>monitoracao-golden-set")]
+        DDB[("DynamoDB<br/>view-show-operacional<br/>view-show-golden-set")]
         BR[("Amazon Bedrock<br/>Claude 3 Haiku")]
         MYSQL[("Argus MySQL")]
     end
@@ -196,7 +196,7 @@ flowchart TD
 
 | Atributo | Valor | Por Que É Obrigatório |
 |:---|:---|:---|
-| `service.name` | `view-show-api`, `view-show-ingestion`, `view-show-frontend` | Chave do mapa de serviços, das métricas de span e do salto para o Loki. **Deve ser idêntico ao rótulo `service_name` dos logs.** |
+| `service.name` | `view-show-api`, `view-show-ingestion`, `view-show-painel` | Chave do mapa de serviços, das métricas de span e do salto para o Loki. **Deve ser idêntico ao rótulo `service_name` dos logs.** |
 | `service.version` | SHA do commit | Permite comparar latência antes e depois de um deploy, que é exatamente a `timeline.delta_minutes` da tela de evidências aplicada ao nosso próprio sistema. |
 | `deployment.environment.name` | `local`, `dev`, `prod` | Impede que trace de desenvolvimento se misture ao de produção nas consultas. |
 | `service.instance.id` | ID da task ECS ou hostname | Isola o comportamento de uma réplica específica em contêineres de 0,25 vCPU. |
@@ -212,7 +212,7 @@ flowchart TD
 | Regra | Correto | Errado |
 |:---|:---|:---|
 | Span de servidor HTTP usa o template da rota | `GET /api/v1/incidents/:id/evidence` | `GET /api/v1/incidents/inc_01K2F6YQ9G/evidence` |
-| Span de cliente AWS segue a convenção do OTel | `DynamoDB.Query` | `Query em monitoracao-operacional para inc_01K2F6YQ9G` |
+| Span de cliente AWS segue a convenção do OTel | `DynamoDB.Query` | `Query em view-show-operacional para inc_01K2F6YQ9G` |
 | Span interno usa `módulo.operação` | `orchestrator.diagnose` | `Diagnosticando incidente inc_01K2F6YQ9G` |
 | O identificador vai em **atributo**, nunca no nome | nome `orchestrator.diagnose`, atributo `incident.id` | nome com o ID interpolado |
 
@@ -273,7 +273,7 @@ app.use(cors({
 
 &emsp; A colisão está documentada em detalhe na [seção 3.4 do Mapeamento de Logs](./mapeamento-logs-observabilidade.md#34-colisão-de-nome-trace_id-do-opentelemetry-vs-trace_id-do-dynamodb) e é repetida aqui porque tem efeito direto nos atributos de span.
 
-&emsp; A tabela `monitoracao-operacional` tem um GSI `trace-index` sobre um atributo chamado `trace_id`, cujo valor é o **`incidentId`** e não um trace ID W3C. Em spans, a regra é:
+&emsp; A tabela `view-show-operacional` tem um GSI `trace-index` sobre um atributo chamado `trace_id`, cujo valor é o **`incidentId`** e não um trace ID W3C. Em spans, a regra é:
 
 | Contexto | Nome Correto |
 |:---|:---|
@@ -374,13 +374,13 @@ SERVER  POST /api/v1/incidents/:id/diagnose                       [~1850 ms]
 │   │
 │   ├── INTERNAL  evidenceService.getIncidentBundle               [~120 ms]
 │   │   └── CLIENT  DynamoDB.Query                                [~115 ms]
-│   │       aws.dynamodb.table_names = [monitoracao-operacional]
+│   │       aws.dynamodb.table_names = [view-show-operacional]
 │   │       aws.dynamodb.index_name  = trace-index
 │   │       aws.dynamodb.item_count  = 6
 │   │
 │   ├── INTERNAL  goldenSet.findMatchingCase                      [~40 ms]
 │   │   └── CLIENT  DynamoDB.GetItem                              [~35 ms]
-│   │       aws.dynamodb.table_names = [monitoracao-golden-set]
+│   │       aws.dynamodb.table_names = [view-show-golden-set]
 │   │       viewshow.golden_set.hit  = false
 │   │
 │   ├── INTERNAL  agent.investigate                               [~2 ms]
@@ -439,7 +439,7 @@ SERVER  POST /api/v1/incidents/:id/diagnose                       [~1850 ms]
 |:---|:---|:---|
 | `rpc.system` | Automático (`aws-api`) | |
 | `rpc.service` / `rpc.method` | Automático (`DynamoDB` / `Query`) | Nome do span. |
-| `aws.dynamodb.table_names` | Automático | Separa `monitoracao-operacional` de `monitoracao-golden-set`. |
+| `aws.dynamodb.table_names` | Automático | Separa `view-show-operacional` de `view-show-golden-set`. |
 | `aws.dynamodb.index_name` | Automático | Identifica o uso do GSI `trace-index`. |
 | `aws.dynamodb.consumed_capacity` | Requer `ReturnConsumedCapacity: "TOTAL"` no comando | Insumo do gargalo de RCU do mapeamento de métricas. |
 | `aws.dynamodb.item_count` | Automático | |
@@ -505,121 +505,50 @@ const results = await Promise.all(
 
 ---
 
-## 6. Traces de apps/backend/ingestion-data (Data Ingestion Service)
+## 6. Traces de `apps/backend/ingestion-data` (Data Ingestion Service)
 
-### 6.1 Batch Não Tem Requisição de Entrada
+### 6.1 Estado atual e fronteira
 
-&emsp; O modelo mental de tracing é quase sempre "uma requisição HTTP entra e se desdobra". A ingestão não é assim, e isso muda três decisões de projeto:
+A ingestão é batch-only; ela cria `runId` e `traceId` para correlação nos
+logs JSON e é executada pelas tasks ECS `view-show-ingestion-backfill` e
+`view-show-ingestion-sync`. A infraestrutura de Scheduler, filas e alarmes já é
+provisionada; a exportação OpenTelemetry ao Tempo continua uma fronteira de
+instrumentação a comprovar. Os spans abaixo descrevem esse contrato sem alegar
+que a exportação já ocorreu. Backfill é acionado manualmente; o controle de sync
+e Scheduler está implementado, mas a integração nasce desabilitada e aguarda a
+prova com origem live.
 
-| Diferença | Consequência |
-|:---|:---|
-| Não há `traceparent` de entrada | O span raiz é **criado pela própria task**. Não há pai remoto para herdar. |
-| A task é acionada pelo EventBridge a cada 15 min via `ECS RunTask` | O `runId` é o correlacionador humano do trace, e precisa estar em atributo do span raiz. |
-| A execução dura minutos, não milissegundos | O trace fica aberto por todo o run. O `max_block_duration: 30s` do `live_store` do Tempo não é problema (blocos são fatiados por tempo de chegada), mas o trace só fica completo no Grafana **depois** que a task termina. |
-| Não há porta HTTP, ALB nem health check | O trace é o único meio de ver a estrutura interna da execução em andamento. O log dá os marcos; o trace dá as proporções. |
-
-&emsp; O span raiz recebe o `runId` como atributo, nunca como parte do nome:
-
-```python
-with tracer.start_as_current_span(
-    "ingestion.run",
-    kind=SpanKind.INTERNAL,
-    attributes={
-        "viewshow.run_id": run_id,
-        "viewshow.command": "sync",
-        "viewshow.sources_enabled": len(sources),
-    },
-) as span:
-    ...
-```
-
-### 6.2 Árvore de Spans do Run
-
-&emsp; A árvore reflete o fluxo de execução da seção 7 do documento de arquitetura:
+### 6.2 Árvore proposta
 
 ```text
-INTERNAL  ingestion.run                                          [~95 s]
-│         viewshow.run_id = run_123 · viewshow.command = sync
-│
-├── INTERNAL  ingestion.lease.acquire (global)                   [~40 ms]
-│
-├── INTERNAL  ingestion.validate_environment                     [~300 ms]
-│
-├── INTERNAL  ingestion.source  (signal_bucket)                  [~48 s]
-│   │         viewshow.source_dataset = signal_bucket
-│   ├── INTERNAL  ingestion.lease.acquire (source)               [~30 ms]
-│   ├── INTERNAL  ingestion.schema.validate                      [~180 ms]
-│   ├── INTERNAL  ingestion.stage.read                           [~29 s]
-│   │   ├── CLIENT  mysql.query (chunk 1)                        [~2,4 s]
-│   │   ├── CLIENT  mysql.query (chunk 2)                        [~2,4 s]
-│   │   └── ...                                                  (12 chunks)
-│   ├── INTERNAL  ingestion.stage.normalize                      [~6 s]
-│   ├── INTERNAL  ingestion.stage.detect                         [~2 s]
-│   ├── INTERNAL  ingestion.stage.write                          [~11 s]
-│   │   ├── CLIENT  DynamoDB.BatchWriteItem                      [~420 ms]
-│   │   └── ...                                                  (26 lotes)
-│   ├── INTERNAL  ingestion.watermark.publish                    [~50 ms]
-│   └── INTERNAL  ingestion.lease.release (source)               [~25 ms]
-│
-├── INTERNAL  ingestion.source  (geo_hourly)                     [~22 s]
-│   └── ...
-│
-├── INTERNAL  ingestion.projection  (VIEW#OVERVIEW)              [~9 s]
-├── INTERNAL  ingestion.projection  (VIEW#INCIDENTS)             [~7 s]
-├── INTERNAL  ingestion.run.finalize                             [~200 ms]
-└── INTERNAL  ingestion.lease.release (global)                   [~30 ms]
+INTERNAL ingestion.run
+├── ingestion.restore
+├── ingestion.validate
+├── ingestion.dataset (um por dataset ARGUS 2.0)
+├── ingestion.project
+├── ingestion.archive
+├── ingestion.activate
+└── ingestion.publish_outbox
 ```
 
-&emsp; A meta do **RNF02 (120 segundos ponta a ponta)** se lê diretamente na duração do span raiz, e quando ela é estourada a árvore diz qual fonte e qual etapa consumiram o orçamento. É a diferença entre saber que o SLA quebrou e saber o que consertar.
+O span raiz deve ter `viewshow.run_id`, `viewshow.command`,
+`viewshow.dataset_version` e estado. Os estágios refletem
+`STARTING`, `RESTORING`, `VALIDATING`, `INGESTING`, `PROJECTING`,
+`ARCHIVING`, `ACTIVATING`, `PUBLISHING` e o terminal. Um terminal
+`PARTIAL` representa publicação pendente após ativação; deve manter link para
+a outbox, não reverter o manifesto.
 
-### 6.3 Catálogo de Spans da Ingestão
+### 6.3 Cardinalidade e privacidade
 
-| Span | Tipo | Atributos |
-|:---|:---|:---|
-| `ingestion.run` | `INTERNAL` | `viewshow.run_id`, `viewshow.command`, `viewshow.run_status`, `viewshow.records_read`, `viewshow.records_written`, `viewshow.records_rejected`, `viewshow.sources_succeeded`, `viewshow.sources_failed` |
-| `ingestion.validate_environment` | `INTERNAL` | `viewshow.checks_passed`, `cloud.region` |
-| `ingestion.lease.acquire` | `INTERNAL` | `viewshow.lease_scope` (`global` ou `source`), `viewshow.lease_resource`, `viewshow.lease_acquired`, `viewshow.lease_owner_run_id` |
-| `ingestion.source` | `INTERNAL` | `viewshow.source_dataset`, `viewshow.window_start`, `viewshow.window_end`, `viewshow.lookback_hours`, `viewshow.records_read`, `viewshow.records_written`, `viewshow.records_unmodified` |
-| `ingestion.schema.validate` | `INTERNAL` | `viewshow.source_dataset`, `viewshow.schema_ok`, `viewshow.drift_type` |
-| `ingestion.stage.read` | `INTERNAL` | `viewshow.source_dataset`, `viewshow.chunk_count`, `viewshow.records_read` |
-| `ingestion.stage.normalize` | `INTERNAL` | `viewshow.records_in`, `viewshow.records_rejected` |
-| `ingestion.stage.detect` | `INTERNAL` | `viewshow.records_changed`, `viewshow.records_unmodified` |
-| `ingestion.stage.write` | `INTERNAL` | `viewshow.batch_count`, `viewshow.records_written` |
-| `mysql.query` | `CLIENT` | `db.system`, `db.namespace`, `viewshow.chunk_index`, `viewshow.chunk_size`. **Nunca a query com valores interpolados.** |
-| `DynamoDB.BatchWriteItem` | `CLIENT` | Automático pela instrumentação do boto3 |
-| `ingestion.watermark.publish` | `INTERNAL` | `viewshow.watermark_type`, `viewshow.watermark_at`, `viewshow.lag_seconds` |
-| `ingestion.projection` | `INTERNAL` | `viewshow.projection_name`, `viewshow.projection_version`, `viewshow.formula_version`, `viewshow.buckets_written`, `viewshow.coverage_ratio` |
-| `ingestion.run.finalize` | `INTERNAL` | `viewshow.run_status` |
+Nunca crie span por registro, dump ou query contendo valores. Use um span por
+dataset/partição e contagens como atributos. `rid_`, chave natural, payload,
+segredo do MySQL, URL pré-assinada e SQL interpolado não devem ser atributos.
+O futuro reprocessamento pode usar span link para o run original, preservando
+`datasetVersion` e a identidade do snapshot.
 
-&emsp; **Span links para reprocessamento.** O comando `reprocess` refaz uma janela já processada por um run anterior. O trace do reprocessamento não deve ser filho do trace original (são execuções independentes, separadas por horas ou dias), mas precisa apontar para ele. Essa é exatamente a semântica de um **span link**:
+A fonte normativa para dados, estados e outbox é
+[Ingestão e dados](../../../../artefatos/arquitetura/ingestao-e-dados.md).
 
-```python
-link = Link(
-    context=SpanContext(trace_id=original_trace_id, span_id=original_span_id, is_remote=True),
-    attributes={"viewshow.link_reason": "reprocess", "viewshow.original_run_id": original_run_id},
-)
-with tracer.start_as_current_span("ingestion.run", links=[link], ...):
-    ...
-```
-
-&emsp; Isso exige persistir o `trace_id` do run junto ao item `INGESTION#RUN#<runId>` no DynamoDB, para que o reprocessamento consiga recuperá-lo. É um campo a mais no `RunRepository` e a única forma de responder *"por que este dado foi reescrito?"* meses depois. Vale a ressalva da seção [3.4](#34-reserva-do-nome-trace_id): esse campo persistido é um trace ID W3C de verdade, e para evitar confusão com o `trace_id` do GSI da tabela operacional recomenda-se nomeá-lo `otelTraceId`.
-
-### 6.4 Controle de Cardinalidade e Tamanho do Trace
-
-> [!CAUTION]
-> Este é o maior risco técnico do tracing da ingestão. O backfill percorre um dump de **11 GB** paginando por chave natural. Um span por registro produziria milhões de spans em um único trace, estourando os limites do Tempo e tornando o trace impossível de renderizar no Grafana.
-
-| Regra | Detalhe |
-|:---|:---|
-| **Um span por chunk, jamais por registro** | O chunk é a unidade de paginação e de retomada. Um run de `sync` típico gera dezenas de spans; um por registro geraria dezenas de milhares. |
-| **Contagens são atributo, não span** | `viewshow.records_read: 12480` em um span, não 12.480 spans. |
-| **Registro rejeitado vira evento de span, não span** | `span.add_event("record.rejected", {"reason": ..., "record_id": ...})` no span do estágio, com **limite explícito** de eventos por span (por exemplo, os 50 primeiros mais um contador `viewshow.rejected_truncated`). |
-| **`backfill` roda com amostragem própria** | Um trace por execução de backfill, não por fonte. O comando `sync` de 15 minutos é o que se rastreia integralmente. |
-| **Sem span para `mysql.query` no backfill** | Centenas de chunks por fonte tornam o trace ilegível. No backfill, o estágio `read` é um span único com `viewshow.chunk_count` como atributo. |
-
-&emsp; O log cobre o que o trace deliberadamente não cobre: `ingestion.chunk.finished` em nível `debug` no Loki dá a granularidade por chunk quando ela for necessária, sem carregá-la em todo trace. É a divisão de trabalho correta entre os dois sinais.
-
----
 
 ## 7. Correlação Entre os Três Sinais
 
@@ -954,7 +883,7 @@ npm install \
 3. Apenas `document-load` e `fetch` nas instrumentações.
 4. `BatchSpanProcessor` com `sendBeacon` no descarregamento da página, para não perder o span da última interação.
 
-### Passo 7: Instrumentar o serviço de ingestão (quando existir)
+### Passo 7: Instrumentar o serviço de ingestão
 
 ```bash
 pip install \

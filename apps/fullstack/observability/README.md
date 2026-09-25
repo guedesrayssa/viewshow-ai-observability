@@ -130,14 +130,14 @@ cd apps/fullstack
 aws sts get-caller-identity
 terraform init
 terraform plan \
-  -var='deployment_namespace=g05-s3' \
+  -var='deployment_namespace=view-show' \
   -var='observabilidade_habilitada=true' \
-  -out=g05-s3-observabilidade.tfplan
-terraform apply g05-s3-observabilidade.tfplan
+  -out=view-show-observabilidade.tfplan
+terraform apply view-show-observabilidade.tfplan
 ```
 
 Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
-na AWS. O plano acima cria uma EC2 `g05-s3-observabilidade` do tipo `t3.medium`
+na AWS. O plano acima cria uma EC2 `view-show-observabilidade` do tipo `t3.medium`
 com 30 GiB de gp3 criptografado, instala o Docker Compose e inicia os cinco
 componentes. Não é necessário clonar o
 repositório na instância: os arquivos versionados são compactados e enviados
@@ -188,13 +188,13 @@ estável.
 
 | Data source | Estado depois do apply |
 | --- | --- |
-| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/g05-s3-api` disponíveis imediatamente |
+| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/view-show-api` disponíveis imediatamente |
 | Prometheus | Auto-observação da stack e scrape de `/metrics` da API pelo ALB |
 | Loki | Logs dos containers da stack via Alloy e JSON correlacionado da API; CloudWatch permanece habilitado |
 | Tempo | Receptor OTLP/HTTP privado em `:4318`, restrito ao security group da API |
 | Alloy | Receptor OTLP/HTTP privado em `:4320` para métricas e traces dos workers |
 
-O Terraform injeta `OTEL_SERVICE_NAME=g05-s3-api` e o endereço privado do Tempo
+O Terraform injeta `OTEL_SERVICE_NAME=view-show-api` e o endereço privado do Tempo
 na task ECS somente quando o opt-in está ativo. A API TypeScript inicializa o
 SDK OpenTelemetry quando esse endpoint existe.
 
@@ -218,7 +218,7 @@ Para remover a stack inteira e seus dados:
 
 ```bash
 terraform destroy \
-  -var='deployment_namespace=g05-s3' \
+  -var='deployment_namespace=view-show' \
   -var='observabilidade_habilitada=true'
 ```
 

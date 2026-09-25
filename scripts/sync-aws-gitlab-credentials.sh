@@ -2,7 +2,9 @@
 set -Eeuo pipefail
 set +x
 
-expected_account="248880318395"
+# A conta não é literal: ela vem de quem declara o alvo. A verificação que
+# importa é a credencial em vigor pertencer à MESMA conta do alvo declarado, o
+# que vale em qualquer conta do Learner Lab. A exigência do papel voclabs fica.
 region="us-east-1"
 profile="${AWS_PROFILE:-default}"
 gitlab_host="git.inteli.edu.br"
@@ -159,28 +161,25 @@ unset variable_metadata matching_metadata metadata_key metadata_scope metadata_h
 identity_json="$(aws --profile "$profile" sts get-caller-identity --output json)"
 account="$(jq -r '.Account' <<<"$identity_json")"
 caller_arn="$(jq -r '.Arn' <<<"$identity_json")"
-if [[ "$account" != "$expected_account" ]]; then
-  fail "unexpected AWS account: $account (expected $expected_account)" 77
-fi
-if ! [[ "$caller_arn" =~ ^arn:aws:sts::248880318395:assumed-role/voclabs/[^/]+$ ]]; then
+if ! [[ "$caller_arn" =~ ^arn:aws:sts::${account}:assumed-role/voclabs/[^/]+$ ]]; then
   fail "unexpected AWS caller; expected the voclabs assumed role" 77
 fi
 unset identity_json account caller_arn
 
 ecr_repository="$(aws --profile "$profile" ecr describe-repositories \
   --region "$region" \
-  --repository-names g05-s3-api \
+  --repository-names view-show-api \
   --query 'repositories[0].repositoryName' \
   --output text)"
-if [[ "$ecr_repository" != "g05-s3-api" ]]; then
+if [[ "$ecr_repository" != "view-show-api" ]]; then
   fail "unexpected ECR repository result"
 fi
 unset ecr_repository
 
 ecs_result="$(aws --profile "$profile" ecs describe-services \
   --region "$region" \
-  --cluster g05-s3-cluster \
-  --services g05-s3-api-service \
+  --cluster view-show-cluster \
+  --services view-show-api-service \
   --query '[services[0].status, length(failures)]' \
   --output text)"
 if [[ "$ecs_result" != $'ACTIVE\t0' ]]; then

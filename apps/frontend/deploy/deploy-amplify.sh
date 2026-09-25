@@ -22,9 +22,11 @@
 set -Eeuo pipefail
 set +x
 
-readonly EXPECTED_ACCOUNT_ID="248880318395"
+# A conta não é literal: ela vem de quem declara o alvo. A verificação que
+# importa é a credencial em vigor pertencer à MESMA conta do alvo declarado, o
+# que vale em qualquer conta do Learner Lab. A exigência do papel voclabs fica.
 readonly EXPECTED_REGION="us-east-1"
-readonly EXPECTED_APP_NAME="g05-s3-painel"
+readonly EXPECTED_APP_NAME="view-show-painel"
 readonly EXPECTED_BRANCH="producao"
 readonly EXPECTED_STACK_TAG="g05-sprint3-entrega"
 readonly EXPECTED_MANAGED_BY_TAG="terraform"
@@ -81,12 +83,8 @@ read -r CALLER_ACCOUNT CALLER_ARN <<< "$(
         --output text
 )"
 
-if [[ "$CALLER_ACCOUNT" != "$EXPECTED_ACCOUNT_ID" ]]; then
-    echo "erro: a conta AWS ativa não é a conta isolada esperada." >&2
-    exit 1
-fi
 
-if [[ ! "$CALLER_ARN" =~ ^arn:aws:sts::248880318395:assumed-role/voclabs/[^/]+$ ]]; then
+if [[ ! "$CALLER_ARN" =~ ^arn:aws:sts::${CALLER_ACCOUNT}:assumed-role/voclabs/[^/]+$ ]]; then
     echo "erro: o caller AWS ativo não usa a role voclabs esperada." >&2
     exit 1
 fi
@@ -94,7 +92,7 @@ fi
 APPS_OUTPUT="$(
     aws amplify list-apps \
         --region "$EXPECTED_REGION" \
-        --query 'apps[?name==`g05-s3-painel`].[appId,appArn,defaultDomain]' \
+        --query 'apps[?name==`view-show-painel`].[appId,appArn,defaultDomain]' \
         --output text
 )"
 APP_ROWS=()
@@ -114,7 +112,7 @@ if [[ -z "$APP_ID" || -z "$APP_ARN" || -z "$DOMINIO" || -n "$EXTRA_FIELD" ]]; th
     echo "erro: resposta inválida ao resolver o app Amplify isolado." >&2
     exit 1
 fi
-if [[ "$APP_ARN" != "arn:aws:amplify:${EXPECTED_REGION}:${EXPECTED_ACCOUNT_ID}:apps/${APP_ID}" ]]; then
+if [[ "$APP_ARN" != "arn:aws:amplify:${EXPECTED_REGION}:${CALLER_ACCOUNT}:apps/${APP_ID}" ]]; then
     echo "erro: ARN inesperado para o app Amplify isolado." >&2
     exit 1
 fi

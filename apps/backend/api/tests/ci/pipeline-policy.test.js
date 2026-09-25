@@ -23,6 +23,10 @@ const renderTaskDefinitionFixture = fs.readFileSync(
   path.resolve(__dirname, "render-task-definition.test.js"),
   "utf8",
 );
+const ingestionPublisher = fs.readFileSync(
+  path.resolve(__dirname, "../../../../../scripts/ci/publish-ingestion-image.sh"),
+  "utf8",
+);
 
 function topLevelBlock(name, source = pipeline) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -30,7 +34,7 @@ function topLevelBlock(name, source = pipeline) {
   const start = match?.index ?? -1;
   assert.notEqual(start, -1, `missing top-level block ${name}`);
   const remainder = source.slice(start + match[0].length);
-  const next = remainder.search(/^\S[^\n]*:\n/m);
+  const next = remainder.search(/^\S[^\n]*:[^\n]*\n/m);
   return next === -1 ? remainder : remainder.slice(0, next);
 }
 
@@ -140,7 +144,7 @@ test("pipeline conservatively cancels obsolete pre-deploy work", () => {
   assert.match(topLevelBlock("deploy_backend_ecs"), /interruptible: false/);
   assert.match(
     topLevelBlock("deploy_backend_ecs"),
-    /resource_group: g05-s3-api-service/,
+    /resource_group: view-show-api-service/,
   );
 });
 
@@ -153,10 +157,10 @@ test("institutional runner connects to DinD without an unavailable TLS certifica
 
 test("task-definition rendering fixture uses the isolated deployment identities", () => {
   for (const expectedValue of [
-    "g05-s3-api-task",
-    "g05-s3-api",
-    "/ecs/g05-s3-api",
-    "example.invalid/g05-s3-api:abc123",
+    "view-show-api-task",
+    "view-show-api",
+    "/ecs/view-show-api",
+    "example.invalid/view-show-api:abc123",
   ]) {
     assert.match(renderTaskDefinitionFixture, new RegExp(expectedValue));
   }
@@ -170,22 +174,28 @@ test("deployment bindings target only the isolated Sprint 3 stack", () => {
   const variables = topLevelBlock("variables");
 
   for (const [name, value] of Object.entries({
-    AWS_ACCOUNT_ID: "248880318395",
     AWS_DEFAULT_REGION: "us-east-1",
-    ECR_REPOSITORY: "g05-s3-api",
-    ECS_CLUSTER: "g05-s3-cluster",
-    ECS_SERVICE: "g05-s3-api-service",
-    ECS_TASK_FAMILY: "g05-s3-api-task",
-    ECS_CONTAINER_NAME: "g05-s3-api",
-    ALB_NAME: "g05-s3-alb",
+    ECR_REPOSITORY: "view-show-api",
+    ECS_CLUSTER: "view-show-cluster",
+    ECS_SERVICE: "view-show-api-service",
+    ECS_TASK_FAMILY: "view-show-api-task",
+    ECS_CONTAINER_NAME: "view-show-api",
+    ALB_NAME: "view-show-alb",
   })) {
     assert.match(variables, new RegExp(`^  ${name}: "${value}"$`, "m"));
   }
+
+  // A conta NÃO pode estar no YAML versionado: ela muda por Learner Lab, e
+  // cravá-la aqui obrigava cada colega a editar a pipeline. Cada projeto
+  // GitLab define AWS_ACCOUNT_ID como variável de CI/CD, e os scripts a exigem
+  // presente antes de qualquer chamada.
+  assert.doesNotMatch(variables, /^  AWS_ACCOUNT_ID:/m);
+  assert.doesNotMatch(pipeline, /\b\d{12}\b/);
 });
 
 test("Amplify publication targets only the isolated production app branch", () => {
   const variables = topLevelBlock("variables");
-  assert.match(variables, /^  AMPLIFY_APP_NAME: "g05-s3-painel"$/m);
+  assert.match(variables, /^  AMPLIFY_APP_NAME: "view-show-painel"$/m);
   assert.match(variables, /^  AMPLIFY_BRANCH: "producao"$/m);
   assert.doesNotMatch(pipeline, /AMPLIFY_APP_ID|AMPLIFY_DEFAULT_DOMAIN/);
   assert.match(
@@ -196,7 +206,7 @@ test("Amplify publication targets only the isolated production app branch", () =
   for (const jobName of ["publicar:staging", "publicar:producao"]) {
     const job = topLevelBlock(jobName);
     assert.doesNotMatch(job, /AMPLIFY_BRANCH:\s*(?:develop|main)/);
-    assert.match(job, /^  resource_group: g05-s3-amplify-producao$/m);
+    assert.match(job, /^  resource_group: view-show-amplify-producao$/m);
     assert.match(job, /^  environment:\n    name: aws-lab$/m);
     assert.doesNotMatch(job, /^\s+url:/m);
   }
@@ -206,7 +216,7 @@ test("Amplify deployment guide does not require opaque app identifiers", () => {
   assert.doesNotMatch(amplifyGuide, /AMPLIFY_APP_ID|AMPLIFY_DEFAULT_DOMAIN/);
   assert.doesNotMatch(amplifyGuide, /<app-id>/);
   assert.match(amplifyGuide, /\.\/deploy\/deploy-amplify\.sh out/);
-  assert.match(amplifyGuide, /g05-s3-painel/);
+  assert.match(amplifyGuide, /view-show-painel/);
   assert.match(amplifyGuide, /producao/);
 });
 
@@ -253,11 +263,31 @@ test("Amplify guide explains the current federated-auth limitation", () => {
   );
 });
 
-test("backend changes include the complete modular API and operational scripts", () => {
+test("backend changes include the API and only its operational scripts", () => {
   const backendChanges = topLevelBlock(".mudou-backend");
-  assert.match(backendChanges, /apps\/backend\/\*\*\/\*/);
-  assert.match(backendChanges, /scripts\/ci\/\*\*\/\*/);
+  assert.match(backendChanges, /apps\/backend\/api\/\*\*\/\*/);
+  assert.match(backendChanges, /apps\/backend\/contracts\/\*\*\/\*/);
+  assert.match(backendChanges, /scripts\/ci\/publish-backend-image\.sh/);
+  assert.doesNotMatch(backendChanges, /apps\/backend\/ingestion-data|scripts\/ci\/\*\*\/\*/);
   assert.doesNotMatch(backendChanges, /docs\/superpowers/);
+});
+
+test("pipeline and ingestion edits never cause API publication or deployment", () => {
+  const apiMutationChanges = topLevelBlock(".mudou-backend-mutacao");
+  assert.match(apiMutationChanges, /apps\/backend\/api\/src\/\*\*\/\*/);
+  assert.match(apiMutationChanges, /apps\/backend\/api\/contracts\/\*\*\/\*/);
+  assert.match(apiMutationChanges, /apps\/backend\/api\/scripts\/\*\*\/\*/);
+  assert.match(apiMutationChanges, /apps\/backend\/api\/tsconfig\*\.json/);
+  assert.match(apiMutationChanges, /apps\/backend\/api\/Dockerfile/);
+  assert.doesNotMatch(apiMutationChanges, /\.gitlab-ci\.yml/);
+  assert.doesNotMatch(apiMutationChanges, /^\s*-\s+scripts\//m);
+  assert.doesNotMatch(apiMutationChanges, /ingestion-data/);
+
+  for (const jobName of ["publish_backend_image", "deploy_backend_ecs"]) {
+    const job = topLevelBlock(jobName);
+    assert.match(job, /changes: \*backend_mutation_changes/);
+    assert.doesNotMatch(job, /changes: \*backend_changes/);
+  }
 });
 
 test("fullstack changes trigger both IaC validations", () => {
@@ -575,4 +605,76 @@ test("runtime-installed Alpine packages use compatible exact versions", () => {
     topLevelBlock("deploy_backend_ecs"),
     /apk add --no-cache aws-cli=2\.27\.25-r0 bash=5\.2\.37-r0 curl=8\.14\.1-r3 git=2\.49\.1-r0 jq=1\.8\.1-r0/,
   );
+});
+
+test("ingestion CI is isolated from API publication and never performs operational mutations", () => {
+  const ingestionChanges = topLevelBlock(".mudou-ingestion");
+  const backendChanges = topLevelBlock(".mudou-backend").split("\n\n", 1)[0];
+  assert.match(ingestionChanges, /apps\/backend\/ingestion-data\/\*\*\/\*/);
+  assert.match(ingestionChanges, /apps\/backend\/contracts\/\*\*\/\*/);
+  assert.match(ingestionChanges, /scripts\/ci\/publish-ingestion-image\.sh/);
+  assert.doesNotMatch(backendChanges, /scripts\/ci\/\*\*\/\*/);
+  assert.doesNotMatch(backendChanges, /publish-ingestion-image|smoke-ingestion-container/);
+
+  for (const jobName of [
+    "validate_ingestion",
+    "validate_ingestion_mysql",
+    "validate_ingestion_container",
+  ]) {
+    const job = topLevelBlock(jobName);
+    assert.match(job, /CI_PIPELINE_SOURCE == "merge_request_event"/);
+    assert.match(job, /CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"/);
+    assert.doesNotMatch(job, /environment:|aws |upload_snapshot|run_task/);
+  }
+  for (const jobName of ["validate_ingestion", "validate_ingestion_mysql"]) {
+    assert.match(
+      topLevelBlock(jobName),
+      /image: python:3\.12\.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7/,
+    );
+  }
+  assert.match(
+    topLevelBlock("validate_ingestion_mysql"),
+    /name: mysql:8\.4@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad/,
+  );
+  for (const jobName of ["validate_ingestion_container", "publish_ingestion_image"]) {
+    const job = topLevelBlock(jobName);
+    assert.match(
+      job,
+      /image: docker:27\.4\.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a/,
+    );
+    assert.match(
+      job,
+      /name: docker:27\.4\.1-dind@sha256:3c8fb358b82767a38189e54a89a2ba8d71109f0a17efa87fd009ef8283c46df6/,
+    );
+  }
+  assert.match(
+    topLevelBlock("validate_ingestion_container"),
+    /image_uri="view-show-ingestion-ci:\$\{CI_COMMIT_SHA\}"/,
+  );
+
+  const publication = topLevelBlock("publish_ingestion_image");
+  assert.match(publication, /^    ECR_REPOSITORY: "view-show-ingestion"$/m);
+  assert.match(publication, /CI_PIPELINE_SOURCE == "push"/);
+  assert.match(publication, /CI_COMMIT_BRANCH == "develop"/);
+  assert.doesNotMatch(publication, /merge_request_event/);
+  assert.match(publication, /bash scripts\/ci\/publish-ingestion-image\.sh/);
+  assert.match(publication, /@\$\{INGESTION_IMAGE_DIGEST\}/);
+  assert.match(publication, /environment:\n\s+name: aws-lab\n\s+action: prepare/);
+  assert.doesNotMatch(publication, /upload_snapshot|run_task|put-secret-value|ecs run-task/);
+  assert.match(
+    publication,
+    /^  artifacts:\n    paths:\n      - ingestion-image\.env\n    reports:\n      dotenv: ingestion-image\.env\n    expire_in: 7 days$/m,
+  );
+  assert.doesNotMatch(ingestionPublisher, /publish-backend-image\.sh/);
+  assert.match(ingestionPublisher, /readonly expected_repository="view-show-ingestion"/);
+  assert.match(ingestionPublisher, /apps\/backend\/ingestion-data/);
+  assert.match(ingestionPublisher, /INGESTION_IMAGE_DIGEST=/);
+  assert.doesNotMatch(ingestionPublisher, /cache-(?:from|to)/);
+});
+
+test("Terraform validation runs only mock-backed plan tests and emits JUnit", () => {
+  const terraformJob = topLevelBlock("validate_fullstack_iac");
+  assert.match(terraformJob, /terraform(?: -chdir=apps\/fullstack)? test -test-directory=tests -junit-xml=/);
+  assert.match(terraformJob, /reports:\n\s+junit: reports\/terraform\.xml/);
+  assert.doesNotMatch(terraformJob, /terraform (apply|destroy|import)/);
 });
