@@ -152,7 +152,7 @@ describe("ImportUploadDialog", () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(
-      screen.getByText("Arquivo selecionado: snapshot.zip"),
+      screen.getByText("snapshot.zip"),
     ).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Revisar importação" }),
