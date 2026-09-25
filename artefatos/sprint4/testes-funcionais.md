@@ -11,8 +11,6 @@
 - **Testes de caso de uso e valor limite** — validam um fluxo de negócio completo e o comportamento nos extremos de uma entrada numérica.
 - **Testes de carga funcional** — validam que a resposta permanece correta (não necessariamente rápida) conforme a concorrência aumenta.
 
-&emsp;A base de todo teste abaixo é código ou requisito que **já existe** no repositório: nenhum RF, caso de uso, rota ou métrica foi inventado para esta entrega.
-
 &emsp;Além de registrar resultados, o documento explica por que cada cenário foi escolhido. Nesta atualização, o foco está nos riscos percebidos por quem usa o sistema: comunicação entre interface, API e persistência; reserva segura de uma importação; e rejeição de arquivos inválidos exatamente nas fronteiras aceitas. Para esses fluxos foi adotada a técnica de **caixa-preta**, porque o comportamento público da rota HTTP e suas pós-condições são mais relevantes do que detalhes internos como getters, setters ou métodos auxiliares.
 
 &emsp;Na execução mais recente, os recortes solicitados foram executados separadamente para deixar a evidência objetiva: **5/5 integrações AWS**, **3/3 integrações do upload** e **8/8 execuções automatizadas do UC-09**, incluindo 15 combinações internas de valor limite para GZIP e ZIP. As credenciais e senhas nunca são gravadas nos arquivos de evidência.
@@ -39,7 +37,7 @@
 
 ## 1. Testes Unitários
 
-&emsp;Quatro testes unitários, cobrindo função/método isolado com pelo menos um caso válido e um caso de erro cada. Três das quatro já existiam na suíte Vitest; o quarto (UT04) expunha uma lacuna real (limite de paginação nunca testado nos seus extremos) e foi escrito nesta rodada, também alimentando a análise de valor limite da Seção 3. Os quatro testes foram executados e os quatro passaram.
+&emsp;Quatro testes unitários, cobrindo função/método isolado com pelo menos um caso válido e um caso de erro cada. Três deles já existiam na suíte Vitest; o quarto (UT04) cobre os extremos do limite de paginação e também alimenta a análise de valor limite da Seção 3. Os quatro testes foram executados e os quatro passaram.
 
 ### UT01 — `CursorCodec.encode` / `CursorCodec.decode`
 
@@ -428,7 +426,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 3.1 Pré-condições e dados de entrada comuns
 
-- Sessão autenticada válida — sem ela a rota responde `401` antes de qualquer validação de query; este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão. Na execução real (ver 3.6), a sessão vem de um login de senha real contra o Cognito (`POST /auth/login`), não de um cookie forjado com `SessionCodec`.
+- Sessão autenticada válida — sem ela a rota responde `401` antes de qualquer validação de query; este caso de uso assume sessão válida e testa o que acontece **depois** da guarda de sessão. Na execução real (ver 3.6), a sessão vem de um login de senha real contra o Cognito (`POST /auth/login`).
 - Base de incidentes conhecida (300 incidentes sintéticos gravados via `scripts/seed-carga.cjs` com `ALLOW_REMOTE_SEED=1` direto na tabela DynamoDB real), para que `hasMore`/`nextCursor` tenham um valor determinístico em cada consulta.
 
 ### 3.2 Fluxo principal
@@ -459,7 +457,7 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Procedimento comum a todos os casos abaixo: autenticar uma sessão válida, enviar a requisição indicada na coluna "Entrada" para `GET /api/v1/incidents` e comparar o corpo e o status da resposta com o "Resultado esperado".
 
-&emsp;**Execução real** (não simulada): os 12 casos rodam como requisições HTTP `fetch` reais em [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts), contra a API implantada de verdade na AWS (ALB → ECS Fargate → DynamoDB, stack `apps/fullstack`, namespace `g05-s3`), autenticando com um login de senha real no Cognito (`POST /auth/login`) — não um `createApp()` local nem um cookie forjado. Como `GET /api/v1/incidents` só sustenta uma das três dimensões `deviceType`/`region`/`appVersion` por vez, CT-04 e CT-11 usam `deviceType=Mobile`/`deviceType=Web` (vocabulário real gerado por `seed-carga.cjs`), não `android`/`ios` como no rascunho original. Ver 3.7 para o passo a passo de reprodução.
+&emsp;**Execução:** os 12 casos rodam como requisições HTTP `fetch` em [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts), contra a API implantada na AWS (ALB → ECS Fargate → DynamoDB, stack `apps/fullstack`, namespace `g05-s3`), autenticando com login de senha no Cognito (`POST /auth/login`). Como `GET /api/v1/incidents` só sustenta uma das três dimensões `deviceType`/`region`/`appVersion` por vez, CT-04 e CT-11 usam `deviceType=Mobile`/`deviceType=Web` (vocabulário gerado por `seed-carga.cjs`). Ver 3.7 para o passo a passo de reprodução.
 
 <div align="center">
 
@@ -650,11 +648,9 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 &emsp;A Seção 2 foi reexecutada após o deploy de 25/09/2026: 5/5 testes passaram contra a stack AWS real e 3/3 testes passaram na integração dos componentes do upload. A rodada aprofundada correlacionou a resposta de incidentes com a projeção física ativa e comprovou a criação real de `ImportJob`/lock no DynamoDB e multipart no S3, incluindo idempotência, concorrência e limpeza. A execução também revelou anteriormente que o seed legado não publicava o manifesto `ACTIVE`; o script foi compatibilizado com o contrato versionado antes da rodada final aprovada.
 
-&emsp;Com isso, todas as linhas de "Situação" deste documento (Seções 1 a 4) estão preenchidas com aprovado/reprovado — não há mais item pendente no plano.
-
 ### 5.1 Histórico de implementação
 
-&emsp;Registro de onde cada item foi implementado, para rastreabilidade — não há mais pendência em aberto:
+&emsp;Registro de onde cada item foi implementado, para rastreabilidade:
 
 <div align="center">
 
