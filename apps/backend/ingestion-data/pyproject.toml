@@ -1,17 +1,54 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "view-show-ingestion"
+name = "view-show-data-ingestion"
 version = "0.1.0"
-description = "Observability contract for the future View Show ingestion worker"
-requires-python = ">=3.13"
+description = "Batch ingestion service for the Argus 2.0 operational data set"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-  "opentelemetry-api==1.44.0",
-  "opentelemetry-sdk==1.44.0",
-  "opentelemetry-exporter-otlp-proto-http==1.44.0",
+    "boto3==1.40.0",
+    "jsonschema==4.25.1",
+    "PyMySQL==1.1.1",
+    "pyarrow==21.0.0",
+]
+
+[project.optional-dependencies]
+telemetry-contract = [
+    "opentelemetry-api==1.44.0",
+    "opentelemetry-sdk==1.44.0",
+    "opentelemetry-exporter-otlp-proto-http==1.44.0",
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = [".", "src"]
+include = [
+    "adapters*",
+    "application*",
+    "bootstrap*",
+    "contracts*",
+    "domain*",
+    "ports*",
+    "view_show_ingestion*",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["bootstrap"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests that exercise multiple service components",
+    "mysql: tests that require a MySQL instance",
+    "aws: tests that require AWS services or emulators",
+]

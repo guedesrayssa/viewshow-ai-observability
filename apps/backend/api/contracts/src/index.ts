@@ -7,6 +7,14 @@ import { z } from "zod";
 
 export const SCHEMA_VERSION = "1.0" as const;
 
+export const datasetVersionSchema = z.string().regex(/^dsv_[0-9a-f]{64}$/);
+export type DatasetVersion = z.infer<typeof datasetVersionSchema>;
+
+export const argusLiveSyncUpdateSchema = z
+  .object({ enabled: z.boolean() })
+  .strict();
+export type ArgusLiveSyncUpdate = z.infer<typeof argusLiveSyncUpdateSchema>;
+
 export const requestId = (): string =>
   `req_${randomUUID().replaceAll("-", "")}`;
 
@@ -114,6 +122,7 @@ export const responseMetaSchema = z
   .object({
     requestId: z.string().min(1),
     schemaVersion: z.literal(SCHEMA_VERSION),
+    datasetVersion: datasetVersionSchema.nullable(),
     generatedAt: z.iso.datetime({ offset: true }),
     window: resolvedWindowSchema.nullable(),
     partial: z.boolean(),
@@ -134,6 +143,7 @@ export interface QualityContext {
 
 export interface InternalResponse<T> {
   readonly data: T;
+  readonly datasetVersion: DatasetVersion | null;
   readonly quality: QualityContext;
 }
 
@@ -141,6 +151,7 @@ export const internalResponseSchema = <T extends z.ZodType>(data: T) =>
   z
     .object({
       data,
+      datasetVersion: datasetVersionSchema.nullable(),
       quality: z
         .object({
           window: resolvedWindowSchema.nullable(),
@@ -168,6 +179,7 @@ export function successEnvelope<T>(
     meta: {
       requestId: currentRequestId,
       schemaVersion: SCHEMA_VERSION,
+      datasetVersion: result.datasetVersion,
       generatedAt: now.toISOString(),
       window: result.quality.window,
       partial: result.quality.partial,
@@ -193,6 +205,22 @@ export const errorCodeSchema = z.enum([
   "DATA_UNAVAILABLE",
   "FEATURE_UNAVAILABLE",
   "UPSTREAM_TIMEOUT",
+  "IMPORT_IN_PROGRESS",
+  "IMPORT_NOT_OWNED",
+  "IMPORT_STATE_CONFLICT",
+  "IMPORT_NOT_FOUND",
+  "UPLOAD_EXPIRED",
+  "UPLOAD_PREPARATION_FAILED",
+  "WORKER_STOPPED",
+  "MYSQL_CONNECTION_LOST",
+  "MYSQL_QUERY_TIMEOUT",
+  "QUERY_PLAN_INVALID",
+  "ARCHIVE_PUBLICATION_FAILED",
+  "DYNAMODB_THROTTLED",
+  "DISK_PRESSURE",
+  "CHECKSUM_MISMATCH",
+  "SOURCE_SCHEMA_INVALID",
+  "DATA_RECONCILIATION_FAILED",
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
@@ -241,9 +269,13 @@ export function errorEnvelope(
 }
 
 export const windowPresetSchema = z.enum(["15m", "30m", "1h", "6h", "24h"]);
+const temporalWindowPresetSchema = z.union([
+  windowPresetSchema,
+  z.literal("all"),
+]);
 
 const temporalQueryShape = {
-  window: windowPresetSchema.optional(),
+  window: temporalWindowPresetSchema.optional(),
   from: z.iso.datetime({ offset: true }).optional(),
   to: z.iso.datetime({ offset: true }).optional(),
 };
@@ -254,11 +286,16 @@ function validateTemporalQuery(value: {
   to?: string | undefined;
 }): boolean {
   const custom = value.from !== undefined || value.to !== undefined;
-  return custom
-    ? value.from !== undefined &&
-        value.to !== undefined &&
-        value.window === undefined
-    : true;
+  if (!custom) return true;
+  if (
+    value.from === undefined ||
+    value.to === undefined ||
+    value.window !== undefined
+  )
+    return false;
+  const from = Date.parse(value.from);
+  const to = Date.parse(value.to);
+  return from <= to && to - from <= 31 * 86_400_000;
 }
 
 export const overviewQuerySchema = z
@@ -298,7 +335,7 @@ export const incidentsQuerySchema = z
   .strict()
   .refine(validateTemporalQuery, {
     message:
-      "from e to devem ser enviados juntos e não podem ser combinados com window.",
+      "from e to devem formar uma janela crescente de até 31 dias e não podem ser combinados com window.",
   })
   .transform((value) => ({ ...value, window: value.window ?? "1h" }));
 export type IncidentsQuery = z.output<typeof incidentsQuerySchema>;
@@ -308,18 +345,8 @@ export const eventsQuerySchema = z
     ...temporalQueryShape,
     search: z.string().trim().max(100).optional(),
     category: z.string().optional(),
-    deviceType: z.string().optional(),
-    region: z.string().optional(),
-    appVersion: z.string().optional(),
-    source: z.string().optional(),
-    os: z.string().optional(),
-    state: z.string().optional(),
-    pop: z.string().optional(),
-    isp: z.string().optional(),
-    cdn: z.string().optional(),
-    content: z.string().optional(),
-    component: z.string().optional(),
-    environment: z.string().optional(),
+    sourceDataset: z.string().trim().min(1).optional(),
+    correlation: z.enum(["all", "linked", "unlinked"]).default("all"),
     sort: z.enum(["recent", "oldest"]).default("recent"),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     cursor: z.string().max(4096).optional(),
@@ -327,9 +354,10 @@ export const eventsQuerySchema = z
   .strict()
   .refine(validateTemporalQuery, {
     message:
-      "from e to devem ser enviados juntos e não podem ser combinados com window.",
+      "from e to devem formar uma janela crescente de até 31 dias e não podem ser combinados com window.",
   })
   .transform((value) => ({ ...value, window: value.window ?? "30m" }));
+export type EventsQuery = z.output<typeof eventsQuerySchema>;
 
 export const monitoringQuerySchema = z
   .object({
@@ -351,19 +379,117 @@ export const reviewBodySchema = z
   .strict();
 export type ReviewBody = z.infer<typeof reviewBodySchema>;
 
+export const importIdSchema = z
+  .string()
+  .regex(/^imp_[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
+export type ImportId = z.infer<typeof importIdSchema>;
+
+export const importInProgressErrorSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.literal("IMPORT_IN_PROGRESS"),
+        message: z.string().trim().min(1),
+        requestId: z.string().trim().min(1),
+        details: z.object({ importId: importIdSchema }).strict(),
+      })
+      .strict(),
+  })
+  .strict();
+export type ImportInProgressError = z.infer<typeof importInProgressErrorSchema>;
+
+export const importStateSchema = z.enum([
+  "PREPARING",
+  "UPLOADING",
+  "UPLOADED",
+  "VALIDATING",
+  "PROCESSING",
+  "READY",
+  "FAILED",
+]);
+export type ImportState = z.infer<typeof importStateSchema>;
+
+const checksumSha256Schema = z.string().regex(/^[A-Za-z0-9+/]{43}=$/);
+const multipartPartsDescription =
+  "Cada parte não final possui exatamente 16 MiB; somente a parte final pode ser menor.";
+
+export const civilDatePatternSources = [
+  "^(?:000[1-9]|00[1-9]\\d|0[1-9]\\d{2}|[1-9]\\d{3})-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|02-(?:0[1-9]|1\\d|2[0-8]))$",
+  "^(?:(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26]))|(?:(?:0[48]|[2468][048]|[13579][26])00))-02-29$",
+] as const;
+
+const civilDatePatterns = civilDatePatternSources.map(
+  (source) => new RegExp(source),
+);
+
+function isCivilDate(value: string): boolean {
+  return civilDatePatterns.some((pattern) => pattern.test(value));
+}
+
+export const civilDateSchema = z
+  .string()
+  .refine(isCivilDate, "Data civil inválida.");
+export type CivilDate = z.infer<typeof civilDateSchema>;
+
+export const importFileNameSchema = z.union([
+  z.literal("argus_dump.sql.gz"),
+  z
+    .string()
+    .trim()
+    .regex(/^[^/\\]{1,251}\.zip$/i),
+]);
+
 export const startImportBodySchema = z
   .object({
-    fileName: z.string().trim().min(1).max(255),
+    fileName: importFileNameSchema,
     sizeBytes: z
       .number()
       .int()
       .positive()
-      .max(5 * 1024 ** 4),
-    sha256: z.string().regex(/^[a-f0-9]{64}$/i),
-    partCount: z.number().int().min(1).max(10_000),
+      .max(10 * 1024 ** 3),
+    snapshotExtractedOn: civilDateSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const limit =
+      value.fileName === "argus_dump.sql.gz" ? 5 * 1024 ** 3 : 10 * 1024 ** 3;
+    if (value.sizeBytes > limit)
+      context.addIssue({
+        code: "custom",
+        path: ["sizeBytes"],
+        message: "Arquivo excede o limite permitido.",
+      });
+  });
+export type StartImportBody = z.infer<typeof startImportBodySchema>;
+
+export const importsQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    cursor: z.string().trim().min(1).max(2048).optional(),
   })
   .strict();
-export type StartImportBody = z.infer<typeof startImportBodySchema>;
+export type ImportsQuery = z.output<typeof importsQuerySchema>;
+
+export const signImportPartsBodySchema = z
+  .object({
+    parts: z
+      .array(
+        z
+          .object({
+            partNumber: z.number().int().min(1).max(10_000),
+            checksumSha256: checksumSha256Schema,
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(20)
+      .describe(multipartPartsDescription),
+  })
+  .strict();
+export type SignImportPartsBody = z.infer<typeof signImportPartsBodySchema>;
+
+export const restartImportBodySchema = z.object({}).strict();
+export type RestartImportBody = z.infer<typeof restartImportBodySchema>;
 
 export const completeImportBodySchema = z
   .object({
@@ -373,19 +499,232 @@ export const completeImportBodySchema = z
           .object({
             partNumber: z.number().int().min(1).max(10_000),
             etag: z.string().trim().min(1).max(1024),
+            checksumSha256: checksumSha256Schema,
           })
           .strict(),
       )
       .min(1)
-      .max(10_000),
+      .max(10_000)
+      .describe(multipartPartsDescription),
+  })
+  .strict();
+export type CompleteImportBody = z.infer<typeof completeImportBodySchema>;
+
+export const importAuthorSchema = z
+  .object({
+    id: z.string().trim().min(1).max(256),
+    name: z.string().trim().min(1).max(256).nullable(),
+    email: z.string().email().max(320).nullable(),
+  })
+  .strict();
+export type ImportAuthor = z.infer<typeof importAuthorSchema>;
+
+export const importRunStageSchema = z.enum([
+  "STARTING",
+  "RESTORING",
+  "VALIDATING",
+  "INGESTING",
+  "EXTRACTING",
+  "PROJECTING",
+  "ARCHIVING",
+  "ACTIVATING",
+  "MATERIALIZING_HOT",
+  "FINALIZING_CANDIDATE",
+  "PUBLISHING",
+  "SUCCEEDED",
+  "PARTIAL",
+  "FAILED",
+  "SKIPPED_LOCKED",
+  "SKIPPED_DISABLED",
+]);
+export type ImportRunStage = z.infer<typeof importRunStageSchema>;
+
+export const importProgressSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("bytes"),
+      completedBytes: z.number().int().nonnegative(),
+      totalBytes: z.number().int().positive(),
+    })
+    .strict()
+    .refine((value) => value.completedBytes <= value.totalBytes, {
+      message: "completedBytes não pode exceder totalBytes.",
+    }),
+  z
+    .object({
+      kind: z.literal("stage"),
+      stage: importRunStageSchema,
+      substage: z.string().trim().min(1).max(128).optional(),
+      stageStartedAt: z.iso.datetime({ offset: true, precision: 3 }).optional(),
+      heartbeatAt: z.iso.datetime({ offset: true, precision: 3 }).optional(),
+      recordsRead: z.number().int().nonnegative(),
+      recordsWritten: z.number().int().nonnegative(),
+      recordsRejected: z.number().int().nonnegative(),
+      recordsTotal: z.number().int().nonnegative().nullable().optional(),
+      currentDataset: z.string().trim().min(1).max(128).nullable().optional(),
+      currentPartition: z.string().trim().min(1).max(128).optional(),
+      datasetsCompleted: z.number().int().nonnegative().optional(),
+      datasetsTotal: z.number().int().nonnegative().optional(),
+      unitsCompleted: z.number().int().nonnegative().optional(),
+      unitsTotal: z.number().int().nonnegative().optional(),
+      unitLabel: z.string().trim().min(1).max(128).optional(),
+    })
+    .strict()
+    .refine(
+      (value) => {
+        const details = [
+          value.stageStartedAt,
+          value.heartbeatAt,
+          value.recordsTotal,
+          value.currentDataset,
+          value.datasetsCompleted,
+          value.datasetsTotal,
+        ];
+        const present = details.filter((item) => item !== undefined).length;
+        return present === 0 || present === details.length;
+      },
+      { message: "O detalhamento da etapa deve ser informado por completo." },
+    )
+    .refine(
+      (value) =>
+        value.stageStartedAt === undefined ||
+        Date.parse(value.heartbeatAt!) >= Date.parse(value.stageStartedAt),
+      { message: "heartbeatAt não pode preceder stageStartedAt." },
+    )
+    .refine(
+      (value) =>
+        value.datasetsCompleted === undefined ||
+        value.datasetsCompleted <= value.datasetsTotal!,
+      { message: "datasetsCompleted não pode exceder datasetsTotal." },
+    )
+    .refine(
+      (value) =>
+        value.recordsTotal === undefined ||
+        value.recordsTotal === null ||
+        value.recordsRead <= value.recordsTotal,
+      { message: "recordsRead não pode exceder recordsTotal." },
+    )
+    .refine(
+      (value) => {
+        const units = [value.unitsCompleted, value.unitsTotal, value.unitLabel];
+        const present = units.filter((item) => item !== undefined).length;
+        return present === 0 || present === units.length;
+      },
+      { message: "O progresso por unidades deve ser informado por completo." },
+    )
+    .refine(
+      (value) =>
+        value.unitsCompleted === undefined ||
+        value.unitsCompleted <= value.unitsTotal!,
+      { message: "unitsCompleted não pode exceder unitsTotal." },
+    ),
+  z.object({ kind: z.literal("none") }).strict(),
+]);
+export type ImportProgress = z.infer<typeof importProgressSchema>;
+
+export const importSafeErrorSchema = z
+  .object({
+    code: errorCodeSchema,
+    message: z.string().trim().min(1).max(1000),
+    requestId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/),
+    stage: z.string().trim().min(1).max(128).nullable(),
+    retryable: z.boolean(),
+    attempt: z.number().int().positive(),
+    maxAttempts: z.number().int().positive().nullable(),
   })
   .strict()
   .refine(
-    ({ parts }) =>
-      new Set(parts.map(({ partNumber }) => partNumber)).size === parts.length,
-    { message: "partNumber não pode se repetir." },
+    (value) => value.maxAttempts === null || value.attempt <= value.maxAttempts,
+    { message: "attempt não pode exceder maxAttempts." },
   );
-export type CompleteImportBody = z.infer<typeof completeImportBodySchema>;
+export type ImportSafeError = z.infer<typeof importSafeErrorSchema>;
+
+export const importTimestampSchema = z.iso.datetime({
+  offset: true,
+  precision: 3,
+});
+
+export const importSnapshotSchema = z
+  .object({
+    importId: importIdSchema,
+    requestedBy: z.string().trim().min(1).max(256),
+    author: importAuthorSchema,
+    canManageUpload: z.boolean(),
+    fileName: importFileNameSchema,
+    sizeBytes: z.number().int().positive(),
+    snapshotExtractedOn: civilDateSchema,
+    createdAt: importTimestampSchema,
+    updatedAt: importTimestampSchema,
+    state: importStateSchema,
+    version: z.number().int().nonnegative(),
+    progress: importProgressSchema,
+    candidateVersion: datasetVersionSchema.nullable(),
+    error: importSafeErrorSchema.nullable(),
+  })
+  .strict();
+export type ImportSnapshot = z.infer<typeof importSnapshotSchema>;
+
+export const importPageSchema = z
+  .object({
+    items: z.array(importSnapshotSchema),
+    cursor: z.string().trim().min(1).max(2048).nullable(),
+    activeDatasetVersion: datasetVersionSchema.nullable().optional(),
+  })
+  .strict();
+export type ImportPage = z.infer<typeof importPageSchema>;
+export const listImportsResponseSchema = importPageSchema;
+
+export const importPartSchema = z
+  .object({
+    partNumber: z.number().int().min(1).max(10_000),
+    etag: z.string().trim().min(1).max(1024),
+    checksumSha256: checksumSha256Schema,
+    sizeBytes: z.number().int().positive(),
+  })
+  .strict();
+export type ImportPart = z.infer<typeof importPartSchema>;
+
+export const importPartsResponseSchema = z
+  .object({ parts: z.array(importPartSchema) })
+  .strict();
+export type ImportPartsResponse = z.infer<typeof importPartsResponseSchema>;
+export const listImportPartsResponseSchema = importPartsResponseSchema;
+
+export const signImportPartsResponseSchema = z
+  .object({
+    parts: z.array(
+      z
+        .object({
+          partNumber: z.number().int().min(1).max(10_000),
+          url: z.url(),
+          headers: z.record(z.string(), z.string()),
+          expiresAt: importTimestampSchema,
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type SignImportPartsResponse = z.infer<
+  typeof signImportPartsResponseSchema
+>;
+
+export const startImportResponseSchema = importSnapshotSchema;
+export const getImportResponseSchema = importSnapshotSchema;
+export const restartImportResponseSchema = importSnapshotSchema;
+export const completeImportResponseSchema = importSnapshotSchema;
+
+export const datasetActivationSchema = z
+  .object({
+    importId: importIdSchema,
+    datasetVersion: datasetVersionSchema,
+    activatedAt: importTimestampSchema,
+    activatedBy: z.string().trim().min(1).max(256),
+    changed: z.boolean(),
+  })
+  .strict();
+export type DatasetActivation = z.infer<typeof datasetActivationSchema>;
+export const activateImportBodySchema = z.object({}).strict();
+export const activateImportResponseSchema = datasetActivationSchema;
 
 export const opaqueIdSchema = z.string().trim().min(1).max(256);
 
@@ -499,7 +838,7 @@ export interface DiagnosisData {
       readonly rank: number;
       readonly statement: string;
       readonly component: { readonly id: string; readonly name: string } | null;
-      readonly probability: number | null;
+      readonly probability: number;
       readonly rationale: string | null;
       readonly review: {
         readonly status: "pending" | "confirmed" | "refuted" | "inconclusive";
@@ -509,22 +848,7 @@ export interface DiagnosisData {
       };
     }[];
   };
-  readonly evidence: readonly {
-    readonly id: string;
-    readonly type: string;
-    readonly title: string;
-    readonly statement: string;
-    readonly relation: "supports" | "contradicts" | "context";
-    readonly hypothesisIds: readonly string[];
-    readonly strength: "strong" | "moderate" | "weak";
-    readonly observedAt: string | null;
-    readonly source: { readonly type: string; readonly name: string };
-    readonly quality: {
-      readonly status: "verified" | "partial" | "delayed" | "unavailable";
-      readonly coverageRatio: number | null;
-      readonly flags: readonly string[];
-    };
-  }[];
+  readonly evidence: readonly EvidenceDto[];
   readonly charts: {
     readonly buffering: {
       readonly points: readonly { readonly timestamp: string; readonly value: number }[];
@@ -553,27 +877,78 @@ export interface DiagnosisData {
   };
 }
 
-export type EventCategory = "request" | "vitals" | "screen_view" | "video_view" | "session" | "error";
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly JsonValue[]
+  | { readonly [key: string]: JsonValue };
 
-export interface EventData {
-  readonly id: string;
-  readonly timestamp: string;
-  readonly category: EventCategory;
-  readonly source: { readonly name: string };
-  readonly entity: string;
-  readonly summary: string;
-  readonly quality: { readonly status: string; readonly label?: string | undefined };
-  readonly dimensions: {
-    readonly deviceType?: string | undefined;
-    readonly region?: string | undefined;
-    readonly appVersion?: string | undefined;
-  };
-  readonly normalized: {
-    readonly metric: string;
+export interface EventCorrelationDto {
+  readonly correlationId: string;
+  readonly incidentId: string;
+  readonly ruleVersion: string;
+  readonly timeDistanceSeconds: number;
+  readonly matchedFields: readonly {
+    readonly eventField: string;
+    readonly incidentField: string;
     readonly value: string;
-    readonly tags: readonly string[];
+  }[];
+}
+
+export interface EventDto {
+  readonly id: string;
+  readonly datasetVersion: DatasetVersion;
+  readonly category: "signal_observation" | "live_event" | "live_event_context";
+  readonly source: {
+    readonly system: string;
+    readonly dataset: string;
+    readonly recordId: string;
+    readonly canonicalLocator: string;
   };
-  readonly raw: { readonly available: boolean; readonly snippet?: string | undefined };
+  readonly occurredAt: string | null;
+  readonly window: {
+    readonly start: string;
+    readonly end: string;
+    readonly grainSeconds: number;
+  } | null;
+  readonly dimensions: Readonly<Record<string, JsonValue>>;
+  readonly measures: Readonly<Record<string, JsonValue>>;
+  readonly correlation: {
+    readonly status: "linked" | "unlinked";
+    readonly incidentIds: readonly string[];
+    readonly links: readonly EventCorrelationDto[];
+  };
+  readonly quality: {
+    readonly status: "measured" | "partial" | "delayed" | "unavailable";
+    readonly flags: readonly string[];
+    readonly observedThrough: string | null;
+  };
+  readonly raw: { readonly available: boolean; readonly reason: string };
+}
+
+export interface EvidenceDto {
+  readonly id: string;
+  readonly eventId: string;
+  readonly incidentId: string;
+  readonly type: string;
+  readonly relation: "supports" | "contradicts" | "context";
+  readonly hypothesisIds: readonly string[];
+  readonly strength: "strong" | "moderate" | "weak";
+  readonly observedAt: string | null;
+  readonly source: {
+    readonly type: string;
+    readonly name: string;
+    readonly dataset: string;
+    readonly recordId: string;
+  };
+  readonly correlation: EventCorrelationDto;
+  readonly quality: {
+    readonly status: "verified" | "partial" | "delayed" | "unavailable";
+    readonly coverageRatio: number | null;
+    readonly flags: readonly string[];
+  };
 }
 
 export interface EventsData {
@@ -581,32 +956,24 @@ export interface EventsData {
     readonly id: string;
     readonly number: string | null;
     readonly title: string;
-  };
-  readonly capabilities: {
-    readonly aggregateMetrics: { readonly status: "available" | "unavailable" };
-    readonly filtering: FilteringCapabilities["filtering"];
-    readonly individualEvents: {
-      readonly status: "available" | "unavailable";
-      readonly availableCategories: readonly EventCategory[];
-      readonly unavailableCategories: readonly EventCategory[];
-      readonly reason: string | null;
-    };
-    readonly rawPayload: { readonly status: "available" | "unavailable"; readonly reason: string | null };
-  };
-  readonly categoryStats: readonly { readonly key: EventCategory | "all"; readonly name: string; readonly total: number }[];
-  readonly volumeSeries: {
-    readonly metric: "event_count";
-    readonly bucketSeconds: number;
-    readonly points: readonly { readonly timestamp: string; readonly value: number }[];
-    readonly anomalyWindows: readonly { readonly from: string; readonly to: string }[];
   } | null;
-  readonly items: readonly EventData[];
+  readonly capabilities: FilteringCapabilities;
+  readonly categoryStats: readonly {
+    readonly category: EventDto["category"];
+    readonly count: number;
+  }[];
+  readonly volumeSeries: {
+    readonly bucketSeconds: number;
+    readonly points: readonly {
+      readonly timestamp: string;
+      readonly count: number;
+    }[];
+  } | null;
+  readonly items: readonly EventDto[];
   readonly facets: {
-    readonly categories: readonly { readonly key: EventCategory | "all"; readonly name: string; readonly total: number }[];
-    readonly deviceTypes: readonly string[];
-    readonly appVersions: readonly string[];
-    readonly regions: readonly string[];
-    readonly sources: readonly string[];
+    readonly categories: readonly EventDto["category"][];
+    readonly sourceDatasets: readonly string[];
+    readonly correlationStatuses: readonly ("linked" | "unlinked")[];
   };
   readonly page: {
     readonly limit: number;
@@ -776,6 +1143,112 @@ export const incidentsDataSchema = z
   })
   .strict();
 
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(z.string(), jsonValueSchema),
+  ]),
+);
+
+export const eventCorrelationSchema = z
+  .object({
+    correlationId: z.string().min(1),
+    incidentId: z.string().min(1),
+    ruleVersion: z.string().min(1),
+    timeDistanceSeconds: z.number().int(),
+    matchedFields: z.array(
+      z
+        .object({
+          eventField: z.string().min(1),
+          incidentField: z.string().min(1),
+          value: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const eventDtoSchema = z
+  .object({
+    id: z.string().regex(/^evt_[a-z2-7]{26}$/),
+    datasetVersion: datasetVersionSchema,
+    category: z.enum([
+      "signal_observation",
+      "live_event",
+      "live_event_context",
+    ]),
+    source: z
+      .object({
+        system: z.string().min(1),
+        dataset: z.string().min(1),
+        recordId: z.string().min(1),
+        canonicalLocator: z.string().min(1),
+      })
+      .strict(),
+    occurredAt: z.iso.datetime({ offset: true }).nullable(),
+    window: z
+      .object({
+        start: z.iso.datetime({ offset: true }),
+        end: z.iso.datetime({ offset: true }),
+        grainSeconds: z.number().int().positive(),
+      })
+      .strict()
+      .nullable(),
+    dimensions: z.record(z.string(), jsonValueSchema),
+    measures: z.record(z.string(), jsonValueSchema),
+    correlation: z
+      .object({
+        status: z.enum(["linked", "unlinked"]),
+        incidentIds: z.array(z.string().min(1)),
+        links: z.array(eventCorrelationSchema),
+      })
+      .strict(),
+    quality: z
+      .object({
+        status: z.enum(["measured", "partial", "delayed", "unavailable"]),
+        flags: z.array(z.string().min(1)),
+        observedThrough: z.iso.datetime({ offset: true }).nullable(),
+      })
+      .strict(),
+    raw: z
+      .object({ available: z.boolean(), reason: z.string().min(1) })
+      .strict(),
+  })
+  .strict();
+
+export const evidenceDtoSchema = z
+  .object({
+    id: z.string().min(1),
+    eventId: z.string().regex(/^evt_[a-z2-7]{26}$/),
+    incidentId: z.string().min(1),
+    type: z.string().min(1),
+    relation: z.enum(["supports", "contradicts", "context"]),
+    hypothesisIds: z.array(z.string()),
+    strength: z.enum(["strong", "moderate", "weak"]),
+    observedAt: z.iso.datetime({ offset: true }).nullable(),
+    source: z
+      .object({
+        type: z.string().min(1),
+        name: z.string().min(1),
+        dataset: z.string().min(1),
+        recordId: z.string().min(1),
+      })
+      .strict(),
+    correlation: eventCorrelationSchema,
+    quality: z
+      .object({
+        status: z.enum(["verified", "partial", "delayed", "unavailable"]),
+        coverageRatio: z.number().min(0).max(1).nullable(),
+        flags: z.array(z.string()),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const diagnosisDataSchema = z
   .object({
     incident: incidentDtoSchema,
@@ -802,7 +1275,7 @@ export const diagnosisDataSchema = z
                 .object({ id: z.string(), name: z.string() })
                 .strict()
                 .nullable(),
-              probability: z.number().min(0).max(1).nullable(),
+              probability: z.number().min(0).max(1),
               rationale: z.string().nullable(),
               review: z
                 .object({
@@ -822,35 +1295,57 @@ export const diagnosisDataSchema = z
         ),
       })
       .strict(),
-    evidence: z.array(
+    evidence: z.array(evidenceDtoSchema),
+    charts: z
+      .object({
+        buffering: z
+          .object({
+            points: z.array(
+              z
+                .object({
+                  timestamp: z.iso.datetime({ offset: true }),
+                  value: z.number(),
+                })
+                .strict(),
+            ),
+            marker: z
+              .object({
+                timestamp: z.iso.datetime({ offset: true }),
+                label: z.string(),
+              })
+              .strict()
+              .nullable(),
+          })
+          .strict()
+          .nullable(),
+        concentrations: z.array(
+          z
+            .object({ label: z.string(), percentage: z.number() })
+            .strict(),
+        ),
+        concentrationNote: z.string(),
+      })
+      .strict(),
+    timeline: z.array(
       z
         .object({
-          id: z.string(),
-          type: z.string(),
-          title: z.string(),
-          statement: z.string(),
-          relation: z.enum(["supports", "contradicts", "context"]),
-          hypothesisIds: z.array(z.string()),
-          strength: z.enum(["strong", "moderate", "weak"]),
-          observedAt: z.iso.datetime({ offset: true }).nullable(),
-          source: z.object({ type: z.string(), name: z.string() }).strict(),
-          quality: z
-            .object({
-              status: z.enum(["verified", "partial", "delayed", "unavailable"]),
-              coverageRatio: z.number().min(0).max(1).nullable(),
-              flags: z.array(z.string()),
-            })
-            .strict(),
+          timestamp: z.iso.datetime({ offset: true }),
+          label: z.string(),
+          source: z.string(),
+          tone: z.enum(["info", "warning", "critical", "navy"]),
         })
         .strict(),
     ),
-    charts: z
-      .object({
-        buffering: z.unknown().nullable(),
-        concentrations: z.array(z.unknown()),
-      })
-      .strict(),
-    timeline: z.array(z.unknown()),
+    changes: z.array(
+      z
+        .object({
+          label: z.string(),
+          cause: z.string(),
+          percentage: z.number(),
+          tone: z.enum(["info", "warning", "critical"]),
+        })
+        .strict(),
+    ),
     dataQuality: z
       .object({
         status: z.enum(["sufficient", "limited", "insufficient"]),
@@ -862,25 +1357,6 @@ export const diagnosisDataSchema = z
   })
   .strict();
 
-export const eventItemRuntimeSchema = z.object({
-  id: z.string().min(1),
-  timestamp: z.iso.datetime({ offset: true }),
-  category: z.enum(["request", "vitals", "screen_view", "video_view", "session", "error"]),
-  source: z.object({ name: z.string().min(1) }).strict(),
-  entity: z.string(),
-  summary: z.string(),
-  quality: z.object({ status: z.string(), label: z.string().optional() }).strict(),
-  dimensions: z.object({ deviceType: z.string().optional(), region: z.string().optional(), appVersion: z.string().optional() }).strict(),
-  normalized: z.object({ metric: z.string(), value: z.string(), tags: z.array(z.string()) }).strict(),
-  raw: z.object({ available: z.boolean(), snippet: z.string().optional() }).strict(),
-}).strict();
-
-const eventCategoryStatSchema = z.object({
-  key: z.enum(["all", "request", "vitals", "screen_view", "video_view", "session", "error"]),
-  name: z.string(),
-  total: z.number().int().nonnegative(),
-}).strict();
-
 export const eventsDataRuntimeSchema = z
   .object({
     incident: z
@@ -889,17 +1365,45 @@ export const eventsDataRuntimeSchema = z
         number: z.string().nullable(),
         title: z.string(),
       })
+      .strict()
+      .nullable(),
+    capabilities: filteringCapabilitiesSchema,
+    categoryStats: z.array(
+      z
+        .object({
+          category: z.enum([
+            "signal_observation",
+            "live_event",
+            "live_event_context",
+          ]),
+          count: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
+    volumeSeries: z
+      .object({
+        bucketSeconds: z.number().int().positive(),
+        points: z.array(
+          z
+            .object({
+              timestamp: z.iso.datetime({ offset: true }),
+              count: z.number().int().nonnegative(),
+            })
+            .strict(),
+        ),
+      })
+      .strict()
+      .nullable(),
+    items: z.array(eventDtoSchema),
+    facets: z
+      .object({
+        categories: z.array(
+          z.enum(["signal_observation", "live_event", "live_event_context"]),
+        ),
+        sourceDatasets: z.array(z.string()),
+        correlationStatuses: z.array(z.enum(["linked", "unlinked"])),
+      })
       .strict(),
-    capabilities: z.object({
-      aggregateMetrics: z.object({ status: z.enum(["available", "unavailable"]) }).strict(),
-      filtering: filteringCapabilitiesSchema.shape.filtering,
-      individualEvents: z.object({ status: z.enum(["available", "unavailable"]), availableCategories: z.array(eventItemRuntimeSchema.shape.category), unavailableCategories: z.array(eventItemRuntimeSchema.shape.category), reason: z.string().nullable() }).strict(),
-      rawPayload: z.object({ status: z.enum(["available", "unavailable"]), reason: z.string().nullable() }).strict(),
-    }).strict(),
-    categoryStats: z.array(eventCategoryStatSchema),
-    volumeSeries: z.object({ metric: z.literal("event_count"), bucketSeconds: z.number().int().positive(), points: z.array(z.object({ timestamp: z.iso.datetime({ offset: true }), value: z.number().int().nonnegative() }).strict()), anomalyWindows: z.array(z.object({ from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }) }).strict()) }).strict().nullable(),
-    items: z.array(eventItemRuntimeSchema),
-    facets: z.object({ categories: z.array(eventCategoryStatSchema), deviceTypes: z.array(z.string()), appVersions: z.array(z.string()), regions: z.array(z.string()), sources: z.array(z.string()) }).strict(),
     page: z
       .object({
         limit: z.number().int().positive(),
@@ -1137,8 +1641,6 @@ export const monitoringProjectionSchema = z
             })
             .strict(),
           coverage: measuredValueSchema,
-          ingestionRate: monitoringKpiSchema.optional(),
-          processingLatencyP95: monitoringKpiSchema.optional(),
         })
         .strict(),
     ),
@@ -1174,12 +1676,6 @@ export const monitoringProjectionSchema = z
         ),
       })
       .strict(),
-    topology: z.object({
-      status: availabilitySchema,
-      provenance: z.enum(["traces", "seed-carga"]),
-      services: z.array(z.object({ service: z.string(), status: z.enum(["healthy", "degraded", "critical"]), calls: z.number().nonnegative(), errors: z.number().nonnegative(), errorRate: z.number().min(0).max(1), latencyP95: z.number().nullable() }).strict()),
-      dependencies: z.array(z.object({ source: z.string(), target: z.string(), calls: z.number().nonnegative(), errorRate: z.number().min(0).max(1) }).strict()),
-    }).strict().optional(),
     facets: z.record(z.string(), z.array(z.unknown())),
   })
   .strict();

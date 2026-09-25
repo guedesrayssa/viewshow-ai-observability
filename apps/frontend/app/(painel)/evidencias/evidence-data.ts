@@ -51,6 +51,11 @@ export type EvidenceDetail = {
 
 export type EvidenceSource = {
   id: string;
+  eventId: string;
+  incidentId: string;
+  observedAt: string | null;
+  qualityStatus: string;
+  qualityFlags: string[];
   source: string;
   summary: string;
   strength: EvidenceStrength;
@@ -123,13 +128,17 @@ export const CONCENTRATION: ConcentrationSlice[] = [
   { label: "Nordeste", percentage: 52 },
 ];
 
-export const CONCENTRATION_NOTE =
-  "Recorte combinado explica 64% das falhas";
+export const CONCENTRATION_NOTE = "Recorte combinado explica 64% das falhas";
 
 /** Evidências agrupadas por fonte, com detalhe expansível (US-N1-03). */
 export const EVIDENCE_SOURCES: EvidenceSource[] = [
   {
     id: "youbora",
+    eventId: "evt-example-youbora",
+    incidentId: "INC-4821",
+    observedAt: null,
+    qualityStatus: "example",
+    qualityFlags: [],
     source: "Youbora",
     summary: "falhas +312% · buffer 6,1x",
     strength: "forte",
@@ -138,6 +147,11 @@ export const EVIDENCE_SOURCES: EvidenceSource[] = [
   },
   {
     id: "tsuru",
+    eventId: "evt-example-tsuru",
+    incidentId: "INC-4821",
+    observedAt: null,
+    qualityStatus: "example",
+    qualityFlags: [],
     source: "Tsuru",
     summary: "deploy 4.2.1 · diferença de 6 min",
     strength: "forte",
@@ -146,6 +160,11 @@ export const EVIDENCE_SOURCES: EvidenceSource[] = [
   },
   {
     id: "apollo",
+    eventId: "evt-example-apollo",
+    incidentId: "INC-4821",
+    observedAt: null,
+    qualityStatus: "example",
+    qualityFlags: [],
     source: "Apollo",
     summary: "p99 e erros dentro da linha de base",
     strength: "neutra",
@@ -154,6 +173,11 @@ export const EVIDENCE_SOURCES: EvidenceSource[] = [
   },
   {
     id: "rpaas-cdn",
+    eventId: "evt-example-rpaas-cdn",
+    incidentId: "INC-4821",
+    observedAt: null,
+    qualityStatus: "example",
+    qualityFlags: [],
     source: "RPaaS/CDN",
     summary: "sem variação de erro de borda",
     strength: "contra",
@@ -164,7 +188,12 @@ export const EVIDENCE_SOURCES: EvidenceSource[] = [
 
 /** Marcos correlacionados no mesmo recorte, em ordem cronológica. */
 export const TIMELINE: TimelineMark[] = [
-  { time: "09:12", label: "Deploy 4.2.1", source: "Tsuru · Player", tone: "info" },
+  {
+    time: "09:12",
+    label: "Deploy 4.2.1",
+    source: "Tsuru · Player",
+    tone: "info",
+  },
   { time: "09:18", label: "Buffer sobe", source: "Youbora", tone: "warning" },
   {
     time: "09:23",
@@ -173,13 +202,33 @@ export const TIMELINE: TimelineMark[] = [
     tone: "critical",
   },
   { time: "09:30", label: "Decoder +18x", source: "Player", tone: "critical" },
-  { time: "09:34", label: "Incidente criado", source: "ServiceNow", tone: "info" },
-  { time: "09:41", label: "Hipótese 78%", source: "Player · decoder", tone: "navy" },
+  {
+    time: "09:34",
+    label: "Incidente criado",
+    source: "ServiceNow",
+    tone: "info",
+  },
+  {
+    time: "09:41",
+    label: "Hipótese 78%",
+    source: "Player · decoder",
+    tone: "navy",
+  },
 ];
 
 export const CHANGE_LIKELIHOODS: ChangeLikelihood[] = [
-  { label: "Provável", cause: "regressão do decoder", percentage: 78, tone: "critical" },
-  { label: "Possível", cause: "degradação de CDN", percentage: 14, tone: "warning" },
+  {
+    label: "Provável",
+    cause: "regressão do decoder",
+    percentage: 78,
+    tone: "critical",
+  },
+  {
+    label: "Possível",
+    cause: "degradação de CDN",
+    percentage: 14,
+    tone: "warning",
+  },
   { label: "Possível", cause: "regressão do app", percentage: 8, tone: "info" },
 ];
 
@@ -207,33 +256,34 @@ export const BUFFERING_PERIOD_LABELS: Record<BufferingPeriodKey, string> = {
 };
 
 /** Série de exemplo, com o mesmo salto do protótipo de alta fidelidade. */
-export const BUFFERING_DATASETS: Record<BufferingPeriodKey, BufferingPoint[]> = {
-  "60": [
-    { time: "09:10", value: 1.6 },
-    { time: "09:20", value: 1.9 },
-    { time: "09:30", value: 2.6 },
-    { time: "09:40", value: 3.9 },
-    { time: "09:50", value: 4.9 },
-    { time: "10:00", value: 4.2 },
-  ],
-  "120": [
-    { time: "08:30", value: 0.8 },
-    { time: "08:50", value: 1.0 },
-    { time: "09:10", value: 1.6 },
-    { time: "09:30", value: 2.6 },
-    { time: "09:50", value: 4.9 },
-    { time: "10:10", value: 3.8 },
-  ],
-  "360": [
-    { time: "05:10", value: 0.6 },
-    { time: "06:10", value: 0.7 },
-    { time: "07:10", value: 0.9 },
-    { time: "08:10", value: 1.1 },
-    { time: "09:10", value: 1.6 },
-    { time: "09:50", value: 4.9 },
-    { time: "10:50", value: 3.1 },
-  ],
-};
+export const BUFFERING_DATASETS: Record<BufferingPeriodKey, BufferingPoint[]> =
+  {
+    "60": [
+      { time: "09:10", value: 1.6 },
+      { time: "09:20", value: 1.9 },
+      { time: "09:30", value: 2.6 },
+      { time: "09:40", value: 3.9 },
+      { time: "09:50", value: 4.9 },
+      { time: "10:00", value: 4.2 },
+    ],
+    "120": [
+      { time: "08:30", value: 0.8 },
+      { time: "08:50", value: 1.0 },
+      { time: "09:10", value: 1.6 },
+      { time: "09:30", value: 2.6 },
+      { time: "09:50", value: 4.9 },
+      { time: "10:10", value: 3.8 },
+    ],
+    "360": [
+      { time: "05:10", value: 0.6 },
+      { time: "06:10", value: 0.7 },
+      { time: "07:10", value: 0.9 },
+      { time: "08:10", value: 1.1 },
+      { time: "09:10", value: 1.6 },
+      { time: "09:50", value: 4.9 },
+      { time: "10:50", value: 3.1 },
+    ],
+  };
 
 /** Índice do ponto de deploy em cada janela, para a linha tracejada. */
 export const DEPLOY_INDEX: Record<BufferingPeriodKey, number> = {

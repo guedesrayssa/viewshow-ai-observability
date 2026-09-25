@@ -8,7 +8,7 @@ import { ServiceError } from "@view-show/contracts";
 
 type CursorPayload = {
   readonly version: 1;
-  readonly offset: number;
+  readonly state: unknown;
   readonly fingerprint: string;
 };
 
@@ -20,13 +20,17 @@ export class CursorCodec {
   }
 
   encode(offset: number, fingerprint: string): string {
+    return this.encodeState(offset, fingerprint);
+  }
+
+  encodeState<T>(state: T, fingerprint: string): string {
     const iv = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", this.key, iv);
     const encrypted = Buffer.concat([
       cipher.update(
         JSON.stringify({
           version: 1,
-          offset,
+          state,
           fingerprint,
         } satisfies CursorPayload),
       ),
@@ -38,6 +42,17 @@ export class CursorCodec {
   }
 
   decode(cursor: string, expectedFingerprint: string): number {
+    const state = this.decodeState(cursor, expectedFingerprint);
+    if (typeof state !== "number" || !Number.isInteger(state) || state < 0)
+      throw new ServiceError(
+        400,
+        "VALIDATION_ERROR",
+        "O cursor é inválido para estes filtros.",
+      );
+    return state;
+  }
+
+  decodeState(cursor: string, expectedFingerprint: string): unknown {
     try {
       const buffer = Buffer.from(cursor, "base64url");
       const iv = buffer.subarray(0, 12);
@@ -55,16 +70,13 @@ export class CursorCodec {
         typeof raw !== "object" ||
         !("version" in raw) ||
         raw.version !== 1 ||
-        !("offset" in raw) ||
-        typeof raw.offset !== "number" ||
-        !Number.isInteger(raw.offset) ||
-        raw.offset < 0 ||
+        !("state" in raw) ||
         !("fingerprint" in raw) ||
         raw.fingerprint !== expectedFingerprint
       ) {
         throw new Error("invalid cursor payload");
       }
-      return raw.offset;
+      return raw.state;
     } catch {
       throw new ServiceError(
         400,

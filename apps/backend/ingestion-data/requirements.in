@@ -1,0 +1,4 @@
+boto3==1.40.0
+jsonschema==4.25.1
+PyMySQL==1.1.1
+pyarrow==21.0.0

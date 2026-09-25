@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const repoRoot = path.resolve(__dirname, "../../../../..");
 const script = path.join(repoRoot, "scripts/ci/smoke-container.sh");
-const image = "g05-s3-api:test";
+const image = "view-show-api:test";
 
 function writeExecutable(file, body) {
   fs.writeFileSync(file, body, { mode: 0o755 });
@@ -32,7 +32,7 @@ set -euo pipefail
 printf 'docker:%s\n' "$*" >>"$CALL_LOG"
 if [[ "$*" == "image inspect $EXPECTED_IMAGE --format {{.Architecture}}" ]]; then
   printf '%s\n' "$ARCHITECTURE"
-elif [[ "$1" == "run" && "$2" == "--detach" && "$3" == "--name" && "$5" == "--env" && "$6" == "NODE_ENV=test" && "$7" == "--env" && "$8" == "AUTH_COOKIE_SECRET=ci-smoke-cookie-secret-at-least-32-bytes" && "$9" == "--env" && "\${10}" == "CURSOR_SECRET=ci-smoke-cursor-secret-at-least-32-bytes" && "\${11}" == "$EXPECTED_IMAGE" && "$#" == "11" ]]; then
+elif [[ "$1" == "run" && "$2" == "--detach" && "$3" == "--name" && "$5" == "--env" && "$6" == "NODE_ENV=test" && "$7" == "--env" && "$8" == "AUTH_COOKIE_SECRET=ci-smoke-cookie-secret-at-least-32-bytes" && "$9" == "--env" && "\${10}" == "CURSOR_SECRET=ci-smoke-cursor-secret-at-least-32-bytes" && "\${11}" == "--env" && "\${12}" == "IMPORT_BUCKET=local-imports-smoke" && "\${13}" == "--env" && "\${14}" == "IMPORT_EXPECTED_BUCKET_OWNER=000000000000" && "\${15}" == "--env" && "\${16}" == "IMPORT_CURSOR_SECRET=ci-smoke-import-cursor-secret-at-least-32-bytes" && "\${17}" == "--env" && "\${18}" == "IMPORT_INGESTION_CLUSTER_ARN=arn:aws:ecs:us-east-1:000000000000:cluster/local-ingestion" && "\${19}" == "--env" && "\${20}" == "IMPORT_INGESTION_TASK_DEFINITION_ARN=arn:aws:ecs:us-east-1:000000000000:task-definition/local-import:1" && "\${21}" == "--env" && "\${22}" == "IMPORT_INGESTION_SUBNET_IDS=subnet-local-a" && "\${23}" == "--env" && "\${24}" == "IMPORT_INGESTION_SECURITY_GROUP_ID=sg-local-import" && "\${25}" == "--env" && "\${26}" == "IMPORT_INGESTION_CONTAINER_NAME=ingestion" && "\${27}" == "$EXPECTED_IMAGE" && "$#" == "27" ]]; then
   printf '%s' "$4" >"$NAME_FILE"
   echo fixture-container-id
 elif [[ "$1" == "inspect" && "$2" == "--format" && "$3" == "{{.State.Health.Status}}" && "$4" == "$(cat "$NAME_FILE")" ]]; then
@@ -91,7 +91,19 @@ test("container smoke accepts health and a fail-closed federated login", () => {
     calls,
     /--env NODE_ENV=test --env AUTH_COOKIE_SECRET=.* --env CURSOR_SECRET=/,
   );
-  assert.match(calls, /docker:run --detach --name g05-s3-api-smoke-/);
+  for (const value of [
+    "IMPORT_BUCKET=local-imports-smoke",
+    "IMPORT_EXPECTED_BUCKET_OWNER=000000000000",
+    "IMPORT_CURSOR_SECRET=ci-smoke-import-cursor-secret-at-least-32-bytes",
+    "IMPORT_INGESTION_CLUSTER_ARN=arn:aws:ecs:us-east-1:000000000000:cluster/local-ingestion",
+    "IMPORT_INGESTION_TASK_DEFINITION_ARN=arn:aws:ecs:us-east-1:000000000000:task-definition/local-import:1",
+    "IMPORT_INGESTION_SUBNET_IDS=subnet-local-a",
+    "IMPORT_INGESTION_SECURITY_GROUP_ID=sg-local-import",
+    "IMPORT_INGESTION_CONTAINER_NAME=ingestion",
+  ]) {
+    assert.match(calls, new RegExp(`--env ${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  }
+  assert.match(calls, /docker:run --detach --name view-show-api-smoke-/);
   assert.match(calls, /\/auth\/login/);
   assert.match(calls, /docker:rm -f/);
 });

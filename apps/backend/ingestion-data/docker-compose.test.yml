@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad
+    platform: linux/amd64
+    environment:
+      MYSQL_DATABASE: argus
+      MYSQL_USER: ingestion
+      MYSQL_PASSWORD: ingestion-test-only
+      MYSQL_ROOT_PASSWORD: root-test-only
+    ports:
+      - "127.0.0.1:33077:3306"
+    volumes:
+      - ./contracts/argus/v2/db_schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      - ./tests/fixtures/argus_v2_minimal.sql:/docker-entrypoint-initdb.d/01-fixture.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: "no"

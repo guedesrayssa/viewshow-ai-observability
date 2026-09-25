@@ -4,8 +4,8 @@
  *
  * Reflete a IA descrita na seção 6.1 do entendimento de UX: Visão Geral é o
  * hub, e a pessoa usuária aprofunda a investigação em Incidentes, Evidências,
- * Eventos e Monitoramento. Configurações fecha a lista, separada por uma
- * divisória: é ajuste da conta, não etapa da investigação.
+ * Eventos e Monitoramento. Dados abre, por uma divisória, o grupo operacional
+ * que também contém Configurações; nenhum dos dois é etapa da investigação.
  *
  * O item ativo é decidido pela rota atual, por isso este trecho roda no
  * cliente enquanto o restante da moldura fica no servidor.
@@ -23,6 +23,7 @@ import { Fragment, type ReactNode } from "react";
 import {
   ActivityIcon,
   AlertIcon,
+  DatabaseIcon,
   HomeIcon,
   ListIcon,
   MonitorIcon,
@@ -50,10 +51,15 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <MonitorIcon size={19} />,
   },
   {
+    label: "Dados",
+    href: "/dados/importacoes",
+    icon: <DatabaseIcon size={19} />,
+    startsGroup: true,
+  },
+  {
     label: "Configurações",
     href: "/configuracoes",
     icon: <SettingsIcon size={19} />,
-    startsGroup: true,
   },
 ];
 
@@ -82,11 +88,10 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
 
         return (
           <Fragment key={item.href}>
-            {/* A divisória separa a investigação do ajuste de conta sem
-                precisar de um título de grupo. Ela é um elemento à parte, e
-                não uma borda no próprio item: como borda, o espaço acima
-                entrava na caixa do link e o realce do item ativo ficava mais
-                alto que o dos demais. */}
+            {/* A divisória separa a investigação do grupo operacional sem
+                precisar de um título. Ela é um elemento à parte, e não uma
+                borda no próprio item: como borda, o espaço acima entrava na
+                caixa do link e o realce ativo ficava mais alto que os demais. */}
             {item.startsGroup ? (
               <span
                 aria-hidden="true"

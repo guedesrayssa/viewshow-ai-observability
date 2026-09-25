@@ -35,7 +35,7 @@ publicação é o envio de um zip, sem runtime de computação para configurar.
 
 ### 1. App e branch isolados no Amplify
 
-O Terraform em `apps/fullstack` cria o app `g05-s3-painel` e a branch
+O Terraform em `apps/fullstack` cria o app `view-show-painel` e a branch
 `producao`, ambos com as tags de propriedade da stack. O script de publicação
 resolve o identificador e o domínio pela API do Amplify em `us-east-1`; não
 copie IDs ou domínios opacos para variáveis do GitLab.
@@ -127,7 +127,7 @@ NEXT_PUBLIC_API_BASE_URL=https://<api> npm run build
 ./deploy/deploy-amplify.sh out
 ```
 
-O comando aceita somente o app `g05-s3-painel`, a branch `producao`, a conta
+O comando aceita somente o app `view-show-painel`, a branch `producao`, a conta
 `248880318395`, a role `voclabs` e as tags Terraform esperadas. O ID e o domínio
 são resolvidos durante o preflight, sempre em `us-east-1`.
 

@@ -10,10 +10,23 @@ stages:
   - publicar
 
 .mudou-backend: &backend_changes
-  - apps/backend/**/*
-  - scripts/ci/**/*
+  - apps/backend/api/**/*
+  - apps/backend/contracts/**/*
+  - scripts/ci/publish-backend-image.sh
+  - scripts/ci/smoke-container.sh
+  - scripts/ci/deploy-ecs.sh
   - scripts/sync-aws-gitlab-credentials.sh
   - .gitlab-ci.yml
+
+.mudou-backend-mutacao: &backend_mutation_changes
+  - apps/backend/api/src/**/*
+  - apps/backend/api/contracts/**/*
+  - apps/backend/api/scripts/**/*
+  - apps/backend/api/package.json
+  - apps/backend/api/package-lock.json
+  - apps/backend/api/tsconfig*.json
+  - apps/backend/api/Dockerfile
+  - apps/backend/api/.dockerignore
 
 .mudou-frontend: &mudou-frontend
   - apps/frontend/**/*
@@ -23,9 +36,16 @@ stages:
   - apps/fullstack/**/*
   - .gitlab-ci.yml
 
+.mudou-ingestion: &ingestion_changes
+  - apps/backend/ingestion-data/**/*
+  - apps/backend/contracts/**/*
+  - scripts/ci/publish-ingestion-image.sh
+  - scripts/ci/ingestion-container-smoke.py
+  - scripts/ci/smoke-ingestion-container.sh
+  - .gitlab-ci.yml
+
 .mudou-python-observability: &python_observability_changes
   - apps/backend/agentic/**/*
-  - apps/backend/ingestion-data/**/*
   - .gitlab-ci.yml
 
 workflow:
@@ -49,6 +69,13 @@ validate_fullstack_iac:
     - terraform -chdir=apps/fullstack fmt -check -recursive
     - terraform -chdir=apps/fullstack init -backend=false -input=false
     - terraform -chdir=apps/fullstack validate
+    - mkdir -p "$CI_PROJECT_DIR/reports"
+    - terraform -chdir=apps/fullstack test -test-directory=tests -junit-xml="$CI_PROJECT_DIR/reports/terraform.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: reports/terraform.xml
+    expire_in: 7 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *iac_changes
@@ -61,7 +88,7 @@ validate_observability_iac:
   script:
     - docker compose -f apps/fullstack/docker-compose.observability.yml config --quiet
     - AWS_REGION=us-east-1 GRAFANA_ADMIN_PASSWORD=ci-placeholder docker compose -f apps/fullstack/observability/aws/docker-compose.yml config --quiet
-    - RENDER_AWS_ACCOUNT_ID=000000000000 RENDER_AWS_REGION=us-east-1 RENDER_GRAFANA_PASSWORD=ci-placeholder sh apps/fullstack/observability/aws/validate-user-data.sh /tmp/view-show-user-data.sh
+    - RENDER_AWS_ACCOUNT_ID=ci-account-id RENDER_AWS_REGION=us-east-1 RENDER_GRAFANA_PASSWORD=ci-placeholder sh apps/fullstack/observability/aws/validate-user-data.sh /tmp/view-show-user-data.sh
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *iac_changes
@@ -69,15 +96,14 @@ validate_observability_iac:
       changes: *iac_changes
 
 variables:
-  AWS_ACCOUNT_ID: "248880318395"
   AWS_DEFAULT_REGION: "us-east-1"
-  ECR_REPOSITORY: "g05-s3-api"
-  ECS_CLUSTER: "g05-s3-cluster"
-  ECS_SERVICE: "g05-s3-api-service"
-  ECS_TASK_FAMILY: "g05-s3-api-task"
-  ECS_CONTAINER_NAME: "g05-s3-api"
-  ALB_NAME: "g05-s3-alb"
-  AMPLIFY_APP_NAME: "g05-s3-painel"
+  ECR_REPOSITORY: "view-show-api"
+  ECS_CLUSTER: "view-show-cluster"
+  ECS_SERVICE: "view-show-api-service"
+  ECS_TASK_FAMILY: "view-show-api-task"
+  ECS_CONTAINER_NAME: "view-show-api"
+  ALB_NAME: "view-show-alb"
+  AMPLIFY_APP_NAME: "view-show-painel"
   AMPLIFY_BRANCH: "producao"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
   DOCKER_HOST: "tcp://docker:2375"
@@ -94,37 +120,6 @@ validate_python_observability:
     - ruff check apps/backend/ingestion-data/src apps/backend/ingestion-data/tests apps/backend/agentic/src apps/backend/agentic/tests
     - python -m unittest discover -s apps/backend/ingestion-data/tests -v
     - python -m unittest discover -s apps/backend/agentic/tests -v
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
-      changes: *python_observability_changes
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
-      changes: *python_observability_changes
-
-validate_analysis_worker:
-  stage: validar
-  image: node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
-  services:
-    - name: amazon/dynamodb-local:2.6.1@sha256:1856c05cc66a0e49dc1099e483ad2851477eeebe2135250ac11a1d1227db54b1
-      alias: dynamodb
-  variables:
-    AWS_ACCESS_KEY_ID: "local"
-    AWS_SECRET_ACCESS_KEY: "local"
-    AWS_REGION: "us-east-1"
-    DYNAMODB_ENDPOINT: "http://dynamodb:8000"
-  cache:
-    key:
-      files:
-        - apps/backend/agentic/package-lock.json
-    paths:
-      - .npm/
-    policy: pull-push
-  before_script:
-    - cd apps/backend/agentic
-  script:
-    - node --version
-    - npm ci --prefer-offline --no-audit --fund=false
-    - npm run typecheck
-    - npm test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
       changes: *python_observability_changes
@@ -167,6 +162,136 @@ validate_backend:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
       changes: *backend_changes
 
+validate_ingestion:
+  stage: validar
+  image: python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+  before_script:
+    - cd apps/backend/ingestion-data
+    - python --version
+    - python -m pip install --no-cache-dir --require-hashes -r requirements-dev.txt
+    - python -m pip install --no-deps --no-build-isolation --editable .
+  script:
+    - mkdir -p "$CI_PROJECT_DIR/reports"
+    - python -m ruff check .
+    - python -m ruff format --check .
+    - python -m mypy --strict --explicit-package-bases bootstrap adapters application contracts domain ports scripts
+    - python -m pytest -m "not mysql and not aws" --junitxml="$CI_PROJECT_DIR/reports/ingestion.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: reports/ingestion.xml
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *ingestion_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *ingestion_changes
+
+validate_ingestion_mysql:
+  stage: validar
+  image: python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+  services:
+    - name: mysql:8.4@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad
+      alias: mysql
+  variables:
+    MYSQL_ROOT_PASSWORD: root-test-only
+    MYSQL_DATABASE: argus
+    MYSQL_USER: ingestion
+    MYSQL_PASSWORD: ingestion-test-only
+    MYSQL_TEST_HOST: mysql
+    MYSQL_TEST_PORT: "3306"
+  before_script:
+    - apt-get update
+    - apt-get install --yes --no-install-recommends default-mysql-client=1.1.0
+    - rm -rf /var/lib/apt/lists/*
+    - cd apps/backend/ingestion-data
+    - python -m pip install --no-cache-dir --require-hashes -r requirements-dev.txt
+    - until mysqladmin ping --host=mysql --user=root --password="$MYSQL_ROOT_PASSWORD" --silent; do sleep 1; done
+    - mysql --host=mysql --user=root --password="$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" < contracts/argus/v2/db_schema.sql
+    - mysql --host=mysql --user=root --password="$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" < tests/fixtures/argus_v2_minimal.sql
+  script:
+    - mkdir -p "$CI_PROJECT_DIR/reports"
+    - python -m pytest -m mysql tests/integration --junitxml="$CI_PROJECT_DIR/reports/ingestion-mysql.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: reports/ingestion-mysql.xml
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *ingestion_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *ingestion_changes
+
+validate_ingestion_container:
+  stage: construir
+  image: docker:27.4.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a
+  tags:
+    - inteli-gitlab-runner-prd
+  services:
+    - name: docker:27.4.1-dind@sha256:3c8fb358b82767a38189e54a89a2ba8d71109f0a17efa87fd009ef8283c46df6
+      alias: docker
+  needs:
+    - validate_ingestion
+  before_script:
+    - apk add --no-cache bash=5.2.37-r0
+    - docker version
+    - docker buildx create --name ci-builder --driver docker-container --driver-opt image=moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552 --use
+    - docker buildx inspect --bootstrap
+  script:
+    - |
+      set -eu
+      set -o pipefail
+      image_uri="view-show-ingestion-ci:${CI_COMMIT_SHA}"
+      docker buildx build --platform linux/amd64 --load --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" --tag "$image_uri" apps/backend/ingestion-data
+      bash scripts/ci/smoke-ingestion-container.sh "$image_uri"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: *ingestion_changes
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *ingestion_changes
+
+publish_ingestion_image:
+  stage: construir
+  image: docker:27.4.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a
+  tags:
+    - inteli-gitlab-runner-prd
+  services:
+    - name: docker:27.4.1-dind@sha256:3c8fb358b82767a38189e54a89a2ba8d71109f0a17efa87fd009ef8283c46df6
+      alias: docker
+  variables:
+    ECR_REPOSITORY: "view-show-ingestion"
+  needs:
+    - job: validate_ingestion
+      artifacts: false
+    - job: validate_ingestion_mysql
+      artifacts: false
+    - job: validate_ingestion_container
+      artifacts: false
+  dependencies: []
+  before_script:
+    - apk add --no-cache aws-cli=2.22.10-r0 bash=5.2.37-r0 git=2.47.3-r0 jq=1.7.1-r0
+    - docker version
+    - aws --version
+    - docker buildx create --name ci-builder --driver docker-container --driver-opt image=moby/buildkit:v0.18.2@sha256:86c0ad9d1137c186e9d455912167df20e530bdf7f7c19de802e892bb8ca16552 --use
+    - docker buildx inspect --bootstrap
+  script:
+    - bash scripts/ci/publish-ingestion-image.sh
+    - . ingestion-image.env
+    - bash scripts/ci/smoke-ingestion-container.sh "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY}@${INGESTION_IMAGE_DIGEST}"
+  artifacts:
+    paths:
+      - ingestion-image.env
+    reports:
+      dotenv: ingestion-image.env
+    expire_in: 7 days
+  environment:
+    name: aws-lab
+    action: prepare
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      changes: *ingestion_changes
+
 validate_backend_container:
   stage: construir
   image: docker:27.4.1-cli@sha256:af0bcc63244e5110ac6499e4a9160a67101bf61abda35c2503ffc40038e8ee0a
@@ -186,7 +311,7 @@ validate_backend_container:
     - |
       set -eu
       set -o pipefail
-      image_uri="g05-s3-api-ci:${CI_COMMIT_SHA}"
+      image_uri="view-show-api-ci:${CI_COMMIT_SHA}"
       docker buildx build \
         --platform linux/amd64 \
         --load \
@@ -229,7 +354,7 @@ publish_backend_image:
     action: prepare
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
-      changes: *backend_changes
+      changes: *backend_mutation_changes
 
 deploy_backend_ecs:
   stage: publicar
@@ -237,7 +362,7 @@ deploy_backend_ecs:
   tags:
     - inteli-gitlab-runner-prd
   interruptible: false
-  resource_group: g05-s3-api-service
+  resource_group: view-show-api-service
   needs:
     - job: publish_backend_image
       artifacts: true
@@ -251,7 +376,7 @@ deploy_backend_ecs:
     name: aws-lab
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
-      changes: *backend_changes
+      changes: *backend_mutation_changes
 
 # O Amplify Hosting não se conecta diretamente a este GitLab auto-hospedado.
 # Por isso o CI compila o frontend e envia o artefato pela API de deployment
@@ -372,7 +497,7 @@ construir:verificacao:
 publicar:staging:
   extends: .publicar
   needs: ["construir:staging"]
-  resource_group: g05-s3-amplify-producao
+  resource_group: view-show-amplify-producao
   environment:
     name: aws-lab
   rules:
@@ -385,7 +510,7 @@ publicar:staging:
 publicar:producao:
   extends: .publicar
   needs: ["construir:producao"]
-  resource_group: g05-s3-amplify-producao
+  resource_group: view-show-amplify-producao
   environment:
     name: aws-lab
   rules:

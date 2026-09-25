@@ -44,6 +44,7 @@ const successBody = {
   meta: {
     requestId: "req_1",
     schemaVersion: "1.0",
+    datasetVersion: null,
     generatedAt: "2026-09-09T12:00:00.000Z",
     window: {
       preset: "30m",

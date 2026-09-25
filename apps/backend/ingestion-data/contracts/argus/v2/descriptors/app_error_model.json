@@ -1,0 +1,64 @@
+{
+  "table": "app_error_model",
+  "recordType": "ApplicationErrorAggregate",
+  "columns": [
+    {
+      "name": "day_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "error_code",
+      "sqlType": "VARCHAR(128)",
+      "nullable": false
+    },
+    {
+      "name": "manufacturer",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "model",
+      "sqlType": "VARCHAR(128)",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "devices",
+      "sqlType": "BIGINT",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "day_ts",
+    "error_code",
+    "manufacturer",
+    "model"
+  ],
+  "cursorKey": [
+    "day_ts",
+    "error_code",
+    "manufacturer",
+    "model"
+  ],
+  "timestampField": "day_ts",
+  "grainSeconds": 86400,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "limited_source_coverage",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "day_ts"
+  },
+  "normalizer": "app_error_model"
+}

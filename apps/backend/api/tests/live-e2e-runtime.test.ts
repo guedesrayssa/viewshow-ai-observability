@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
+import { loadImportConfig } from "../src/config.js";
 
 type EndpointRuntime = {
   requireDynamoDbEndpoint(environment: NodeJS.ProcessEnv): string;
@@ -120,11 +121,24 @@ describe("live E2E runtime safety", () => {
       AWS_SHARED_CREDENTIALS_FILE: "/dev/null",
       DYNAMODB_ENDPOINT: "http://127.0.0.1:18000",
       OPERATIONAL_TABLE_NAME: "monitoracao-operacional-e2e",
+      INGESTION_SCHEDULER_GROUP_NAME: "view-show-ingestion",
+      INGESTION_SCHEDULER_NAME: "view-show-ingestion-sync",
       MONITORING_SOURCES: "argus",
       AUTH_COOKIE_SECRET: "a".repeat(32),
       CURSOR_SECRET: "c".repeat(32),
+      IMPORT_BUCKET: "local-imports-e2e",
+      IMPORT_EXPECTED_BUCKET_OWNER: "000000000000",
+      IMPORT_CURSOR_SECRET: "c".repeat(32),
+      IMPORT_INGESTION_CLUSTER_ARN:
+        "arn:aws:ecs:us-east-1:000000000000:cluster/local-ingestion",
+      IMPORT_INGESTION_TASK_DEFINITION_ARN:
+        "arn:aws:ecs:us-east-1:000000000000:task-definition/local-import:1",
+      IMPORT_INGESTION_SUBNET_IDS: "subnet-local-a",
+      IMPORT_INGESTION_SECURITY_GROUP_ID: "sg-local-import",
+      IMPORT_INGESTION_CONTAINER_NAME: "ingestion",
       METRICS_ENABLED: "true",
     });
+    expect(() => loadImportConfig(environment)).not.toThrow();
     expect(environment).not.toHaveProperty("AWS_SESSION_TOKEN");
     expect(environment).not.toHaveProperty("AWS_PROFILE");
     expect(environment).not.toHaveProperty("AWS_WEB_IDENTITY_TOKEN_FILE");

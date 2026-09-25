@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { BufferingChart } from "@/app/(painel)/evidencias/buffering-chart";
 import {
@@ -33,8 +33,6 @@ import {
   fetchEvidence,
   reviewHypothesis,
 } from "@/app/(painel)/evidencias/evidence-resource";
-import { fetchIncidents } from "@/app/(painel)/incidentes/incidents-resource";
-import { fetchOverview } from "@/app/(painel)/visao-geral/overview-resource";
 import { useAccount } from "@/components/account/account-provider";
 import { DataStatus } from "@/components/dashboard/data-status";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -51,7 +49,6 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { useResource } from "@/hooks/use-resource";
 import { cn } from "@/lib/cn";
 import { formatCompact } from "@/lib/format";
-import { selectIncident, useSelectedIncidentId } from "@/lib/selected-incident";
 
 const REVIEW_META: Record<
   Exclude<ReviewStatus, "pending">,
@@ -65,23 +62,10 @@ export function EvidenceView() {
   const searchParams = useSearchParams();
   const { profile } = useAccount();
 
-  const requestedIncidentId = searchParams.get("incidente") ?? "";
-  const selectedIncidentId = useSelectedIncidentId(requestedIncidentId);
-  const incidents = useResource(
-    () => fetchIncidents({ period: "1440", deviceType: "all", region: "all", appVersion: "all" }),
-    [],
-    { enabled: selectedIncidentId === "" },
-  );
-  const overview = useResource(
-    () => fetchOverview({ timeRange: "24h", device: "all", region: "all", appVersion: "all" }),
-    [],
-    { enabled: selectedIncidentId === "" },
-  );
-  const incidentId = selectedIncidentId || incidents.data?.[0]?.id || overview.data?.incidents[0]?.id || "";
-
-  useEffect(() => {
-    if (incidentId && !selectedIncidentId) selectIncident(incidentId);
-  }, [incidentId, selectedIncidentId]);
+  // Sem recorte na URL, a tela pede a escolha em vez de eleger um incidente
+  // sozinha: um diagnóstico aberto "por padrão" pareceria o diagnóstico do
+  // momento, e não é.
+  const incidentId = searchParams.get("incidente");
 
   const [review, setReview] = useState<{
     status: ReviewStatus;
@@ -92,25 +76,22 @@ export function EvidenceView() {
   }>({ status: "pending" });
   const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
   const [timelineWindow, setTimelineWindow] = useState<WindowKey>("90");
-  const [bufferingPeriod, setBufferingPeriod] = useState<BufferingPeriodKey>("120");
+  const [bufferingPeriod, setBufferingPeriod] =
+    useState<BufferingPeriodKey>("120");
 
   const evidence = useResource(
-    () => fetchEvidence(incidentId),
+    () => fetchEvidence(incidentId ?? ""),
     [incidentId],
-    { enabled: incidentId !== "" },
+    { enabled: incidentId !== null },
   );
 
   const buffering = useResource(
-    (revision) => fetchBuffering(incidentId, bufferingPeriod, revision),
+    (revision) => fetchBuffering(incidentId ?? "", bufferingPeriod, revision),
     [incidentId, bufferingPeriod],
-    { enabled: incidentId !== "" },
+    { enabled: incidentId !== null },
   );
 
   const data = evidence.data;
-  const timelineCutoff = (evidence.fetchedAt?.getTime() ?? 0) - Number(timelineWindow) * 60_000;
-  const visibleTimeline = data?.timeline.filter((mark) =>
-    !mark.timestamp || new Date(mark.timestamp).getTime() >= timelineCutoff,
-  ) ?? [];
 
   function toggleSource(id: string) {
     setExpandedSourceId((current) => (current === id ? null : id));
@@ -130,15 +111,19 @@ export function EvidenceView() {
   }
 
   if (!incidentId) {
-    const loadingIncident = incidents.status === "loading" || overview.status === "loading";
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Evidências"
           subtitle="Hipótese de causa provável e evidências do diagnóstico"
         />
-        <Unavailable title={loadingIncident ? "Procurando incidente" : "Escolha um incidente para investigar"} minHeight={280}>
-          {loadingIncident ? "Consultando os incidentes e o último panorama disponível." : "Nenhum incidente foi encontrado. Verifique a lista de Incidentes."}
+        <Unavailable
+          title="Escolha um incidente para investigar"
+          minHeight={280}
+        >
+          Esta tela monta o diagnóstico de um incidente específico, e abrir um
+          por conta própria apresentaria um caso qualquer como se fosse o da sua
+          investigação. Venha pela lista de Incidentes.
         </Unavailable>
         <Link
           href="/incidentes"
@@ -153,7 +138,9 @@ export function EvidenceView() {
   // A revisão registrada na API vale como estado inicial; a feita nesta sessão
   // tem prioridade, porque acabou de acontecer diante da pessoa.
   const reviewStatus =
-    review.status !== "pending" ? review.status : (data?.reviewStatus ?? "pending");
+    review.status !== "pending"
+      ? review.status
+      : (data?.reviewStatus ?? "pending");
 
   return (
     <div className="flex flex-col gap-6">
@@ -198,18 +185,25 @@ export function EvidenceView() {
                   <h2 className="text-h2 text-ink">{data.incident.title}</h2>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge tone="critical">{data.incident.severity}</Badge>
-                    <Badge tone="info">{data.incident.investigationStatus}</Badge>
+                    <Badge tone="info">
+                      {data.incident.investigationStatus}
+                    </Badge>
                   </div>
                 </div>
 
                 <div>
                   <p className="text-display text-ink">
-                    {data.incident.affectedDevices === null ? "—" : (
-                      <AnimatedNumber value={data.incident.affectedDevices} format={formatCompact} />
+                    {data.incident.affectedDevices === null ? (
+                      "Não medido"
+                    ) : (
+                      <AnimatedNumber
+                        value={data.incident.affectedDevices}
+                        format={formatCompact}
+                      />
                     )}
                   </p>
                   <p className="mt-1 text-body-sm text-ink-brand">
-                    {data.incident.affectedDevices === null ? "impacto ainda não medido" : "dispositivos afetados"}
+                    dispositivos afetados
                   </p>
                 </div>
               </>
@@ -229,14 +223,15 @@ export function EvidenceView() {
         </Reveal>
 
         <Reveal delay={90} className="flex">
-          <Card accent="info" padding="lg" className="flex flex-1 flex-col gap-5">
+          <Card
+            accent="info"
+            padding="lg"
+            className="flex flex-1 flex-col gap-5"
+          >
             {data && data.hypothesis === null ? (
               <>
                 <CardTitle>Hipótese</CardTitle>
-                <Unavailable
-                  title="Ainda sem diagnóstico"
-                  className="flex-1"
-                >
+                <Unavailable title="Ainda sem diagnóstico" className="flex-1">
                   Este incidente ainda não passou pelo diagnóstico automático.
                   Quando ele rodar, a hipótese aparece aqui com o grau de
                   confiança e as evidências que a sustentam.
@@ -248,7 +243,7 @@ export function EvidenceView() {
                   <CardTitle>Hipótese</CardTitle>
                   {reviewStatus === "pending" ? (
                     <Badge tone="success" withDot>
-                      {data.hypothesis.confidence === null ? "Hipótese a revisar" : `${data.hypothesis.confidence}% de confiança`}
+                      {data.hypothesis.confidence}% de confiança
                     </Badge>
                   ) : (
                     <Badge tone={REVIEW_META[reviewStatus].tone} withDot>
@@ -266,11 +261,13 @@ export function EvidenceView() {
                   {/* A barra de confiança preenche até o grau lido: o número e
                       a barra dizem a mesma coisa, uma para leitura e outra
                       para comparação rápida entre hipóteses. */}
-                  {data.hypothesis.confidence !== null ? (
-                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
-                      <div key={data.hypothesis.confidence} className="track-grow h-full rounded-pill bg-success" style={{ width: `${data.hypothesis.confidence}%` }} />
-                    </div>
-                  ) : null}
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
+                    <div
+                      key={data.hypothesis.confidence}
+                      className="track-grow h-full rounded-pill bg-success"
+                      style={{ width: `${data.hypothesis.confidence}%` }}
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -307,13 +304,18 @@ export function EvidenceView() {
                     {reviewStatus !== "pending" ? (
                       <span className="animate-fade-in text-caption text-ink-muted">
                         {REVIEW_META[reviewStatus].label}
-                        {review.by ? ` por ${review.by} · agora` : " anteriormente"}
+                        {review.by
+                          ? ` por ${review.by} · agora`
+                          : " anteriormente"}
                       </span>
                     ) : null}
                   </div>
 
                   {review.error ? (
-                    <p className="text-caption text-critical-strong" role="alert">
+                    <p
+                      className="text-caption text-critical-strong"
+                      role="alert"
+                    >
                       {review.error}
                     </p>
                   ) : reviewStatus === "pending" ? (
@@ -340,19 +342,19 @@ export function EvidenceView() {
         </Reveal>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-        <div className="flex">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Reveal delay={150} className="flex">
           <BufferingChart
             points={buffering.data?.points}
+            status={buffering.status}
+            error={buffering.error}
             marker={buffering.data?.marker ?? null}
-            historical={buffering.data?.historical}
-            observedAt={buffering.data?.observedAt}
             period={bufferingPeriod}
             onPeriodChange={setBufferingPeriod}
           />
-        </div>
+        </Reveal>
 
-        <div className="flex">
+        <Reveal delay={210} className="flex">
           <Card padding="lg" className="flex-1">
             <CardTitle>Concentração afetada</CardTitle>
             <CardDescription className="mt-1">
@@ -364,8 +366,8 @@ export function EvidenceView() {
                 title="Sem segmentação disponível"
                 className="mt-5 flex-1"
               >
-                A telemetria não respondeu a segmentação de erros por modelo,
-                ou não há erros na janela para repartir.
+                A telemetria não respondeu a segmentação de erros por modelo, ou
+                não há erros na janela para repartir.
               </Unavailable>
             ) : null}
 
@@ -405,27 +407,28 @@ export function EvidenceView() {
               </p>
             ) : null}
           </Card>
-        </div>
+        </Reveal>
 
-        <div className="flex">
+        <Reveal delay={270} className="flex">
           <Card padding="lg" className="flex-1">
-            <CardTitle id="evidence-sources-heading">Evidências por fonte</CardTitle>
+            <CardTitle>Evidências por fonte</CardTitle>
             <CardDescription className="mt-1">
               Relação com a hipótese principal
             </CardDescription>
 
             {data ? (
-              <ul
-                aria-labelledby="evidence-sources-heading"
-                tabIndex={0}
-                className="evidence-source-list focus-ring mt-3 flex max-h-[14rem] flex-col divide-y divide-line-subtle overflow-y-auto overscroll-contain pr-2"
-              >
-                {data.sources.map((item) => {
+              <ul className="mt-3 flex flex-col divide-y divide-line-subtle">
+                {data.sources.map((item, index) => {
                   const expanded = expandedSourceId === item.id;
                   const meta = STRENGTH_META[item.strength];
 
                   return (
-                    <li key={item.id}>
+                    <Reveal
+                      as="li"
+                      key={item.id}
+                      index={index}
+                      variant="rise-sm"
+                    >
                       <button
                         type="button"
                         aria-expanded={expanded}
@@ -455,12 +458,25 @@ export function EvidenceView() {
                         )}
                       >
                         <div className="overflow-hidden">
-                          <p className="pb-3 text-caption text-ink-muted">
+                          <p className="text-caption text-ink-muted">
                             {item.detail}
                           </p>
+                          <p className="mt-2 text-caption text-ink-subtle">
+                            Horário: {item.observedAt ?? "ausente na origem"} ·
+                            qualidade: {item.qualityStatus}
+                            {item.qualityFlags.length > 0
+                              ? ` · ${item.qualityFlags.join(", ")}`
+                              : ""}
+                          </p>
+                          <Link
+                            href={`/eventos?incidente=${encodeURIComponent(item.incidentId)}&evento=${encodeURIComponent(item.eventId)}`}
+                            className="focus-ring mb-3 mt-2 inline-flex rounded-field text-caption font-semibold text-ink-brand hover:underline"
+                          >
+                            Abrir evento {item.eventId}
+                          </Link>
                         </div>
                       </div>
-                    </li>
+                    </Reveal>
                   );
                 })}
               </ul>
@@ -472,10 +488,10 @@ export function EvidenceView() {
               </div>
             )}
           </Card>
-        </div>
+        </Reveal>
       </div>
 
-      <div>
+      <Reveal delay={330}>
         <Card padding="lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -491,27 +507,37 @@ export function EvidenceView() {
               aria-label="Janela da linha do tempo"
               value={timelineWindow}
               onValueChange={(value) => setTimelineWindow(value as WindowKey)}
-              options={(Object.keys(WINDOW_LABELS) as WindowKey[]).map((key) => ({
-                value: key,
-                label: WINDOW_LABELS[key],
-              }))}
+              options={(Object.keys(WINDOW_LABELS) as WindowKey[]).map(
+                (key) => ({
+                  value: key,
+                  label: WINDOW_LABELS[key],
+                }),
+              )}
             />
           </div>
 
-          {data && visibleTimeline.length === 0 ? (
-            <Unavailable title="Sem linha do tempo de mudanças" className="mt-6">
+          {data && data.timeline.length === 0 ? (
+            <Unavailable
+              title="Sem linha do tempo de mudanças"
+              className="mt-6"
+            >
               Nenhuma das origens atuais registra deploys ou mudanças
               correlacionadas a este incidente. A linha do tempo volta quando o
               serviço de ingestão publicar esses marcos.
             </Unavailable>
           ) : null}
 
-          {data && visibleTimeline.length > 0 ? (
+          {data && data.timeline.length > 0 ? (
             <>
               <div className="mt-8 overflow-x-auto">
                 <div className="grid min-w-[46rem] grid-cols-6 gap-2">
-                  {visibleTimeline.map((mark) => (
-                    <div key={`${mark.timestamp}-${mark.label}`} className="flex flex-col items-center gap-2 text-center">
+                  {data.timeline.map((mark, index) => (
+                    <Reveal
+                      key={mark.time}
+                      index={index}
+                      variant="rise-sm"
+                      className="flex flex-col items-center gap-2 text-center"
+                    >
                       <span className="text-caption font-semibold text-ink">
                         {mark.time}
                       </span>
@@ -536,26 +562,26 @@ export function EvidenceView() {
                       <span className="text-caption text-ink-brand">
                         {mark.source}
                       </span>
-                    </div>
+                    </Reveal>
                   ))}
                 </div>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-2">
-                {data.changes.map((item) => (
-                  <div key={item.cause}>
+                {data.changes.map((item, index) => (
+                  <Reveal key={item.cause} index={index} variant="scale">
                     <Badge tone={item.tone}>
                       {item.label}: {item.cause} · {item.percentage}%
                     </Badge>
-                  </div>
+                  </Reveal>
                 ))}
               </div>
             </>
-          ) : !data ? (
+          ) : (
             <Skeleton className="mt-8 h-28 w-full" />
-          ) : null}
+          )}
         </Card>
-      </div>
+      </Reveal>
     </div>
   );
 }

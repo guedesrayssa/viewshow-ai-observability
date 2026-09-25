@@ -73,13 +73,12 @@ function status(value: unknown): IncidentDto["status"] {
 
 export function itemKind(
   item: PhysicalItem,
-): "incident" | "evidence" | "hypothesis" | "diagnosis" | "event" | "unknown" {
+): "incident" | "evidence" | "hypothesis" | "event" | "unknown" {
   const explicit = text(item.itemType)?.toLowerCase();
   if (
     explicit === "incident" ||
     explicit === "evidence" ||
     explicit === "hypothesis" ||
-    explicit === "diagnosis" ||
     explicit === "event"
   )
     return explicit;
@@ -88,7 +87,6 @@ export function itemKind(
   if (/^INCIDENT#[^#]+$/.test(sortKey)) return "incident";
   if (/^(?:INCIDENT#[^#]+#)?EVIDENCE#/.test(sortKey)) return "evidence";
   if (/^(?:INCIDENT#[^#]+#)?HYPOTHESIS#/.test(sortKey)) return "hypothesis";
-  if (/^(?:INCIDENT#[^#]+#)?DIAGNOSIS#/.test(sortKey)) return "diagnosis";
   if (/^EVENT#/.test(sortKey)) return "event";
   return "unknown";
 }
@@ -205,7 +203,9 @@ const record = (value: unknown): Record<string, unknown> | null =>
     ? value as Record<string, unknown>
     : null;
 
-function diagnosisPresentation(item: PhysicalItem): Pick<DiagnosisData, "charts" | "timeline" | "changes"> {
+function diagnosisPresentation(
+  item: PhysicalItem,
+): Pick<DiagnosisData, "charts" | "timeline" | "changes"> {
   const projection = record(item.diagnosisProjection);
   const buffering = record(projection?.buffering);
   const points = (Array.isArray(buffering?.points) ? buffering.points : []).flatMap((entry) => {
@@ -265,9 +265,9 @@ export function toDiagnosisData(
   const hypotheses = children.filter(
     (item) =>
       itemKind(item) === "hypothesis" &&
-      text(item.statement ?? item.text) !== null,
+      text(item.statement ?? item.text) !== null &&
+      number(item.probability ?? item.score) !== null,
   );
-  const diagnoses = children.filter((item) => itemKind(item) === "diagnosis");
   const evidence = children.filter(
     (item) =>
       itemKind(item) === "evidence" &&
@@ -285,7 +285,7 @@ export function toDiagnosisData(
       rank: index + 1,
       statement: text(item.statement ?? item.text) as string,
       component: incident.primaryComponent,
-      probability: number(item.probability ?? item.score),
+      probability: number(item.probability ?? item.score) as number,
       rationale: text(item.rationale),
       review: {
         status: reviewStatus(item.reviewStatus),
@@ -295,67 +295,59 @@ export function toDiagnosisData(
       },
     }));
   const latest = latestHypothesis(hypotheses);
-  const latestDiagnosis = [...diagnoses].sort(
-    (a, b) => iso(b.createdAt)?.localeCompare(iso(a.createdAt) ?? "") ?? 0,
-  )[0];
-  const diagnosisStatus = latest
-    ? "ready"
-    : latestDiagnosis?.status === "failed"
-      ? "failed"
-      : latestDiagnosis?.status === "processing"
-        ? "processing"
-        : latestDiagnosis?.status === "ready"
-          ? "inconclusive"
-          : "not_started";
+  const presentation = diagnosisPresentation(incidentItem);
   return {
     incident,
     diagnosis: {
-      status: diagnosisStatus,
-      generatedAt: latest
-        ? iso(latest.generatedAt ?? latest.createdAt)
-        : iso(latestDiagnosis?.createdAt),
+      status: latest ? "ready" : "not_started",
+      generatedAt: latest ? iso(latest.generatedAt ?? latest.createdAt) : null,
       summary: latest ? text(latest.summary ?? latest.explanation) : null,
       primaryHypothesisId: latest ? hypothesisId(latest) : null,
       confidence: latest ? number(latest.probability ?? latest.score) : null,
       hypotheses: ranked,
     },
-    evidence: evidence.map((item) => ({
-      id: text(item.id ?? item.evidenceId) ?? opaquePhysicalId("evi", item.sk),
-      type: text(item.type) ?? "metric_deviation",
-      title: (text(item.title) ?? text(item.description)) as string,
-      statement: text(item.statement ?? item.description) as string,
-      relation:
-        item.relation === "contradicts"
-          ? "contradicts"
-          : item.relation === "context"
-            ? "context"
-            : "supports",
-      hypothesisIds: ranked
-        .filter((hypothesis) => {
-          const physical = hypotheses.find(
-            (candidate) => hypothesisId(candidate) === hypothesis.id,
-          );
-          return (
-            Array.isArray(physical?.supportingEvidenceIds) &&
-            physical.supportingEvidenceIds.includes(
-              text(item.id ?? item.evidenceId),
-            )
-          );
-        })
-        .map((hypothesis) => hypothesis.id),
-      strength: evidenceStrength(item.strength),
-      observedAt: iso(item.observedAt ?? item.capturedAt),
-      source: {
-        type: text(item.sourceType) ?? "operational_telemetry",
-        name: text(item.source) ?? "Argus",
-      },
-      quality: {
-        status: item.qualityStatus === "verified" ? "verified" : "partial",
-        coverageRatio: number(item.coverageRatio),
-        flags:
-          item.qualityStatus === "verified" ? [] : ["QUALITY_NOT_VERIFIED"],
-      },
-    })),
+    evidence: evidence.map((item) => {
+      const eventId = text(item.eventId) ?? opaquePhysicalId("evt", item.sk);
+      const incidentId = text(item.incidentId ?? incidentItem.id) ?? "unknown";
+      return {
+        id:
+          text(item.id ?? item.evidenceId) ?? opaquePhysicalId("evi", item.sk),
+        eventId,
+        incidentId,
+        type: text(item.type) ?? "metric_deviation",
+        title: (text(item.title) ?? text(item.description)) as string,
+        statement: text(item.statement ?? item.description) as string,
+        relation:
+          item.relation === "contradicts"
+            ? "contradicts"
+            : item.relation === "context"
+              ? "context"
+              : "supports",
+        hypothesisIds: ranked.map((hypothesis) => hypothesis.id),
+        strength: evidenceStrength(item.strength),
+        observedAt: iso(item.observedAt ?? item.capturedAt),
+        source: {
+          type: text(item.sourceType) ?? "operational_telemetry",
+          name: text(item.source) ?? "Argus",
+          dataset: text(item.sourceDataset) ?? "legacy",
+          recordId: text(item.sourceRecordId) ?? String(item.sk ?? "unknown"),
+        },
+        correlation: {
+          correlationId:
+            text(item.correlationId) ?? opaquePhysicalId("cor", item.sk),
+          incidentId,
+          ruleVersion: text(item.ruleVersion) ?? "legacy",
+          timeDistanceSeconds: number(item.timeDistanceSeconds) ?? 0,
+          matchedFields: [],
+        },
+        quality: {
+          status: item.qualityStatus === "verified" ? "verified" : "partial",
+          coverageRatio: number(item.coverageRatio),
+          flags:
+            item.qualityStatus === "verified" ? [] : ["QUALITY_NOT_VERIFIED"],
+        },
+      };
+    }),
     charts: presentation.charts,
     timeline: presentation.timeline,
     changes: presentation.changes,

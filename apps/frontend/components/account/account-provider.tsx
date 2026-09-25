@@ -21,6 +21,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -119,6 +120,8 @@ type AccountContextValue = {
   /** Perfil completo, já com as alterações aplicadas. */
   profile: AccountProfile & { photo: string | null };
   sessionStatus: SessionStatus;
+  /** Revalida a sessão no backend e atualiza o estado compartilhado. */
+  refreshSession: () => Promise<SessionIdentity | null>;
   updateProfile: (patch: Partial<EditableProfile>) => void;
   /** Remove o nome sobreposto e a foto; volta ao nome da sessão. */
   reset: () => void;
@@ -142,16 +145,21 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionIdentity | null | undefined>(
     undefined,
   );
+  const sessionRequestVersion = useRef(0);
+
+  const refreshSession = useCallback(async () => {
+    const requestVersion = ++sessionRequestVersion.current;
+    const identity = await fetchSessionIdentity();
+    if (requestVersion === sessionRequestVersion.current) setSession(identity);
+    return identity;
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchSessionIdentity().then((identity) => {
-      if (!cancelled) setSession(identity);
-    });
+    void refreshSession();
     return () => {
-      cancelled = true;
+      sessionRequestVersion.current += 1;
     };
-  }, []);
+  }, [refreshSession]);
 
   const updateProfile = useCallback((patch: Partial<EditableProfile>) => {
     accountStore.set({ ...accountStore.getSnapshot(), ...patch });
@@ -186,11 +194,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         photo: edits.photo,
       },
       sessionStatus,
+      refreshSession,
       updateProfile,
       reset,
       signOut,
     };
-  }, [session, sessionStatus, edits, updateProfile, reset, signOut]);
+  }, [session, sessionStatus, edits, refreshSession, updateProfile, reset, signOut]);
 
   return (
     <AccountContext.Provider value={value}>{children}</AccountContext.Provider>

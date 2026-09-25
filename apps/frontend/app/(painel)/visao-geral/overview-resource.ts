@@ -38,7 +38,10 @@ type Kpi = {
   value: number | null;
   unit: string;
   status: "healthy" | "warning" | "critical" | "unknown";
-  comparison: { changeRatio: number; direction: "up" | "down" | "stable" } | null;
+  comparison: {
+    changeRatio: number;
+    direction: "up" | "down" | "stable";
+  } | null;
   shareOfObservedSessions?: number;
   measurement: Measurement;
 };
@@ -60,7 +63,10 @@ export type OverviewResponse = {
   }>;
 };
 
-const toneByPriority: Record<"P1" | "P2" | "P3" | "P4", IncidentData["status"]> = {
+const toneByPriority: Record<
+  "P1" | "P2" | "P3" | "P4",
+  IncidentData["status"]
+> = {
   P1: "critical",
   P2: "warning",
   P3: "info",
@@ -68,6 +74,9 @@ const toneByPriority: Record<"P1" | "P2" | "P3" | "P4", IncidentData["status"]> 
 };
 
 const labels: Record<string, string> = {
+  observed_sessions: "Sessões observadas",
+  errors: "Erros observados",
+  error_rate: "Taxa de erro",
   errors_per_minute: "Erros por minuto",
   latency_p95: "Latência p95",
   affected_sessions: "Sessões afetadas",
@@ -81,13 +90,23 @@ function toClock(iso: string): string {
 }
 
 function since(iso: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
-  return minutes < 60 ? `há ${minutes} min` : `há ${Math.floor(minutes / 60)} h`;
+  const minutes = Math.max(
+    0,
+    Math.round((Date.now() - new Date(iso).getTime()) / 60_000),
+  );
+  return minutes < 60
+    ? `há ${minutes} min`
+    : `há ${Math.floor(minutes / 60)} h`;
 }
 
 function deltaOf(kpi: Kpi): string {
   if (!kpi.comparison) return "";
-  const signal = kpi.comparison.direction === "up" ? "+" : kpi.comparison.direction === "down" ? "−" : "";
+  const signal =
+    kpi.comparison.direction === "up"
+      ? "+"
+      : kpi.comparison.direction === "down"
+        ? "−"
+        : "";
   return `${signal}${Math.abs(kpi.comparison.changeRatio * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. base`;
 }
 
@@ -97,9 +116,25 @@ export function mapOverview(response: OverviewResponse): OverviewData {
     id: kpi.key,
     label: labels[kpi.key] ?? kpi.key,
     value: kpi.measurement.status === "unknown" ? null : kpi.value,
-    unit: kpi.unit === "milliseconds" ? " ms" : kpi.unit === "errors_per_minute" ? "/min" : "",
+    unit:
+      kpi.unit === "milliseconds"
+        ? " ms"
+        : kpi.unit === "errors_per_minute"
+          ? "/min"
+          : kpi.unit === "sessions"
+            ? " sessões"
+            : kpi.unit === "errors"
+              ? " erros"
+              : kpi.unit === "percent"
+                ? "%"
+                : "",
     delta: deltaOf(kpi),
-    accent: kpi.status === "critical" ? "critical" : kpi.status === "warning" ? "warning" : "info",
+    accent:
+      kpi.status === "critical"
+        ? "critical"
+        : kpi.status === "warning"
+          ? "warning"
+          : "info",
   }));
   const series = response.experienceHealth.points.map((point) => ({
     label: toClock(point.timestamp),
@@ -108,14 +143,33 @@ export function mapOverview(response: OverviewResponse): OverviewData {
   const anomaly = response.experienceHealth.anomalyWindows[0];
   const anomalyRange: [number, number] | null = anomaly
     ? [
-        Math.max(0, response.experienceHealth.points.findIndex((point) => point.timestamp >= anomaly.from)),
-        Math.max(0, response.experienceHealth.points.findIndex((point) => point.timestamp >= anomaly.to)),
+        Math.max(
+          0,
+          response.experienceHealth.points.findIndex(
+            (point) => point.timestamp >= anomaly.from,
+          ),
+        ),
+        Math.max(
+          0,
+          response.experienceHealth.points.findIndex(
+            (point) => point.timestamp >= anomaly.to,
+          ),
+        ),
       ]
     : null;
   const peakTimestamp = anomaly?.peakTimestamp;
   const peakIndex = peakTimestamp
-    ? Math.max(0, response.experienceHealth.points.findIndex((point) => point.timestamp === peakTimestamp))
-    : series.reduce((best, point, index, all) => (point.value > (all[best]?.value ?? -Infinity) ? index : best), 0);
+    ? Math.max(
+        0,
+        response.experienceHealth.points.findIndex(
+          (point) => point.timestamp === peakTimestamp,
+        ),
+      )
+    : series.reduce(
+        (best, point, index, all) =>
+          point.value > (all[best]?.value ?? -Infinity) ? index : best,
+        0,
+      );
   return {
     stats,
     series,
@@ -126,7 +180,8 @@ export function mapOverview(response: OverviewResponse): OverviewData {
       id: incident.id,
       title: incident.title,
       sessions:
-        incident.affectedSessions.value === null || incident.affectedSessions.measurement.status === "unknown"
+        incident.affectedSessions.value === null ||
+        incident.affectedSessions.measurement.status === "unknown"
           ? "sem contagem"
           : `${formatCompact(incident.affectedSessions.value)} sessões`,
       timeAgo: since(incident.startedAt),
@@ -140,11 +195,17 @@ function exampleOverview(revision: number): OverviewData {
   return {
     stats: STATS.map((stat, index) => ({
       ...stat,
-      value: revision === 0 || stat.value === null ? stat.value : Math.round(jitter(stat.value, revision * 10 + index, 0.05)),
+      value:
+        revision === 0 || stat.value === null
+          ? stat.value
+          : Math.round(jitter(stat.value, revision * 10 + index, 0.05)),
     })),
     series: EXPERIENCE_HEALTH_SERIES.map((point, index) => ({
       ...point,
-      value: revision === 0 ? point.value : Math.round(jitter(point.value, revision * 100 + index, 0.08)),
+      value:
+        revision === 0
+          ? point.value
+          : Math.round(jitter(point.value, revision * 100 + index, 0.08)),
     })),
     baseline: 100,
     anomalyRange: [6, 8],
@@ -153,7 +214,10 @@ function exampleOverview(revision: number): OverviewData {
   };
 }
 
-export function fetchOverview(filters: OverviewFilters, revision = 0): Promise<Resource<OverviewData>> {
+export function fetchOverview(
+  filters: OverviewFilters,
+  revision = 0,
+): Promise<Resource<OverviewData>> {
   return loadResource<OverviewResponse, OverviewData>({
     path: ENDPOINTS.dashboardOverview,
     params: {

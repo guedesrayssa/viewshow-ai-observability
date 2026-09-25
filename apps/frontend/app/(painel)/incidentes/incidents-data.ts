@@ -141,7 +141,10 @@ export const SORT_LABELS: Record<SortKey, string> = {
 };
 
 /** Ordena a lista pelo critério escolhido, sem alterar o original. */
-export function sortIncidents(incidents: Incident[], sort: SortKey): Incident[] {
+export function sortIncidents(
+  incidents: Incident[],
+  sort: SortKey,
+): Incident[] {
   const sorted = [...incidents];
 
   if (sort === "devices") {

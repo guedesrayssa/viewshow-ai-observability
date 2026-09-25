@@ -9,6 +9,7 @@ afterEach(() => {
 const meta = {
   requestId: "req_projection",
   schemaVersion: "1.0",
+  datasetVersion: `dsv_${"a".repeat(64)}`,
   generatedAt: new Date().toISOString(),
   window: null,
   partial: false,
@@ -62,7 +63,7 @@ describe("published dashboard projections", () => {
       data: {
         incident: { id: "inc_1", title: "Player degradation", priority: "P1", status: "investigating", startedAt: now, impact: { affectedDevices: { value: 120, measurement: { status: "measured" } } }, primaryComponent: { id: "cmp_1", name: "Player" } },
         diagnosis: { status: "ready", summary: "Cause", primaryHypothesisId: "hyp_1", confidence: 0.8, hypotheses: [{ id: "hyp_1", statement: "Decoder", component: null, probability: 0.8, rationale: "Details", review: { status: "pending", version: 0 } }] },
-        evidence: [{ id: "evi_1", type: "metric", title: "Deviation", statement: "Buffering increased", relation: "supports", strength: "strong", source: { type: "telemetry", name: "Argus" }, quality: { status: "verified", flags: [] } }],
+        evidence: [{ id: "evi_1", eventId: "evt_1", incidentId: "inc_1", type: "metric", title: "Deviation", statement: "Buffering increased", relation: "supports", hypothesisIds: ["hyp_1"], strength: "strong", observedAt: now, source: { type: "telemetry", name: "Argus", dataset: "live_qoe_hourly", recordId: "record_1" }, correlation: { correlationId: "cor_1", incidentId: "inc_1", ruleVersion: "argus-v1", timeDistanceSeconds: 0, matchedFields: [] }, quality: { status: "verified", coverageRatio: 1, flags: [] } }],
         charts: { buffering: { points: [{ timestamp: now, value: 3.2 }], marker: { timestamp: now, label: "Detection" } }, concentrations: [{ label: "Smart TV", percentage: 68 }], concentrationNote: "Sample" },
         timeline: [{ timestamp: now, label: "Incident detected", source: "Argus", tone: "critical" }],
         changes: [{ label: "Likely", cause: "Player", percentage: 72, tone: "critical" }],

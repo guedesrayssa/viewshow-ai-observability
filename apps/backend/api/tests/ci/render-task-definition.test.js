@@ -18,13 +18,13 @@ function taskDefinition(containers) {
     registeredAt: "2026-08-25T00:00:00Z",
     registeredBy: "arn:registrar",
     deleteRequestedAt: "2026-08-27T12:00:00Z",
-    family: "g05-s3-api-task",
+    family: "view-show-api-task",
     networkMode: "awsvpc",
     requiresCompatibilities: ["FARGATE"],
     cpu: "256",
     memory: "512",
-    taskRoleArn: "arn:aws:iam::248880318395:role/TaskRole",
-    executionRoleArn: "arn:aws:iam::248880318395:role/ExecutionRole",
+    taskRoleArn: "arn:aws:iam::999999999999:role/TaskRole",
+    executionRoleArn: "arn:aws:iam::999999999999:role/ExecutionRole",
     volumes: [{ name: "shared", host: {} }],
     placementConstraints: [],
     proxyConfiguration: {
@@ -46,7 +46,7 @@ function render(containers) {
   fs.writeFileSync(input, JSON.stringify(taskDefinition(containers)));
   const result = spawnSync(
     script,
-    [input, output, "example.invalid/g05-s3-api:abc123", "g05-s3-api"],
+    [input, output, "example.invalid/view-show-api:abc123", "view-show-api"],
     { encoding: "utf8" },
   );
   return { result, output };
@@ -54,7 +54,7 @@ function render(containers) {
 
 test("renderer changes only the target image and removes response fields", () => {
   const { result, output } = render([
-    { name: "g05-s3-api", image: "old:v1", environment: [{ name: "KEEP", value: "yes" }] },
+    { name: "view-show-api", image: "old:v1", environment: [{ name: "KEEP", value: "yes" }] },
     { name: "sidecar", image: "sidecar:v1" },
   ]);
 
@@ -65,7 +65,7 @@ test("renderer changes only the target image and removes response fields", () =>
   assert.equal(rendered.status, undefined);
   assert.equal(rendered.registeredAt, undefined);
   assert.equal(rendered.deleteRequestedAt, undefined);
-  assert.equal(rendered.containerDefinitions[0].image, "example.invalid/g05-s3-api:abc123");
+  assert.equal(rendered.containerDefinitions[0].image, "example.invalid/view-show-api:abc123");
   assert.deepEqual(rendered.containerDefinitions[0].environment, [{ name: "KEEP", value: "yes" }]);
   assert.equal(rendered.containerDefinitions[0].healthCheck.command[0], "CMD-SHELL");
   assert.equal(rendered.containerDefinitions[1].image, "sidecar:v1");
@@ -73,7 +73,7 @@ test("renderer changes only the target image and removes response fields", () =>
 
 test("renderer deep-preserves a realistic registration payload except target runtime fields", () => {
   const target = {
-    name: "g05-s3-api",
+    name: "view-show-api",
     image: "old:v1",
     essential: true,
     cpu: 128,
@@ -84,7 +84,7 @@ test("renderer deep-preserves a realistic registration payload except target run
     mountPoints: [{ sourceVolume: "shared", containerPath: "/shared", readOnly: false }],
     logConfiguration: {
       logDriver: "awslogs",
-      options: { "awslogs-group": "/ecs/g05-s3-api", "awslogs-region": "us-east-1" },
+      options: { "awslogs-group": "/ecs/view-show-api", "awslogs-region": "us-east-1" },
     },
     linuxParameters: { initProcessEnabled: true },
     healthCheck: { command: ["CMD-SHELL", "old"], interval: 5, timeout: 2, retries: 1 },
@@ -108,7 +108,7 @@ test("renderer deep-preserves a realistic registration payload except target run
     "deregisteredAt",
     "deleteRequestedAt",
   ]) delete expected[key];
-  expected.containerDefinitions[0].image = "example.invalid/g05-s3-api:abc123";
+  expected.containerDefinitions[0].image = "example.invalid/view-show-api:abc123";
   expected.containerDefinitions[0].healthCheck = {
     command: [
       "CMD-SHELL",
@@ -132,7 +132,7 @@ test("renderer rejects a missing target container", () => {
 });
 
 test("renderer rejects duplicate target containers", () => {
-  const target = { name: "g05-s3-api", image: "old:v1" };
+  const target = { name: "view-show-api", image: "old:v1" };
   const { result } = render([target, target]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /expected exactly one container/);

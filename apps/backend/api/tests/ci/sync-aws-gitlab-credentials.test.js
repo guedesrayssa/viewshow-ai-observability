@@ -30,9 +30,9 @@ function metadata(entries, ndjson = false) {
 }
 
 function runSynchronizer({
-  account = "248880318395",
-  callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
-  ecrResult = "g05-s3-api",
+  account = "999999999999",
+  callerArn = "arn:aws:sts::999999999999:assumed-role/voclabs/test-session",
+  ecrResult = "view-show-api",
   ecsResult = "ACTIVE\t0",
   variableMetadata = "[]",
   failWriteAttempt = 0,
@@ -79,9 +79,9 @@ elif [[ "$*" == "configure get services --profile default" ]]; then
   printf '%s\\n' "$CONFIGURED_SERVICES"
 elif [[ "$*" == "--profile default sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\\n' "$FAKE_ACCOUNT" "$CALLER_ARN"
-elif [[ "$*" == "--profile default ecr describe-repositories --region us-east-1 --repository-names g05-s3-api --query repositories[0].repositoryName --output text" ]]; then
+elif [[ "$*" == "--profile default ecr describe-repositories --region us-east-1 --repository-names view-show-api --query repositories[0].repositoryName --output text" ]]; then
   printf '%s\\n' "$FAKE_ECR_RESULT"
-elif [[ "$*" == "--profile default ecs describe-services --region us-east-1 --cluster g05-s3-cluster --services g05-s3-api-service --query [services[0].status, length(failures)] --output text" ]]; then
+elif [[ "$*" == "--profile default ecs describe-services --region us-east-1 --cluster view-show-cluster --services view-show-api-service --query [services[0].status, length(failures)] --output text" ]]; then
   printf '%b\\n' "$FAKE_ECS_RESULT"
 elif [[ "$*" == "configure export-credentials --profile default --format process" ]]; then
   printf '%s\\n' '{"Version":1,"AccessKeyId":"fixture-access","SecretAccessKey":"fixture-secret","SessionToken":"fixture-session"}'
@@ -434,7 +434,7 @@ for (const [name, options] of [
 
 test("AWS caller must be the exact voclabs assumed role", () => {
   const { result, calls } = runSynchronizer({
-    callerArn: "arn:aws:sts::248880318395:assumed-role/other-role/session",
+    callerArn: "arn:aws:sts::999999999999:assumed-role/other-role/session",
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unexpected AWS caller/);
@@ -492,14 +492,10 @@ test("mismatched repository-view metadata is rejected before AWS credential expo
   assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
 });
 
-test("wrong AWS account prevents credential export and GitLab writes", () => {
-  const { result, calls } = runSynchronizer({ account: "000000000000" });
-
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unexpected AWS account/);
-  assert.doesNotMatch(calls, /export-credentials|glab:write:/);
-  assertNoCredentialFixtureLeaks(`${result.stdout}${result.stderr}${calls}`);
-});
+// Não há mais teste de "conta aprovada" aqui: este script sincroniza a
+// credencial de QUALQUER Learner Lab para o GitLab do próprio dono, e não
+// existe alvo declarado contra o qual comparar. O que protege é a exigência do
+// papel voclabs, coberta em "caller must be the voclabs assumed role".
 
 test("wrong ECR repository result prevents credential export and GitLab writes", () => {
   const { result, calls } = runSynchronizer({

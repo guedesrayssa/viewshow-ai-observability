@@ -1,8 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const { push, refreshSession } = vi.hoisted(() => ({
+  push: vi.fn(),
+  refreshSession: vi.fn(),
+}));
 
 class NoopObserver {
   observe() {}
@@ -10,12 +13,30 @@ class NoopObserver {
   disconnect() {}
 }
 
+const SESSION = {
+  id: "user_ana",
+  name: "Ana",
+  email: "ana@globo.com",
+  role: "viewer" as const,
+  issuedAt: "2026-09-24T12:00:00.000Z",
+};
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams(),
 }));
+
+vi.mock("@/components/account/account-provider", () => ({
+  useAccount: () => ({ refreshSession }),
+}));
+
+beforeEach(() => {
+  refreshSession.mockResolvedValue(SESSION);
+});
 
 afterEach(() => {
   push.mockReset();
+  refreshSession.mockReset();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.stubGlobal("ResizeObserver", NoopObserver);
@@ -23,12 +44,76 @@ afterEach(() => {
   vi.resetModules();
 });
 
-async function renderLoginForm() {
+async function renderLoginForm(returnTo?: string) {
   const { LoginForm } = await import("./login-form");
-  return render(<LoginForm />);
+  return render(<LoginForm returnTo={returnTo} />);
 }
 
 describe("LoginForm", () => {
+  it("waits for the renewed session before opening the dashboard", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: {}, meta: {} }), {
+            status: 200,
+          }),
+      ),
+    );
+    let completeRefresh: (() => void) | undefined;
+    refreshSession.mockImplementation(
+      () =>
+        new Promise<typeof SESSION>((resolve) => {
+          completeRefresh = () => resolve(SESSION);
+        }),
+    );
+    await renderLoginForm();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /e-mail/i }),
+      "ana@globo.com",
+    );
+    await userEvent.type(screen.getByLabelText(/^senha$/i), "Senha123");
+    await userEvent.click(screen.getByRole("button", { name: /^entrar$/i }));
+
+    await waitFor(() => expect(refreshSession).toHaveBeenCalledOnce());
+    expect(push).not.toHaveBeenCalled();
+
+    completeRefresh?.();
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/visao-geral"));
+  });
+
+  it("shows an error instead of opening the dashboard without a renewed session", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: {}, meta: {} }), {
+            status: 200,
+          }),
+      ),
+    );
+    refreshSession.mockResolvedValue(null);
+    await renderLoginForm();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /e-mail/i }),
+      "ana@globo.com",
+    );
+    await userEvent.type(screen.getByLabelText(/^senha$/i), "Senha123");
+    await userEvent.click(screen.getByRole("button", { name: /^entrar$/i }));
+
+    expect(
+      await screen.findByText(
+        "Não foi possível entrar agora. Tente novamente em instantes.",
+      ),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it("submits email and password and opens the dashboard", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
     const fetch = vi.fn(
@@ -94,5 +179,53 @@ describe("LoginForm", () => {
 
     expect(push).toHaveBeenCalledWith("/visao-geral");
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns to the original internal page after a renewed login", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: {}, meta: {} }), {
+            status: 200,
+          }),
+      ),
+    );
+    await renderLoginForm("/dados/importacoes/?origem=menu#historico");
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /e-mail/i }),
+      "ana@globo.com",
+    );
+    await userEvent.type(screen.getByLabelText(/^senha$/i), "Senha123");
+    await userEvent.click(screen.getByRole("button", { name: /^entrar$/i }));
+
+    expect(push).toHaveBeenCalledWith(
+      "/dados/importacoes/?origem=menu#historico",
+    );
+  });
+
+  it("never navigates to an external return address", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://operacional.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: {}, meta: {} }), {
+            status: 200,
+          }),
+      ),
+    );
+    await renderLoginForm("//malicioso.test/roubar-sessao");
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /e-mail/i }),
+      "ana@globo.com",
+    );
+    await userEvent.type(screen.getByLabelText(/^senha$/i), "Senha123");
+    await userEvent.click(screen.getByRole("button", { name: /^entrar$/i }));
+
+    expect(push).toHaveBeenCalledWith("/visao-geral");
   });
 });

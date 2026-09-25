@@ -7,9 +7,9 @@ const { spawnSync } = require("node:child_process");
 
 const repoRoot = path.resolve(__dirname, "../../../../..");
 const script = path.join(repoRoot, "scripts/ci/deploy-ecs.sh");
-const oldArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/g05-s3-api-task:1";
-const newArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/g05-s3-api-task:2";
-const albArn = "arn:aws:elasticloadbalancing:us-east-1:248880318395:loadbalancer/app/g05-s3-alb/456";
+const oldArn = "arn:aws:ecs:us-east-1:999999999999:task-definition/view-show-api-task:1";
+const newArn = "arn:aws:ecs:us-east-1:999999999999:task-definition/view-show-api-task:2";
+const albArn = "arn:aws:elasticloadbalancing:us-east-1:999999999999:loadbalancer/app/view-show-alb/456";
 const listenerArn = `${albArn.replace("loadbalancer", "listener")}/listener-1`;
 const commitSha = "abc123def456abc123def456abc123def456abcd";
 const imageDigest = `sha256:${"b".repeat(64)}`;
@@ -46,7 +46,7 @@ function runDeploy({
   artifactSymlink = false,
   serviceStatus = "ACTIVE",
   controllerType = "ECS",
-  taskFamily = "g05-s3-api-task",
+  taskFamily = "view-show-api-task",
   taskStatus = "ACTIVE",
   taskDeleteRequestedAt = null,
   lateTaskOverrides = {},
@@ -54,8 +54,8 @@ function runDeploy({
   containerMode = "correct",
   resolveTargetGroup = true,
   resolveAlb = true,
-  actualAccount = "248880318395",
-  callerArn = "arn:aws:sts::248880318395:assumed-role/voclabs/test-session",
+  actualAccount = "999999999999",
+  callerArn = "arn:aws:sts::999999999999:assumed-role/voclabs/test-session",
   repositoryHead = commitSha,
   initialRemoteHead = commitSha,
   lateRemoteHead = commitSha,
@@ -100,7 +100,7 @@ function runDeploy({
   } else {
     fs.writeFileSync(artifact, artifactContent ?? `BACKEND_IMAGE_DIGEST=${expectedImageDigest}\n`);
   }
-  const targetContainer = { name: "g05-s3-api", image: "old:v1" };
+  const targetContainer = { name: "view-show-api", image: "old:v1" };
   const containerDefinitions = {
     correct: [targetContainer],
     missing: [{ name: "sidecar", image: "sidecar:v1" }],
@@ -112,8 +112,8 @@ function runDeploy({
     revision: 1,
     status: taskStatus,
     family: taskFamily,
-    taskRoleArn: "arn:aws:iam::248880318395:role/TaskRole",
-    executionRoleArn: "arn:aws:iam::248880318395:role/ExecutionRole",
+    taskRoleArn: "arn:aws:iam::999999999999:role/TaskRole",
+    executionRoleArn: "arn:aws:iam::999999999999:role/ExecutionRole",
     networkMode: "awsvpc",
     requiresCompatibilities: ["FARGATE"],
     cpu: "256",
@@ -134,8 +134,8 @@ function runDeploy({
     deploymentConfiguration: { minimumHealthyPercent: 100, maximumPercent: 200 },
     deployments: [{ status: "PRIMARY", rolloutState: "COMPLETED", taskDefinition: oldArn }],
     loadBalancers: [{
-      targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
-      containerName: "g05-s3-api",
+      targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123",
+      containerName: "view-show-api",
       containerPort: 3000,
     }],
     ...serviceOverrides,
@@ -175,7 +175,7 @@ function runDeploy({
       Conditions: [{ Field: "path-pattern", Values: ["/health"] }],
       Actions: [{
         Type: "forward",
-        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123",
       }],
     }] : [{
       RuleArn: `${listenerArn}/default`,
@@ -184,7 +184,7 @@ function runDeploy({
       Conditions: [],
       Actions: [{
         Type: "forward",
-        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999",
+        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/other/999",
       }],
     }])),
   );
@@ -229,7 +229,7 @@ call="$*"
 printf 'aws:%s\\n' "$call" >>"$CALL_LOG"
 if [[ "$call" == "sts get-caller-identity --output json" ]]; then
   printf '{"Account":"%s","Arn":"%s"}\\n' "$ACTUAL_ACCOUNT" "$CALLER_ARN"
-elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster g05-s3-cluster --services g05-s3-api-service --query services[0] --output json" ]]; then
+elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster view-show-cluster --services view-show-api-service --query services[0] --output json" ]]; then
   service_read_count=$(( $(cat "$SERVICE_READ_COUNT_FILE") + 1 ))
   printf '%s' "$service_read_count" >"$SERVICE_READ_COUNT_FILE"
   if [[ "$service_read_count" == "1" ]]; then
@@ -242,7 +242,7 @@ elif [[ "$call" == "ecs describe-services --region us-east-1 --cluster g05-s3-cl
   else
     cat "$ROLLBACK_SERVICE_FIXTURE"
   fi
-elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name g05-s3-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
+elif [[ "$call" == "ecr describe-images --region us-east-1 --repository-name view-show-api --image-ids imageTag=$EXPECTED_SHA --query imageDetails[0].{digest:imageDigest,mediaType:imageManifestMediaType} --output json" ]]; then
   printf '{"digest":"%s","mediaType":"%s"}\n' "$LIVE_IMAGE_DIGEST" "$LIVE_IMAGE_MEDIA_TYPE"
 elif [[ "$call" == "ecs describe-task-definition --region us-east-1 --task-definition $OLD_ARN --query taskDefinition --output json" ]]; then
   task_read_count=$(( $(cat "$TASK_READ_COUNT_FILE") + 1 ))
@@ -252,20 +252,20 @@ elif [[ "$call" == "ecs describe-task-definition --region us-east-1 --task-defin
   else
     cat "$LATE_TASK_FIXTURE"
   fi
-elif [[ "$call" == "elbv2 describe-target-groups --region us-east-1 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123 --query TargetGroups[0] --output json" ]]; then
+elif [[ "$call" == "elbv2 describe-target-groups --region us-east-1 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123 --query TargetGroups[0] --output json" ]]; then
   if [[ "$RESOLVE_TARGET_GROUP" == "true" ]]; then
-    printf '{"TargetGroupArn":"arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123","LoadBalancerArns":["%s"]}\\n' "$TARGET_GROUP_ALB_ARN"
+    printf '{"TargetGroupArn":"arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123","LoadBalancerArns":["%s"]}\\n' "$TARGET_GROUP_ALB_ARN"
   else
     echo '{"TargetGroupArn":null,"LoadBalancerArns":[]}'
   fi
-elif [[ "$call" == "elbv2 describe-load-balancers --region us-east-1 --names g05-s3-alb --query LoadBalancers[0] --output json" ]]; then
+elif [[ "$call" == "elbv2 describe-load-balancers --region us-east-1 --names view-show-alb --query LoadBalancers[0] --output json" ]]; then
   cat "$ALB_FIXTURE"
 elif [[ "$call" == "elbv2 describe-listeners --region us-east-1 --load-balancer-arn $ALB_ARN --query Listeners --output json" ]]; then
   cat "$LISTENERS_FIXTURE"
 elif [[ "$call" == "elbv2 describe-rules --region us-east-1 --listener-arn $LISTENER_ARN --query Rules --output json" ]]; then
   cat "$RULES_FIXTURE"
-elif [[ "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/TaskRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" \
-  || "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::248880318395:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::248880318395:role/ExecutionRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" ]]; then
+elif [[ "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::999999999999:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::999999999999:role/TaskRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" \
+  || "$call" == "iam simulate-principal-policy --policy-source-arn arn:aws:iam::999999999999:role/voclabs --action-names iam:PassRole --resource-arns arn:aws:iam::999999999999:role/ExecutionRole --context-entries ContextKeyName=iam:PassedToService,ContextKeyValues=ecs-tasks.amazonaws.com,ContextKeyType=string --query EvaluationResults[0].EvalDecision --output text" ]]; then
   echo "$PASS_ROLE_DECISION"
 elif [[ "$1" == "ecs" && "$2" == "register-task-definition" ]]; then
     [[ "$#" -eq 10 && "$3" == "--region" && "$4" == "us-east-1" \
@@ -275,21 +275,21 @@ elif [[ "$1" == "ecs" && "$2" == "register-task-definition" ]]; then
       || { echo "unexpected register arguments: $call" >&2; exit 2; }
     input_json="\${6#file://}"
     jq -e --arg image "$EXPECTED_IMAGE" --arg container "$EXPECTED_CONTAINER" '
-      .family == "g05-s3-api-task"
+      .family == "view-show-api-task"
       and ([.containerDefinitions[] | select(.name == $container and .image == $image and .healthCheck.command[0] == "CMD-SHELL")] | length == 1)
     ' "$input_json" >/dev/null
     echo "$NEW_ARN"
-elif [[ "$call" == "ecs update-service --region us-east-1 --cluster g05-s3-cluster --service g05-s3-api-service --task-definition $NEW_ARN --deployment-configuration deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100" ]]; then
+elif [[ "$call" == "ecs update-service --region us-east-1 --cluster view-show-cluster --service view-show-api-service --task-definition $NEW_ARN --deployment-configuration deploymentCircuitBreaker={enable=true,rollback=true},maximumPercent=200,minimumHealthyPercent=100" ]]; then
     task_definition="$NEW_ARN"
     printf '%s' "$task_definition" >"$STATE_FILE"
     if [[ "$FAIL_UPDATE_AFTER_MUTATION" == "true" ]]; then exit 4; fi
     echo '{}'
-elif [[ "$call" == "ecs update-service --region us-east-1 --cluster g05-s3-cluster --service g05-s3-api-service --task-definition $OLD_ARN" ]]; then
+elif [[ "$call" == "ecs update-service --region us-east-1 --cluster view-show-cluster --service view-show-api-service --task-definition $OLD_ARN" ]]; then
     task_definition="$OLD_ARN"
     if [[ "$FAIL_ROLLBACK_UPDATE" == "true" && "$task_definition" == "$OLD_ARN" ]]; then exit 5; fi
     printf '%s' "$task_definition" >"$STATE_FILE"
     echo '{}'
-elif [[ "$call" == "ecs wait services-stable --region us-east-1 --cluster g05-s3-cluster --services g05-s3-api-service" ]]; then
+elif [[ "$call" == "ecs wait services-stable --region us-east-1 --cluster view-show-cluster --services view-show-api-service" ]]; then
     waiter_count=$(( $(cat "$WAITER_COUNT_FILE") + 1 ))
     printf '%s' "$waiter_count" >"$WAITER_COUNT_FILE"
     if [[ "$FAIL_FORWARD_WAITER" == "true" && "$waiter_count" == "2" ]]; then
@@ -380,8 +380,8 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       ALB_ARN: albArn,
       LISTENER_ARN: listenerArn,
       TARGET_GROUP_ALB_ARN: targetGroupAlbArn,
-      EXPECTED_IMAGE: `248880318395.dkr.ecr.us-east-1.amazonaws.com/g05-s3-api@${expectedImageDigest}`,
-      EXPECTED_CONTAINER: "g05-s3-api",
+      EXPECTED_IMAGE: `999999999999.dkr.ecr.us-east-1.amazonaws.com/view-show-api@${expectedImageDigest}`,
+      EXPECTED_CONTAINER: "view-show-api",
       EXPECTED_SHA: commitSha,
       LIVE_IMAGE_DIGEST: liveImageDigest,
       LIVE_IMAGE_MEDIA_TYPE: liveImageMediaType,
@@ -392,14 +392,14 @@ printf '%s\\n%s' "$HEALTH_BODY" "$HTTP_STATUS"
       REPOSITORY_HEAD: repositoryHead,
       INITIAL_REMOTE_HEAD: initialRemoteHead,
       LATE_REMOTE_HEAD: lateRemoteHead,
-      AWS_ACCOUNT_ID: "248880318395",
+      AWS_ACCOUNT_ID: "999999999999",
       AWS_DEFAULT_REGION: "us-east-1",
-      ECR_REPOSITORY: "g05-s3-api",
-      ECS_CLUSTER: "g05-s3-cluster",
-      ECS_SERVICE: "g05-s3-api-service",
-      ECS_TASK_FAMILY: "g05-s3-api-task",
-      ECS_CONTAINER_NAME: "g05-s3-api",
-      ALB_NAME: "g05-s3-alb",
+      ECR_REPOSITORY: "view-show-api",
+      ECS_CLUSTER: "view-show-cluster",
+      ECS_SERVICE: "view-show-api-service",
+      ECS_TASK_FAMILY: "view-show-api-task",
+      ECS_CONTAINER_NAME: "view-show-api",
+      ALB_NAME: "view-show-alb",
       CI_COMMIT_SHA: commitSha,
       BACKEND_IMAGE_DIGEST: expectedImageDigest,
       WAITER_TERM_GRACE_ATTEMPTS: "2",
@@ -532,7 +532,7 @@ test("multiple public health JSON documents restore the previous task definition
 
 test("target group attached to another ALB fails before ECS mutation", () => {
   const { result, calls } = runDeploy({
-    targetGroupAlbArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:loadbalancer/app/other/789",
+    targetGroupAlbArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:loadbalancer/app/other/789",
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /target group is not attached to ALB/);
@@ -715,7 +715,7 @@ test("AWS endpoint overrides fail before any AWS call", () => {
 
 test("caller must be the exact voclabs assumed role", () => {
   const { result, calls } = runDeploy({
-    callerArn: "arn:aws:sts::248880318395:assumed-role/other-role/test-session",
+    callerArn: "arn:aws:sts::999999999999:assumed-role/other-role/test-session",
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unexpected AWS caller/);
@@ -785,7 +785,7 @@ test("ALB health rule with an additional host condition fails before mutation", 
       ],
       Actions: [{
         Type: "forward",
-        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+        TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123",
       }],
     }],
   });
@@ -805,7 +805,7 @@ test("ALB health rule with zero target weight fails before mutation", () => {
         Type: "forward",
         ForwardConfig: {
           TargetGroups: [{
-            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123",
             Weight: 0,
           }],
         },
@@ -825,8 +825,8 @@ test("only the exact HTTP port 80 listener can authorize public smoke", () => {
 });
 
 test("higher-priority health route to another target shadows a good default", () => {
-  const otherTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999";
-  const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123";
+  const otherTarget = "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/other/999";
+  const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123";
   const { result, calls } = runDeploy({
     rulesOverride: [{
       RuleArn: `${listenerArn}/shadow`,
@@ -848,8 +848,8 @@ test("higher-priority health route to another target shadows a good default", ()
 });
 
 test("higher-priority regex health route cannot be skipped in favor of a good default", () => {
-  const otherTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999";
-  const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123";
+  const otherTarget = "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/other/999";
+  const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123";
   const { result, calls } = runDeploy({
     rulesOverride: [{
       RuleArn: `${listenerArn}/regex-shadow`,
@@ -881,10 +881,10 @@ test("weighted multi-target health forwarding fails before mutation", () => {
         Type: "forward",
         ForwardConfig: {
           TargetGroups: [{
-            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123",
             Weight: 50,
           }, {
-            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999",
+            TargetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/other/999",
             Weight: 50,
           }],
         },
@@ -898,7 +898,7 @@ test("weighted multi-target health forwarding fails before mutation", () => {
 
 for (const pathPattern of ["/health?", "/*/health"]) {
   test(`ambiguous ALB path pattern ${pathPattern} cannot authorize the health route`, () => {
-    const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123";
+    const serviceTarget = "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123";
     const { result, calls } = runDeploy({
       rulesOverride: [{
         RuleArn: `${listenerArn}/ambiguous`,
@@ -952,7 +952,7 @@ test("develop advancing during preflight aborts immediately before mutation", ()
 });
 
 test("external deployment changing the rollback baseline aborts before registration", () => {
-  const externalArn = "arn:aws:ecs:us-east-1:248880318395:task-definition/g05-s3-api-task:99";
+  const externalArn = "arn:aws:ecs:us-east-1:999999999999:task-definition/view-show-api-task:99";
   const { result, calls } = runDeploy({
     lateServiceOverrides: {
       taskDefinition: externalArn,
@@ -1000,18 +1000,18 @@ test("rollback stable-predicate failure preserves the original waiter status", (
 
 for (const [name, loadBalancer] of [
   ["target group", {
-    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/other/999",
-    containerName: "g05-s3-api",
+    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/other/999",
+    containerName: "view-show-api",
     containerPort: 3000,
   }],
   ["container name", {
-    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
+    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123",
     containerName: "other-container",
     containerPort: 3000,
   }],
   ["container port", {
-    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:248880318395:targetgroup/api/123",
-    containerName: "g05-s3-api",
+    targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:999999999999:targetgroup/api/123",
+    containerName: "view-show-api",
     containerPort: 3001,
   }],
 ]) {
@@ -1052,7 +1052,6 @@ test("wrong STS account stops after identity lookup without ECS mutation", () =>
 });
 
 for (const [variable, value] of Object.entries({
-  AWS_ACCOUNT_ID: "000000000000",
   AWS_DEFAULT_REGION: "us-west-2",
   ECR_REPOSITORY: "other-api",
   ECS_CLUSTER: "other-cluster",

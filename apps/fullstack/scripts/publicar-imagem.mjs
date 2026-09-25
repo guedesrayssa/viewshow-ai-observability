@@ -1,4 +1,5 @@
-// Constrói a imagem da API e publica no ECR.
+// Constrói a imagem e publica no ECR. Serve tanto a API (ecr.tf) quanto a
+// ingestão (ingestion-ecs.tf); o repositório e o contexto vêm por ambiente.
 //
 // Existe como script Node, e não como comando embutido no Terraform, porque
 // precisa rodar igual em Linux, macOS e Windows. Um heredoc de bash com
@@ -9,79 +10,124 @@
 // provisioner (que o Terraform repassa de forma portável).
 
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
-const { REGIAO, REPO_URL, TAG, CONTEXTO } = process.env;
-
-for (const [nome, valor] of Object.entries({ REGIAO, REPO_URL, TAG, CONTEXTO })) {
-  if (!valor) {
-    console.error(`variável de ambiente ausente: ${nome}`);
-    process.exit(1);
-  }
-}
-
-const imagem = `${REPO_URL}:${TAG}`;
-const registro = REPO_URL.split("/")[0];
+const VARIAVEIS_OBRIGATORIAS = ["REGIAO", "REPO_URL", "TAG", "CONTEXTO"];
 
 /**
- * Executa um comando repassando a saída para o terminal.
+ * Executa um comando e devolve status e saídas, sem abortar o processo.
  *
  * `shell: false` evita depender da sintaxe do interpretador — sem isso, um
  * argumento com espaço se comportaria de um jeito no bash e de outro no cmd.
  */
 function executar(comando, argumentos, opcoes = {}) {
   const resultado = spawnSync(comando, argumentos, {
-    stdio: ["inherit", "inherit", "inherit"],
+    encoding: "utf-8",
     shell: false,
     ...opcoes,
   });
 
   if (resultado.error) {
-    console.error(`falha ao executar ${comando}: ${resultado.error.message}`);
-    if (resultado.error.code === "ENOENT") {
-      console.error(`${comando} não está instalado ou não está no PATH.`);
-    }
-    process.exit(1);
-  }
-
-  if (resultado.status !== 0) {
-    console.error(`${comando} terminou com código ${resultado.status}`);
-    process.exit(resultado.status ?? 1);
+    const detalhe =
+      resultado.error.code === "ENOENT"
+        ? `${comando} não está instalado ou não está no PATH.`
+        : resultado.error.message;
+    throw new Error(`falha ao executar ${comando}: ${detalhe}`);
   }
 
   return resultado;
 }
 
-/** Igual ao anterior, mas devolve a saída em vez de imprimi-la. */
-function capturar(comando, argumentos) {
-  const resultado = spawnSync(comando, argumentos, { encoding: "utf-8", shell: false });
+const executarAws = (argumentos) => executar("aws", argumentos);
+const executarDocker = (argumentos, opcoes = {}) =>
+  executar("docker", argumentos, { stdio: ["inherit", "inherit", "inherit"], ...opcoes });
 
-  if (resultado.error || resultado.status !== 0) {
-    console.error(resultado.stderr || resultado.error?.message || "falha desconhecida");
-    process.exit(1);
+function exigir(resultado, comando) {
+  if (resultado.status !== 0) {
+    // A saída de erro do aws/docker não carrega o token: `capturar` só é usado
+    // em comandos cujo stderr descreve a falha, não a credencial.
+    throw new Error(
+      `${comando} terminou com código ${resultado.status}: ${(resultado.stderr || "").trim()}`,
+    );
   }
-
-  return resultado.stdout.trim();
+  return resultado;
 }
 
-console.log(`autenticando no ECR (${registro})`);
-const senha = capturar("aws", ["ecr", "get-login-password", "--region", REGIAO]);
+/**
+ * Publica a imagem, ou adota a que já está no registro.
+ *
+ * A tag deriva do hash das fontes e o repositório é `IMMUTABLE`, então a mesma
+ * tag só pode descrever a mesma árvore de código. Um `apply` interrompido logo
+ * depois do push deixaria a tag publicada; reconstruir gera outro digest de
+ * manifest (o image config carrega `created`) e o push colidiria com
+ * `ImageTagAlreadyExistsException`, travando a retentativa — num runbook que
+ * proíbe remover imagem à mão para compensar interrupção. Por isso a
+ * existência da tag é consultada antes de construir.
+ */
+export function publicarImagem(ambiente = process.env, executores = {}) {
+  const { aws = executarAws, docker = executarDocker } = executores;
 
-// A senha entra por stdin, nunca como argumento: argumentos de processo são
-// legíveis por qualquer usuário da máquina via /proc ou Gerenciador de Tarefas.
-executar("docker", ["login", "--username", "AWS", "--password-stdin", registro], {
-  input: senha,
-  stdio: ["pipe", "inherit", "inherit"],
-});
+  for (const nome of VARIAVEIS_OBRIGATORIAS) {
+    if (!ambiente[nome]) throw new Error(`variável de ambiente ausente: ${nome}`);
+  }
 
-// --platform linux/amd64 é obrigatório: Fargate roda x86_64, e um build feito
-// num Mac Apple Silicon sairia arm64 e a task morreria no start com
-// "exec format error".
-console.log(`construindo ${imagem}`);
-executar("docker", ["build", "--platform", "linux/amd64", "-t", imagem, "."], {
-  cwd: CONTEXTO,
-});
+  const { REGIAO, REPO_URL, TAG, CONTEXTO } = ambiente;
+  const imagem = `${REPO_URL}:${TAG}`;
+  const registro = REPO_URL.split("/")[0];
+  const repositorio = REPO_URL.split("/").slice(1).join("/");
 
-console.log(`publicando ${imagem}`);
-executar("docker", ["push", imagem]);
+  console.log(`autenticando no ECR (${registro})`);
+  const senha = exigir(
+    aws(["ecr", "get-login-password", "--region", REGIAO]),
+    "aws ecr get-login-password",
+  ).stdout.trim();
 
-console.log("imagem publicada");
+  // A senha entra por stdin, nunca como argumento: argumentos de processo são
+  // legíveis por qualquer usuário da máquina via /proc ou Gerenciador de Tarefas.
+  exigir(
+    docker(["login", "--username", "AWS", "--password-stdin", registro], {
+      input: senha,
+      stdio: ["pipe", "inherit", "inherit"],
+    }),
+    "docker login",
+  );
+
+  const existente = aws([
+    "ecr",
+    "describe-images",
+    "--region",
+    REGIAO,
+    "--repository-name",
+    repositorio,
+    "--image-ids",
+    `imageTag=${TAG}`,
+  ]);
+  if (existente.status === 0) {
+    console.log(`imagem ${imagem} já publicada; adotando sem reconstruir`);
+    return "adopted";
+  }
+
+  // --platform linux/amd64 é obrigatório: Fargate roda x86_64, e um build feito
+  // num Mac Apple Silicon sairia arm64 e a task morreria no start com
+  // "exec format error".
+  console.log(`construindo ${imagem}`);
+  exigir(
+    docker(["build", "--platform", "linux/amd64", "-t", imagem, "."], { cwd: CONTEXTO }),
+    "docker build",
+  );
+
+  console.log(`publicando ${imagem}`);
+  exigir(docker(["push", imagem]), "docker push");
+
+  console.log("imagem publicada");
+  return "published";
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    publicarImagem();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  }
+}

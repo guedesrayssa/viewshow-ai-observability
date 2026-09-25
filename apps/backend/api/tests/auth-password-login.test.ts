@@ -15,7 +15,9 @@ function idToken(claims: Record<string, unknown>): string {
     JSON.stringify({ alg: "RS256", typ: "JWT" }),
     "utf8",
   ).toString("base64url");
-  const body = Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
+  const body = Buffer.from(JSON.stringify(claims), "utf8").toString(
+    "base64url",
+  );
   return `${header}.${body}.signature-nao-verificada`;
 }
 
@@ -100,16 +102,19 @@ describe("CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito)", () =>
   });
 
   it("cai para o papel viewer quando o token não traz grupo conhecido", async () => {
-    const outcome = await new CognitoPasswordAuthenticator(config, async () => ({
-      authenticationResult: {
-        idToken: idToken({
-          sub: "u",
-          email: "e@e.com",
-          "cognito:groups": ["algum-grupo"],
-        }),
-        accessToken: "a",
-      },
-    })).authenticate({ username: "e@e.com", password: "p" });
+    const outcome = await new CognitoPasswordAuthenticator(
+      config,
+      async () => ({
+        authenticationResult: {
+          idToken: idToken({
+            sub: "u",
+            email: "e@e.com",
+            "cognito:groups": ["algum-grupo"],
+          }),
+          accessToken: "a",
+        },
+      }),
+    ).authenticate({ username: "e@e.com", password: "p" });
 
     expect(outcome).toMatchObject({ ok: true, identity: { role: "viewer" } });
   });
@@ -154,16 +159,22 @@ describe("CognitoPasswordAuthenticator (mock do InitiateAuth do Cognito)", () =>
   });
 
   it("trata resposta de desafio (sem AuthenticationResult) como challenge_required", async () => {
-    const outcome = await new CognitoPasswordAuthenticator(config, async () => ({
-      authenticationResult: null,
-    })).authenticate({ username: "x@y.com", password: "p" });
+    const outcome = await new CognitoPasswordAuthenticator(
+      config,
+      async () => ({
+        authenticationResult: null,
+      }),
+    ).authenticate({ username: "x@y.com", password: "p" });
     expect(outcome).toEqual({ ok: false, reason: "challenge_required" });
   });
 
   it("trata ID token ilegível como unavailable", async () => {
-    const outcome = await new CognitoPasswordAuthenticator(config, async () => ({
-      authenticationResult: { idToken: "nao.e-um.jwt", accessToken: "a" },
-    })).authenticate({ username: "x@y.com", password: "p" });
+    const outcome = await new CognitoPasswordAuthenticator(
+      config,
+      async () => ({
+        authenticationResult: { idToken: "nao.e-um.jwt", accessToken: "a" },
+      }),
+    ).authenticate({ username: "x@y.com", password: "p" });
     expect(outcome).toEqual({ ok: false, reason: "unavailable" });
   });
 });

@@ -37,6 +37,12 @@ resource "aws_instance" "bastion" {
   iam_instance_profile        = data.aws_iam_instance_profile.lab.name
   key_name                    = var.bastion_key_name
 
+  lifecycle {
+    # The public SSM parameter is rolling. AMI replacement is deliberate
+    # maintenance, not a side effect of stateless application updates.
+    ignore_changes = [ami]
+  }
+
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"

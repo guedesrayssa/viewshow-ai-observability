@@ -14,8 +14,6 @@ export type IncidentsQuery = {
   deviceType: string;
   region: string;
   appVersion: string;
-  search?: string;
-  sort?: "urgency" | "devices" | "recent";
 };
 
 type IncidentDto = {
@@ -23,17 +21,21 @@ type IncidentDto = {
   title: string;
   priority: "P1" | "P2" | "P3" | "P4";
   startedAt: string;
-  impact: { affectedDevices: { value: number | null; measurement: { status: string } } };
+  impact: {
+    affectedDevices: { value: number | null; measurement: { status: string } };
+  };
   primaryComponent: { id: string; name: string } | null;
   scopeSummary: Array<{ dimension: string; value: string; name: string }>;
 };
 
 export type IncidentsResponse = {
   items: IncidentDto[];
-  facets?: Record<string, Array<{ value: string; name: string; count: number }>>;
-  page?: { limit: number; hasMore: boolean; nextCursor: string | null };
   impactSeries: {
-    points: Array<{ timestamp: string; total: number; byPriority: Record<"P1" | "P2" | "P3" | "P4", number> }>;
+    points: Array<{
+      timestamp: string;
+      total: number;
+      byPriority: Record<"P1" | "P2" | "P3" | "P4", number>;
+    }>;
   };
 };
 
@@ -42,17 +44,33 @@ function optional(value: string): string | undefined {
 }
 
 function windowOf(minutes: string): string {
-  return ({ "30": "30m", "60": "1h", "360": "6h", "1440": "24h", all: "24h" } as Record<string, string>)[minutes] ?? minutes;
+  return (
+    (
+      {
+        "30": "30m",
+        "60": "1h",
+        "360": "6h",
+        "1440": "24h",
+        all: "all",
+      } as Record<string, string>
+    )[minutes] ?? minutes
+  );
 }
 
 function scope(item: IncidentDto, dimension: string): string {
-  return item.scopeSummary.find((entry) => entry.dimension === dimension)?.name ?? "—";
+  return (
+    item.scopeSummary.find((entry) => entry.dimension === dimension)?.name ??
+    "—"
+  );
 }
 
 function toClock(iso: string, short: boolean): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  const hour = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: short ? undefined : "2-digit" });
+  const hour = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: short ? undefined : "2-digit",
+  });
   return short ? `${hour.replace(" h", "")}h` : hour;
 }
 
@@ -63,9 +81,12 @@ function toIncident(item: IncidentDto): Incident {
     urgency: item.priority,
     title: item.title,
     segment: item.scopeSummary.map((entry) => entry.name).join(" · "),
-    devices: item.impact.affectedDevices.measurement.status === "unknown" ? null : devices,
+    devices,
     startedAt: toClock(item.startedAt, false),
-    startedMinutesAgo: Math.max(0, Math.round((Date.now() - new Date(item.startedAt).getTime()) / 60_000)),
+    startedMinutesAgo: Math.max(
+      0,
+      Math.round((Date.now() - new Date(item.startedAt).getTime()) / 60_000),
+    ),
     component: item.primaryComponent?.name ?? "—",
     deviceType: scope(item, "deviceType"),
     region: scope(item, "region"),
@@ -77,35 +98,10 @@ export function mapIncidents(response: IncidentsResponse): Incident[] {
   return response.items.map(toIncident);
 }
 
-export type IncidentsPage = {
-  items: Incident[];
-  facets: Record<string, Array<{ value: string; name: string; count: number }>>;
-  nextCursor: string | null;
-};
-
-export function fetchIncidentsPage(query: IncidentsQuery, cursor?: string): Promise<Resource<IncidentsPage>> {
-  return loadResource<IncidentsResponse, IncidentsPage>({
-    path: ENDPOINTS.incidents,
-    params: {
-      window: windowOf(query.period),
-      deviceType: optional(query.deviceType),
-      region: optional(query.region),
-      appVersion: optional(query.appVersion),
-      search: query.search || undefined,
-      sort: query.sort === "urgency" ? "priority" : query.sort === "devices" ? "impact" : query.sort,
-      limit: 100,
-      cursor,
-    },
-    map: (response) => ({
-      items: mapIncidents(response),
-      facets: response.facets ?? {},
-      nextCursor: response.page?.nextCursor ?? null,
-    }),
-    fallback: () => ({ items: INCIDENTS, facets: {}, nextCursor: null }),
-  });
-}
-
-export function fetchIncidents(query: IncidentsQuery, revision = 0): Promise<Resource<Incident[]>> {
+export function fetchIncidents(
+  query: IncidentsQuery,
+  revision = 0,
+): Promise<Resource<Incident[]>> {
   return loadResource<IncidentsResponse, Incident[]>({
     path: ENDPOINTS.incidents,
     params: {
@@ -115,25 +111,40 @@ export function fetchIncidents(query: IncidentsQuery, revision = 0): Promise<Res
       appVersion: optional(query.appVersion),
     },
     map: mapIncidents,
-    fallback: () => INCIDENTS.map((incident, index) => ({
-      ...incident,
-      devices: revision === 0 || incident.devices === null ? incident.devices : Math.round(jitter(incident.devices, revision * 20 + index, 0.07)),
-    })),
+    fallback: () =>
+      INCIDENTS.map((incident, index) => ({
+        ...incident,
+        devices:
+          revision === 0 || incident.devices === null
+            ? incident.devices
+            : Math.round(jitter(incident.devices, revision * 20 + index, 0.07)),
+      })),
   });
 }
 
-export function fetchAffectedDevices(period: ChartPeriodKey, revision = 0): Promise<Resource<ChartBucket[]>> {
+export function fetchAffectedDevices(
+  period: ChartPeriodKey,
+  revision = 0,
+): Promise<Resource<ChartBucket[]>> {
   return loadResource<IncidentsResponse, ChartBucket[]>({
     path: ENDPOINTS.incidents,
     params: { window: windowOf(period), chartMetric: "affected_devices" },
-    map: (response) => response.impactSeries.points.map((point) => ({
-      time: toClock(point.timestamp, period === "1440"),
-      value: point.total,
-      level: point.byPriority.P1 > 0 || point.byPriority.P2 > 0 ? "critical" : "warning",
-    })),
-    fallback: () => CHART_DATASETS[period].map((bucket, index) => ({
-      ...bucket,
-      value: revision === 0 ? bucket.value : Math.round(jitter(bucket.value, revision * 30 + index, 0.09)),
-    })),
+    map: (response) =>
+      response.impactSeries.points.map((point) => ({
+        time: toClock(point.timestamp, period === "1440"),
+        value: point.total,
+        level:
+          point.byPriority.P1 > 0 || point.byPriority.P2 > 0
+            ? "critical"
+            : "warning",
+      })),
+    fallback: () =>
+      CHART_DATASETS[period].map((bucket, index) => ({
+        ...bucket,
+        value:
+          revision === 0
+            ? bucket.value
+            : Math.round(jitter(bucket.value, revision * 30 + index, 0.09)),
+      })),
   });
 }

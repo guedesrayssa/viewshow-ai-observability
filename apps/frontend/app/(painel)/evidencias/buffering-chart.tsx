@@ -17,6 +17,7 @@ import {
   type BufferingPoint,
 } from "@/app/(painel)/evidencias/evidence-data";
 import { TimeSeriesChart } from "@/components/charts/time-series-chart";
+import { Unavailable } from "@/components/dashboard/unavailable";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +25,8 @@ import { formatDecimal } from "@/lib/format";
 
 export type BufferingChartProps = {
   points?: BufferingPoint[];
+  status: "loading" | "ready" | "error";
+  error?: string;
   /** Marco de deploy na série, quando a origem o registra. */
   marker: { index: number; label: string } | null;
   period: BufferingPeriodKey;
@@ -39,6 +42,8 @@ function formatRatio(value: number): string {
 
 export function BufferingChart({
   points,
+  status,
+  error,
   marker,
   period,
   onPeriodChange,
@@ -68,11 +73,15 @@ export function BufferingChart({
         />
       </div>
 
-      {!points || points.length === 0 ? (
+      {status === "loading" ? (
         <>
           <Skeleton className="mt-5 h-48 w-full" />
           <Skeleton className="mt-3 h-3 w-56" />
         </>
+      ) : !points || points.length === 0 ? (
+        <Unavailable title="Série indisponível" className="mt-5" minHeight={192}>
+          {error ?? "A série de buffering não foi publicada para este incidente."}
+        </Unavailable>
       ) : (
         <BufferingPlot points={points} marker={marker} />
       )}

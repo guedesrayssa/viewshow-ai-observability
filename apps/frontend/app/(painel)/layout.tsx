@@ -15,13 +15,16 @@
 
 import type { ReactNode } from "react";
 
+import { ImportUploadProvider } from "@/components/imports/import-upload-provider";
 import { AppShell } from "@/components/shell/app-shell";
 import { PanelGuard } from "@/components/shell/panel-guard";
 
 export default function PainelLayout({ children }: { children: ReactNode }) {
   return (
     <PanelGuard>
-      <AppShell>{children}</AppShell>
+      <ImportUploadProvider>
+        <AppShell>{children}</AppShell>
+      </ImportUploadProvider>
     </PanelGuard>
   );
 }

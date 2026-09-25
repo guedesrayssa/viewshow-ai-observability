@@ -19,17 +19,25 @@ import {
 } from "@/app/(painel)/eventos/events-data";
 import { TimeSeriesChart } from "@/components/charts/time-series-chart";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Unavailable } from "@/components/dashboard/unavailable";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export type EventsChartProps = {
   series?: VolumeSeries;
-  loading?: boolean;
+  status: "loading" | "ready" | "error";
+  error?: string;
   period: VolumePeriodKey;
   onPeriodChange: (period: VolumePeriodKey) => void;
 };
 
-export function EventsChart({ series, loading = false, period, onPeriodChange }: EventsChartProps) {
+export function EventsChart({
+  series,
+  status,
+  error,
+  period,
+  onPeriodChange,
+}: EventsChartProps) {
   return (
     <Card padding="lg">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -50,12 +58,12 @@ export function EventsChart({ series, loading = false, period, onPeriodChange }:
         />
       </div>
 
-      {loading ? (
+      {status === "loading" ? (
         <Skeleton className="mt-5 h-56 w-full" />
-      ) : !series || series.values.length === 0 ? (
-        <p className="mt-5 flex h-56 items-center justify-center text-body-sm text-ink-muted">
-          Volume temporal indisponível para esta janela.
-        </p>
+      ) : !series ? (
+        <Unavailable title="Volume indisponível" className="mt-5" minHeight={224}>
+          {error ?? "O agregado temporal de eventos não foi publicado."}
+        </Unavailable>
       ) : (
         <VolumePlot series={series} />
       )}

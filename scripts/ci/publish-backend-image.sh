@@ -2,9 +2,11 @@
 set -Eeuo pipefail
 set +x
 
-readonly expected_account="248880318395"
+# A conta não é literal: ela vem de quem declara o alvo. A verificação que
+# importa é a credencial em vigor pertencer à MESMA conta do alvo declarado, o
+# que vale em qualquer conta do Learner Lab. A exigência do papel voclabs fica.
 readonly expected_region="us-east-1"
-readonly expected_repository="g05-s3-api"
+readonly expected_repository="view-show-api"
 
 required_variables=(AWS_ACCOUNT_ID AWS_DEFAULT_REGION ECR_REPOSITORY CI_COMMIT_SHA)
 for variable_name in "${required_variables[@]}"; do
@@ -14,10 +16,6 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
-if [[ "$AWS_ACCOUNT_ID" != "$expected_account" ]]; then
-  echo "unexpected publication binding: AWS_ACCOUNT_ID" >&2
-  exit 64
-fi
 if [[ "$AWS_DEFAULT_REGION" != "$expected_region" ]]; then
   echo "unexpected publication binding: AWS_DEFAULT_REGION" >&2
   exit 64
@@ -60,17 +58,17 @@ unset repository_head
 identity_json="$(aws sts get-caller-identity --output json)"
 actual_account="$(jq -r '.Account' <<<"$identity_json")"
 caller_arn="$(jq -r '.Arn' <<<"$identity_json")"
-if [[ "$actual_account" != "$expected_account" ]]; then
-  echo "unexpected AWS account: $actual_account (expected $expected_account)" >&2
+if [[ "$actual_account" != "$AWS_ACCOUNT_ID" ]]; then
+  echo "unexpected AWS account: $actual_account (expected $AWS_ACCOUNT_ID)" >&2
   exit 77
 fi
-if ! [[ "$caller_arn" =~ ^arn:aws:sts::248880318395:assumed-role/voclabs/[^/]+$ ]]; then
+if ! [[ "$caller_arn" =~ ^arn:aws:sts::${AWS_ACCOUNT_ID}:assumed-role/voclabs/[^/]+$ ]]; then
   echo "unexpected AWS caller; expected the voclabs assumed role" >&2
   exit 77
 fi
 unset identity_json actual_account caller_arn
 
-readonly registry="${expected_account}.dkr.ecr.${expected_region}.amazonaws.com"
+readonly registry="${AWS_ACCOUNT_ID}.dkr.ecr.${expected_region}.amazonaws.com"
 readonly image_uri="${registry}/${expected_repository}:${CI_COMMIT_SHA}"
 readonly cache_uri="${registry}/${expected_repository}:buildcache"
 dotenv_file="${BACKEND_IMAGE_ENV_FILE:-backend-image.env}"

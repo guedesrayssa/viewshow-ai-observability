@@ -1,3 +1,5 @@
+"""Verify stable, redacted telemetry emitted by the ingestion service."""
+
 import json
 import logging
 import unittest
@@ -5,6 +7,7 @@ import unittest
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode
+
 from view_show_ingestion import IngestionTelemetry, TelemetryConfig
 
 
@@ -94,9 +97,7 @@ class IngestionTelemetryTest(unittest.TestCase):
 
     def test_structured_log_redacts_secrets(self):
         with self.assertLogs("view-show-ingestion", logging.INFO) as captured:
-            self.telemetry.log.emit(
-                "info", "safe", token="private", nested={"password": "private"}
-            )
+            self.telemetry.log.emit("info", "safe", token="private", nested={"password": "private"})
         payload = json.loads(captured.output[0].split(":", 2)[-1])
         self.assertEqual(payload["token"], "[REDACTED]")
         self.assertEqual(payload["nested"]["password"], "[REDACTED]")

@@ -1,0 +1,115 @@
+{
+  "table": "live_event",
+  "recordType": "LiveEventContext",
+  "columns": [
+    {
+      "name": "tid",
+      "sqlType": "INT",
+      "nullable": false
+    },
+    {
+      "name": "start_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "end_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "event_key",
+      "sqlType": "VARCHAR(160)",
+      "nullable": false
+    },
+    {
+      "name": "event_date",
+      "sqlType": "VARCHAR(10)",
+      "nullable": false
+    },
+    {
+      "name": "slug",
+      "sqlType": "VARCHAR(64)",
+      "nullable": true
+    },
+    {
+      "name": "channel",
+      "sqlType": "VARCHAR(96)",
+      "nullable": true
+    },
+    {
+      "name": "competition",
+      "sqlType": "VARCHAR(160)",
+      "nullable": true
+    },
+    {
+      "name": "program",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "sport",
+      "sqlType": "VARCHAR(64)",
+      "nullable": true
+    },
+    {
+      "name": "team_home",
+      "sqlType": "VARCHAR(96)",
+      "nullable": true
+    },
+    {
+      "name": "team_away",
+      "sqlType": "VARCHAR(96)",
+      "nullable": true
+    },
+    {
+      "name": "sde_id",
+      "sqlType": "VARCHAR(32)",
+      "nullable": true
+    },
+    {
+      "name": "guia_slot_id",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "url_program",
+      "sqlType": "VARCHAR(255)",
+      "nullable": true
+    },
+    {
+      "name": "first_seen_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "updated_at",
+      "sqlType": "BIGINT",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "tid",
+    "start_ts"
+  ],
+  "cursorKey": [
+    "start_ts",
+    "tid"
+  ],
+  "timestampField": "start_ts",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": null,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "editorial_context",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "start_ts"
+  },
+  "normalizer": "live_event"
+}

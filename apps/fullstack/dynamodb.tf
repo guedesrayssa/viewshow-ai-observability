@@ -28,6 +28,16 @@ resource "aws_dynamodb_table" "operacional" {
     type = "S"
   }
 
+  attribute {
+    name = "outboxStatePk"
+    type = "S"
+  }
+
+  attribute {
+    name = "outboxStateSk"
+    type = "S"
+  }
+
   // Projeção ALL não é preferência: o adaptador TypeScript de incidentes
   // consulta o bundle completo pelo trace-index, converte os itens em DTOs e
   // preserva {pk, sk} para a atualização condicional de revisões. Uma projeção
@@ -36,6 +46,15 @@ resource "aws_dynamodb_table" "operacional" {
     name            = "trace-index"
     hash_key        = "trace_id"
     range_key       = "sk"
+    projection_type = "ALL"
+  }
+
+  // Índice esparso: somente itens PENDING possuem os dois atributos. Depois da
+  // publicação, o runtime remove ambos e o item deixa o índice sem delete.
+  global_secondary_index {
+    name            = "outbox-pending-index"
+    hash_key        = "outboxStatePk"
+    range_key       = "outboxStateSk"
     projection_type = "ALL"
   }
 

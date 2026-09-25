@@ -15,12 +15,12 @@ variable "regiao" {
 variable "deployment_namespace" {
   description = "Namespace isolado desta entrega da Sprint 3."
   type        = string
-  default     = "g05-s3"
+  default     = "view-show"
   nullable    = false
 
   validation {
-    condition     = var.deployment_namespace == "g05-s3"
-    error_message = "Esta stack só pode ser aplicada com deployment_namespace=g05-s3."
+    condition     = var.deployment_namespace == "view-show"
+    error_message = "Esta stack só pode ser aplicada com deployment_namespace=view-show."
   }
 }
 
@@ -184,6 +184,21 @@ variable "retencao_logs_dias" {
   description = "Retenção do log group do ECS."
   type        = number
   default     = 7
+}
+
+variable "api_task_role_arn" {
+  description = "Task role preexistente da API. É obrigatória em production; o Learner Lab continua usando LabRole."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.api_task_role_arn == null || can(regex(
+      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
+      var.api_task_role_arn,
+    ))
+    error_message = "api_task_role_arn deve ser null ou um ARN IAM de role válido."
+  }
 }
 
 variable "observabilidade_habilitada" {

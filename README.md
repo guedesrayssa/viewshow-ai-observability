@@ -74,13 +74,31 @@ O laboratório reprodutível de exploração do dump MySQL, incluindo setup loca
 fixture sanitizado e notebooks, está em
 [artefatos/extras/notebooks/argus_algoritmo.ipynb](artefatos/extras/notebooks/argus_algoritmo.ipynb).
 
+## Ingestão ARGUS 2.0
+
+O ARGUS é carregado por um serviço Python **batch-only**, sem endpoint HTTP. A
+primeira carga aceita `.sql.gz`/ZIP pelo fluxo assíncrono `import-dump`, cria uma
+candidata por `backfill` e exige ativação explícita. Depois dessa linha de base,
+um caminho opcional exporta janelas fechadas para lotes imutáveis no S3 e as
+adiciona ao mesmo dataset ativo por uma FIFO, sem deletes. O contrato cobre 23
+datasets, DynamoDB, Parquet, Glue, Athena, outbox e SQS. O gate dinâmico e o
+botão de sync live estão implementados; sync e automação incremental nascem
+desligados e só podem ser habilitados após homologar rede, credenciais e
+compatibilidade do ARGUS real.
+
+O dump reduzido determinístico cobre as 23 tabelas e serve somente como smoke do
+caminho funcional; ele não valida capacidade nem substitui a execução do dump
+real. A nova prova reduzida na AWS ainda está pendente. Consulte o
+[runbook de ingestão](apps/backend/ingestion-data/README.md) e o contrato
+[Ingestão e dados](artefatos/arquitetura/ingestao-e-dados.md).
+
 ## Estrutura de pastas
 
 | Pasta | Conteúdo |
 | --- | --- |
 | `/artefatos` | Documentação: requisitos, arquitetura do backend, análise financeira, roteiro de implantação na AWS, relatório de testes e a coleção do Postman |
 | `/apps/basica` | Aplicação da Sprint 1: `backend` (API em Flask), `frontend` (painel estático) e `deploy` (artefatos de implantação) |
-| `/apps/backend` | API operacional modular em TypeScript/Express |
+| `/apps/backend` | API operacional em TypeScript/Express, worker batch ARGUS 2.0 e camada agêntica |
 | `/apps/frontend` | Painel definitivo em Next.js |
 | `/apps/fullstack` | IaC da stack AWS e da observabilidade local ou opcional em EC2, com documentação e scripts auxiliares |
 | `/assets` | Imagens e logos usados na documentação |
@@ -200,8 +218,9 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
 Além do runbook manual acima — que sobe a stack da Sprint 1 (`apps/basica`) —
 o diretório [`apps/fullstack`](apps/fullstack) centraliza a IaC da stack AWS
 atual (VPC dedicada, painel Next.js no Amplify, API privada em ECS Fargate com
-autoescalonamento, ALB, bastion, Flow Logs e duas tabelas DynamoDB) e a
-observabilidade local.
+autoescalonamento, ALB, bastion, Flow Logs, Cognito, DynamoDB e observabilidade)
+e declara também a ingestão ARGUS 2.0 em tasks Fargate, com S3/Glue/Athena e
+SQS.
 
 Pré-requisitos para uma aplicação deliberada: **Terraform 1.7+**, **Docker**
 com o daemon ativo, **Node.js 22 + npm** e **AWS CLI**, além de uma sessão válida
@@ -211,34 +230,52 @@ novo estado local em `apps/fullstack`; preserve-o, pois ele é necessário para
 diagnóstico e para um teardown posterior explicitamente solicitado.
 
 ```bash
-aws sts get-caller-identity --region us-east-1
+node scripts/aws-learner-lab.mjs setup
+```
+
+O comando usa o profile `default`; aceite outro com `--profile <nome>`. Ele pede
+o e-mail e a senha do usuário inicial, mostra a conta e o escopo, aceita uma
+confirmação simples `s/N`, aplica exatamente o plano aceito pelo gate create-only,
+confirma o usuário no Cognito e imprime os links do painel e da API. Ele também
+cria, quando ausente, a senha aleatória de operação interna do serviço de
+ingestão no Secrets Manager e confirma a versão `AWSCURRENT`; esse valor não
+aparece em argumentos, logs ou state. `--yes` pula somente a confirmação.
+
+Para diagnóstico ou operação avançada, o fluxo manual equivalente continua
+aplicando somente o plano salvo e validado:
+
+```bash
+aws sts get-caller-identity --profile default --region us-east-1
 terraform -chdir=apps/fullstack init -backend=false -input=false
 mkdir -p apps/fullstack/.terraform-artifacts
 terraform -chdir=apps/fullstack plan \
   -input=false \
-  -out=.terraform-artifacts/g05-s3.tfplan
+  -out=.terraform-artifacts/view-show.tfplan
 terraform -chdir=apps/fullstack show -json \
-  .terraform-artifacts/g05-s3.tfplan | \
+  .terraform-artifacts/view-show.tfplan | \
   node scripts/ci/validate-terraform-create-plan.mjs
 terraform -chdir=apps/fullstack apply \
   -input=false \
-  .terraform-artifacts/g05-s3.tfplan
+  .terraform-artifacts/view-show.tfplan
 ```
 
-O `apply` usa exatamente o plano salvo que foi convertido para JSON e aceito
-pelo gate create-only; não gere outro plano entre a validação e a aplicação.
+O runtime atual autentica diretamente no Cognito por usuário e senha e mantém
+sessão assinada; a federação Cognito ↔ SSO corporativo continua como arquitetura
+alvo. A integração da API com as projeções versionadas pelo manifesto `ACTIVE`
+ainda não pode ser declarada completa.
 
-O contrato público atual usa somente autenticação federada. Enquanto não houver
-um adaptador de identidade real, login e callback falham fechado com
-`503 FEATURE_UNAVAILABLE`; não existe login de demonstração por e-mail e senha.
-Esta entrega valida a configuração localmente e não afirma que um `apply` foi
-executado na AWS.
+Já houve um ciclo anterior de `apply` e `destroy` no Learner Lab. Os recursos
+gerenciados foram removidos e o bucket compatível da ingestão, com seus objetos,
+foi preservado como previsto. Um novo plano integrado e a prova com o dump
+reduzido continuam pendentes.
 
 Detalhes de pré-requisitos, preservação segura do estado local, arquitetura e
 [como encontrar o link do deploy depois de fechar o
 terminal](artefatos/sprint3/infraestrutura-integracao.md#44-como-encontrar-o-link-do-deploy)
 estão em
 [`infraestrutura-integracao.md`](artefatos/sprint3/infraestrutura-integracao.md).
+Os comandos do snapshot, da task ECS e a recuperação operacional ficam no
+[runbook da ingestão](apps/backend/ingestion-data/README.md).
 
 ---
 

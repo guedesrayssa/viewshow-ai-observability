@@ -9,6 +9,7 @@ afterEach(() => {
 const meta = {
   requestId: "req_frontend",
   schemaVersion: "1.0",
+  datasetVersion: null,
   generatedAt: "2026-01-01T00:00:00Z",
   window: null,
   partial: true,
@@ -116,6 +117,39 @@ describe("gateway client", () => {
     const resource = await composeResource({ read: async () => { throw new Error("missing"); }, fallback: () => ({ fabricated: true }) });
     expect(resource.source).toBe("indisponivel");
     expect(resource.data).toBeUndefined();
+  });
+
+  it("sends ARGUS mutations as JSON and preserves gateway errors", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://gateway.test");
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      error: {
+        code: "ARGUS_UNAVAILABLE",
+        message: "ARGUS indisponível.",
+        requestId: "req_argus_error",
+      },
+    }), { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { apiPatch } = await import("@/lib/data/client");
+    const { ENDPOINTS } = await import("@/lib/data/endpoints");
+
+    await expect(
+      apiPatch(ENDPOINTS.argusIntegration, { enabled: true }),
+    ).rejects.toMatchObject({
+      status: 503,
+      code: "ARGUS_UNAVAILABLE",
+      message: "ARGUS indisponível.",
+      requestId: "req_argus_error",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/integrations/argus"),
+      expect.objectContaining({
+        method: "PATCH",
+        credentials: "include",
+        body: JSON.stringify({ enabled: true }),
+      }),
+    );
+    const requestHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(requestHeaders.get("Content-Type")).toBe("application/json");
   });
 
   it("blocks examples in production even if the public flag is set", async () => {

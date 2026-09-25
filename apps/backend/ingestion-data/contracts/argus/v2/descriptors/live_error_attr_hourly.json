@@ -1,0 +1,73 @@
+{
+  "table": "live_error_attr_hourly",
+  "recordType": "DimensionalMetricAggregate",
+  "columns": [
+    {
+      "name": "hour_ts",
+      "sqlType": "BIGINT",
+      "nullable": false
+    },
+    {
+      "name": "sinal",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "cdn",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "tier",
+      "sqlType": "VARCHAR(32)",
+      "nullable": false
+    },
+    {
+      "name": "http_code",
+      "sqlType": "VARCHAR(8)",
+      "nullable": false
+    },
+    {
+      "name": "error_name",
+      "sqlType": "VARCHAR(255)",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "sqlType": "BIGINT",
+      "nullable": false
+    }
+  ],
+  "naturalKey": [
+    "hour_ts",
+    "sinal",
+    "cdn",
+    "tier",
+    "http_code",
+    "error_name"
+  ],
+  "cursorKey": [
+    "hour_ts",
+    "sinal",
+    "cdn",
+    "tier",
+    "http_code",
+    "error_name"
+  ],
+  "timestampField": "hour_ts",
+  "grainSeconds": 3600,
+  "retention": {
+    "sourceDays": 30,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "known_upstream_lag",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "event_time",
+    "field": "hour_ts"
+  },
+  "normalizer": "live_error_attr_hourly"
+}

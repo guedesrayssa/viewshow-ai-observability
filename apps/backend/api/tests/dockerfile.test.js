@@ -44,6 +44,17 @@ test("smoke helper requires an exact HTTP 200 health response", () => {
 test("smoke helper supplies every secret required to bootstrap the API", () => {
   assert.match(smokeHelper, /--env AUTH_COOKIE_SECRET=/);
   assert.match(smokeHelper, /--env CURSOR_SECRET=/);
+  for (const name of [
+    "IMPORT_BUCKET",
+    "IMPORT_EXPECTED_BUCKET_OWNER",
+    "IMPORT_CURSOR_SECRET",
+    "IMPORT_INGESTION_CLUSTER_ARN",
+    "IMPORT_INGESTION_TASK_DEFINITION_ARN",
+    "IMPORT_INGESTION_SUBNET_IDS",
+    "IMPORT_INGESTION_SECURITY_GROUP_ID",
+    "IMPORT_INGESTION_CONTAINER_NAME",
+  ])
+    assert.match(smokeHelper, new RegExp(`--env ${name}=`));
 });
 
 test("live E2E helper pins DynamoDB Local and guarantees container cleanup", () => {

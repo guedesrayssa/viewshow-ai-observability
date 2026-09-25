@@ -1,8 +1,7 @@
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { selectIncident, useSelectedIncidentId } from "@/lib/selected-incident";
-import { SidebarNav } from "./sidebar-nav";
+import { NAV_ITEMS, SidebarNav } from "./sidebar-nav";
 
 const route = vi.hoisted(() => ({ pathname: "/visao-geral/" }));
 
@@ -11,6 +10,33 @@ vi.mock("next/navigation", () => ({ usePathname: () => route.pathname }));
 describe("sidebar navigation", () => {
   beforeEach(() => {
     route.pathname = "/visao-geral/";
+  });
+
+  it("insere Dados antes de Configurações e move o início do grupo", () => {
+    expect(NAV_ITEMS.slice(-3).map((item) => item.label)).toEqual([
+      "Monitoramento",
+      "Dados",
+      "Configurações",
+    ]);
+    expect(NAV_ITEMS.find((item) => item.label === "Dados")).toMatchObject({
+      href: "/dados/importacoes",
+      startsGroup: true,
+    });
+    expect(
+      NAV_ITEMS.find((item) => item.label === "Configurações")?.startsGroup,
+    ).toBeUndefined();
+  });
+
+  it("marca Dados como página atual e mantém rótulo no modo recolhido", () => {
+    route.pathname = "/dados/importacoes";
+    render(<SidebarNav collapsed />);
+    expect(screen.getByRole("link", { name: "Dados" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.getByText("Dados", { selector: "span:not([aria-hidden])" }),
+    ).toBeInTheDocument();
   });
 
   it("destaca a aba atual quando a URL tem barra final", () => {
@@ -35,24 +61,5 @@ describe("sidebar navigation", () => {
     expect(screen.getByRole("link", { name: "Visão Geral" })).not.toHaveAttribute(
       "aria-current",
     );
-  });
-
-  it("mantém o incidente escolhido ao navegar entre Evidências e Eventos", async () => {
-    act(() => selectIncident("INC-4821"));
-    const selection = renderHook(({ requestedId }) => useSelectedIncidentId(requestedId), {
-      initialProps: { requestedId: "" },
-    });
-
-    expect(selection.result.current).toBe("INC-4821");
-    selection.rerender({ requestedId: "INC-9300" });
-    await waitFor(() => expect(window.localStorage.getItem("view-show:selected-incident")).toBe("INC-9300"));
-    selection.unmount();
-
-    const reopened = renderHook(() => useSelectedIncidentId());
-    expect(reopened.result.current).toBe("INC-9300");
-
-    render(<SidebarNav />);
-    expect(screen.getByRole("link", { name: "Evidências" })).toHaveAttribute("href", "/evidencias?incidente=INC-9300");
-    expect(screen.getByRole("link", { name: "Eventos" })).toHaveAttribute("href", "/eventos?incidente=INC-9300");
   });
 });

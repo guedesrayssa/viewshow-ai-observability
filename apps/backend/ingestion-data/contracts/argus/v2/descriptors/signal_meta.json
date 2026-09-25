@@ -1,0 +1,53 @@
+{
+  "table": "signal_meta",
+  "recordType": "UpstreamSourceHealth",
+  "columns": [
+    {
+      "name": "source",
+      "sqlType": "VARCHAR(64)",
+      "nullable": false
+    },
+    {
+      "name": "last_ingested_ts",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "last_run_at",
+      "sqlType": "VARCHAR(32)",
+      "nullable": true
+    },
+    {
+      "name": "rows_total",
+      "sqlType": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "rows_last_run",
+      "sqlType": "BIGINT",
+      "nullable": true
+    }
+  ],
+  "naturalKey": [
+    "source"
+  ],
+  "cursorKey": [
+    "source"
+  ],
+  "timestampField": "last_ingested_ts",
+  "grainSeconds": null,
+  "retention": {
+    "sourceDays": null,
+    "hotDays": 30,
+    "canonicalMonths": 12
+  },
+  "coveragePolicy": "source_health_snapshot",
+  "requiredModes": [
+    "backfill"
+  ],
+  "archivePartition": {
+    "strategy": "snapshot_date",
+    "field": null
+  },
+  "normalizer": "signal_meta"
+}

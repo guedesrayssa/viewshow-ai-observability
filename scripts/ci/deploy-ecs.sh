@@ -2,14 +2,16 @@
 set -Eeuo pipefail
 set +x
 
-readonly account_id="248880318395"
+# A conta não é literal: ela vem de quem declara o alvo. A verificação que
+# importa é a credencial em vigor pertencer à MESMA conta do alvo declarado, o
+# que vale em qualquer conta do Learner Lab. A exigência do papel voclabs fica.
 readonly region="us-east-1"
-readonly repository="g05-s3-api"
-readonly cluster="g05-s3-cluster"
-readonly service="g05-s3-api-service"
-readonly task_family="g05-s3-api-task"
-readonly container_name="g05-s3-api"
-readonly alb_name="g05-s3-alb"
+readonly repository="view-show-api"
+readonly cluster="view-show-cluster"
+readonly service="view-show-api-service"
+readonly task_family="view-show-api-task"
+readonly container_name="view-show-api"
+readonly alb_name="view-show-alb"
 
 required_variables=(
   AWS_ACCOUNT_ID AWS_DEFAULT_REGION ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE
@@ -27,7 +29,7 @@ binding_names=(
   ECS_TASK_FAMILY ECS_CONTAINER_NAME ALB_NAME
 )
 binding_values=(
-  "$account_id" "$region" "$repository" "$cluster" "$service"
+  "$AWS_ACCOUNT_ID" "$region" "$repository" "$cluster" "$service"
   "$task_family" "$container_name" "$alb_name"
 )
 for ((binding_index = 0; binding_index < ${#binding_names[@]}; binding_index += 1)); do
@@ -112,7 +114,7 @@ if [[ ! -x "$script_directory/render-task-definition.sh" ]]; then
   echo "task definition renderer is unavailable or not executable" >&2
   exit 69
 fi
-readonly registry="${account_id}.dkr.ecr.${region}.amazonaws.com"
+readonly registry="${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com"
 readonly image_uri="${registry}/${repository}@${backend_image_digest}"
 smoke_attempts="${SMOKE_ATTEMPTS:-12}"
 smoke_delay_seconds="${SMOKE_DELAY_SECONDS:-5}"
@@ -249,15 +251,15 @@ trap 'handle_termination 143' TERM
 identity_json="$(aws sts get-caller-identity --output json)"
 actual_account="$(jq -r '.Account' <<<"$identity_json")"
 caller_arn="$(jq -r '.Arn' <<<"$identity_json")"
-if [[ "$actual_account" != "$account_id" ]]; then
-  echo "unexpected AWS account: $actual_account (expected $account_id)" >&2
+if [[ "$actual_account" != "$AWS_ACCOUNT_ID" ]]; then
+  echo "unexpected AWS account: $actual_account (expected $AWS_ACCOUNT_ID)" >&2
   exit 77
 fi
-if ! [[ "$caller_arn" =~ ^arn:aws:sts::248880318395:assumed-role/voclabs/[^/]+$ ]]; then
+if ! [[ "$caller_arn" =~ ^arn:aws:sts::${AWS_ACCOUNT_ID}:assumed-role/voclabs/[^/]+$ ]]; then
   echo "unexpected AWS caller; expected the voclabs assumed role" >&2
   exit 77
 fi
-readonly principal_policy_arn="arn:aws:iam::${account_id}:role/voclabs"
+readonly principal_policy_arn="arn:aws:iam::${AWS_ACCOUNT_ID}:role/voclabs"
 
 if ! wait_for_service_stability; then
   echo "ECS service did not stabilize before rollback-base inspection" >&2

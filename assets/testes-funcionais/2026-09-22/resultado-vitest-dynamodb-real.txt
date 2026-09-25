@@ -24,4 +24,3 @@
       Tests  2 passed (2)
    Start at  17:30:20
    Duration  1.49s (import 55%, tests 38%, transform 7%)
-

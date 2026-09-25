@@ -1,8 +1,8 @@
 # API do dashboard
 
 - **Status:** em revisão
-- **Versão:** 1.2
-- **Última atualização:** 07/09/2026
+- **Versão:** 2.0
+- **Última atualização:** 09/09/2026
 - **Responsáveis:** equipes de backend e frontend
 - **Base HTTP operacional:** `/api/v1`
 - **Formato:** JSON
@@ -13,7 +13,11 @@
 
 Este documento define o contrato HTTP entre o backend Node/Express e o frontend Next.js do dashboard operacional. Ele descreve somente a interface pública: autenticação, endpoints, parâmetros, respostas, enums, erros, paginação, parcialidade, frescor e regras de privacidade.
 
-O contrato é independente da origem física e da camada de armazenamento. Os dados operacionais vêm do ARGUS, são normalizados e materializados antes de serem consultados pelo Backend. Os últimos 30 dias ficam no DynamoDB e os 11 meses anteriores em Parquet no S3, consultados pelo Athena; essa divisão não altera endpoints nem DTOs do frontend.
+O contrato é independente da origem física e da camada de armazenamento. Os
+dados operacionais vêm do ARGUS 2.0, são normalizados e materializados antes de
+serem consultados pelo Backend. A camada quente mantém até 30 dias; Parquet no
+S3 é consultado pelo Athena conforme o manifesto ativo. Até 12 meses é meta de
+retenção, enquanto `availableIntervals` declara a disponibilidade real.
 
 ## 2. Escopo
 
@@ -26,7 +30,7 @@ Incluído:
 - Eventos correlacionados.
 - Monitoramento operacional.
 - Autenticação federada e sessão.
-- Importação assíncrona de dump.
+- Importação manual de dump pelo runbook; a API de importação é futura.
 - Solicitação de reanálise.
 - Estados de carregamento parcial, atraso e indisponibilidade.
 
@@ -39,7 +43,9 @@ Fora do escopo desta versão:
 - O backend Flask inicial e sua tabela telemetry.
 - BigQuery.
 
-A identidade do revisor é obtida exclusivamente da sessão autenticada no servidor. Qualquer pessoa autenticada pode iniciar uma importação; a revisão de hipótese também exige sessão válida e registra a identidade corporativa.
+A identidade do revisor é obtida exclusivamente da sessão autenticada no
+servidor. A primeira operação de dump não passa pelo Backend HTTP; revisão de
+hipótese exige sessão válida e registra a identidade corporativa.
 
 ### 2.1 Perfil de disponibilidade
 
@@ -65,9 +71,7 @@ Na fase inicial, ausência de uma capability não impede a adoção dos endpoint
 | GET | /auth/login | Iniciar autenticação federada | Com Cognito e SSO configurados |
 | GET | /auth/callback | Validar retorno do provedor e criar sessão | Com Cognito e SSO configurados |
 | POST | /auth/logout | Encerrar a sessão | Com Cognito configurado |
-| POST | /api/v1/imports | Iniciar upload multipart de um dump | Fase de importação |
-| POST | /api/v1/imports/{importId}/complete | Concluir o upload e iniciar processamento | Fase de importação |
-| GET | /api/v1/imports/{importId} | Consultar progresso e resultado da importação | Fase de importação |
+| — | /api/v1/imports | API de importação e `ImportJob` | Futuro; não exposto |
 | GET | /api/v1/dashboard/overview | Visão Geral completa | Fase Argus |
 | GET | /api/v1/incidents | Lista, gráfico, filtros e facetas de incidentes | Fase Argus |
 | GET | /api/v1/incidents/{incidentId}/diagnosis | Incidente, diagnóstico, evidências, séries e timeline | Fase Argus |
@@ -86,7 +90,8 @@ Na fase inicial, ausência de uma capability não impede a adoção dos endpoint
 - Quando from e to forem aceitos, devem ser enviados juntos.
 - from/to não podem ser combinados com window.
 - O backend resolve a janela efetiva e a devolve em meta.window.
-- A janela deve estar contida no horizonte de 12 meses mantido pela plataforma.
+- A janela deve estar contida em um intervalo declarado como disponível pelo
+  manifesto ativo; até 12 meses é objetivo de retenção, não garantia de dados.
 
 ### 4.2 Números e unidades
 
@@ -151,7 +156,7 @@ Toda métrica quantitativa ou valor de impacto exposto pela API possui measureme
   "meta": {
     "requestId": "req_01K2F8BAYX",
     "schemaVersion": "1.0",
-    "datasetVersion": "dsv_01K2F8BAYX",
+    "datasetVersion": "dsv_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "generatedAt": "2026-08-26T18:11:30.000Z",
     "window": {
       "preset": "30m",
@@ -173,7 +178,7 @@ Toda métrica quantitativa ou valor de impacto exposto pela API possui measureme
 }
 ~~~
 
-`meta.datasetVersion` identifica a versão usada para produzir a resposta e pode ser `null` em operações que ainda não consultam um dataset, como o início de upload. `meta.window` pode ser `null` em respostas de mutação e detalhes sem janela temporal. `refreshAfterSeconds` pode ser `null` quando polling não é aplicável.
+`meta.datasetVersion` identifica a versão usada para produzir a resposta e pode ser `null` em operações que ainda não consultam um dataset. A futura inicialização de importação é um exemplo possível. `meta.window` pode ser `null` em respostas de mutação e detalhes sem janela temporal. `refreshAfterSeconds` pode ser `null` quando polling não é aplicável.
 
 Estados de freshness:
 
@@ -312,7 +317,10 @@ O Backend seleciona a camada de consulta a partir da janela efetiva e do manifes
 - todos os resultados pertencem ao mesmo `datasetVersion` e seguem o mesmo DTO público;
 - cursores preservam, de forma opaca, a versão e a posição em cada camada necessária à continuação.
 
-O frontend não escolhe DynamoDB ou Athena e não recebe nomes de tabelas, chaves ou caminhos do S3. Um intervalo anterior ao horizonte disponível retorna `DATA_UNAVAILABLE`; uma partição histórica incompleta produz resposta parcial somente quando os dados restantes ainda sustentarem o resultado.
+O frontend não escolhe DynamoDB ou Athena e não recebe nomes de tabelas, chaves
+ou caminhos do S3. Um intervalo ausente de `availableIntervals` retorna
+`DATA_UNAVAILABLE`; uma partição histórica incompleta produz resposta parcial
+somente quando os dados restantes ainda sustentarem o resultado.
 
 ## 5. Visão Geral
 
@@ -1600,128 +1608,32 @@ POST /auth/logout
 
 O Backend invalida a sessão local, remove o cookie e direciona o navegador para o encerramento de sessão do Cognito. A operação é idempotente.
 
-## 12. Importação assíncrona de dump
+## 12. Importação de dump
 
-Qualquer pessoa autenticada pode iniciar uma importação. O arquivo não atravessa o Backend: ele é enviado diretamente ao S3 por upload multipart com URLs pré-assinadas. O Backend controla somente metadados, autorização e estado do processamento.
+A importação pelo dashboard é **futura**. Não há rota `/api/v1/imports`,
+`ImportJob`, upload multipart do navegador nem polling operacional nesta
+entrega. A primeira carga ARGUS 2.0 é executada por operador com
+`upload_snapshot.py` e `run_task.py`, conforme o
+[runbook batch](../../apps/backend/ingestion-data/README.md).
 
-### 12.1 Iniciar upload
+Quando existir, a capacidade futura `/api/v1/imports` abrangerá estas
+responsabilidades, todas fora da entrega atual:
 
-~~~http
-POST /api/v1/imports
-Content-Type: application/json
+- o backend criará e consultará o `ImportJob`, emitirá instruções
+  pré-assinadas para upload multipart e iniciará a importação candidata somente
+  com bucket, chave, `VersionId` e SHA-256 já confirmados;
+- o frontend enviará as partes diretamente ao S3 usando essas instruções e fará
+  polling do `ImportJob` conforme `refreshAfterSeconds`;
+- a `datasetVersion` continuará derivada de fonte lógica, checksum do dump e
+  versões física/canônica, nunca de um identificador de importação;
+- o `ImportJob` futuro refletirá `STARTING`, `RESTORING`, `VALIDATING`,
+  `INGESTING`, `PROJECTING`, `ARCHIVING`, `ACTIVATING`, `PUBLISHING` e os
+  terminais `SUCCEEDED`, `PARTIAL` ou `FAILED`.
 
-{
-  "fileName": "argus-2026-09-06.sql.gz",
-  "sizeBytes": 11811160064,
-  "sha256": "2b5f...9a10",
-  "partCount": 112
-}
-~~~
+Nesta entrega, o manifesto ativo e seus `availableIntervals` continuam a
+determinar o que as consultas podem devolver; não há controle de upload nem
+progresso de importação no frontend.
 
-Resposta HTTP 201:
-
-~~~json
-{
-  "data": {
-    "importId": "imp_01K2F8BAYX",
-    "candidateDatasetVersion": "dsv_01K2F8BAYX",
-    "status": "UPLOADING",
-    "upload": {
-      "uploadId": "s3-multipart-id",
-      "partSizeBytes": 104857600,
-      "parts": [
-        {
-          "partNumber": 1,
-          "url": "https://s3.amazonaws.com/..."
-        }
-      ],
-      "expiresAt": "2026-09-06T16:00:00.000Z"
-    }
-  },
-  "meta": {
-    "requestId": "req_01K2F8BAYX",
-    "schemaVersion": "1.0",
-    "generatedAt": "2026-09-06T15:00:00.000Z",
-    "window": null,
-    "partial": false,
-    "refreshAfterSeconds": null,
-    "freshness": [],
-    "warnings": []
-  }
-}
-~~~
-
-Quando houver muitas partes, o Backend pode devolver as URLs em páginas. As URLs aceitam somente a parte, o tamanho e o tipo de operação autorizados e têm expiração curta.
-
-### 12.2 Concluir upload
-
-~~~http
-POST /api/v1/imports/imp_01K2F8BAYX/complete
-Content-Type: application/json
-
-{
-  "parts": [
-    { "partNumber": 1, "etag": "etag-da-parte" }
-  ]
-}
-~~~
-
-O Backend confirma o upload no S3, verifica tamanho e checksum, altera o `ImportJob` para `PROCESSING` e inicia uma tarefa Fargate. A resposta HTTP 202 informa que o processamento continuará em segundo plano:
-
-~~~json
-{
-  "data": {
-    "importId": "imp_01K2F8BAYX",
-    "candidateDatasetVersion": "dsv_01K2F8BAYX",
-    "status": "PROCESSING",
-    "stage": "VALIDATING",
-    "progressPercent": 0
-  },
-  "meta": {
-    "requestId": "req_01K2F8BAYX",
-    "schemaVersion": "1.0",
-    "generatedAt": "2026-09-06T15:10:00.000Z",
-    "window": null,
-    "partial": false,
-    "refreshAfterSeconds": 5,
-    "freshness": [],
-    "warnings": []
-  }
-}
-~~~
-
-### 12.3 Consultar progresso
-
-~~~http
-GET /api/v1/imports/imp_01K2F8BAYX
-~~~
-
-~~~json
-{
-  "data": {
-    "importId": "imp_01K2F8BAYX",
-    "candidateDatasetVersion": "dsv_01K2F8BAYX",
-    "status": "PROCESSING",
-    "stage": "INGESTING",
-    "progressPercent": 72,
-    "createdAt": "2026-09-06T15:00:00.000Z",
-    "completedAt": null,
-    "error": null
-  },
-  "meta": {
-    "requestId": "req_01K2F8BAYX",
-    "schemaVersion": "1.0",
-    "generatedAt": "2026-09-06T15:20:00.000Z",
-    "window": null,
-    "partial": false,
-    "refreshAfterSeconds": 5,
-    "freshness": [],
-    "warnings": []
-  }
-}
-~~~
-
-Estados de `status`: `UPLOADING`, `PROCESSING`, `COMPLETED` e `FAILED`. Etapas de processamento: `VALIDATING`, `RESTORING`, `INGESTING` e `ACTIVATING`. `candidateDatasetVersion` identifica o namespace isolado da importação; ele somente se torna a versão ativa depois da validação de fatos, projeções e watermarks. O frontend respeita `refreshAfterSeconds` até alcançar um estado terminal. Em caso de falha, `error` contém código público e mensagem segura, sem detalhes da infraestrutura ou do dump, e a versão ativa anterior permanece disponível.
 
 ## 13. Solicitação de reanálise
 
@@ -1757,7 +1669,9 @@ Repetir a mesma chave com o mesmo conteúdo devolve a resposta original. Reutili
 ## 14. Responsabilidades do frontend
 
 - Redirecionar para o login federado quando a sessão estiver ausente ou expirada.
-- Enviar partes do dump diretamente ao S3 e acompanhar o `ImportJob` de acordo com `refreshAfterSeconds`.
+- A futura interface de importação incluirá envio de partes ao S3 com
+  instruções pré-assinadas e polling do `ImportJob` conforme
+  `refreshAfterSeconds`; essa responsabilidade não integra o frontend atual.
 - Formatar números, datas relativas, percentuais e unidades.
 - Traduzir enums.
 - Respeitar refreshAfterSeconds.
@@ -1776,7 +1690,10 @@ Repetir a mesma chave com o mesmo conteúdo devolve a resposta original. Reutili
 ## 15. Responsabilidades do backend
 
 - Concluir o fluxo federado, proteger tokens e emitir somente o cookie de sessão para o navegador.
-- Criar URLs pré-assinadas, validar a conclusão do upload e iniciar a tarefa de importação sem transportar o dump.
+- A futura capacidade `/api/v1/imports` incluirá criação de instruções
+  pré-assinadas, validação da conclusão do upload e início da importação sem
+  transportar o dump; nenhuma dessas responsabilidades pertence ao backend
+  atual.
 - Publicar reanálises na SQS com idempotência.
 - Validar path, query e body.
 - Resolver a janela temporal efetiva.
