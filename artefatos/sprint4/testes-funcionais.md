@@ -43,6 +43,12 @@
 
 ### UT01 — `CursorCodec.encode` / `CursorCodec.decode`
 
+<div align="center">
+
+<strong>Tabela 1: Especificação do teste unitário UT01 — <code>CursorCodec.encode</code> / <code>CursorCodec.decode</code></strong>
+
+</div>
+
 | Campo | Descrição |
 | --- | --- |
 | Função testada | `CursorCodec` em [`src/modules/incidents/domain/cursor.ts`](../../apps/backend/api/src/modules/incidents/domain/cursor.ts) |
@@ -55,7 +61,19 @@
 | Situação | Aprovado |
 | Evidências / reprodução | `npm test -- domain.test.ts`, teste `"encrypts cursors and binds them to filters"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### UT02 — `CognitoPasswordAuthenticator.authenticate`
+
+<div align="center">
+
+<strong>Tabela 2: Especificação do teste unitário UT02 — <code>CognitoPasswordAuthenticator.authenticate</code></strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -69,7 +87,19 @@
 | Situação | Aprovado |
 | Evidências / reprodução | `npm test -- auth-password-login.test.ts`, bloco `"CognitoPasswordAuthenticator"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### UT03 — `PasswordLoginUseCases.login` (tradução de falha em HTTP)
+
+<div align="center">
+
+<strong>Tabela 3: Especificação do teste unitário UT03 — <code>PasswordLoginUseCases.login</code></strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -83,7 +113,19 @@
 | Situação | Aprovado |
 | Evidências / reprodução | `npm test -- auth-password-login.test.ts`, bloco `"PasswordLoginUseCases"`. Mesma saída da UT02, registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
 
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
 ### UT04 — `incidentsQuerySchema` (validação do parâmetro `limit`)
+
+<div align="center">
+
+<strong>Tabela 4: Especificação do teste unitário UT04 — <code>incidentsQuerySchema</code></strong>
+
+</div>
 
 | Campo | Descrição |
 | --- | --- |
@@ -96,6 +138,12 @@
 | Resultado obtido | `{}` resultou em `limit === 20`; `{ limit: "1" }` em `limit === 1`; `{ limit: "100" }` em `limit === 100`; `{ limit: "0" }`, `{ limit: "101" }` e `{ limit: "abc" }` lançaram erro, conforme esperado |
 | Situação | Aprovado |
 | Evidências / reprodução | Teste adicionado em `tests/contracts.test.ts`. `npm test -- contracts.test.ts`, teste `"enforces the limit boundaries (1-100, default 20) on incidentsQuerySchema"`. Saída registrada em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
 
 ---
 
