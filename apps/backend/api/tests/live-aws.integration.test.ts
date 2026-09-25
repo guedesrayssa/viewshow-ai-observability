@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
+  QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import {
@@ -26,10 +27,57 @@ let sessionCookie = "";
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
 const s3 = new S3Client({ region });
 
+type ImportPayload = {
+  fileName: string;
+  sizeBytes: number;
+  snapshotExtractedOn: string;
+};
+
 async function responseJson(
   response: Response,
 ): Promise<Record<string, unknown>> {
   return (await response.json()) as Record<string, unknown>;
+}
+
+async function recoverImportId(
+  payload: ImportPayload,
+  startedAt: number,
+): Promise<string | null> {
+  if (!operationalTable) return null;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const matches: string[] = [];
+    let exclusiveStartKey: Record<string, unknown> | undefined;
+    do {
+      const page = await dynamo.send(
+        new QueryCommand({
+          TableName: operationalTable,
+          KeyConditionExpression: "pk = :pk",
+          ExpressionAttributeValues: { ":pk": "IMPORTS" },
+          ConsistentRead: true,
+          ExclusiveStartKey: exclusiveStartKey,
+        }),
+      );
+      for (const record of page.Items ?? []) {
+        if (
+          typeof record.importId === "string" &&
+          record.fileName === payload.fileName &&
+          record.sizeBytes === payload.sizeBytes &&
+          record.snapshotExtractedOn === payload.snapshotExtractedOn &&
+          typeof record.createdAt === "string" &&
+          Date.parse(record.createdAt) >= startedAt - 300_000
+        )
+          matches.push(record.importId);
+      }
+      exclusiveStartKey = page.LastEvaluatedKey;
+    } while (exclusiveStartKey);
+    if (matches.length > 1)
+      throw new Error(
+        "Mais de uma importação corresponde à tentativa do teste.",
+      );
+    if (matches[0]) return matches[0];
+    if (attempt < 5) await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return null;
 }
 
 async function cleanupImport(importId: string): Promise<void> {
@@ -44,44 +92,25 @@ async function cleanupImport(importId: string): Promise<void> {
   );
   const key = record.Item?.key;
   const uploadId = record.Item?.uploadId;
-  if (
-    importBucket &&
-    typeof key === "string" &&
-    typeof uploadId === "string"
-  ) {
-    await s3
-      .send(
-        new AbortMultipartUploadCommand({
-          Bucket: importBucket,
-          Key: key,
-          UploadId: uploadId,
-        }),
-      )
-      .catch(() => undefined);
+  let abortError: unknown;
+  if (importBucket && typeof key === "string" && typeof uploadId === "string") {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await s3.send(
+          new AbortMultipartUploadCommand({
+            Bucket: importBucket,
+            Key: key,
+            UploadId: uploadId,
+          }),
+        );
+        abortError = undefined;
+        break;
+      } catch (error) {
+        abortError = error;
+      }
+    }
   }
 
-  const mappings = await dynamo.send(
-    new ScanCommand({
-      TableName: operationalTable,
-      ProjectionExpression: "pk, sk, importId",
-      FilterExpression: "importId = :importId AND begins_with(pk, :prefix)",
-      ExpressionAttributeValues: {
-        ":importId": importId,
-        ":prefix": "IMPORT_IDEMPOTENCY#",
-      },
-    }),
-  );
-  for (const item of mappings.Items ?? []) {
-    if (typeof item.pk !== "string" || typeof item.sk !== "string") continue;
-    await dynamo.send(
-      new DeleteCommand({
-        TableName: operationalTable,
-        Key: { pk: item.pk, sk: item.sk },
-        ConditionExpression: "importId = :importId",
-        ExpressionAttributeValues: { ":importId": importId },
-      }),
-    );
-  }
   await dynamo
     .send(
       new DeleteCommand({
@@ -92,9 +121,38 @@ async function cleanupImport(importId: string): Promise<void> {
       }),
     )
     .catch((error: unknown) => {
-      if ((error as { name?: string }).name !== "ConditionalCheckFailedException")
+      if (
+        (error as { name?: string }).name !== "ConditionalCheckFailedException"
+      )
         throw error;
     });
+  let exclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const mappings = await dynamo.send(
+      new ScanCommand({
+        TableName: operationalTable,
+        ProjectionExpression: "pk, sk, importId",
+        FilterExpression: "importId = :importId AND begins_with(pk, :prefix)",
+        ExpressionAttributeValues: {
+          ":importId": importId,
+          ":prefix": "IMPORT_IDEMPOTENCY#",
+        },
+        ExclusiveStartKey: exclusiveStartKey,
+      }),
+    );
+    for (const item of mappings.Items ?? []) {
+      if (typeof item.pk !== "string" || typeof item.sk !== "string") continue;
+      await dynamo.send(
+        new DeleteCommand({
+          TableName: operationalTable,
+          Key: { pk: item.pk, sk: item.sk },
+          ConditionExpression: "importId = :importId",
+          ExpressionAttributeValues: { ":importId": importId },
+        }),
+      );
+    }
+    exclusiveStartKey = mappings.LastEvaluatedKey;
+  } while (exclusiveStartKey);
   await dynamo.send(
     new DeleteCommand({
       TableName: operationalTable,
@@ -103,6 +161,11 @@ async function cleanupImport(importId: string): Promise<void> {
       ExpressionAttributeValues: { ":importId": importId },
     }),
   );
+  if (abortError)
+    throw new Error(
+      `O multipart ${uploadId} em ${key} não pôde ser abortado após três tentativas.`,
+      { cause: abortError },
+    );
 }
 
 describe.skipIf(!shouldRun)("integração da aplicação implantada na AWS", () => {
@@ -194,8 +257,7 @@ describe.skipIf(!shouldRun)("integração da aplicação implantada na AWS", () 
     );
     const projectedItems = (
       projection.Item?.payload as
-        | { incidents?: { incidentId?: string }[] }
-        | undefined
+        { incidents?: { incidentId?: string }[] } | undefined
     )?.incidents;
     expect(projectedItems?.length).toBeGreaterThan(0);
     const projectedIds = new Set(
@@ -245,10 +307,11 @@ describe.skipIf(!shouldRun)("integração da aplicação implantada na AWS", () 
     const requestId = `req_it_import_${Date.now()}`;
     const payload = {
       fileName: "argus_dump.sql.gz",
-      sizeBytes: 1,
+      sizeBytes: randomInt(1, 1_000_000),
       snapshotExtractedOn: "2026-09-25",
     };
     let importId = "";
+    const requestStartedAt = Date.now();
     const startedAt = performance.now();
     try {
       const started = await fetch(`${apiUrl}/api/v1/imports`, {
@@ -265,7 +328,7 @@ describe.skipIf(!shouldRun)("integração da aplicação implantada na AWS", () 
       expect(started.status).toBe(201);
       importId = (startedBody.data as { importId: string }).importId;
       expect(startedBody).toMatchObject({
-        data: { importId, state: "UPLOADING", sizeBytes: 1 },
+        data: { importId, state: "UPLOADING", sizeBytes: payload.sizeBytes },
       });
       expect(started.headers.get("x-request-id")).toBe(requestId);
 
@@ -339,7 +402,9 @@ describe.skipIf(!shouldRun)("integração da aplicação implantada na AWS", () 
         }),
       );
     } finally {
-      if (importId) await cleanupImport(importId);
+      const createdImportId =
+        importId || (await recoverImportId(payload, requestStartedAt));
+      if (createdImportId) await cleanupImport(createdImportId);
     }
 
     const activeAfterCleanup = await dynamo.send(

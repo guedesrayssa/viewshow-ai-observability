@@ -4,13 +4,13 @@
  *
  *   - volume suficiente para a resposta de /api/v1/incidents ter tamanho de
  *     produção;
- *   - incidentes distribuídos por TODOS os buckets de hora que a consulta
- *     varre, para que window=15m, 1h e 24h exerçam caminhos diferentes;
+ *   - incidentes distribuídos por hora; a projeção ativa permite comparar
+ *     window=15m, 1h e 24h com recortes temporais distintos;
  *   - IDs ordinais e determinísticos (inc-000001 …), para o k6 sortear alvos
  *     sem precisar ler um manifesto;
- *   - a maioria dos incidentes já com hipótese registrada, para /diagnosis
- *     exercitar tanto o caminho "pronto" quanto o "not_started";
- *   - snapshots de projeção para dashboard/overview e monitoring/overview
+ *   - itens legados de hipótese para testes antigos; a projeção versionada
+ *     declara Eventos/Evidências como parciais, sem inventar correlações;
+ *   - snapshots legados para dashboard/overview e monitoring/overview
  *     (pk `VIEW#OVERVIEW#GLOBAL#<YYYYMMDD>` / `VIEW#MONITORING#<fonte>#<YYYYMMDD>`,
  *     sk `T#<epochMs>`, item `{ publicData, observedThrough, coverageRatio,
  *     source }`), em várias idades para cobrir os presets de window de 15m a
@@ -32,7 +32,7 @@
  *   HOURS_BACK              padrão 25   (cobre window=24h, que varre até 25 buckets)
  *   EVIDENCE_MIN/MAX        padrão 4/8
  *   MONITORING_SOURCES      padrão argus (mesma env var e default da API)
- *   CLEAN=1                 remove itens de incidentes e projeções (pk=INC#.../VIEW#...) antes de semear
+ *   CLEAN=1                 remove a massa local legada e os datasets gerados por este seed
  */
 
 // dotenv não é dependência de apps/backend/api (só AWS SDK/zod/express) —
@@ -733,7 +733,7 @@ function buildVersionedItems(referenceNow, incidents) {
     referenceNow.getTime() - HOURS_BACK * 60 * 60 * 1000,
   ).toISOString();
   const end = new Date(referenceNow.getTime() + 60_000).toISOString();
-  const datasetVersion = `dsv_${sha256(`seed-carga:${SEED_RUN_ID || observedThrough}`)}`;
+  const datasetVersion = `dsv_${sha256(`seed-carga:${SEED_RUN_ID}:${observedThrough}`)}`;
   const materializationRevision = `pmr_${sha256(`${datasetVersion}:projections`)}`;
   const sourceDataset = "incidents";
   const day = referenceNow.toISOString().slice(0, 10).replaceAll("-", "");
@@ -778,23 +778,40 @@ function buildVersionedItems(referenceNow, incidents) {
       ),
     },
   };
+  const eventSummaryPayload = {
+    formulaVersion: "seed-carga-1.0",
+    observedThrough,
+    coverage: "PARTIAL",
+    qualityFlags: ["SEED_EVENTS_NOT_MATERIALIZED"],
+  };
   const projectionBase = {
     entityType: "PROJECTION",
     datasetVersion,
     projectionVersion: "1.0",
     materializationRevision,
     requiredArchives: [],
+    ttl: ttl(),
   };
   const incidentsPk = `DATASET#${datasetVersion}#VIEW#INCIDENTS#ACTIVE`;
   const overviewPk = `DATASET#${datasetVersion}#VIEW#OVERVIEW#${sourceDataset}#${day}`;
   const metadata = {
-    availableIntervals: { [sourceDataset]: [{ start, end }] },
+    availableIntervals: {
+      [sourceDataset]: [{ start, end }],
+      signal_bucket: [{ start, end }],
+    },
     formulaVersions: {
       incidents: "seed-carga-1.0",
       overview: "seed-carga-1.0",
+      events: "seed-carga-1.0",
+      evidence: "seed-carga-1.0",
     },
-    hotFrom: { [sourceDataset]: start },
-    projectionVersions: { incidents: "1.0", overview: "1.0" },
+    hotFrom: { [sourceDataset]: start, signal_bucket: start },
+    projectionVersions: {
+      incidents: "1.0",
+      overview: "1.0",
+      events: "1.0",
+      evidence: "1.0",
+    },
   };
 
   return [
@@ -817,6 +834,16 @@ function buildVersionedItems(referenceNow, incidents) {
       projectionKey: `OVERVIEW#${sourceDataset}`,
       payload: overviewPayload,
       payloadFingerprint: sha256(overviewPayload),
+    },
+    {
+      pk: `DATASET#${datasetVersion}#VIEW#EVENTS`,
+      sk: "SUMMARY",
+      entityType: "EVENT_PROJECTION_SUMMARY",
+      datasetVersion,
+      materializationRevision,
+      payload: eventSummaryPayload,
+      payloadFingerprint: sha256(eventSummaryPayload),
+      ttl: ttl(),
     },
     {
       pk: "CONTROL#DATASET",
@@ -873,9 +900,8 @@ async function enviarLoteComRetry(
   }
 }
 
-/** Remove apenas os dados que este script escreve (incidentes + projeções de
- *  overview/monitoring). Outros domínios compartilhados (ex.: contas de
- *  usuário) são preservados. */
+/** Remove a massa legada e apenas as versões de dataset identificadas como
+ *  seed-carga. Outros domínios compartilhados são preservados. */
 async function limparTabela(
   tableName,
   {
@@ -885,39 +911,63 @@ async function limparTabela(
   } = {},
 ) {
   let chaveInicial;
-  let removidos = 0;
+  const encontrados = [];
 
   do {
     const pagina = await documentClient.send(
       new ScanCommand({
         TableName: tableName,
-        ProjectionExpression: "pk, sk",
         ExclusiveStartKey: chaveInicial,
       }),
     );
-
-    const itens = (pagina.Items || []).filter(
-      ({ pk }) =>
-        typeof pk === "string" &&
-        (pk.startsWith("INC#") || pk.startsWith("VIEW#")),
-    );
-    for (let i = 0; i < itens.length; i += 25) {
-      const lote = itens.slice(i, i + 25);
-      const requests = lote.map(({ pk, sk }) => ({
-        DeleteRequest: { Key: { pk, sk } },
-      }));
-      await enviarLoteComRetry(tableName, requests, {
-        documentClient,
-        wait,
-        maxAttempts,
-      });
-      removidos += lote.length;
-    }
-
+    encontrados.push(...(pagina.Items || []));
     chaveInicial = pagina.LastEvaluatedKey;
   } while (chaveInicial);
 
-  return removidos;
+  const versoesSeed = new Set();
+  for (const item of encontrados) {
+    if (
+      item.pk === "CONTROL#DATASET" &&
+      item.sk === "ACTIVE" &&
+      item.manifest?.metadata?.formulaVersions?.incidents === "seed-carga-1.0"
+    ) {
+      versoesSeed.add(item.activeDatasetVersion);
+    }
+    if (
+      typeof item.pk === "string" &&
+      item.pk.startsWith("DATASET#") &&
+      item.payload?.formulaVersion === "seed-carga-1.0" &&
+      typeof item.datasetVersion === "string"
+    ) {
+      versoesSeed.add(item.datasetVersion);
+    }
+  }
+  const prefixosSeed = [...versoesSeed].map((version) =>
+    `DATASET#${version}#`,
+  );
+  const itens = encontrados.filter(({ pk, sk, manifest }) => {
+    if (typeof pk !== "string" || typeof sk !== "string") return false;
+    if (pk.startsWith("INC#") || pk.startsWith("VIEW#")) return true;
+    if (pk === "CONTROL#DATASET" && sk === "ACTIVE")
+      return versoesSeed.has(manifest?.datasetVersion);
+    return prefixosSeed.some((prefixo) => pk.startsWith(prefixo));
+  });
+  itens.sort(
+    (left, right) =>
+      Number(right.pk === "CONTROL#DATASET") -
+      Number(left.pk === "CONTROL#DATASET"),
+  );
+  for (let i = 0; i < itens.length; i += 25) {
+    const requests = itens.slice(i, i + 25).map(({ pk, sk }) => ({
+      DeleteRequest: { Key: { pk, sk } },
+    }));
+    await enviarLoteComRetry(tableName, requests, {
+      documentClient,
+      wait,
+      maxAttempts,
+    });
+  }
+  return itens.length;
 }
 
 /* ---------- escrita em lote ---------- */
@@ -949,7 +999,7 @@ async function main() {
           "local (http://127.0.0.1:... ou http://localhost:... ou http://dynamodb:8000 " +
           `em CI) — valor atual: ${ENDPOINT ?? "(não definido — resolveria para a AWS real)"}. ` +
           "Isso existe para não apagar itens de uma tabela remota por engano: CLEAN " +
-          "remove incondicionalmente todo item cujo pk comece com INC# ou VIEW# na " +
+          "remove itens legados INC#/VIEW# e datasets identificados como seed-carga na " +
           "tabela e no endpoint que as credenciais ativas resolverem.",
       );
     }
@@ -990,16 +1040,18 @@ async function main() {
   );
 
   const versionedItems = buildVersionedItems(now, incidentes);
-  await batchWrite(OPERATIONAL_TABLE, versionedItems);
+  // O manifesto só fica visível depois de todas as projeções estarem persistidas.
+  await batchWrite(OPERATIONAL_TABLE, versionedItems.slice(0, -1));
+  await batchWrite(OPERATIONAL_TABLE, versionedItems.slice(-1));
   console.log(
-    `  ${versionedItems.length} itens do dataset versionado gravados (manifesto ACTIVE + projeções de incidentes e overview).`,
+    `  ${versionedItems.length} itens do dataset versionado gravados (manifesto ACTIVE + projeções de incidentes, overview e resumo parcial de eventos).`,
   );
 
   console.log("\nPronto. Para o k6:");
   console.log(`  INCIDENT_COUNT=${total}`);
   console.log("\n⚠️  Os buckets são relativos ao INSTANTE do seed.");
   console.log(
-    "    Rode o teste logo em seguida: window=15m só encontra dado por ~1 h.",
+    "    Rode o teste logo em seguida: window=15m só inclui incidentes ainda dentro de 15 minutos.",
   );
   console.log(
     "\n⚠️  /api/v1/dashboard/overview e /api/v1/monitoring/overview também envelhecem:",
@@ -1030,4 +1082,5 @@ module.exports = {
   buildViewItems,
   buildOverviewProjection,
   buildMonitoringProjection,
+  buildVersionedItems,
 };

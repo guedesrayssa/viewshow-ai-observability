@@ -192,6 +192,37 @@ describe("incident, Event, and Evidence use cases", () => {
     expect(storage.listBetween).not.toHaveBeenCalled();
   });
 
+  it("filters the active projection by the requested window before pagination", async () => {
+    const storage = repository();
+    vi.mocked(storage.activeProjection).mockResolvedValueOnce({
+      observedThrough: now.toISOString(),
+      coverage: "complete",
+      incidents: [
+        {
+          incidentId: "inc_recent",
+          number: null,
+          openedAt: "2026-01-01T11:50:00.000Z",
+          state: "open",
+          priority: "P2",
+        },
+        {
+          incidentId: "inc_old",
+          number: null,
+          openedAt: "2026-01-01T11:30:00.000Z",
+          state: "open",
+          priority: "P1",
+        },
+      ],
+    });
+
+    const result = await useCases(storage).list(
+      incidentsQuerySchema.parse({ window: "15m", limit: 1 }),
+    );
+
+    expect(result.data.items.map((item) => item.id)).toEqual(["inc_recent"]);
+    expect(result.data.page.hasMore).toBe(false);
+  });
+
   it("returns the global feed with real filters, facets, and a signed continuation", async () => {
     const storage = repository();
     storage.listEvents.mockResolvedValueOnce({
