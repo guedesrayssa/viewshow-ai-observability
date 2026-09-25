@@ -499,7 +499,7 @@ export interface DiagnosisData {
       readonly rank: number;
       readonly statement: string;
       readonly component: { readonly id: string; readonly name: string } | null;
-      readonly probability: number;
+      readonly probability: number | null;
       readonly rationale: string | null;
       readonly review: {
         readonly status: "pending" | "confirmed" | "refuted" | "inconclusive";
@@ -802,7 +802,7 @@ export const diagnosisDataSchema = z
                 .object({ id: z.string(), name: z.string() })
                 .strict()
                 .nullable(),
-              probability: z.number().min(0).max(1),
+              probability: z.number().min(0).max(1).nullable(),
               rationale: z.string().nullable(),
               review: z
                 .object({

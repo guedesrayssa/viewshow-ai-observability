@@ -1,0 +1,19 @@
+[
+  {
+    "id": "canal-exemplo",
+    "source": "argus",
+    "entity": "Canal Exemplo",
+    "priority": "P2",
+    "detectorMetrics": ["bufferratio_avg", "sessions"],
+    "series": [
+      { "metric": "bufferratio_avg", "seriesId": "substituir-buffer-15m", "unit": "ratio", "grainSeconds": 900 },
+      { "metric": "sessions", "seriesId": "substituir-sessions-15m", "unit": "count", "grainSeconds": 900 },
+      { "metric": "errors", "seriesId": "substituir-errors-15m", "unit": "count", "grainSeconds": 900 },
+      { "metric": "startup_errors", "seriesId": "substituir-startup-15m", "unit": "count", "grainSeconds": 900 },
+      { "metric": "bufferratio_avg", "seriesId": "substituir-buffer-1h", "unit": "ratio", "grainSeconds": 3600 },
+      { "metric": "sessions", "seriesId": "substituir-sessions-1h", "unit": "count", "grainSeconds": 3600 },
+      { "metric": "errors", "seriesId": "substituir-errors-1h", "unit": "count", "grainSeconds": 3600 },
+      { "metric": "startup_errors", "seriesId": "substituir-startup-1h", "unit": "count", "grainSeconds": 3600 }
+    ]
+  }
+]

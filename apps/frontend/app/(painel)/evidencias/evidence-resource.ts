@@ -49,7 +49,7 @@ type DiagnosisResponse = {
       id: string;
       statement: string;
       component: { id: string; name: string } | null;
-      probability: number;
+      probability: number | null;
       rationale: string | null;
       review: { status: ReviewStatus | "inconclusive"; version: number };
     }>;
@@ -125,14 +125,6 @@ function toEvidence(
 
 function toData(response: DiagnosisResponse): EvidenceData {
   const devices = response.incident.impact.affectedDevices.value;
-  if (
-    devices === null ||
-    response.incident.impact.affectedDevices.measurement.status === "unknown"
-  ) {
-    throw new Error(
-      "O diagnóstico não possui contagem observada de dispositivos afetados.",
-    );
-  }
   const hypothesis =
     response.diagnosis.hypotheses.find(
       (item) => item.id === response.diagnosis.primaryHypothesisId,
@@ -170,7 +162,7 @@ function toData(response: DiagnosisResponse): EvidenceData {
       ? {
           title: hypothesis.statement,
           component: hypothesis.component?.name ?? "—",
-          confidence: Math.round(hypothesis.probability * 100),
+          confidence: hypothesis.probability === null ? null : Math.round(hypothesis.probability * 100),
           summary: hypothesis.rationale ?? response.diagnosis.summary ?? "",
         }
       : null,

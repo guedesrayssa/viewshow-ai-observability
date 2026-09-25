@@ -6,6 +6,7 @@ import {
 } from "./application/incident-use-cases.js";
 import { loadConfig } from "./config.js";
 import { CursorCodec } from "./domain/cursor.js";
+import { SqsReanalysisPublisher } from "./adapters/sqs-reanalysis-publisher.js";
 
 export { IncidentUseCases } from "./application/incident-use-cases.js";
 
@@ -25,6 +26,8 @@ export function createIncidentsModule(
     new CursorCodec(config.cursorSecret),
     new UnavailableReviewFeedbackPort(),
     undefined,
-    new UnavailableReanalysisPublisherPort(),
+    config.analysisQueueUrl
+      ? new SqsReanalysisPublisher(config.analysisQueueUrl, config.region)
+      : new UnavailableReanalysisPublisherPort(),
   );
 }

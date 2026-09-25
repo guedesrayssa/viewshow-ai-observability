@@ -1,11 +1,29 @@
-# Ingestion Data — runtime not implemented, observability ready
+# Ingestion Data — contratos de fatos e observabilidade prontos
 
 Ownership: time de ingestão de dados.
 
-Este diretório reserva a fronteira do futuro processo batch que lerá as novas
+Este diretório reserva a fronteira do processo batch que lerá as novas
 fontes e publicará read models versionados (`VIEW#...`, incidentes, checkpoints
-e runs) segundo os contratos em `artefatos/contratos`. Esta entrega não contém
-worker, endpoint, scheduler, seed, leitor MySQL, normalizador ou projeção.
+e runs) segundo os contratos em `artefatos/contratos`. Esta entrega ainda não contém
+worker, endpoint, scheduler, leitor MySQL ou projeção completa.
+
+O módulo `view_show_ingestion.facts` implementa a fronteira já consumida pelo
+worker de análise: identidade canônica da série e construção do item DynamoDB.
+O mesmo exemplo de canal produz o mesmo SHA-256 no runtime Python e no runtime
+TypeScript. O produtor deve usar `build_fact`; recriar chaves manualmente pode
+tornar uma série invisível ao worker.
+
+```python
+from view_show_ingestion import SeriesIdentity, build_fact
+
+item = build_fact(
+    dataset_version="argus-2026-09-01",
+    identity=SeriesIdentity("live_active_15min", "argus", "globo-rj",
+                            "active_sessions", {"channel": "globo-rj"}),
+    observed_at="2026-08-02T00:00:00Z", grain_seconds=900,
+    unit="count", value=120,
+)
+```
 
 O backend operacional é somente consumidor. A PR futura deve respeitar
 proveniência, measurement, cobertura, freshness e a inexistência de fila no

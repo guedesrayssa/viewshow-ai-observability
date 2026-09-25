@@ -1,0 +1,1152 @@
+[
+  {
+    "id": "globo-sp1",
+    "source": "argus",
+    "entity": "globo-sp1",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_3179e17086539d83fa62712ed9cdd9f0f62d8a74a6cb19915c6e7b9b6ceefec8",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_eeae99fdbe092860190ceaf80af298dbe1470c64c76c42a801a72cab3fdf0085",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_730124817d20183c4d618a6bd446f4068001a5c836c6f9635cedf600928a6b3c",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_efcbfb30069834c65554f022d273a42306f9c17587d48dccf78c1d0ad7980b67",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_3efb5c27d0e6e37985344afcf721b215c039b94b41f09a827ede595f0e1f8c81",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_d0b3a4988e8db5a1dd0e4d07ad6773c133d5018df7981b3a603dfa1c62768647",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_080fa94ab0ff442078b946c05e2d076c9654a1173de41f4140982f46f24f2f2b",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_0f6e18bf8f4ecbcd0c120e6f655f1ff1c592ca1366b67d57af2549c6b5cadd5c",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_64ef233813f76cf510cb67c422c8f708ad50e216eaed85538d6d93be09545f08",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_bff387dc79efe44a075823eb9efb7697b2dc89a8dcc2ef68c0ff1c88ebb2f63d",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_d54657ed26952279d646da288812a8cbb8b156419469e4ebc8d24ca5eee36688",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_41adc42f7582a8ea624cf1b74d89bb3b02712d4e54ebec13122ca1492fcde8ab",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_cdc66f1e64944d7122fc0e57d198e0284298cc0ce7437ec9cbf76ef3ee2e9826",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_218e2c33050b3ce752664c315d10ea84a83934e541b8cf7c7282f766d8e24449",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_7daebb7e11e42ea19377b7f85630864d20fb3ed5ec94f01f509eee8fd79e37b8",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "globo-rj",
+    "source": "argus",
+    "entity": "globo-rj",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_39328613a9667d827a298acd1cde08c064374a42764895e5e302f580f55b1b04",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_d891ce95307c9d9897c610d1a29245980c3cd156d9cf7f9edde5799fcfd51876",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_abeac7766fe04b4da95bf84a5571534ae7f03ea5a5e9506857d2fa46bd8cc597",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_37487be52a7720545005d71f12d25755967317bb749711e09c63b41d1ad5fab0",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_6331379d5f9b88e223cd3ede48dc124a94fda1655e8d69ac375ea12aba1c85fa",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_c179dacffef0e2e6b3d37cde9b19681b4b459deaad736c05b7a2bb53cdcc0487",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_22d84ff6de973d11ca0b2b4da9dd059aa8d867e67af9e4da25fe840930bfc09b",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_94c073b29a2812b0920c2e16bd09909d48b2b935980a7ff2e0cd3a9adaba498d",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_f6526777ef00cd0ddc9b5d0d72501bc2d2c25198525ad8d8aa596748e5ae1c3a",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_32f25ee15833701c690bd164304a2c323007263c480d4b9f36a3938b596635da",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_662dfcdbc31f3859ccbeba3a64c1dd05d0dcc59e5cb223b5f2629e0f08fec516",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_0131a81527c02feab25af645cc97b56225ef7e67474f3f9474d354c52cf8bae3",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_07a805d0b8a5a54641b2b20218b45efb49dac030f04d44d229e895ce04a80a1e",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_14a8c84be98ffb20596f8d2fd4c22616e4387b4dfa56d0c1d338428ad33cecca",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_ca9135e4cec88ca2c5c7508d5da426a1fa8153ec4bf32e073590470c49015350",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "pfc1",
+    "source": "argus",
+    "entity": "pfc1",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_d5164d2c8c98de80ee3d76861864fa42fc480880a1fd92c19c92a3ecc590e6de",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_75e67192e948aeac480c55e52e12d6c0d34610f2c9b74cc4e020060aba4533f8",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_36c25dc2789b23ee908dfe39d7d879e44dae37a781964635af110d67665ddb3f",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_87fd1778c830cf1a316f1e697966a752d4312f6b4e93288cfd7e635ecdfa4de6",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_608169f47dfa88a2380c71d0d237a40a34157035b95c0e9f3059d241d9f91b3e",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_c5cd86b1e610f55f87891b7633dabd4ce2b9ee8678d72ce3d6695a589085ac76",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_4de1a0c3a71976db34970b0052ce924aa68895d028d2938a78a7f7100f19df2d",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_c7219334a8f1ad478fd2184fdef396e884c7cbb87c4128aa3decb488c4d3f06c",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_07a399d8d8f8391b2694aa7fc9491f66824c7e0735998fafdf3f20ae3ca45dae",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_bd9e41f3b2486b55bfc7863ae98cb3f2d549b59ef5556758bbe403f5bab8c754",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_fb9a6ee52332920e8055793594142e9da154b429906713b53e0bf44b3d6683d5",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_96c4ecdbf339c7370b52af329a513b03f3419a76096ddef1567aa85788f2b519",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_670393a93fc8a6de69ae69942df88ab07e67fe51edd7e477e142d03ce5202f86",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_b03162f47a651d177e14d1e18d61df97478f3533d87f1bf15a9c608f8d662f8a",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_b203fc38628504a043ae15a18fd97c43df526fef71a16931fc40432cdf0b7b54",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "globo-rs1",
+    "source": "argus",
+    "entity": "globo-rs1",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_7f971f16c0daaa534102620bf6f2e4047823f5c251b8b3e2025b144b813097dc",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_fdf4138a62e2388381bbfafa1bcb0b73475dd42233b1b19a5e947c2b8699155b",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_47e0028d4f2d410846e20f1fe27fb4ab8bf6896f46b7c7e183e122550267af21",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_80fdfcdd6190ca58d02287dd972b03432a2916b3de2525766312945e0446a238",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_7dfec88eee1bf425f7d579903701b6dd1b590908c1954081011b21cc0317da3d",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_b538d02bb0511288cbf88ee62a543310998ce6b03c641083abd36f84d236a46a",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_65144f9a291686683ab8d9822bb2baf41d66f72e8fc4a240edc9fc06b4b5a6ea",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_c8c6ad5c9334da6b4d927cb8d700d600ae99087a9544d461a96832734594f87a",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_553f81af81bd288a68bc3e0b32f387fd1153cded0d2efa81f8ffa444fe562263",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_8d789099d08c0e95b5dbe70a3dea896141ae8de56296e07d746e71ea2bb3236d",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_377260bcbfb7d9a5b55b0dc450299838cfa173b164ac65ecdf6905da1a4a0c2c",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_b3bb65a3d4dd69f41fe3a0174d0dd59ba86cb58a8ce499aea890ad29a0df8483",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_6bb4a857a29813e1d02a8e06b21281e353ad4f33e4d69f1a08a78a882a4a65c7",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_a62d711507e6fa6cf66f5606f0611135d2cff8f091e3ad9df740c6acde9cf75a",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_cbfd1069af088bf545cea271442056b22f913f5d276e5231fc02b63c289fa3c1",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "spo124ha",
+    "source": "argus",
+    "entity": "spo124ha",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_0e3a12fef4d7fa96438dd353b3be525b03fd0c0cf5e49b44b0116b10745e2740",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_74584b3108ca51a48b858b955da1df6a75225c79e63ecfe4f22569aff277b746",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_f0a7c2a5a09da2f241674872b668a01e89f2a9e59cbd4f4b23c19f03951d3c25",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_8d53ee2ac2fb575fa658445d87dc8c4dd0736ed9e057d6efd14d71ed5eab6057",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_a0f0a61b3c417097cb3192dd29f49c2e96b7588c455ba9bea44d564744e1c597",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_ee59ca3169c05896ca8387a0c5e23959d9e3c20a7dbe3fb9619bb3f3653cfbd1",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_29af72c47a8055628aba1aaf744d3b6451f813dee0dac20dab1ed972b4204582",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_4601496c0326d685260bc5939a528d842312750f469ed1cbd7bf9e8cdca07d45",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_9a7e83f80a83a2e10f1283d76dce956c2d312f6a009a7bd2d81d17d783f7b73d",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_813319aef8e3e3a156a3a635d759234ccc6f08fc1e6b9994a34e1a934afdc62c",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_5d32202db366c69c872c1e227914446c1cb2f080ed07f770ce232e039f214fb1",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_e69a797a8bba47c90eee9e623cfd9fc48d11139273c8e15a7595b06d41fe4d57",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_80b678d74e348244dff0e74f1174cc6f92547772b53110a197ca327ab1dff689",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_8d8e8b0f68717c091451c049b1f3a106c872704685e46a061bcfa10f83096e1a",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_597eef5ab4f95de6aa537b19bf42f35e29fd609706d91084215884d94a336993",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "globo-sal",
+    "source": "argus",
+    "entity": "globo-sal",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_bebf9a0c765c60a9f5f05ee399f855f357752571178cb4e44f74cdf5827a66ae",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_5c027fbb9c9199ea7dce8905da935d960e77a382ae666e5bb6534da71f80fae4",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_74ed646dcdff36ea685e314d6610e9c457dacb462f057ef1031ef5155b239bde",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_efa20414d30a4f72c815aba555a0d29bebd104f7b2369a7b2a2e8d1c37624641",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_161161e67be8ce178b897f7e5f700bfd39c15e39651647a38d03f92707a1d2b1",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_e6620a4f967aee65e2df64b034f08286b7e37cd95844e1a5ae19c13c51774fc5",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_fff371a340c7c3fc15fc590a7e7a824666dffe84a343fe11569e7858881c2856",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_f4caac325aed8e8d1e42f92c1755fbfa83313fd3bf939707772adc7d1ac4c48c",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_93291980e501816c7320749a3e4faf114956214970e058ccf06c7ca08cf27a70",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_515470de2f461134c8f3659f8ae9e80ce27c68b1771b1fcd3e89bca9e0a3e01e",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_1a6d02cfec6c5b8efa9e5cbfc4e36a01377b2461949969e0d5f74cb84bb125c1",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_f023dbdd3d8e8c7f17993294bd7f1ecdf98c9366190483db507dffb548e44185",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_0082bae049ad05580f0c4ff74b12b963f4ad8beadaefc153f15c93423d52d53c",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_c40dcf1263fce3f7ccec3cbb098cf6310b3565772e7362caa67e9716ece2d72a",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_e46fb03d12ae2ad91a60c50aea9c0887a39855fe881f977794590333dcac36d9",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "gnews24ha",
+    "source": "argus",
+    "entity": "gnews24ha",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_44c75154df68e686749955d695e048ee26c7713c8841ff80b1ca7265fb84a94e",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_30389c7e5ea94661ce059778ebae080d8781f9636feb92973f18a8eb08913e12",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_e80162622ad6950a3bf30b53c95b9954c42247476d0341d57716344917ca6670",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_3d7d1facda0acd9a81aa9cf5394229872fff84ea36e356d502d7f7607b1a2304",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_0938457262a6e3e85a9d19b9431da9c9eb073ff51c23f44c6deda1711fb17cc8",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_e976aef1be851ddf22d1e93d0f17996762cbd9358a8ea3e30b4ae847587f322a",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_250396b2332c3be410b2f98f98f10bdab0a9340a3e65b16a8ab76ab0c510ec88",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_8f154e59e4e45cb55cce50f43789531327060339c6c5d9ffd817681f2f727f06",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_4873a9189bf8b17d111d7c32a42ce9ddbdcd9fbaa23fd39745b6f9e9fff1906a",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_c8026353582556d1cacea37aebc22fe6e42426da9037a499294cfd29b4865472",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_f2430089e9dcf1aa4e959865eeb2886e7aa666e63279b244842d318733aa047f",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_f2c5e409c590936bc007cb1c70683c91bb47456c519a0643faa54f1f25e5d4c2",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_df773df233809ada1ef41facbef5438c55a27573821c4c326d39c84fcb19492c",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_d3435e87c30b89993577d9595416c030d75f3db159b396e79bb213378fcab63a",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_d78ebe359561505b4984abd032dff73c4e3760d8b8d6de64c0369edb01cc6ea5",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "globo-cam",
+    "source": "argus",
+    "entity": "globo-cam",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_374d6b44f2e2ff6d7a1b78f9828ca50f373acc7a61223367f9d5f09dfae59874",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_d35365f515d5732d0a4df765885f5fd8b1a59da14c55abb32ad4836717780519",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_d8572b0f5c4b8a1fa901711b5afda2992e984f695c69ab1288ef539e5ac18511",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_9cff42d3779723972a6704abc14e41c7d362ac8fe349a82b51bbd71dbd243da7",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_128bc470fcc8223fae0053cbda7ae80d1aa39ff2a0e157e98f3c86ea7ff1dc22",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_2190c9728edb096f7391c914231aa10e49db457c8f1dec910d38dd8f807b752b",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_32776180acbdbd2bd38575deb2b80718cd3c418cdfdca82c4c4cbc2681eac466",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_19bec85b27186aa22b52cb5d3557224500c8929bc17cbc01a8f68ec365ee3a8e",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_3aa0e0445aa7d676d9a95f21b7eba17afb03c3176547dd51f95ec83760d036d3",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_bd284a0ee74dab8b068368f3f62dca2e3dd4f606a94569c631ffdc3160e4d12e",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_97740dbb7504305372ed1b818ea0780bd968deec8c0d58a9bb246b62d1be0a7b",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_f4220b9ad3c8d4b0fd2a860c387ebf3360f729ca86a24cc05bad17112e954a65",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_7d06b88659157e76400513c8bba62bf8fc7b043a918f82549ce51370a34925bd",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_0c2e0bac811fd17283a17eb597338fce6e2e8f40fca6b744aea00e840613933f",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_a7b705144111e13b7f4d5f9416d74553a42f8ab373c0fffb1004eaf1e2a9363e",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "globo-df",
+    "source": "argus",
+    "entity": "globo-df",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_7c26c21d94ecd45b7a3f7494e912d778f44f3f44c0470a7b6d44913f40fee8f8",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_23b870665370026cdffa804774dd8f914c25c30212025df4feb3aeb2a3f44599",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_063e4b1967ced97f3a951296eb3849e0b91ddbab68c68c8c62d0cda3cc7005ba",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_e962881fe6f204583c014062bcd2ee2018d42cef6fe79207270c305b14261798",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_a629f40a344c03dba4dad377c9cae0bb12c7e5e8674878ad9c6e44800e881284",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_b96aa8573b5a3417588741854da49f541b29ee1b9e443ba8978a4efed65d765f",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_3721d465261222d2b3547c02b2fb9cb7a82a3c70bf98de044e73b56b1156eb58",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_4775cf4613c6ab6b339aacdf2be06026af4d8be033716a317ac43f4102f479dc",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_822c261b14bb0e432bfda8bc920e566595f422e353fc368b2a5ede2d929bc208",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_04327d64f6744af9f7021d52a6cddc774f9d141fa3540eae17f3479a013e610c",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_8c6109aec61a145e10a830d015ff39c77f42132d0cb6c4c1f05915584ab8b0b8",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_dccdea6177262145d98dc534b86697e5a6049364207f8fc04ac524fcbe36612f",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_40b33c63aaf0dbafad8cd456e6af07cf1ac46f1c05ecd001852832ef35e58515",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_855b8fc3b34e9038f7cc30615224fdd8e6e4b0f6bc35536685df0c083eb86f90",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_aa44b275ad104dc78d813355d569f89363d87a9391808049cf8b8006c4a0186c",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "globo-pe1",
+    "source": "argus",
+    "entity": "globo-pe1",
+    "priority": "P2",
+    "detectorMetrics": [
+      "active_sessions",
+      "active_with_error",
+      "joins_in_bucket",
+      "latency_ms_p50",
+      "latency_ms_p95",
+      "bufferratio_avg",
+      "jointime_s_avg",
+      "dropped_frames_avg"
+    ],
+    "materiality": [
+      {
+        "metric": "active_sessions",
+        "minimum": 25
+      }
+    ],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "active_sessions",
+        "seriesId": "ts_ac021d9cbfdb4b0a1bc269588e31015632ea47f3f4d9074ebd7557c53aa2da5b",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "active_with_error",
+        "seriesId": "ts_c7e46277ec043ee6a53364b9ef611f099124e811af27bf8ef96aaf9eeedaebe0",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "joins_in_bucket",
+        "seriesId": "ts_4c29f4290971d7e92e935c20a2e9dd9b86031c4c013767ca01d19205e8fad459",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p50",
+        "seriesId": "ts_cd3d3de443f7542d269029c8abb864ab7d27cdf113b0b68117cd0fa09ac9f08a",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_9d87fc9befbe7e8019cafd96efc613085f5ec5ed0b35bf164ea0249610c79504",
+        "unit": "ms",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_028559fe2d141bdf85962c6ae4c024c8498c62fb90fb386154ef7dd96cceb2d4",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "jointime_s_avg",
+        "seriesId": "ts_688cbb262cd709f89d7384286eb21cafeb314b664a2bd55aab7ed287b701d346",
+        "unit": "seconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "dropped_frames_avg",
+        "seriesId": "ts_e6d513563321c5e96d79aec6e12eaffab54b93951499453c54b4dd148ec5dac1",
+        "unit": "count/session",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_b082fbca0d1839009fef1a3b3875afe89b58294252b9f034d85b6d086e0ba767",
+        "unit": "ratio-unconfirmed",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_65ee1a298fa63267589728f021f05efd30923f4f5697944234eb9568e67a2a45",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_79c778cbc104bad6208c028804bd45b5f1d14428a174554d4a720a90dd547430",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "seriesId": "ts_1dac7cf769b17d452369b43fa5c4744b681cbc0ddd926eedb2f381420e59c5ba",
+        "unit": "count",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "cdn_live_err_rate",
+        "seriesId": "ts_e03baef59d4cc74bc614ba674ed209b8f970d7463dd89bf98f716f3ffc26bb3f",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_live_err_rate",
+        "seriesId": "ts_20410743c2217cc48409b2ab4289543c7caa578656368518dbfba36dca984575",
+        "unit": "percent",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "origin_cdn_live_err_rate",
+        "seriesId": "ts_fda0e275e5a195050dbcfc4ed867f09dcea7b0237c805583a949e4aefd9cc45b",
+        "unit": "percent",
+        "grainSeconds": 900
+      }
+    ]
+  }
+]

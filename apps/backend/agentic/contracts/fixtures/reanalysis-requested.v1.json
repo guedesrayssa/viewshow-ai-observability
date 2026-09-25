@@ -1,0 +1,15 @@
+{
+  "eventId": "evt_contract_reanalysis_001",
+  "eventType": "REANALYSIS_REQUESTED",
+  "schemaVersion": "1.0",
+  "idempotencyKey": "rea_contract_001",
+  "traceId": "trc_contract_003",
+  "occurredAt": "2026-09-06T15:30:00.000Z",
+  "producedAt": "2026-09-06T15:30:00.000Z",
+  "source": "backend-api",
+  "payload": {
+    "incidentId": "inc_contract_001",
+    "requestedBy": "usr_contract_001",
+    "reason": "MANUAL_REQUEST"
+  }
+}

@@ -18,13 +18,13 @@ export type IncidentSummary = {
    * Dispositivos, não sessões: é o que a API operacional conta. O rótulo da
    * tela acompanha, para que o número não afirme uma medição que não existe.
    */
-  affectedDevices: number;
+  affectedDevices: number | null;
 };
 
 export type Hypothesis = {
   title: string;
   component: string;
-  confidence: number;
+  confidence: number | null;
   summary: string;
 };
 

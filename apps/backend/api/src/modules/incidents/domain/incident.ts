@@ -73,12 +73,13 @@ function status(value: unknown): IncidentDto["status"] {
 
 export function itemKind(
   item: PhysicalItem,
-): "incident" | "evidence" | "hypothesis" | "event" | "unknown" {
+): "incident" | "evidence" | "hypothesis" | "diagnosis" | "event" | "unknown" {
   const explicit = text(item.itemType)?.toLowerCase();
   if (
     explicit === "incident" ||
     explicit === "evidence" ||
     explicit === "hypothesis" ||
+    explicit === "diagnosis" ||
     explicit === "event"
   )
     return explicit;
@@ -87,6 +88,7 @@ export function itemKind(
   if (/^INCIDENT#[^#]+$/.test(sortKey)) return "incident";
   if (/^(?:INCIDENT#[^#]+#)?EVIDENCE#/.test(sortKey)) return "evidence";
   if (/^(?:INCIDENT#[^#]+#)?HYPOTHESIS#/.test(sortKey)) return "hypothesis";
+  if (/^(?:INCIDENT#[^#]+#)?DIAGNOSIS#/.test(sortKey)) return "diagnosis";
   if (/^EVENT#/.test(sortKey)) return "event";
   return "unknown";
 }
@@ -263,9 +265,9 @@ export function toDiagnosisData(
   const hypotheses = children.filter(
     (item) =>
       itemKind(item) === "hypothesis" &&
-      text(item.statement ?? item.text) !== null &&
-      number(item.probability ?? item.score) !== null,
+      text(item.statement ?? item.text) !== null,
   );
+  const diagnoses = children.filter((item) => itemKind(item) === "diagnosis");
   const evidence = children.filter(
     (item) =>
       itemKind(item) === "evidence" &&
@@ -283,7 +285,7 @@ export function toDiagnosisData(
       rank: index + 1,
       statement: text(item.statement ?? item.text) as string,
       component: incident.primaryComponent,
-      probability: number(item.probability ?? item.score) as number,
+      probability: number(item.probability ?? item.score),
       rationale: text(item.rationale),
       review: {
         status: reviewStatus(item.reviewStatus),
@@ -293,12 +295,25 @@ export function toDiagnosisData(
       },
     }));
   const latest = latestHypothesis(hypotheses);
-  const presentation = diagnosisPresentation(incidentItem);
+  const latestDiagnosis = [...diagnoses].sort(
+    (a, b) => iso(b.createdAt)?.localeCompare(iso(a.createdAt) ?? "") ?? 0,
+  )[0];
+  const diagnosisStatus = latest
+    ? "ready"
+    : latestDiagnosis?.status === "failed"
+      ? "failed"
+      : latestDiagnosis?.status === "processing"
+        ? "processing"
+        : latestDiagnosis?.status === "ready"
+          ? "inconclusive"
+          : "not_started";
   return {
     incident,
     diagnosis: {
-      status: latest ? "ready" : "not_started",
-      generatedAt: latest ? iso(latest.generatedAt ?? latest.createdAt) : null,
+      status: diagnosisStatus,
+      generatedAt: latest
+        ? iso(latest.generatedAt ?? latest.createdAt)
+        : iso(latestDiagnosis?.createdAt),
       summary: latest ? text(latest.summary ?? latest.explanation) : null,
       primaryHypothesisId: latest ? hypothesisId(latest) : null,
       confidence: latest ? number(latest.probability ?? latest.score) : null,
@@ -315,7 +330,19 @@ export function toDiagnosisData(
           : item.relation === "context"
             ? "context"
             : "supports",
-      hypothesisIds: ranked.map((hypothesis) => hypothesis.id),
+      hypothesisIds: ranked
+        .filter((hypothesis) => {
+          const physical = hypotheses.find(
+            (candidate) => hypothesisId(candidate) === hypothesis.id,
+          );
+          return (
+            Array.isArray(physical?.supportingEvidenceIds) &&
+            physical.supportingEvidenceIds.includes(
+              text(item.id ?? item.evidenceId),
+            )
+          );
+        })
+        .map((hypothesis) => hypothesis.id),
       strength: evidenceStrength(item.strength),
       observedAt: iso(item.observedAt ?? item.capturedAt),
       source: {

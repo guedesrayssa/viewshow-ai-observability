@@ -1,0 +1,12 @@
+{
+  "pk": "DATASET#dsv_contract_v1#FACT#TS#ts_contract#20260906",
+  "sk": "T#1788703200000#rec_contract_001",
+  "itemType": "time-series-fact",
+  "recordId": "rec_contract_001",
+  "datasetVersion": "dsv_contract_v1",
+  "seriesId": "ts_contract",
+  "observedAt": "2026-09-06T14:00:00.000Z",
+  "payload": {
+    "metric": { "name": "bufferratio_avg", "unit": "ratio", "value": 0.12 }
+  }
+}

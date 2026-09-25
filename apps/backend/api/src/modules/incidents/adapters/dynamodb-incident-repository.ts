@@ -1,6 +1,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
+  GetCommand,
   QueryCommand,
   UpdateCommand,
   type QueryCommandInput,
@@ -55,26 +56,24 @@ export class DynamoIncidentRepository implements IncidentRepository {
   }
 
   async listBetween(from: Date, to: Date): Promise<readonly PhysicalItem[]> {
+    const manifest = await this.client.send(new GetCommand({ TableName: this.tableName, Key: { pk: "CONTROL#DATASET", sk: "ACTIVE" }, ConsistentRead: true }));
+    const activeDataset = typeof manifest.Item?.activeDatasetVersion === "string" ? manifest.Item.activeDatasetVersion : null;
     const partitions: { readonly pk: string; readonly prefix?: string }[] = [];
-    const firstHour = new Date(from);
-    firstHour.setUTCMinutes(0, 0, 0);
-    const hour = new Date(to);
-    hour.setUTCMinutes(0, 0, 0);
-    while (hour >= firstHour) {
-      partitions.push({
-        pk: `INC#${hour.toISOString().slice(0, 13)}`,
-        prefix: "INCIDENT#",
-      });
-      hour.setUTCHours(hour.getUTCHours() - 1);
+    if (!activeDataset) {
+      const firstHour = new Date(from); firstHour.setUTCMinutes(0, 0, 0);
+      const hour = new Date(to); hour.setUTCMinutes(0, 0, 0);
+      while (hour >= firstHour) {
+        partitions.push({ pk: `INC#${hour.toISOString().slice(0, 13)}`, prefix: "INCIDENT#" });
+        hour.setUTCHours(hour.getUTCHours() - 1);
+      }
     }
     const firstDay = new Date(from);
     firstDay.setUTCHours(0, 0, 0, 0);
     const day = new Date(to);
     day.setUTCHours(0, 0, 0, 0);
     while (day >= firstDay) {
-      partitions.push({
-        pk: `VIEW#INCIDENTS#DAY#${day.toISOString().slice(0, 10).replaceAll("-", "")}`,
-      });
+      const suffix=`VIEW#INCIDENTS#DAY#${day.toISOString().slice(0, 10).replaceAll("-", "")}`;
+      partitions.push({ pk: activeDataset ? `DATASET#${activeDataset}#${suffix}` : suffix });
       day.setUTCDate(day.getUTCDate() - 1);
     }
 
