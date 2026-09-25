@@ -12,6 +12,7 @@ export interface ProjectionRead {
 export interface DashboardReadRepository {
   activeOverview(active: ActiveDatasetSnapshot): Promise<ProjectionRead | null>;
   latestMonitoring(
+    active: ActiveDatasetSnapshot,
     from: Date,
     to: Date,
     sources: readonly string[],
