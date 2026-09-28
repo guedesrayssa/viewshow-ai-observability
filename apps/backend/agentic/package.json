@@ -17,6 +17,7 @@
     "test:integration": "npm run build && node --test --test-concurrency=1 dist/tests/aws-adapters.integration.test.js",
     "test:models": "python3 -m unittest tests/test_training.py tests/test_prepare_argus.py tests/test_pilot_catalog.py",
     "eval:ollama": "npm run build && node dist/scripts/eval-ollama.js",
+    "load:llm": "npm run build && node dist/scripts/load-llm.js",
     "replay:pilot": "npm run build && node dist/scripts/replay-pilot.js",
     "worker": "node dist/src/bootstrap/analysis-worker.js"
   },
