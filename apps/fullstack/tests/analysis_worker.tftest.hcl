@@ -242,6 +242,16 @@ override_resource {
 }
 
 override_resource {
+  target          = aws_instance.observabilidade[0]
+  override_during = plan
+  values = {
+    id         = "i-observability"
+    private_ip = "10.0.20.10"
+    public_dns = "observability.example"
+  }
+}
+
+override_resource {
   target          = aws_sqs_queue.ingestion_scheduler_dlq
   override_during = plan
   values = {
@@ -329,8 +339,13 @@ run "analysis_worker_builds_its_image_and_publishes_local_artifacts" {
         LLM_PROVIDER                    = "none"
         LLM_MODEL_ID                    = "anthropic.claude-3-haiku-20240307-v1:0"
         OLLAMA_BASE_URL                 = ""
+        OTEL_SERVICE_NAME               = "view-show-agentic"
+        OTEL_DEPLOYMENT_ENVIRONMENT     = "aws"
+        OTEL_SERVICE_VERSION            = local.analysis_worker_service_version
+        OTEL_EXPORTER_OTLP_ENDPOINT     = ""
       },
       one(jsondecode(aws_ecs_task_definition.analysis_worker[0].container_definitions)).image == "123456789012.dkr.ecr.us-east-1.amazonaws.com/view-show-analysis-worker:${local.analysis_worker_image_tag}",
+      one(jsondecode(aws_ecs_task_definition.analysis_worker[0].container_definitions)).stopTimeout == 120,
     ])
     error_message = "O worker deve consumir a fila e a DLQ únicas da ingestão, ler os artefatos publicados e rodar sem LLM."
   }
@@ -346,11 +361,94 @@ run "analysis_worker_builds_its_image_and_publishes_local_artifacts" {
   assert {
     condition = alltrue([
       length(aws_ecs_service.analysis_worker) == 1,
-      aws_ecs_service.analysis_worker[0].desired_count == 1,
+      aws_ecs_service.analysis_worker[0].desired_count == 0,
       aws_ecs_service.analysis_worker[0].launch_type == "FARGATE",
       !one(aws_ecs_service.analysis_worker[0].network_configuration).assign_public_ip,
     ])
-    error_message = "O serviço do worker deve rodar em Fargate privado com uma task."
+    error_message = "O serviço do worker deve ser preparado em Fargate privado com zero tasks antes do gate."
+  }
+
+  assert {
+    condition = alltrue([
+      toset(keys(output.analysis_worker_operacao)) == toset([
+        "cluster_name", "task_definition", "task_family", "container_name",
+        "subnet_ids", "security_group_id", "assign_public_ip", "log_group",
+        "analysis_queue_url", "operational_table", "desired_count",
+      ]),
+      output.analysis_worker_operacao.cluster_name == "view-show-iac-cluster",
+      output.analysis_worker_operacao.task_family == "view-show-analysis-worker",
+      output.analysis_worker_operacao.container_name == "analysis-worker",
+      output.analysis_worker_operacao.assign_public_ip == false,
+      output.analysis_worker_operacao.log_group == "/ecs/view-show-analysis-worker",
+      output.analysis_worker_operacao.desired_count == 0,
+    ])
+    error_message = "O output operacional deve trazer apenas identificadores necessários ao rollout."
+  }
+}
+
+run "analysis_worker_starts_one_replica_only_after_gate" {
+  command = plan
+
+  variables {
+    analysis_worker_habilitado    = true
+    analysis_worker_desired_count = 1
+    analysis_llm_provider         = "none"
+    analysis_model_file           = "tests/fixtures/analysis-model.json"
+    analysis_scope_catalog_file   = "tests/fixtures/analysis-catalog.json"
+  }
+
+  assert {
+    condition     = aws_ecs_service.analysis_worker[0].desired_count == 1
+    error_message = "A ativação deve iniciar exatamente uma réplica."
+  }
+}
+
+run "analysis_worker_rejects_more_than_one_replica" {
+  command = plan
+
+  variables {
+    analysis_worker_habilitado    = true
+    analysis_worker_desired_count = 2
+    analysis_llm_provider         = "none"
+    analysis_model_file           = "tests/fixtures/analysis-model.json"
+    analysis_scope_catalog_file   = "tests/fixtures/analysis-catalog.json"
+  }
+
+  expect_failures = [var.analysis_worker_desired_count]
+}
+
+run "analysis_worker_rejects_replica_when_disabled" {
+  command = plan
+
+  variables {
+    analysis_worker_desired_count = 1
+  }
+
+  expect_failures = [var.analysis_worker_desired_count]
+}
+
+run "analysis_worker_exports_to_private_otlp_when_observability_is_enabled" {
+  command = plan
+
+  variables {
+    analysis_worker_habilitado  = true
+    observabilidade_habilitada  = true
+    analysis_llm_provider       = "none"
+    analysis_model_file         = "tests/fixtures/analysis-model.json"
+    analysis_scope_catalog_file = "tests/fixtures/analysis-catalog.json"
+  }
+
+  assert {
+    condition = {
+      for item in one(jsondecode(aws_ecs_task_definition.analysis_worker[0].container_definitions)).environment : item.name => item.value
+      if startswith(item.name, "OTEL_")
+      } == {
+      OTEL_SERVICE_NAME           = "view-show-agentic"
+      OTEL_DEPLOYMENT_ENVIRONMENT = "aws"
+      OTEL_SERVICE_VERSION        = local.analysis_worker_service_version
+      OTEL_EXPORTER_OTLP_ENDPOINT = "http://10.0.20.10:4320"
+    }
+    error_message = "A task deve exportar OTLP para o Alloy privado da stack."
   }
 }
 

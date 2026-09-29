@@ -119,6 +119,22 @@ variable "analysis_worker_habilitado" {
   }
 }
 
+variable "analysis_worker_desired_count" {
+  description = "Número de réplicas do worker; mantenha 0 até o gate de conectividade com o Ollama passar."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = contains([0, 1], var.analysis_worker_desired_count)
+    error_message = "Use 0 durante o gate ou 1 após a validação do Ollama."
+  }
+
+  validation {
+    condition     = var.analysis_worker_habilitado || var.analysis_worker_desired_count == 0
+    error_message = "Habilite o worker antes de solicitar uma réplica."
+  }
+}
+
 variable "analysis_worker_image_uri" {
   description = "Imagem imutável do worker. Vazia, o Terraform constrói e publica a imagem de apps/backend/agentic no ECR do Learner Lab durante o apply."
   type        = string
@@ -208,6 +224,7 @@ variable "analysis_ollama_base_url" {
   description = "URL do Ollama quando esse provider for selecionado."
   type        = string
   default     = ""
+  sensitive   = true
   validation {
     condition     = var.analysis_llm_provider != "ollama" || length(var.analysis_ollama_base_url) > 0
     error_message = "Informe analysis_ollama_base_url para Ollama."

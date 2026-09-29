@@ -74,7 +74,16 @@ node apps/scripts/aws-learner-lab.mjs setup \
 
 O script valida os dois arquivos antes de qualquer chamada externa (o modelo precisa ter `approved: true`). Durante o `apply`, o Terraform constrói a imagem do worker no ECR e publica o modelo e o catálogo no bucket da ingestão, em `analysis/models/<sha256>.json` e `analysis/catalogs/<sha256>.json`. O bundle aprovado é gerado fora do repositório (a pasta `models/` é ignorada pelo git); veja o [guia do worker](../../artefatos/arquitetura/implementacao/worker-analise.md).
 
-O Learner Lab não tem Bedrock, então o worker roda com `LLM_PROVIDER=none`: a detecção e a previsão funcionam e o diagnóstico é registrado como `failed` com o código `LLM_DISABLED`, sem retentativas nem mensagens na DLQ. Para acompanhar o serviço:
+O rollout acontece em duas fases. A preparação usa
+`analysis_worker_habilitado=true` e `analysis_worker_desired_count=0`: cria a
+task definition, imagem e artefatos sem iniciar o consumidor. Somente após o
+check de conectividade e o smoke controlado do Ollama, o CLI seguro do Learner
+Lab ativa `analysis_worker_desired_count=1`. Não use valores maiores que um.
+
+Sem uma rota privada aprovada até o Ollama, mantenha `LLM_PROVIDER=none`: a
+detecção e a previsão funcionam e o diagnóstico é registrado como `failed` com
+o código `LLM_DISABLED`, sem retentativas nem mensagens na DLQ. Para acompanhar
+o serviço depois da ativação:
 
 ```bash
 aws logs tail /ecs/view-show-analysis-worker --follow --region us-east-1

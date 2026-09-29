@@ -27,6 +27,11 @@ locals {
     "${arquivo}:${filesha256("${local.analysis_worker_dir}/${arquivo}")}\n"
   ]))
   analysis_worker_image_tag = substr(local.analysis_worker_image_hash, 0, 12)
+  analysis_worker_service_version = (
+    var.analysis_worker_image_uri != ""
+    ? substr(sha256(var.analysis_worker_image_uri), 0, 12)
+    : local.analysis_worker_image_tag
+  )
 
   // Sem imagem informada, o Terraform constrói e publica a do módulo.
   analysis_worker_builds_image = var.analysis_worker_habilitado && var.analysis_worker_image_uri == ""
@@ -179,6 +184,10 @@ resource "aws_ecs_task_definition" "analysis_worker" {
       { name = "LLM_PROVIDER", value = var.analysis_llm_provider },
       { name = "LLM_MODEL_ID", value = var.analysis_llm_model_id },
       { name = "OLLAMA_BASE_URL", value = var.analysis_ollama_base_url },
+      { name = "OTEL_SERVICE_NAME", value = "view-show-agentic" },
+      { name = "OTEL_DEPLOYMENT_ENVIRONMENT", value = "aws" },
+      { name = "OTEL_SERVICE_VERSION", value = local.analysis_worker_service_version },
+      { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4320" : "" },
     ]
 
     logConfiguration = {
@@ -197,7 +206,7 @@ resource "aws_ecs_service" "analysis_worker" {
   name            = "${var.deployment_namespace}-analysis-worker"
   cluster         = aws_ecs_cluster.principal.id
   task_definition = aws_ecs_task_definition.analysis_worker[0].arn
-  desired_count   = 1
+  desired_count   = var.analysis_worker_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {

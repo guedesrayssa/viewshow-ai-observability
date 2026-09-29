@@ -79,6 +79,7 @@ test("HTTP de erro lança, e não devolve o corpo como se fosse resposta", async
   await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
     assert.ok(erro instanceof OllamaError);
     assert.match((erro as Error).message, /HTTP 502/);
+    assert.equal(erro.code, "OLLAMA_HTTP");
     return true;
   });
 });
@@ -86,13 +87,22 @@ test("HTTP de erro lança, e não devolve o corpo como se fosse resposta", async
 test("corpo que não é JSON lança", async () => {
   const { fn } = fakeFetch(new Response("não sou json", { status: 200 }));
   const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });
-  await assert.rejects(() => provider.generate(PEDIDO), OllamaError);
+  await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
+    assert.ok(erro instanceof OllamaError);
+    assert.equal(erro.code, "OLLAMA_INVALID_JSON");
+    return true;
+  });
 });
 
 test("conteúdo vazio lança em vez de virar diagnóstico sem texto", async () => {
   const { fn } = fakeFetch(respostaOk({ message: { content: "   " }, done_reason: "stop" }));
   const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });
-  await assert.rejects(() => provider.generate(PEDIDO), /sem conteúdo/);
+  await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
+    assert.ok(erro instanceof OllamaError);
+    assert.equal(erro.code, "OLLAMA_EMPTY_RESPONSE");
+    assert.match(erro.message, /sem conteúdo/);
+    return true;
+  });
 });
 
 test("conteúdo vazio informa o done_reason — sem ele o erro obriga a adivinhar", async () => {
@@ -126,7 +136,21 @@ test("done_reason ausente aparece como undefined em vez de sumir", async () => {
 test("resposta sem `message` lança", async () => {
   const { fn } = fakeFetch(respostaOk({ done_reason: "stop" }));
   const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });
-  await assert.rejects(() => provider.generate(PEDIDO), OllamaError);
+  await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
+    assert.ok(erro instanceof OllamaError);
+    assert.equal(erro.code, "OLLAMA_INVALID_RESPONSE");
+    return true;
+  });
+});
+
+test("JSON que não é objeto tem código estável de resposta inválida", async () => {
+  const { fn } = fakeFetch(respostaOk(null));
+  const provider = createOllamaProvider({ baseUrl: "http://x", model: "m", fetch: fn });
+  await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
+    assert.ok(erro instanceof OllamaError);
+    assert.equal(erro.code, "OLLAMA_INVALID_RESPONSE");
+    return true;
+  });
 });
 
 test("tempo limite lança mensagem própria, distinguível de falha de rede", async () => {
@@ -146,7 +170,12 @@ test("tempo limite lança mensagem própria, distinguível de falha de rede", as
       });
     }) as unknown as typeof globalThis.fetch,
   });
-  await assert.rejects(() => provider.generate(PEDIDO), /não respondeu em 20 ms/);
+  await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
+    assert.ok(erro instanceof OllamaError);
+    assert.equal(erro.code, "OLLAMA_TIMEOUT");
+    assert.match(erro.message, /não respondeu em 20 ms/);
+    return true;
+  });
 });
 
 test("falha de rede vira OllamaError apontando o endpoint", async () => {
@@ -157,7 +186,12 @@ test("falha de rede vira OllamaError apontando o endpoint", async () => {
       throw new Error("ECONNREFUSED");
     }) as unknown as typeof globalThis.fetch,
   });
-  await assert.rejects(() => provider.generate(PEDIDO), /localhost:11434\/api\/chat/);
+  await assert.rejects(() => provider.generate(PEDIDO), (erro: unknown) => {
+    assert.ok(erro instanceof OllamaError);
+    assert.equal(erro.code, "OLLAMA_NETWORK");
+    assert.match(erro.message, /localhost:11434\/api\/chat/);
+    return true;
+  });
 });
 
 test("usage sai vazio quando o servidor não informa contagem", async () => {
