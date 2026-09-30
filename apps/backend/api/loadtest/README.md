@@ -14,7 +14,8 @@ Este README cobre apenas o operacional — como rodar e o que esperar.
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `k6/consultas.js`                                        | RNF14/RNF09 — `/api/v1/incidents` (lista, diagnóstico, eventos, paginação), `/dashboard/overview`, `/monitoring/overview`                      | Sim                                                                        |
 | `k6/auth-check.js`                                       | RNF04 — controle de acesso em todas as rotas, incluindo `auth/session`, `auth/login`, `auth/callback`, `auth/logout`, `reanalyze` e `imports*` | Sim                                                                        |
-| `k6/ingestao-batch.js`                                   | RNF01/RNF02/RNF03 — drenagem de 10k eventos/min, acúmulo (backlog), frescor ponta a ponta                                                      | Não — adaptador de import fail-closed por design (ver cabeçalho do script) |
+| `k6/ingestao-batch.js`                                   | RNF01/RNF02/RNF03/RNF09 — modos `smoke`, `drenagem`, `pico`, `limite` e `frescor` da Sprint 5 (upload multipart real até `READY`)              | Sim, contra a stack AWS (exige usuário Cognito e massa de dados)           |
+| `k6/ingestao-falhas.sh`                                  | Injeção/reversão das falhas RS-01 a RS-05, métricas SQS e geração do dump corrompido M-07                                                       | Sim, com sessão válida do Learner Lab                                      |
 | `k6/rodadas.sh`                                          | Bateria `smoke → load → breakpoint → estresse → spike → soak` de `consultas.js`                                                                | Sim                                                                        |
 | `k6/lib/session.js`                                      | Sessão (login real ou cookie forjado) e o header `X-Request-Id`, compartilhado pelos três scripts                                                | —                                                                          |
 | `k6/lib/asserts.js`                                      | Checks de conteúdo de `consultas.js`: schema mínimo, campo físico vazado, duplicidade entre páginas, eco de `X-Request-Id`                      | —                                                                          |
@@ -56,13 +57,16 @@ k6 run -e BASE_URL=$BASE_URL -e AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET auth-chec
 
 `consultas.js` também aceita `-e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha>`
 no lugar de `AUTH_COOKIE_SECRET`, para logar de verdade (ver seção
-Autenticação) — `auth-check.js` e `ingestao-batch.js` continuam só com
+Autenticação) — `ingestao-batch.js` também; `auth-check.js` continua só com
 cookie forjado por enquanto.
 
 Variáveis de `consultas.js`: `RATE` (padrão 137 req/s), `INCIDENT_COUNT`
 (300), `STRESS_MULTIPLIER` (3). Variáveis de `ingestao-batch.js`:
-`EVENT_RATE` (10000/min), `WINDOW_MINUTES` (15), `BACKLOG_BATCHES` (1–4),
-`POLL_TIMEOUT_S`.
+`MODE`, `DUMP` (arquivo `argus_dump.sql.gz` a enviar), `EXPECTED_EVENTS`,
+`RUN_LABEL`, `ACTIVATE`, `PEAK_RATE` (50), `BURST_RATE` (20), `COOLDOWN_S`
+(60), `POLL_TIMEOUT_S` (3600), `T0`/`EXPECT_OBSERVED_THROUGH` (frescor). O
+roteiro completo de cada teste está em
+`artefatos/sprint5/testes-carga-ingestao.md`, Seção 11.
 
 ## Rodando contra dados reais (AWS)
 
@@ -101,14 +105,11 @@ Dois pontos que mudam de verdade ao sair do localhost:
   capacidade real: rode k6 distribuído (múltiplas origens/IPs — k6 Cloud ou
   várias instâncias EC2 na mesma subnet) ou peça ao time de backend para
   subir o limite só na janela do teste.
-- **Ingestão real (`ingestao-batch.js`) continua bloqueada** até dois pontos
-  serem resolvidos, independente do ambiente: (a) um adaptador real de
-  `ImportControlPort` (hoje é `UnavailableImportControl`, fail-closed por
-  design) ligado a S3 + uma tarefa de processamento, e (b) o contrato
-  (`contracts/openapi/public.openapi.json`, schema `ImportStartData`) expor
-  `upload.parts[].url` — as URLs pré-assinadas que `completeImport()` já
-  espera receber para subir bytes de verdade. Sem isso, `setup()` aborta
-  igual em qualquer ambiente, local ou AWS.
+- **Ingestão real (`ingestao-batch.js`) não roda localmente**: o upload usa
+  URLs pré-assinadas do S3 e o processamento é uma task ECS, então os modos
+  só fazem sentido contra a stack AWS. Não existe rota para cancelar uma
+  importação e um upload abandonado segura a trava por 24 h; por isso `pico`
+  e `limite` concluem no teardown a importação que criaram.
 
 Evite `CLEAN=1 node scripts/seed-carga.cjs` contra a tabela real sem alinhar
 com o time — o script tem uma trava (`ALLOW_REMOTE_SEED=1`) justamente para
@@ -133,9 +134,9 @@ isso não acontecer sem querer.
    dela vem `503 DATA_UNAVAILABLE`. Os checks de `consultas.js` exigem 200, e
    por isso **semeie imediatamente antes de cada rodada** — `CLEAN=1 node
    scripts/seed-carga.cjs` leva cerca de 1 s.
-3. **`ingestao-batch.js` está bloqueado por design** — o adaptador de import
-   é fail-closed (503) até S3 e a tarefa de ingestão serem configurados;
-   `setup()` detecta isso e aborta com mensagem clara.
+3. **`ingestao-batch.js` exige uma vaga de importação livre** — só existe
+   uma importação ativa por vez (`409 IMPORT_IN_PROGRESS`); rode os modos em
+   sequência e confira `GET /api/v1/imports` entre eles.
 4. **Autenticação testa uma sessão válida, não o fluxo de login em si** —
    com `AUTH_USERNAME`/`AUTH_PASSWORD` o `POST /auth/login` roda uma vez em
    `setup()` (login real, contra o Cognito), não a cada iteração; com
