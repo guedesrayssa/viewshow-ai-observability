@@ -70,8 +70,6 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;**Fora do escopo:** a API de consulta (já coberta na Sprint 3 e na Seção 4 de [`sprint4/testes-funcionais.md`](../sprint4/testes-funcionais.md#4-testes-de-carga-funcional)), o worker de análise/ML (RNF08, RNF13) e o frontend (RNF07).
-
 ### 1.3 Convenções adotadas
 
 - Requisitos não funcionais são identificados como `RNFXX`, conforme [`sprint1/requisitos.md`](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste).
