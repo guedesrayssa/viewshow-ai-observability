@@ -44,24 +44,54 @@ export type CorrelatedEvent = {
   deviceType: string;
   region: string;
   appVersion: string;
+  /** Incidentes aos quais o evento foi correlacionado. */
+  incidentIds: string[];
   detail: EventDetail;
 };
 
-export type PeriodKey = "30" | "60" | "360" | "1440";
+/**
+ * Janelas aceitas pela API de eventos. A tabela e o gráfico de volume usam a
+ * mesma: dois seletores de período na mesma tela mostravam recortes
+ * diferentes lado a lado.
+ */
+export type PeriodKey = "30" | "60" | "360" | "1440" | "older" | "all";
+
+/**
+ * Períodos oferecidos na tela (e aceitos na URL). As janelas curtas saíram:
+ * contadas a partir de agora, esvaziavam a lista sempre que o dado mais
+ * recente tinha mais de meia hora. Recortes mais finos usam o intervalo
+ * personalizado, com início e fim explícitos.
+ */
+export const PERIOD_KEYS: PeriodKey[] = ["1440", "older", "all"];
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
   "30": "Últimos 30 min",
   "60": "Última hora",
   "360": "Últimas 6 horas",
   "1440": "Últimas 24 horas",
+  older: "Mais de 24 horas",
+  all: "Todo o período",
 };
 
-export type VolumePeriodKey = "30" | "60" | "180";
+/** Janela da API para cada período da tela. */
+export const PERIOD_WINDOWS: Record<PeriodKey, string> = {
+  "30": "30m",
+  "60": "1h",
+  "360": "6h",
+  "1440": "24h",
+  // Sem janela na API: vira um intervalo explícito (ver events-resource).
+  older: "all",
+  all: "all",
+};
 
-export const VOLUME_PERIOD_LABELS: Record<VolumePeriodKey, string> = {
-  "30": "Período: últimos 30 min",
-  "60": "Período: última hora",
-  "180": "Período: últimas 3 horas",
+/** Mantido como sinônimo: o gráfico de volume segue o período da lista. */
+export type VolumePeriodKey = PeriodKey;
+
+export type EventSort = "recent" | "oldest";
+
+export const SORT_LABELS: Record<EventSort, string> = {
+  recent: "Mais recentes primeiro",
+  oldest: "Mais antigos primeiro",
 };
 
 export type VolumeSeries = {

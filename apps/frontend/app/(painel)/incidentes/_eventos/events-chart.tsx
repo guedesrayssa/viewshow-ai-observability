@@ -13,10 +13,11 @@
 import {
   formatVolume,
   formatVolumePerMinute,
-  VOLUME_PERIOD_LABELS,
+  PERIOD_KEYS,
+  PERIOD_LABELS,
   type VolumePeriodKey,
   type VolumeSeries,
-} from "@/app/(painel)/eventos/events-data";
+} from "@/app/(painel)/incidentes/_eventos/events-data";
 import { TimeSeriesChart } from "@/components/charts/time-series-chart";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Unavailable } from "@/components/dashboard/unavailable";
@@ -28,7 +29,13 @@ export type EventsChartProps = {
   status: "loading" | "ready" | "error";
   error?: string;
   period: VolumePeriodKey;
-  onPeriodChange: (period: VolumePeriodKey) => void;
+  /** Rótulo do recorte quando ele não é um dos períodos prontos. */
+  periodLabel?: string;
+  /**
+   * Seletor próprio do gráfico. A tela de Eventos não passa: o gráfico segue o
+   * período da lista, para os dois nunca mostrarem recortes diferentes.
+   */
+  onPeriodChange?: (period: VolumePeriodKey) => void;
 };
 
 export function EventsChart({
@@ -36,6 +43,7 @@ export function EventsChart({
   status,
   error,
   period,
+  periodLabel,
   onPeriodChange,
 }: EventsChartProps) {
   return (
@@ -44,18 +52,22 @@ export function EventsChart({
         <div>
           <CardTitle>Volume temporal dos eventos</CardTitle>
           <CardDescription className="mt-1">
-            Camada normalizada signal_point · eventos por minuto
+            Camada normalizada signal_point · eventos por minuto ·{" "}
+            {(periodLabel ?? PERIOD_LABELS[period] ?? period).toLowerCase()}
           </CardDescription>
         </div>
 
-        <Select
-          aria-label="Período do gráfico de volume"
-          value={period}
-          onValueChange={(value) => onPeriodChange(value as VolumePeriodKey)}
-          options={(Object.keys(VOLUME_PERIOD_LABELS) as VolumePeriodKey[]).map(
-            (key) => ({ value: key, label: VOLUME_PERIOD_LABELS[key] }),
-          )}
-        />
+        {onPeriodChange ? (
+          <Select
+            aria-label="Período do gráfico de volume"
+            value={period}
+            onValueChange={(value) => onPeriodChange(value as VolumePeriodKey)}
+            options={PERIOD_KEYS.map((key) => ({
+              value: key,
+              label: PERIOD_LABELS[key],
+            }))}
+          />
+        ) : null}
       </div>
 
       {status === "loading" ? (
