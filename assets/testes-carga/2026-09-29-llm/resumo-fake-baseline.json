@@ -1,0 +1,154 @@
+{
+  "executadoEm": "2026-09-29T20:27:30.834Z",
+  "provider": "fake",
+  "modelo": "fake-deterministic",
+  "maxTokens": 2500,
+  "requisicoesPorEstagio": 50,
+  "limites": {
+    "p95MaxMs": null,
+    "taxaFalhaMax": 0.05
+  },
+  "estagios": [
+    {
+      "concorrencia": 1,
+      "requisicoes": 50,
+      "duracaoMs": 26765,
+      "vazaoPorSegundo": 1.868,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 584,
+        "p90": 1045,
+        "p95": 1159,
+        "p99": 1190,
+        "max": 1190,
+        "media": 535
+      },
+      "latenciaLlmP95Ms": 1164,
+      "status": {
+        "ready": 34,
+        "pending": 16
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16
+      },
+      "taxaFalha": 0,
+      "tokens": {
+        "entrada": 27013,
+        "saida": 1870
+      }
+    },
+    {
+      "concorrencia": 2,
+      "requisicoes": 50,
+      "duracaoMs": 13999,
+      "vazaoPorSegundo": 3.572,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 630,
+        "p90": 1118,
+        "p95": 1184,
+        "p99": 1199,
+        "max": 1199,
+        "media": 559
+      },
+      "latenciaLlmP95Ms": 1199,
+      "status": {
+        "ready": 34,
+        "pending": 16
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16
+      },
+      "taxaFalha": 0,
+      "tokens": {
+        "entrada": 27013,
+        "saida": 1870
+      }
+    },
+    {
+      "concorrencia": 4,
+      "requisicoes": 50,
+      "duracaoMs": 7401,
+      "vazaoPorSegundo": 6.756,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 564,
+        "p90": 1074,
+        "p95": 1180,
+        "p99": 1200,
+        "max": 1200,
+        "media": 561
+      },
+      "latenciaLlmP95Ms": 1194,
+      "status": {
+        "pending": 16,
+        "ready": 34
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16
+      },
+      "taxaFalha": 0,
+      "tokens": {
+        "entrada": 27013,
+        "saida": 1870
+      }
+    },
+    {
+      "concorrencia": 8,
+      "requisicoes": 50,
+      "duracaoMs": 3865,
+      "vazaoPorSegundo": 12.937,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 574,
+        "p90": 1088,
+        "p95": 1101,
+        "p99": 1163,
+        "max": 1163,
+        "media": 521
+      },
+      "latenciaLlmP95Ms": 1116,
+      "status": {
+        "pending": 16,
+        "ready": 34
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16
+      },
+      "taxaFalha": 0,
+      "tokens": {
+        "entrada": 27013,
+        "saida": 1870
+      }
+    },
+    {
+      "concorrencia": 16,
+      "requisicoes": 50,
+      "duracaoMs": 2081,
+      "vazaoPorSegundo": 24.027,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 528,
+        "p90": 1131,
+        "p95": 1162,
+        "p99": 1177,
+        "max": 1177,
+        "media": 549
+      },
+      "latenciaLlmP95Ms": 1171,
+      "status": {
+        "pending": 16,
+        "ready": 34
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16
+      },
+      "taxaFalha": 0,
+      "tokens": {
+        "entrada": 27013,
+        "saida": 1870
+      }
+    }
+  ],
+  "violacoes": []
+}
