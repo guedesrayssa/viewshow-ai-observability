@@ -444,6 +444,46 @@ def test_missing_active_manifest_is_retryable_before_raw_or_hot_reads() -> None:
     )
 
 
+def test_retryable_failure_logs_cause_and_batch_identity(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    service, dependencies = ingest_service(active_manifest=False)
+    batch_id = manifest(dependencies.registry).batch_id
+
+    with caplog.at_level("WARNING", logger="application.ingest_incremental"):
+        result = service.drain(limit=1)
+
+    assert result.retryable == 1
+    assert dependencies.queue.acked == ()
+    [record] = caplog.records
+    message = record.getMessage()
+    assert "batch processing failed" in message
+    assert f"batch_id={batch_id}" in message
+    assert f"message_id={DELIVERY_ID}" in message
+    assert "error_type=RuntimeError" in message
+    assert "ACTIVE manifest is required" in message
+
+
+def test_quarantine_ack_failure_logs_cause_and_batch_identity(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    registry = DatasetRegistry.load_argus_v2()
+    batch = manifest(registry, missing_column="metric")
+    service, dependencies = ingest_service(batch=batch)
+    dependencies.queue.ack_failures_remaining = 1
+
+    with caplog.at_level("WARNING", logger="application.ingest_incremental"):
+        result = service.drain(limit=1)
+
+    assert result.retryable == 1
+    assert dependencies.batches.records[batch.batch_id].state is BatchState.QUARANTINED
+    [record] = caplog.records
+    message = record.getMessage()
+    assert "quarantine ack failed" in message
+    assert f"batch_id={batch.batch_id}" in message
+    assert "error_type=" in message
+
+
 def test_metric_publisher_failure_does_not_change_batch_lifecycle_or_ack() -> None:
     class BrokenMetrics(MetricsPublisher):
         def increment(

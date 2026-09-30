@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -36,6 +37,22 @@ from ports import (
 _SUPPORTED_PHYSICAL_TYPE = re.compile(
     r"^(?:BIGINT|INT|TINYINT|DOUBLE|VARCHAR\([1-9][0-9]*\)|TEXT|ENUM\(.*\))$"
 )
+_LOGGER = logging.getLogger(__name__)
+
+
+def _log_failure(step: str, delivery: BatchDelivery, error: BaseException) -> None:
+    """Registra a causa de uma falha engolida no processamento, sem alterar o fluxo."""
+    _LOGGER.warning(
+        "ingest-incremental %s failed batch_id=%s message_id=%s dataset=%s key=%s "
+        "error_type=%s error=%s",
+        step,
+        delivery.batch_id,
+        delivery.message_id,
+        delivery.source_dataset,
+        delivery.reference.key,
+        type(error).__name__,
+        error,
+    )
 
 
 class _PermanentBatchError(ValueError):
@@ -280,7 +297,8 @@ class IngestIncremental:
             )
         try:
             self._queue.ack(delivery)
-        except Exception:
+        except Exception as error:
+            _log_failure("quarantine ack", delivery, error)
             return IngestIncrementalResult(retryable=1)
         return IngestIncrementalResult(quarantined=1)
 
@@ -301,7 +319,8 @@ class IngestIncremental:
         except (TypeError, ValueError, IdempotencyConflict):
             self._queue.ack(delivery)
             return IngestIncrementalResult(quarantined=1)
-        except Exception:
+        except Exception as error:
+            _log_failure("manifest load", delivery, error)
             return IngestIncrementalResult(retryable=1)
 
         try:
@@ -369,7 +388,8 @@ class IngestIncremental:
         except IdempotencyConflict:
             self._queue.ack(delivery)
             return IngestIncrementalResult(quarantined=1)
-        except Exception:
+        except Exception as error:
+            _log_failure("batch processing", delivery, error)
             return self._retryable(batch)
 
     def drain(self, limit: int) -> IngestIncrementalResult:
