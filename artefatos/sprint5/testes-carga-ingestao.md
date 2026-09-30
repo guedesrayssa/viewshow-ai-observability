@@ -4,12 +4,6 @@
 
 &emsp;Este documento aprimora os testes dos requisitos não funcionais realizados na Sprint 3 ([`sprint3/testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)), agora com foco na **API de ingestão** do sistema ARGUS/View Show. Na Sprint 3, os cenários de ingestão (10 mil eventos/minuto, fila cheia e timeout) ficaram **bloqueados**, porque o adaptador de importação respondia `503 FEATURE_UNAVAILABLE` de forma incondicional. Na Sprint 4 o pipeline passou a existir de ponta a ponta: upload multipart ao S3 pela API, task ECS `import-dump`, MySQL efêmero, normalização, publicação no DynamoDB e Parquet/Glue/Athena, outbox e filas SQS com DLQ. Com isso, os cenários que antes só podiam ser planejados passam a ser executáveis contra a stack real.
 
-&emsp;O documento cobre os três itens da entrega:
-
-- **(1) Requisitos não funcionais e planos de teste aprimorados** — Seções 3 e 4, com os cenários de 10 mil eventos/minuto, fila cheia e timeout traduzidos para a arquitetura atual.
-- **(2) Resultados dos testes de carga, com análise de desempenho e resiliência** — Seções 6, 7 e 8.
-- **(3) Visualização de indicadores de observabilidade** (Grafana/Prometheus e CloudWatch) — latência, throughput, erros por segundo, uso de CPU e profundidade de fila — Seção 9.
-
 &emsp;Para cada teste são especificados identificador, objetivo e requisito relacionado, perfil de carga ou falha injetada, pré-condições e dados de entrada, procedimento, métricas coletadas, critérios de sucesso, resultado esperado, resultados medidos, resultado obtido, situação, análise e evidências de reprodução. **Os campos marcados como _A preencher_ devem ser completados após a execução**; nenhum número deste documento deve ser escrito sem um arquivo de evidência correspondente em `assets/`.
 
 &emsp;Os comandos de reprodução foram escritos para um terminal compatível com Bash. Dependendo do sistema operacional, a forma de definir variáveis de ambiente pode mudar.
@@ -27,18 +21,17 @@
 - [Priorização de execução](#priorização-de-execução)
 
 1. [Introdução](#1-introdução)
-2. [Rastreabilidade com os critérios da entrega](#2-rastreabilidade-com-os-critérios-da-entrega)
-3. [Arquitetura sob teste e evolução em relação à Sprint 3](#3-arquitetura-sob-teste-e-evolução-em-relação-à-sprint-3)
-4. [Requisitos não funcionais e planos de teste aprimorados](#4-requisitos-não-funcionais-e-planos-de-teste-aprimorados)
-5. [Ambiente, massa de dados e método](#5-ambiente-massa-de-dados-e-método)
-6. [Testes de carga](#6-testes-de-carga)
-7. [Testes de falha e resiliência](#7-testes-de-falha-e-resiliência)
-8. [Resultados consolidados e análise](#8-resultados-consolidados-e-análise)
-9. [Observabilidade](#9-observabilidade)
-10. [Impacto nas decisões de arquitetura](#10-impacto-nas-decisões-de-arquitetura)
-11. [Limitações](#11-limitações)
-12. [Procedimentos de reprodução](#12-procedimentos-de-reprodução)
-13. [Convenção de evidências](#13-convenção-de-evidências)
+2. [Arquitetura sob teste e evolução em relação à Sprint 3](#2-arquitetura-sob-teste-e-evolução-em-relação-à-sprint-3)
+3. [Requisitos não funcionais e planos de teste aprimorados](#3-requisitos-não-funcionais-e-planos-de-teste-aprimorados)
+4. [Ambiente, massa de dados e método](#4-ambiente-massa-de-dados-e-método)
+5. [Testes de carga](#5-testes-de-carga)
+6. [Testes de falha e resiliência](#6-testes-de-falha-e-resiliência)
+7. [Resultados consolidados e análise](#7-resultados-consolidados-e-análise)
+8. [Observabilidade](#8-observabilidade)
+9. [Impacto nas decisões de arquitetura](#9-impacto-nas-decisões-de-arquitetura)
+10. [Limitações](#10-limitações)
+11. [Procedimentos de reprodução](#11-procedimentos-de-reprodução)
+12. [Convenção de evidências](#12-convenção-de-evidências)
 
 ---
 
@@ -62,7 +55,7 @@
 | Worker de ingestão (plano de dados) | `apps/backend/ingestion-data` — comandos `import-dump`, `ingest-incremental`, `export-incremental`, `publish-outbox` | Valida, normaliza e publica os eventos; é onde a vazão de 10 mil eventos/min é efetivamente medida |
 | Filas | `apps/fullstack/ingestion-messaging.tf` — `*-incremental-batches.fifo` (+ DLQ) e `*-analysis` (+ DLQ, `maxReceiveCount = 5`, `visibility_timeout = 300 s`) | Onde se observa acúmulo (fila cheia), idade da mensagem mais antiga e desvio para DLQ |
 | Persistência | DynamoDB operacional, S3 (staging e arquivo), Glue/Athena | Onde se confere que nenhum evento aceito foi perdido ou duplicado |
-| Observabilidade | `apps/fullstack/observability/` (Prometheus, Grafana, Loki, Tempo, Alloy) e `apps/fullstack/ingestion-observability.tf` (CloudWatch, namespace `<deployment_namespace>/Ingestion`) | Fonte dos indicadores da Seção 9 |
+| Observabilidade | `apps/fullstack/observability/` (Prometheus, Grafana, Loki, Tempo, Alloy) e `apps/fullstack/ingestion-observability.tf` (CloudWatch, namespace `<deployment_namespace>/Ingestion`) | Fonte dos indicadores da Seção 8 |
 
 <div align="center">
 
@@ -100,31 +93,9 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 2. Rastreabilidade com os critérios da entrega
+## 2. Arquitetura sob teste e evolução em relação à Sprint 3
 
-<div align="center">
-
-<strong>Tabela 3: Rastreabilidade entre os critérios da entrega e as seções do artefato</strong>
-
-</div>
-
-| Critério avaliado | Peso | Onde está | Estado |
-| --- | ---: | --- | --- |
-| (1) RNFs e planos de teste aprimorados, com cenários de 10 mil eventos/min, fila cheia e timeout | 3,0 | Seção 3 (mapeamento dos cenários para a arquitetura atual) e Seção 4 (matriz de RNFs e critérios objetivos) | _A preencher_ |
-| (2) Resultados dos testes de carga com análise de desempenho e resiliência | 4,0 | Seções 6 e 7 (execuções), Seção 8 (análise consolidada) e Seção 11 (limitações) | _A preencher_ |
-| (3) Visualização de indicadores de observabilidade (latência, throughput, erros/s, CPU) | 3,0 | Seção 9 (consultas, painéis, capturas e alertas) | _A preencher_ |
-
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
-
-</div>
-
----
-
-## 3. Arquitetura sob teste e evolução em relação à Sprint 3
-
-### 3.1 Fluxo da ingestão
+### 2.1 Fluxo da ingestão
 
 &emsp;A Figura 1 mostra o caminho de um evento desde o arquivo enviado até ficar disponível para consulta, com os pontos onde cada teste mede algo.
 
@@ -161,13 +132,13 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Os estados públicos do `ImportJob` são `PREPARING → UPLOADING → UPLOADED → VALIDATING → PROCESSING → READY` (ou `FAILED`). O processamento expõe os contadores `recordsRead`, `recordsWritten` e `recordsRejected`, que são a base da medição de vazão em eventos.
 
-### 3.2 Tradução dos cenários obrigatórios para a arquitetura atual
+### 2.2 Tradução dos cenários obrigatórios para a arquitetura atual
 
-&emsp;O plano da Sprint 1 supunha uma ingestão HTTP síncrona que respondia `429 queue_full` e `504 dependency_timeout`. A arquitetura implementada é **assíncrona e em lote**: a API só reserva e confirma a importação, e o processamento acontece numa task ECS. A Tabela 4 mostra como cada cenário exigido pela entrega é medido agora. O cenário descrito no enunciado como “abertura de venda de 10 mil eventos/minuto” corresponde, no domínio do View Show, a um **pico de audiência** (estreia, jogo ao vivo), quando o volume de telemetria sobe de uma vez.
+&emsp;O plano da Sprint 1 supunha uma ingestão HTTP síncrona que respondia `429 queue_full` e `504 dependency_timeout`. A arquitetura implementada é **assíncrona e em lote**: a API só reserva e confirma a importação, e o processamento acontece numa task ECS. A Tabela 3 mostra como cada cenário exigido pela entrega é medido agora. O cenário descrito no enunciado como “abertura de venda de 10 mil eventos/minuto” corresponde, no domínio do View Show, a um **pico de audiência** (estreia, jogo ao vivo), quando o volume de telemetria sobe de uma vez.
 
 <div align="center">
 
-<strong>Tabela 4: Mapeamento dos cenários da Sprint 3 para a arquitetura atual</strong>
+<strong>Tabela 3: Mapeamento dos cenários da Sprint 3 para a arquitetura atual</strong>
 
 </div>
 
@@ -187,13 +158,13 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 4. Requisitos não funcionais e planos de teste aprimorados
+## 3. Requisitos não funcionais e planos de teste aprimorados
 
 &emsp;Os requisitos abaixo foram desenvolvidos durante a [Sprint 1](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste). A coluna “Plano aprimorado” atualiza o plano desenvolvido para os testes na Sprint 3 ([Tabela 4 de `testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md#41-requisitos-de-ingestão)).
 
 <div align="center">
 
-<strong>Tabela 5: Requisitos não funcionais da ingestão e planos de teste aprimorados</strong>
+<strong>Tabela 4: Requisitos não funcionais da ingestão e planos de teste aprimorados</strong>
 
 </div>
 
@@ -201,7 +172,7 @@ Fonte: Material produzido pelos autores (2026).
 | --- | --- | --- | --- | --- | --- | --- |
 | RNF01 | Aceitar continuamente 10.000 eventos válidos/min sem perda | Importar uma janela sintética de 150.000 eventos válidos e medir a vazão de processamento; conferir contagem no DynamoDB/Athena | k6 (`ingestao-batch.js`, `MODE=drenagem`) + CloudWatch + consulta de contagem | `recordsWritten = 150.000`; `recordsRejected = 0`; duração de `VALIDATING+PROCESSING` ≤ 900 s (≥ 166,67 eventos/s); 0 duplicados; `checks rate==1` | CG-02, CG-05 | _A preencher_ |
 | RNF02 | Evento disponível para consulta em ≤ 120 s após captura | Marcar `t0` na entrada do lote incremental, `t1` no fim da ingestão e `t2` quando o watermark de `/dashboard/overview` passar de `t0` | k6 (`MODE=frescor`) | `t2 − t0 ≤ 120 s` em 100% das amostras | CG-03 | _A preencher_ |
-| RNF03 | Degradar de forma controlada sob payload inválido, fila sem capacidade e timeout; recuperar sem reinício | Injetar cada falha da Seção 7 sob carga nominal, observar a resposta e depois retirar a falha | k6 + AWS CLI (injeção) + CloudWatch | Falha sempre explícita (`409`/`429`/`503`/`FAILED`/`QUARANTINED`/DLQ); 0 eventos aceitos e não persistidos; recuperação ao patamar de CG-02 sem reinício manual | RS-01 a RS-06 | _A preencher_ |
+| RNF03 | Degradar de forma controlada sob payload inválido, fila sem capacidade e timeout; recuperar sem reinício | Injetar cada falha da Seção 6 sob carga nominal, observar a resposta e depois retirar a falha | k6 + AWS CLI (injeção) + CloudWatch | Falha sempre explícita (`409`/`429`/`503`/`FAILED`/`QUARANTINED`/DLQ); 0 eventos aceitos e não persistidos; recuperação ao patamar de CG-02 sem reinício manual | RS-01 a RS-06 | _A preencher_ |
 | RNF09 | Disponibilidade das APIs ≥ 99,9% | Durante toda a bateria de ingestão, medir erro inesperado nas rotas de import (excluindo `409`/`429`/`503` esperados) | k6 `http_req_failed` | `http_req_failed rate < 0,001` nas rotas `/api/v1/imports*` | CG-01, CG-04 | _A preencher_ |
 | RNF15 | Degradação sinalizada ao operador em ≤ 30 s | Durante RS-01 a RS-05, cronometrar o intervalo entre a injeção da falha e o disparo do alarme correspondente | CloudWatch Alarms / Grafana Alerting | Alarme em estado `ALARM` em ≤ 30 s (registrar o valor real, mesmo que acima) | RS-01 a RS-05 | _A preencher_ |
 
@@ -211,11 +182,11 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### 4.1 O que mudou em relação à Sprint 3
+### 3.1 O que mudou em relação à Sprint 3
 
 <div align="center">
 
-<strong>Tabela 6: Aprimoramentos dos planos de teste</strong>
+<strong>Tabela 5: Aprimoramentos dos planos de teste</strong>
 
 </div>
 
@@ -236,13 +207,13 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 5. Ambiente, massa de dados e método
+## 4. Ambiente, massa de dados e método
 
-### 5.1 Ambiente
+### 4.1 Ambiente
 
 <div align="center">
 
-<strong>Tabela 7: Configuração do ambiente de execução</strong>
+<strong>Tabela 6: Configuração do ambiente de execução</strong>
 
 </div>
 
@@ -270,13 +241,13 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### 5.2 Massa de dados
+### 4.2 Massa de dados
 
 &emsp;Os cenários de volume dependem de dumps sintéticos com quantidade **conhecida** de eventos, para que a contagem final possa ser comparada com a enviada. Cada arquivo deve ter o SHA-256 registrado.
 
 <div align="center">
 
-<strong>Tabela 8: Massa de dados utilizada</strong>
+<strong>Tabela 7: Massa de dados utilizada</strong>
 
 </div>
 
@@ -306,7 +277,7 @@ Fonte: Material produzido pelos autores (2026).
   --manifest ../../../.artifacts/argus-benchmarks/150k/manifest.json
 ```
 
-### 5.3 Método de medição
+### 4.3 Método de medição
 
 - **Vazão de eventos:** `recordsWritten ÷ (instante de READY − instante de entrada em VALIDATING)`, lidos de `GET /api/v1/imports/:importId` por polling a cada `POLL_INTERVAL_S` e confirmados pelos timestamps do `ImportJob` no DynamoDB.
 - **Ausência de perda:** eventos no arquivo = `recordsRead` = `recordsWritten + recordsRejected`; e `recordsWritten` = contagem no DynamoDB para a `candidateVersion` = contagem no Athena para a mesma partição.
@@ -315,20 +286,20 @@ Fonte: Material produzido pelos autores (2026).
 - **Fila:** métricas SQS `ApproximateNumberOfMessagesVisible`, `ApproximateNumberOfMessagesNotVisible` e `ApproximateAgeOfOldestMessage`, período de 1 min.
 - **Respostas esperadas × erro real:** `http.setResponseCallback(http.expectedStatuses(200, 201, 202, 409, 429, 503))` só nos cenários em que esses códigos são a resposta correta; em CG-01 e CG-02 apenas `2xx` é esperado.
 
-### 5.4 Ferramentas e testes reaproveitados
+### 4.4 Ferramentas e testes reaproveitados
 
-&emsp;Como este artefato evolui a Sprint 3, a maior parte da base já existe no repositório. A Tabela 8.1 mostra o que é reaproveitado em cada teste e o que ainda precisa ser feito. Os testes automatizados já existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado. Os testes deste documento repetem o cenário **sob carga e contra a stack real**, medindo tempo, vazão e recuperação.
+&emsp;Como este artefato evolui a Sprint 3, a maior parte da base já existe no repositório. A Tabela 7.1 mostra o que é reaproveitado em cada teste e o que ainda precisa ser feito. Os testes automatizados já existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado. Os testes deste documento repetem o cenário **sob carga e contra a stack real**, medindo tempo, vazão e recuperação.
 
 <div align="center">
 
-<strong>Tabela 8.1: Ferramentas e testes existentes reaproveitados</strong>
+<strong>Tabela 7.1: Ferramentas e testes existentes reaproveitados</strong>
 
 </div>
 
 | Teste | O que já existe | Origem | O que falta |
 | --- | --- | --- | --- |
 | CG-01 | Fluxo real `POST /imports` → DynamoDB + multipart S3 contra a AWS (IT-AWS-05, para em `UPLOADING`) | [`apps/backend/api/tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts) (Sprint 4) | Seguir até `READY` e medir tempos; modo `smoke` no k6 |
-| CG-02 | Modo `drenagem` (janela de 150.000 eventos, threshold `ingestion_drain_seconds p(100)<900`) | [`apps/backend/api/loadtest/k6/ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js) (Sprint 3) | Atualizar o script (ver 5.5) |
+| CG-02 | Modo `drenagem` (janela de 150.000 eventos, threshold `ingestion_drain_seconds p(100)<900`) | [`apps/backend/api/loadtest/k6/ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js) (Sprint 3) | Atualizar o script (ver 4.5) |
 | CG-02 / CG-05 (local) | Benchmark do leitor MySQL com `rowsPerSecond`, p50/p95/p99 por página e verificação de zero ausências/duplicações | [`scripts/benchmark_snapshot_reader.py`](../../apps/backend/ingestion-data/scripts/benchmark_snapshot_reader.py) + [`tests/performance/test_snapshot_reader_benchmark.py`](../../apps/backend/ingestion-data/tests/performance/test_snapshot_reader_benchmark.py) | Rodar com 150k, 300k e 750k linhas como linha de base local |
 | CG-03 | Modo `frescor` (`ingestion_end_to_end_freshness_seconds p(100)<120`, polling em `/dashboard/overview`) | `ingestao-batch.js` (Sprint 3) | Atualizar o script |
 | CG-04 | Exclusão mútua (`409 IMPORT_IN_PROGRESS`) e idempotência, com uma requisição concorrente | UC-IMP-03 em [`tests/gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts) e IT-AWS-05 (Sprint 4) | Modo `pico` no k6 (muitas requisições simultâneas) |
@@ -364,22 +335,22 @@ cd apps/backend/ingestion-data
 
 &emsp;Resultado dos testes existentes nesta rodada: _A preencher_ (ex.: `x/y` aprovados, arquivo em `assets/testes-carga/<data>-ingestao/`).
 
-### 5.5 Pré-requisitos de ferramenta
+### 4.5 Pré-requisitos de ferramenta
 
 - [ ] Atualizar [`loadtest/k6/ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js): os modos `drenagem`, `acumulo` e `frescor` já existem, mas o script da Sprint 3 assume estados em minúsculo (`completed`) e que o contrato não expõe URLs pré-assinadas. Hoje existem `POST /api/v1/imports/:importId/parts` (assinatura de até 20 partes por chamada) e os estados em maiúsculo (`READY`/`FAILED`). _Registrar aqui o que foi alterado._
 - [ ] Criar os modos `smoke` e `pico` e o parâmetro `DUMP` (arquivo a enviar).
 - [ ] Trocar a sessão forjada por login real (`AUTH_USERNAME`/`AUTH_PASSWORD`), como já feito em `consultas.js`.
-- [ ] Criar o dashboard de ingestão no Grafana (Seção 9.3) ou registrar que foi usado o CloudWatch.
+- [ ] Criar o dashboard de ingestão no Grafana (Seção 8.3) ou registrar que foi usado o CloudWatch.
 
 ---
 
-## 6. Testes de carga
+## 5. Testes de carga
 
 ### CG-01 — Smoke da ingestão (linha de base)
 
 <div align="center">
 
-<strong>Tabela 9: Especificação do teste CG-01 — Smoke da ingestão</strong>
+<strong>Tabela 8: Especificação do teste CG-01 — Smoke da ingestão</strong>
 
 </div>
 
@@ -410,7 +381,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 10: Especificação do teste CG-02 — Carga nominal de 10.000 eventos/minuto</strong>
+<strong>Tabela 9: Especificação do teste CG-02 — Carga nominal de 10.000 eventos/minuto</strong>
 
 </div>
 
@@ -425,7 +396,7 @@ Fonte: Material produzido pelos autores (2026).
 | Métricas coletadas | Vazão (eventos/s e eventos/min); duração por estado; CPU/memória/storage da task `import-dump`; consumo de capacidade do DynamoDB; throttling do DynamoDB |
 | Critérios de sucesso | `recordsWritten = 150.000`; `recordsRejected = 0`; contagem DynamoDB = contagem Athena = 150.000; distintos = total; duração `VALIDATING+PROCESSING` ≤ 900 s; nenhum throttling do DynamoDB |
 | Resultado esperado | Vazão ≥ 166,67 eventos/s em todas as 3 repetições |
-| Resultados medidos | Ver Tabela 11 |
+| Resultados medidos | Ver Tabela 10 |
 | Resultado obtido | _A preencher_ |
 | Situação | _A preencher_ |
 | Análise e conclusão | _A preencher (ex.: qual etapa domina a duração — restore do MySQL, normalização, escrita no DynamoDB ou Parquet/Athena; se a CPU ou o disco foi o limitante)_ |
@@ -439,7 +410,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 11: Resultados medidos do CG-02 por repetição</strong>
+<strong>Tabela 10: Resultados medidos do CG-02 por repetição</strong>
 
 </div>
 
@@ -460,7 +431,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 12: Especificação do teste CG-03 — Frescor ponta a ponta</strong>
+<strong>Tabela 11: Especificação do teste CG-03 — Frescor ponta a ponta</strong>
 
 </div>
 
@@ -491,7 +462,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 13: Especificação do teste CG-04 — Pico no plano de controle</strong>
+<strong>Tabela 12: Especificação do teste CG-04 — Pico no plano de controle</strong>
 
 </div>
 
@@ -522,7 +493,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 14: Especificação do teste CG-05 — Volume progressivo</strong>
+<strong>Tabela 13: Especificação do teste CG-05 — Volume progressivo</strong>
 
 </div>
 
@@ -537,7 +508,7 @@ Fonte: Material produzido pelos autores (2026).
 | Métricas coletadas | Vazão por volume; CPU, memória e storage efêmero da task; consumo e throttling do DynamoDB |
 | Critérios de sucesso | Exploratório — sem aprovação/reprovação; registrar o volume em que a vazão cai abaixo de 166,67 eventos/s, se houver |
 | Resultado esperado | Curva volume × vazão e identificação do primeiro recurso a saturar |
-| Resultados medidos | Ver Tabela 15 |
+| Resultados medidos | Ver Tabela 14 |
 | Resultado obtido | _A preencher_ |
 | Situação | _A preencher_ (exploratório) |
 | Análise e conclusão | _A preencher_ |
@@ -551,7 +522,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 15: Resultados do CG-05 por volume</strong>
+<strong>Tabela 14: Resultados do CG-05 por volume</strong>
 
 </div>
 
@@ -569,7 +540,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 7. Testes de falha e resiliência
+## 6. Testes de falha e resiliência
 
 &emsp;Todos os cenários seguem três fases: **nominal** (patamar de CG-02), **falha** (injeção pelo tempo indicado) e **recuperação** (falha retirada, medir o tempo até voltar ao nominal). A injeção deve ser feita apenas na stack de teste e revertida ao final; o comando de reversão deve ficar registrado no campo de evidências.
 
@@ -577,7 +548,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 16: Especificação do teste RS-01 — Fila cheia</strong>
+<strong>Tabela 15: Especificação do teste RS-01 — Fila cheia</strong>
 
 </div>
 
@@ -594,7 +565,7 @@ Fonte: Material produzido pelos autores (2026).
 | Resposta esperada durante a falha | Mensagens acumulam na FIFO; nenhuma vai para a DLQ; API de consulta continua servindo o último watermark |
 | Critérios de sucesso | 0 mensagens na DLQ; contagem final = `N × 150.000`; 0 duplicados; backlog drenado em < `N × 15 min`; nenhum reinício manual |
 | Resultado esperado | Degradação limitada a atraso de frescor, sem perda |
-| Resultados medidos | Ver Tabela 17 |
+| Resultados medidos | Ver Tabela 16 |
 | Resultado obtido | _A preencher_ |
 | Situação | _A preencher_ |
 | Análise e conclusão | _A preencher_ |
@@ -609,7 +580,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 17: Resultados do RS-01 por tamanho de backlog</strong>
+<strong>Tabela 16: Resultados do RS-01 por tamanho de backlog</strong>
 
 </div>
 
@@ -629,7 +600,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 18: Especificação do teste RS-02 — Timeout de dependência</strong>
+<strong>Tabela 17: Especificação do teste RS-02 — Timeout de dependência</strong>
 
 </div>
 
@@ -646,7 +617,7 @@ Fonte: Material produzido pelos autores (2026).
 | Resposta esperada durante a falha | (a) `503 UPLOAD_PREPARATION_FAILED`, job `FAILED`, lock liberado; (b) reconciliador detecta a task parada e marca `FAILED` com mensagem segura; (c) check de timeout reprova explicitamente; nenhum dado parcial ativado |
 | Critérios de sucesso | Nenhum falso sucesso; nenhuma informação interna na mensagem de erro; vaga livre após a falha; nova importação conclui em `READY` com contagem correta, sem reinício manual |
 | Resultado esperado | Falha explícita e recuperação automática nas três variantes |
-| Resultados medidos | Ver Tabela 19 |
+| Resultados medidos | Ver Tabela 18 |
 | Resultado obtido | _A preencher_ |
 | Situação | _A preencher_ |
 | Análise e conclusão | _A preencher_ |
@@ -661,7 +632,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 19: Resultados do RS-02 por variante</strong>
+<strong>Tabela 18: Resultados do RS-02 por variante</strong>
 
 </div>
 
@@ -681,7 +652,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 20: Especificação do teste RS-03 — Payload inválido</strong>
+<strong>Tabela 19: Especificação do teste RS-03 — Payload inválido</strong>
 
 </div>
 
@@ -714,7 +685,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 21: Especificação do teste RS-04 — Reentrega por visibility timeout</strong>
+<strong>Tabela 20: Especificação do teste RS-04 — Reentrega por visibility timeout</strong>
 
 </div>
 
@@ -746,7 +717,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 22: Especificação do teste RS-05 — Mensagem venenosa e DLQ</strong>
+<strong>Tabela 21: Especificação do teste RS-05 — Mensagem venenosa e DLQ</strong>
 
 </div>
 
@@ -779,7 +750,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 23: Especificação do teste RS-06 — Proteções da API</strong>
+<strong>Tabela 22: Especificação do teste RS-06 — Proteções da API</strong>
 
 </div>
 
@@ -809,13 +780,13 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 8. Resultados consolidados e análise
+## 7. Resultados consolidados e análise
 
-### 8.1 Visão geral das execuções
+### 7.1 Visão geral das execuções
 
 <div align="center">
 
-<strong>Tabela 24: Resumo das execuções</strong>
+<strong>Tabela 23: Resumo das execuções</strong>
 
 </div>
 
@@ -839,7 +810,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### 8.2 Análise de desempenho
+### 7.2 Análise de desempenho
 
 &emsp;_A preencher._ Sugestão de roteiro:
 
@@ -848,7 +819,7 @@ Fonte: Material produzido pelos autores (2026).
 - Qual recurso satura primeiro em CG-05 e em que volume.
 - Latência do plano de controle em CG-04 e comparação com a API de consulta da Sprint 3/4.
 
-### 8.3 Análise de resiliência
+### 7.3 Análise de resiliência
 
 &emsp;_A preencher._ Sugestão de roteiro:
 
@@ -858,7 +829,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <div align="center">
 
-<strong>Tabela 25: Resumo de resiliência</strong>
+<strong>Tabela 24: Resumo de resiliência</strong>
 
 </div>
 
@@ -877,11 +848,11 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### 8.4 Comparação com a Sprint 3
+### 7.4 Comparação com a Sprint 3
 
 <div align="center">
 
-<strong>Tabela 26: Comparação com os resultados da Sprint 3</strong>
+<strong>Tabela 25: Comparação com os resultados da Sprint 3</strong>
 
 </div>
 
@@ -900,17 +871,17 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 9. Observabilidade
+## 8. Observabilidade
 
-### 9.1 Fontes de dados
+### 8.1 Fontes de dados
 
 &emsp;A API expõe métricas Prometheus em `/metrics` (`http_request_duration_seconds`, `http_requests_total`, `http_requests_failed_total`, com os rótulos `method`, `route` e `status_code`). As tasks de ingestão não têm porta HTTP; seus indicadores vêm do CloudWatch (Container Insights para CPU/memória/storage, namespace `<deployment_namespace>/Ingestion` para `Runs`, `StageFailures`, `StageDurationMs` e `SchemaDrift`, e `AWS/SQS` para as filas). O Grafana lê as duas fontes.
 
-### 9.2 Indicadores obrigatórios
+### 8.2 Indicadores obrigatórios
 
 <div align="center">
 
-<strong>Tabela 27: Indicadores, consultas e faixas medidas</strong>
+<strong>Tabela 26: Indicadores, consultas e faixas medidas</strong>
 
 </div>
 
@@ -932,7 +903,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### 9.3 Painéis
+### 8.3 Painéis
 
 &emsp;Dashboard utilizado: _A preencher_ (ex.: novo `view-show-ingestao.json` em `apps/fullstack/observability/grafana/provisioning/dashboards/json/`, ou dashboard do CloudWatch). Janela capturada: _A preencher_ UTC.
 
@@ -998,15 +969,15 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### 9.4 Leitura dos painéis à luz das rodadas
+### 8.4 Leitura dos painéis à luz das rodadas
 
-&emsp;_A preencher._ Relacionar cada pico ou platô dos gráficos com a rodada que o causou (horário de início/fim da Tabela 24), como feito na [Seção 10.3 da Sprint 3](../sprint3/testes-carga-inicial.md#103-leitura-dos-painéis-à-luz-das-rodadas). Os painéis devem contar a mesma história dos resumos k6; divergências devem ser explicadas.
+&emsp;_A preencher._ Relacionar cada pico ou platô dos gráficos com a rodada que o causou (horário de início/fim da Tabela 23), como feito na [Seção 10.3 da Sprint 3](../sprint3/testes-carga-inicial.md#103-leitura-dos-painéis-à-luz-das-rodadas). Os painéis devem contar a mesma história dos resumos k6; divergências devem ser explicadas.
 
-### 9.5 Alertas
+### 8.5 Alertas
 
 <div align="center">
 
-<strong>Tabela 28: Alertas avaliados durante os testes</strong>
+<strong>Tabela 27: Alertas avaliados durante os testes</strong>
 
 </div>
 
@@ -1028,13 +999,13 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 10. Impacto nas decisões de arquitetura
+## 9. Impacto nas decisões de arquitetura
 
 &emsp;Esta seção registra como os resultados influenciam — ou confirmam — decisões de arquitetura. Cada linha deve apontar a evidência que a sustenta.
 
 <div align="center">
 
-<strong>Tabela 29: Achados e impacto nas decisões de arquitetura</strong>
+<strong>Tabela 28: Achados e impacto nas decisões de arquitetura</strong>
 
 </div>
 
@@ -1056,7 +1027,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 11. Limitações
+## 10. Limitações
 
 &emsp;_A preencher._ Registrar, no mínimo:
 
@@ -1068,7 +1039,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ---
 
-## 12. Procedimentos de reprodução
+## 11. Procedimentos de reprodução
 
 ```bash
 # 1. Confirmar sessão válida do Learner Lab
@@ -1083,7 +1054,7 @@ terraform -chdir=apps/fullstack plan -input=false \
 terraform -chdir=apps/fullstack apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 #    ... e devolver a 180 antes do RS-06
 
-# 4. Gerar a massa de dados (Seção 5.2)
+# 4. Gerar a massa de dados (Seção 4.2)
 # _A preencher_
 
 # 5. Rodar os cenários (a partir de apps/backend/api/loadtest/k6)
@@ -1108,24 +1079,24 @@ aws cloudwatch get-metric-statistics --namespace AWS/SQS \
 # _A preencher: consulta de COUNT(*) e COUNT(DISTINCT id) por candidateVersion_
 ```
 
-&emsp;Comandos de injeção e reversão de cada falha da Seção 7: _A preencher_.
+&emsp;Comandos de injeção e reversão de cada falha da Seção 6: _A preencher_.
 
 ---
 
-## 13. Convenção de evidências
+## 12. Convenção de evidências
 
 &emsp;As evidências devem ser versionadas em `assets/testes-carga/<AAAA-MM-DD>-ingestao/`, somente com arquivos brutos (a descrição de cada arquivo fica neste documento):
 
 - `resumo-<teste>.json` — resumo do k6 (`--summary-export`) de cada execução;
 - `contagem-<teste>.txt` — saída das consultas de contagem (DynamoDB/Athena);
 - `sqs-<teste>.json`, `cloudwatch-<metrica>-<teste>.json` — séries exportadas;
-- `prometheus/<indicador>.json` — séries dos indicadores da Seção 9;
+- `prometheus/<indicador>.json` — séries dos indicadores da Seção 8;
 - `grafana-<nn>-<indicador>.png` — capturas dos painéis;
-- `ambiente.txt` — versões, commit, imagens e parâmetros da Tabela 7.
+- `ambiente.txt` — versões, commit, imagens e parâmetros da Tabela 6.
 
 <div align="center">
 
-<strong>Tabela 30: Histórico de implementação</strong>
+<strong>Tabela 29: Histórico de implementação</strong>
 
 </div>
 
