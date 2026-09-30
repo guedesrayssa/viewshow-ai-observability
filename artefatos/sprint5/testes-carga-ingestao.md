@@ -288,38 +288,13 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 4.4 Ferramentas e testes reaproveitados
 
-&emsp;Como este artefato evolui a Sprint 3, a maior parte da base já existe no repositório. A Tabela 7.1 mostra o que é reaproveitado em cada teste e o que ainda precisa ser feito. Os testes automatizados já existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado. Os testes deste documento repetem o cenário **sob carga e contra a stack real**, medindo tempo, vazão e recuperação.
+&emsp;Os testes deste documento não foram criados do zero, mas também ainda não estão prontos para executar. A maior parte deles aproveita scripts e testes automatizados produzidos nas Sprints 3 e 4, que precisam ser adaptados à API de ingestão atual antes da primeira rodada. Os testes automatizados existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado; os testes deste documento repetem esses cenários **sob carga e contra a stack real na AWS**, medindo tempo, vazão e recuperação.
 
-<div align="center">
+&emsp;Nos testes de carga, o script k6 [`ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js), criado na Sprint 3, já tem os modos usados na carga nominal de 10 mil eventos/minuto (CG-02), no frescor ponta a ponta (CG-03) e no acúmulo de fila (RS-01). Ele, porém, foi escrito para uma versão anterior do contrato da API: espera estados em minúsculo e não usa a rota que assina as partes do upload. Por isso, precisa ser atualizado, e nele ainda devem ser criados os modos de smoke (CG-01) e de pico de requisições (CG-04). Para o volume progressivo (CG-05), já existe um benchmark local do leitor do dump, que serve como linha de base antes da execução na AWS.
 
-<strong>Tabela 7.1: Ferramentas e testes existentes reaproveitados</strong>
+&emsp;Nos testes de falha, os cenários de timeout de dependência (RS-02), payload inválido (RS-03) e reentrega de mensagens (RS-04) já são cobertos por testes automatizados da API e do worker de ingestão, mas apenas localmente; falta repeti-los com a falha injetada no ambiente real. A proteção contra excesso de requisições (RS-06) já foi medida na API de consulta durante a Sprint 3 e agora precisa ser aplicada às rotas de importação. O único cenário sem nenhuma base existente é o de mensagem venenosa e DLQ (RS-05), que será criado nesta sprint. Os testes de fila cheia e timeout feitos na Sprint 2, sobre a API Flask, ficam apenas como referência histórica, pois não rodam na arquitetura atual.
 
-</div>
-
-| Teste | O que já existe | Origem | O que falta |
-| --- | --- | --- | --- |
-| CG-01 | Fluxo real `POST /imports` → DynamoDB + multipart S3 contra a AWS (IT-AWS-05, para em `UPLOADING`) | [`apps/backend/api/tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts) (Sprint 4) | Seguir até `READY` e medir tempos; modo `smoke` no k6 |
-| CG-02 | Modo `drenagem` (janela de 150.000 eventos, threshold `ingestion_drain_seconds p(100)<900`) | [`apps/backend/api/loadtest/k6/ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js) (Sprint 3) | Atualizar o script (ver 4.5) |
-| CG-02 / CG-05 (local) | Benchmark do leitor MySQL com `rowsPerSecond`, p50/p95/p99 por página e verificação de zero ausências/duplicações | [`scripts/benchmark_snapshot_reader.py`](../../apps/backend/ingestion-data/scripts/benchmark_snapshot_reader.py) + [`tests/performance/test_snapshot_reader_benchmark.py`](../../apps/backend/ingestion-data/tests/performance/test_snapshot_reader_benchmark.py) | Rodar com 150k, 300k e 750k linhas como linha de base local |
-| CG-03 | Modo `frescor` (`ingestion_end_to_end_freshness_seconds p(100)<120`, polling em `/dashboard/overview`) | `ingestao-batch.js` (Sprint 3) | Atualizar o script |
-| CG-04 | Exclusão mútua (`409 IMPORT_IN_PROGRESS`) e idempotência, com uma requisição concorrente | UC-IMP-03 em [`tests/gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts) e IT-AWS-05 (Sprint 4) | Modo `pico` no k6 (muitas requisições simultâneas) |
-| RS-01 | Modo `acumulo` com `BACKLOG_BATCHES` | `ingestao-batch.js` (Sprint 3) | Atualizar o script; exportar métricas SQS |
-| RS-01 (histórico) | Fila cheia com `429 queue_full` induzido por token | [`sprint2/testes-carga/k6/ingestao-resiliencia.js`](../sprint2/testes-carga/k6/ingestao-resiliencia.js) (Flask, arquitetura anterior) | Só referência; não roda na stack atual |
-| RS-02 (a) | Falha do S3 ao preparar multipart → `503 UPLOAD_PREPARATION_FAILED`, job `FAILED`, lock liberado | UC-IMP-06 em `gateway-http.integration.test.ts` (Sprint 4) | Repetir contra a AWS com a falha injetada |
-| RS-02 (b, c) | Retomada após perda de conexão e reinício sem efeito duplicado | [`tests/resilience/test_checkpoint_resume.py`](../../apps/backend/ingestion-data/tests/resilience/test_checkpoint_resume.py), [`test_idempotent_backfill.py`](../../apps/backend/ingestion-data/tests/resilience/test_idempotent_backfill.py), [`test_canonical_first_failures.py`](../../apps/backend/ingestion-data/tests/resilience/test_canonical_first_failures.py); flag `--disconnect-after-page` do benchmark | Parar a task real na AWS e medir o reconciliador |
-| RS-02 (histórico) | Timeout com `504 dependency_timeout` induzido por token | `sprint2/testes-carga/k6/ingestao-resiliencia.js` (Flask) | Só referência |
-| RS-03 | Rejeição de manifesto/schema inválido antes de publicar | [`tests/resilience/test_activation_boundaries.py`](../../apps/backend/ingestion-data/tests/resilience/test_activation_boundaries.py), [`tests/contracts/`](../../apps/backend/ingestion-data/tests/contracts/) | Gerar M-06/M-07 e rodar na AWS |
-| RS-04 | Queda após escrita e reprocessamento sem fato ou evento duplicado | [`tests/resilience/test_incremental_ingest_resume.py`](../../apps/backend/ingestion-data/tests/resilience/test_incremental_ingest_resume.py), [`test_outbox_republish.py`](../../apps/backend/ingestion-data/tests/resilience/test_outbox_republish.py) | Repetir com SQS real e `visibility_timeout` de 300 s |
-| RS-04 / RS-05 | Retentativa com backoff sob throttling do DynamoDB | [`tests/resilience/test_unprocessed_items.py`](../../apps/backend/ingestion-data/tests/resilience/test_unprocessed_items.py) | — |
-| RS-05 | Nenhum teste de DLQ | — | Criar o cenário |
-| RS-06 | Limite de taxa (`429`) medido na API de consulta | [`loadtest/k6/consultas.js`](../../apps/backend/api/loadtest/k6/consultas.js) (Sprint 3) | Aplicar às rotas `/api/v1/imports*` |
-| Observabilidade | Dashboard `View Show — API (RED)`, PromQL dos quatro indicadores e alarmes CloudWatch da ingestão | [`view-show-api.json`](../../apps/fullstack/observability/grafana/provisioning/dashboards/json/view-show-api.json), [`ingestion-observability.tf`](../../apps/fullstack/ingestion-observability.tf) | Filtrar por rota de import; painel de fila e das tasks de ingestão |
-
-<div align="center">
-
-Fonte: Material produzido pelos autores (2026).
-
-</div>
+&emsp;Na observabilidade, o dashboard da API no Grafana e os alarmes da ingestão no CloudWatch já existem, mas ainda precisam de filtros e painéis específicos para as rotas de importação, as filas e as tasks de ingestão. Os ajustes pendentes estão listados na Seção 4.5.
 
 &emsp;Para registrar a execução dos testes automatizados existentes como evidência de apoio:
 
