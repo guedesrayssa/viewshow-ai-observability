@@ -241,15 +241,15 @@ export function EvidenceView() {
               <>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <CardTitle>Hipótese</CardTitle>
-                  {reviewStatus === "pending" ? (
-                    <Badge tone="success" withDot>
-                      {data.hypothesis.confidence}% de confiança
-                    </Badge>
-                  ) : (
+                  {reviewStatus !== "pending" ? (
                     <Badge tone={REVIEW_META[reviewStatus].tone} withDot>
                       {REVIEW_META[reviewStatus].label}
                     </Badge>
-                  )}
+                  ) : data.hypothesis.confidence !== null ? (
+                    <Badge tone="success" withDot>
+                      {data.hypothesis.confidence}% de confiança
+                    </Badge>
+                  ) : null}
                 </div>
 
                 <div>
@@ -260,14 +260,17 @@ export function EvidenceView() {
 
                   {/* A barra de confiança preenche até o grau lido: o número e
                       a barra dizem a mesma coisa, uma para leitura e outra
-                      para comparação rápida entre hipóteses. */}
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
-                    <div
-                      key={data.hypothesis.confidence}
-                      className="track-grow h-full rounded-pill bg-success"
-                      style={{ width: `${data.hypothesis.confidence}%` }}
-                    />
-                  </div>
+                      para comparação rápida entre hipóteses. Sem grau (o
+                      worker pode não pontuar uma hipótese), não há barra. */}
+                  {data.hypothesis.confidence !== null ? (
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-line-subtle">
+                      <div
+                        key={data.hypothesis.confidence}
+                        className="track-grow h-full rounded-pill bg-success"
+                        style={{ width: `${data.hypothesis.confidence}%` }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
                 <div>

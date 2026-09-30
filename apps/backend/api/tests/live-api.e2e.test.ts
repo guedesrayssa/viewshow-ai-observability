@@ -34,6 +34,17 @@ const hypothesisKey = {
   pk: "INC#inc_e2e",
   sk: "INCIDENT#inc_e2e#HYPOTHESIS#hyp_e2e",
 };
+// Minimal incident the worker would have written under trace-index, so the
+// review/reanalyze existence check (bundle()) finds it: what this test
+// exercises is the write FEATURE being unavailable, not the incident lookup.
+const incidentItem = {
+  pk: `DATASET#${activeDatasetItem.activeDatasetVersion as string}#INCIDENT#inc_e2e`,
+  sk: "META",
+  itemType: "incident",
+  id: "inc_e2e",
+  incidentId: "inc_e2e",
+  trace_id: "inc_e2e",
+};
 // require-active-dataset.ts usa esta mensagem, e só ela, quando o ponteiro
 // ACTIVE está ausente, ilegível ou fora do contrato consumido.
 const absentPointerMessage =
@@ -269,6 +280,9 @@ describe.skipIf(process.env.RUN_LIVE_E2E !== "true")(
         throw new Error("DynamoDB document client was not initialized");
       await documentClient.send(
         new PutCommand({ TableName: tableName, Item: activeDatasetItem }),
+      );
+      await documentClient.send(
+        new PutCommand({ TableName: tableName, Item: incidentItem }),
       );
       const session = new SessionCodec(authSecret).issue({
         id: "usr_e2e",
