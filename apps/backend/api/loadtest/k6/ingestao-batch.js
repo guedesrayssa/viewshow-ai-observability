@@ -1,332 +1,492 @@
 /**
- * Drenagem, acúmulo e frescor ponta a ponta da Ingestão (RNF01/RNF02/RNF03) —
- * PREPARADO, NÃO EXECUTA DE PONTA A PONTA HOJE.
+ * Testes de carga e resiliência da API de ingestão (Sprint 5) — ver
+ * artefatos/sprint5/testes-carga-ingestao.md.
  *
- * POR QUE NÃO RODA HOJE: as rotas HTTP de import existem em src/app.ts (POST
- * /api/v1/imports, POST /api/v1/imports/:id/complete, GET /api/v1/imports/:id
- * — ver public-routes.ts), mas o adaptador por trás delas
- * (`UnavailableImportControl`) é fail-closed por construção: toda chamada
- * autenticada e com corpo válido responde incondicionalmente 503
- * FEATURE_UNAVAILABLE ("a importação requer S3 e uma tarefa de ingestão
- * configurados"), documentado em apps/backend/README.md — deliberado, não um
- * bug. `setup()` abaixo prova esse estado contra o BASE_URL real antes de
- * rodar qualquer cenário e aborta com mensagem clara caso contrário.
+ * Fluxo real de uma importação (contracts/src/index.ts e src/app.ts):
+ *   1. POST /api/v1/imports {fileName, sizeBytes, snapshotExtractedOn}
+ *      + header Idempotency-Key → 201, estado UPLOADING (ou 409
+ *      IMPORT_IN_PROGRESS com details.importId quando já existe uma ativa).
+ *   2. POST /api/v1/imports/:id/parts {parts:[{partNumber, checksumSha256}]}
+ *      (até 20 por chamada) → URLs pré-assinadas + headers do S3.
+ *   3. PUT de cada parte de 16 MiB direto no S3 → ETag.
+ *   4. POST /api/v1/imports/:id/complete {parts:[{partNumber, etag,
+ *      checksumSha256}]} + Idempotency-Key → 202.
+ *   5. GET /api/v1/imports/:id até READY ou FAILED. `progress` (kind
+ *      "stage") traz recordsRead/recordsWritten/recordsRejected.
+ *   6. (opcional, ACTIVATE=true) POST /api/v1/imports/:id/activate.
  *
- * A arquitetura aprovada define a Ingestão como uma tarefa ECS Fargate sem
- * porta HTTP (lê ARGUS/MySQL via `sync`/`backfill`); o único ponto de entrada
- * HTTP é o Backend disparando essa tarefa (upload do dump pro S3 → RunTask →
- * ImportJob acompanhado até completed/failed). `dashboard-queries.ts` já
- * assume que "o pipeline batch atual não possui fila" (rejeita
- * flowMetric=queue_depth com 422).
+ * Não existe rota para cancelar uma importação, e um upload abandonado
+ * segura a trava por 24 h (uploadExpiresAt). Por isso os modos que criam uma
+ * importação sem concluí-la (pico e limite) a concluem no teardown com o
+ * DUMP informado, liberando a vaga para o teste seguinte.
  *
- * ACHADO A LEMBRAR (fora do escopo do k6): os três handlers de import em
- * src/app.ts nunca chamam `response.json()`/`.end()` no caminho de sucesso —
- * invisível hoje porque o adaptador sempre lança antes de chegar lá, mas vai
- * travar a requisição sem resposta no dia em que o adaptador real resolver
- * sem lançar.
+ * MODOS
+ *   smoke    (CG-01) uma importação pequena de ponta a ponta.
+ *   drenagem (CG-02 / CG-05) uma importação de DUMP; mede duração por
+ *            estado, vazão em eventos/s e confere EXPECTED_EVENTS.
+ *   pico     (CG-04) rajada ramping-arrival-rate: 20% POST /imports,
+ *            70% GET /imports/:id, 10% GET /imports. Exatamente um 201.
+ *   limite   (RS-06) nominal 1 req/s → rajada BURST_RATE req/s → pausa →
+ *            recuperação 1 req/s, com uma importação ativa.
+ *   frescor  (CG-03) polling em /dashboard/overview até
+ *            meta.freshness[].observedThrough ≥ EXPECT_OBSERVED_THROUGH;
+ *            o lote é publicado antes por
+ *            apps/backend/ingestion-data/scripts/publish_incremental_batch.py.
  *
- * O QUE CADA CENÁRIO MEDE (requisito: 10.000 eventos/min por 15 min = 150.000
- * eventos por janela; como a Ingestão é batch, não streaming, "drenagem" é
- * "quanto tempo uma janela de 150 mil registros leva para ficar consultável",
- * não uma fila HTTP esvaziando):
- *   drenagem — dispara uma importação representando a janela de 150 mil
- *     eventos (EVENT_RATE × WINDOW_MINUTES) e mede o tempo até o ImportJob
- *     chegar a "completed". Threshold: bem abaixo de WINDOW_MINUTES.
- *   acumulo — dispara BACKLOG_BATCHES janelas em sequência rápida (2, 3 ou 4,
- *     via -e BACKLOG_BATCHES=N), simulando atraso represado ("fila cheia"
- *     nesta arquitetura), e mede o tempo até processar todas e alcançar o
- *     watermark mais recente.
- *   frescor — dispara uma importação, marca t0, espera o ImportJob concluir
- *     (t1) e faz polling em /api/v1/dashboard/overview até o watermark
- *     (`meta.freshness[].observedThrough`) avançar além de t0 (t2). Reporta
- *     ingestion_duration (t1-t0) e frescor ponta a ponta (t2-t0).
- * Timeout de dependência é modelado por `POLL_TIMEOUT_S`: se o ImportJob não
- * chegar a "completed" dentro da janela, o check de timeout reprova
- * explicitamente em vez de travar o run.
+ * USO (a partir de apps/backend/api/loadtest/k6)
+ *   export BASE_URL=<api_url_https> AUTH_USERNAME=<email> AUTH_PASSWORD=<senha>
+ *   k6 run -e MODE=smoke    -e DUMP=<M-01> -e EXPECTED_EVENTS=<n> ingestao-batch.js
+ *   k6 run -e MODE=drenagem -e DUMP=<M-02> -e EXPECTED_EVENTS=150000 -e RUN_LABEL=cg02-r1 ingestao-batch.js
+ *   k6 run -e MODE=pico     -e DUMP=<M-01> -e PEAK_RATE=50 ingestao-batch.js
+ *   k6 run -e MODE=limite   -e DUMP=<M-01> -e BURST_RATE=20 ingestao-batch.js
+ *   k6 run -e MODE=frescor  -e T0=<ISO> -e EXPECT_OBSERVED_THROUGH=<ISO> ingestao-batch.js
  *
- * FORMATO DA RESPOSTA: segue `apps/backend/api/contracts/openapi/
- * public.openapi.json` à risca (achado de revisão: uma versão anterior deste
- * script supunha 202/`data.importId`/status maiúsculo sem checar o contrato
- * publicado) — POST /imports responde **201** com `data.id`; POST
- * /imports/:id/complete responde **202** com `data.status: "queued"`; GET
- * /imports/:id devolve `data.status` em **minúsculo**
- * (`created|uploading|queued|processing|completed|failed`).
- *
- * PRÉ-CONDIÇÃO DE EXECUÇÃO: `ImportStartData` precisa expor URLs pré-assinadas
- * (upload.parts[].url) para que o cliente envie os bytes ao S3. O contrato
- * atual não expõe essas URLs e, por isso, o cenário falha explicitamente com
- * uma mensagem acionável; nenhum ETag fictício é aceito como sucesso.
- *
- * USO (quando o adaptador de import sair do estado fail-closed):
- *   k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<32+ chars> -e MODE=drenagem ingestao-batch.js
- *   k6 run -e BASE_URL=... -e AUTH_COOKIE_SECRET=... -e MODE=acumulo -e BACKLOG_BATCHES=3 ingestao-batch.js
- *   k6 run -e BASE_URL=... -e AUTH_COOKIE_SECRET=... -e MODE=frescor ingestao-batch.js
+ * Sem AUTH_USERNAME/AUTH_PASSWORD, cai para o cookie forjado de
+ * lib/session.js (exige AUTH_COOKIE_SECRET), útil só contra a API local.
  */
 
 import http from "k6/http";
+import crypto from "k6/crypto";
 import { check, sleep } from "k6";
-import { Trend, Counter } from "k6/metrics";
-import { forgeSessionCookie, authParams } from "./lib/session.js";
+import exec from "k6/execution";
+import { Counter, Rate, Trend } from "k6/metrics";
+import { forgeSessionCookie, loginSessionCookie, requestIdHeader } from "./lib/session.js";
 
 const BASE_URL = __ENV.BASE_URL;
-const MODE = __ENV.MODE || "drenagem";
-const EVENT_RATE = Number(__ENV.EVENT_RATE || 10000); // eventos/min, requisito de negócio
-const WINDOW_MINUTES = Number(__ENV.WINDOW_MINUTES || 15);
-const BATCH_SIZE = EVENT_RATE * WINDOW_MINUTES; // 150.000 por padrão
-const BACKLOG_BATCHES = Number(__ENV.BACKLOG_BATCHES || 1);
+const MODE = __ENV.MODE || "smoke";
+const MODES = ["smoke", "drenagem", "pico", "limite", "frescor"];
+const RUN_LABEL = __ENV.RUN_LABEL || MODE;
+const PART_SIZE = 16 * 1024 * 1024; // igual a PART_SIZE da API
+const SIGN_WINDOW = 20; // máximo de partes por POST /parts
+const FILE_NAME = "argus_dump.sql.gz"; // único nome .sql.gz aceito pelo contrato
+const SNAPSHOT_EXTRACTED_ON = __ENV.SNAPSHOT_EXTRACTED_ON || new Date().toISOString().slice(0, 10);
+const EXPECTED_EVENTS = __ENV.EXPECTED_EVENTS ? Number(__ENV.EXPECTED_EVENTS) : null;
+const WINDOW_SECONDS = Number(__ENV.WINDOW_SECONDS || 900); // janela de 15 min
+const NOMINAL_EVENTS_PER_SECOND = 10000 / 60; // 166,67 eventos/s (RNF01)
 const POLL_INTERVAL_S = Number(__ENV.POLL_INTERVAL_S || 5);
-const POLL_TIMEOUT_S = Number(__ENV.POLL_TIMEOUT_S || WINDOW_MINUTES * 60 * 2);
+const POLL_TIMEOUT_S = Number(__ENV.POLL_TIMEOUT_S || 3600);
+const ACTIVATE = __ENV.ACTIVATE === "true";
+const PEAK_RATE = Number(__ENV.PEAK_RATE || 50);
+const BURST_RATE = Number(__ENV.BURST_RATE || 20);
+const COOLDOWN_S = Number(__ENV.COOLDOWN_S || 60);
 
-// Paths conferidos contra contracts/openapi/public.openapi.json. As env vars
-// de override continuam disponíveis para quando/se o contrato mudar de novo.
-const ENDPOINTS = {
-  importTrigger: __ENV.IMPORT_TRIGGER_PATH || "/api/v1/imports",
-  importComplete: (id) => `/api/v1/imports/${id}/complete`,
-  importStatus: (id) => (__ENV.IMPORT_STATUS_PATH || "/api/v1/imports/:id").replace(":id", id),
-  monitoring: __ENV.MONITORING_PATH || "/api/v1/monitoring/overview",
-  overview: "/api/v1/dashboard/overview",
-};
+if (!BASE_URL) throw new Error("Faltou -e BASE_URL=<url da API>");
+if (!MODES.includes(MODE)) throw new Error(`MODE inválido. Use: ${MODES.join(", ")}`);
 
-if (!BASE_URL) throw new Error("Faltou -e BASE_URL=http://<host>:3000");
-if (!["drenagem", "acumulo", "frescor"].includes(MODE)) {
-  throw new Error("MODE inválido. Use: drenagem, acumulo ou frescor");
+// open() só funciona no contexto de inicialização; o arquivo é lido uma vez
+// por VU. Os modos de rajada usam o DUMP apenas no teardown.
+const NEEDS_DUMP = MODE !== "frescor";
+if (NEEDS_DUMP && !__ENV.DUMP) throw new Error(`MODE=${MODE} exige -e DUMP=<caminho do argus_dump.sql.gz>`);
+const DUMP = NEEDS_DUMP ? open(__ENV.DUMP, "b") : null;
+
+if (MODE === "frescor" && (!__ENV.T0 || !__ENV.EXPECT_OBSERVED_THROUGH)) {
+  throw new Error("MODE=frescor exige -e T0=<ISO da publicação> e -e EXPECT_OBSERVED_THROUGH=<ISO do fim da janela>");
 }
-if (!Number.isInteger(BACKLOG_BATCHES) || BACKLOG_BATCHES < 1 || BACKLOG_BATCHES > 4) {
-  throw new Error("BACKLOG_BATCHES deve ser um inteiro entre 1 e 4 (requisito: 2, 3 ou 4 lotes)");
-}
 
-const drenagemSegundos = new Trend("ingestion_drain_seconds", true);
-const frescorSegundos = new Trend("ingestion_end_to_end_freshness_seconds", true);
-const janelasCompletadas = new Counter("ingestion_windows_completed");
+// ---------------------------------------------------------------- métricas
+const stateSeconds = new Trend("ingestion_state_seconds", true); // tag: state
+const uploadSeconds = new Trend("ingestion_upload_seconds", true);
+const processingSeconds = new Trend("ingestion_processing_seconds", true); // UPLOADED → READY
+const totalSeconds = new Trend("ingestion_total_seconds", true); // POST /imports → READY
+const eventsPerSecond = new Trend("ingestion_events_per_second");
+const recordsWritten = new Counter("ingestion_records_written");
+const recordsRejected = new Counter("ingestion_records_rejected");
+const importsCreated = new Counter("imports_created_201");
+const importsConflict = new Counter("imports_conflict_409");
+const rateLimited = new Counter("rate_limited_429");
+const unexpected5xx = new Counter("unexpected_5xx");
+const recovery2xx = new Rate("recovery_2xx_rate");
+const firstOkAfterBurst = new Trend("time_to_first_2xx_after_burst_seconds", true);
+const freshnessSeconds = new Trend("ingestion_end_to_end_freshness_seconds", true);
 
-export const options = {
-  // Um cenário de UMA iteração: o "tráfego" aqui não é taxa de requisições,
-  // é o tempo de processamento de janelas inteiras — não faz sentido em
-  // arrival-rate. A carga de 150 mil eventos está no payload/parâmetro da
-  // importação, não em VUs concorrentes.
-  scenarios: {
-    [MODE]: { executor: "shared-iterations", vus: 1, iterations: 1, maxDuration: `${POLL_TIMEOUT_S + 60}s` },
-  },
-  thresholds: {
-    ...(MODE === "drenagem"
-      ? { ingestion_drain_seconds: [`p(100)<${WINDOW_MINUTES * 60}`] } // "bem antes dos 15 min"
-      : {}),
-    ...(MODE === "frescor" ? { ingestion_end_to_end_freshness_seconds: ["p(100)<120"] } : {}),
-    http_req_failed: ["rate<0.001"],
-    checks: ["rate==1"],
-  },
-};
+// ------------------------------------------------------------------ opções
+const baseThresholds = { checks: ["rate==1"] };
 
-/** Corpo válido de POST /imports (startImportBodySchema) para uso no probe e
- *  em cada disparo — sha256 fake de 64 hex chars só para passar a validação. */
-function importBody(label) {
+function scenariosFor(mode) {
+  if (mode === "pico") {
+    return {
+      pico: {
+        executor: "ramping-arrival-rate",
+        startRate: 0,
+        timeUnit: "1s",
+        preAllocatedVUs: Math.max(10, PEAK_RATE),
+        maxVUs: Math.max(50, PEAK_RATE * 4),
+        stages: [
+          { target: PEAK_RATE, duration: "30s" },
+          { target: PEAK_RATE, duration: "2m" },
+          { target: 0, duration: "30s" },
+        ],
+      },
+    };
+  }
+  if (mode === "limite") {
+    const phase = (name, rate, start, duration) => ({
+      executor: "constant-arrival-rate",
+      rate,
+      timeUnit: "1s",
+      duration,
+      startTime: start,
+      preAllocatedVUs: Math.max(5, rate),
+      maxVUs: Math.max(20, rate * 4),
+      tags: { fase: name },
+      env: { FASE: name },
+    });
+    return {
+      nominal: phase("nominal", 1, "0s", "60s"),
+      rajada: phase("rajada", BURST_RATE, "60s", "60s"),
+      resfriamento: phase("resfriamento", 1, "120s", `${COOLDOWN_S}s`),
+      recuperacao: phase("recuperacao", 1, `${120 + COOLDOWN_S}s`, "60s"),
+    };
+  }
   return {
-    fileName: `k6-${label}.ndjson`,
-    sizeBytes: BATCH_SIZE * 200, // estimativa; não é validado além de positivo
-    sha256: "0".repeat(64),
-    partCount: 1,
+    [mode]: { executor: "shared-iterations", vus: 1, iterations: 1, maxDuration: `${POLL_TIMEOUT_S + 600}s` },
   };
 }
 
-/**
- * Confirma o estado real do endpoint de import antes de gastar qualquer
- * carga. A rota EXISTE hoje (ao contrário do que uma versão anterior deste
- * script assumia), mas o adaptador (UnavailableImportControl) é fail-closed
- * incondicional: 503 FEATURE_UNAVAILABLE é o resultado esperado enquanto S3 e
- * a tarefa de ingestão não forem configurados — o script aborta com mensagem
- * clara nesse caso. 404 significa que a rota mudou de novo (contrato
- * divergente deste script). Qualquer outra resposta indica que o adaptador
- * saiu do estado fail-closed — hora de revisar as suposições no cabeçalho.
- */
-function probeImportEndpoint(cookie) {
-  const res = http.post(
-    `${BASE_URL}${ENDPOINTS.importTrigger}`,
-    JSON.stringify(importBody("probe")),
-    authParams(cookie, { name: "probe import endpoint" }, "k6-ingestao"),
-  );
-  let code = null;
-  try { code = res.json("error.code"); } catch { /* corpo não é o envelope de erro */ }
-  if (res.status === 503 && code === "FEATURE_UNAVAILABLE") {
-    throw new Error(
-      `${ENDPOINTS.importTrigger} existe mas está fail-closed (503 FEATURE_UNAVAILABLE: ` +
-        '"a importação requer S3 e uma tarefa de ingestão configurados"). ' +
-        "Isso é deliberado (UnavailableImportControl em src/modules/imports/adapters/, " +
-        "ver apps/backend/README.md) até o adaptador real ser configurado. Este script " +
-        "fica pronto para quando isso acontecer — nada a fazer aqui até lá.",
-    );
+function thresholdsFor(mode) {
+  if (mode === "smoke") return { ...baseThresholds, http_req_failed: ["rate==0"] };
+  if (mode === "drenagem") {
+    return {
+      ...baseThresholds,
+      http_req_failed: ["rate==0"],
+      ingestion_processing_seconds: [`max<=${WINDOW_SECONDS}`],
+      ingestion_events_per_second: [`min>=${NOMINAL_EVENTS_PER_SECOND.toFixed(2)}`],
+    };
   }
-  if (res.status === 404) {
-    throw new Error(
-      `${ENDPOINTS.importTrigger} respondeu 404 — a rota pode ter mudado de novo. ` +
-        "Confira apps/backend/api/src/http/public-routes.ts antes de assumir que este " +
-        "script está desatualizado por outro motivo.",
-    );
+  if (mode === "pico") {
+    return {
+      imports_created_201: ["count==1"],
+      unexpected_5xx: ["count==0"],
+      "http_req_duration{metodo:GET}": ["p(95)<2000"],
+    };
+  }
+  if (mode === "limite") {
+    return {
+      unexpected_5xx: ["count==0"],
+      imports_created_201: ["count==0"],
+      recovery_2xx_rate: ["rate==1"],
+    };
+  }
+  return { ...baseThresholds, ingestion_end_to_end_freshness_seconds: ["max<=120"] };
+}
+
+export const options = {
+  scenarios: scenariosFor(MODE),
+  thresholds: thresholdsFor(MODE),
+  setupTimeout: "10m",
+  teardownTimeout: `${POLL_TIMEOUT_S + 600}s`,
+};
+
+// 409 e 429 são respostas corretas nos modos de rajada; não contam como erro.
+http.setResponseCallback(
+  MODE === "pico" || MODE === "limite"
+    ? http.expectedStatuses({ min: 200, max: 299 }, 409, 429)
+    : http.expectedStatuses({ min: 200, max: 299 }),
+);
+
+// ---------------------------------------------------------------- auxiliares
+function authenticate() {
+  if (__ENV.AUTH_USERNAME && __ENV.AUTH_PASSWORD) {
+    return loginSessionCookie(BASE_URL, __ENV.AUTH_USERNAME, __ENV.AUTH_PASSWORD);
+  }
+  return forgeSessionCookie({ role: "engineer" });
+}
+
+function params(cookie, name, extraHeaders = {}) {
+  return {
+    headers: {
+      Cookie: `session=${cookie}`,
+      "Content-Type": "application/json",
+      ...requestIdHeader(`k6-ingestao-${MODE}`),
+      ...extraHeaders,
+    },
+    tags: { name, metodo: name.split(" ")[0] },
+  };
+}
+
+function idempotencyKey(action) {
+  return `k6-${RUN_LABEL}-${action}-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+}
+
+function json(res, path) {
+  try {
+    return res.json(path);
+  } catch {
+    return undefined;
   }
 }
 
+function track(res) {
+  if (res.status === 409) importsConflict.add(1);
+  if (res.status === 429) rateLimited.add(1);
+  // 503 FEATURE_UNAVAILABLE/UPLOAD_PREPARATION_FAILED são falhas explícitas;
+  // qualquer outro 5xx é erro inesperado.
+  if (res.status >= 500 && res.status !== 503) unexpected5xx.add(1);
+}
+
+function startImport(cookie, sizeBytes, { count = true } = {}) {
+  const res = http.post(
+    `${BASE_URL}/api/v1/imports`,
+    JSON.stringify({ fileName: FILE_NAME, sizeBytes, snapshotExtractedOn: SNAPSHOT_EXTRACTED_ON }),
+    params(cookie, "POST /imports", { "Idempotency-Key": idempotencyKey("start") }),
+  );
+  if (count) {
+    track(res);
+    if (res.status === 201) importsCreated.add(1);
+  }
+  return res;
+}
+
+function getImport(cookie, importId) {
+  const res = http.get(`${BASE_URL}/api/v1/imports/${importId}`, params(cookie, "GET /imports/:id"));
+  track(res);
+  return res;
+}
+
+/** Espera sair de PREPARING (a API normalmente já responde em UPLOADING). */
+function waitUploading(cookie, importId) {
+  const deadline = Date.now() + 120 * 1000;
+  while (Date.now() < deadline) {
+    const state = json(getImport(cookie, importId), "data.state");
+    if (state === "UPLOADING") return true;
+    if (state === "FAILED") return false;
+    sleep(1);
+  }
+  return false;
+}
+
+/** Assina, envia e confirma todas as partes do DUMP. Devolve a resposta do complete. */
+function uploadAndComplete(cookie, importId) {
+  const total = DUMP.byteLength;
+  const partCount = Math.ceil(total / PART_SIZE);
+  const manifest = [];
+  const t0 = Date.now();
+  for (let first = 1; first <= partCount; first += SIGN_WINDOW) {
+    const window = [];
+    for (let n = first; n < first + SIGN_WINDOW && n <= partCount; n += 1) {
+      const body = DUMP.slice((n - 1) * PART_SIZE, Math.min(n * PART_SIZE, total));
+      window.push({ partNumber: n, body, checksumSha256: crypto.sha256(body, "base64") });
+    }
+    const signed = http.post(
+      `${BASE_URL}/api/v1/imports/${importId}/parts`,
+      JSON.stringify({ parts: window.map(({ partNumber, checksumSha256 }) => ({ partNumber, checksumSha256 })) }),
+      params(cookie, "POST /imports/:id/parts"),
+    );
+    track(signed);
+    if (!check(signed, { "partes assinadas (200)": (r) => r.status === 200 })) return null;
+    const urls = new Map((json(signed, "data.parts") || []).map((p) => [p.partNumber, p]));
+    for (const part of window) {
+      const target = urls.get(part.partNumber);
+      if (!target) throw new Error(`A API não assinou a parte ${part.partNumber}`);
+      const put = http.put(target.url, part.body, { headers: target.headers, tags: { name: "PUT parte S3", metodo: "PUT" } });
+      const etag = put.headers.Etag || put.headers.ETag || put.headers.etag;
+      if (!check(put, { "parte enviada ao S3 com ETag": (r) => r.status === 200 && Boolean(etag) })) return null;
+      manifest.push({ partNumber: part.partNumber, etag, checksumSha256: part.checksumSha256 });
+    }
+  }
+  uploadSeconds.add((Date.now() - t0) / 1000);
+  const completed = http.post(
+    `${BASE_URL}/api/v1/imports/${importId}/complete`,
+    JSON.stringify({ parts: manifest }),
+    params(cookie, "POST /imports/:id/complete", { "Idempotency-Key": idempotencyKey("complete") }),
+  );
+  track(completed);
+  check(completed, { "complete aceito (202)": (r) => r.status === 202 });
+  return completed;
+}
+
+/**
+ * Faz polling até READY/FAILED registrando quanto tempo cada estado durou e
+ * o último progresso observado. Devolve { state, progress, error, since }.
+ */
+function waitTerminal(cookie, importId) {
+  const deadline = Date.now() + POLL_TIMEOUT_S * 1000;
+  let current = null;
+  let enteredAt = Date.now();
+  const enteredState = {};
+  let last = null;
+  while (Date.now() < deadline) {
+    const res = getImport(cookie, importId);
+    const data = json(res, "data");
+    if (data && data.state !== current) {
+      const now = Date.now();
+      if (current) stateSeconds.add((now - enteredAt) / 1000, { state: current });
+      current = data.state;
+      enteredAt = now;
+      enteredState[current] = now;
+    }
+    last = data || last;
+    if (current === "READY" || current === "FAILED") break;
+    sleep(POLL_INTERVAL_S);
+  }
+  return { state: current, progress: last && last.progress, error: last && last.error, enteredState };
+}
+
+/** Importação completa de ponta a ponta com o DUMP. Usada por smoke, drenagem e teardowns. */
+function runImport(cookie, label) {
+  const t0 = Date.now();
+  const started = startImport(cookie, DUMP.byteLength);
+  if (!check(started, { [`${label}: importação criada (201)`]: (r) => r.status === 201 })) {
+    console.error(`${label}: POST /imports → ${started.status} ${started.body}`);
+    return null;
+  }
+  const importId = json(started, "data.importId");
+  if (!waitUploading(cookie, importId)) {
+    check(null, { [`${label}: importação chegou a UPLOADING`]: () => false });
+    return { importId };
+  }
+  return finishImport(cookie, importId, label, t0);
+}
+
+function finishImport(cookie, importId, label, t0 = Date.now()) {
+  const completed = uploadAndComplete(cookie, importId);
+  if (!completed || completed.status !== 202) return { importId };
+  const uploadedAt = Date.now();
+  const result = waitTerminal(cookie, importId);
+  const ok = check(result, { [`${label}: importação terminou em READY`]: (r) => r.state === "READY" });
+  if (!ok) console.error(`${label}: estado final ${result.state} ${JSON.stringify(result.error)}`);
+  if (result.state === "READY") {
+    const processing = (Date.now() - uploadedAt) / 1000;
+    processingSeconds.add(processing);
+    totalSeconds.add((Date.now() - t0) / 1000);
+    const progress = result.progress && result.progress.kind === "stage" ? result.progress : null;
+    if (progress) {
+      recordsWritten.add(progress.recordsWritten);
+      recordsRejected.add(progress.recordsRejected);
+      eventsPerSecond.add(progress.recordsWritten / processing);
+      check(progress, { [`${label}: nenhum evento rejeitado`]: (p) => p.recordsRejected === 0 });
+      if (EXPECTED_EVENTS !== null) {
+        check(progress, {
+          [`${label}: recordsWritten = ${EXPECTED_EVENTS}`]: (p) => p.recordsWritten === EXPECTED_EVENTS,
+        });
+      }
+    }
+    if (ACTIVATE) {
+      const activated = http.post(
+        `${BASE_URL}/api/v1/imports/${importId}/activate`,
+        "{}",
+        params(cookie, "POST /imports/:id/activate", { "Idempotency-Key": idempotencyKey("activate") }),
+      );
+      check(activated, { [`${label}: dataset ativado (200)`]: (r) => r.status === 200 });
+    }
+  }
+  return { importId, ...result };
+}
+
+/** Descobre a importação ativa, se houver, provocando um 409. Fora das métricas do teste. */
+function activeImportId(cookie) {
+  const res = startImport(cookie, DUMP.byteLength, { count: false });
+  if (res.status === 201) return { importId: json(res, "data.importId"), createdByUs: true };
+  if (res.status === 409) return { importId: json(res, "error.details.importId"), createdByUs: false };
+  throw new Error(`Não foi possível descobrir a importação ativa: ${res.status} ${res.body}`);
+}
+
+// ------------------------------------------------------------------ ciclo
 export function setup() {
-  const cookie = forgeSessionCookie({ role: "engineer" });
-  probeImportEndpoint(cookie);
+  const cookie = authenticate();
+  if (MODE === "limite") {
+    // Pré-condição do RS-06: uma importação ativa durante a rajada.
+    const { importId, createdByUs } = activeImportId(cookie);
+    return { cookie, importId, createdByUs };
+  }
   return { cookie };
 }
 
-/** Dispara uma janela de importação. POST /imports (StartImportRequest). */
-function triggerImport(cookie, label) {
-  return http.post(
-    `${BASE_URL}${ENDPOINTS.importTrigger}`,
-    JSON.stringify(importBody(label)),
-    authParams(cookie, { name: "POST /imports", label }, "k6-ingestao"),
-  );
-}
-
-/** Completa o multipart somente quando o backend fornece URLs reais. */
-function completeImport(cookie, importId, upload, label) {
-  if (!upload || !Array.isArray(upload.parts) || upload.parts.length === 0) {
-    throw new Error(
-      "Importação iniciou sem upload.parts[].url: o contrato atual não permite " +
-        "enviar bytes ao S3; configure o adaptador real antes de executar o cenário.",
-    );
-  }
-  const parts = [];
-  for (const part of upload.parts) {
-    if (!part.url) throw new Error(`Parte ${part.partNumber} não possui URL pré-assinada`);
-    const put = http.put(part.url, new ArrayBuffer(Number(part.sizeBytes || 0)), {
-      tags: { name: "PUT import part" },
-    });
-    if (![200, 201, 204].includes(put.status)) {
-      throw new Error(`Upload da parte ${part.partNumber} falhou com HTTP ${put.status}`);
-    }
-    const etag = put.headers.ETag || put.headers.etag;
-    if (!etag) throw new Error(`Upload da parte ${part.partNumber} não retornou ETag`);
-    parts.push({ partNumber: part.partNumber, etag });
-  }
-  return http.post(
-    `${BASE_URL}${ENDPOINTS.importComplete(importId)}`,
-    JSON.stringify({ parts }),
-    authParams(cookie, { name: "POST /imports/:id/complete", label }, "k6-ingestao"),
-  );
-}
-
-/** Faz polling do ImportJob até status "completed"/"failed" (minúsculo, ver
- *  ImportStatusData no OpenAPI) ou estourar POLL_TIMEOUT_S. */
-function waitForCompletion(cookie, importId, label) {
-  const deadline = Date.now() + POLL_TIMEOUT_S * 1000;
-  while (Date.now() < deadline) {
-    const res = http.get(`${BASE_URL}${ENDPOINTS.importStatus(importId)}`, authParams(cookie, { name: "GET /imports/:id", label }, "k6-ingestao"));
-    let status = null;
-    try { status = res.json("data.status"); } catch { /* segue tentando */ }
-    if (status === "completed") return true;
-    if (status === "failed") {
-      check(res, { [`${label}: ImportJob não deve falhar`]: () => false });
-      return false;
-    }
-    sleep(POLL_INTERVAL_S);
-  }
-  check(null, { [`${label}: ImportJob concluiu dentro do timeout`]: () => false });
-  return false;
-}
-
-/** Espera o watermark de /dashboard/overview avançar além de `after`. */
-function waitForFreshness(cookie, after) {
-  const deadline = Date.now() + POLL_TIMEOUT_S * 1000;
-  while (Date.now() < deadline) {
-    const res = http.get(`${BASE_URL}${ENDPOINTS.overview}`, authParams(cookie, { name: "GET /dashboard/overview (poll frescor)" }, "k6-ingestao"));
-    if (res.status === 200) {
-      try {
-        const freshness = res.json("meta.freshness") || [];
-        const observed = freshness
-          .map((entry) => entry.observedThrough)
-          .filter(Boolean)
-          .map((iso) => new Date(iso).getTime());
-        if (observed.some((timestamp) => timestamp >= after)) return true;
-      } catch { /* corpo inesperado, segue tentando até o timeout */ }
-    }
-    sleep(POLL_INTERVAL_S);
-  }
-  return false;
-}
+let pico = { importId: null };
+let firstOkSeen = false;
 
 export default function (data) {
-  if (MODE === "drenagem") {
-    const t0 = Date.now();
-    const disparo = triggerImport(data.cookie, "drenagem-unica");
-    check(disparo, { "drenagem: import aceito (201)": (r) => r.status === 201 });
-    const importId = (() => { try { return disparo.json("data.id"); } catch { return null; } })();
-    if (importId) {
-      const upload = (() => { try { return disparo.json("data.upload"); } catch { return null; } })();
-      const completou = completeImport(data.cookie, importId, upload, "drenagem");
-      check(completou, { "drenagem: complete aceito (202)": (r) => r.status === 202 });
-    }
-    const concluiu = importId && waitForCompletion(data.cookie, importId, "drenagem");
-    if (concluiu) {
-      const elapsedS = (Date.now() - t0) / 1000;
-      drenagemSegundos.add(elapsedS);
-      janelasCompletadas.add(1);
-      check(null, { [`drenagem: ${BATCH_SIZE} eventos processados em < ${WINDOW_MINUTES} min`]: () => elapsedS < WINDOW_MINUTES * 60 });
-    }
+  const cookie = data.cookie;
+
+  if (MODE === "smoke" || MODE === "drenagem") {
+    runImport(cookie, RUN_LABEL);
+    return;
   }
 
-  if (MODE === "acumulo") {
-    const t0 = Date.now();
-    const disparos = [];
-    for (let i = 0; i < BACKLOG_BATCHES; i += 1) {
-      disparos.push(triggerImport(data.cookie, `acumulo-lote-${i + 1}-de-${BACKLOG_BATCHES}`));
+  if (MODE === "pico") {
+    const roll = Math.random();
+    if (roll < 0.2 || !pico.importId) {
+      const res = startImport(cookie, DUMP.byteLength);
+      check(res, { "pico: POST responde 201 ou 409": (r) => r.status === 201 || r.status === 409 });
+      pico.importId = json(res, "data.importId") || json(res, "error.details.importId") || pico.importId;
+      if (res.status === 409) {
+        check(res, { "pico: 409 traz o importId ativo": (r) => Boolean(json(r, "error.details.importId")) });
+      }
+    } else if (roll < 0.9) {
+      check(getImport(cookie, pico.importId), { "pico: GET /imports/:id 200": (r) => r.status === 200 });
+    } else {
+      const res = http.get(`${BASE_URL}/api/v1/imports?limit=10`, params(cookie, "GET /imports"));
+      track(res);
+      check(res, { "pico: GET /imports 200": (r) => r.status === 200 });
     }
-    disparos.forEach((res, i) =>
-      check(res, { [`acumulo: lote ${i + 1}/${BACKLOG_BATCHES} aceito (201)`]: (r) => r.status === 201 }),
-    );
-    const ids = disparos.map((res) => { try { return res.json("data.id"); } catch { return null; } });
-    ids.forEach((id, i) => {
-      if (!id) return;
-      const label = `acumulo-lote-${i + 1}`;
-      const upload = (() => { try { return disparos[i].json("data.upload"); } catch { return null; } })();
-      const completou = completeImport(data.cookie, id, upload, label);
-      check(completou, { [`${label}: complete aceito (202)`]: (r) => r.status === 202 });
-    });
-    const todasConcluiram = ids.every((id, i) => id && waitForCompletion(data.cookie, id, `acumulo-lote-${i + 1}`));
-    if (todasConcluiram) {
-      const elapsedS = (Date.now() - t0) / 1000;
-      janelasCompletadas.add(BACKLOG_BATCHES);
-      check(null, {
-        [`acumulo: ${BACKLOG_BATCHES} lotes represados recuperados`]: () => true,
-        [`acumulo: recuperação em < ${BACKLOG_BATCHES * WINDOW_MINUTES} min`]: () => elapsedS < BACKLOG_BATCHES * WINDOW_MINUTES * 60,
-      });
+    return;
+  }
+
+  if (MODE === "limite") {
+    const fase = __ENV.FASE;
+    // 80% leitura, 20% tentativa de criar outra importação (deve dar 409 ou 429).
+    const res = Math.random() < 0.2
+      ? startImport(cookie, DUMP.byteLength)
+      : getImport(cookie, data.importId);
+    // Na recuperação, 409 IMPORT_IN_PROGRESS é a resposta correta do POST.
+    const answered = res.status === 200 || res.status === 409;
+    if (fase === "recuperacao") recovery2xx.add(answered);
+    if (fase === "resfriamento" && answered && !firstOkSeen) {
+      // O resfriamento começa no fim da rajada; o menor valor da métrica é o
+      // tempo até a API voltar a responder.
+      firstOkSeen = true;
+      firstOkAfterBurst.add((Date.now() - exec.scenario.startTime) / 1000);
     }
+    check(res, { "limite: sem 5xx": (r) => r.status < 500 });
+    return;
   }
 
   if (MODE === "frescor") {
-    const t0 = Date.now();
-    const disparo = triggerImport(data.cookie, "frescor-ponta-a-ponta");
-    check(disparo, { "frescor: import aceito (201)": (r) => r.status === 201 });
-    const importId = (() => { try { return disparo.json("data.id"); } catch { return null; } })();
-    if (importId) {
-      const upload = (() => { try { return disparo.json("data.upload"); } catch { return null; } })();
-      const completou = completeImport(data.cookie, importId, upload, "frescor");
-      check(completou, { "frescor: complete aceito (202)": (r) => r.status === 202 });
+    const t0 = Date.parse(__ENV.T0);
+    const expected = Date.parse(__ENV.EXPECT_OBSERVED_THROUGH);
+    const deadline = Date.now() + POLL_TIMEOUT_S * 1000;
+    while (Date.now() < deadline) {
+      const res = http.get(`${BASE_URL}/api/v1/dashboard/overview`, params(cookie, "GET /dashboard/overview"));
+      const observed = (json(res, "meta.freshness") || [])
+        .map((entry) => Date.parse(entry.observedThrough))
+        .filter((value) => !Number.isNaN(value));
+      if (observed.some((value) => value >= expected)) {
+        freshnessSeconds.add((Date.now() - t0) / 1000);
+        check(null, { "frescor: lote visível na consulta": () => true });
+        return;
+      }
+      sleep(POLL_INTERVAL_S);
     }
-    const ingestaoConcluiu = importId && waitForCompletion(data.cookie, importId, "frescor");
-    if (ingestaoConcluiu) {
-      const disponivel = waitForFreshness(data.cookie, t0);
-      check(null, { "frescor: dado apareceu na consulta antes do timeout": () => disponivel });
-      if (disponivel) frescorSegundos.add((Date.now() - t0) / 1000);
-    }
+    check(null, { "frescor: lote visível na consulta": () => false });
+  }
+}
+
+export function teardown(data) {
+  // Libera a vaga: conclui a importação que ficou em UPLOADING.
+  if (MODE !== "pico" && MODE !== "limite") return;
+  const cookie = data.cookie;
+  let importId = data.importId;
+  if (MODE === "pico") {
+    const res = http.get(`${BASE_URL}/api/v1/imports?limit=20`, params(cookie, "GET /imports"));
+    const items = json(res, "data.items") || [];
+    const active = items.find((item) => item.state === "UPLOADING" && item.canManageUpload);
+    importId = active && active.importId;
+  }
+  if (!importId) return;
+  const state = json(getImport(cookie, importId), "data.state");
+  if (state === "UPLOADING") {
+    console.log(`teardown: concluindo ${importId} com o DUMP para liberar a vaga`);
+    finishImport(cookie, importId, `${MODE}-limpeza`);
   }
 }
 
 export function handleSummary(data) {
-  // Mesmo motivo de consultas.js/auth-check.js: `setup_data` carrega o cookie
-  // de sessão forjado, e este resumo é evidência versionada.
   const semCredenciais = {
     ...data,
-    setup_data: data.setup_data
-      ? { ...data.setup_data, cookie: "<redigido: cookie de sessão>" }
-      : data.setup_data,
+    setup_data: data.setup_data ? { ...data.setup_data, cookie: "<redigido>" } : data.setup_data,
   };
   return {
-    stdout:
-      `Ingestão — modo ${MODE} · janela ${WINDOW_MINUTES} min · ${BATCH_SIZE} eventos` +
-      (MODE === "acumulo" ? ` × ${BACKLOG_BATCHES} lotes` : "") +
-      "\n",
-    [`resumo-ingestao-${MODE}.json`]: JSON.stringify(semCredenciais, null, 2),
+    stdout: `Ingestão — modo ${MODE} (${RUN_LABEL})\n`,
+    [`resumo-ingestao-${RUN_LABEL}.json`]: JSON.stringify(semCredenciais, null, 2),
   };
 }
