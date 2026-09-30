@@ -132,7 +132,10 @@ resource "aws_instance" "observabilidade" {
   vpc_security_group_ids      = [aws_security_group.observabilidade[0].id]
   iam_instance_profile        = data.aws_iam_instance_profile.lab.name
 
-  user_data = templatefile("${path.module}/observability/aws/user-data.sh.tftpl", {
+  // O bootstrap inclui todos os dashboards e configurações da stack. Enviar o
+  // script inteiro comprimido mantém o payload abaixo do limite de 16 KiB da
+  // API EC2; o cloud-init descompacta gzip automaticamente.
+  user_data_base64 = base64gzip(templatefile("${path.module}/observability/aws/user-data.sh.tftpl", {
     aws_region              = var.regiao
     grafana_password_base64 = base64encode(random_password.grafana[0].result)
     compose_gzip            = base64gzip(file("${path.module}/observability/aws/docker-compose.yml"))
@@ -156,7 +159,7 @@ resource "aws_instance" "observabilidade" {
     // sem esta linha eles não existem no Grafana da nuvem.
     api_dashboard_gzip       = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-api.json"))
     ingestion_dashboard_gzip = base64gzip(local.dashboard_ingestion)
-  })
+  }))
 
   // Uma mudança nas configurações recria a instância para que o cloud-init
   // seja realmente reaplicado. Os volumes Docker são descartáveis neste lab.
