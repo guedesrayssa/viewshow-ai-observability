@@ -1887,6 +1887,13 @@ function secretHasCurrentVersion(context, secretArn) {
   );
 }
 
+// The AWS CLI strips "file://" and opens the rest as a native path, so a URL
+// from pathToFileURL ("file:///C:/...") breaks on Windows ("/C:/..." is not a
+// path there). "file://" + native path works on every platform.
+function awsFileParameter(filePath) {
+  return `file://${filePath}`;
+}
+
 function ensureInternalIngestionCredential(context, runbook) {
   const secretArn = snapshotSecretArn(runbook);
   if (secretHasCurrentVersion(context, secretArn)) {
@@ -1914,7 +1921,7 @@ function ensureInternalIngestionCredential(context, runbook) {
         "--secret-id",
         secretArn,
         "--secret-string",
-        pathToFileURL(sensitiveFile).href,
+        awsFileParameter(sensitiveFile),
         "--client-request-token",
         context.generateRandomBytes(24).toString("base64url"),
       ]),
@@ -2009,7 +2016,7 @@ function provisionInitialCognitoUser(context, outputs, email, password) {
         "cognito-idp",
         "admin-set-user-password",
         "--cli-input-json",
-        pathToFileURL(sensitiveFile).href,
+        awsFileParameter(sensitiveFile),
       ]),
       { cwd: context.root },
     );
