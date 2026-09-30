@@ -2,10 +2,15 @@
  * @file sidebar-nav.tsx
  * Itens de navegação da barra lateral persistente.
  *
- * Reflete a IA descrita na seção 6.1 do entendimento de UX: Visão Geral é o
- * hub, e a pessoa usuária aprofunda a investigação em Incidentes, Evidências,
- * Eventos e Monitoramento. Dados abre, por uma divisória, o grupo operacional
- * que também contém Configurações; nenhum dos dois é etapa da investigação.
+ * Visão Geral é o hub e Incidentes é onde a investigação acontece: o
+ * diagnóstico (hipótese e evidências) e os eventos correlacionados são abas do
+ * detalhe de um incidente, e não itens soltos daqui. Soltos, eles abriam sem o
+ * incidente e perdiam o contexto a cada clique.
+ *
+ * Três grupos, separados por divisórias: a investigação (Visão Geral e
+ * Incidentes), a operação da plataforma (Monitoramento, com a saúde do
+ * pipeline, e Dados, com importações e a sincronização com o ARGUS) e a conta
+ * pessoal (Configurações). Nenhum dos dois últimos é etapa da investigação.
  *
  * O item ativo é decidido pela rota atual, por isso este trecho roda no
  * cliente enquanto o restante da moldura fica no servidor.
@@ -21,16 +26,14 @@ import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 
 import {
-  ActivityIcon,
   AlertIcon,
   DatabaseIcon,
   HomeIcon,
-  ListIcon,
   MonitorIcon,
   SettingsIcon,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
-import { useSelectedIncidentId } from "@/lib/selected-incident";
+import { normalizePath, ROUTES } from "@/lib/routes";
 
 type NavItem = {
   label: string;
@@ -41,27 +44,37 @@ type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Visão Geral", href: "/visao-geral", icon: <HomeIcon size={19} /> },
-  { label: "Incidentes", href: "/incidentes", icon: <AlertIcon size={19} /> },
-  { label: "Evidências", href: "/evidencias", icon: <ListIcon size={19} /> },
-  { label: "Eventos", href: "/eventos", icon: <ActivityIcon size={19} /> },
+  { label: "Visão Geral", href: ROUTES.overview, icon: <HomeIcon size={19} /> },
+  { label: "Incidentes", href: ROUTES.incidents, icon: <AlertIcon size={19} /> },
   {
     label: "Monitoramento",
-    href: "/monitoramento",
+    href: ROUTES.monitoring,
     icon: <MonitorIcon size={19} />,
-  },
-  {
-    label: "Dados",
-    href: "/dados/importacoes",
-    icon: <DatabaseIcon size={19} />,
     startsGroup: true,
   },
   {
+    label: "Dados",
+    href: ROUTES.imports,
+    icon: <DatabaseIcon size={19} />,
+  },
+  {
     label: "Configurações",
-    href: "/configuracoes",
+    href: ROUTES.settings,
     icon: <SettingsIcon size={19} />,
+    startsGroup: true,
   },
 ];
+
+/**
+ * Item da navegação ao qual a rota pertence. Rotas internas da seção
+ * (`/incidentes/detalhe/eventos/`) respondem pelo item da seção.
+ */
+export function navItemFor(pathname: string): NavItem | undefined {
+  const currentPath = normalizePath(pathname);
+  return NAV_ITEMS.find(
+    (item) => currentPath === item.href || currentPath.startsWith(`${item.href}/`),
+  );
+}
 
 export type SidebarNavProps = {
   /** Recolhe os rótulos, deixando só os ícones. */
@@ -72,10 +85,9 @@ export type SidebarNavProps = {
 
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
-  const selectedIncidentId = useSelectedIncidentId();
   // A exportação estática usa trailingSlash: a URL pode chegar com "/" no fim.
   // Rotas internas da seção também pertencem ao mesmo item da navegação.
-  const currentPath = pathname.replace(/\/+$/, "") || "/";
+  const activeHref = navItemFor(pathname)?.href;
 
   return (
     <nav
@@ -83,13 +95,12 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
       className={cn("flex flex-col gap-1.5", collapsed ? "px-2" : "px-3")}
     >
       {NAV_ITEMS.map((item, index) => {
-        const active =
-          currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+        const active = item.href === activeHref;
 
         return (
           <Fragment key={item.href}>
-            {/* A divisória separa a investigação do grupo operacional sem
-                precisar de um título. Ela é um elemento à parte, e não uma
+            {/* A divisória separa os grupos (investigação, operação e conta)
+                sem precisar de um título. Ela é um elemento à parte, e não uma
                 borda no próprio item: como borda, o espaço acima entrava na
                 caixa do link e o realce ativo ficava mais alto que os demais. */}
             {item.startsGroup ? (
@@ -103,9 +114,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
             ) : null}
 
             <Link
-              href={selectedIncidentId && (item.href === "/evidencias" || item.href === "/eventos")
-                ? `${item.href}?incidente=${encodeURIComponent(selectedIncidentId)}`
-                : item.href}
+              href={item.href}
               aria-current={active ? "page" : undefined}
               onClick={onNavigate}
               title={collapsed ? item.label : undefined}

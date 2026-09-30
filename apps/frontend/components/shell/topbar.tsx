@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { NAV_ITEMS } from "@/app/(painel)/sidebar-nav";
+import { navItemFor } from "@/app/(painel)/sidebar-nav";
 import { useAccount } from "@/components/account/account-provider";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
@@ -44,7 +44,9 @@ export function Topbar({
 }: TopbarProps) {
   const pathname = usePathname();
   const { profile } = useAccount();
-  const current = NAV_ITEMS.find((item) => item.href === pathname);
+  // A comparação exata falhava com a barra final da exportação estática e
+  // nas rotas internas: o título do celular ficava sempre "View Show".
+  const current = navItemFor(pathname);
 
   return (
     <header
