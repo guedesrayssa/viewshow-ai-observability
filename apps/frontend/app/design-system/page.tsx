@@ -5,9 +5,14 @@
  * Renderiza os tokens e os componentes com o mesmo código usado nas telas, de
  * modo que o guia nunca fique desatualizado em relação à implementação. É a
  * referência para quem for construir as próximas telas do View Show.
+ *
+ * Fica fora do build de produção: a rota não passa pela checagem de sessão
+ * do painel e não é tela de produto. Para publicá-la numa demonstração, basta
+ * ligar `NEXT_PUBLIC_SHOW_DESIGN_SYSTEM=true`.
  */
 
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -78,7 +83,13 @@ function Section({
   );
 }
 
+const SHOW_DESIGN_SYSTEM =
+  process.env.NODE_ENV !== "production" ||
+  process.env.NEXT_PUBLIC_SHOW_DESIGN_SYSTEM === "true";
+
 export default function DesignSystemPage() {
+  if (!SHOW_DESIGN_SYSTEM) notFound();
+
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-16">
       <header className="flex flex-col gap-4">

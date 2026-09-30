@@ -9,7 +9,9 @@ import {
 } from "@/lib/dashboard-data";
 import { jitter, loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
-import { formatCompact } from "@/lib/format";
+import { formatCompact, formatElapsed, minutesSince } from "@/lib/format";
+import { incidentStatusLabel } from "@/lib/incidents/labels";
+import { incidentDiagnosisHref } from "@/lib/routes";
 
 export type OverviewFilters = {
   timeRange: string;
@@ -90,13 +92,7 @@ function toClock(iso: string): string {
 }
 
 function since(iso: string): string {
-  const minutes = Math.max(
-    0,
-    Math.round((Date.now() - new Date(iso).getTime()) / 60_000),
-  );
-  return minutes < 60
-    ? `há ${minutes} min`
-    : `há ${Math.floor(minutes / 60)} h`;
+  return `há ${formatElapsed(minutesSince(iso))}`;
 }
 
 function deltaOf(kpi: Kpi): string {
@@ -178,6 +174,8 @@ export function mapOverview(response: OverviewResponse): OverviewData {
     peakIndex,
     incidents: response.recentIncidents.map((incident) => ({
       id: incident.id,
+      // Cada linha abre o diagnóstico do incidente, em vez de só levar à lista.
+      href: incidentDiagnosisHref(incident.id),
       title: incident.title,
       sessions:
         incident.affectedSessions.value === null ||
@@ -186,7 +184,7 @@ export function mapOverview(response: OverviewResponse): OverviewData {
           : `${formatCompact(incident.affectedSessions.value)} sessões`,
       timeAgo: since(incident.startedAt),
       status: toneByPriority[incident.priority],
-      statusLabel: incident.status,
+      statusLabel: incidentStatusLabel(incident.status),
     })),
   };
 }

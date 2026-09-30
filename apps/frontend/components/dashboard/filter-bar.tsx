@@ -36,11 +36,15 @@ export type DashboardFilters = {
   appVersion: string;
 };
 
-/** Recorte inicial: o mesmo do protótipo de alta fidelidade. */
+/**
+ * Recorte inicial. As dimensões abrem em "todos": com os seletores
+ * desabilitados, mostrar "Smart TV · Nordeste · App 4.2.1" fazia parecer que
+ * os números estavam recortados, e não estão.
+ */
 export const DEFAULT_DASHBOARD_FILTERS: DashboardFilters = {
   timeRange: TIME_RANGE_OPTIONS[3].value,
   device: DEVICE_OPTIONS[0].value,
-  region: REGION_OPTIONS[1].value,
+  region: REGION_OPTIONS[0].value,
   appVersion: APP_VERSION_OPTIONS[0].value,
 };
 
