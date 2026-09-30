@@ -41,6 +41,14 @@
  *   k6 run -e MODE=limite   -e DUMP=<M-01> -e BURST_RATE=20 ingestao-batch.js
  *   k6 run -e MODE=frescor  -e T0=<ISO> -e EXPECT_OBSERVED_THROUGH=<ISO> ingestao-batch.js
  *
+ * A versão do dataset é endereçada por conteúdo: reimportar um dump já
+ * importado termina em READY com recordsRead = recordsWritten = 0. Nas
+ * rodadas de recuperação que reutilizam o mesmo DUMP, passe
+ * -e ALLOW_IDEMPOTENT=true: o teste passa a exigir esse resultado (0 lidos,
+ * 0 escritos, 0 rejeitados e a versão existente reaproveitada; com
+ * -e EXPECTED_VERSION=<dsv_…> confere também qual versão). Sem a flag, vale a
+ * contagem normal de EXPECTED_EVENTS.
+ *
  * Sem AUTH_USERNAME/AUTH_PASSWORD, cai para o cookie forjado de
  * lib/session.js (exige AUTH_COOKIE_SECRET), útil só contra a API local.
  */
@@ -66,6 +74,8 @@ const NOMINAL_EVENTS_PER_SECOND = 10000 / 60; // 166,67 eventos/s (RNF01)
 const POLL_INTERVAL_S = Number(__ENV.POLL_INTERVAL_S || 5);
 const POLL_TIMEOUT_S = Number(__ENV.POLL_TIMEOUT_S || 3600);
 const ACTIVATE = __ENV.ACTIVATE === "true";
+const ALLOW_IDEMPOTENT = __ENV.ALLOW_IDEMPOTENT === "true";
+const EXPECTED_VERSION = __ENV.EXPECTED_VERSION || null; // dsv_… da importação original
 const PEAK_RATE = Number(__ENV.PEAK_RATE || 50);
 const BURST_RATE = Number(__ENV.BURST_RATE || 20);
 const COOLDOWN_S = Number(__ENV.COOLDOWN_S || 60);
@@ -86,14 +96,19 @@ if (MODE === "frescor" && (!__ENV.T0 || !__ENV.EXPECT_OBSERVED_THROUGH)) {
 // ---------------------------------------------------------------- métricas
 const stateSeconds = new Trend("ingestion_state_seconds", true); // tag: state
 const uploadSeconds = new Trend("ingestion_upload_seconds", true);
-const processingSeconds = new Trend("ingestion_processing_seconds", true); // UPLOADED → READY
+// UPLOADED → estado final. Também recebe amostra quando a importação não chega
+// a READY (tempo até FAILED ou até o POLL_TIMEOUT_S): um Trend sem amostra
+// faria o threshold passar com valor 0.
+const processingSeconds = new Trend("ingestion_processing_seconds", true);
 const totalSeconds = new Trend("ingestion_total_seconds", true); // POST /imports → READY
-const eventsPerSecond = new Trend("ingestion_events_per_second");
+const eventsPerSecond = new Trend("ingestion_events_per_second"); // 0 quando não chega a READY
+const importsReady = new Rate("ingestion_ready_rate");
 const recordsWritten = new Counter("ingestion_records_written");
 const recordsRejected = new Counter("ingestion_records_rejected");
 const importsCreated = new Counter("imports_created_201");
 const importsConflict = new Counter("imports_conflict_409");
 const rateLimited = new Counter("rate_limited_429");
+const explicit503 = new Counter("explicit_503");
 const unexpected5xx = new Counter("unexpected_5xx");
 const recovery2xx = new Rate("recovery_2xx_rate");
 const firstOkAfterBurst = new Trend("time_to_first_2xx_after_burst_seconds", true);
@@ -144,11 +159,12 @@ function scenariosFor(mode) {
 }
 
 function thresholdsFor(mode) {
-  if (mode === "smoke") return { ...baseThresholds, http_req_failed: ["rate==0"] };
+  if (mode === "smoke") return { ...baseThresholds, http_req_failed: ["rate==0"], ingestion_ready_rate: ["rate==1"] };
   if (mode === "drenagem") {
     return {
       ...baseThresholds,
       http_req_failed: ["rate==0"],
+      ingestion_ready_rate: ["rate==1"],
       ingestion_processing_seconds: [`max<=${WINDOW_SECONDS}`],
       ingestion_events_per_second: [`min>=${NOMINAL_EVENTS_PER_SECOND.toFixed(2)}`],
     };
@@ -221,6 +237,7 @@ function track(res) {
   if (res.status === 429) rateLimited.add(1);
   // 503 FEATURE_UNAVAILABLE/UPLOAD_PREPARATION_FAILED são falhas explícitas;
   // qualquer outro 5xx é erro inesperado.
+  if (res.status === 503) explicit503.add(1);
   if (res.status >= 500 && res.status !== 503) unexpected5xx.add(1);
 }
 
@@ -319,7 +336,13 @@ function waitTerminal(cookie, importId) {
     if (current === "READY" || current === "FAILED") break;
     sleep(POLL_INTERVAL_S);
   }
-  return { state: current, progress: last && last.progress, error: last && last.error, enteredState };
+  return {
+    state: current,
+    progress: last && last.progress,
+    error: last && last.error,
+    candidateVersion: last && last.candidateVersion,
+    enteredState,
+  };
 }
 
 /** Importação completa de ponta a ponta com o DUMP. Usada por smoke, drenagem e teardowns. */
@@ -345,12 +368,30 @@ function finishImport(cookie, importId, label, t0 = Date.now()) {
   const result = waitTerminal(cookie, importId);
   const ok = check(result, { [`${label}: importação terminou em READY`]: (r) => r.state === "READY" });
   if (!ok) console.error(`${label}: estado final ${result.state} ${JSON.stringify(result.error)}`);
+  const processing = (Date.now() - uploadedAt) / 1000;
+  processingSeconds.add(processing);
+  importsReady.add(ok);
+  if (!ok) eventsPerSecond.add(0);
   if (result.state === "READY") {
-    const processing = (Date.now() - uploadedAt) / 1000;
-    processingSeconds.add(processing);
     totalSeconds.add((Date.now() - t0) / 1000);
     const progress = result.progress && result.progress.kind === "stage" ? result.progress : null;
-    if (progress) {
+    if (ALLOW_IDEMPOTENT) {
+      // O DUMP já foi importado: a versão existente é reaproveitada e nada é
+      // lido, escrito ou rejeitado de novo. Vazão não se aplica.
+      check(result, {
+        [`${label}: reimportação idempotente não escreveu nenhum item`]: () =>
+          Boolean(progress) && progress.recordsRead === 0 && progress.recordsWritten === 0,
+        [`${label}: reimportação idempotente não rejeitou nenhum item`]: () =>
+          Boolean(progress) && progress.recordsRejected === 0,
+        [`${label}: reimportação idempotente reaproveitou a versão existente, sem duplicar`]: (r) =>
+          Boolean(r.candidateVersion) && (!EXPECTED_VERSION || r.candidateVersion === EXPECTED_VERSION),
+      });
+      if (EXPECTED_EVENTS !== null) {
+        check(progress, {
+          [`${label}: recordsTotal = ${EXPECTED_EVENTS}`]: (p) => Boolean(p) && p.recordsTotal === EXPECTED_EVENTS,
+        });
+      }
+    } else if (progress) {
       recordsWritten.add(progress.recordsWritten);
       recordsRejected.add(progress.recordsRejected);
       eventsPerSecond.add(progress.recordsWritten / processing);
@@ -480,13 +521,45 @@ export function teardown(data) {
   }
 }
 
+/** Resumo de texto: checks, thresholds e métricas do teste (o JSON completo vai para o arquivo). */
+function textSummary(data) {
+  const lines = [`Ingestão — modo ${MODE} (${RUN_LABEL})`];
+  const checks = [];
+  const collect = (group) => {
+    checks.push(...(group.checks || []));
+    (group.groups || []).forEach(collect);
+  };
+  collect(data.root_group || {});
+  if (checks.length) lines.push("", "checks");
+  for (const item of checks) {
+    lines.push(`  ${item.fails === 0 ? "ok    " : "FALHOU"} ${item.name} (${item.passes}/${item.passes + item.fails})`);
+  }
+  const metrics = data.metrics || {};
+  const number = (value) => (Number.isInteger(value) ? String(value) : value.toFixed(2));
+  const values = (metric) => Object.entries(metric.values).map(([key, value]) => `${key}=${number(value)}`).join(" ");
+  const withThresholds = Object.keys(metrics).filter((name) => metrics[name].thresholds);
+  if (withThresholds.length) lines.push("", "thresholds");
+  for (const name of withThresholds) {
+    for (const [rule, result] of Object.entries(metrics[name].thresholds)) {
+      lines.push(`  ${result.ok ? "ok    " : "FALHOU"} ${name} ${rule}  [${values(metrics[name])}]`);
+    }
+  }
+  const own = Object.keys(metrics)
+    .filter((name) => /^(ingestion_|imports_|rate_limited_|explicit_|unexpected_|recovery_|time_to_)/.test(name))
+    .concat(["http_reqs", "http_req_failed", "http_req_duration"].filter((name) => metrics[name]))
+    .filter((name) => !withThresholds.includes(name));
+  if (own.length) lines.push("", "métricas");
+  for (const name of own) lines.push(`  ${name}  ${values(metrics[name])}`);
+  return `${lines.join("\n")}\n`;
+}
+
 export function handleSummary(data) {
   const semCredenciais = {
     ...data,
     setup_data: data.setup_data ? { ...data.setup_data, cookie: "<redigido>" } : data.setup_data,
   };
   return {
-    stdout: `Ingestão — modo ${MODE} (${RUN_LABEL})\n`,
+    stdout: textSummary(data),
     [`resumo-ingestao-${RUN_LABEL}.json`]: JSON.stringify(semCredenciais, null, 2),
   };
 }
