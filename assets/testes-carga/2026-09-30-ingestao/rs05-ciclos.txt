@@ -1,0 +1,11 @@
+12:10:21 ciclo 1: view-show-ingestion-incremental-batches.fifo                 visíveis=2 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0 
+12:10:25 rodar-ingestao: arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/598236636bac44cc95b9cd0bbda8a33b
+12:16:00 ciclo 2: view-show-ingestion-incremental-batches.fifo                 visíveis=2 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0 
+12:16:04 rodar-ingestao: arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/f5713ba34104491fa3dc6b358be6c48a
+12:21:44 ciclo 3: view-show-ingestion-incremental-batches.fifo                 visíveis=2 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0 
+12:21:48 rodar-ingestao: arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/8ed2af40ead84aadb556454d4f5c2f34
+12:27:26 ciclo 4: view-show-ingestion-incremental-batches.fifo                 visíveis=2 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0 
+12:27:30 rodar-ingestao: arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/6c5a5fc1a52c4096af169ceb8e2234d1
+12:33:11 ciclo 5: view-show-ingestion-incremental-batches.fifo                 visíveis=2 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0 
+12:33:15 rodar-ingestao: arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/a695ccee27934c5fad4824eebd502a56
+12:34:58 FIM: view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo             visíveis=2 em processamento=0 

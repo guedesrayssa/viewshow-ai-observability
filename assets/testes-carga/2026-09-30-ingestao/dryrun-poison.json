@@ -1,0 +1,13 @@
+[
+  {
+    "variant": "poison",
+    "batchId": "bat_c4ae16ab0c72a22aecd8ef54e6a941eb40504f8fa317a025a10213916340ace5",
+    "windowStart": "2026-09-30T09:00:00.000Z",
+    "windowEnd": "2026-09-30T09:15:00.000Z",
+    "rows": 0,
+    "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20260930T090000000Z/batch_id=bat_c4ae16ab0c72a22aecd8ef54e6a941eb40504f8fa317a025a10213916340ace5/manifest.json",
+    "manifestVersionId": "k6-carga-versao-inexistente",
+    "publishedAt": "2026-09-30T10:12:19.075Z",
+    "dryRun": true
+  }
+]

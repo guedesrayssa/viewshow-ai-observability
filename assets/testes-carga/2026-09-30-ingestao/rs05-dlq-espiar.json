@@ -1,0 +1,12 @@
+[
+    {
+        "id": "303b60d1-aa49-406c-9d2d-0f2110ef92e4",
+        "recebimentos": "7",
+        "corpo": "{\"batchId\":\"bat_4b2db3a9b692276dfe3937c678f7944ec6218c2f5f020fb28b685dcd67cbd88a\",\"contractVersion\":\"1.0\",\"manifest\":{\"bucket\":\"view-show-ingestion-114388221188-us-east-1\",\"key\":\"raw/argus/incremental/dataset=signal_bucket/window_start=20260930T103000000Z/batch_id=bat_4b2db3a9b692276dfe3937c678f7944ec6218c2f5f020fb28b685dcd67cbd88a/manifest.json\",\"versionId\":\"2y2BWlhkq.dkhQMdU5ti1tEEfxOKYybo\"},\"sourceDataset\":\"signal_bucket\"}"
+    },
+    {
+        "id": "af2be55b-ffa4-4e1e-9331-a16662bba8ec",
+        "recebimentos": "7",
+        "corpo": "{\"batchId\":\"bat_ccb05360b7955649fafbc28f5db5c65bff541cb49b8626a74c21146f8e71b205\",\"contractVersion\":\"1.0\",\"manifest\":{\"bucket\":\"view-show-ingestion-114388221188-us-east-1\",\"key\":\"raw/argus/incremental/dataset=signal_bucket/window_start=20260930T104500000Z/batch_id=bat_ccb05360b7955649fafbc28f5db5c65bff541cb49b8626a74c21146f8e71b205/manifest.json\",\"versionId\":\"YPl5_xV1CzsNO8A_tmLlleO9Rikqq6e2\"},\"sourceDataset\":\"signal_bucket\"}"
+    }
+]

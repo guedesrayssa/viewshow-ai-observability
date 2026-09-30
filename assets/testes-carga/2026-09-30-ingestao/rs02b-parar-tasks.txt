@@ -1,0 +1,1 @@
+arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/1a1b123c4a6b4d5cbb3f24a8078a3ed4	RUNNING
