@@ -189,7 +189,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 4. Requisitos não funcionais e planos de teste aprimorados
 
-&emsp;Os requisitos abaixo vêm de [`sprint1/requisitos.md`](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste). A coluna “Plano aprimorado” substitui o plano da Sprint 3 ([Tabela 4 de `testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md#41-requisitos-de-ingestão)), que estava bloqueado.
+&emsp;Os requisitos abaixo foram desenvolvidos durante a [Sprint 1](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste). A coluna “Plano aprimorado” atualiza o plano desenvolvido para os testes na Sprint 3 ([Tabela 4 de `testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md#41-requisitos-de-ingestão)).
 
 <div align="center">
 
