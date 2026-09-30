@@ -267,7 +267,7 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-&emsp;Gerador da massa: [`apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py`](../../apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py), que já existe. Ele gera um `argus_dump.sql.gz` determinístico com a quantidade de linhas pedida (`--rows`) e um `manifest.json` com a contagem, e é o mesmo gerador usado no benchmark de leitura MySQL. Para M-06 e M-07 ainda não há gerador: _A preencher_.
+&emsp;Gerador da massa: [`apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py`](../../apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py), que já existe. Ele gera um `argus_dump.sql.gz` determinístico com a quantidade de linhas pedida (`--rows`) e um `manifest.json` com a contagem, e é o mesmo gerador usado no benchmark de leitura MySQL. O `rowCount` do manifesto inclui as linhas de fixture das outras tabelas (com `--rows 1000`, são 974 de `signal_bucket` e 26 de fixture); use-o como `EXPECTED_EVENTS` e confirme no CG-01 o que `recordsWritten` conta. Os lotes incrementais (M-05 e M-06) são gerados e publicados por [`publish_incremental_batch.py`](../../apps/backend/ingestion-data/scripts/publish_incremental_batch.py), e o dump corrompido (M-07) pelo comando `m07` de [`ingestao-falhas.sh`](../../apps/backend/api/loadtest/k6/ingestao-falhas.sh).
 
 ```bash
 # a partir de apps/backend/ingestion-data (exemplo para M-02)
@@ -275,6 +275,13 @@ Fonte: Material produzido pelos autores (2026).
   --rows 150000 --snapshot-extracted-on <AAAA-MM-DD> --variant baseline \
   --output ../../../.artifacts/argus-benchmarks/150k/argus_dump.sql.gz \
   --manifest ../../../.artifacts/argus-benchmarks/150k/manifest.json
+
+# M-05 / M-06: codifica e valida localmente, sem publicar (tirar --dry-run publica na FIFO)
+.venv/bin/python scripts/publish_incremental_batch.py --variant valid --rows 150000 --dry-run
+.venv/bin/python scripts/publish_incremental_batch.py --variant missing-column --rows 150000 --dry-run
+
+# M-07: a partir de apps/backend/api/loadtest/k6
+./ingestao-falhas.sh m07 <M-02>/argus_dump.sql.gz ../../../../../.artifacts/argus-benchmarks/m07/argus_dump.sql.gz
 ```
 
 ### 4.3 Método de medição
@@ -288,13 +295,15 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 4.4 Ferramentas e testes reaproveitados
 
-&emsp;Os testes deste documento não foram criados do zero, mas também ainda não estão prontos para executar. A maior parte deles aproveita scripts e testes automatizados produzidos nas Sprints 3 e 4, que precisam ser adaptados à API de ingestão atual antes da primeira rodada. Os testes automatizados existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado; os testes deste documento repetem esses cenários **sob carga e contra a stack real na AWS**, medindo tempo, vazão e recuperação.
+&emsp;Os testes deste documento não foram criados do zero: partiram de scripts e testes automatizados das Sprints 3 e 4, que foram adaptados à API de ingestão atual. Os testes automatizados existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado; os testes deste documento repetem esses cenários **sob carga e contra a stack real na AWS**, medindo tempo, vazão e recuperação.
 
-&emsp;Nos testes de carga, o script k6 [`ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js), criado na Sprint 3, já tem os modos usados na carga nominal de 10 mil eventos/minuto (CG-02), no frescor ponta a ponta (CG-03) e no acúmulo de fila (RS-01). Ele, porém, foi escrito para uma versão anterior do contrato da API: espera estados em minúsculo e não usa a rota que assina as partes do upload. Por isso, precisa ser atualizado, e nele ainda devem ser criados os modos de smoke (CG-01) e de pico de requisições (CG-04). Para o volume progressivo (CG-05), já existe um benchmark local do leitor do dump, que serve como linha de base antes da execução na AWS.
+&emsp;Nos testes de carga, o script k6 [`ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js), criado na Sprint 3, foi reescrito para o contrato atual. A versão anterior esperava estados em minúsculo e não sabia enviar o arquivo; agora ele faz o upload real em partes de 16 MiB, com a assinatura das partes, o envio ao S3 e a confirmação, acompanha a importação até `READY` e mede a duração de cada estado e a vazão em eventos por segundo. Também passou a fazer login real no Cognito e ganhou os modos de smoke (CG-01), pico de requisições (CG-04) e proteção contra excesso de requisições (RS-06). Como a API não tem rota para cancelar uma importação e um upload abandonado segura a vaga por 24 horas, os modos de pico e de excesso concluem, ao final, a importação que criaram. O modo de acúmulo saiu do k6: com a trava de uma importação por vez, o acúmulo real acontece na fila incremental e passou a ser provocado pelo publicador de lotes.
 
-&emsp;Nos testes de falha, os cenários de timeout de dependência (RS-02), payload inválido (RS-03) e reentrega de mensagens (RS-04) já são cobertos por testes automatizados da API e do worker de ingestão, mas apenas localmente; falta repeti-los com a falha injetada no ambiente real. A proteção contra excesso de requisições (RS-06) já foi medida na API de consulta durante a Sprint 3 e agora precisa ser aplicada às rotas de importação. O único cenário sem nenhuma base existente é o de mensagem venenosa e DLQ (RS-05), que será criado nesta sprint. Os testes de fila cheia e timeout feitos na Sprint 2, sobre a API Flask, ficam apenas como referência histórica, pois não rodam na arquitetura atual.
+&emsp;Nos testes de falha, os cenários de timeout de dependência (RS-02), payload inválido (RS-03) e reentrega de mensagens (RS-04) já eram cobertos por testes automatizados, mas só localmente. Para repeti-los na AWS, foram criados dois utilitários. O [`publish_incremental_batch.py`](../../apps/backend/ingestion-data/scripts/publish_incremental_batch.py) publica na fila incremental lotes válidos, lotes sem uma coluna obrigatória e a mensagem venenosa do RS-05, que era o único cenário sem nenhuma base. Ele usa os mesmos adaptadores do worker e substitui o `export-incremental`, que depende do MySQL de produção. O [`ingestao-falhas.sh`](../../apps/backend/api/loadtest/k6/ingestao-falhas.sh) injeta e reverte cada falha (negação de upload no S3, interrupção de tasks, agendamentos), dispara o consumidor sob demanda e exporta as métricas das filas. Os testes de fila cheia e timeout da Sprint 2, sobre a API Flask, ficam apenas como referência histórica.
 
-&emsp;Na observabilidade, o dashboard da API no Grafana e os alarmes da ingestão no CloudWatch já existem, mas ainda precisam de filtros e painéis específicos para as rotas de importação, as filas e as tasks de ingestão. Os ajustes pendentes estão listados na Seção 4.5.
+&emsp;Na observabilidade, é usado o dashboard `view-show-ingestion` do CloudWatch, que já existia e mostra as filas, as DLQs e as execuções da ingestão, junto com o dashboard `View Show — API (RED)` do Grafana para a latência e os erros das rotas de importação.
+
+&emsp;Antes da primeira rodada, esses utilitários foram validados localmente. Todos os modos do k6 passam no `k6 inspect`, e os três tipos de lote foram relidos com os adaptadores do worker: o lote válido é aceito e lido, o lote sem coluna é marcado como incompatível (quarentena) e a mensagem venenosa passa pelo parser da fila, mas falha na leitura do manifesto com erro retentável, o que a leva à DLQ. O fluxo de upload só pode ser exercitado contra a AWS, porque depende de URLs pré-assinadas do S3.
 
 &emsp;Para registrar a execução dos testes automatizados existentes como evidência de apoio:
 
@@ -312,10 +321,13 @@ cd apps/backend/ingestion-data
 
 ### 4.5 Pré-requisitos de ferramenta
 
-- [ ] Atualizar [`loadtest/k6/ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js): os modos `drenagem`, `acumulo` e `frescor` já existem, mas o script da Sprint 3 assume estados em minúsculo (`completed`) e que o contrato não expõe URLs pré-assinadas. Hoje existem `POST /api/v1/imports/:importId/parts` (assinatura de até 20 partes por chamada) e os estados em maiúsculo (`READY`/`FAILED`). _Registrar aqui o que foi alterado._
-- [ ] Criar os modos `smoke` e `pico` e o parâmetro `DUMP` (arquivo a enviar).
-- [ ] Trocar a sessão forjada por login real (`AUTH_USERNAME`/`AUTH_PASSWORD`), como já feito em `consultas.js`.
-- [ ] Criar o dashboard de ingestão no Grafana (Seção 8.3) ou registrar que foi usado o CloudWatch.
+- [x] Atualizar [`loadtest/k6/ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js) para o contrato atual (estados `READY`/`FAILED`, assinatura das partes em `POST /api/v1/imports/:importId/parts`, `Idempotency-Key`).
+- [x] Criar os modos `smoke`, `pico` e `limite` e o parâmetro `DUMP` (arquivo a enviar).
+- [x] Trocar a sessão forjada por login real (`AUTH_USERNAME`/`AUTH_PASSWORD`), como já feito em `consultas.js`.
+- [x] Criar o publicador de lotes incrementais (M-05, M-06 e mensagem venenosa) e o script de injeção de falhas.
+- [x] Definir o dashboard: CloudWatch `view-show-ingestion` para filas e tasks, Grafana `View Show — API (RED)` para as rotas.
+- [ ] Instalar o k6 na máquina que vai gerar a carga e criar o usuário técnico no Cognito.
+- [ ] Renovar a sessão do Learner Lab e confirmar que a stack está aplicada (`./ingestao-falhas.sh recursos`).
 
 ---
 
@@ -1016,45 +1028,116 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 11. Procedimentos de reprodução
 
+&emsp;Os comandos abaixo partem da raiz do repositório. O `ingestao-falhas.sh` lê os nomes dos recursos do output `ingestion_runbook` do Terraform, então nenhum identificador precisa ser copiado à mão. Os agendamentos incrementais estão desligados na stack (`incremental_s3_enabled=false`); por isso os testes com fila disparam o consumidor sob demanda com `rodar-ingestao`. Ligar um agendamento pelo script cria diferença em relação ao Terraform, que o desliga de novo no próximo `apply`.
+
+### 11.1 Preparação
+
 ```bash
-# 1. Confirmar sessão válida do Learner Lab
+# Sessão do Learner Lab e recursos da stack
 aws sts get-caller-identity --region us-east-1
+FALHAS=apps/backend/api/loadtest/k6/ingestao-falhas.sh
+K6=apps/backend/api/loadtest/k6/ingestao-batch.js
+PY=apps/backend/ingestion-data/.venv/bin/python
+PUB="$PY apps/backend/ingestion-data/scripts/publish_incremental_batch.py"
+M=$PWD/.artifacts/argus-benchmarks
+$FALHAS recursos                                 # imprime também os exports do publicador
+eval "$($FALHAS recursos | grep '^export ')"
+export BASE_URL=<api_url_https> AUTH_USERNAME=<email> AUTH_PASSWORD=<senha>
 
-# 2. Aplicar a stack (ver apps/fullstack/README.md) e ler os outputs
-terraform -chdir=apps/fullstack output
-
-# 3. (Somente nas janelas de CG-04) elevar o rate limit temporariamente
-terraform -chdir=apps/fullstack plan -input=false \
-  -var='rate_limit_por_minuto=20000' -out=.terraform-artifacts/rate-limit-alto.tfplan
-terraform -chdir=apps/fullstack apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
-#    ... e devolver a 180 antes do RS-06
-
-# 4. Gerar a massa de dados (Seção 4.2)
-# _A preencher_
-
-# 5. Rodar os cenários (a partir de apps/backend/api/loadtest/k6)
-export BASE_URL=<api_url_https>
-export AUTH_USERNAME=<email>
-export AUTH_PASSWORD=<senha>
-
-k6 run -e MODE=smoke    -e DUMP=<M-01> --summary-export=resumo-cg01.json ingestao-batch.js
-k6 run -e MODE=drenagem -e DUMP=<M-02> --summary-export=resumo-cg02-r1.json ingestao-batch.js
-k6 run -e MODE=frescor                 --summary-export=resumo-cg03.json ingestao-batch.js
-k6 run -e MODE=pico                    --summary-export=resumo-cg04.json ingestao-batch.js
-k6 run -e MODE=acumulo -e BACKLOG_BATCHES=3 --summary-export=resumo-rs01-n3.json ingestao-batch.js
-
-# 6. Exportar métricas das filas na janela do teste
-aws cloudwatch get-metric-statistics --namespace AWS/SQS \
-  --metric-name ApproximateNumberOfMessagesVisible \
-  --dimensions Name=QueueName,Value=<fila> \
-  --start-time <inicio> --end-time <fim> --period 60 --statistics Maximum \
-  > sqs-rs01.json
-
-# 7. Conferir contagens (Athena)
-# _A preencher: consulta de COUNT(*) e COUNT(DISTINCT id) por candidateVersion_
+# Massa de dados (Seção 4.2); o rowCount de cada manifest.json é o EXPECTED_EVENTS
+for n in 1000 150000 300000 750000; do
+  $PY apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py --rows $n \
+    --snapshot-extracted-on "$(date -u +%F)" --variant baseline \
+    --output $M/$n/argus_dump.sql.gz --manifest $M/$n/manifest.json
+done
+$FALHAS m07 $M/150000/argus_dump.sql.gz $M/m07/argus_dump.sql.gz
 ```
 
-&emsp;Comandos de injeção e reversão de cada falha da Seção 6: _A preencher_.
+### 11.2 Testes de carga
+
+```bash
+# CG-01
+k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e EXPECTED_EVENTS=1000 -e RUN_LABEL=cg01 $K6
+
+# CG-02 — três repetições
+for r in 1 2 3; do
+  k6 run -e MODE=drenagem -e DUMP=$M/150000/argus_dump.sql.gz -e EXPECTED_EVENTS=150000 -e RUN_LABEL=cg02-r$r $K6
+done
+
+# CG-05 — volumes crescentes (exploratório: os thresholds de vazão podem reprovar)
+for n in 150000 300000 750000; do
+  k6 run -e MODE=drenagem -e DUMP=$M/$n/argus_dump.sql.gz -e EXPECTED_EVENTS=$n -e RUN_LABEL=cg05-$n $K6
+done
+
+# CG-04 — elevar o rate limit só nesta janela e devolver a 180 depois
+terraform -chdir=apps/fullstack apply -var='rate_limit_por_minuto=20000'
+k6 run -e MODE=pico -e DUMP=$M/1000/argus_dump.sql.gz -e PEAK_RATE=50 -e RUN_LABEL=cg04 $K6
+terraform -chdir=apps/fullstack apply -var='rate_limit_por_minuto=180'
+
+# CG-03 — publicar um lote, consumir e medir até aparecer na consulta (5 amostras)
+for i in 1 2 3 4 5; do
+  LOTE=$($PUB --rows 150000)
+  $FALHAS rodar-ingestao
+  T0=$(echo "$LOTE" | python -c "import sys,json;print(json.load(sys.stdin)['publishedAt'])")
+  FIM=$(echo "$LOTE" | python -c "import sys,json;print(json.load(sys.stdin)['windowEnd'])")
+  k6 run -e MODE=frescor -e T0=$T0 -e EXPECT_OBSERVED_THROUGH=$FIM -e RUN_LABEL=cg03-a$i $K6
+  sleep 900                                      # próxima janela de 15 min
+done
+```
+
+### 11.3 Testes de falha e resiliência
+
+```bash
+# RS-01 — acúmulo: publicar N janelas sem consumir, medir e só então drenar
+INICIO=$(date -u +%FT%TZ)
+$PUB --rows 150000 --windows 3 --output .artifacts/rs01-lotes.json
+$FALHAS filas                                    # 3 mensagens visíveis
+sleep 600                                        # a idade da mais antiga cresce
+$FALHAS rodar-ingestao                           # repetir até a fila zerar
+$FALHAS filas
+$FALHAS metricas-fila "$INICIO" "$(date -u +%FT%TZ)" .artifacts/rs01-sqs.json
+
+# RS-02 (a) — S3 indisponível ao preparar o upload: espera-se 503 UPLOAD_PREPARATION_FAILED
+curl -s -c .artifacts/cookie -H 'Content-Type: application/json' \
+  -d "{\"username\":\"$AUTH_USERNAME\",\"password\":\"$AUTH_PASSWORD\"}" "$BASE_URL/auth/login" >/dev/null
+$FALHAS s3-negar
+curl -s -b .artifacts/cookie -H 'Content-Type: application/json' -H "Idempotency-Key: rs02a-$(date +%s)" \
+  -d "{\"fileName\":\"argus_dump.sql.gz\",\"sizeBytes\":1000,\"snapshotExtractedOn\":\"$(date -u +%F)\"}" \
+  "$BASE_URL/api/v1/imports"
+$FALHAS s3-restaurar
+k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e RUN_LABEL=rs02a-recuperacao $K6
+
+# RS-02 (b) — task interrompida no meio do processamento: o k6 deve registrar FAILED
+k6 run -e MODE=drenagem -e DUMP=$M/150000/argus_dump.sql.gz -e RUN_LABEL=rs02b $K6 &
+sleep 120 && $FALHAS parar-tasks import
+wait
+k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e RUN_LABEL=rs02b-recuperacao $K6
+
+# RS-03 — válido, inválido, válido (janelas consecutivas T, T+15 e T+30 min, em UTC)
+$PUB --variant valid --rows 150000 --window-start <T>
+$PUB --variant missing-column --rows 150000 --window-start <T+15min>
+$PUB --variant valid --rows 150000 --window-start <T+30min>
+$FALHAS rodar-ingestao                           # o lote do meio deve ficar QUARANTINED
+k6 run -e MODE=smoke -e DUMP=$M/m07/argus_dump.sql.gz -e RUN_LABEL=rs03-m07 $K6   # deve terminar em FAILED
+k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e RUN_LABEL=rs03-recuperacao $K6
+
+# RS-04 — consumidor interrompido; a mensagem volta após o visibility_timeout (300 s)
+$PUB --rows 150000
+$FALHAS rodar-ingestao && sleep 60 && $FALHAS parar-tasks ingest   # ajustar o atraso para cair no meio do lote
+sleep 330 && $FALHAS filas                       # mensagem visível de novo
+$FALHAS rodar-ingestao                           # reprocessa sem duplicar
+
+# RS-05 — mensagem venenosa: um recebimento por execução, DLQ após o 5º
+$PUB --variant poison --window-start <T>
+$PUB --rows 150000 --window-start <T+15min>
+for i in 1 2 3 4 5 6; do $FALHAS rodar-ingestao; sleep 330; done
+$FALHAS filas && $FALHAS dlq-espiar              # 1 mensagem na DLQ, com 5 recebimentos
+
+# RS-06 — rate limit de produção (180), com uma importação ativa criada pelo próprio teste
+k6 run -e MODE=limite -e DUMP=$M/1000/argus_dump.sql.gz -e BURST_RATE=20 -e RUN_LABEL=rs06 $K6
+```
+
+&emsp;Observação sobre o RS-05: a fila incremental é FIFO com um único grupo por dataset, então a mensagem venenosa bloqueia os lotes que chegam depois dela até ir para a DLQ (cerca de 5 × 5 minutos). O critério "não bloqueia as demais" deve ser lido como "as demais são processadas depois que a venenosa sai da fila", e o atraso deve ser registrado como achado na Seção 9.
 
 ---
 
