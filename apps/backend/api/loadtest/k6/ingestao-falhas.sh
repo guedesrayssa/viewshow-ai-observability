@@ -57,6 +57,16 @@ rede() {
 
 nome_fila() { basename "$1"; }
 
+# file:// que a AWS CLI consiga abrir: no Git Bash (Windows) ela não entende
+# /c/..., só C:/...
+uri_arquivo() {
+  if command -v cygpath >/dev/null 2>&1; then
+    printf 'file://%s' "$(cygpath -m "$1")"
+  else
+    printf 'file://%s' "$1"
+  fi
+}
+
 cmd_recursos() {
   cat <<EOF
 cluster              $(rb runtime.cluster_name)
@@ -100,7 +110,7 @@ campos = ("Name", "GroupName", "Description", "ScheduleExpression", "ScheduleExp
 novo = {campo: atual[campo] for campo in campos if campo in atual}
 novo["State"] = sys.argv[1]
 print(json.dumps(novo, default=str))' "$estado" > "$ESTADO.agenda.json"
-  aws scheduler update-schedule --region "$REGIAO" --cli-input-json "file://$ESTADO.agenda.json" >/dev/null
+  aws scheduler update-schedule --region "$REGIAO" --cli-input-json "$(uri_arquivo "$ESTADO.agenda.json")" >/dev/null
   rm -f "$ESTADO.agenda.json"
   echo "agenda $qual ($nome): $estado"
 }
@@ -164,7 +174,7 @@ politica["Statement"].append({
 print(json.dumps(politica))
 PY
   aws s3api put-bucket-policy --region "$REGIAO" --bucket "$bucket" \
-    --policy "file://$ESTADO.politica-negada.json"
+    --policy "$(uri_arquivo "$ESTADO.politica-negada.json")"
   echo "upload em s3://$bucket/staging/imports/ NEGADO — reverta com: $0 s3-restaurar"
 }
 
@@ -174,7 +184,7 @@ cmd_s3_restaurar() {
   [ -f "$ESTADO.politica-original.json" ] || erro "nada a restaurar ($ESTADO.politica-original.json ausente)"
   if [ -n "$(tr -d '[:space:]' < "$ESTADO.politica-original.json")" ]; then
     aws s3api put-bucket-policy --region "$REGIAO" --bucket "$bucket" \
-      --policy "file://$ESTADO.politica-original.json"
+      --policy "$(uri_arquivo "$ESTADO.politica-original.json")"
   else
     aws s3api delete-bucket-policy --region "$REGIAO" --bucket "$bucket"
   fi
@@ -224,7 +234,7 @@ print(json.dumps([
 PY
   mkdir -p "$(dirname "$saida")"
   aws cloudwatch get-metric-data --region "$REGIAO" --start-time "$inicio" --end-time "$fim" \
-    --metric-data-queries "file://$ESTADO.consultas.json" --output json > "$saida"
+    --metric-data-queries "$(uri_arquivo "$ESTADO.consultas.json")" --output json > "$saida"
   rm -f "$ESTADO.consultas.json"
   echo "métricas SQS de $inicio a $fim gravadas em $saida"
 }
