@@ -100,6 +100,27 @@ locals {
       log_group         = aws_cloudwatch_log_group.api.name
     }
   ) : ""
+  dashboard_ingestion = var.observabilidade_habilitada ? templatefile(
+    "${path.module}/observability/aws/view-show-ingestion.json.tftpl",
+    {
+      account_id                     = data.aws_caller_identity.atual.account_id
+      aws_region                     = var.regiao
+      metrics_namespace              = local.ingestion_metrics_namespace
+      cluster_name                   = aws_ecs_cluster.principal.name
+      backfill_task_family           = aws_ecs_task_definition.ingestion_backfill.family
+      sync_task_family               = aws_ecs_task_definition.ingestion_sync.family
+      incremental_export_task_family = aws_ecs_task_definition.ingestion_incremental_export.family
+      incremental_ingest_task_family = aws_ecs_task_definition.ingestion_incremental_ingest.family
+      analysis_queue                 = aws_sqs_queue.analysis.name
+      analysis_dlq                   = aws_sqs_queue.analysis_dlq.name
+      incremental_queue              = aws_sqs_queue.incremental_batches.name
+      incremental_dlq                = aws_sqs_queue.incremental_batches_dlq.name
+      backfill_log_group             = aws_cloudwatch_log_group.ingestion_backfill.name
+      sync_log_group                 = aws_cloudwatch_log_group.ingestion_sync.name
+      incremental_export_log_group   = aws_cloudwatch_log_group.ingestion_incremental_export.name
+      incremental_ingest_log_group   = aws_cloudwatch_log_group.ingestion_incremental_ingest.name
+    }
+  ) : ""
 }
 
 resource "aws_instance" "observabilidade" {
@@ -133,7 +154,8 @@ resource "aws_instance" "observabilidade" {
     // do provisionamento na AWS: só a pilha local o recebia. São exatamente os
     // quatro indicadores que o artefato de testes de carga precisa mostrar, e
     // sem esta linha eles não existem no Grafana da nuvem.
-    api_dashboard_gzip = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-api.json"))
+    api_dashboard_gzip       = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-api.json"))
+    ingestion_dashboard_gzip = base64gzip(local.dashboard_ingestion)
   })
 
   // Uma mudança nas configurações recria a instância para que o cloud-init

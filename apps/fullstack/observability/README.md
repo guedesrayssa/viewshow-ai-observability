@@ -63,6 +63,10 @@ apps/fullstack/observability/
 
 O dashboard **View Show — API (RED)** é provisionado automaticamente e exibe
 latência p95, throughput, erros por segundo e uso de CPU a partir do Prometheus.
+Na AWS, o dashboard **View Show — Ingestão** usa o data source CloudWatch para
+mostrar esses mesmos quatro indicadores no contexto batch, além de duração por
+etapa, freshness, filas, DLQs, qualidade de dados e eventos operacionais. Os
+filtros `Comando` e `Task ECS` mantêm a comparação na mesma carga executada.
 
 O Grafana lê `grafana/provisioning/datasources/datasources.yml` a cada subida e
 sincroniza os três data sources. Eles ficam marcados como somente leitura: para
@@ -162,7 +166,8 @@ Enquanto a sessão estiver aberta, acesse <http://localhost:3002> com o usuário
 `admin` e a senha impressa pelo segundo comando. Os dashboards provisionados
 ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
 gerenciados e **View Show — Application Observability** cobre RED, Web Vitals,
-logs correlacionados e alertas da aplicação.
+logs correlacionados e alertas da aplicação. **View Show — Ingestão** cobre a
+saúde e o diagnóstico do pipeline batch diretamente no CloudWatch.
 
 Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
 

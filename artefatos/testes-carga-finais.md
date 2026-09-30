@@ -13,11 +13,12 @@ O recorte cobre os três itens da especificação:
 | --- | --- |
 | RNFs e planos de teste | Traduz os cenários de 10 mil eventos/min, fila cheia e timeout para sinais do pipeline batch. |
 | Resultados de desempenho e resiliência | Define as medidas, critérios e evidências que devem acompanhar cada execução. |
-| Grafana ou Prometheus | Especifica as consultas e a primeira visão do futuro módulo de ingestão no Grafana. |
+| Grafana ou Prometheus | Implementa o módulo de ingestão no Grafana, provisionado sobre o CloudWatch. |
 
 > **Estado em 30/09/2026:** contrato de observabilidade definido; 72 testes locais
 > aprovados; cenário AWS de 150 mil registros executado e reprovado end-to-end.
-> Fila cheia e capturas do Grafana permanecem pendentes. Configuração existente e
+> Fila cheia e capturas do Grafana permanecem pendentes. O dashboard da ingestão
+> já está versionado e conectado ao provisionamento AWS; configuração existente e
 > teste de componente não são apresentados como resultado de carga do pipeline.
 
 ## 2. Semântica dos cenários na arquitetura batch
@@ -50,9 +51,9 @@ flowchart LR
 ```
 
 O CloudWatch permanece como fonte autoritativa porque o worker já emite métricas
-EMF e a infraestrutura já coleta métricas nativas de ECS e SQS. O Grafana será a
-camada de visualização na próxima tarefa, usando o data source CloudWatch já
-provisionado. Não será criado um segundo caminho Prometheus/OTLP sem uma lacuna
+EMF e a infraestrutura já coleta métricas nativas de ECS e SQS. O Grafana é a
+camada de visualização, usando o data source CloudWatch já provisionado. Não foi
+criado um segundo caminho Prometheus/OTLP sem uma lacuna
 comprovada, evitando duplicação de coleta, custo e manutenção.
 
 As métricas de uma execução batch são esparsas. Ausência de amostra fora da
@@ -112,16 +113,25 @@ quando muda o estado da execução ou quando as tentativas se esgotam. A busca d
 um incidente começa por `runId` e então cruza `command`, etapa e janela, sem
 transformar valores únicos em dimensões de métrica.
 
-## 6. Roteiro do módulo de ingestão no Grafana
+## 6. Módulo de ingestão no Grafana
 
-A tarefa seguinte deve construir uma visão pequena, organizada em três linhas:
+O dashboard versionado em
+`apps/fullstack/observability/aws/view-show-ingestion.json.tftpl` implementa uma
+visão pequena, organizada em três linhas:
 
 1. **Saúde e capacidade:** duração da run, throughput de leitura/escrita,
    erros/s e CPU — os quatro indicadores obrigatórios.
 2. **Confiabilidade do dado:** lag, reconciliação das contagens, rejeitados,
    schema drift, backlog, idade da mensagem mais antiga e DLQ.
-3. **Diagnóstico:** duração/falha por etapa, MySQL, memória, armazenamento,
-   Athena e arquivamento.
+3. **Diagnóstico:** duração por etapa e eventos estruturados dos quatro comandos
+   da ingestão. Métricas detalhadas de MySQL, memória, armazenamento e Athena
+   permanecem no dashboard CloudWatch nativo para não sobrecarregar a visão.
+
+O dashboard tem UID estável `view-show-ingestion`, usa o data source
+`cloudwatch` e é instalado automaticamente pelo mesmo `user_data` da stack de
+observabilidade. Os filtros `Comando` e `Task ECS` evitam misturar operações e
+recursos diferentes. A implantação e a captura visual continuam dependentes de
+habilitar `observabilidade_habilitada=true` no ambiente do teste.
 
 Cada painel deve registrar no próprio título, descrição ou documentação associada:
 
