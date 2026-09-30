@@ -1,0 +1,465 @@
+{
+  "metrics": {
+    "front_api_rate_limited_total": {
+      "values": {
+        "rate": 0,
+        "count": 0
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 1.3356000000000003,
+        "p(95)": 2.5145999999999953,
+        "p(99)": 121.26399,
+        "avg": 5.357858024691341,
+        "min": 0.02,
+        "med": 0.119,
+        "max": 464.583
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 9.380201506299393,
+        "count": 3240
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.16608148148148122,
+        "min": 0.026,
+        "med": 0.1615,
+        "max": 0.958,
+        "p(90)": 0.22410000000000008,
+        "p(95)": 0.241,
+        "p(99)": 0.28261
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 140.025,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 122.52963,
+        "avg": 3.8285290123456788,
+        "min": 0,
+        "med": 0
+      }
+    },
+    "data_received": {
+      "contains": "data",
+      "values": {
+        "count": 30823213,
+        "rate": 89237.02129987253
+      },
+      "type": "counter"
+    },
+    "checks": {
+      "thresholds": {
+        "rate>0.98": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "fails": 0,
+        "rate": 1,
+        "passes": 10533
+      }
+    },
+    "http_req_failed": {
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 3240
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "dropped_iterations": {
+      "thresholds": {
+        "count==0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    },
+    "http_req_duration{status:200}": {
+      "contains": "time",
+      "values": {
+        "min": 122.201,
+        "med": 141.80349999999999,
+        "max": 837.01,
+        "p(90)": 159.5099,
+        "p(95)": 258.04885,
+        "p(99)": 364.4030599999999,
+        "avg": 151.6603865435353
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": true
+        },
+        "p(99)<5000": {
+          "ok": true
+        }
+      },
+      "type": "trend"
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 121.958,
+        "med": 140.797,
+        "max": 747.681,
+        "p(90)": 152.6566,
+        "p(95)": 162.951,
+        "p(99)": 280.09381,
+        "avg": 144.87693549382723
+      }
+    },
+    "front_api_contract_success_rate": {
+      "values": {
+        "rate": 1,
+        "passes": 3239,
+        "fails": 0
+      },
+      "thresholds": {
+        "rate>0.98": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 7.805412037037225,
+        "min": 0,
+        "med": 0.001,
+        "max": 282.566,
+        "p(90)": 0.002,
+        "p(95)": 0.002,
+        "p(99)": 250.11173
+      }
+    },
+    "data_sent": {
+      "contains": "data",
+      "values": {
+        "rate": 1609.9205103774586,
+        "count": 556080
+      },
+      "type": "counter"
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 166.929575,
+        "p(95)": 272.5365333,
+        "p(99)": 508.7397011199999,
+        "avg": 159.40851587187407,
+        "min": 122.715709,
+        "med": 142.788375,
+        "max": 837.36625
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 9.377306382377695,
+        "count": 3239
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 256.06039999999996,
+        "p(99)": 362.1386499999999,
+        "avg": 150.4008749999998,
+        "min": 122.201,
+        "med": 141.502,
+        "max": 837.01,
+        "p(90)": 157.424
+      }
+    },
+    "front_api_data_unavailable_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 208,
+        "rate": 0.6021857757130474
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 127.37404,
+        "avg": 3.969344444444444,
+        "min": 0,
+        "med": 0,
+        "max": 144.675,
+        "p(90)": 0,
+        "p(95)": 0
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 362.1386499999999,
+        "avg": 150.4008749999998,
+        "min": 122.201,
+        "med": 141.502,
+        "max": 837.01,
+        "p(90)": 157.424,
+        "p(95)": 256.06039999999996
+      }
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 0,
+        "min": 0,
+        "max": 4
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 100,
+        "min": 100,
+        "max": 100
+      }
+    }
+  },
+  "setup_data": {
+    "cookie": "<redigido: cookie de sessão>"
+  },
+  "root_group": {
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [],
+    "checks": [
+        {
+          "fails": 0,
+          "name": "incidents_list: sem campo físico vazado",
+          "path": "::incidents_list: sem campo físico vazado",
+          "id": "4feb435340955ea4b2b471710d7e23a3",
+          "passes": 1024
+        },
+        {
+          "name": "incidents_list: schema de items",
+          "path": "::incidents_list: schema de items",
+          "id": "6cc80af1a62f7646521d95769a9d6cd5",
+          "passes": 1024,
+          "fails": 0
+        },
+        {
+          "id": "fd5e4e26bfba5b6226775378cfeb5416",
+          "passes": 1024,
+          "fails": 0,
+          "name": "incidents_list: resposta de contrato",
+          "path": "::incidents_list: resposta de contrato"
+        },
+        {
+          "name": "incidents_list: request id ecoado",
+          "path": "::incidents_list: request id ecoado",
+          "id": "14192d4c4729924583d63db9ae7eda91",
+          "passes": 1024,
+          "fails": 0
+        },
+        {
+          "passes": 601,
+          "fails": 0,
+          "name": "dashboard_overview: sem campo físico vazado",
+          "path": "::dashboard_overview: sem campo físico vazado",
+          "id": "ec7c9fd5ff99d98b905f2098584bb8d8"
+        },
+        {
+          "name": "dashboard_overview: resposta de contrato",
+          "path": "::dashboard_overview: resposta de contrato",
+          "id": "6901cf8c0f2394523684ecf38b88a454",
+          "passes": 601,
+          "fails": 0
+        },
+        {
+          "name": "dashboard_overview: request id ecoado",
+          "path": "::dashboard_overview: request id ecoado",
+          "id": "7eb12c59a238f8730f72a3cd11c1cdf2",
+          "passes": 601,
+          "fails": 0
+        },
+        {
+          "name": "incident_diagnosis: sem campo físico vazado",
+          "path": "::incident_diagnosis: sem campo físico vazado",
+          "id": "420b92b2f5592a3e32d4c52aa9c18042",
+          "passes": 563,
+          "fails": 0
+        },
+        {
+          "name": "incident_diagnosis: resposta de contrato",
+          "path": "::incident_diagnosis: resposta de contrato",
+          "id": "c82e1b7c90c579a18c0f0384d91c3468",
+          "passes": 563,
+          "fails": 0
+        },
+        {
+          "path": "::incident_diagnosis: request id ecoado",
+          "id": "09295b3b58f1349c3772e807ee7fc517",
+          "passes": 563,
+          "fails": 0,
+          "name": "incident_diagnosis: request id ecoado"
+        },
+        {
+          "fails": 0,
+          "name": "incident_events: sem campo físico vazado",
+          "path": "::incident_events: sem campo físico vazado",
+          "id": "2bfa7788a03de81c298c7fcb6c356455",
+          "passes": 366
+        },
+        {
+          "name": "incident_events: resposta de contrato",
+          "path": "::incident_events: resposta de contrato",
+          "id": "18f8c5dc5e4dce71db49317ccbdc9c06",
+          "passes": 366,
+          "fails": 0
+        },
+        {
+          "name": "incident_events: request id ecoado",
+          "path": "::incident_events: request id ecoado",
+          "id": "e241ef2ba827272ba017fb7e85731718",
+          "passes": 366,
+          "fails": 0
+        },
+        {
+          "id": "970f00152ca5f8307767b6a09000052b",
+          "passes": 330,
+          "fails": 0,
+          "name": "global_events: sem campo físico vazado",
+          "path": "::global_events: sem campo físico vazado"
+        },
+        {
+          "passes": 330,
+          "fails": 0,
+          "name": "global_events: resposta de contrato",
+          "path": "::global_events: resposta de contrato",
+          "id": "18a0eeb956cd9ca1e036a520d9ea0b66"
+        },
+        {
+          "path": "::global_events: request id ecoado",
+          "id": "cc5997eaf6921f00dbf7b60f0b4a3ed5",
+          "passes": 330,
+          "fails": 0,
+          "name": "global_events: request id ecoado"
+        },
+        {
+          "fails": 0,
+          "name": "monitoring_overview: resposta de contrato",
+          "path": "::monitoring_overview: resposta de contrato",
+          "id": "5278fed5bcfa378ea5fb6759b2a839a5",
+          "passes": 208
+        },
+        {
+          "name": "monitoring_overview: request id ecoado",
+          "path": "::monitoring_overview: request id ecoado",
+          "id": "0faba9d3d47e2fd42c0832829888df53",
+          "passes": 208,
+          "fails": 0
+        },
+        {
+          "name": "auth_session: sem campo físico vazado",
+          "path": "::auth_session: sem campo físico vazado",
+          "id": "05ab26654f303f6dd955ae20cc43a980",
+          "passes": 121,
+          "fails": 0
+        },
+        {
+          "fails": 0,
+          "name": "auth_session: resposta de contrato",
+          "path": "::auth_session: resposta de contrato",
+          "id": "8ef8d55b949b030733ba5f156f10d56c",
+          "passes": 121
+        },
+        {
+          "name": "auth_session: request id ecoado",
+          "path": "::auth_session: request id ecoado",
+          "id": "f4a0916154dd27c0dd6660966bcab36b",
+          "passes": 121,
+          "fails": 0
+        },
+        {
+          "name": "argus_integration: sem campo físico vazado",
+          "path": "::argus_integration: sem campo físico vazado",
+          "id": "51982aecef90975b000f060b71af6a59",
+          "passes": 26,
+          "fails": 0
+        },
+        {
+          "passes": 26,
+          "fails": 0,
+          "name": "argus_integration: resposta de contrato",
+          "path": "::argus_integration: resposta de contrato",
+          "id": "d02f960802ad0166da31e14999cb303b"
+        },
+        {
+          "passes": 26,
+          "fails": 0,
+          "name": "argus_integration: request id ecoado",
+          "path": "::argus_integration: request id ecoado",
+          "id": "3638213efcd1a6951ecaec0622fbdbef"
+        }
+      ]
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)",
+      "p(99)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": true
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 345408.358
+  }
+}

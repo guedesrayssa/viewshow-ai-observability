@@ -1,12 +1,85 @@
 # Testes de carga — apps/backend/api
 
+## Nova bateria local do frontend
+
+`k6/front-api.js` exercita uma mistura de leituras das telas do frontend:
+
+| Rota                                          | Peso aproximado |
+| --------------------------------------------- | --------------: |
+| `GET /api/v1/incidents` (24h, lista paginada) |             32% |
+| `GET /api/v1/dashboard/overview`              |             18% |
+| `GET /api/v1/incidents/:id/diagnosis`         |             16% |
+| `GET /api/v1/incidents/:id/events`            |             12% |
+| `GET /api/v1/events`                          |             10% |
+| `GET /api/v1/monitoring/overview`             |              7% |
+| `GET /auth/session`                           |              4% |
+| `GET /api/v1/integrations/argus`              |              1% |
+
+O perfil exercita respostas, latência p50/p90/p95/p99, taxa de sucesso,
+limites de concorrência do gerador, respostas 429/503 e eco de
+`X-Request-Id`. Exige p95 abaixo de 2 s e p99 abaixo de 5 s em respostas 200;
+`smoke` exige sucesso total, e os demais perfis exigem pelo menos 98% de
+sucesso, sem 429 nem iterações descartadas. Uma exceção explícita é
+`monitoring/overview`: no `develop` atual ela responde 503
+`DATA_UNAVAILABLE` enquanto não existir projeção pública compatível; o teste
+confere esse contrato e registra a indisponibilidade como métrica separada.
+503 em qualquer outra rota conta como falha.
+
+A bateria não executa mutações nas hipóteses, reanálises, importações, login
+no Cognito, ingestão, nem chamadas ao LLM. Ela usa uma sessão local assinada e
+um seed sintético. O script não direciona requisições para AWS: cada execução
+sobe uma instância descartável de DynamoDB Local, cria tabela isolada, semeia
+300 incidentes, inicia a API em loopback e remove o contêiner ao final.
+
+Pré-requisitos: Docker, Node.js 22, dependências npm de `apps/backend/api` já
+instaladas e k6 disponível no `PATH`. A partir desta pasta:
+
+```bash
+./local.sh smoke       # verificação curta e conservadora (1 iteração/s)
+RATE=50 ./local.sh load
+RATE=50 ./local.sh spike
+RATE=50 ./local.sh stress
+RATE=50 DURATION=30m ./local.sh soak
+./local.sh breakpoint  # degraus de 10 a 150 chegadas/s
+```
+
+`load` sustenta a taxa configurada por cinco minutos; `spike` aplica uma
+rajada de quatro vezes a taxa base; `stress` sustenta duas vezes a taxa base;
+`soak` dura 30 minutos por padrão. Cada modo começa com banco limpo e seed novo.
+Resultados JSON são salvos em `loadtest/results/` e o arquivo é ignorado pelo
+Git. A taxa do limite de API local é 30.000 req/min por padrão para deixar o
+gerador medir a API; ajuste com `API_RATE_LIMIT_PER_MINUTE` se necessário.
+O cenário é carga de chegada aberta (arrival rate), então a pressão não cai
+quando a API fica lenta.
+
+Use primeiro `smoke`; os perfis acima dele podem consumir bastante CPU e
+memória do computador. A taxa atingida é a taxa de chegada configurada; o
+relatório registra também as iterações descartadas caso k6 não consiga
+acompanhar. Os resultados locais medem a capacidade desta máquina e do
+DynamoDB Local, não estimam por si só a capacidade da AWS.
+
+Para rodar somente o script em outra API de teste, use k6 diretamente com
+`BASE_URL`, `AUTH_COOKIE_SECRET` (o mesmo segredo do servidor) ou
+`AUTH_USERNAME`/`AUTH_PASSWORD`, `MODE`, `RATE` e `INCIDENT_COUNT`. Prepare
+antes os IDs ordinais `inc-000001` a `inc-000300` e as projeções de dashboard e
+dashboard overview. A rota de monitoramento deve manter seu 503
+`DATA_UNAVAILABLE` esperado até a projeção ser implementada. A API deve
+permitir taxa suficiente por IP; o limite padrão
+de produção (180 req/min) vai bloquear um gerador único em carga alta. A etapa
+AWS será configurada separadamente, após o setup de nuvem.
+
+### Implementação anterior
+
 Suíte k6 do contrato atual de `apps/backend/api` (monólito modular). Ignora
 por completo `apps/basica` (Flask legado, fora da arquitetura aprovada).
 
 Documentação do artefato de entrega (requisitos, plano de testes, resultados,
-observabilidade):
+observabilidade da rodada anterior):
 [`artefatos/sprint3/testes-carga-inicial.md`](../../../../artefatos/sprint3/testes-carga-inicial.md).
-Este README cobre apenas o operacional — como rodar e o que esperar.
+O relatório da execução AWS desta suíte está em
+[`artefatos/sprint5/testes-de-carga-da-api.md`](../../../../artefatos/sprint5/testes-de-carga-da-api.md),
+com cópias dos resumos JSON em `artefatos/sprint5/evidencias/testes-carga-api/aws/`.
+Este README cobre principalmente o operacional — como rodar e o que esperar.
 
 ## Arquivos
 
@@ -16,8 +89,8 @@ Este README cobre apenas o operacional — como rodar e o que esperar.
 | `k6/auth-check.js`                                       | RNF04 — controle de acesso em todas as rotas, incluindo `auth/session`, `auth/login`, `auth/callback`, `auth/logout`, `reanalyze` e `imports*` | Sim                                                                        |
 | `k6/ingestao-batch.js`                                   | RNF01/RNF02/RNF03 — drenagem de 10k eventos/min, acúmulo (backlog), frescor ponta a ponta                                                      | Não — adaptador de import fail-closed por design (ver cabeçalho do script) |
 | `k6/rodadas.sh`                                          | Bateria `smoke → load → breakpoint → estresse → spike → soak` de `consultas.js`                                                                | Sim                                                                        |
-| `k6/lib/session.js`                                      | Sessão (login real ou cookie forjado) e o header `X-Request-Id`, compartilhado pelos três scripts                                                | —                                                                          |
-| `k6/lib/asserts.js`                                      | Checks de conteúdo de `consultas.js`: schema mínimo, campo físico vazado, duplicidade entre páginas, eco de `X-Request-Id`                      | —                                                                          |
+| `k6/lib/session.js`                                      | Sessão (login real ou cookie forjado) e o header `X-Request-Id`, compartilhado pelos três scripts                                              | —                                                                          |
+| `k6/lib/asserts.js`                                      | Checks de conteúdo de `consultas.js`: schema mínimo, campo físico vazado, duplicidade entre páginas, eco de `X-Request-Id`                     | —                                                                          |
 | [`../scripts/seed-carga.cjs`](../scripts/seed-carga.cjs) | Popula incidentes, evidências, hipóteses e projeções de overview/monitoring no DynamoDB                                                        | Sim                                                                        |
 
 ## Autenticação
@@ -89,6 +162,23 @@ aws cognito-idp admin-set-user-password \
 k6 run -e BASE_URL=http://<dns-do-alb> -e AUTH_USERNAME=<email-de-teste> -e AUTH_PASSWORD=<senha> -e MODE=smoke consultas.js
 ```
 
+Na stack do Learner Lab, `run-aws.mjs` valida a conta, espera a task ECS
+saudável, obtém o segredo de sessão somente em memória e executa a mesma
+bateria contra o endpoint HTTPS do API Gateway. O segredo não é impresso nem
+gravado nos resultados:
+
+```bash
+EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=smoke node run-aws.mjs
+EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=load RATE=10 node run-aws.mjs
+EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=stress RATE=10 node run-aws.mjs
+EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=spike RATE=10 node run-aws.mjs
+```
+
+O fluxo AWS usa `ALLOW_REMOTE_SEED=1` apenas para inserir a massa sintética na
+tabela operacional antes de cada rodada. Para cargas acima do limite padrão,
+o comando protegido `update loadtest-20000` eleva temporariamente o limite e
+`update baseline` o restaura para 180 req/min.
+
 (`AUTH_COOKIE_SECRET` continua funcionando como alternativa se o segredo HMAC
 da task ECS for conhecido por outra via, mas não é mais necessário: o
 Terraform gera esse segredo com `random_password` e não o expõe como output
@@ -132,7 +222,7 @@ isso não acontecer sem querer.
    (o mais novo tem 5 min; `monitoring` usa janela de 15 min por padrão); fora
    dela vem `503 DATA_UNAVAILABLE`. Os checks de `consultas.js` exigem 200, e
    por isso **semeie imediatamente antes de cada rodada** — `CLEAN=1 node
-   scripts/seed-carga.cjs` leva cerca de 1 s.
+scripts/seed-carga.cjs` leva cerca de 1 s.
 3. **`ingestao-batch.js` está bloqueado por design** — o adaptador de import
    é fail-closed (503) até S3 e a tarefa de ingestão serem configurados;
    `setup()` detecta isso e aborta com mensagem clara.
