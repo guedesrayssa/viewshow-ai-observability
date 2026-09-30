@@ -29,27 +29,52 @@ export async function drainAndShutdown(
   active: ReadonlySet<Promise<void>>,
   telemetry: AgenticTelemetry,
   timeoutMs: number,
+  monotonic: () => number = () => performance.now(),
 ): Promise<void> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<void>((resolve) => {
-    timeout = setTimeout(resolve, Math.max(timeoutMs, 0));
-  });
-  try {
-    await Promise.race([Promise.allSettled([...active]).then(() => undefined), deadline]);
-  } finally {
-    if (timeout) clearTimeout(timeout);
-  }
+  const deadline = monotonic() + Math.max(timeoutMs, 0);
+  await settleBefore(Promise.allSettled([...active]), deadline, monotonic);
 
   try {
-    const flushed = await telemetry.forceFlush(Math.max(timeoutMs, 0));
-    if (!flushed) telemetry.event("telemetry_flush_failed", { errorType: "FlushFailed" });
+    const remaining = Math.max(deadline - monotonic(), 0);
+    const flush = await settleBefore(telemetry.forceFlush(remaining), deadline, monotonic);
+    if (!flush.settled || flush.value !== true) {
+      telemetry.event("telemetry_flush_failed", {
+        errorType: flush.settled ? "FlushFailed" : "FlushTimeout",
+      });
+    }
   } catch (error) {
     telemetry.event("telemetry_flush_failed", { errorType: safeErrorType(error) });
   }
 
   try {
-    await telemetry.shutdown();
+    const shutdown = await settleBefore(telemetry.shutdown(), deadline, monotonic);
+    if (!shutdown.settled) {
+      telemetry.event("telemetry_shutdown_failed", { errorType: "ShutdownTimeout" });
+    }
   } catch (error) {
     telemetry.event("telemetry_shutdown_failed", { errorType: safeErrorType(error) });
+  }
+}
+
+async function settleBefore<T>(
+  operation: Promise<T>,
+  deadline: number,
+  monotonic: () => number,
+): Promise<{ settled: true; value: T } | { settled: false }> {
+  const remaining = Math.max(deadline - monotonic(), 0);
+  if (remaining === 0) {
+    void operation.catch(() => undefined);
+    return { settled: false };
+  }
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation.then((value) => ({ settled: true as const, value })),
+      new Promise<{ settled: false }>((resolve) => {
+        timeout = setTimeout(() => resolve({ settled: false }), remaining);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }

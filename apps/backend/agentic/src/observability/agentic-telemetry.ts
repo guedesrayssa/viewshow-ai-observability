@@ -341,7 +341,13 @@ export function createAgenticTelemetry(
       shutdownPromise ??= Promise.allSettled([
         tracerProvider.shutdown(),
         meterProvider.shutdown(),
-      ]).then(() => undefined);
+      ]).then((results) => {
+        if (results.some((result) => result.status === "rejected")) {
+          const error = new Error("Telemetry shutdown failed") as Error & { code: string };
+          error.code = "TELEMETRY_SHUTDOWN_FAILED";
+          throw error;
+        }
+      });
       return shutdownPromise;
     },
   };

@@ -250,7 +250,7 @@ repositório.
 ```text
 LLM_PROVIDER=ollama
 LLM_MODEL_ID=<modelo aprovado>
-OLLAMA_BASE_URL=<endpoint alcançável pela VPC>
+OLLAMA_BASE_URL=http://<ipv4-rfc1918-alcançável-pela-vpc>:11434
 OTEL_SERVICE_NAME=view-show-agentic
 OTEL_EXPORTER_OTLP_ENDPOINT=http://<ip-privado-observabilidade>:4320
 OTEL_SERVICE_VERSION=<tag imutável da imagem>

@@ -124,3 +124,35 @@ test("timeout still shuts down and resolves promptly", async () => {
   assert.equal(shutdownCalls, 1);
   assert.ok(performance.now() - started < 200);
 });
+
+test("drain, flush and shutdown share one bounded deadline", async () => {
+  const never = new Promise<void>(() => {});
+  let flushCalls = 0;
+  let shutdownCalls = 0;
+  const { telemetry } = fakeTelemetry({
+    forceFlush: async () => { flushCalls++; return never.then(() => true); },
+    shutdown: async () => { shutdownCalls++; return never; },
+  });
+  const started = performance.now();
+  await drainAndShutdown(new Set([Promise.resolve()]), telemetry, 20);
+  const elapsed = performance.now() - started;
+  assert.equal(flushCalls, 1);
+  assert.equal(shutdownCalls, 1);
+  assert.ok(elapsed < 100, `elapsed ${elapsed}ms`);
+});
+
+test("shutdown deadline uses the injected monotonic clock", async () => {
+  const never = new Promise<void>(() => {});
+  const { telemetry, events } = fakeTelemetry({
+    forceFlush: async () => never.then(() => true),
+    shutdown: async () => never,
+  });
+  const times = [100, 100, 105, 111, 111];
+  await drainAndShutdown(
+    new Set([Promise.resolve()]),
+    telemetry,
+    10,
+    () => times.shift() ?? 111,
+  );
+  assert.match(JSON.stringify(events), /FlushTimeout|ShutdownTimeout/);
+});

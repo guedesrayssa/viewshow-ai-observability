@@ -39,7 +39,7 @@ locals {
   // O sufixo [0] só é avaliado quando o repositório existe.
   analysis_worker_image_uri = !var.analysis_worker_habilitado ? "" : (
     var.analysis_worker_image_uri != "" ? var.analysis_worker_image_uri :
-    "${aws_ecr_repository.analysis_worker[0].repository_url}:${local.analysis_worker_image_tag}"
+    "${data.aws_caller_identity.atual.account_id}.dkr.ecr.${var.regiao}.amazonaws.com/${var.deployment_namespace}-analysis-worker:${local.analysis_worker_image_tag}"
   )
 
   // Com arquivos locais, o Terraform publica os dois no bucket da ingestão em
@@ -151,6 +151,24 @@ resource "aws_cloudwatch_log_group" "analysis_worker" {
   count             = var.analysis_worker_habilitado ? 1 : 0
   name              = "/ecs/${var.deployment_namespace}-analysis-worker"
   retention_in_days = var.retencao_logs_dias
+}
+
+resource "aws_security_group_rule" "ollama_ssh_bridge" {
+  count                    = var.analysis_worker_habilitado && var.analysis_ssh_bridge_habilitado ? 1 : 0
+  type                     = "ingress"
+  description              = "Ollama via SSH reverso somente a partir do Security Group do servico ECS"
+  from_port                = 11434
+  to_port                  = 11434
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.bastion.id
+  source_security_group_id = aws_security_group.servico.id
+
+  lifecycle {
+    precondition {
+      condition     = var.analysis_ollama_base_url == "http://${aws_instance.bastion.private_ip}:11434"
+      error_message = "A ponte SSH exige o IP privado do bastion como endpoint Ollama."
+    }
+  }
 }
 
 resource "aws_ecs_task_definition" "analysis_worker" {

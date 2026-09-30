@@ -231,6 +231,16 @@ variable "analysis_ollama_base_url" {
   }
 }
 
+variable "analysis_ssh_bridge_habilitado" {
+  description = "Abre somente a porta 11434 do bastion para o Security Group do serviço ECS quando um túnel SSH reverso está em uso."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.analysis_ssh_bridge_habilitado || !var.analysis_worker_habilitado || var.analysis_llm_provider == "ollama"
+    error_message = "A ponte SSH requer provider Ollama quando o worker está habilitado."
+  }
+}
+
 variable "retencao_logs_dias" {
   description = "Retenção do log group do ECS."
   type        = number
@@ -256,6 +266,12 @@ variable "observabilidade_habilitada" {
   description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki, Tempo e Alloy em uma EC2."
   type        = bool
   default     = false
+}
+
+variable "observabilidade_api_exportacao_habilitada" {
+  description = "Conecta a task da API aos endpoints privados da observabilidade. O rollout seguro a desliga apenas na fase que cria a EC2 e a religa quando o IP já é conhecido."
+  type        = bool
+  default     = true
 }
 
 variable "tipo_instancia_observabilidade" {

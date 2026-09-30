@@ -197,6 +197,24 @@ test("writer and exporter failures do not change the business result", async () 
   await telemetry.shutdown();
 });
 
+test("concrete telemetry shutdown reports provider failures with a stable sanitized code", async () => {
+  const exporter: SpanExporter = {
+    export(_spans, callback) { callback({ code: 0 }); },
+    async shutdown() { throw new Error("SHUTDOWN_PROVIDER_SECRET_SENTINEL"); },
+  };
+  const telemetry = createAgenticTelemetry(telemetryConfigFromEnv({}), {
+    spanExporter: exporter,
+    write: () => {},
+  });
+
+  await assert.rejects(telemetry.shutdown(), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.equal((error as Error & { code?: string }).code, "TELEMETRY_SHUTDOWN_FAILED");
+    assert.doesNotMatch(error.message, /SECRET_SENTINEL/);
+    return true;
+  });
+});
+
 test("runMessage delivery contract excludes the message body", () => {
   type RunDelivery = Parameters<AgenticTelemetry["runMessage"]>[0];
   const acceptsRunDelivery = (_delivery: RunDelivery): void => {};

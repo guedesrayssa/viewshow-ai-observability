@@ -12,8 +12,10 @@ async function listen(server: Server): Promise<string> {
 
 test("smoke invokes Ollama through telemetry and flushes OTLP without logging content", async (context) => {
   const paths: string[] = [];
+  const bodies: string[] = [];
   const server = createServer((request, response) => {
     paths.push(request.url ?? "");
+    request.on("data", (chunk) => bodies.push(String(chunk)));
     if (request.url === "/api/version") {
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ version: "0.12.3" }));
@@ -61,4 +63,6 @@ test("smoke invokes Ollama through telemetry and flushes OTLP without logging co
   assert.match(lines.join(""), /qwen2\.5:7b/);
   assert.match(lines.join(""), /success/);
   assert.doesNotMatch(lines.join(""), /PROMPT_SMOKE_SENTINEL|RESPONSE_SMOKE_SENTINEL/);
+  assert.match(bodies.join(""), /PROMPT_SMOKE_SENTINEL/);
+  assert.match(bodies.join(""), /RESPONSE_SMOKE_SENTINEL/);
 });

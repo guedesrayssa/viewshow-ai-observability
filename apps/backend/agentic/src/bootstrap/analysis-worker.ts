@@ -58,12 +58,19 @@ export async function main(): Promise<void> {
   shutdownTimeoutMs = positive("SHUTDOWN_TIMEOUT_MS", 110_000);
   process.once("SIGTERM", () => { stopping = true; }); process.once("SIGINT", () => { stopping = true; });
   while (!stopping) {
-    if(active.size>=concurrency){await Promise.race(active);continue;}
+    if(active.size>=concurrency){await Promise.race(active);if(stopping) break;continue;}
     let deliveries;
-    try { deliveries=await queue.receive(); }
-    catch(error){telemetry.event("queue_receive_failed",{errorType:safeErrorType(error)});await new Promise(resolve=>setTimeout(resolve,5000));continue;}
+    try { deliveries=await queue.receive(); if(stopping) break; }
+    catch(error){
+      if(stopping) break;
+      telemetry.event("queue_receive_failed",{errorType:safeErrorType(error)});
+      await new Promise(resolve=>setTimeout(resolve,5000));
+      if(stopping) break;
+      continue;
+    }
     for (const delivery of deliveries) {
-      if(active.size>=concurrency) await Promise.race(active);
+      if(stopping) break;
+      if(active.size>=concurrency) { await Promise.race(active); if(stopping) break; }
       const task = processObservedDelivery(worker, telemetry, delivery).finally(() => active.delete(task)); active.add(task);
     }
   }
