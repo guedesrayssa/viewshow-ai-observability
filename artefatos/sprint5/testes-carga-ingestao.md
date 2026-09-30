@@ -170,11 +170,11 @@ Fonte: Material produzido pelos autores (2026).
 
 | RNF | Descrição resumida | Plano aprimorado | Ferramenta | Critério objetivo | Testes | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| RNF01 | Aceitar continuamente 10.000 eventos válidos/min sem perda | Importar uma janela sintética de 150.000 eventos válidos e medir a vazão de processamento; conferir contagem no DynamoDB/Athena | k6 (`ingestao-batch.js`, `MODE=drenagem`) + CloudWatch + consulta de contagem | `recordsWritten = 150.000`; `recordsRejected = 0`; duração de `VALIDATING+PROCESSING` ≤ 900 s (≥ 166,67 eventos/s); 0 duplicados; `checks rate==1` | CG-02, CG-05 | _A preencher_ |
-| RNF02 | Evento disponível para consulta em ≤ 120 s após captura | Marcar `t0` na entrada do lote incremental, `t1` no fim da ingestão e `t2` quando o watermark de `/dashboard/overview` passar de `t0` | k6 (`MODE=frescor`) | `t2 − t0 ≤ 120 s` em 100% das amostras | CG-03 | _A preencher_ |
-| RNF03 | Degradar de forma controlada sob payload inválido, fila sem capacidade e timeout; recuperar sem reinício | Injetar cada falha da Seção 6 sob carga nominal, observar a resposta e depois retirar a falha | k6 + AWS CLI (injeção) + CloudWatch | Falha sempre explícita (`409`/`429`/`503`/`FAILED`/`QUARANTINED`/DLQ); 0 eventos aceitos e não persistidos; recuperação ao patamar de CG-02 sem reinício manual | RS-01 a RS-06 | _A preencher_ |
-| RNF09 | Disponibilidade das APIs ≥ 99,9% | Durante toda a bateria de ingestão, medir erro inesperado nas rotas de import (excluindo `409`/`429`/`503` esperados) | k6 `http_req_failed` | `http_req_failed rate < 0,001` nas rotas `/api/v1/imports*` | CG-01, CG-04 | _A preencher_ |
-| RNF15 | Degradação sinalizada ao operador em ≤ 30 s | Durante RS-01 a RS-05, cronometrar o intervalo entre a injeção da falha e o disparo do alarme correspondente | CloudWatch Alarms / Grafana Alerting | Alarme em estado `ALARM` em ≤ 30 s (registrar o valor real, mesmo que acima) | RS-01 a RS-05 | _A preencher_ |
+| RNF01 | Aceitar continuamente 10.000 eventos válidos/min sem perda | Importar uma janela sintética de 150.000 eventos válidos e medir a vazão de processamento; conferir contagem no DynamoDB/Athena | k6 (`ingestao-batch.js`, `MODE=drenagem`) + CloudWatch + consulta de contagem | `recordsWritten = 150.000`; `recordsRejected = 0`; duração de `VALIDATING+PROCESSING` ≤ 900 s (≥ 166,67 eventos/s); 0 duplicados; `checks rate==1` | CG-02, CG-05 | **Reprovado** — INGESTING a ~15 mil eventos/min, mas o pipeline até `READY` levou 13.915 s na R2, por PROJECTING e ARCHIVING (CG-02) |
+| RNF02 | Evento disponível para consulta em ≤ 120 s após captura | Marcar `t0` na entrada do lote incremental, `t1` no fim da ingestão e `t2` quando o watermark de `/dashboard/overview` passar de `t0` | k6 (`MODE=frescor`) | `t2 − t0 ≤ 120 s` em 100% das amostras | CG-03 | **Não executado** — o bloqueio por `PK`/`SK` foi corrigido e implantado às 19:45 UTC, mas o CG-03 não foi rodado depois disso |
+| RNF03 | Degradar de forma controlada sob payload inválido, fila sem capacidade e timeout; recuperar sem reinício | Injetar cada falha da Seção 6 sob carga nominal, observar a resposta e depois retirar a falha | k6 + AWS CLI (injeção) + CloudWatch | Falha sempre explícita (`409`/`429`/`503`/`FAILED`/`QUARANTINED`/DLQ); 0 eventos aceitos e não persistidos; recuperação ao patamar de CG-02 sem reinício manual | RS-01 a RS-06 | **Parcial** — importação: falhas explícitas e recuperação automática (RS-02, RS-03b, CG-04); incremental: na rodada da manhã os lotes nunca foram persistidos (`PK`/`SK`); na da tarde, após a correção, os 300.000 eventos foram gravados, mas um dos 2 lotes não foi confirmado e foi para a DLQ (`visibility_timeout`, RS-01) |
+| RNF09 | Disponibilidade das APIs ≥ 99,9% | Durante toda a bateria de ingestão, medir erro inesperado nas rotas de import (excluindo `409`/`429`/`503` esperados) | k6 `http_req_failed` | `http_req_failed rate < 0,001` nas rotas `/api/v1/imports*` | CG-01, CG-04 | **Aprovado** — 0 erro inesperado em CG-01, CG-02, CG-04 e RS-06 (os `503` são respostas seguras previstas; ver ressalva no CG-04) |
+| RNF15 | Degradação sinalizada ao operador em ≤ 30 s | Durante RS-01 a RS-05, cronometrar o intervalo entre a injeção da falha e o disparo do alarme correspondente | CloudWatch Alarms / Grafana Alerting | Alarme em estado `ALARM` em ≤ 30 s (registrar o valor real, mesmo que acima) | RS-01 a RS-05 | **Reprovado** — 35 s no melhor caso; 111–190 s nas filas; sem alarme em RS-02(a)/(b) |
 
 <div align="center">
 
@@ -219,21 +219,21 @@ Fonte: Material produzido pelos autores (2026).
 
 | Item | Valor |
 | --- | --- |
-| Data e janela (UTC) | _A preencher_ |
-| Conta / região | _A preencher_ / `us-east-1` (AWS Academy Learner Lab) |
-| Namespace da stack | _A preencher_ |
-| Commit / tag do repositório | _A preencher_ |
-| Imagem da API (ECR) | _A preencher_ |
-| Imagem da ingestão (ECR) | _A preencher_ |
-| API — tasks ECS / vCPU / memória | _A preencher_ (padrão: mín. 1, máx. 4 tasks) |
-| Task `import-dump` — vCPU / memória / storage efêmero | _A preencher_ (storage configurado: 200 GiB) |
-| Tasks `ingest-incremental` / `export-incremental` — agenda | _A preencher_ (padrão: 5 min / 15 min) |
-| Persistência | DynamoDB `_A preencher_` (`PAY_PER_REQUEST`), bucket de staging `_A preencher_`, bucket raw `_A preencher_` |
-| Filas | `_A preencher_-incremental-batches.fifo`, `_A preencher_-analysis` e respectivas DLQs |
-| Rate limit da API (`rate_limit_por_minuto`) | _A preencher_ (produção: 180) |
-| Gerador de carga | k6 _versão a preencher_, executado _dentro/fora da AWS — a preencher_ |
-| Observabilidade | Prometheus _versão_, Grafana _versão_, CloudWatch (namespace `_A preencher_/Ingestion`) |
-| Autenticação | Login real no Cognito via `POST /auth/login` (usuário técnico `_A preencher_`) |
+| Data e janela (UTC) | 2026-09-30, a partir de 10:10 UTC (ver `execucoes.txt` para a janela de cada rodada) |
+| Conta / região | `114388221188` / `us-east-1` (AWS Academy Learner Lab) |
+| Namespace da stack | `view-show` (recursos `view-show-iac-*` e `view-show-ingestion-*`) |
+| Commit / tag do repositório | Até 19:45 UTC: `4c9b236` (branch `feat/testes-ingestao`). A partir de 19:45 UTC: `0eded5d`, que inclui a correção de `PK`/`SK` (`cc0dbbc`, `afc303c`) e o log de causa no `ingest-incremental` (`0eded5d`). A correção de `apps/scripts/aws-learner-lab.mjs` (parâmetro `file://` no Windows) foi commitada à parte e não afeta o caminho testado |
+| Imagem da API (ECR) | `view-show-iac-api:96ef64f46bff` (sem mudança na rodada) |
+| Imagem da ingestão (ECR) | Até 19:45 UTC: `view-show-ingestion@sha256:1fa9cb2d7fcd…2d93`. A partir de 19:45 UTC: `view-show-ingestion:52b405d7ae76` (`sha256:2d409c86…`), implantada por `terraform apply -target` nas 5 task definitions de ingestão (**revisão 6**) e nos 3 agendamentos (`execucoes.txt`, `rs01-digest-task.txt`) |
+| API — tasks ECS / vCPU / memória | 1 task em execução (autoscaling mín. 1, máx. 4, alvo 50% CPU) / 0,25 vCPU / 512 MiB (`view-show-iac-api-task:5`) |
+| Task `import-dump` — vCPU / memória / storage efêmero | 2 vCPU / 8 GiB / 200 GiB (`view-show-ingestion-import:5`; revisão 6 a partir de 19:45 UTC, mesmos recursos) |
+| Tasks `ingest-incremental` / `export-incremental` — agenda | 1 vCPU / 2 GiB; agendas `rate(5 minutes)` / `rate(15 minutes)`, ambas **DISABLED** (`incremental_s3_enabled=false`); consumidor disparado sob demanda por `ingestao-falhas.sh rodar-ingestao`. Exceção: no RS-01 da tarde a agenda do `ingest-incremental` foi ligada de 20:23:54 a 20:54:20 UTC e desligada de novo (`rs01-drenagem.txt`) |
+| Persistência | DynamoDB `view-show-iac-operacional` (`PAY_PER_REQUEST`); bucket `view-show-ingestion-114388221188-us-east-1` (staging `staging/imports/` e raw `raw/argus/incremental/`) |
+| Filas | `view-show-ingestion-incremental-batches.fifo`, `view-show-ingestion-analysis` e respectivas DLQs |
+| Rate limit da API (`rate_limit_por_minuto`) | 180 (`RATE_LIMIT_PER_MINUTE` na task da API) |
+| Gerador de carga | k6 v2.3.0 (imagem `grafana/k6` via Docker Desktop), executado **fora da AWS** (Windows 11, internet) contra `https://ygnmcngd28.execute-api.us-east-1.amazonaws.com` (API Gateway → ALB → ECS) |
+| Observabilidade | CloudWatch (namespace `view-show/Ingestion`, `AWS/SQS`, `AWS/DynamoDB`, `ECS/ContainerInsights` habilitado) e logs `/ecs/view-show-ingestion-backfill`; Prometheus/Grafana locais **não** coletaram a API na AWS (ver Seção 10) |
+| Autenticação | Login real no Cognito (`us-east-1_Yr4YHWZ4a`) via `POST /auth/login`, usuário técnico `carga-sprint5@viewshow.test` criado para os testes |
 
 <div align="center">
 
@@ -253,13 +253,13 @@ Fonte: Material produzido pelos autores (2026).
 
 | ID | Arquivo | Eventos válidos | Eventos inválidos | Tamanho | SHA-256 | Usado em |
 | --- | --- | ---: | ---: | --- | --- | --- |
-| M-01 | `argus_dump.sql.gz` (reduzido) | _A preencher_ | 0 | _A preencher_ | _A preencher_ | CG-01 |
-| M-02 | `argus_dump.sql.gz` (1 janela) | 150.000 | 0 | _A preencher_ | _A preencher_ | CG-02, RS-02 |
-| M-03 | `argus_dump.sql.gz` (2 janelas) | 300.000 | 0 | _A preencher_ | _A preencher_ | CG-05 |
-| M-04 | `argus_dump.sql.gz` (5 janelas) | 750.000 | 0 | _A preencher_ | _A preencher_ | CG-05 |
-| M-05 | Lotes incrementais de 15 min | 150.000 por lote | 0 | _A preencher_ | _A preencher_ | CG-03, RS-01 |
-| M-06 | Lote incremental com coluna obrigatória ausente | 0 | _A preencher_ | _A preencher_ | _A preencher_ | RS-03 |
-| M-07 | Dump corrompido (GZIP truncado) | — | — | _A preencher_ | _A preencher_ | RS-03 |
+| M-01 | `argus_dump.sql.gz` (reduzido, `--rows 1000`) | 1.000 (974 `signal_bucket` + 26 fixture) | 0 | 11.548 B | `2e98c82e…6f36373` | CG-01, RS-02, RS-03, RS-06 |
+| M-02 | `argus_dump.sql.gz` (1 janela) | 150.000 | 0 | 917.703 B | `21069cb5…6feee15` | CG-02, CG-05, RS-02 |
+| M-03 | `argus_dump.sql.gz` (2 janelas) | 300.000 | 0 | 1.828.944 B | `6b39cf9b…6daecc` | CG-05 |
+| M-04 | `argus_dump.sql.gz` (5 janelas) | 750.000 | 0 | 4.562.832 B | `53298f4b…19aab68a` | CG-05 |
+| M-05 | Lotes incrementais de 15 min | 150.000 por lote | 0 | 177.684 B (Parquet) | `523e1f44…58ac9148` (janela 09:00Z; muda por janela) | CG-03, RS-01 |
+| M-06 | Lote incremental com coluna obrigatória ausente | 0 | 150.000 (sem `value`) | 58.805 B (Parquet) | `bbb45f66…fe75` (janela 09:00Z; muda por janela) | RS-03 |
+| M-07 | Dump corrompido (GZIP truncado, metade de M-01) | — | — | 5.774 B | `ad5e5bae…98bc689` | RS-03 |
 
 <div align="center">
 
@@ -303,7 +303,7 @@ Fonte: Material produzido pelos autores (2026).
 
 &emsp;Na observabilidade, é usado o dashboard `view-show-ingestion` do CloudWatch, que já existia e mostra as filas, as DLQs e as execuções da ingestão, junto com o dashboard `View Show — API (RED)` do Grafana para a latência e os erros das rotas de importação.
 
-&emsp;Antes da primeira rodada, esses utilitários foram validados localmente. Todos os modos do k6 passam no `k6 inspect`, e os três tipos de lote foram relidos com os adaptadores do worker: o lote válido é aceito e lido, o lote sem coluna é marcado como incompatível (quarentena) e a mensagem venenosa passa pelo parser da fila, mas falha na leitura do manifesto com erro retentável, o que a leva à DLQ. O fluxo de upload só pode ser exercitado contra a AWS, porque depende de URLs pré-assinadas do S3.
+&emsp;Antes da primeira rodada, esses utilitários foram validados localmente. Todos os modos do k6 passam no `k6 inspect`, e os três tipos de lote foram relidos com os adaptadores do worker: o lote válido é aceito e lido, o lote sem coluna é marcado como incompatível (quarentena) e a mensagem venenosa passa pelo parser da fila, mas falha na leitura do manifesto com erro retentável, o que a leva à DLQ (`dryrun-valid.json`, `dryrun-missing-column.json`, `dryrun-poison.json`). O fluxo de upload só pode ser exercitado contra a AWS, porque depende de URLs pré-assinadas do S3.
 
 &emsp;Para registrar a execução dos testes automatizados existentes como evidência de apoio:
 
@@ -317,7 +317,27 @@ cd apps/backend/ingestion-data
 .venv/bin/python -m pytest tests/resilience -v
 ```
 
-&emsp;Resultado dos testes existentes nesta rodada: _A preencher_ (ex.: `x/y` aprovados, arquivo em `assets/testes-carga/<data>-ingestao/`).
+&emsp;Resultado dos testes existentes nesta rodada (2026-09-30, evidências em [`assets/testes-carga/2026-09-30-ingestao/`](../../assets/testes-carga/2026-09-30-ingestao/)):
+
+<div align="center">
+
+<strong>Tabela 7a: Execução dos testes automatizados de apoio</strong>
+
+</div>
+
+| Suíte | Ambiente | Resultado | Evidência |
+| --- | --- | --- | --- |
+| Vitest `gateway-http.integration.test.ts -t "UC-IMP"` | Windows 11, Node | **8/8 aprovados** (27 fora do filtro) | `vitest-uc-imp.txt` |
+| pytest `tests/resilience` + `tests/unit/application/test_ingest_incremental.py` + `tests/unit/adapters/test_incremental_batch_keys.py` + `tests/unit/adapters/test_incremental_batch_repository.py` | Linux, contêiner `python:3.12-slim` com `requirements-dev.txt` | **148/148 aprovados** (146/146 após a correção de `PK`/`SK`; 148/148 após o log de causa) | `pytest-resiliencia-linux.txt` |
+| pytest `tests/resilience` + `tests/unit/application/test_ingest_incremental.py` (suíte anterior à correção, 131 testes) | Windows 11, Python 3.12.10 (`.venv` local) | **8 reprovados, 123 aprovados** | `pytest-resiliencia-windows.txt` |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+&emsp;As 8 falhas no Windows (`test_crash_after_hot_write_replays_without_duplicate_fact_or_event` e 7 casos de `test_ingest_incremental.py`) têm a mesma causa: o `sync` devolve `PARTIAL` com `renewal must strictly extend lease expiration`. O relógio do Python 3.12 no Windows tem resolução grosseira (54 valores distintos de `datetime.now()` em 200 mil chamadas), então a renovação do lease logo após a aquisição recebe o mesmo `now` e é rejeitada pela regra de extensão estrita, tanto no fake (`tests/fakes.py`) quanto no adaptador real (`adapters/dynamodb/control.py`). Em Linux, onde a task roda em produção, a suíte passa inteira; o achado é de portabilidade do ambiente de desenvolvimento, não de comportamento em produção. Dois problemas de ambiente apareceram antes disso: o `.venv` não tinha `moto` (4 módulos não coletavam), e `pip install -r requirements-dev.txt` falha no Windows em modo `--require-hashes` porque `pywin32` (dependência de `docker`) não está fixado; foi instalado `moto[dynamodb,glue,s3,secretsmanager,sqs]==5.1.9` diretamente. A suíte ampliada de 148 testes não foi repetida no Windows.
 
 ### 4.5 Pré-requisitos de ferramenta
 
@@ -326,8 +346,8 @@ cd apps/backend/ingestion-data
 - [x] Trocar a sessão forjada por login real (`AUTH_USERNAME`/`AUTH_PASSWORD`), como já feito em `consultas.js`.
 - [x] Criar o publicador de lotes incrementais (M-05, M-06 e mensagem venenosa) e o script de injeção de falhas.
 - [x] Definir o dashboard: CloudWatch `view-show-ingestion` para filas e tasks, Grafana `View Show — API (RED)` para as rotas.
-- [ ] Instalar o k6 na máquina que vai gerar a carga e criar o usuário técnico no Cognito.
-- [ ] Renovar a sessão do Learner Lab e confirmar que a stack está aplicada (`./ingestao-falhas.sh recursos`).
+- [x] Instalar o k6 na máquina que vai gerar a carga e criar o usuário técnico no Cognito (k6 via imagem Docker `grafana/k6`; usuário `carga-sprint5@viewshow.test`).
+- [x] Renovar a sessão do Learner Lab e confirmar que a stack está aplicada (`./ingestao-falhas.sh recursos`). A sessão foi revogada durante a rodada (`voc-cancel-cred`) e renovada; ver Seção 10.
 
 ---
 
@@ -352,11 +372,11 @@ cd apps/backend/ingestion-data
 | Métricas coletadas | `http_req_duration` por rota; duração de cada estado; `recordsRead/Written/Rejected`; CPU da task |
 | Critérios de sucesso | Estado final `READY`; `recordsWritten` = eventos de M-01; `checks rate==1`; `http_req_failed == 0` |
 | Resultado esperado | Importação concluída sem rejeições, com contagem igual à do arquivo |
-| Resultados medidos | `http_req_duration` p50=_ · p95=_ · p99=_ ms; duração `UPLOADING`=_ s, `VALIDATING`=_ s, `PROCESSING`=_ s; `recordsWritten`=_ |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=smoke -e DUMP=<M-01> ingestao-batch.js`. Resumo em `assets/testes-carga/<data>-ingestao/resumo-cg01.json` |
+| Resultados medidos | `http_req_duration` (38 requisições) p50=145 · p95=288 · máx.=712 ms (o resumo do k6 não exporta p99); upload (1 parte) 0,6 s; `complete` → `READY` 159,7 s; `POST /imports` → `READY` 161,3 s. Etapas do worker (`StageDurationMs`): STARTING 0,1 s · RESTORING 1,3 s · VALIDATING 0,6 s · INGESTING 7,4 s · PROJECTING 8,8 s · **ARCHIVING 85,0 s** · ACTIVATING 0,2 s · PUBLISHING 0,2 s; ~55 s entre o `complete` e o início da task (provisionamento Fargate). `recordsRead`=`recordsWritten`=1.000, `recordsRejected`=0. CPU máx. da task 15,1%, memória 5,7%, storage 1,3% |
+| Resultado obtido | Importação `imp_01M3RWQ11YCNGTGJPV8JN00V24` terminou em `READY` com 1.000 eventos escritos e nenhum rejeitado; 7/7 checks; `http_req_failed` = 0/38 |
+| Situação | **Aprovado** |
+| Análise e conclusão | O fluxo completo (reserva → assinatura → PUT S3 → `complete` → task ECS → `READY`) funciona na stack. O `recordsWritten` conta o `rowCount` inteiro do manifesto (974 de `signal_bucket` + 26 de fixture), então `EXPECTED_EVENTS = rowCount` é o valor certo para as demais rodadas. Mesmo com 1.000 eventos, 88% do tempo de processamento foi custo fixo: ~55 s de partida da task e 85 s de ARCHIVING (Parquet/Glue/Athena), contra 7,4 s de ingestão propriamente dita. A importação anterior do banco (`imp_01M3MP8T58XAG5KWNEDYZ8XDK6`, 786 eventos) usou outro dump e não serve de comparação |
+| Evidências / reprodução | `k6 run -e BASE_URL=<api_url> -e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha> -e MODE=smoke -e DUMP=<M-01> -e EXPECTED_EVENTS=1000 ingestao-batch.js`. Em `assets/testes-carga/2026-09-30-ingestao/`: `resumo-ingestao-cg01.json`, `k6-summary-cg01.json`, `k6-cg01.log`, `etapas-cg01.json`, `cloudwatch-recursos-cg01.json`, `imports-apos-cg01.json` |
 
 <div align="center">
 
@@ -384,10 +404,10 @@ Fonte: Material produzido pelos autores (2026).
 | Critérios de sucesso | `recordsWritten = 150.000`; `recordsRejected = 0`; contagem DynamoDB = contagem Athena = 150.000; distintos = total; duração `VALIDATING+PROCESSING` ≤ 900 s; nenhum throttling do DynamoDB |
 | Resultado esperado | Vazão ≥ 166,67 eventos/s em todas as 3 repetições |
 | Resultados medidos | Ver Tabela 10 |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher (ex.: qual etapa domina a duração — restore do MySQL, normalização, escrita no DynamoDB ou Parquet/Athena; se a CPU ou o disco foi o limitante)_ |
-| Evidências / reprodução | `k6 run ... -e MODE=drenagem -e DUMP=<M-02> ingestao-batch.js`. Resumos em `assets/testes-carga/<data>-ingestao/resumo-cg02-r{1,2,3}.json`; contagens em `contagem-cg02.txt` |
+| Resultado obtido | Duas repetições com dumps distintos. **Nenhuma perda:** R2 (`imp_01M3S4ND5FAD8R12MEQESDSCMC`) terminou `READY` com 150.000 lidos e escritos, 0 rejeitados e 23/23 datasets, e a reconciliação de ARCHIVING confirmou no Athena a contagem de todas as partições (1.585 consultas `COUNT(*)`, todas `SUCCEEDED`). INGESTING atende RNF01 nas duas (601 s e 606,5 s, ≈ 14,9 mil eventos/min), mas o pipeline até `READY` não: R2 levou 13.915 s (INGESTING 606,5 + PROJECTING 1.057,1 + ARCHIVING 12.246,4 s). R1 foi interrompida em ARCHIVING pela injeção do RS-02b |
+| Situação | **Reprovado** (R1 e R2) — sem perda; critério de ≤ 900 s para `VALIDATING+PROCESSING` violado por PROJECTING (~1.063 s) e ARCHIVING |
+| Análise e conclusão | **Não é gargalo de capacidade:** na R2, CPU máx. da task 39,7%, memória 6,4%, storage 1,7%, 0 throttling no DynamoDB (1,75 M WCU no total, pico de 83,7 mil WCU/min, concentrado em PROJECTING). **ARCHIVING é publicação e verificação síncronas, em série, por partição diária** (Parquet → `HEAD`/`PUT` no S3 → registro no DynamoDB → partição no Glue → `COUNT(*)` no Athena com polling de 1 s, `adapters/archive/athena.py`): **7,7 s por partição, dos quais só 0,84 s são de execução no Athena** (1.323 s de 12.246 s, ~11%); os ~89% restantes são a soma das chamadas em série e da espera de fila/polling. Não há transição de classe de armazenamento nem Glacier (o lifecycle do bucket só expira prefixos de staging). É decisão de desenho, não limite de processamento, e é amplificada pela massa: o gerador espalha os 150 mil eventos por ~1.562 dias (Seção 10). **Recomendações:** (1) **paralelizar a publicação das partições** (pool limitado de workers), que ataca diretamente os ~89% do tempo que não são execução no Athena; (2) tornar a verificação assíncrona ou em lote (um `COUNT(*) … GROUP BY` partição por dataset, em vez de uma consulta por partição); (3) medir o SLA de 900 s do RNF01 até o fim de PROJECTING e tratar ARCHIVING como etapa assíncrona fora do SLA. Mesmo assim, PROJECTING (~1.063 s) sozinho passa de 900 s: a reprovação do RNF01 continua valendo sem ARCHIVING |
+| Evidências / reprodução | `k6 run ... -e MODE=drenagem -e DUMP=<M-02> -e EXPECTED_EVENTS=150000 -e RUN_LABEL=cg02-r1 ingestao-batch.js` (R2: `--variant r2`, `RUN_LABEL=cg02-r2`). Em `assets/testes-carga/2026-09-30-ingestao/`: R1 — `resumo-ingestao-cg02-r1.json`, `k6-cg02-r1.log`, `etapas-cg02-r1.json`, `athena-cg02-r1.json`, `cloudwatch-recursos-cg02-r1.json`, `cloudwatch-dynamodb-cg02-r1.json`, `import-cg02-r1-antes-parada.json`, `import-cg02-r1-rs02b-final.json`; R2 — `resumo-ingestao-cg02-r2.json`, `k6-cg02-r2.log`, `etapas-cg02-r2.json`, `athena-cg02-r2.json`, `cloudwatch-recursos-cg02-r2.json`, `cloudwatch-dynamodb-cg02-r2.json`, `cg02-r2-acompanhamento.txt`, `import-cg02-r2-final.json`. Contagem DynamoDB/Athena pela reconciliação do próprio pipeline (cobertura × persistidos e `COUNT(*)` por partição); sem recontagem independente |
 
 <div align="center">
 
@@ -403,10 +423,10 @@ Fonte: Material produzido pelos autores (2026).
 
 | Repetição | Eventos enviados | `recordsWritten` | `recordsRejected` | Contagem DynamoDB | Contagem Athena | Duplicados | Duração `PROCESSING` (s) | Vazão (eventos/min) | CPU máx. da task (%) | Situação |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| R1 | 150.000 | _ | _ | _ | _ | _ | _ | _ | _ | _ |
-| R2 | 150.000 | _ | _ | _ | _ | _ | _ | _ | _ | _ |
-| R3 | 150.000 | _ | _ | _ | _ | _ | _ | _ | _ | _ |
-| **Média** | — | — | — | — | — | — | _ | _ | _ | — |
+| R1 | 150.000 | 150.000 (INGESTING) | 0 | não medida | não medida (ARCHIVING interrompido) | não medido | 601 (INGESTING) + 1.069 (PROJECTING) + ≥ 1.694 (ARCHIVING, interrompido) | 14.975 (só INGESTING); ≤ 2.679 no pipeline até a interrupção | 38,1 | Reprovado |
+| R2 | 150.000 (M-02 `--variant r2`, dump distinto) | 150.000 | 0 | 150.000 (reconciliação de cobertura) | 150.000 (1.585/1.585 `COUNT(*)` conferidos) | não medido (chaves determinísticas) | 606,5 (INGESTING) + 1.057,1 (PROJECTING) + 12.246,4 (ARCHIVING) = 13.915 até `READY` | 14.840 (só INGESTING); 647 no pipeline | 39,7 | Reprovado (sem perda) |
+| R3 | 150.000 | — | — | — | — | — | — | — | — | Não executado |
+| **Média** | — | — | — | — | — | — | INGESTING 603,8; PROJECTING 1.063,1 (ARCHIVING só na R2) | 14.908 (só INGESTING) | 38,9 | — |
 
 <div align="center">
 
@@ -433,11 +453,11 @@ Fonte: Material produzido pelos autores (2026).
 | Métricas coletadas | `t1 − t0` (ingestão), `t2 − t0` (ponta a ponta), idade da mensagem na FIFO |
 | Critérios de sucesso | `t2 − t0 ≤ 120 s` em 100% das amostras |
 | Resultado esperado | Frescor dentro de 120 s; se a agenda de 5 min do `ingest-incremental` for o limitante, registrar isso como achado de arquitetura |
-| Resultados medidos | Amostras: _ ; `t1 − t0` p50=_ / máx=_ s; `t2 − t0` p50=_ / máx=_ s |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Evidências / reprodução | `k6 run ... -e MODE=frescor ingestao-batch.js`. Resumo em `resumo-cg03.json` |
+| Resultados medidos | Nenhuma amostra |
+| Resultado obtido | Não executado. Até 19:45 UTC nenhum lote incremental era ingerido na stack (defeito `PK`/`SK`, RS-01). A correção foi implantada às 19:45 UTC e o RS-01 da tarde mostrou que os eventos passaram a ser gravados, mas o CG-03 não foi rodado depois da implantação |
+| Situação | **Não executado** (pendente; o bloqueio por `PK`/`SK` deixou de existir) |
+| Análise e conclusão | Quatro fatores apontam para reprovação do RNF02, e precisam ser conferidos na execução: (1) o consumidor roda por agenda de 5 min (desligada na stack), o que por si só pode passar de 120 s; (2) no RS-01 da tarde, a escrita de um lote de 150.000 eventos levou vários minutos (runs de 482 s e 712 s até falhar na confirmação), e o lote passa do `visibility_timeout` de 300 s (achado 9 da Seção 9); (3) em 30/09 `GET /dashboard/overview` expunha em `meta.freshness` apenas a fonte `argus:live_qoe_hourly`, e o publicador grava `signal_bucket`, então o modo `frescor` do k6 talvez nunca veja o watermark avançar; (4) o dataset ativo ainda era o de 28/09 (`dsv_f58aa0f8…`), porque as importações não são ativadas automaticamente (`ACTIVATE=true` não foi usado) |
+| Evidências / reprodução | Nenhuma execução. Contexto: `rs01-causa-raiz.txt` (defeito da manhã), `rs01-drenagem.txt` e `rs01-logs-ingest.txt` (comportamento após a correção) |
 
 <div align="center">
 
@@ -464,11 +484,11 @@ Fonte: Material produzido pelos autores (2026).
 | Métricas coletadas | `http_req_duration` por rota; contagem de `201`, `409`, `429`, `5xx`; CPU da API; `dropped_iterations` |
 | Critérios de sucesso | Exatamente **1** `201` com importação ativa; todos os demais `POST` = `409 IMPORT_IN_PROGRESS`; exatamente 1 multipart aberto; erros inesperados (`5xx` ≠ `503` esperado) < 0,1%; p95 das rotas `GET` < 2 s |
 | Resultado esperado | Exclusão mútua preservada sob concorrência e plano de controle responsivo |
-| Resultados medidos | `201`=_ · `409`=_ · `429`=_ · `5xx`=_; p95 `POST`=_ ms; p95 `GET`=_ ms; CPU máx. API=_ %; multipart abertos=_ |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Evidências / reprodução | `k6 run ... -e MODE=pico ingestao-batch.js`. Resumo em `resumo-cg04.json` |
+| Resultados medidos | 7.532 requisições (23,8 req/s de média; `PEAK_RATE=50` não foi atingido de forma sustentada pelos VUs); `POST /imports`: **`201` = 1** (12:19:44) · `409` = 1.516 (100% com o `importId` ativo) · **`503` = 71** (4,5%, espalhados de 12:20:02 a 12:22:22, 21–393 ms) · `429` = 0 · outros `5xx` = 0; `GET /imports/:id` 5.147 × `200`, `GET /imports` 764 × `200`; p95 geral 477 ms, **p95 `GET` = 431 ms**, máx. 1.360 ms; **CPU máx. da API 92,8%** (1 task de 0,25 vCPU); multipart abertos ao final = 0 (o teardown concluiu a importação `imp_01M3S43AAX45SPM5RATEJEZT9H` em `READY`) |
+| Resultado obtido | Exclusão mútua preservada: um único `201` e nenhuma segunda importação criada, com o plano de controle respondendo (p95 `GET` bem abaixo de 2 s). Porém 71 `POST` concorrentes receberam `503` em vez de `409`; o autoscaling só reagiu às 12:25:54 (segunda task às 12:25:56), ~3 min depois do fim do platô |
+| Situação | **Parcial** — atendidos: exatamente 1 `201`, 0 multipart órfão, `5xx` inesperados = 0, p95 `GET` < 2 s; não atendido: “todos os demais `POST` = `409`” (4,5% de `503`) |
+| Análise e conclusão | A trava de uma importação ativa segura sob concorrência, que é o que protege o dado. Os `503` são respostas explícitas e seguras (sem detalhe interno) e coincidem com a CPU da única task em 92,8%: sob disputa, a leitura do registro ativo falha e a API responde o `503` seguro de UC-IMP-04/“armazenamento de controle sobrecarregado” (`import.ts:71`) em vez de `409`. O log da API não grava o `error.code`, então a distinção não pôde ser feita. O autoscaling por CPU (alvo 50%, 3 períodos de 60 s) reage tarde demais para um pico de 3 min, confirmando o achado da Sprint 4. **Desvio do plano:** o rate limit não foi elevado via `terraform apply`, porque pela URL pública (API Gateway) o limiter não atua (ver RS-06); o efeito é o mesmo de um limite elevado |
+| Evidências / reprodução | `k6 run ... -e MODE=pico -e DUMP=<M-01> -e PEAK_RATE=50 -e RUN_LABEL=cg04 ingestao-batch.js`. Em `assets/testes-carga/2026-09-30-ingestao/`: `resumo-ingestao-cg04.json`, `k6-cg04.log`, `cg04-status-post.txt` (status por log da API, multipart e jobs ao final), `cloudwatch-recursos-api-cg04.json` |
 
 <div align="center">
 
@@ -496,10 +516,10 @@ Fonte: Material produzido pelos autores (2026).
 | Critérios de sucesso | Exploratório — sem aprovação/reprovação; registrar o volume em que a vazão cai abaixo de 166,67 eventos/s, se houver |
 | Resultado esperado | Curva volume × vazão e identificação do primeiro recurso a saturar |
 | Resultados medidos | Ver Tabela 14 |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ (exploratório) |
-| Análise e conclusão | _A preencher_ |
-| Evidências / reprodução | `resumo-cg05-{150k,300k,750k}.json` |
+| Resultado obtido | Não executado. Massas M-03 (300 mil) e M-04 (750 mil) geradas e registradas na Tabela 7 |
+| Situação | **Não executado** (exploratório) |
+| Análise e conclusão | Inviável na sessão do Learner Lab (4 h): pelo CG-02, 150 mil eventos levam ~28 min até o fim de PROJECTING e, com o gerador atual, ARCHIVING cresce com o número de partições diárias (M-03 ≈ 3.125 dias, M-04 ≈ 7.812 dias → estimados ~5 h e ~13 h só de verificação Athena). Além disso, repetir um dump idêntico não mede nada (a versão é endereçada por conteúdo). Pré-requisitos para executar: gerador que concentre as linhas numa janela realista e verificação de ARCHIVING em lote ou paralela |
+| Evidências / reprodução | Manifestos em `.artifacts/argus-benchmarks/{300000,750000}/manifest.json` |
 
 <div align="center">
 
@@ -515,9 +535,9 @@ Fonte: Material produzido pelos autores (2026).
 
 | Volume (eventos) | Duração `PROCESSING` (s) | Vazão (eventos/min) | CPU máx. (%) | Memória máx. (%) | Storage efêmero máx. (%) | Throttling DynamoDB | Estado final |
 | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| 150.000 | _ | _ | _ | _ | _ | _ | _ |
-| 300.000 | _ | _ | _ | _ | _ | _ | _ |
-| 750.000 | _ | _ | _ | _ | _ | _ | _ |
+| 150.000 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 |
+| 300.000 | — | — | — | — | — | — | Não executado |
+| 750.000 | — | — | — | — | — | — | Não executado |
 
 <div align="center">
 
@@ -553,11 +573,11 @@ Fonte: Material produzido pelos autores (2026).
 | Critérios de sucesso | 0 mensagens na DLQ; contagem final = `N × 150.000`; 0 duplicados; backlog drenado em < `N × 15 min`; nenhum reinício manual |
 | Resultado esperado | Degradação limitada a atraso de frescor, sem perda |
 | Resultados medidos | Ver Tabela 16 |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Tempo até alarme (RNF15) | _A preencher_ s |
-| Evidências / reprodução | `k6 run ... -e MODE=acumulo -e BACKLOG_BATCHES=<N> ingestao-batch.js`; métricas SQS exportadas em `sqs-rs01.json`. Reversão: _A preencher_ |
+| Resultado obtido | O RS-01 foi executado duas vezes, com imagens diferentes (Tabela 16). **Rodada da manhã (imagem anterior, 11:01 UTC):** fase de acúmulo aprovada — 2 lotes M-05 (janelas 10:30Z e 10:45Z, 150 mil linhas cada) ficaram represados sem perda nem desvio para a DLQ, a idade da mais antiga cresceu e os alarmes de backlog e de idade dispararam; a consulta continuou servindo o último watermark. Fase de drenagem reprovada: ao disparar o consumidor às 11:20 UTC, os 2 lotes terminaram `RETRYABLE_FAILED` em 390 ms, nenhum registro de lote foi criado e as mensagens nunca foram removidas (`NumberOfMessagesDeleted = 0`), acabando na DLQ (RS-05). **Rodada da tarde (revisão 6, com a correção de `PK`/`SK`, 20:16 UTC):** 2 lotes M-05 (janelas 19:45Z e 20:00Z) publicados com as 3 agendas desligadas ficaram represados sem perda (2 visíveis, DLQ vazia) até a agenda do `ingest-incremental` ser ligada às 20:23:54. A contagem de fatos na partição do dia foi de 0 para **300.000** (= esperado). O lote 1 terminou `COMPLETED` às 20:38:52 (`written 0`, `unchanged 150000`: os fatos já tinham sido gravados pelo primeiro run). O lote 2 terminou `RETRYABLE_FAILED`, e sua mensagem foi para a DLQ com `ApproximateReceiveCount = 6`. A drenagem não terminou dentro do limite de 1.800 s, e a agenda foi desligada às 20:54:20 |
+| Situação | **Reprovado** nas duas rodadas. Manhã: 0 de 300.000 eventos persistidos (defeito `PK`/`SK`). Tarde: 300.000 de 300.000 eventos persistidos, mas 1 mensagem na DLQ, 1 de 2 lotes sem confirmação e drenagem não concluída em 1.800 s (defeito novo, `visibility_timeout`) |
+| Análise e conclusão | **Manhã — defeito `PK`/`SK` (achado 3 da Seção 9, corrigido e implantado):** `DynamoIncrementalBatchRepository` (`adapters/dynamodb/incremental_batches.py`) gravava o registro do lote com as chaves `PK`/`SK`, mas a tabela `view-show-iac-operacional` usa `pk`/`sk` (`apps/fullstack/dynamodb.tf`). Todo `claim` falhava com `ValidationException: Missing the key pk in the item` (reproduzido localmente com o mesmo adaptador contra a tabela real). O teste do repositório usava cliente fake sem `KeySchema`, e `_process` tratava qualquer exceção do `claim` como retentável sem registrar a causa; o run terminava `SUCCEEDED` com `batchesRetryable = 2`. Corrigido nos commits `cc0dbbc` (chaves `pk`/`sk`), `afc303c` (teste de chaves) e `0eded5d` (log da causa no ramo retentável, `_log_failure`), implantados às 19:45 UTC. A rodada da tarde confirma a correção: o `claim` passou a funcionar e os fatos foram gravados.<br><br>**Tarde — defeito novo, `visibility_timeout` × tempo de escrita (achado 9 da Seção 9, sem correção):** a escrita de um lote de 150.000 eventos leva mais que o `visibility_timeout` de 300 s da FIFO. Com a agenda de 5 min, a mensagem volta a ficar visível e é recebida por outro run enquanto o primeiro ainda escreve. O segundo run muda o estado/versão do registro do lote (os registros passam a `RETRYABLE_FAILED`, versões 3, 6 e 9 em `rs01-drenagem.txt`), e a transição final do primeiro run falha por escrita condicional. Sequência observada: run de 20:24:59 recebe os 2 lotes e grava o lote 1; às 20:30:00 o run seguinte recebe as mensagens de novo e marca os 2 lotes `RETRYABLE_FAILED`; às 20:33:02 o primeiro run falha com `ConditionalWriteError` após **482 s**. O run de 20:34:51 reprocessa o lote 1 de forma idempotente (`unchanged 150000`, `COMPLETED` às 20:38:52) e começa o lote 2; os runs de 20:39:51 e 20:44:53 o marcam `RETRYABLE_FAILED`; às 20:46:44 esse run falha com `ConditionalWriteError` após **712 s**. A mensagem do lote 2 esgota os recebimentos e vai para a DLQ (~20:50). Não houve perda nem duplicação de fatos (a contagem bateu), mas o lote 2 ficou sem confirmação e o backlog não drenou. As duas linhas do `_log_failure` (`rs01-logs-ingest.txt`):<br>`20:33:02 ingest-incremental batch processing failed batch_id=bat_b4a10049…2c75 message_id=18b7ab36-5e16-4dab-bb3e-533108022e2c dataset=signal_bucket … error_type=ConditionalWriteError error=batch state or version differs from expected`<br>`20:46:44 ingest-incremental batch processing failed batch_id=bat_f68597fc…9c48 message_id=8352a6db-7694-4fbf-b6fb-86b782a4c148 dataset=signal_bucket … error_type=ConditionalWriteError error=batch state or version differs from expected`<br><br>**Lacuna de observabilidade:** os runs que encontram o lote em processamento por outro run (20:30:00, 20:40:00 e 20:45:00) terminam `SUCCEEDED`, com `batchesRetryable` = 2, 1 e 1, e não gravam nenhuma linha com a causa; só os 2 runs que falharam (`FAILED`) aparecem no log de erro. Pela métrica `Runs{status=SUCCEEDED}` e pelos logs, esses runs parecem normais. A fila em si se comportou como esperado nas duas rodadas: acumulou sem perder mensagens e reentregou após o `visibility_timeout` |
+| Tempo até alarme (RNF15) | Manhã: `incremental-queue-backlog` → `ALARM` às 11:03:05, **~118 s** após a primeira publicação (11:01:07); `incremental-queue-oldest-age` (limiar 900 s) → `ALARM` às 11:18:32, ~146 s depois de a mensagem mais antiga cruzar 900 s. Tarde: `incremental-queue-backlog` → `ALARM` às 20:19:53, **~185 s** após a primeira publicação (20:16:48); `incremental-dlq-depth` → `ALARM` às 20:52:12, **~111–152 s** depois de a DLQ aparecer com 1 mensagem (entre 20:49:40 e 20:50:21); `incremental-queue-oldest-age` voltou a `OK` às 20:56:43, mas o horário em que entrou em `ALARM` não foi registrado. Todos com período de 300 s, incompatível com 30 s |
+| Evidências / reprodução | `publish_incremental_batch.py --variant valid --rows 150000 --windows 2 --output rs01-<rodada>-lotes.json`; manhã: `ingestao-falhas.sh rodar-ingestao`; tarde: `ingestao-falhas.sh agenda ingest ligar` e, ao final, `agenda ingest desligar`. Em `assets/testes-carga/2026-09-30-ingestao/`. Manhã: `rs01-manha-lotes.json`, `rs01-manha-tasks.txt`, `rs01-causa-raiz.txt`, `sqs-rs01-rs05.json`. Tarde: `rs01-tarde-lotes.json`, `rs01-acumulo.txt` (acúmulo, agendas e contagem inicial), `rs01-drenagem.txt` (estado das filas e dos registros de lote a cada ~40 s, contagem final), `rs01-logs-ingest.txt` (logs dos runs), `rs01-tarde-tasks.txt` (tasks e códigos de saída), `rs01-digest-task.txt` (imagem da revisão 6), `rs01-dlq-espiar.json`, `sqs-rs01.json`. Reversão: manhã, nenhuma (o consumidor foi disparado sob demanda); tarde, agenda do `ingest-incremental` desligada às 20:54:20. As 2 mensagens da manhã foram removidas da DLQ na limpeza de 16:03:57 UTC (`execucoes.txt`); a mensagem do lote 2 da tarde foi mantida na DLQ como evidência |
 
 <div align="center">
 
@@ -573,9 +593,10 @@ Fonte: Material produzido pelos autores (2026).
 
 | `BACKLOG_BATCHES` | Profundidade máx. da fila | Idade máx. da mensagem (s) | Mensagens na DLQ | Tempo de drenagem (s) | Limite (s) | Eventos esperados | Eventos persistidos | Duplicados | Situação |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 2 | _ | _ | _ | _ | 1.800 | 300.000 | _ | _ | _ |
-| 3 | _ | _ | _ | _ | 2.700 | 450.000 | _ | _ | _ |
-| 4 | _ | _ | _ | _ | 3.600 | 600.000 | _ | _ | _ |
+| 2 (manhã, imagem anterior) | 2 | 5.548 (máx. na janela 10:55–12:40) | 0 durante o acúmulo; 2 após 5 recebimentos | não drenou | 1.800 | 300.000 | 0 | — | Reprovado |
+| 2 (tarde, revisão 6) | 2 | 1.957 (máx. na janela 20:16–20:56) | 0 durante o acúmulo; 1 (lote 2) após esgotar os recebimentos | não concluída em 1.800 s (lote 1 `COMPLETED` às 20:38:52, ~898 s após ligar a agenda; lote 2 na DLQ) | 1.800 | 300.000 | 300.000 | não medido (contagem de itens = esperado; sem contagem de distintos) | Reprovado |
+| 3 | — | — | — | — | 2.700 | 450.000 | — | — | Não executado |
+| 4 | — | — | — | — | 3.600 | 600.000 | — | — | Não executado |
 
 <div align="center">
 
@@ -597,7 +618,7 @@ Fonte: Material produzido pelos autores (2026).
 | Já existe? | **Parcial** — (a) UC-IMP-06 (Sprint 4); (b, c) `test_checkpoint_resume.py`, `test_idempotent_backfill.py` e `test_canonical_first_failures.py` em ambiente controlado; versão histórica com `504 dependency_timeout` no Flask |
 | Objetivo e requisito relacionado | Verificar que, quando uma dependência não responde, a ingestão falha de forma explícita, não deixa a vaga de importação presa e aceita uma nova tentativa sem reinício. **RNF03** (timeout de dependência) |
 | Falha injetada | **(a)** S3 indisponível ao preparar o multipart (ex.: política de bucket negando `s3:CreateMultipartUpload` temporariamente); **(b)** task `import-dump` interrompida durante `PROCESSING` (`aws ecs stop-task`); **(c)** task que não conclui no prazo (`POLL_TIMEOUT_S` reduzido ou dependência lenta) |
-| Duração da falha | (a) _A preencher_ s; (b) instantânea; (c) até `POLL_TIMEOUT_S` |
+| Duração da falha | (a) 13 s (19:51:53–19:52:06 UTC); (b) instantânea (11:14:44 UTC); (c) `POLL_TIMEOUT_S=30` |
 | Pré-condições e dados de entrada | Nenhuma importação ativa; massa M-02 |
 | Procedimento | Para cada variante: iniciar importação, injetar a falha, observar resposta HTTP e estado do `ImportJob`, retirar a falha, iniciar nova importação e verificar que conclui em `READY` |
 | Métricas coletadas | Status HTTP e `error.code`; estado final do job; tempo até o reconciliador marcar `FAILED`; tempo até a nova importação concluir |
@@ -605,11 +626,11 @@ Fonte: Material produzido pelos autores (2026).
 | Critérios de sucesso | Nenhum falso sucesso; nenhuma informação interna na mensagem de erro; vaga livre após a falha; nova importação conclui em `READY` com contagem correta, sem reinício manual |
 | Resultado esperado | Falha explícita e recuperação automática nas três variantes |
 | Resultados medidos | Ver Tabela 18 |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Tempo até alarme (RNF15) | _A preencher_ s |
-| Evidências / reprodução | `resumo-rs02-{a,b,c}.json`; comando de injeção e de reversão: _A preencher_ |
+| Resultado obtido | As três variantes falharam de forma explícita, sem vazar detalhe interno e sem deixar a vaga presa; a importação seguinte concluiu em `READY` sem reinício manual. Em (a) o `503 UPLOAD_PREPARATION_FAILED` é síncrono; em (b) o reconciliador marcou `FAILED`/`WORKER_STOPPED` ~49 s depois da parada da task e o lease `argus` expirou sozinho (TTL ~5 min); em (c) o k6 reprovou explicitamente o check de conclusão (`estado final UPLOADED`) e a importação seguiu sozinha até `READY` |
+| Situação | **Aprovado** (critério funcional); RNF15 não atendido — ver abaixo |
+| Análise e conclusão | O desenho “falha explícita + vaga liberada” se sustenta contra a stack real. Dois pontos: (1) a recuperação após (b) depende da expiração do lease (~5 min); nesse intervalo o caminho incremental e uma nova importação ficam bloqueados; (2) a nova importação de recuperação usou o mesmo M-01 já importado: a versão de dataset é endereçada por conteúdo (`dsv_af5774…`), então a reimportação terminou `READY` com `recordsRead = recordsWritten = 0` — idempotência correta, sem duplicar, mas o check `recordsWritten = EXPECTED_EVENTS` do k6 reprova nesse caso. O teste de conclusão (c) só verifica o cliente: não existe prazo de conclusão no servidor que leve o job a `FAILED` |
+| Tempo até alarme (RNF15) | **Nenhum alarme** em (a) e (b): `view-show-import-worker-failures` depende da métrica `Runs{status=FAILED}` emitida pelo próprio worker, que não roda em (a) e morre em (b); `view-show-import-reconciliation-failures` não disparou. Não se aplica a (c) |
+| Evidências / reprodução | Em `assets/testes-carga/2026-09-30-ingestao/`: (a) `rs02a-resposta.txt`, `rs02a-politica-injetada.json`, `rs02a-imports-durante.json`, `rs02a-imports-apos.json`, `resumo-ingestao-rs02a-recuperacao.json`, `k6-rs02a-recuperacao.log`; (b) `rs02b-parar-tasks.txt`, `rs02b-monitor.txt`, `import-cg02-r1-rs02b-final.json`; (c) `resumo-ingestao-rs02c.json`, `k6-rs02c.log`; primeira tentativa de (a), às 12:10 UTC, que falhou no script: `rs02a-tentativa1-injecao.txt`, `rs02a-tentativa1-liberacao-vaga.txt`. Injeção (a): `ingestao-falhas.sh s3-negar`; reversão: `ingestao-falhas.sh s3-restaurar` (o bucket não tinha política; conferido antes e depois). Injeção (b): `ingestao-falhas.sh parar-tasks import`; sem reversão. **Ajuste:** `ingestao-falhas.sh` passou a montar os `file://` com `cygpath -m` no Git Bash (commit `05eae97`); (a) foi executado com o script corrigido |
 
 <div align="center">
 
@@ -625,9 +646,9 @@ Fonte: Material produzido pelos autores (2026).
 
 | Variante | Resposta HTTP / estado durante a falha | Mensagem vazou detalhe interno? | Tempo até `FAILED` (s) | Vaga liberada? | Nova importação | Tempo de recuperação (s) | Situação |
 | --- | --- | --- | ---: | --- | --- | ---: | --- |
-| (a) S3 indisponível | _ | _ | _ | _ | _ | _ | _ |
-| (b) Task interrompida | _ | _ | _ | _ | _ | _ | _ |
-| (c) Timeout de conclusão | _ | _ | _ | _ | _ | _ | _ |
+| (a) S3 indisponível | Política de bucket negando `s3:PutObject` em `staging/imports/*` (19:51:53–19:52:06 UTC): `POST /imports` → **`503 UPLOAD_PREPARATION_FAILED`** em 0,58 s | Não — “Não foi possível preparar o envio.” | < 1 (síncrono) | Sim — o segundo `POST` recebeu `503` de novo (0,49 s), e não `409 IMPORT_IN_PROGRESS` | M-01 → `READY` em 165 s, reimportação idempotente (0 lidos/escritos/rejeitados, mesma versão `dsv_af5774…`; 9/9 checks) | ~170 (retirada da falha → `READY`) | Aprovado |
+| (b) Task interrompida | Task `import-dump` do CG-02 R1 parada em ARCHIVING (11:14:44 UTC; `STOPPED` 11:16:05, contêiner `ingestion` exit 137); `ImportJob` → `FAILED` `WORKER_STOPPED`, `retryable: true` | Não — “Não foi possível concluir a importação.” | ~130 (injeção → `FAILED`); ~49 após a task parar | Sim — lease `argus` expirou sozinho em 11:20:14 (TTL ~5 min), sem intervenção | `imp_01M3S3JWQ462MSX8EXN0E4NYJ9` (M-01) criada às 12:10:46 pela primeira tentativa de (a), que não injetou a falha por defeito do script, e concluída manualmente (`rs02a-tentativa1-injecao.txt`, `rs02a-tentativa1-liberacao-vaga.txt`) | ~5,5 min até a vaga e o lease ficarem livres | Aprovado |
+| (c) Timeout de conclusão | `POLL_TIMEOUT_S=30`: k6 encerra com check reprovado (`estado final UPLOADED`), `checks` 4/5 | Não | — (o servidor não aplica prazo; o job seguiu até `READY` às ~12:29) | Sim, após o job terminar sozinho | CG-02 R2 iniciada em seguida | — | Aprovado (sem falso sucesso) |
 
 <div align="center">
 
@@ -655,12 +676,12 @@ Fonte: Material produzido pelos autores (2026).
 | Resposta esperada durante a falha | (a) Lote inválido em `QUARANTINED`; válidos persistidos. (b) `FAILED` na validação com mensagem segura; nenhum dado publicado |
 | Critérios de sucesso | 0 eventos do lote inválido persistidos; 100% dos eventos válidos persistidos; importação seguinte conclui em `READY` |
 | Resultado esperado | Isolamento completo do dado inválido |
-| Resultados medidos | Lotes válidos persistidos=_ / _; lote inválido estado=_; M-07 estado=_; importação seguinte=_ |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Tempo até alarme (RNF15) | _A preencher_ s (alarme `*-schema-drift`) |
-| Evidências / reprodução | _A preencher_ |
+| Resultados medidos | (a) não executado; (b) M-07 `imp_01M3S40B0C0GQGJ7C1Y921DHKZ` → `FAILED` na etapa `VALIDATING` (`VALIDATION_ERROR`, `retryable: false`, `candidateVersion: null`) em ~91 s após o upload; importação seguinte (`imp_01M3S43AAX45SPM5RATEJEZT9H`, teardown do CG-04) → `READY` |
+| Resultado obtido | (b) O dump corrompido foi rejeitado na validação, sem publicar nada, com mensagem segura, e a importação seguinte concluiu normalmente. (a) Não executado: até 19:45 UTC o `claim` do lote falhava antes da validação de schema (defeito `PK`/`SK`, RS-01); a correção foi implantada às 19:45 UTC, mas o RS-03(a) não foi rodado depois disso |
+| Situação | **Parcial** — (b) aprovado; (a) não executado |
+| Análise e conclusão | O isolamento de dump inválido na importação funciona ponta a ponta. A quarentena de lote incremental (`SCHEMA_INCOMPATIBLE`) só foi validada localmente (dry-run do publicador e testes unitários). Na execução do (a), considerar o defeito novo do RS-01: se os lotes válidos M-05 passarem de 300 s de escrita, a reentrega pode levá-los à DLQ independentemente da quarentena do lote inválido |
+| Tempo até alarme (RNF15) | (b) **35 s**: `FAILED` às 12:19:37, `view-show-import-worker-failures` em `ALARM` às 12:20:12 (o `*-schema-drift` não se aplica a dump corrompido); (a) não medido |
+| Evidências / reprodução | `k6 run ... -e MODE=smoke -e DUMP=<M-07> -e RUN_LABEL=rs03-m07 ingestao-batch.js`. Em `assets/testes-carga/2026-09-30-ingestao/`: `resumo-ingestao-rs03-m07.json`, `k6-rs03-m07.log`, `import-rs03-m07.json`, `dryrun-missing-column.json` |
 
 <div align="center">
 
@@ -688,11 +709,11 @@ Fonte: Material produzido pelos autores (2026).
 | Resposta esperada durante a falha | Mensagem invisível até 300 s e depois reentregue |
 | Critérios de sucesso | Contagem final = 150.000; distintos = total; mensagem não foi para a DLQ |
 | Resultado esperado | Processamento idempotente após a reentrega |
-| Resultados medidos | Tempo até reentrega=_ s; receive count=_; contagem=_; duplicados=_ |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Evidências / reprodução | _A preencher_ |
+| Resultados medidos | Nenhuma medição com a falha planejada (task interrompida). Observações indiretas: no RS-05 (manhã) a mesma mensagem voltou visível a cada ~5,5 min (`rs05-ciclos.txt`); no RS-01 da tarde, sem interromper nenhuma task, a mensagem do lote 1 foi reentregue enquanto o primeiro run ainda escrevia, e o reprocessamento terminou com `written 0`, `unchanged 150000` e contagem total de 300.000 itens para 2 lotes (`rs01-drenagem.txt`) |
+| Resultado obtido | Não executado. Até 19:45 UTC o consumidor falhava em ~0,4 s, antes de qualquer escrita (defeito `PK`/`SK`); a correção foi implantada às 19:45 UTC, mas o RS-04 não foi rodado depois disso |
+| Situação | **Não executado** (pendente) |
+| Análise e conclusão | A mecânica de fila (invisibilidade por 300 s e reentrega) funciona. O RS-01 da tarde mostra reprocessamento idempotente de um lote reentregue, mas não substitui o RS-04: a falha não foi a planejada (task interrompida) e não houve contagem de distintos. Ao executar, considerar o defeito novo do RS-01: com escrita acima de 300 s, a reentrega acontece mesmo sem interromper a task |
+| Evidências / reprodução | Nenhuma execução. Observações indiretas: `rs05-ciclos.txt`, `rs01-drenagem.txt`, `rs01-logs-ingest.txt` |
 
 <div align="center">
 
@@ -720,12 +741,12 @@ Fonte: Material produzido pelos autores (2026).
 | Resposta esperada durante a falha | A mensagem venenosa é tentada 5 vezes e vai para a DLQ; as válidas seguem (atenção: na fila FIFO, a mensagem bloqueia o mesmo `MessageGroupId` até ir para a DLQ — registrar esse efeito) |
 | Critérios de sucesso | 1 mensagem na DLQ; 100% das válidas processadas; alarme de DLQ disparado |
 | Resultado esperado | Isolamento da mensagem venenosa |
-| Resultados medidos | Tempo até a DLQ=_ s; válidas processadas=_ / _; atraso causado no grupo FIFO=_ s |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Tempo até alarme (RNF15) | _A preencher_ s |
-| Evidências / reprodução | _A preencher_ |
+| Resultados medidos | 2 mensagens, 5 recebimentos úteis cada (11:20, 12:10, 12:16, 12:21, 12:27 UTC) com reentrega a cada ~300 s de invisibilidade; movidas para a DLQ no 6º recebimento (12:33:15–12:33:51); `NumberOfMessagesReceived` = 10, `NumberOfMessagesDeleted` = 0; `ApproximateReceiveCount` na DLQ = 7 (inclui a leitura do `dlq-espiar`); válidas processadas = 0 / 2 (todas falham pelo defeito) |
+| Resultado obtido | O mecanismo de isolamento funcionou exatamente como configurado: `maxReceiveCount = 5`, depois DLQ, e alarme de DLQ disparado. A execução usou os lotes do RS-01 (que falham sempre) em vez da mensagem venenosa sintética, porque com o defeito do `claim` qualquer mensagem se comporta como venenosa. Não foi possível verificar o critério “as válidas seguem”, já que nenhuma mensagem é processada |
+| Situação | **Parcial** — mensagem desviada para a DLQ após 5 recebimentos e alarme disparado; “100% das válidas processadas” não verificável (defeito do RS-01) |
+| Análise e conclusão | Com recebimentos a cada 5 min (agenda do consumidor) e `visibility_timeout` de 300 s, uma mensagem que sempre falha fica ~25–30 min na fila FIFO antes de ir para a DLQ, bloqueando o mesmo `MessageGroupId` nesse período — o efeito previsto na nota da Seção 11. Na rodada da manhã, o defeito `PK`/`SK` do RS-01 tornava isso pior: **todo** lote incremental virava “venenoso”. O defeito foi corrigido e implantado às 19:45 UTC, e o RS-05 não foi repetido depois disso; o critério “as válidas seguem” continua sem verificação. Os intervalos maiores entre os recebimentos 1 e 2 (11:20 → 12:10) refletem a pausa da rodada, não o sistema |
+| Tempo até alarme (RNF15) | `view-show-ingestion-incremental-dlq-depth` → `ALARM` às 12:36:25, **~155–190 s** após a chegada à DLQ |
+| Evidências / reprodução | Em `assets/testes-carga/2026-09-30-ingestao/`: `rs05-ciclos.txt` (ciclos de reentrega), `rs05-dlq-espiar.json`, `sqs-rs01-rs05.json`. Reprodução: após a publicação, repetir `ingestao-falhas.sh rodar-ingestao` a cada ~330 s até `ingestao-falhas.sh filas` mostrar a DLQ com as mensagens |
 
 <div align="center">
 
@@ -753,11 +774,11 @@ Fonte: Material produzido pelos autores (2026).
 | Resposta esperada durante a falha | `429 RATE_LIMITED` para o excedente; nenhum `5xx`; nenhuma importação extra criada |
 | Critérios de sucesso | `5xx` = 0; importações criadas na rajada = 0; 100% `2xx` na fase de recuperação |
 | Resultado esperado | Contrapressão explícita e recuperação automática |
-| Resultados medidos | `2xx`=_ · `429`=_ · `5xx`=_; tempo de recuperação=_ s |
-| Resultado obtido | _A preencher_ |
-| Situação | _A preencher_ |
-| Análise e conclusão | _A preencher_ |
-| Evidências / reprodução | `resumo-rs06.json` |
+| Resultados medidos | 1.385 requisições em 4 fases (nominal 1 req/s, rajada 20 req/s por 60 s, resfriamento, recuperação); `2xx` = 1.113 · `409` = 271 · **`429` = 0** · `503` = 1 · outros `5xx` = 0; importações criadas = 0; `recovery_2xx_rate` = 100% (61/61); primeiro `2xx` após a rajada em 0,13 s; p95 = 179 ms. Diagnóstico complementar (250 requisições, 20 em paralelo): **via API Gateway 250 × `200`**; direto no ALB, 180 respostas e depois **70 × `429`** |
+| Resultado obtido | Nenhum `5xx` inesperado, nenhuma importação extra (o `POST` concorrente recebeu `409 IMPORT_IN_PROGRESS` 271 vezes) e recuperação imediata; porém a rajada de ~1.200 req/min, 6,7× o limite de 180 req/min, **não recebeu nenhum `429`**. O único `503` foi um `POST /imports` na rajada (11:02:32, 25 ms), resposta explícita e segura |
+| Situação | **Parcial** — `5xx` = 0, importações criadas = 0 e recuperação = 100% atendidos; a contrapressão por rate limit não ocorreu na entrada pública |
+| Análise e conclusão | O rate limiter (`src/app.ts`, `rateLimiter`) conta por `request.ip` com `trust proxy = 1`. Atrás de API Gateway → ALB, o último salto do `X-Forwarded-For` é o IP de saída do API Gateway, que varia entre requisições; o contador se espalha por vários “clientes” e nunca passa de 180. Direto no ALB (sem API Gateway), o mesmo limite funciona (180 aceitas, depois `429`). **Achado de segurança/robustez**: pela URL pública (API Gateway, usada pelo Amplify) a API não tem rate limit efetivo por cliente; e o ALB fica exposto em HTTP diretamente. Ações possíveis: `trust proxy = 2` (ou lista das faixas do API Gateway) para usar o IP real do cliente, throttling nativo do API Gateway (stage/usage plan) e restringir o security group do ALB. O que protegeu o dado foi a exclusão mútua (`409`), não o limiter. O `503` isolado na rajada é compatível com a resposta segura de disputa do registro ativo (UC-IMP-04); o log da API não registra o `error.code` |
+| Evidências / reprodução | `k6 run ... -e MODE=limite -e DUMP=<M-01> -e BURST_RATE=20 -e RUN_LABEL=rs06 ingestao-batch.js` (a importação ativa usada foi a do CG-02 R1, descoberta pelo `409`). Em `assets/testes-carga/2026-09-30-ingestao/`: `resumo-ingestao-rs06.json`, `k6-rs06.log`, `rs06-diagnostico-rate-limit.txt` |
 
 <div align="center">
 
@@ -779,17 +800,17 @@ Fonte: Material produzido pelos autores (2026).
 
 | Teste | Requisito | Início (UTC) | Duração | Critério principal | Valor medido | Situação | Evidência |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| CG-01 | RNF01, RNF09 | _ | _ | `READY` e contagem igual | _ | _ | _ |
-| CG-02 | RNF01 | _ | _ | ≥ 10.000 eventos/min, 0 perda | _ | _ | _ |
-| CG-03 | RNF02 | _ | _ | `t2 − t0 ≤ 120 s` | _ | _ | _ |
-| CG-04 | RNF03, RNF09 | _ | _ | 1 × `201`, demais `409` | _ | _ | _ |
-| CG-05 | RNF01 | _ | _ | Exploratório | _ | _ | _ |
-| RS-01 | RNF03 | _ | _ | 0 perda, drenagem < N × 15 min | _ | _ | _ |
-| RS-02 | RNF03 | _ | _ | Falha explícita, vaga liberada | _ | _ | _ |
-| RS-03 | RNF03 | _ | _ | Inválido isolado | _ | _ | _ |
-| RS-04 | RNF03 | _ | _ | Reentrega sem duplicar | _ | _ | _ |
-| RS-05 | RNF03 | _ | _ | Venenosa na DLQ | _ | _ | _ |
-| RS-06 | RNF03, RNF09 | _ | _ | `429` sem `5xx` | _ | _ | _ |
+| CG-01 | RNF01, RNF09 | 10:10:38 | 2 min 44 s | `READY` e contagem igual | `READY`, 1.000/1.000, 0 rejeitados | **Aprovado** | `resumo-ingestao-cg01.json` |
+| CG-02 | RNF01 | 10:16:50 (R1), 12:29:37 (R2) | R1 60 min (interrompida); R2 3 h 53 min | ≥ 10.000 eventos/min, 0 perda, ≤ 900 s | 0 perda (150.000/150.000, 23/23 datasets); INGESTING ~15 mil/min; R2 13.915 s até `READY` | **Reprovado** | `resumo-ingestao-cg02-r*.json`, `etapas-cg02-r*.json`, `athena-cg02-r2.json` |
+| CG-03 | RNF02 | — | — | `t2 − t0 ≤ 120 s` | — | **Não executado** | — |
+| CG-04 | RNF03, RNF09 | 12:19:40 | 5 min 18 s | 1 × `201`, demais `409` | 1 × `201`, 1.516 × `409`, 71 × `503`; p95 GET 431 ms | **Parcial** | `resumo-ingestao-cg04.json`, `cg04-status-post.txt` |
+| CG-05 | RNF01 | — | — | Exploratório | — | **Não executado** | — |
+| RS-01 | RNF03 | 11:01:03 (manhã), 20:16:48 (tarde) | manhã: acúmulo 19 min, drenagem falhou; tarde: acúmulo 7 min, drenagem interrompida no limite de 1.800 s | 0 perda, 0 DLQ, drenagem < N × 15 min | manhã: 0/300.000 persistidos (`PK`/`SK`); tarde: 300.000/300.000 persistidos, 1 lote sem confirmação e 1 mensagem na DLQ (`visibility_timeout`) | **Reprovado** | `rs01-*`, `sqs-rs01-rs05.json`, `sqs-rs01.json` |
+| RS-02 | RNF03 | 11:14:44 (b), 19:51:53 (a), 12:27:00 (c) | — | Falha explícita, vaga liberada | `503 UPLOAD_PREPARATION_FAILED`; `FAILED/WORKER_STOPPED` em ~130 s; timeout explícito | **Aprovado** | `rs02*` |
+| RS-03 | RNF03 | 12:18:04 | 1 min 36 s | Inválido isolado | M-07 → `FAILED` em `VALIDATING`; (a) não executado | **Parcial** | `import-rs03-m07.json` |
+| RS-04 | RNF03 | — | — | Reentrega sem duplicar | — | **Não executado** | — |
+| RS-05 | RNF03 | 11:20 → 12:33 | ~73 min (pausas incluídas) | Venenosa na DLQ | 2 mensagens na DLQ após 5 recebimentos; alarme em ~3 min | **Parcial** | `rs05-*` |
+| RS-06 | RNF03, RNF09 | 11:01:16 | 4 min 3 s | `429` sem `5xx` | 0 × `429`, 0 `5xx` inesperado, 0 importação criada | **Parcial** | `resumo-ingestao-rs06.json`, `rs06-diagnostico-rate-limit.txt` |
 
 <div align="center">
 
@@ -799,20 +820,16 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 7.2 Análise de desempenho
 
-&emsp;_A preencher._ Sugestão de roteiro:
-
-- Vazão obtida em CG-02 frente à meta de 166,67 eventos/s, e margem (quantas vezes acima ou abaixo).
-- Qual etapa domina a duração (upload, restore do MySQL, validação, normalização, escrita no DynamoDB, Parquet/Athena).
-- Qual recurso satura primeiro em CG-05 e em que volume.
-- Latência do plano de controle em CG-04 e comparação com a API de consulta da Sprint 3/4.
+- **Vazão frente à meta:** a etapa de ingestão propriamente dita (INGESTING) escreveu 150 mil eventos em ~600 s (601 s na R1, 606,5 s na R2), ≈ 250 eventos/s — **1,5× a meta** de 166,67 eventos/s. O pipeline completo não atende: só PROJECTING levou 1.069 s (R1) e 1.057,1 s (R2), e ARCHIVING levou 12.246,4 s na R2 (~3 h 24 min), com a massa sintética atual. A R2 chegou a `READY` em 13.915 s. O RNF01 é reprovado pelo que acontece **depois** da ingestão.
+- **Etapa dominante:** com 1.000 eventos, o custo fixo domina (partida da task ~55–100 s e ARCHIVING 85 s). Com 150 mil, PROJECTING (pico de ~84 mil WCU/min no DynamoDB nas duas repetições) e ARCHIVING dominam. Na R2, ARCHIVING fez **1.585 consultas `COUNT(*)` no Athena, uma por partição, todas `SUCCEEDED`**, que somam 1.323 s de execução (~11% dos 12.246 s da etapa). Upload, RESTORING e VALIDATING somam poucos segundos.
+- **Recurso que satura:** nenhum. Na task `import-dump`, CPU máx. 38,1% (R1) e 39,7% (R2), memória máx. 6,5% e 6,4%, storage máx. 1,7% nas duas; 0 throttling no DynamoDB (1,65 M WCU no total na R1 e 1,75 M na R2). O limitante é latência de operações em série.
+- **Plano de controle:** p95 de 145–179 ms com carga baixa e 431 ms (GET) com 23,8 req/s, quando a única task de 0,25 vCPU chegou a 92,8% de CPU — em linha com o teto de ~58 req/s por vCPU medido na Sprint 4 para a API de consulta.
 
 ### 7.3 Análise de resiliência
 
-&emsp;_A preencher._ Sugestão de roteiro:
-
-- Para cada falha, a resposta foi explícita? Houve algum falso sucesso ou evento aceito e não persistido?
-- Tempo de recuperação de cada cenário e se exigiu intervenção manual.
-- Tempo entre a injeção da falha e o alarme (RNF15).
+- **Falha explícita:** no caminho de importação, todas as falhas foram explícitas e com mensagem segura (`409`, `503 UPLOAD_PREPARATION_FAILED`, `FAILED` com `WORKER_STOPPED`/`VALIDATION_ERROR`), sem falso sucesso. No caminho incremental, na rodada da manhã, houve **evento aceito e não persistido**: os lotes entraram na fila e nunca foram gravados (defeito `PK`/`SK`), e o run do consumidor terminou `SUCCEEDED` sem registrar a causa. Com a correção implantada (19:45 UTC), a rodada da tarde gravou os 300.000 eventos, mas um dos 2 lotes ficou sem confirmação e sua mensagem foi para a DLQ, porque a escrita do lote passa do `visibility_timeout` de 300 s (RS-01). As falhas desses runs agora aparecem no log (`_log_failure`), mas os runs que encontram o lote em uso por outro run continuam terminando `SUCCEEDED` sem registrar a causa.
+- **Recuperação:** a importação volta sozinha; o pior caso é a queda do worker (RS-02b), em que a vaga só fica livre após o TTL do lease (~5 min). O caminho incremental não drenou sozinho o backlog de 2 lotes em 1.800 s (RS-01, tarde). Nenhum cenário exigiu reinício de serviço; a única intervenção manual foi concluir a importação criada pela primeira tentativa de injeção do RS-02(a), que falhou por defeito do script (`rs02a-tentativa1-liberacao-vaga.txt`).
+- **Alarmes (RNF15):** nenhum cenário ficou dentro de 30 s; todos os alarmes de ingestão usam período de 300 s.
 
 <div align="center">
 
@@ -822,12 +839,13 @@ Fonte: Material produzido pelos autores (2026).
 
 | Cenário | Falha explícita? | Perda de dados? | Duplicidade? | Recuperação automática? | Tempo de recuperação (s) | Tempo até alarme (s) |
 | --- | --- | --- | --- | --- | ---: | ---: |
-| RS-01 Fila cheia | _ | _ | _ | _ | _ | _ |
-| RS-02 Timeout | _ | _ | _ | _ | _ | _ |
-| RS-03 Payload inválido | _ | _ | _ | _ | _ | _ |
-| RS-04 Reentrega | _ | _ | _ | _ | _ | _ |
-| RS-05 DLQ | _ | _ | _ | _ | _ | _ |
-| RS-06 Rate limit | _ | _ | _ | _ | _ | _ |
+| RS-01 Fila cheia — manhã (imagem anterior) | Não (consumidor reporta `SUCCEEDED`) | **Sim** — 300 mil eventos na fila e 0 persistidos | Não | Não | — | 118 (backlog) / 146 (idade) |
+| RS-01 Fila cheia — tarde (revisão 6) | Parcial (2 runs `FAILED` com `ConditionalWriteError` no log; 3 runs `SUCCEEDED` sem causa) | Não — 300.000/300.000 persistidos; 1 lote sem confirmação e 1 mensagem na DLQ | Não medida (contagem = esperado) | Não (drenagem não concluída em 1.800 s) | — | 185 (backlog) / 111–152 (DLQ) |
+| RS-02 Timeout | Sim | Não | Não | Sim | ~170 (a); ~330 (b, até o lease expirar) | sem alarme (a, b) |
+| RS-03 Payload inválido | Sim (b) | Não | Não | Sim | ~180 (próxima importação `READY`) | 35 |
+| RS-04 Reentrega | — (não executado) | — | — | — | — | — |
+| RS-05 DLQ | Sim (DLQ) | Sim (defeito `PK`/`SK` do RS-01 da manhã) | Não | — | — | ~155–190 |
+| RS-06 Rate limit | Não (`429` ausente) | Não | Não | Sim | 0,13 | — |
 
 <div align="center">
 
@@ -845,10 +863,10 @@ Fonte: Material produzido pelos autores (2026).
 
 | Cenário | Sprint 3 | Sprint 5 | Evolução |
 | --- | --- | --- | --- |
-| 10 mil eventos/min | Bloqueado na stack atual; histórico aprovado no Flask | _A preencher_ | _A preencher_ |
-| Fila cheia | Bloqueado; histórico `429 queue_full` no Flask | _A preencher_ | _A preencher_ |
-| Timeout | Bloqueado; histórico `504 dependency_timeout` no Flask | _A preencher_ | _A preencher_ |
-| Frescor (RNF02) | Bloqueado | _A preencher_ | _A preencher_ |
+| 10 mil eventos/min | Bloqueado na stack atual; histórico aprovado no Flask | Executado na stack real: INGESTING ~15 mil eventos/min; pipeline completo reprovado (13.915 s até `READY` para 150 mil na R2) | Deixou de ser bloqueado; o gargalo mudou de “inexistente” para PROJECTING/ARCHIVING |
+| Fila cheia | Bloqueado; histórico `429 queue_full` no Flask | Acúmulo real na FIFO sem perda de mensagem; drenagem reprovada nas duas rodadas (manhã: defeito `PK`/`SK`, corrigido; tarde: eventos gravados, mas lote reentregue durante a escrita e enviado à DLQ); `429` inexistente pela entrada pública | Acúmulo medido de fato; revelou dois defeitos no consumidor (um corrigido, um pendente) e rate limit ineficaz |
+| Timeout | Bloqueado; histórico `504 dependency_timeout` no Flask | Falha real de S3 e de task ECS: `503` seguro, `FAILED` em ~130 s, vaga liberada | Aprovado com dependências reais |
+| Frescor (RNF02) | Bloqueado | Não executado (bloqueio `PK`/`SK` corrigido às 19:45 UTC; CG-03 pendente) | Sem evolução mensurável |
 
 <div align="center">
 
@@ -874,15 +892,15 @@ Fonte: Material produzido pelos autores (2026).
 
 | Indicador | Fonte | Consulta / métrica | Faixa medida na janela | Figura |
 | --- | --- | --- | --- | --- |
-| **Latência p95** (API de ingestão) | Prometheus | `histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{job="view-show-api", route=~"/api/v1/imports.*"}[5m])))` | _A preencher_ | Figura 2 |
-| **Duração das etapas** (worker) | CloudWatch | `<namespace>/Ingestion` · `StageDurationMs` (p95, por etapa) | _A preencher_ | Figura 3 |
-| **Throughput HTTP** | Prometheus | `sum by (route) (rate(http_requests_total{job="view-show-api", route=~"/api/v1/imports.*"}[5m]))` | _A preencher_ | Figura 4 |
-| **Throughput de eventos** | `GET /imports/:id` / CloudWatch | `recordsWritten` ÷ duração (eventos/min) | _A preencher_ | Figura 4 |
-| **Erros por segundo** | Prometheus | `sum by (status_code) (rate(http_requests_failed_total{job="view-show-api", route=~"/api/v1/imports.*"}[5m]))` | _A preencher_ | Figura 5 |
-| **Falhas de etapa** | CloudWatch | `<namespace>/Ingestion` · `StageFailures` (soma/min) | _A preencher_ | Figura 5 |
-| **CPU da API** | CloudWatch / Prometheus | `ECS/ContainerInsights` · `CpuUtilized / CpuReserved` do serviço da API; ou `100 * (rate(view_show_process_cpu_user_seconds_total[5m]) + rate(view_show_process_cpu_system_seconds_total[5m]))` | _A preencher_ | Figura 6 |
-| **CPU / memória / storage da task de ingestão** | CloudWatch | `ECS/ContainerInsights` · `CpuUtilized/CpuReserved`, `MemoryUtilized/MemoryReserved`, `EphemeralStorageUtilized/EphemeralStorageReserved` | _A preencher_ | Figura 6 |
-| **Profundidade e idade da fila** | CloudWatch | `AWS/SQS` · `ApproximateNumberOfMessagesVisible`, `ApproximateAgeOfOldestMessage` (fila incremental, fila de análise e DLQs) | _A preencher_ | Figura 7 |
+| **Latência p95** (API de ingestão) | k6 (cliente) | `http_req_duration` por modo | Prometheus não coletou a API da AWS (Seção 10); no k6, incluindo a internet: p95 179–477 ms, máx. 1.360 ms (CG-04) | — |
+| **Duração das etapas** (worker) | CloudWatch / logs EMF | `view-show/Ingestion` · `StageDurationMs` | M-01: INGESTING 7,4 s, PROJECTING 8,8 s, ARCHIVING 85 s; M-02 (R1): INGESTING 601 s, PROJECTING 1.069 s, ARCHIVING > 1.694 s (interrompido); M-02 (R2): INGESTING 606,5 s, PROJECTING 1.057,1 s, ARCHIVING 12.246,4 s | `etapas-*.json` |
+| **Throughput HTTP** | k6 | `http_reqs` | 0,2 req/s (smoke) a 23,8 req/s (CG-04) | resumos k6 |
+| **Throughput de eventos** | `GET /imports/:id` / logs | `recordsWritten` ÷ duração | 14.975 (R1) e 14.840 (R2) eventos/min na etapa INGESTING; ≤ 2.679 eventos/min no pipeline da R1 até a interrupção; 647 eventos/min no pipeline completo da R2 | `etapas-cg02-r1.json`, `etapas-cg02-r2.json` |
+| **Erros por segundo** | Logs da API (`/ecs/view-show-iac-api`) + k6 | `status >= 500` | 1 × `503` no RS-06; 71 × `503` no CG-04 (~0,4/s no platô); 0 outros `5xx` | `cg04-status-post.txt` |
+| **Falhas de etapa** | CloudWatch | `view-show/Ingestion` · `Runs{status=FAILED}` | `import-dump`: 1 run `FAILED` (M-07, RS-03b); a parada do RS-02b não gerou métrica (worker morto). `ingest-incremental` (RS-01, tarde): 7 tasks, 2 com saída 1 (runs `FAILED`, `ConditionalWriteError`) e 5 com saída 0; dos 4 runs `SUCCEEDED` com log coletado, 3 tinham lotes retentáveis | `alarmes-antes.json`, `rs01-logs-ingest.txt` |
+| **CPU da API** | CloudWatch | `ECS/ContainerInsights` · `CpuUtilized / CpuReserved` (família `view-show-iac-api-task`) | 3,2% (smoke/drenagem), 25,7% (RS-06), **92,8% (CG-04)** | `cloudwatch-recursos-api-*.json` |
+| **CPU / memória / storage da task de ingestão** | CloudWatch | `ECS/ContainerInsights` (família `view-show-ingestion-import`) | CPU 15,1% / mem. 5,7% / storage 1,3% (M-01); CPU 38,1% / mem. 6,5% / storage 1,7% (M-02, R1); CPU 39,7% / mem. 6,4% / storage 1,7% (M-02, R2) | `cloudwatch-recursos-cg0*.json` |
+| **Profundidade e idade da fila** | CloudWatch | `AWS/SQS` · visíveis, invisíveis, idade da mais antiga, recebidas/removidas | Manhã: FIFO máx. 2 mensagens, idade máx. 5.548 s, 10 recebidas / 0 removidas; DLQ: 2. Tarde: FIFO máx. 2 mensagens, idade máx. 1.957 s, 8 recebidas / 1 removida; DLQ: 1 | `sqs-rs01-rs05.json`, `sqs-rs01.json` |
 
 <div align="center">
 
@@ -892,7 +910,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 8.3 Painéis
 
-&emsp;Dashboard utilizado: _A preencher_ (ex.: novo `view-show-ingestao.json` em `apps/fullstack/observability/grafana/provisioning/dashboards/json/`, ou dashboard do CloudWatch). Janela capturada: _A preencher_ UTC.
+&emsp;Dashboard disponível: `view-show-ingestion` (CloudWatch). Nesta rodada não foram feitas capturas de tela: as séries foram exportadas em JSON pela API do CloudWatch (arquivos citados na Tabela 26), nas janelas de 2026-09-30 10:10–16:24 UTC (manhã e CG-02 R2) e 20:16–20:57 UTC (RS-01 da tarde). As Figuras 2 a 7 ficam pendentes de captura numa próxima sessão.
 
 <div align="center">
 
@@ -900,7 +918,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <!-- <img src="../../assets/testes-carga/<data>-ingestao/grafana-01-latencia-p95.png" alt="Latência p95 das rotas /api/v1/imports"/> -->
 
-_A preencher_
+_Não capturada nesta rodada — séries em JSON na pasta de evidências (Tabela 26)._
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -910,7 +928,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <strong>Figura 3: Duração das etapas do worker de ingestão</strong>
 
-_A preencher_
+_Não capturada nesta rodada — séries em JSON na pasta de evidências (Tabela 26)._
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -920,7 +938,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <strong>Figura 4: Throughput (requisições/s e eventos/min)</strong>
 
-_A preencher_
+_Não capturada nesta rodada — séries em JSON na pasta de evidências (Tabela 26)._
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -930,7 +948,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <strong>Figura 5: Erros por segundo e falhas de etapa</strong>
 
-_A preencher_
+_Não capturada nesta rodada — séries em JSON na pasta de evidências (Tabela 26)._
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -940,7 +958,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <strong>Figura 6: Uso de CPU da API e da task de ingestão</strong>
 
-_A preencher_
+_Não capturada nesta rodada — séries em JSON na pasta de evidências (Tabela 26)._
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -950,7 +968,7 @@ Fonte: Material produzido pelos autores (2026).
 
 <strong>Figura 7: Profundidade e idade das filas durante RS-01</strong>
 
-_A preencher_
+_Não capturada nesta rodada — séries em JSON na pasta de evidências (Tabela 26)._
 
 Fonte: Material produzido pelos autores (2026).
 
@@ -958,7 +976,12 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 8.4 Leitura dos painéis à luz das rodadas
 
-&emsp;_A preencher._ Relacionar cada pico ou platô dos gráficos com a rodada que o causou (horário de início/fim da Tabela 23), como feito na [Seção 10.3 da Sprint 3](../sprint3/testes-carga-inicial.md#103-leitura-dos-painéis-à-luz-das-rodadas). Os painéis devem contar a mesma história dos resumos k6; divergências devem ser explicadas.
+&emsp;As séries exportadas contam a mesma história dos resumos do k6:
+
+- **DynamoDB (10:16–11:17 UTC):** ~40 mil WCU/min de 10:18 a 10:28 (INGESTING do CG-02 R1), queda a ~9 mil às 10:29–10:30 e platô de ~83 mil WCU/min de 10:31 a 10:46 (PROJECTING); nenhum throttling. Depois das 10:46 o consumo cai: ARCHIVING é dominado pelo Athena, não pelo DynamoDB.
+- **Athena (10:46–11:14 UTC):** 273 consultas `COUNT(*)` sequenciais, uma por partição diária, a cada ~6 s — é o platô “parado” que o k6 viu como `PROCESSING/ARCHIVING` por 28 min.
+- **CPU da API:** pico de 92,8% entre 12:19 e 12:23 (CG-04); o `AlarmHigh` do target tracking só foi a `ALARM` às 12:25:54 e a segunda task subiu às 12:25:56, depois da rajada.
+- **SQS:** a FIFO fica com 2 mensagens visíveis de 11:01 a 11:20 e passa a alternar com “em processamento” a cada disparo do consumidor; nenhum `NumberOfMessagesDeleted`; a DLQ vai a 2 às 12:33.
 
 ### 8.5 Alertas
 
@@ -970,13 +993,13 @@ Fonte: Material produzido pelos autores (2026).
 
 | Alarme | Condição | Cenário que deveria disparar | Disparou? | Tempo até `ALARM` (s) | Voltou a `OK`? |
 | --- | --- | --- | --- | ---: | --- |
-| `*-backfill-cpu-utilization` | CPU da task acima do limite | CG-05 | _ | _ | _ |
-| `*-backfill-storage-utilization` | Storage efêmero acima do limite | CG-05 | _ | _ | _ |
-| `*-failures` (`StageFailures`) | Falha em etapa da ingestão | RS-02, RS-03 | _ | _ | _ |
-| `*-schema-drift` | Drift de schema | RS-03 | _ | _ | _ |
-| `*-projecting-duration` | Etapa de projeção lenta | CG-05, RS-02 | _ | _ | _ |
-| Profundidade da DLQ > 0 | _A preencher (existe? se não, registrar como lacuna)_ | RS-05 | _ | _ | _ |
-| Idade da mensagem na FIFO | _A preencher (existe? se não, registrar como lacuna)_ | RS-01 | _ | _ | _ |
+| `*-backfill-cpu-utilization` | CPU da task acima de 70% | CG-05 | Não (CPU máx. 39,7%, CG-02 R2) | — | — |
+| `*-backfill-storage-utilization` | Storage efêmero acima de 70% | CG-05 | Não (máx. 1,7%) | — | — |
+| `view-show-import-worker-failures` (`Runs{status=FAILED}`) | Run do `import-dump` com falha (período 300 s) | RS-02, RS-03 | Sim em RS-03(b); **não** em RS-02(a) e (b) | 35 (RS-03b) | Sim, às 12:35:12 |
+| `*-schema-drift` | Drift de schema | RS-03 | Não avaliado (RS-03a não executado) | — | — |
+| `view-show-ingestion-projecting-duration` | `StageDurationMs{stage=PROJECTING, command=backfill}` ≥ 300 s | CG-02 | **Não**, apesar de PROJECTING = 1.069 s no CG-02 R1 e 1.057,1 s na R2: o alarme filtra `command=backfill`, e a importação emite `command=import-dump` — **lacuna de configuração** | — | — |
+| `view-show-ingestion-incremental-dlq-depth` | DLQ visível ≥ 1 (período 300 s) | RS-05, RS-01 (tarde) | Sim / Sim | ~155–190 (RS-05) / ~111–152 (RS-01, tarde: `ALARM` às 20:52:12) | Sim, depois da limpeza da DLQ de 16:03:57 (estado `OK` desde 16:10:20 UTC, `rs01-acumulo.txt`); de novo em `ALARM` desde 20:52:12, com a mensagem do RS-01 da tarde mantida na DLQ |
+| `view-show-ingestion-incremental-queue-oldest-age` / `-queue-backlog` | Idade ≥ 900 s / visíveis ≥ 1 (período 300 s) | RS-01 | Manhã: Sim / Sim; tarde: horário de `ALARM` não registrado / Sim | Manhã: ~146 após cruzar 900 s / ~118. Tarde: — / ~185 (`ALARM` às 20:19:53) | Oscilou com os recebimentos; ao fim da tarde, `OK` às 20:56:43 (idade) e 20:31:53 (backlog) |
 
 <div align="center">
 
@@ -998,13 +1021,15 @@ Fonte: Material produzido pelos autores (2026).
 
 | # | Achado (com evidência) | Decisão afetada | Impacto / ação proposta | Estado |
 | --- | --- | --- | --- | --- |
-| 1 | _A preencher_ | Ingestão em lote assíncrona (task ECS) em vez de API HTTP síncrona | _A preencher (ex.: confirmar que desacoplar o processamento da API protege o plano de controle sob pico)_ | _A preencher_ |
-| 2 | _A preencher_ | Uma importação não terminal por vez (lock global) | _A preencher (ex.: o lock serializa janelas — avaliar se limita a vazão sob backlog)_ | _A preencher_ |
-| 3 | _A preencher_ | Agenda de 5 min do `ingest-incremental` | _A preencher (ex.: impacto direto no RNF02 de 120 s)_ | _A preencher_ |
-| 4 | _A preencher_ | Dimensionamento da task `import-dump` (vCPU/memória/disco) | _A preencher_ | _A preencher_ |
-| 5 | _A preencher_ | SQS com DLQ e `maxReceiveCount = 5` | _A preencher_ | _A preencher_ |
-| 6 | _A preencher_ | Autoscaling da API (mín. 1 / máx. 4, alvo 50% CPU) — já apontado como lento na Sprint 4 | _A preencher_ | _A preencher_ |
-| 7 | _A preencher_ | Alertas com `for:` ≥ 2 min frente ao RNF15 de 30 s | _A preencher_ | _A preencher_ |
+| 1 | CG-04 e RS-06: com 23,8 req/s e CPU da API em 92,8%, a importação em andamento não foi afetada, e com a task do worker parada (RS-02b) a API seguiu respondendo | Ingestão em lote assíncrona (task ECS) em vez de API HTTP síncrona | **Confirmada.** O desacoplamento isola o plano de controle do processamento pesado; manter | Confirmada |
+| 2 | CG-04: 1 × `201` e 1.516 × `409` sob rajada; RS-02b: após a queda do worker, a vaga e o lease `argus` só ficaram livres ~5 min depois (TTL do lease); o lease é compartilhado com o `sync` incremental | Uma importação não terminal por vez (lock global) | **Confirmada para integridade**, com custo: uma importação de 150 mil eventos segura o lock por > 1 h (CG-02) e bloqueia o incremental pelo mesmo tempo. Avaliar lease mais curto com heartbeat e liberar o lock ao fim do INGESTING/PROJECTING, deixando ARCHIVING fora da seção crítica | Revisar |
+| 3 | RS-01/RS-05 (manhã): nenhum lote incremental era gravado na stack — `claim` falhava com `Missing the key pk` (chaves `PK`/`SK` no adaptador × `pk`/`sk` na tabela); falha tratada como retentável sem log; lotes acabavam na DLQ (`rs01-causa-raiz.txt`) | Agenda de 5 min do `ingest-incremental` e caminho incremental como fonte de frescor (RNF02) | **Era bloqueante; corrigido.** Adaptador passou a usar `pk`/`sk` (`cc0dbbc`), com teste de chaves sobre moto com `KeySchema` `pk`/`sk` (`afc303c`, `test_incremental_batch_keys.py`) e log da exceção no ramo retentável (`0eded5d`); pytest 148/148 em Linux; implantado às 19:45 UTC (imagem `sha256:2d409c86…`, revisão 6). O RS-01 da tarde confirmou a correção: 300.000 de 300.000 eventos gravados (`rs01-drenagem.txt`). A agenda de 5 min, sozinha, ainda tende a estourar os 120 s do RNF02 | Corrigido e implantado |
+| 4 | CG-02 R1: CPU máx. 38,1%, memória 6,5%, storage 1,7%, 0 throttling no DynamoDB; mesmo assim PROJECTING levou 1.069 s (~83 mil WCU/min) e ARCHIVING faz 1 consulta Athena por partição diária, em série (~6 s cada) | Dimensionamento da task `import-dump` (2 vCPU / 8 GiB / 200 GiB) | **Superdimensionada para o gargalo real.** O limitante é latência de E/S em série, não recurso. Mais vCPU não ajuda; paralelizar a escrita de projeções e a verificação do ARCHIVING (ou verificar com uma única consulta agregada por `dataset_version`) ajuda. Pode-se reduzir a task para 1 vCPU / 2–4 GiB | Revisar |
+| 5 | RS-05: 5 recebimentos com reentrega a cada ~300 s e desvio para a DLQ no 6º; alarme de DLQ em ~3 min; na FIFO com grupo único, uma mensagem que sempre falha trava o grupo por ~25–30 min | SQS com DLQ e `maxReceiveCount = 5` | **Confirmada** como proteção. Para a FIFO incremental, considerar `maxReceiveCount` menor ou falhas permanentes (como o `ValidationException` do RS-01) classificadas como não retentáveis, para não travar o grupo | Confirmada, com ajuste |
+| 6 | CG-04: CPU 92,8% de 12:19 a 12:23 com 1 task de 0,25 vCPU; `AlarmHigh` às 12:25:54 e 2ª task às 12:25:56 (~6 min depois do início); 71 × `503` no platô | Autoscaling da API (mín. 1 / máx. 4, alvo 50% CPU) | **Confirma o achado da Sprint 4:** reage tarde para picos de minutos. Opções: mínimo de 2 tasks, 0,5 vCPU, escalonamento por `RequestCountPerTarget` do ALB ou agendado para eventos ao vivo | Revisar |
+| 7 | Tempos medidos até `ALARM`: 35 s (falha de run), ~118 s (backlog), ~146 s (idade), ~155–190 s (DLQ); nenhum alarme para parada da task (RS-02b) nem para S3 indisponível (RS-02a); `projecting-duration` filtra `command=backfill` e não cobre `import-dump` | Alertas CloudWatch com período de 300 s frente ao RNF15 de 30 s | **RNF15 não atendido estruturalmente.** Período de 60 s com 1 avaliação e alarmes de métrica de alta resolução onde couber; alarme sobre `ImportJob` em `FAILED` publicado pelo reconciliador (não pelo worker); incluir `command=import-dump` no alarme de PROJECTING | Revisar |
+| 8 | RS-06: pela URL pública (API Gateway) 250/250 requisições em rajada passaram; direto no ALB o limite de 180/min funcionou (70 × `429`) | Rate limit em memória por `request.ip` com `trust proxy = 1` | **Ineficaz atrás do API Gateway**: o IP visto é o do API Gateway, que varia. Usar `trust proxy` compatível com API Gateway → ALB (2 saltos) ou throttling nativo do API Gateway; restringir o ALB para aceitar só o API Gateway | Correção necessária |
+| 9 | RS-01 (tarde, já com a correção do achado 3): a escrita de um lote de 150.000 eventos passa do `visibility_timeout` de 300 s da FIFO; com a agenda de 5 min, outro run recebe a mesma mensagem enquanto o primeiro ainda escreve, muda o estado/versão do registro do lote, e a transição final do primeiro falha com `ConditionalWriteError` (runs de 482 s e 712 s). Resultado: 300.000/300.000 eventos gravados, mas 1 de 2 lotes sem confirmação, mensagem na DLQ e drenagem não concluída em 1.800 s. Os runs que encontram o lote em uso terminam `SUCCEEDED` sem log da causa (`rs01-drenagem.txt`, `rs01-logs-ingest.txt`, `rs01-tarde-tasks.txt`) | `visibility_timeout = 300 s` da FIFO incremental × duração da escrita de um lote; agenda de 5 min do `ingest-incremental`; lease/estado do lote como proteção contra concorrência | **Defeito novo, sem correção.** Opções a avaliar: estender a visibilidade da mensagem durante o processamento (`ChangeMessageVisibility` periódico, como heartbeat); `visibility_timeout` maior que o pior tempo de escrita de um lote; impedir que um run inicie enquanto outro processa o mesmo grupo (lease por dataset); e fazer o run que encontra o lote em uso registrar isso em log e em métrica, em vez de terminar `SUCCEEDED` sem causa. Depende de nova execução do RS-01 para confirmar | Correção necessária |
 
 <div align="center">
 
@@ -1016,19 +1041,41 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 10. Limitações
 
-&emsp;_A preencher._ Registrar, no mínimo:
+&emsp;A rodada de 2026-09-30 aconteceu numa única sessão do Learner Lab e esbarrou em limites de ambiente, de massa de dados e de ferramenta. Todos estão registrados abaixo, porque mudam a leitura dos números.
 
-- Diferenças entre o Learner Lab e produção (ex.: todas as tasks usam `LabRole`; limites de conta; sessão expira em poucas horas).
-- Se o gerador de carga rodou fora da AWS (latência de internet incluída nos tempos HTTP).
-- Se a massa sintética representa a distribuição real de eventos do Globoplay.
-- Cenários planejados e não executados, com o motivo.
-- Diferença entre “eventos por minuto” no lote e 10 mil eventos chegando continuamente em tempo real.
+**Ambiente**
 
----
+- **Learner Lab:** todas as tasks usam `LabRole`; a sessão dura 4 h. As credenciais foram revogadas no meio da rodada (política `voc-cancel-cred` negando tudo menos STS, entre ~09:50 e 10:10 UTC) e renovadas às 10:32 UTC; nesse intervalo só os testes via HTTP (k6) continuaram. Foram revogadas de novo por volta de 14:25 UTC, durante o ARCHIVING do CG-02 R2 (`PROGRESSO.md`), e renovadas antes da coleta das 19:02 UTC. O tempo da sessão foi o fator que mais limitou o número de repetições.
+- **Implantação no meio da rodada:** às 19:45 UTC a correção de `PK`/`SK` e o log de causa foram implantados por `terraform apply -target` (5 task definitions de ingestão na revisão 6 e 3 agendamentos). O bastion ficou fora do escopo do `apply` (desvio do ambiente do Learner Lab, `execucoes.txt`) e continua como pendência de ambiente; até um `apply` completo, a stack pode divergir do Terraform. Os testes anteriores a 19:45 UTC usaram a imagem `sha256:1fa9cb2d…`; RS-02(a) (19:51) e RS-01 da tarde (20:16) usaram a revisão 6.
+- **Gerador fora da AWS:** o k6 rodou num notebook Windows 11 (Docker), pela internet, contra o API Gateway; os tempos HTTP incluem essa latência (~130 ms de piso).
+- **Uma task de API com 0,25 vCPU:** no CG-04 a CPU chegou a 92,8%, então latência e `503` do plano de controle refletem esse dimensionamento.
+- **Observabilidade:** Prometheus/Grafana locais não coletavam a API da AWS (o alvo `view-show-api` aponta para `host.docker.internal:3000`); os indicadores vieram do CloudWatch (`ECS/ContainerInsights`, `AWS/DynamoDB`, `AWS/SQS`, `view-show/Ingestion`), dos logs estruturados e dos resumos do k6. Não há capturas de painel (Figuras 2 a 7).
+
+**Massa de dados**
+
+- **M-02 a M-04 não representam uma janela de 15 min:** `build_benchmark_snapshot.py` espaça as linhas de `signal_bucket` de 15 em 15 min (`index * 900_000` ms), então 150 mil eventos cobrem ~1.562 dias (2026-08-29 a 2028-02). Isso não afeta INGESTING, mas multiplica o ARCHIVING, que verifica cada partição diária em série no Athena (~6 s por partição).
+- **Dump repetido não gera carga:** a versão de dataset é endereçada por conteúdo; reimportar o mesmo arquivo termina `READY` com 0 lidos e 0 escritos. Repetições do CG-02 exigem dumps distintos (a R2 usou `--variant r2`).
+- **Distribuição sintética:** uma única entidade/métrica por linha, sem a variedade de chaves do Globoplay; a carga de escrita e de projeção pode diferir da real.
+- **Lote × fluxo contínuo:** “10 mil eventos/min” foi medido como vazão de processamento de um lote, não como 10 mil eventos chegando continuamente em tempo real.
+
+**Ferramenta**
+
+- `ingestao-falhas.sh s3-negar`/`s3-restaurar` passavam `file:///c/...` à AWS CLI, que falha no Windows/Git Bash. **Corrigido** (`cygpath -m`, commit `05eae97`) e validado na execução do RS-02(a). Em `aws logs` no Git Bash vale `MSYS_NO_PATHCONV=1`.
+- `ingestao-batch.js`, durante a rodada: o `handleSummary` substituía o resumo de texto por uma linha (os números só existiam no JSON); o threshold `ingestion_processing_seconds max<=900` aparecia como **OK com valor 0** quando a importação não chegava a `READY` (falso positivo visível no CG-02 R1); o check `recordsWritten = EXPECTED_EVENTS` reprovava em reimportação idempotente; os `503` só podiam ser contados pelo log da API. **Corrigido após a rodada** (validado com `k6 inspect` em todos os modos, sem nova execução contra a AWS): o resumo de texto lista checks, thresholds e métricas; a duração de processamento é registrada também quando a importação não chega a `READY`, a vazão entra como 0 nesse caso e há o threshold `ingestion_ready_rate rate==1`; `-e ALLOW_IDEMPOTENT=true` aceita a reimportação idempotente nas rodadas de recuperação; e o contador `explicit_503` registra os `503`. Os arquivos de evidência desta rodada foram gerados pela versão anterior.
+- `comandos_logs_ingestao` do Terraform não lista o log da task `import-dump`, que escreve em `/ecs/view-show-ingestion-backfill`.
+- k6 não estava instalado; foi usada a imagem `grafana/k6` v2.3.0.
+- **Testes automatizados no Windows:** 8 falhas por resolução do relógio do Python 3.12 (ver Seção 4.4); `requirements-dev.txt` não instala no Windows em modo `--require-hashes` (`pywin32` sem versão fixada) e o `.venv` estava sem `moto`.
+
+**Cenários não executados ou parciais**
+
+- **CG-03, RS-03(a) e RS-04: não executados.** Estavam bloqueados pelo defeito `PK`/`SK` no `ingest-incremental`, corrigido e implantado às 19:45 UTC; não houve tempo de sessão para rodá-los depois. Ao rodá-los, considerar o defeito novo do RS-01 (achado 9 da Seção 9).
+- **RS-01** executado duas vezes, reprovado nas duas por causas diferentes (manhã: `PK`/`SK`; tarde: `visibility_timeout`), e só com `BACKLOG_BATCHES = 2` (3 e 4 não executados).
+- **CG-02 R3 e CG-05: não executados** por tempo de sessão (ver CG-02 e CG-05).
+- **RS-05** exercitado com os lotes do RS-01 da manhã (que falhavam sempre por causa do defeito `PK`/`SK`) no lugar da mensagem venenosa sintética; o efeito medido — reentregas até a DLQ — é o mesmo, mas “as válidas seguem” não foi verificado. Não foi repetido após a correção.
 
 ## 11. Procedimentos de reprodução
 
-&emsp;Os comandos abaixo partem da raiz do repositório. O `ingestao-falhas.sh` lê os nomes dos recursos do output `ingestion_runbook` do Terraform, então nenhum identificador precisa ser copiado à mão. Os agendamentos incrementais estão desligados na stack (`incremental_s3_enabled=false`); por isso os testes com fila disparam o consumidor sob demanda com `rodar-ingestao`. Ligar um agendamento pelo script cria diferença em relação ao Terraform, que o desliga de novo no próximo `apply`.
+&emsp;Os comandos abaixo partem da raiz do repositório. O `ingestao-falhas.sh` lê os nomes dos recursos do output `ingestion_runbook` do Terraform, então nenhum identificador precisa ser copiado à mão. Os agendamentos incrementais estão desligados na stack (`incremental_s3_enabled=false`); por isso os testes com fila disparam o consumidor sob demanda com `rodar-ingestao` (o RS-01 da tarde ligou a agenda do `ingest-incremental` com `agenda ingest ligar` para reproduzir o ritmo de 5 min, e a desligou ao final). Ligar um agendamento pelo script cria diferença em relação ao Terraform, que o desliga de novo no próximo `apply`.
 
 ### 11.1 Preparação
 
@@ -1105,13 +1152,13 @@ curl -s -b .artifacts/cookie -H 'Content-Type: application/json' -H "Idempotency
   -d "{\"fileName\":\"argus_dump.sql.gz\",\"sizeBytes\":1000,\"snapshotExtractedOn\":\"$(date -u +%F)\"}" \
   "$BASE_URL/api/v1/imports"
 $FALHAS s3-restaurar
-k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e RUN_LABEL=rs02a-recuperacao $K6
+k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e ALLOW_IDEMPOTENT=true -e RUN_LABEL=rs02a-recuperacao $K6
 
 # RS-02 (b) — task interrompida no meio do processamento: o k6 deve registrar FAILED
 k6 run -e MODE=drenagem -e DUMP=$M/150000/argus_dump.sql.gz -e RUN_LABEL=rs02b $K6 &
 sleep 120 && $FALHAS parar-tasks import
 wait
-k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e RUN_LABEL=rs02b-recuperacao $K6
+k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e ALLOW_IDEMPOTENT=true -e RUN_LABEL=rs02b-recuperacao $K6
 
 # RS-03 — válido, inválido, válido (janelas consecutivas T, T+15 e T+30 min, em UTC)
 $PUB --variant valid --rows 150000 --window-start <T>
@@ -1119,7 +1166,7 @@ $PUB --variant missing-column --rows 150000 --window-start <T+15min>
 $PUB --variant valid --rows 150000 --window-start <T+30min>
 $FALHAS rodar-ingestao                           # o lote do meio deve ficar QUARANTINED
 k6 run -e MODE=smoke -e DUMP=$M/m07/argus_dump.sql.gz -e RUN_LABEL=rs03-m07 $K6   # deve terminar em FAILED
-k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e RUN_LABEL=rs03-recuperacao $K6
+k6 run -e MODE=smoke -e DUMP=$M/1000/argus_dump.sql.gz -e ALLOW_IDEMPOTENT=true -e RUN_LABEL=rs03-recuperacao $K6
 
 # RS-04 — consumidor interrompido; a mensagem volta após o visibility_timeout (300 s)
 $PUB --rows 150000
@@ -1145,8 +1192,10 @@ k6 run -e MODE=limite -e DUMP=$M/1000/argus_dump.sql.gz -e BURST_RATE=20 -e RUN_
 
 &emsp;As evidências devem ser versionadas em `assets/testes-carga/<AAAA-MM-DD>-ingestao/`, somente com arquivos brutos (a descrição de cada arquivo fica neste documento):
 
-- `resumo-<teste>.json` — resumo do k6 (`--summary-export`) de cada execução;
-- `contagem-<teste>.txt` — saída das consultas de contagem (DynamoDB/Athena);
+- `resumo-<teste>.json` — resumo do k6 (`--summary-export`) de cada execução; na rodada de 2026-09-30, `resumo-ingestao-<teste>.json` (resumo do `handleSummary`) e `k6-summary-<teste>.json` (`--summary-export`), com o log em `k6-<teste>.log`;
+- `contagem-<teste>.txt` — saída das consultas de contagem (DynamoDB/Athena); na rodada de 2026-09-30 não houve recontagem independente: a contagem da importação veio da reconciliação do pipeline (`athena-cg02-r2.json`, `import-cg02-r2-final.json`) e a do incremental está em `rs01-acumulo.txt` e `rs01-drenagem.txt`;
+- `dryrun-<variante>.json` — validação local dos lotes do publicador (M-05, M-06 e mensagem venenosa);
+- `execucoes.txt` — linha do tempo das execuções, injeções, reversões e implantações;
 - `sqs-<teste>.json`, `cloudwatch-<metrica>-<teste>.json` — séries exportadas;
 - `prometheus/<indicador>.json` — séries dos indicadores da Seção 8;
 - `grafana-<nn>-<indicador>.png` — capturas dos painéis;
@@ -1160,9 +1209,10 @@ k6 run -e MODE=limite -e DUMP=$M/1000/argus_dump.sql.gz -e BURST_RATE=20 -e RUN_
 
 | Item | Onde foi implementado | Onde está a evidência |
 | --- | --- | --- |
-| CG-01 a CG-05 | _A preencher_ | _A preencher_ |
-| RS-01 a RS-06 | _A preencher_ | _A preencher_ |
-| Dashboard de ingestão | _A preencher_ | _A preencher_ |
+| CG-01 a CG-05 | `apps/backend/api/loadtest/k6/ingestao-batch.js` (modos `smoke`, `drenagem`, `pico`) | `assets/testes-carga/2026-09-30-ingestao/` (`resumo-ingestao-cg*.json`, `k6-cg*.log`, `etapas-*.json`) |
+| RS-01 a RS-06 | `ingestao-batch.js` (`limite`), `ingestao-falhas.sh`, `apps/backend/ingestion-data/scripts/publish_incremental_batch.py` | `assets/testes-carga/2026-09-30-ingestao/` (`rs0*`, `sqs-rs01-rs05.json`, `sqs-rs01.json`, `alarmes-antes.json`) |
+| Correção `PK`/`SK` e log de causa no `ingest-incremental` | `apps/backend/ingestion-data` (commits `cc0dbbc`, `afc303c`, `0eded5d`), implantada às 19:45 UTC | `pytest-resiliencia-linux.txt`, `rs01-digest-task.txt`, `execucoes.txt` |
+| Dashboard de ingestão | CloudWatch `view-show-ingestion` (Terraform `ingestion-observability.tf`) | Séries exportadas em JSON (`cloudwatch-*.json`, `sqs-*.json`); capturas pendentes |
 
 <div align="center">
 
