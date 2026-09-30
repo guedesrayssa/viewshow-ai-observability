@@ -15,11 +15,10 @@ O recorte cobre os três itens da especificação:
 | Resultados de desempenho e resiliência | Define as medidas, critérios e evidências que devem acompanhar cada execução. |
 | Grafana ou Prometheus | Especifica as consultas e a primeira visão do futuro módulo de ingestão no Grafana. |
 
-> **Estado em 29/09/2026:** contrato de observabilidade definido; 72 testes locais
-> de telemetria e resiliência aprovados; massa determinística de 150 mil registros
-> gerada. A execução dos três cenários no ambiente AWS, seus valores operacionais
-> e as capturas do Grafana permanecem pendentes. Configuração existente e teste
-> de componente não são apresentados como resultado de carga do pipeline.
+> **Estado em 30/09/2026:** contrato de observabilidade definido; 72 testes locais
+> aprovados; cenário AWS de 150 mil registros executado e reprovado end-to-end.
+> Fila cheia e capturas do Grafana permanecem pendentes. Configuração existente e
+> teste de componente não são apresentados como resultado de carga do pipeline.
 
 ## 2. Semântica dos cenários na arquitetura batch
 
@@ -29,9 +28,9 @@ execução e de sua fila.
 
 | Cenário | Preparação e execução | Indicadores observados | Critério de aceite proposto | Estado |
 | --- | --- | --- | --- | --- |
-| Abertura de venda de 10 mil eventos/min | Disponibilizar uma janela equivalente a 150 mil registros em 15 minutos e executar a ingestão. | duração, lidos, escritos, inalterados, rejeitados, CPU e lag | conclusão explícita sem perda silenciosa; `lidos = escritos + inalterados + rejeitados`; vazão suficiente para drenar a janela sem crescimento contínuo do lag | Pendente de execução |
+| Abertura de venda de 10 mil eventos/min | Disponibilizar uma janela equivalente a 150 mil registros em 15 minutos e executar a ingestão. | duração, lidos, escritos, inalterados, rejeitados, CPU e lag | conclusão explícita sem perda silenciosa; `lidos = escritos + inalterados + rejeitados`; vazão suficiente para drenar a janela sem crescimento contínuo do lag | Executado; reprovado end-to-end |
 | Fila cheia | Produzir lotes acima da capacidade momentânea do consumidor incremental e interromper a produção após atingir o backlog planejado. | mensagens visíveis, idade da mais antiga, DLQ, lotes em quarentena e tempo de drenagem | backlog e idade ficam visíveis; não há descarte silencioso; após cessar a produção, a fila retorna a zero ou ao patamar inicial | Pendente de execução |
-| Timeout | Forçar o comando ou uma dependência a exceder seu prazo controlado. | duração, `FAILED`/`PARTIAL`, etapa, código de erro, retries, backlog e execução seguinte | a run termina em estado explícito, sem permanecer indefinida; a causa é correlacionável pelo `runId`; uma execução posterior consegue retomar ou recuperar | Pendente de execução |
+| Timeout | Forçar o comando ou uma dependência a exceder seu prazo controlado. | duração, `FAILED`/`PARTIAL`, etapa, código de erro, retries, backlog e execução seguinte | a run termina em estado explícito, sem permanecer indefinida; a causa é correlacionável pelo `runId`; uma execução posterior consegue retomar ou recuperar | Observado; reprovado por ausência de estado terminal |
 
 No cenário de carga, `RecordsRead / duração` representa a taxa de processamento,
 enquanto `RecordsWritten / duração` representa novas escritas. Uma retomada pode
@@ -155,11 +154,43 @@ Modelo para preenchimento após cada execução:
 
 | Cenário | Janela UTC | Versão | Indicador | Esperado | Medido | Resultado | Evidência |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 10 mil eventos/min | Pendente | Pendente | latência, throughput, erros/s, CPU e reconciliação | conforme Seção 2 | Pendente | Não executado | Pendente |
+| 10 mil eventos/min | 29/09 23:48:59–30/09 02:56:06 UTC | `47eccb9` | latência, throughput, erros/s, CPU e reconciliação | conclusão em até 15 min | ingestão 621,536 s; projeção 1.088,407 s; sem conclusão end-to-end | Reprovado | Seção 7.1 |
 | Fila cheia | Pendente | Pendente | backlog, idade, DLQ e drenagem | conforme Seção 2 | Pendente | Não executado | Pendente |
-| Timeout | Pendente | Pendente | estado terminal, duração, etapa e recuperação | conforme Seção 2 | Pendente | Não executado | Pendente |
+| Timeout | 29/09 23:48:59–30/09 02:56:06 UTC | `47eccb9` | estado terminal e duração | estado terminal explícito em até 3.600 s | permaneceu em `ARCHIVING`; parada controlada após 11.227,484 s | Reprovado | Seção 7.1 |
 
-### 7.1 Evidências locais coletadas em 29/09/2026
+### 7.1 Resultado AWS: 150 mil registros
+
+O teste foi executado com uma única task ECS, sem ativação do dataset e sem
+paralelismo artificial. A janela observada foi de `2026-09-29T23:48:59.445Z` a
+`2026-09-30T02:56:06.929Z`.
+
+| Indicador | Resultado medido | Leitura |
+| --- | ---: | --- |
+| Registros lidos / escritos / rejeitados | 150.000 / 150.000 / 0 | reconciliação íntegra até a etapa `ARCHIVING` |
+| Duração da ingestão | 621,536 s | 241,34 registros/s; superior à entrada equivalente de 166,67 registros/s |
+| Duração da projeção | 1.088,407 s | principal etapa concluída e maior que a janela-alvo de 15 min |
+| Duração end-to-end observada | 11.227,484 s | execução não concluiu; task interrompida para conter custo |
+| CPU média / máxima | 33,12% / 39,99% | CPU não foi o recurso limitante |
+| Estado durável final | `ARCHIVING`, sem `finishedAt` | ausência de conclusão explícita |
+| Erros/s | indeterminado | não houve métrica/evento terminal após a interrupção externa |
+
+O resultado é **reprovado end-to-end**. Embora a etapa de ingestão isolada tenha
+vazão suficiente para 10 mil registros/min e a reconciliação esteja correta, a
+projeção excedeu 15 minutos e o arquivamento não terminou após mais de três
+horas. Assim, a arquitetura não demonstrou capacidade de concluir a janela no
+prazo requerido.
+
+Também foi identificada uma lacuna de observabilidade: o timeout de 3.600 s da
+CLI encerra a espera local, mas não interrompe automaticamente a task ECS. Uma
+interrupção externa produz `exitCode=137`, porém não emite
+`ingestion.run.failed`, `RunDurationMs` final ou `Runs{status=FAILED}`. O painel
+deve combinar métricas da aplicação com estado da task ECS e tratar run sem
+heartbeat/estado terminal como falha operacional.
+
+Evidências: [resumo estruturado](../assets/testes-carga/2026-09-29-ingestao/aws-backfill-150k-summary.json)
+e [eventos selecionados](../assets/testes-carga/2026-09-29-ingestao/aws-backfill-150k-events.md).
+
+### 7.2 Evidências locais coletadas em 29/09/2026
 
 Os testes foram executados na revisão `e9fb599`, com Python 3.12.11 em container
 descartável. Esses resultados validam instrumentação e comportamento de
@@ -196,8 +227,8 @@ prematura e mantém o artefato auditável.
 
 ## 9. Limitações atuais
 
-- Há evidência local do contrato de telemetria e da resiliência incremental, mas
-  ainda não há valores operacionais nem capturas do módulo de ingestão no Grafana.
+- Há evidência local e uma rodada operacional AWS, mas ainda não há capturas do
+  módulo de ingestão no Grafana.
 - A proposta de 150 mil registros representa 10 mil eventos/min por 15 minutos;
   a equivalência deve ser registrada junto ao gerador de carga utilizado.
 - Métricas de Scheduler, SQS e ECS dependem de Container Insights e dos recursos

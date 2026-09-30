@@ -16,6 +16,7 @@
 | Observabilidade | adaptador CloudWatch/EMF, logs JSON, runtime observado, redaction e contrato OpenTelemetry legado | 47 aprovados, 0 falhas, 0 erros, 0 ignorados | 0,840 s | [`pytest-observabilidade.xml`](pytest-observabilidade.xml) |
 | Resiliência incremental | adapters S3/SQS, CLI incremental, retomada de exportação e retomada de ingestão | 25 aprovados, 0 falhas, 0 erros, 0 ignorados | 1,274 s | [`pytest-resiliencia-incremental.xml`](pytest-resiliencia-incremental.xml) |
 | Geração da massa de carga | fixture determinística equivalente a 10 mil registros/min durante 15 min | 150.000 registros gerados; 917.703 bytes comprimidos | não medida pelo gerador | [`manifest-150k.json`](manifest-150k.json) |
+| Backfill AWS de 150 mil registros | pipeline ECS completo, sem ativação | ingestão e projeção concluídas; arquivamento não concluiu após 3 h 07 min; task interrompida | 11.227,484 s observados | [`aws-backfill-150k-summary.json`](aws-backfill-150k-summary.json) |
 
 Total das suítes automatizadas: **72 testes aprovados**, sem falhas, erros ou
 testes ignorados. Os tempos acima são tempos do pytest dentro do container e não
@@ -26,17 +27,38 @@ O snapshot de 150 mil registros possui SHA-256
 Ele foi mantido em `.artifacts/argus-benchmarks/150k/argus_dump.sql.gz`, fora das
 evidências versionáveis por ser massa intermediária regenerável.
 
+## Resultado do backfill AWS
+
+A execução controlada usou uma única task e nenhum paralelismo artificial. O
+registro durável reconciliou 150.000 registros lidos, 150.000 escritos e zero
+rejeitados. A etapa de ingestão levou 621,536 s, equivalente a 241,34 registros/s
+ou 14.480 registros/min. A projeção levou 1.088,407 s.
+
+A execução, entretanto, permaneceu em `ARCHIVING` e não publicou estado terminal.
+Após 11.227,484 s, a task foi interrompida para conter custo. A CPU média foi
+33,12% e o pico foi 39,99% dos 2.048 CPU units reservados, afastando saturação de
+CPU como explicação principal. O resultado end-to-end é **reprovado**: processar
+e reconciliar os registros não basta se a run não consegue finalizar.
+
+A interrupção externa também revelou uma lacuna: não houve
+`ingestion.run.failed`, `RunDurationMs` final nem `Runs{status=FAILED}`. Portanto,
+ausência de erros na série não pode ser interpretada como sucesso. Os eventos
+selecionados estão em
+[`aws-backfill-150k-events.md`](aws-backfill-150k-events.md).
+
 ## Limitações da rodada
 
-- O host não possuía Python 3.12 nem AWS CLI; por isso os testes foram executados
-  no container oficial e não houve consulta a CloudWatch.
+- O host não possuía Python 3.12 nem AWS CLI nativos; os testes locais usaram o
+  container oficial e a coleta AWS usou uma CLI temporária/oficial.
 - O benchmark do leitor não foi classificado como executado. Seu harness chama
   `docker compose` internamente, mas o Python 3.12 estava disponível apenas no
   container. Expor o socket administrativo do Docker ao container foi evitado.
 - A geração da massa comprova volume e determinismo, não throughput, latência,
   CPU, fila cheia ou timeout do pipeline completo.
-- Os cenários de 10 mil eventos/min, fila cheia e timeout continuam pendentes no
-  ambiente AWS controlado. As capturas do Grafana dependem da tarefa seguinte.
+- O cenário de 10 mil eventos/min foi executado como volume acumulado de 150 mil
+  registros e terminou reprovado end-to-end. Fila cheia ainda está pendente. O
+  timeout foi evidenciado pela execução prolongada, mas a tarefa seguinte ainda
+  precisa representar os sinais no Grafana.
 
 ## Comandos lógicos executados
 
