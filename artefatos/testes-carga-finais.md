@@ -17,8 +17,8 @@ O recorte cobre os três itens da especificação:
 
 > **Estado em 30/09/2026:** contrato de observabilidade definido; 72 testes locais
 > aprovados; cenário AWS de 150 mil registros executado e reprovado end-to-end.
-> Fila cheia e a captura visual do Grafana permanecem pendentes. O dashboard da
-> ingestão já está versionado, implantado e validado contra as APIs de métricas e
+> O cenário de fila cheia permanece pendente. O dashboard da ingestão já está
+> versionado, implantado e validado contra as APIs de métricas e
 > logs do CloudWatch; configuração existente e
 > teste de componente não são apresentados como resultado de carga do pipeline.
 
@@ -134,7 +134,8 @@ observabilidade. Os filtros `Comando` e `Task ECS` evitam misturar operações e
 recursos diferentes. A implantação e a captura visual continuam dependentes de
 habilitar `observabilidade_habilitada=true` no ambiente do teste. Em 30/09/2026,
 o dashboard foi implantado na AWS e a API do Grafana confirmou seu UID e a saúde
-do data source CloudWatch; a evidência está em
+do data source CloudWatch. A captura da janela do benchmark confirmou as séries
+de duração das cinco etapas concluídas; a evidência está em
 [validação do Grafana da ingestão](../assets/testes-carga/2026-09-29-ingestao/grafana-ingestion-validation.md).
 
 Cada painel deve registrar no próprio título, descrição ou documentação associada:

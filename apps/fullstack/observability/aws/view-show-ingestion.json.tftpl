@@ -11,8 +11,8 @@
       "id": 1,
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "RunDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "p95"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "RunDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Maximum"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "RunDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "p95"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "stage": ["PROJECTING"]}, "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "StageDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Maximum"}
       ],
       "title": "Latência da execução — p95 e máximo",
       "type": "timeseries"
@@ -24,10 +24,8 @@
       "id": 2,
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "hide": true, "id": "records_read", "matchExact": false, "metricName": "RecordsRead", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "hide": true, "id": "records_written", "matchExact": false, "metricName": "RecordsWritten", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "SUM(records_read)/PERIOD(records_read)", "id": "read_rate", "label": "lidos/s", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "SUM(records_written)/PERIOD(records_written)", "id": "write_rate", "label": "escritos/s", "queryMode": "Metrics", "refId": "D", "region": "${aws_region}"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "hide": true, "id": "mysql_rows", "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "MySqlPageRows", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "SUM(mysql_rows)/PERIOD(mysql_rows)", "id": "read_rate", "label": "lidos/s durante a ingestão", "metricQueryType": 1, "queryMode": "Metrics", "refId": "B", "region": "${aws_region}"}
       ],
       "title": "Throughput — registros/s",
       "type": "timeseries"
@@ -39,11 +37,11 @@
       "id": 3,
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command", "status": "FAILED"}, "hide": true, "id": "failed_runs", "matchExact": false, "metricName": "Runs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command", "status": "PARTIAL"}, "hide": true, "id": "partial_runs", "matchExact": false, "metricName": "Runs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "hide": true, "id": "rejected_records", "matchExact": false, "metricName": "RecordsRejected", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "(SUM(failed_runs)+SUM(partial_runs))/PERIOD(failed_runs)", "id": "error_rate", "label": "execuções com erro/s", "queryMode": "Metrics", "refId": "D", "region": "${aws_region}"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "SUM(rejected_records)/PERIOD(rejected_records)", "id": "rejection_rate", "label": "registros rejeitados/s", "queryMode": "Metrics", "refId": "E", "region": "${aws_region}"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "status": ["FAILED"]}, "hide": true, "id": "failed_runs", "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "Runs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "status": ["PARTIAL"]}, "hide": true, "id": "partial_runs", "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "Runs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "hide": true, "id": "rejected_records", "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "RecordsRejected", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "(SUM(failed_runs)+SUM(partial_runs))/PERIOD(failed_runs)", "id": "error_rate", "label": "execuções com erro/s", "metricQueryType": 1, "queryMode": "Metrics", "refId": "D", "region": "${aws_region}"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "SUM(rejected_records)/PERIOD(rejected_records)", "id": "rejection_rate", "label": "registros rejeitados/s", "metricQueryType": 1, "queryMode": "Metrics", "refId": "E", "region": "${aws_region}"}
       ],
       "title": "Erros por segundo",
       "type": "timeseries"
@@ -55,9 +53,9 @@
       "id": 4,
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "TaskDefinitionFamily": "$task_family"}, "hide": true, "id": "cpu_used", "matchExact": true, "metricName": "CpuUtilized", "namespace": "ECS/ContainerInsights", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Average"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "TaskDefinitionFamily": "$task_family"}, "hide": true, "id": "cpu_reserved", "matchExact": true, "metricName": "CpuReserved", "namespace": "ECS/ContainerInsights", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Average"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "100*cpu_used/cpu_reserved", "id": "cpu_percent", "label": "CPU utilizada", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": ["${cluster_name}"], "TaskDefinitionFamily": ["$task_family"]}, "hide": true, "id": "cpu_used", "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "CpuUtilized", "namespace": "ECS/ContainerInsights", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Average"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": ["${cluster_name}"], "TaskDefinitionFamily": ["$task_family"]}, "hide": true, "id": "cpu_reserved", "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "CpuReserved", "namespace": "ECS/ContainerInsights", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Average"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "100*cpu_used/cpu_reserved", "id": "cpu_percent", "label": "CPU utilizada", "metricQueryType": 1, "queryMode": "Metrics", "refId": "C", "region": "${aws_region}"}
       ],
       "title": "CPU da task — utilizada/reservada",
       "type": "timeseries"
@@ -69,7 +67,11 @@
       "id": 5,
       "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "StageDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Maximum"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "stage": ["STARTING"]}, "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "StageDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "stage": ["RESTORING"]}, "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "StageDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "stage": ["VALIDATING"]}, "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "StageDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "stage": ["INGESTING"]}, "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "StageDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "D", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"], "stage": ["PROJECTING"]}, "matchExact": true, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "StageDurationMs", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "E", "region": "${aws_region}", "statistic": "Maximum"}
       ],
       "title": "Duração máxima por etapa",
       "type": "timeseries"
@@ -81,10 +83,10 @@
       "id": 6,
       "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": "${analysis_queue}"}, "metricName": "ApproximateAgeOfOldestMessage", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Maximum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": "${incremental_queue}"}, "metricName": "ApproximateAgeOfOldestMessage", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Maximum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "SourceLagSeconds", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}", "statistic": "Maximum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "matchExact": false, "metricName": "IncrementalBatchLagSeconds", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "D", "region": "${aws_region}", "statistic": "Maximum"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": ["${analysis_queue}"]}, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "ApproximateAgeOfOldestMessage", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": ["${incremental_queue}"]}, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "ApproximateAgeOfOldestMessage", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"source_mode": ["snapshot"]}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "SourceLagSeconds", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "IncrementalBatchLagSeconds", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "D", "region": "${aws_region}", "statistic": "Maximum"}
       ],
       "title": "Freshness e idade das filas",
       "type": "timeseries"
@@ -96,14 +98,14 @@
       "id": 7,
       "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "RecordsRead", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "RecordsWritten", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "RecordsUnchanged", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "SchemaDrift", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "D", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": "$command"}, "matchExact": false, "metricName": "RecordsRejected", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "E", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "matchExact": false, "metricName": "IncrementalBatchQuarantined", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "F", "region": "${aws_region}", "statistic": "Sum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": "${analysis_dlq}"}, "metricName": "ApproximateNumberOfMessagesVisible", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "G", "region": "${aws_region}", "statistic": "Maximum"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": "${incremental_dlq}"}, "metricName": "ApproximateNumberOfMessagesVisible", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "H", "region": "${aws_region}", "statistic": "Maximum"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "RecordsRead", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "RecordsWritten", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "RecordsUnchanged", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "C", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "SchemaDrift", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "D", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"command": ["$command"]}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "RecordsRejected", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "E", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "matchExact": false, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "IncrementalBatchQuarantined", "namespace": "${metrics_namespace}", "period": "300", "queryMode": "Metrics", "refId": "F", "region": "${aws_region}", "statistic": "Sum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": ["${analysis_dlq}"]}, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "ApproximateNumberOfMessagesVisible", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "G", "region": "${aws_region}", "statistic": "Maximum"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"QueueName": ["${incremental_dlq}"]}, "metricEditorMode": 0, "metricQueryType": 0, "metricName": "ApproximateNumberOfMessagesVisible", "namespace": "AWS/SQS", "period": "300", "queryMode": "Metrics", "refId": "H", "region": "${aws_region}", "statistic": "Maximum"}
       ],
       "title": "Reconciliação, qualidade de dados e DLQs",
       "type": "timeseries"
@@ -114,7 +116,7 @@
       "id": 8,
       "options": {"enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "fields @timestamp, @message | filter @message like /ingestion\\.(run|stage)\\.(started|finished|failed|partial)/ | sort @timestamp desc | limit 100", "logGroups": [{"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${backfill_log_group}:*", "name": "${backfill_log_group}"}, {"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${sync_log_group}:*", "name": "${sync_log_group}"}, {"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${incremental_export_log_group}:*", "name": "${incremental_export_log_group}"}, {"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${incremental_ingest_log_group}:*", "name": "${incremental_ingest_log_group}"}], "queryMode": "Logs", "refId": "A", "region": "${aws_region}"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "expression": "fields @timestamp, @message | filter @message like /ingestion.run./ | sort @timestamp desc | limit 100", "logGroups": [{"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${backfill_log_group}:*", "name": "${backfill_log_group}"}, {"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${sync_log_group}:*", "name": "${sync_log_group}"}, {"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${incremental_export_log_group}:*", "name": "${incremental_export_log_group}"}, {"arn": "arn:aws:logs:${aws_region}:${account_id}:log-group:${incremental_ingest_log_group}:*", "name": "${incremental_ingest_log_group}"}], "queryMode": "Logs", "refId": "A", "region": "${aws_region}"}
       ],
       "title": "Eventos operacionais da ingestão",
       "type": "logs"
