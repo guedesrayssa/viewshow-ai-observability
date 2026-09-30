@@ -114,13 +114,6 @@ variable "nome_fila_analysis_dlq" {
   nullable    = true
 }
 
-variable "nome_fila_scheduler_dlq_ingestao" {
-  description = "Override opcional da DLQ exclusiva do target ECS do EventBridge Scheduler."
-  type        = string
-  default     = null
-  nullable    = true
-}
-
 variable "retencao_filas_ingestao_segundos" {
   description = "Retenção das filas da ingestão, em segundos."
   type        = number
@@ -142,25 +135,25 @@ variable "nome_segredo_live_mysql_ingestao" {
 }
 
 variable "ingestion_backfill_cpu" {
-  description = "CPU da futura task Fargate de backfill, em unidades de 1024."
+  description = "CPU da futura task Kubernetes de backfill, em unidades de 1024."
   type        = string
   default     = "2048"
 }
 
 variable "ingestion_backfill_memoria" {
-  description = "Memória da futura task Fargate de backfill, em MiB."
+  description = "Memória da futura task Kubernetes de backfill, em MiB."
   type        = string
   default     = "8192"
 }
 
 variable "ingestion_backfill_ephemeral_storage_gib" {
-  description = "Storage efêmero total das tasks de ingestão; fixado no teto Fargate para manter um único contrato operacional."
+  description = "Contrato de storage efêmero de snapshot preservado em 200 GiB; os Pods reservam 192 GiB e usam nós com disco de 300 GiB."
   type        = number
   default     = 200
 
   validation {
     condition     = var.ingestion_backfill_ephemeral_storage_gib == 200
-    error_message = "As tasks de ingestão exigem exatamente 200 GiB de storage efêmero."
+    error_message = "Mantenha o contrato de snapshot em 200 GiB de storage efêmero."
   }
 }
 
@@ -200,13 +193,13 @@ variable "import_canonical_first_production_approved" {
 }
 
 variable "ingestion_sync_cpu" {
-  description = "CPU da futura task Fargate de sincronização, em unidades de 1024."
+  description = "CPU da futura task Kubernetes de sincronização, em unidades de 1024."
   type        = string
   default     = "1024"
 }
 
 variable "ingestion_sync_memoria" {
-  description = "Memória da futura task Fargate de sincronização, em MiB."
+  description = "Memória da futura task Kubernetes de sincronização, em MiB."
   type        = string
   default     = "2048"
 }
@@ -237,96 +230,6 @@ variable "retencao_logs_ingestao_dias" {
   description = "Retenção dos futuros log groups da ingestão."
   type        = number
   default     = 7
-}
-
-variable "ecs_execution_role_arn_ingestao" {
-  description = "Execution role explícita das tasks ECS em produção."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = var.ecs_execution_role_arn_ingestao == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.ecs_execution_role_arn_ingestao,
-    ))
-    error_message = "ecs_execution_role_arn_ingestao deve ser null ou um ARN IAM concreto de role válido."
-  }
-}
-
-variable "ecs_task_role_arn_ingestao" {
-  description = "Task role explícita das tasks ECS em produção."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = var.ecs_task_role_arn_ingestao == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.ecs_task_role_arn_ingestao,
-    ))
-    error_message = "ecs_task_role_arn_ingestao deve ser null ou um ARN IAM concreto de role válido."
-  }
-}
-
-variable "ecs_task_role_arn_importacao" {
-  description = "Task role exclusiva da task import-dump em produção. Deve ser distinta das roles da API, execution, Scheduler e backfill/sync."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = var.ecs_task_role_arn_importacao == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.ecs_task_role_arn_importacao,
-    ))
-    error_message = "ecs_task_role_arn_importacao deve ser null ou um ARN IAM concreto de role válido."
-  }
-}
-
-variable "ecs_task_role_arn_exportacao_incremental" {
-  description = "Task role exclusiva do export incremental em produção."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = var.ecs_task_role_arn_exportacao_incremental == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.ecs_task_role_arn_exportacao_incremental,
-    ))
-    error_message = "ecs_task_role_arn_exportacao_incremental deve ser null ou um ARN IAM concreto de role válido."
-  }
-}
-
-variable "ecs_task_role_arn_ingestao_incremental" {
-  description = "Task role exclusiva do consumo incremental em produção; não recebe acesso ao segredo MySQL live."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = var.ecs_task_role_arn_ingestao_incremental == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.ecs_task_role_arn_ingestao_incremental,
-    ))
-    error_message = "ecs_task_role_arn_ingestao_incremental deve ser null ou um ARN IAM concreto de role válido."
-  }
-}
-
-variable "scheduler_execution_role_arn_ingestao" {
-  description = "Execution role explícita do EventBridge Scheduler em produção."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = var.scheduler_execution_role_arn_ingestao == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.scheduler_execution_role_arn_ingestao,
-    ))
-    error_message = "scheduler_execution_role_arn_ingestao deve ser null ou um ARN IAM concreto de role válido."
-  }
 }
 
 variable "snapshot_mysql_secret_arn_ingestao" {
@@ -451,7 +354,6 @@ locals {
   ingestion_workgroup         = coalesce(var.nome_workgroup_athena_ingestao, "${local.ingestion_name_prefix}")
   ingestion_analysis_queue    = coalesce(var.nome_fila_analysis, "${local.ingestion_name_prefix}-analysis")
   ingestion_analysis_dlq      = coalesce(var.nome_fila_analysis_dlq, "${local.ingestion_name_prefix}-analysis-dlq")
-  ingestion_scheduler_dlq     = coalesce(var.nome_fila_scheduler_dlq_ingestao, "${local.ingestion_name_prefix}-scheduler-dlq")
   ingestion_incremental_queue = "${local.ingestion_name_prefix}-incremental-batches.fifo"
   ingestion_incremental_dlq   = "${local.ingestion_name_prefix}-incremental-batches-dlq.fifo"
   ingestion_snapshot_secret_name = coalesce(
@@ -462,7 +364,6 @@ locals {
     var.nome_segredo_live_mysql_ingestao,
     "${local.ingestion_name_prefix}/live-mysql",
   )
-  ingestion_scheduler_group           = local.ingestion_name_prefix
   ingestion_backfill_family           = "${local.ingestion_name_prefix}-backfill"
   ingestion_import_family             = "${local.ingestion_name_prefix}-import"
   ingestion_sync_family               = "${local.ingestion_name_prefix}-sync"
@@ -488,7 +389,6 @@ locals {
     var.nome_workgroup_athena_ingestao == null || startswith(var.nome_workgroup_athena_ingestao, local.ingestion_name_prefix),
     var.nome_fila_analysis == null || startswith(var.nome_fila_analysis, local.ingestion_name_prefix),
     var.nome_fila_analysis_dlq == null || startswith(var.nome_fila_analysis_dlq, local.ingestion_name_prefix),
-    var.nome_fila_scheduler_dlq_ingestao == null || startswith(var.nome_fila_scheduler_dlq_ingestao, local.ingestion_name_prefix),
     var.nome_segredo_snapshot_mysql_ingestao == null || startswith(var.nome_segredo_snapshot_mysql_ingestao, "${local.ingestion_name_prefix}/"),
     var.nome_segredo_live_mysql_ingestao == null || startswith(var.nome_segredo_live_mysql_ingestao, "${local.ingestion_name_prefix}/"),
     var.namespace_metricas_ingestao == null || startswith(var.namespace_metricas_ingestao, "${var.deployment_namespace}/"),
@@ -502,89 +402,19 @@ locals {
   ingestion_subnet_ids       = values(aws_subnet.privada)[*].id
   ingestion_assign_public_ip = false
 
-  ingestion_ecs_execution_role_arn           = local.ingestion_is_production ? var.ecs_execution_role_arn_ingestao : data.aws_iam_role.lab.arn
-  ingestion_ecs_task_role_arn                = local.ingestion_is_production ? var.ecs_task_role_arn_ingestao : data.aws_iam_role.lab.arn
-  ingestion_import_task_role_arn             = local.ingestion_is_production ? var.ecs_task_role_arn_importacao : data.aws_iam_role.lab.arn
-  ingestion_incremental_export_task_role_arn = local.ingestion_is_production ? var.ecs_task_role_arn_exportacao_incremental : data.aws_iam_role.lab.arn
-  ingestion_incremental_ingest_task_role_arn = local.ingestion_is_production ? var.ecs_task_role_arn_ingestao_incremental : data.aws_iam_role.lab.arn
-  ingestion_scheduler_execution_role_arn     = local.ingestion_is_production ? coalesce(var.scheduler_execution_role_arn_ingestao, data.aws_iam_role.lab.arn) : data.aws_iam_role.lab.arn
-
-  // Sentinelas mantêm os planos negativos avaliáveis; o guardrail impede apply
-  // em production quando a role explícita estiver ausente.
-  api_task_role_arn = local.ingestion_is_production ? coalesce(
-    var.api_task_role_arn,
-    "arn:aws:iam::000000000000:role/missing-api-task-role",
-  ) : data.aws_iam_role.lab.arn
-  api_task_role_name = element(reverse(split("/", local.api_task_role_arn)), 0)
-  ingestion_ecs_execution_role_name = element(reverse(split(
-    "/",
-    coalesce(local.ingestion_ecs_execution_role_arn, "arn:aws:iam::000000000000:role/missing-ingestion-execution-role"),
-  )), 0)
-  ingestion_ecs_task_role_name = element(reverse(split(
-    "/",
-    coalesce(local.ingestion_ecs_task_role_arn, "arn:aws:iam::000000000000:role/missing-ingestion-task-role"),
-  )), 0)
-  ingestion_import_task_role_name = element(reverse(split(
-    "/",
-    coalesce(local.ingestion_import_task_role_arn, "arn:aws:iam::000000000000:role/missing-ingestion-import-task-role"),
-  )), 0)
-  ingestion_incremental_export_task_role_name = element(reverse(split(
-    "/",
-    coalesce(local.ingestion_incremental_export_task_role_arn, "arn:aws:iam::000000000000:role/missing-incremental-export-task-role"),
-  )), 0)
-  ingestion_incremental_ingest_task_role_name = element(reverse(split(
-    "/",
-    coalesce(local.ingestion_incremental_ingest_task_role_arn, "arn:aws:iam::000000000000:role/missing-incremental-ingest-task-role"),
-  )), 0)
-  ingestion_scheduler_execution_role_name = element(reverse(split(
-    "/",
-    coalesce(local.ingestion_scheduler_execution_role_arn, "arn:aws:iam::000000000000:role/missing-ingestion-scheduler-role"),
-  )), 0)
+  api_task_role_arn                           = aws_iam_role.workload["api"].arn
+  api_task_role_name                          = aws_iam_role.workload["api"].name
+  ingestion_import_task_role_arn              = aws_iam_role.workload["ingestion-import"].arn
+  ingestion_import_task_role_name             = aws_iam_role.workload["ingestion-import"].name
+  ingestion_incremental_export_task_role_arn  = aws_iam_role.workload["ingestion-incremental-export"].arn
+  ingestion_incremental_export_task_role_name = aws_iam_role.workload["ingestion-incremental-export"].name
+  ingestion_incremental_ingest_task_role_arn  = aws_iam_role.workload["ingestion-incremental-ingest"].arn
+  ingestion_incremental_ingest_task_role_name = aws_iam_role.workload["ingestion-incremental-ingest"].name
 
   ingestion_snapshot_mysql_secret_arn = local.ingestion_is_production ? var.snapshot_mysql_secret_arn_ingestao : aws_secretsmanager_secret.snapshot_mysql[0].arn
   ingestion_live_mysql_secret_arn     = local.ingestion_is_production ? var.live_mysql_secret_arn_ingestao : aws_secretsmanager_secret.live_mysql[0].arn
 
   ingestion_expected_role_arn_pattern = "^arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.atual.account_id}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$"
-
-  ingestion_production_roles_valid = alltrue([
-    for role_arn in [
-      var.ecs_execution_role_arn_ingestao,
-      var.ecs_task_role_arn_ingestao,
-      var.ecs_task_role_arn_importacao,
-      var.ecs_task_role_arn_exportacao_incremental,
-      var.ecs_task_role_arn_ingestao_incremental,
-      var.scheduler_execution_role_arn_ingestao,
-    ] : can(regex(local.ingestion_expected_role_arn_pattern, role_arn))
-  ])
-
-  api_production_role_valid = can(regex(
-    local.ingestion_expected_role_arn_pattern,
-    var.api_task_role_arn,
-  ))
-
-  ingestion_import_role_isolated = try(alltrue([
-    for role_arn in [
-      var.api_task_role_arn,
-      var.ecs_execution_role_arn_ingestao,
-      var.ecs_task_role_arn_ingestao,
-      var.ecs_task_role_arn_exportacao_incremental,
-      var.ecs_task_role_arn_ingestao_incremental,
-      var.scheduler_execution_role_arn_ingestao,
-    ] : var.ecs_task_role_arn_importacao != role_arn
-  ]), false)
-
-  ingestion_incremental_roles_isolated = try(alltrue([
-    var.ecs_task_role_arn_exportacao_incremental != var.ecs_task_role_arn_ingestao_incremental,
-    alltrue([
-      for role_arn in [
-        var.api_task_role_arn,
-        var.ecs_execution_role_arn_ingestao,
-        var.ecs_task_role_arn_ingestao,
-        var.ecs_task_role_arn_importacao,
-        var.scheduler_execution_role_arn_ingestao,
-      ] : var.ecs_task_role_arn_exportacao_incremental != role_arn && var.ecs_task_role_arn_ingestao_incremental != role_arn
-    ]),
-  ]), false)
 
   ingestion_production_secrets_valid = alltrue([
     for secret_arn in [
@@ -644,25 +474,13 @@ resource "terraform_data" "ingestion_guardrails" {
       error_message = "Produção exige imagem MySQL fixada por digest sha256."
     }
 
-    precondition {
-      condition     = !local.ingestion_is_production || local.ingestion_production_roles_valid
-      error_message = "Produção exige ARNs explícitos para execution role ECS, task roles geral/import/export/ingest incremental e execution role do Scheduler."
-    }
 
-    precondition {
-      condition     = !local.ingestion_is_production || local.ingestion_import_role_isolated
-      error_message = "Produção exige que a task role de importação seja distinta das roles da API, execution ECS, task role geral e Scheduler."
-    }
 
-    precondition {
-      condition     = !local.ingestion_is_production || local.ingestion_incremental_roles_isolated
-      error_message = "Produção exige roles exclusivas e distintas para export e ingest incremental, separadas das demais roles da stack."
-    }
 
-    precondition {
-      condition     = !local.ingestion_is_production || local.api_production_role_valid
-      error_message = "Produção exige api_task_role_arn explícita para a task da API."
-    }
+
+
+
+
 
     precondition {
       condition     = !local.ingestion_is_production || local.ingestion_production_secrets_valid

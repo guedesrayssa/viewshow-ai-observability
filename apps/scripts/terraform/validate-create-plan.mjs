@@ -1,355 +1,192 @@
-// Reject Terraform plans that create anything outside the approved Learner Lab stack.
-// It is a local provisioning guard, independent from any CI pipeline.
-import fs from "node:fs";
-
-const MAX_INPUT_BYTES = 20 * 1024 * 1024;
-const apiExpectedAddresses = [
-  "aws_amplify_app.painel",
-  "aws_amplify_branch.principal",
-  "aws_appautoscaling_policy.cpu_api",
-  "aws_appautoscaling_target.api",
-  "aws_apigatewayv2_api.tls",
-  "aws_apigatewayv2_integration.alb",
-  "aws_apigatewayv2_route.proxy",
-  "aws_apigatewayv2_stage.default",
-  "aws_cloudwatch_log_group.api",
-  "aws_cognito_user_pool.principal",
-  "aws_cognito_user_pool_client.backend",
-  "aws_cognito_user_pool_domain.principal",
-  "aws_dynamodb_table.golden_set",
-  "aws_dynamodb_table.operacional",
-  "aws_ecr_repository.api",
-  "aws_eip.nat",
-  "aws_ecs_cluster.principal",
-  "aws_ecs_cluster_capacity_providers.principal",
-  "aws_ecs_service.api",
-  "aws_ecs_task_definition.api",
-  "aws_flow_log.vpc",
-  "aws_instance.bastion",
-  "aws_internet_gateway.principal",
-  "aws_lb.principal",
-  "aws_lb_listener.http",
-  "aws_lb_target_group.api",
-  "aws_nat_gateway.principal",
-  "aws_route.privada_internet",
-  "aws_route.publica_internet",
-  "aws_route_table.privada",
-  "aws_route_table.publica",
-  'aws_route_table_association.privada["a"]',
-  'aws_route_table_association.privada["b"]',
-  'aws_route_table_association.publica["a"]',
-  'aws_route_table_association.publica["b"]',
-  "aws_s3_bucket_lifecycle_configuration.flow_logs",
-  "aws_s3_bucket_ownership_controls.flow_logs",
-  "aws_s3_bucket_policy.flow_logs",
-  "aws_s3_bucket_public_access_block.flow_logs",
-  "aws_s3_bucket_server_side_encryption_configuration.flow_logs",
-  "aws_security_group.alb",
-  "aws_security_group.bastion",
-  "aws_security_group.servico",
-  'aws_subnet.privada["a"]',
-  'aws_subnet.privada["b"]',
-  'aws_subnet.publica["a"]',
-  'aws_subnet.publica["b"]',
-  "aws_vpc.principal",
-  "aws_vpc_endpoint.dynamodb",
-  "aws_vpc_endpoint.s3",
-  "random_password.auth_cookie_secret",
-  "random_password.cursor_secret",
-  "terraform_data.build_painel",
-  "terraform_data.flow_logs_bucket",
-  "terraform_data.imagem",
-  "terraform_data.painel",
-];
-const ingestionExpectedAddresses = [
-  "aws_athena_workgroup.ingestion",
-  "aws_cloudwatch_dashboard.ingestion",
-  "aws_cloudwatch_log_group.ingestion_backfill",
-  "aws_cloudwatch_log_group.ingestion_incremental_export",
-  "aws_cloudwatch_log_group.ingestion_incremental_ingest",
-  "aws_cloudwatch_log_group.ingestion_sync",
-  "aws_cloudwatch_log_metric_filter.import_active_upload_age",
-  "aws_cloudwatch_log_metric_filter.import_reconciliation_failures",
-  "aws_cloudwatch_metric_alarm.analysis_dlq_depth",
-  "aws_cloudwatch_metric_alarm.analysis_queue_backlog",
-  "aws_cloudwatch_metric_alarm.analysis_queue_oldest_age",
-  "aws_cloudwatch_metric_alarm.import_active_upload_age",
-  "aws_cloudwatch_metric_alarm.import_reconciliation_failures",
-  "aws_cloudwatch_metric_alarm.import_worker_failures",
-  "aws_cloudwatch_metric_alarm.incremental_batch_quarantined",
-  "aws_cloudwatch_metric_alarm.incremental_dlq_depth",
-  "aws_cloudwatch_metric_alarm.incremental_queue_backlog",
-  "aws_cloudwatch_metric_alarm.incremental_queue_oldest_age",
-  "aws_cloudwatch_metric_alarm.incremental_watermark_lag",
-  "aws_cloudwatch_metric_alarm.ingestion_athena_failures",
-  "aws_cloudwatch_metric_alarm.ingestion_athena_processed_bytes",
-  "aws_cloudwatch_metric_alarm.ingestion_backfill_failures",
-  "aws_cloudwatch_metric_alarm.ingestion_canonical_archive_failures",
-  "aws_cloudwatch_metric_alarm.ingestion_disk_usage_critical",
-  "aws_cloudwatch_metric_alarm.ingestion_disk_usage_warning",
-  "aws_cloudwatch_metric_alarm.ingestion_mysql_page_duration",
-  "aws_cloudwatch_metric_alarm.ingestion_mysql_preflight_failures",
-  "aws_cloudwatch_metric_alarm.ingestion_mysql_retries",
-  "aws_cloudwatch_metric_alarm.ingestion_outbox_oldest_age",
-  'aws_cloudwatch_metric_alarm.ingestion_partial_runs["backfill"]',
-  'aws_cloudwatch_metric_alarm.ingestion_partial_runs["sync"]',
-  "aws_cloudwatch_metric_alarm.ingestion_projecting_duration",
-  "aws_cloudwatch_metric_alarm.ingestion_rebuild_projections_failures",
-  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-cpu"]',
-  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-memory"]',
-  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-storage"]',
-  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-cpu"]',
-  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-memory"]',
-  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-storage"]',
-  'aws_cloudwatch_metric_alarm.ingestion_schema_drift["backfill"]',
-  'aws_cloudwatch_metric_alarm.ingestion_schema_drift["sync"]',
-  'aws_cloudwatch_metric_alarm.ingestion_stage_failures["archiving"]',
-  'aws_cloudwatch_metric_alarm.ingestion_stage_failures["projecting"]',
-  "aws_cloudwatch_metric_alarm.ingestion_sync_failures",
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+const retiredTypes = new Set([
+  "aws_ecs_cluster",
+  "aws_ecs_cluster_capacity_providers",
+  "aws_ecs_service",
+  "aws_ecs_task_definition",
+  "aws_appautoscaling_target",
+  "aws_appautoscaling_policy",
+  "aws_scheduler_schedule",
+  "aws_scheduler_schedule_group",
+]);
+const supportedTypes = new Set([
+  "aws_amplify_app",
+  "aws_amplify_branch",
+  "aws_apigatewayv2_api",
+  "aws_apigatewayv2_integration",
+  "aws_apigatewayv2_route",
+  "aws_apigatewayv2_stage",
+  "aws_athena_workgroup",
+  "aws_autoscaling_group_tag",
+  "aws_cloudwatch_dashboard",
+  "aws_cloudwatch_log_group",
+  "aws_cloudwatch_log_metric_filter",
+  "aws_cloudwatch_metric_alarm",
+  "aws_cognito_user_pool",
+  "aws_cognito_user_pool_client",
+  "aws_cognito_user_pool_domain",
+  "aws_dynamodb_table",
+  "aws_ecr_repository",
+  "aws_ecr_lifecycle_policy",
+  "aws_eip",
+  "aws_eks_cluster",
+  "aws_eks_access_entry",
+  "aws_eks_access_policy_association",
+  "aws_eks_node_group",
+  "aws_eks_addon",
+  "aws_eks_pod_identity_association",
+  "aws_flow_log",
+  "aws_glue_catalog_database",
+  "aws_iam_role",
+  "aws_iam_instance_profile",
+  "aws_iam_role_policy",
+  "aws_iam_role_policy_attachment",
+  "aws_iam_openid_connect_provider",
+  "aws_instance",
+  "aws_internet_gateway",
+  "aws_launch_template",
+  "aws_lb",
+  "aws_lb_listener",
+  "aws_lb_target_group",
+  "aws_nat_gateway",
+  "aws_route",
+  "aws_route_table",
+  "aws_route_table_association",
+  "aws_s3_bucket",
+  "aws_s3_bucket_versioning",
+  "aws_s3_bucket_lifecycle_configuration",
+  "aws_s3_bucket_ownership_controls",
+  "aws_s3_bucket_policy",
+  "aws_s3_bucket_public_access_block",
+  "aws_s3_bucket_server_side_encryption_configuration",
+  "aws_s3_object",
+  "aws_secretsmanager_secret",
+  "aws_secretsmanager_secret_version",
+  "aws_security_group",
+  "aws_security_group_rule",
+  "aws_sqs_queue",
+  "aws_subnet",
+  "aws_vpc",
+  "aws_vpc_endpoint",
+  "random_password",
+  "terraform_data",
+]);
+const retiredAddresses = new Set([
+  "aws_security_group.ingestion",
+  "aws_iam_role_policy.api_argus_live_sync[0]",
+  "aws_iam_role_policy.ingestion_incremental_scheduler[0]",
   "aws_cloudwatch_metric_alarm.scheduler_dlq_depth",
   "aws_cloudwatch_metric_alarm.scheduler_target_errors",
-  "aws_ecr_repository.ingestion",
-  "aws_ecs_task_definition.ingestion_backfill",
-  "aws_ecs_task_definition.ingestion_import",
-  "aws_ecs_task_definition.ingestion_incremental_export",
-  "aws_ecs_task_definition.ingestion_incremental_ingest",
-  "aws_ecs_task_definition.ingestion_sync",
-  "aws_glue_catalog_database.ingestion",
-  "aws_s3_bucket_lifecycle_configuration.ingestion",
-  "aws_s3_bucket_public_access_block.ingestion",
-  "aws_s3_bucket_server_side_encryption_configuration.ingestion",
-  "aws_s3_bucket_versioning.ingestion",
-  "aws_scheduler_schedule.ingestion_sync",
-  "aws_scheduler_schedule.ingestion_incremental_export",
-  "aws_scheduler_schedule.ingestion_incremental_ingest",
-  "aws_scheduler_schedule_group.ingestion",
-  "aws_secretsmanager_secret.live_mysql[0]",
-  "aws_secretsmanager_secret.snapshot_mysql[0]",
-  "aws_security_group.ingestion",
-  "aws_sqs_queue.analysis",
-  "aws_sqs_queue.analysis_dlq",
-  "aws_sqs_queue.incremental_batches",
-  "aws_sqs_queue.incremental_batches_dlq",
-  "aws_sqs_queue.ingestion_scheduler_dlq",
-  "aws_sqs_queue_redrive_allow_policy.incremental_batches_dlq",
-  "terraform_data.ingestion_bucket_learner_lab[0]",
-  "terraform_data.ingestion_guardrails",
-  "terraform_data.ingestion_image[0]",
-];
-// Só entram no plano quando analysis_worker_habilitado=true (todos com count).
-const analysisWorkerExpectedAddresses = [
-  "aws_cloudwatch_log_group.analysis_worker[0]",
-  "aws_ecr_repository.analysis_worker[0]",
-  "aws_ecs_service.analysis_worker[0]",
-  "aws_ecs_task_definition.analysis_worker[0]",
-  "aws_s3_object.analysis_catalog[0]",
-  "aws_s3_object.analysis_model[0]",
-  "terraform_data.analysis_worker_image[0]",
-];
-const baseExpectedAddresses = [
-  ...apiExpectedAddresses,
-  ...ingestionExpectedAddresses,
-].sort();
-let expectedAddresses = baseExpectedAddresses;
-let expectedAddressSet = new Set(expectedAddresses);
-const allowedDataAddresses = new Set([
-  "data.archive_file.painel",
-  "data.aws_availability_zones.disponiveis",
-  "data.aws_caller_identity.atual",
-  "data.aws_ecr_image.ingestion[0]",
-  "data.aws_iam_instance_profile.lab",
-  "data.aws_iam_role.lab",
-  "data.aws_region.atual",
-  "data.aws_ssm_parameter.amazon_linux_2023",
+  ...["backfill", "sync"].flatMap((job) =>
+    ["cpu", "memory", "storage"].map(
+      (metric) =>
+        `aws_cloudwatch_metric_alarm.ingestion_resource_utilization["${job}-${metric}"]`,
+    ),
+  ),
 ]);
-
-function isAllowedDataAddress(address) {
-  return allowedDataAddresses.has(address);
-}
-
-function analysisWorkerEnabled(plan) {
-  const value = plan.variables?.analysis_worker_habilitado?.value;
-  return value === true || value === "true";
-}
-
-function reject(reason, address) {
-  const prefix =
-    expectedAddressSet.has(address) || allowedDataAddresses.has(address)
-      ? address
-      : "plan";
-  process.stderr.write(`${prefix}: rejected ${reason}\n`);
-  process.exitCode = 1;
-}
-
-function readLimitedInput() {
-  const chunks = [];
-  let totalBytes = 0;
-  let tooLarge = false;
-  const chunkSize = 64 * 1024;
-
-  while (totalBytes <= MAX_INPUT_BYTES) {
-    const bytesToRead = Math.min(chunkSize, MAX_INPUT_BYTES + 1 - totalBytes);
-    const chunk = Buffer.allocUnsafe(bytesToRead);
-    const bytesRead = fs.readSync(0, chunk, 0, bytesToRead, null);
-    if (bytesRead === 0) break;
-    chunks.push(chunk.subarray(0, bytesRead));
-    totalBytes += bytesRead;
-    if (totalBytes > MAX_INPUT_BYTES) {
-      tooLarge = true;
-      break;
-    }
-  }
-
-  return { input: Buffer.concat(chunks, totalBytes), tooLarge };
-}
-
-let input;
-let tooLarge = false;
-try {
-  ({ input, tooLarge } = readLimitedInput());
-} catch {
-  reject("unreadable input");
-}
-
-if (process.exitCode === undefined && tooLarge) {
-  reject("input exceeds 20 MiB");
-}
-
-let plan;
-if (process.exitCode === undefined) {
-  try {
-    plan = JSON.parse(input.toString("utf8"));
-  } catch {
-    reject("invalid JSON document");
-  }
-}
-
-if (process.exitCode === undefined) {
+// Only build wrappers without destroy provisioners can be replaced on updates.
+const rebuildAddresses = new Set([
+  "terraform_data.imagem",
+  "terraform_data.ingestion_image[0]",
+  "terraform_data.analysis_worker_image[0]",
+  "terraform_data.build_painel",
+  "terraform_data.painel",
+]);
+const migrationReplacementAddresses = new Set([
+  "aws_cloudwatch_log_metric_filter.import_active_upload_age",
+  "aws_cloudwatch_log_metric_filter.import_reconciliation_failures",
+  ...[
+    "api_import",
+    "ingestion_import",
+    "ingestion_incremental_export",
+    "ingestion_incremental_ingest",
+  ].map((name) => `aws_iam_role_policy.${name}[0]`),
+]);
+export function validatePlan(plan, { migration = false, update = false } = {}) {
   if (
-    !plan ||
-    typeof plan !== "object" ||
-    Array.isArray(plan) ||
-    !Array.isArray(plan.resource_changes)
-  ) {
-    reject("missing resource_changes");
-  }
-}
-
-if (process.exitCode === undefined) {
-  if (analysisWorkerEnabled(plan)) {
-    expectedAddresses = [
-      ...baseExpectedAddresses,
-      ...analysisWorkerExpectedAddresses,
-    ].sort();
-    expectedAddressSet = new Set(expectedAddresses);
-  }
-
-  const seenAddresses = new Set();
-  let auxiliaryDataReadCount = 0;
-  const resourceChanges = [...plan.resource_changes].sort((left, right) => {
-    const leftAddress =
-      left && typeof left.address === "string" ? left.address : "";
-    const rightAddress =
-      right && typeof right.address === "string" ? right.address : "";
-    return leftAddress.localeCompare(rightAddress);
-  });
-
-  for (const resourceChange of resourceChanges) {
-    if (!resourceChange || typeof resourceChange !== "object") {
-      reject("invalid resource change");
-      break;
+    !Array.isArray(plan.resource_changes) ||
+    plan.errored ||
+    plan.applyable === false
+  )
+    throw new Error("Invalid or failed Terraform plan.");
+  for (const change of plan.resource_changes) {
+    const actions = change.change?.actions;
+    if (!Array.isArray(actions) || actions.length === 0)
+      throw new Error("Invalid actions.");
+    if (change.mode === "data") {
+      if (actions.every((a) => ["read", "no-op"].includes(a))) continue;
+      throw new Error("Data mutation rejected.");
     }
-
-    const address = resourceChange.address;
-    if (typeof address !== "string" || address.length === 0) {
-      reject("invalid resource address");
-      break;
-    }
-    if (seenAddresses.has(address)) {
-      reject("duplicate address", address);
-      break;
-    }
-    seenAddresses.add(address);
-
-    const change = resourceChange.change;
-    if (!change || typeof change !== "object" || Array.isArray(change)) {
-      reject(
-        "invalid change",
-        expectedAddressSet.has(address) ? address : undefined,
-      );
-      break;
-    }
+    if (retiredTypes.has(change.type) && actions.includes("create"))
+      throw new Error("Creating ECS/EventBridge runtime is forbidden.");
+    const retiring =
+      migration &&
+      actions.length === 1 &&
+      actions[0] === "delete" &&
+      (retiredTypes.has(change.type) || retiredAddresses.has(change.address));
+    if (retiring) continue;
     if (
-      Object.hasOwn(resourceChange, "previous_address") ||
-      Object.hasOwn(change, "previous_address")
-    ) {
-      reject(
-        "previous_address is not allowed",
-        expectedAddressSet.has(address) || allowedDataAddresses.has(address)
-          ? address
-          : undefined,
-      );
-      break;
-    }
-    if (Object.hasOwn(change, "importing")) {
-      reject(
-        "importing is not allowed",
-        expectedAddressSet.has(address) || allowedDataAddresses.has(address)
-          ? address
-          : undefined,
-      );
-      break;
-    }
-
-    if (resourceChange.mode === "data") {
-      if (!isAllowedDataAddress(address)) {
-        reject("unexpected data address");
-        break;
-      }
-      if (
-        !Array.isArray(change.actions) ||
-        change.actions.length !== 1 ||
-        !["read", "no-op"].includes(change.actions[0])
-      ) {
-        reject(
-          "action must be read or no-op",
-          allowedDataAddresses.has(address) ? address : undefined,
-        );
-        break;
-      }
-      auxiliaryDataReadCount += 1;
+      migration &&
+      actions.length === 1 &&
+      actions[0] === "forget" &&
+      /^(aws_cloudwatch_log_group\.(api|ingestion_backfill|ingestion_sync|ingestion_incremental_export|ingestion_incremental_ingest|analysis_worker)(\[0\])?|aws_sqs_queue\.ingestion_scheduler_dlq)$/.test(
+        change.address,
+      )
+    )
       continue;
-    }
-
-    if (resourceChange.mode !== "managed" || !expectedAddressSet.has(address)) {
-      reject("unexpected address");
-      break;
-    }
+    const replacement =
+      actions.length === 2 &&
+      actions.includes("create") &&
+      actions.includes("delete");
     if (
-      !Array.isArray(change.actions) ||
-      change.actions.length !== 1 ||
-      !["create", "no-op"].includes(change.actions[0])
-    ) {
-      reject("action must be create or no-op", address);
-      break;
-    }
+      replacement &&
+      update &&
+      (rebuildAddresses.has(change.address) ||
+        (migration && migrationReplacementAddresses.has(change.address)))
+    )
+      continue;
+    if (actions.includes("delete"))
+      throw new Error(`Deletion/replacement rejected: ${change.address}`);
+    if (
+      !supportedTypes.has(change.type) ||
+      !actions.every((a) =>
+        ["create", "no-op", ...(update ? ["update"] : [])].includes(a),
+      )
+    )
+      throw new Error(`Unexpected change: ${change.address}`);
   }
-
-  if (process.exitCode === undefined) {
-    const missingAddress = expectedAddresses.find(
-      (address) => !seenAddresses.has(address),
-    );
-    if (missingAddress !== undefined) {
-      reject("missing address", missingAddress);
-    }
-  }
-
-  if (process.exitCode === undefined) {
-    for (const address of expectedAddresses) {
-      process.stdout.write(`${address}: create or no-op\n`);
-    }
-    process.stdout.write(
-      `create/no-op plan accepted: ${expectedAddresses.length} resources; auxiliary data reads/no-ops: ${auxiliaryDataReadCount}\n`,
-    );
+  const cluster = plan.resource_changes.find(
+    (c) => c.address === "aws_eks_cluster.principal",
+  );
+  if (
+    !cluster ||
+    !["create", "no-op", "update"].includes(cluster.change.actions[0])
+  )
+    throw new Error("EKS cluster missing from plan.");
+}
+export function main(argv = process.argv.slice(2)) {
+  const filename = argv.find((value) => !value.startsWith("--"));
+  const input = readFileSync(filename ?? 0, "utf8");
+  if (Buffer.byteLength(input) > 32 * 1024 * 1024)
+    throw new Error("Plan too large.");
+  validatePlan(JSON.parse(input), {
+    migration: argv.includes("--migration"),
+    update: argv.includes("--update"),
+  });
+  process.stdout.write(
+    "Plano EKS validado; nenhuma exclusão de dados persistentes autorizada.\n",
+  );
+}
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  try {
+    main();
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
   }
 }

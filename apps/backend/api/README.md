@@ -1,3 +1,5 @@
+> Runtime AWS: Kubernetes/EKS. Veja o [runbook](../../kubernetes/README.md) para deploy, Jobs de importação e CronJobs de sync.
+
 # API (monólito modular)
 
 Única entrada pública do painel. Expõe `/health`, `/metrics`,
@@ -19,13 +21,7 @@ npm start
 ```
 
 `DYNAMODB_ENDPOINT` é opcional e direciona os adaptadores ao DynamoDB Local.
-O processo exige, além da sessão e da tabela operacional, os oito valores
-`IMPORT_BUCKET`, `IMPORT_EXPECTED_BUCKET_OWNER`, `IMPORT_CURSOR_SECRET`,
-`IMPORT_INGESTION_CLUSTER_ARN`, `IMPORT_INGESTION_TASK_DEFINITION_ARN`,
-`IMPORT_INGESTION_SUBNET_IDS`, `IMPORT_INGESTION_SECURITY_GROUP_ID` e
-`IMPORT_INGESTION_CONTAINER_NAME`. Use [`.env.example`](.env.example) como
-inventário; no deployment, `IMPORT_CURSOR_SECRET` reutiliza o valor de
-`CURSOR_SECRET`.
+O processo exige `IMPORT_BUCKET`, `IMPORT_EXPECTED_BUCKET_OWNER`, `IMPORT_CURSOR_SECRET`, `IMPORT_KUBERNETES_NAMESPACE`, `IMPORT_KUBERNETES_TEMPLATE` e `IMPORT_INGESTION_CONTAINER_NAME`. Use [`.env.example`](.env.example) como inventário; no deployment, `IMPORT_CURSOR_SECRET` reutiliza `CURSOR_SECRET`. A orquestração de imports e o controle de CronJobs exigem a API dentro do cluster, com ServiceAccount autorizado; testes locais substituem essas portas.
 
 O teste vivo completo pode ser executado sem credenciais AWS reais:
 
@@ -58,18 +54,7 @@ habilitar a integração pelo endpoint autenticado (ou pelo botão em
 **Configurações**) antes de invocar um comando live. As credenciais continuam
 no Secrets Manager e nunca são retornadas por esse endpoint.
 
-No Learner Lab, a task usa a `LabRole` preexistente: o AWS Academy bloqueia a
-anexação de policies e, portanto, a operação pressupõe que essa role permita as
-ações DynamoDB/Scheduler necessárias. Em produção, `api_task_role_arn` é
-obrigatória e o Terraform anexa a ela uma policy exclusiva com `GetItem` e
-`PutItem` na tabela operacional, `GetSchedule` e `UpdateSchedule` no schedule da
-ingestão e `PassRole` somente para a role-alvo do Scheduler com
-`iam:PassedToService=scheduler.amazonaws.com`.
-
-Não execute um `terraform apply` que recrie ou altere o schedule ao mesmo tempo
-que um `PATCH`: serialize as duas mudanças. O Terraform ignora apenas `state`
-no recurso existente, mas uma recriação volta a usar a seed do deploy antes de
-o próximo `PATCH` convergir o estado operacional.
+A API usa IRSA para DynamoDB e RBAC para modificar apenas `spec.suspend` do CronJob `ingestion-sync`. `KUBERNETES_NAMESPACE` e `INGESTION_CRONJOB_NAME` identificam esse recurso. O chart preserva o estado administrado pelo painel durante upgrades; serialize deploys e alterações de configuração live. Jobs em execução concluem normalmente quando a agenda é suspensa.
 
 ## Importação assíncrona ARGUS
 

@@ -3,7 +3,7 @@ import type { Logger } from "@view-show/contracts";
 import { loadImportConfig } from "../../config.js";
 import { DynamoImportRepository } from "./adapters/dynamodb-import-repository.js";
 import { DynamoDatasetActivation } from "./adapters/dynamodb-dataset-activation.js";
-import { EcsImportWorkerLauncher } from "./adapters/ecs-import-worker-launcher.js";
+import { KubernetesImportWorkerLauncher } from "./adapters/kubernetes-import-worker-launcher.js";
 import { S3ImportUploadStore } from "./adapters/s3-import-upload-store.js";
 import { ImportReconciler } from "./application/import-reconciler.js";
 import type { ImportRepository } from "./ports/import-repository.js";
@@ -46,7 +46,7 @@ export function createImportsModule(
     );
   const launcher =
     dependencies.workerLauncher ??
-    new EcsImportWorkerLauncher(config.ingestion);
+    new KubernetesImportWorkerLauncher(config.ingestion);
   const activation =
     dependencies.activation ??
     new DynamoDatasetActivation(

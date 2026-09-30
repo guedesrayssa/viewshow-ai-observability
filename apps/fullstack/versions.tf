@@ -2,7 +2,7 @@
 # providers são registradas no .terraform.lock.hcl versionado.
 
 terraform {
-  required_version = ">= 1.7.0, < 2.0.0"
+  required_version = ">= 1.9.0, < 2.0.0"
 
   required_providers {
     aws = {
@@ -24,7 +24,7 @@ terraform {
 // qualquer conta do Learner Lab trocando apenas o profile. A conferência de
 // conta é do operador, no pré-voo do runbook (aws sts get-caller-identity), e a
 // checagem que de fato protege uma operação — a credencial pertencer à mesma
-// conta do stack — vive em run_task.py, derivada dos ARNs do terraform output.
+// conta do stack — vive em apps/kubernetes/run-job.mjs, derivada dos outputs EKS.
 provider "aws" {
   // Usa a cadeia padrão de credenciais da AWS. Portanto, AWS_PROFILE seleciona
   // o perfil tanto para o provider quanto para os scripts executados no apply.

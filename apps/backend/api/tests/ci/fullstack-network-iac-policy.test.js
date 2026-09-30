@@ -17,7 +17,7 @@ function read(name) {
 test("dedicated VPC separates public ingress from private compute", () => {
   const vpc = read("vpc.tf");
   const alb = read("alb.tf");
-  const ecs = read("ecs.tf");
+  const eks = read("eks.tf");
   const network = read("network.tf");
 
   assert.match(vpc, /resource "aws_vpc" "principal"/);
@@ -26,11 +26,11 @@ test("dedicated VPC separates public ingress from private compute", () => {
   assert.match(vpc, /resource "aws_vpc_endpoint" "dynamodb"/);
   assert.match(vpc, /resource "aws_vpc_endpoint" "s3"/);
   assert.match(alb, /subnets\s*=\s*values\(aws_subnet\.publica\)\[\*\]\.id/);
-  assert.match(ecs, /subnets\s*=\s*values\(aws_subnet\.privada\)\[\*\]\.id/);
-  assert.match(ecs, /assign_public_ip\s*=\s*false/);
+  assert.match(eks, /subnet_ids\s*=\s*values\(aws_subnet\.privada\)\[\*\]\.id/);
+  assert.match(eks, /endpoint_private_access\s*=\s*true/);
   assert.match(network, /vpc_id\s*=\s*aws_vpc\.principal\.id/);
   assert.doesNotMatch(
-    [vpc, alb, ecs, network].join("\n"),
+    [vpc, alb, eks, network].join("\n"),
     /data\.aws_vpc\.default|data\.aws_subnets\.default/,
   );
 });
@@ -46,7 +46,7 @@ test("bastion defaults to SSM and never exposes SSH globally", () => {
   );
   assert.match(
     bastion,
-    /iam_instance_profile\s*=\s*data\.aws_iam_instance_profile\.lab\.name/,
+    /iam_instance_profile\s*=\s*aws_iam_instance_profile\.administration\["bastion"\]\.name/,
   );
   assert.match(bastion, /http_tokens\s*=\s*"required"/);
   assert.match(bastion, /encrypted\s*=\s*true/);
@@ -86,22 +86,14 @@ test("Cognito domain is globally unique to the active AWS account", () => {
 
   assert.match(
     cognito,
-    /domain\s*=\s*"\$\{var\.deployment_namespace\}-\$\{data\.aws_caller_identity\.atual\.account_id\}-auth"/,
+    /domain\s*=\s*"\$\{var\.deployment_namespace\}-\$\{data\.aws_caller_identity\.atual\.account_id\}-iac-auth"/,
   );
 });
 
-test("Fargate service scales by CPU without Terraform fighting desired count", () => {
-  const scaling = read("autoscaling.tf");
-  const ecs = read("ecs.tf");
-
-  assert.match(scaling, /resource "aws_appautoscaling_target" "api"/);
-  assert.match(scaling, /scalable_dimension\s*=\s*"ecs:service:DesiredCount"/);
-  assert.match(
-    scaling,
-    /predefined_metric_type\s*=\s*"ECSServiceAverageCPUUtilization"/,
-  );
-  assert.match(scaling, /target_value\s*=\s*var\.ecs_cpu_alvo/);
-  assert.match(ecs, /ignore_changes\s*=\s*\[desired_count\]/);
+test("EKS node scaling leaves desired capacity to autoscaler", () => {
+  const eks = read("eks.tf");
+  assert.match(eks, /ignore_changes\s*=\s*\[scaling_config\[0\].desired_size\]/);
+  assert.match(eks, /http_put_response_hop_limit\s*=\s*1/);
 });
 
 test("infrastructure guide documents implemented rubric substitutions", () => {

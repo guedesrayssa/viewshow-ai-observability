@@ -1,81 +1,9 @@
 // Observabilidade separa logs, métricas com dimensões limitadas, alarmes e
 // dashboard para manter sinais operacionais controlados e consultáveis.
-resource "aws_cloudwatch_log_group" "ingestion_backfill" {
-  name              = "/ecs/${local.ingestion_backfill_family}"
-  retention_in_days = var.retencao_logs_ingestao_dias
-
-  tags = {
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-    Operacao   = "backfill"
-  }
-}
-
-resource "aws_cloudwatch_log_group" "ingestion_sync" {
-  name              = "/ecs/${local.ingestion_sync_family}"
-  retention_in_days = var.retencao_logs_ingestao_dias
-
-  tags = {
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-    Operacao   = "sync"
-  }
-}
-
-resource "aws_cloudwatch_log_group" "ingestion_incremental_export" {
-  name              = "/ecs/${local.ingestion_incremental_export_family}"
-  retention_in_days = var.retencao_logs_ingestao_dias
-
-  tags = {
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-    Operacao   = "export-incremental"
-  }
-}
-
-resource "aws_cloudwatch_log_group" "ingestion_incremental_ingest" {
-  name              = "/ecs/${local.ingestion_incremental_ingest_family}"
-  retention_in_days = var.retencao_logs_ingestao_dias
-
-  tags = {
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-    Operacao   = "ingest-incremental"
-  }
-}
-
 locals {
   ingestion_resource_metrics = {
-    "backfill-cpu" = {
-      task_family = aws_ecs_task_definition.ingestion_backfill.family
-      utilized    = "CpuUtilized"
-      reserved    = "CpuReserved"
-    }
-    "backfill-memory" = {
-      task_family = aws_ecs_task_definition.ingestion_backfill.family
-      utilized    = "MemoryUtilized"
-      reserved    = "MemoryReserved"
-    }
-    "backfill-storage" = {
-      task_family = aws_ecs_task_definition.ingestion_backfill.family
-      utilized    = "EphemeralStorageUtilized"
-      reserved    = "EphemeralStorageReserved"
-    }
-    "sync-cpu" = {
-      task_family = aws_ecs_task_definition.ingestion_sync.family
-      utilized    = "CpuUtilized"
-      reserved    = "CpuReserved"
-    }
-    "sync-memory" = {
-      task_family = aws_ecs_task_definition.ingestion_sync.family
-      utilized    = "MemoryUtilized"
-      reserved    = "MemoryReserved"
-    }
-    "sync-storage" = {
-      task_family = aws_ecs_task_definition.ingestion_sync.family
-      utilized    = "EphemeralStorageUtilized"
-      reserved    = "EphemeralStorageReserved"
-    }
+    api_cpu    = { metric = "pod_cpu_utilization_over_pod_limit", pod = "api" }
+    api_memory = { metric = "pod_memory_utilization_over_pod_limit", pod = "api" }
   }
   ingestion_runtime_commands = {
     backfill = {
@@ -105,43 +33,14 @@ resource "aws_cloudwatch_metric_alarm" "ingestion_resource_utilization" {
   alarm_actions       = var.acoes_alarme_ingestao
   ok_actions          = var.acoes_alarme_ingestao
 
-  metric_query {
-    id          = "used"
-    return_data = false
-
-    metric {
-      namespace   = "ECS/ContainerInsights"
-      metric_name = each.value.utilized
-      period      = 300
-      stat        = "Average"
-      dimensions = {
-        ClusterName          = aws_ecs_cluster.principal.name
-        TaskDefinitionFamily = each.value.task_family
-      }
-    }
-  }
-
-  metric_query {
-    id          = "reserved"
-    return_data = false
-
-    metric {
-      namespace   = "ECS/ContainerInsights"
-      metric_name = each.value.reserved
-      period      = 300
-      stat        = "Average"
-      dimensions = {
-        ClusterName          = aws_ecs_cluster.principal.name
-        TaskDefinitionFamily = each.value.task_family
-      }
-    }
-  }
-
-  metric_query {
-    id          = "utilization"
-    expression  = "100 * used / reserved"
-    label       = "Utilização percentual de ${each.key}"
-    return_data = true
+  namespace   = "ContainerInsights"
+  metric_name = each.value.metric
+  period      = 300
+  statistic   = "Average"
+  dimensions = {
+    ClusterName = aws_eks_cluster.principal.name
+    Namespace   = var.deployment_namespace
+    PodName     = each.value.pod
   }
 
   tags = {
@@ -582,54 +481,6 @@ resource "aws_cloudwatch_metric_alarm" "analysis_dlq_depth" {
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "scheduler_dlq_depth" {
-  alarm_name          = "${local.ingestion_name_prefix}-scheduler-dlq-depth"
-  alarm_description   = "A DLQ do EventBridge Scheduler contém invocações não entregues."
-  namespace           = "AWS/SQS"
-  metric_name         = "ApproximateNumberOfMessagesVisible"
-  statistic           = "Maximum"
-  period              = 300
-  evaluation_periods  = 1
-  threshold           = 1
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = var.acoes_alarme_ingestao
-  ok_actions          = var.acoes_alarme_ingestao
-
-  dimensions = {
-    QueueName = aws_sqs_queue.ingestion_scheduler_dlq.name
-  }
-
-  tags = {
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "scheduler_target_errors" {
-  alarm_name          = "${local.ingestion_name_prefix}-scheduler-target-errors"
-  alarm_description   = "O EventBridge Scheduler não conseguiu iniciar a task ECS de sync."
-  namespace           = "AWS/Scheduler"
-  metric_name         = "TargetErrorCount"
-  statistic           = "Sum"
-  period              = 900
-  evaluation_periods  = 1
-  threshold           = 1
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = var.acoes_alarme_ingestao
-  ok_actions          = var.acoes_alarme_ingestao
-
-  dimensions = {
-    ScheduleGroup = aws_scheduler_schedule_group.ingestion.name
-  }
-
-  tags = {
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-  }
-}
-
 resource "aws_cloudwatch_metric_alarm" "incremental_queue_backlog" {
   alarm_name          = "${local.ingestion_name_prefix}-incremental-queue-backlog"
   alarm_description   = "A fila FIFO incremental possui lotes visíveis aguardando consumo."
@@ -797,7 +648,6 @@ resource "aws_cloudwatch_dashboard" "ingestion" {
             ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.analysis.name, { label = "Análise" }],
             [".", "ApproximateAgeOfOldestMessage", "QueueName", aws_sqs_queue.analysis.name, { label = "Idade análise" }],
             [".", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.analysis_dlq.name, { label = "DLQ análise" }],
-            [".", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.ingestion_scheduler_dlq.name, { label = "DLQ Scheduler" }],
             [".", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.incremental_batches.name, { label = "Lotes incrementais" }],
             [".", "ApproximateAgeOfOldestMessage", "QueueName", aws_sqs_queue.incremental_batches.name, { label = "Idade incremental" }],
             [".", "ApproximateNumberOfMessagesVisible", "QueueName", aws_sqs_queue.incremental_batches_dlq.name, { label = "DLQ incremental" }],
@@ -817,7 +667,7 @@ resource "aws_cloudwatch_dashboard" "ingestion" {
           stat   = "Sum"
           period = 900
           metrics = [
-            ["AWS/Scheduler", "TargetErrorCount", "ScheduleGroup", aws_scheduler_schedule_group.ingestion.name],
+            ["ContainerInsights", "cluster_failed_node_count", "ClusterName", aws_eks_cluster.principal.name],
           ]
         }
       },
@@ -864,13 +714,13 @@ resource "aws_cloudwatch_dashboard" "ingestion" {
           stat   = "Average"
           period = 300
           metrics = [
-            ["ECS/ContainerInsights", "CpuUtilized", "ClusterName", aws_ecs_cluster.principal.name, "TaskDefinitionFamily", aws_ecs_task_definition.ingestion_backfill.family, { label = "CPU backfill utilizada" }],
+            ["ContainerInsights", "node_cpu_utilization", "ClusterName", aws_eks_cluster.principal.name, { label = "CPU nós EKS" }],
             [".", "CpuReserved", ".", ".", ".", ".", { label = "CPU backfill reservada" }],
             [".", "MemoryUtilized", ".", ".", ".", ".", { label = "Memória backfill utilizada" }],
             [".", "MemoryReserved", ".", ".", ".", ".", { label = "Memória backfill reservada" }],
             [".", "EphemeralStorageUtilized", ".", ".", ".", ".", { label = "Disco backfill utilizado" }],
             [".", "EphemeralStorageReserved", ".", ".", ".", ".", { label = "Disco backfill reservado" }],
-            [".", "CpuUtilized", "ClusterName", aws_ecs_cluster.principal.name, "TaskDefinitionFamily", aws_ecs_task_definition.ingestion_sync.family, { label = "CPU sync utilizada" }],
+            ["ContainerInsights", "node_memory_utilization", "ClusterName", aws_eks_cluster.principal.name, { label = "Memória nós EKS" }],
             [".", "CpuReserved", ".", ".", ".", ".", { label = "CPU sync reservada" }],
             [".", "MemoryUtilized", ".", ".", ".", ".", { label = "Memória sync utilizada" }],
             [".", "MemoryReserved", ".", ".", ".", ".", { label = "Memória sync reservada" }],

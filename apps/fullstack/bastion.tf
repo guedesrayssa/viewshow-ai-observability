@@ -34,7 +34,7 @@ resource "aws_instance" "bastion" {
   subnet_id                   = aws_subnet.publica["a"].id
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.bastion.id]
-  iam_instance_profile        = data.aws_iam_instance_profile.lab.name
+  iam_instance_profile        = aws_iam_instance_profile.administration["bastion"].name
   key_name                    = var.bastion_key_name
 
   lifecycle {

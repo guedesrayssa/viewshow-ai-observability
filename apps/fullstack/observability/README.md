@@ -7,7 +7,7 @@ a API do View Show localmente antes de levar métricas, logs e traces para a AWS
 A mesma stack também pode ser criada na AWS pelo Terraform de `apps/fullstack`.
 Na AWS ela roda em uma EC2 única, com volumes Docker persistentes durante a vida
 da instância, e acrescenta o CloudWatch como data source do Grafana. Assim as
-métricas de ECS, ALB e DynamoDB e os logs atuais da API ficam disponíveis desde
+métricas de EKS, ALB e DynamoDB e os logs atuais da API ficam disponíveis desde
 o primeiro deploy, sem substituir Prometheus, Loki ou Tempo.
 
 ## Subir e derrubar
@@ -101,7 +101,7 @@ done
 
 Quando a aplicação completa ainda não estiver provisionada, use o script
 isolado abaixo no AWS CloudShell. Ele cria apenas a EC2 com Grafana, Prometheus,
-Loki, Tempo e Alloy; não cria ECS, ALB, DynamoDB ou Amplify.
+Loki, Tempo e Alloy; não cria EKS, ALB, DynamoDB ou Amplify.
 
 ```bash
 cd apps/fullstack/observability/aws
@@ -119,93 +119,21 @@ SSM.
 O CI renderiza o mesmo bootstrap sem acessar a AWS. Para repetir essa validação
 localmente, execute `./deploy-learner-lab.sh --validate-only` nesse diretório.
 
-### Aplicação completa com Terraform
+### Aplicação completa com Kubernetes
 
-Pré-requisitos: Terraform, Docker, Node, AWS CLI, Session Manager plugin e uma
-sessão válida do AWS Academy. As credenciais temporárias são as mesmas usadas
-pela infraestrutura fullstack.
-
-```bash
-cd apps/fullstack
-aws sts get-caller-identity
-terraform init
-terraform plan \
-  -var='deployment_namespace=view-show' \
-  -var='observabilidade_habilitada=true' \
-  -out=view-show-observabilidade.tfplan
-terraform apply view-show-observabilidade.tfplan
-```
-
-Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
-na AWS. O plano acima cria uma EC2 `view-show-observabilidade` do tipo `t3.medium`
-com 30 GiB de gp3 criptografado, instala o Docker Compose e inicia os cinco
-componentes. Não é necessário clonar o
-repositório na instância: os arquivos versionados são compactados e enviados
-pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
-`running`.
-
-Por padrão nenhuma porta administrativa fica aberta à internet. Abra o túnel
-SSM que o output entrega:
-
-```bash
-terraform output grafana_acesso
-terraform output -raw grafana_senha
-
-aws ssm start-session \
-  --target "$(terraform output -raw observabilidade_instancia_id)" \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters portNumber=3000,localPortNumber=3002 \
-  --region us-east-1
-```
-
-Enquanto a sessão estiver aberta, acesse <http://localhost:3002> com o usuário
-`admin` e a senha impressa pelo segundo comando. Os dashboards provisionados
-ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
-gerenciados e **View Show — Application Observability** cobre RED, Web Vitals,
-logs correlacionados e alertas da aplicação.
-
-Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
-
-```bash
-sudo tail -f /var/log/cloud-init-output.log
-sudo docker compose -f /opt/view-show-observability/docker-compose.yml ps
-```
-
-Se SSM não estiver disponível na conta, restrinja o acesso direto ao seu IP;
-jamais use `0.0.0.0/0` para o Grafana:
-
-```bash
-terraform apply -var='grafana_cidr_acesso=203.0.113.10/32'
-terraform output grafana_acesso
-```
-
-O IP público comum muda depois de parar e iniciar a EC2. Rode
-`terraform apply -refresh-only` para atualizar o output. Não foi criado Elastic
-IP porque ele adiciona custo contínuo e o acesso SSM não depende de endereço
-estável.
+Siga o [runbook EKS](../../kubernetes/README.md). `observabilidade_habilitada=true` mantém Grafana, Prometheus, Loki, Tempo e Alloy na EC2 privada existente; a API em Pods envia logs e traces para os mesmos endpoints e Prometheus coleta `/metrics` pelo ALB. CloudWatch Agent/Fluent Bit no cluster coletam logs/EMF e métricas EKS. O dashboard AWS usa `ContainerInsights` com cluster, namespace e PodName. Os logs ECS históricos são preservados na migração, sem receber novos eventos.
 
 ### O que chega a cada data source na AWS
 
 | Data source | Estado depois do apply |
 | --- | --- |
-| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/view-show-api` disponíveis imediatamente |
+| CloudWatch | EKS, ALB, DynamoDB e logs `/aws/containerinsights/<cluster>/application` após o deploy Kubernetes |
 | Prometheus | Auto-observação da stack e scrape de `/metrics` da API pelo ALB |
 | Loki | Logs dos containers da stack via Alloy e JSON correlacionado da API; CloudWatch permanece habilitado |
 | Tempo | Receptor OTLP/HTTP privado em `:4318`, restrito ao security group da API |
 | Alloy | Receptor OTLP/HTTP privado em `:4320` para métricas e traces dos workers |
 
-O Terraform injeta `OTEL_SERVICE_NAME=view-show-api` e o endereço privado do Tempo
-na task ECS somente quando o opt-in está ativo. A API TypeScript inicializa o
-SDK OpenTelemetry quando esse endpoint existe.
-
-Os futuros tasks de ingestão e análise devem reutilizar o security group da
-aplicação e definir `OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
-`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes em
-`apps/backend/ingestion-data` e `apps/backend/agentic` já implementam o contrato,
-mas não existem tasks ou entrypoints desses workers nesta entrega.
-Os workers escrevem logs JSON em `stdout`; em ECS, mantenha o driver `awslogs`
-para enviá-los ao CloudWatch sem acoplar o processamento à disponibilidade do
-Loki.
+A API recebe `OTEL_EXPORTER_OTLP_ENDPOINT` e `LOKI_PUSH_URL` quando a observabilidade está habilitada. Os logs JSON dos workers são coletados pelo Fluent Bit; a configuração mescla o JSON na raiz para preservar métricas EMF e filtros de log. A instrumentação e os alarmes de domínio continuam independentes do Loki. Use `kubectl logs` para inspeção imediata dos Jobs e CloudWatch para histórico.
 
 ### Operação e custo no Learner Lab
 

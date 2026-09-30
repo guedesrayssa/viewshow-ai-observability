@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars and replace the administration role/CIDR.
+deployment_namespace    = "view-show"
+regiao                  = "us-east-1"
+ambiente                = "learner-lab"
+eks_admin_role_arn      = "arn:aws:iam::123456789012:role/operator"
+eks_public_access_cidrs = ["192.0.2.1/32"]
+kubernetes_version      = "1.35"
+eks_node_instance_types = ["m6i.xlarge"]
+eks_node_min_size       = 2
+eks_node_max_size       = 6
+eks_node_desired_size   = 2
+api_replicas_minima     = 1
+api_replicas_maxima     = 4
+scheduler_ingestao_habilitado = false
+live_sync_enabled            = false
+incremental_s3_enabled       = false
+analysis_worker_habilitado   = false

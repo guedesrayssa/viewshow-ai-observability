@@ -1,5 +1,5 @@
 // Constrói a imagem e publica no ECR. Serve tanto a API (ecr.tf) quanto a
-// ingestão (ingestion-ecs.tf); o repositório e o contexto vêm por ambiente.
+// ingestão (ingestion-runtime.tf); o repositório e o contexto vêm por ambiente.
 //
 // Existe como script Node, e não como comando embutido no Terraform, porque
 // precisa rodar igual em Linux, macOS e Windows. Um heredoc de bash com
@@ -107,7 +107,7 @@ export function publicarImagem(ambiente = process.env, executores = {}) {
     return "adopted";
   }
 
-  // --platform linux/amd64 é obrigatório: Fargate roda x86_64, e um build feito
+  // --platform linux/amd64 é obrigatório: os nós EKS usam x86_64, e um build feito
   // num Mac Apple Silicon sairia arm64 e a task morreria no start com
   // "exec format error".
   console.log(`construindo ${imagem}`);
