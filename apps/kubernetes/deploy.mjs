@@ -30,6 +30,7 @@ const config = JSON.parse(
     true,
   ),
 );
+const labIam = config.iam_mode === "learner-lab-existing";
 const secretCache = new Map();
 async function resolveSecret({ arn, key, optional }) {
   if (!secretCache.has(arn)) {
@@ -122,8 +123,12 @@ helm("aws-load-balancer-controller", "aws-load-balancer-controller", [
   "image.tag=v2.14.1",
   "--set",
   "serviceAccount.name=aws-load-balancer-controller",
-  "--set",
-  `serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn=${config.system_roles["load-balancer-controller"]}`,
+  ...(labIam
+    ? []
+    : [
+        "--set",
+        `serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn=${config.system_roles["load-balancer-controller"]}`,
+      ]),
 ]);
 console.log("Load Balancer Controller pronto.");
 helm("metrics-server", "metrics-server", [
@@ -145,8 +150,12 @@ helm("cluster-autoscaler", "cluster-autoscaler", [
   "image.tag=v1.35.0",
   "--set",
   "rbac.serviceAccount.name=cluster-autoscaler",
-  "--set",
-  `rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn=${config.system_roles["cluster-autoscaler"]}`,
+  ...(labIam
+    ? []
+    : [
+        "--set",
+        `rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn=${config.system_roles["cluster-autoscaler"]}`,
+      ]),
 ]);
 console.log("Escalonamento de Pods e nós pronto.");
 run(

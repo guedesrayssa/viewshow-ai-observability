@@ -111,7 +111,7 @@ resource "aws_instance" "observabilidade" {
   subnet_id                   = aws_subnet.privada["a"].id
   associate_public_ip_address = false
   vpc_security_group_ids      = [aws_security_group.observabilidade[0].id]
-  iam_instance_profile        = aws_iam_instance_profile.administration["observabilidade"].name
+  iam_instance_profile        = local.administration_profiles["observabilidade"]
 
   user_data = templatefile("${path.module}/observability/aws/user-data.sh.tftpl", {
     aws_region              = var.regiao

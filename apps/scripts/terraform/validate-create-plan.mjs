@@ -67,6 +67,7 @@ const supportedTypes = new Set([
   "aws_security_group",
   "aws_security_group_rule",
   "aws_sqs_queue",
+  "aws_sqs_queue_redrive_allow_policy",
   "aws_subnet",
   "aws_vpc",
   "aws_vpc_endpoint",
@@ -108,7 +109,12 @@ export function validatePlan(plan, { migration = false, update = false } = {}) {
   if (
     !Array.isArray(plan.resource_changes) ||
     plan.errored ||
-    plan.applyable === false
+    plan.complete === false ||
+    (plan.applyable === false &&
+      !(plan.complete === true && plan.resource_changes.every(
+        (change) => change.change?.actions?.length === 1 &&
+          change.change.actions[0] === "no-op",
+      )))
   )
     throw new Error("Invalid or failed Terraform plan.");
   for (const change of plan.resource_changes) {

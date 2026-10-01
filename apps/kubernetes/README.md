@@ -19,11 +19,35 @@ Amplify, API Gateway HTTPS, ALB, Cognito, DynamoDB, S3 versionado, Athena, Glue,
 
 ## Pré-requisitos
 
-Use Terraform >= 1.9, Node 22, AWS CLI v2, Docker/buildx, kubectl compatível com Kubernetes 1.35 e Helm 3. A conta precisa permitir EKS, EC2, IAM/OIDC, políticas e access entries. **O perfil `learner-lab` controla defaults de dados; não contorna SCPs do AWS Academy.** Se EKS ou `iam:CreateRole` forem proibidos, esta implantação exige uma conta/role com essas permissões. Bastion e observabilidade EC2 recebem roles próprias de SSM e leitura de CloudWatch; a implantação não depende de LabRole/LabInstanceProfile.
+Use Terraform >= 1.9, Node 22, AWS CLI v2, Docker/buildx, kubectl compatível com Kubernetes 1.35 e Helm 3. A conta precisa permitir EKS, EC2, IAM/OIDC, políticas e access entries. **O perfil `learner-lab` controla defaults de dados.** O modo padrão `eks_iam_mode=managed` cria roles/IRSA e exige permissões IAM. No AWS Academy com criação de IAM bloqueada, use o modo explícito abaixo, que reutiliza recursos fornecidos pelo lab. Se o próprio EKS estiver proibido, será necessária outra conta autorizada.
 
 Os operadores precisam poder obter os segredos de snapshot/live no Secrets Manager. Se a observabilidade EC2 estiver habilitada, precisam também executar `ssm:SendCommand` com `AWS-RunShellScript` e consultar seu resultado nessa instância. O deploy atualiza o dashboard pelo SSM; o Grafana recarrega o arquivo automaticamente. A migração preserva a instância e seus volumes históricos; alterações futuras de cloud-init precisam de atualização operacional explícita. A role configurada em `eks_admin_role_arn` recebe acesso administrativo; informe um ARN IAM permanente, nunca um ARN STS de sessão. O endpoint privado fica ativo; o público aceita somente `eks_public_access_cidrs`.
 
 Copie `apps/fullstack/terraform.tfvars.example` para `apps/fullstack/terraform.tfvars`, ajuste a role e o CIDR do operador/runner e selecione `AWS_PROFILE`. Os arquivos de estado, planos, tfvars e outputs sensíveis nunca devem entrar no Git.
+
+## AWS Academy com IAM pré-provisionado
+
+Configure somente no perfil `ambiente=learner-lab`:
+
+```hcl
+eks_iam_mode = "learner-lab-existing"
+eks_existing_cluster_role_arn = "arn:aws:iam::ACCOUNT:role/LabEksClusterRole-NAME"
+eks_existing_node_role_arn = "arn:aws:iam::ACCOUNT:role/LabRole"
+eks_existing_instance_profile = "LabInstanceProfile"
+eks_admin_role_arn = "arn:aws:iam::ACCOUNT:role/voclabs"
+# If the lab caps EBS at 100 GiB, use an allowed instance with local SSDs.
+eks_node_instance_types = ["i3.large"]
+eks_node_root_volume_gib = 100
+eks_node_instance_store = true
+```
+
+Com `eks_node_instance_store=true`, AL2023/nodeadm prepara os SSDs locais em RAID0 para kubelet/containerd. A configuração exige discos locais suficientes para os 192 GiB reservados pelos Pods de snapshot; o i3.large oferece 475 GB. O conteúdo é temporário e se perde quando o nó termina, como o `emptyDir` original. Antes do primeiro snapshot, confirme o recurso `ephemeral-storage` em `kubectl describe nodes`. Veja a [API oficial nodeadm](https://awslabs.github.io/amazon-eks-ami/nodeadm/doc/api/).
+
+Descubra o ARN exato da role de cluster com `aws iam list-roles`; o Academy a fornece com sufixo variável. Confirme `AmazonEKSClusterPolicy` no control plane, e `AmazonEKSWorkerNodePolicy`, acesso ECR, rede, logs e serviços de dados na LabRole. Esse modo não cria/altera roles, policies, OIDC ou associações Pod Identity. O grupo de nós usa a LabRole existente; os SDKs nos Pods obtêm credenciais rotacionadas de IMDSv2 com hop limit 2. Nenhuma credencial temporária da CLI é copiada para Secrets. Em snapshots, o lab reserva metade da CPU configurada e conserva o limite de burst, permitindo rodar o Pod em instâncias `large` de dois vCPUs; memória e disco permanecem iguais.
+
+**Limite do lab:** os workloads compartilham as permissões da LabRole; o isolamento IAM por ServiceAccount e as negações IAM específicas de importação não se aplicam. RBAC, namespaces, NetworkPolicies e validações de domínio permanecem. Esse modo é bloqueado em produção, onde IMDS fica isolado e IRSA mantém as roles individuais. Veja a [documentação AWS de IMDSv2 no EKS](https://aws.amazon.com/about-aws/whats-new/2020/08/amazon-eks-supports-ec2-instance-metadata-service-v2/).
+
+Ao usar a sessão CLI já assumida como `voclabs`, gere kubeconfig **sem** `--role-arn`: `aws eks update-kubeconfig --name CLUSTER --region REGION`. Isso evita tentar assumir novamente a mesma role. Mantenha o kubeconfig privado e use o nome/ARN do cluster dos outputs.
 
 ## Provisionamento novo
 
@@ -102,6 +126,8 @@ node --test apps/kubernetes/tests/*.test.mjs apps/scripts/tests/*.test.mjs
 helm lint apps/kubernetes/chart
 ```
 
-EKS cobra pelo control plane; os dois nós mínimos, volumes EBS, NAT, ALB e observabilidade também geram custo enquanto provisionados. HPA não reduz os nós abaixo de dois. Esta mudança foi validada localmente com mocks, testes e schemas Kubernetes; o deploy e o teste de integração real dependem das permissões e credenciais da conta de destino.
+EKS cobra pelo control plane; os dois nós mínimos, volumes EBS, NAT, ALB e observabilidade também geram custo enquanto provisionados. HPA não reduz os nós abaixo de dois.
+
+O modo Academy foi implantado em 01/10/2026 com EKS 1.35, dois nós `i3.large` Ready e aproximadamente 397 GiB de armazenamento temporário alocável por nó. Load Balancer Controller, Metrics Server, Cluster Autoscaler e CloudWatch ficaram operacionais. Um Job derivado do template de importação validou MySQL, credenciais da LabRole, S3 e DynamoDB; worker e sidecar terminaram com código zero. Os testes públicos IT-AWS-01, 02 e 05 validaram painel/health, login Cognito, bloqueio sem sessão e reserva idempotente de multipart S3/DynamoDB, com limpeza dos dados e usuário temporários. Grafana respondeu com saúde da base OK. Não foi executado um snapshot completo nem sync live: esses fluxos exigem os dados/credenciais da equipe; análise Bedrock e schedules continuam desabilitados por configuração.
 
 Referências: [versões EKS](https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html), [access entries](https://docs.aws.amazon.com/eks/latest/userguide/creating-access-entries.html), [sidecars nativos](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/), [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/), [policy do Load Balancer Controller 2.14.1](https://github.com/kubernetes-sigs/aws-load-balancer-controller/blob/v2.14.1/docs/install/iam_policy.json).

@@ -15,6 +15,7 @@ export function secretSelector(value) {
 /** Returns native resources; resolveSecret is injected to permit offline verification. */
 export async function render(config, resolveSecret) {
   const ns = config.namespace;
+  const labIam = config.iam_mode === "learner-lab-existing";
   if (!names.test(ns) || !names.test(`${ns}-imports`))
     throw new Error("Invalid namespace.");
   if (!(
@@ -61,7 +62,7 @@ export async function render(config, resolveSecret) {
   for (const [name, workload] of Object.entries(config.workloads)) {
     if (name === "analysis-worker" && !config.analysis_enabled) continue;
     const namespace = name === "ingestion-import" ? `${ns}-imports` : ns;
-    if (!config.workload_roles[name])
+    if (!labIam && !config.workload_roles[name])
       throw new Error(`Missing workload role: ${name}`);
     add(
       "v1",
@@ -72,9 +73,13 @@ export async function render(config, resolveSecret) {
         metadata: {
           name,
           namespace,
-          annotations: {
-            "eks.amazonaws.com/role-arn": config.workload_roles[name],
-          },
+          ...(labIam
+            ? {}
+            : {
+                annotations: {
+                  "eks.amazonaws.com/role-arn": config.workload_roles[name],
+                },
+              }),
         },
       },
       namespace,
@@ -127,7 +132,13 @@ export async function render(config, resolveSecret) {
         image: source.image,
         imagePullPolicy: "IfNotPresent",
         ...(source.args.length ? { args: source.args } : {}),
-        env,
+        env: [
+          ...env,
+          {
+            name: "AWS_EC2_METADATA_DISABLED",
+            value: labIam ? "false" : "true",
+          },
+        ],
         securityContext: mysql
           ? {
               allowPrivilegeEscalation: false,
@@ -147,7 +158,7 @@ export async function render(config, resolveSecret) {
             },
         resources: {
           requests: {
-            cpu: `${snapshot ? Math.ceil(cpu / 2) : cpu}m`,
+            cpu: `${snapshot ? Math.ceil(cpu / (labIam ? 4 : 2)) : cpu}m`,
             memory: `${snapshot ? Math.floor(memory / 2) : memory}Mi`,
             "ephemeral-storage": snapshot ? (mysql ? "128Gi" : "64Gi") : "1Gi",
           },

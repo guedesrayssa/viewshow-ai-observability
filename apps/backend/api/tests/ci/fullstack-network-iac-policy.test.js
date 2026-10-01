@@ -40,13 +40,10 @@ test("bastion defaults to SSM and never exposes SSH globally", () => {
   const variables = read("variables.tf");
 
   assert.match(bastion, /resource "aws_instance" "bastion"/);
+  assert.match(bastion, /subnet_id\s*=\s*aws_subnet\.publica\["a"\]\.id/);
   assert.match(
     bastion,
-    /subnet_id\s*=\s*aws_subnet\.publica\["a"\]\.id/,
-  );
-  assert.match(
-    bastion,
-    /iam_instance_profile\s*=\s*aws_iam_instance_profile\.administration\["bastion"\]\.name/,
+    /iam_instance_profile\s*=\s*local\.administration_profiles\["bastion"\]/,
   );
   assert.match(bastion, /http_tokens\s*=\s*"required"/);
   assert.match(bastion, /encrypted\s*=\s*true/);
@@ -92,8 +89,14 @@ test("Cognito domain is globally unique to the active AWS account", () => {
 
 test("EKS node scaling leaves desired capacity to autoscaler", () => {
   const eks = read("eks.tf");
-  assert.match(eks, /ignore_changes\s*=\s*\[scaling_config\[0\].desired_size\]/);
-  assert.match(eks, /http_put_response_hop_limit\s*=\s*1/);
+  assert.match(
+    eks,
+    /ignore_changes\s*=\s*\[scaling_config\[0\].desired_size\]/,
+  );
+  assert.match(
+    eks,
+    /http_put_response_hop_limit\s*=\s*local\.eks_manages_iam\s*\?\s*1\s*:\s*2/,
+  );
 });
 
 test("infrastructure guide documents implemented rubric substitutions", () => {
@@ -109,10 +112,7 @@ test("infrastructure guide documents implemented rubric substitutions", () => {
   ]) {
     assert.match(documentation, new RegExp(phrase, "i"));
   }
-  assert.doesNotMatch(
-    documentation,
-    /arquitetura-alvo[\s\S]*RDS Multi-AZ/i,
-  );
+  assert.doesNotMatch(documentation, /arquitetura-alvo[\s\S]*RDS Multi-AZ/i);
 });
 
 test("infrastructure guide preserves the delivered video and ABNT table captions", () => {

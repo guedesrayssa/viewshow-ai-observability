@@ -402,14 +402,14 @@ locals {
   ingestion_subnet_ids       = values(aws_subnet.privada)[*].id
   ingestion_assign_public_ip = false
 
-  api_task_role_arn                           = aws_iam_role.workload["api"].arn
-  api_task_role_name                          = aws_iam_role.workload["api"].name
-  ingestion_import_task_role_arn              = aws_iam_role.workload["ingestion-import"].arn
-  ingestion_import_task_role_name             = aws_iam_role.workload["ingestion-import"].name
-  ingestion_incremental_export_task_role_arn  = aws_iam_role.workload["ingestion-incremental-export"].arn
-  ingestion_incremental_export_task_role_name = aws_iam_role.workload["ingestion-incremental-export"].name
-  ingestion_incremental_ingest_task_role_arn  = aws_iam_role.workload["ingestion-incremental-ingest"].arn
-  ingestion_incremental_ingest_task_role_name = aws_iam_role.workload["ingestion-incremental-ingest"].name
+  api_task_role_arn                           = local.eks_manages_iam ? aws_iam_role.workload["api"].arn : var.eks_existing_node_role_arn
+  api_task_role_name                          = local.eks_manages_iam ? aws_iam_role.workload["api"].name : null
+  ingestion_import_task_role_arn              = local.eks_manages_iam ? aws_iam_role.workload["ingestion-import"].arn : var.eks_existing_node_role_arn
+  ingestion_import_task_role_name             = local.eks_manages_iam ? aws_iam_role.workload["ingestion-import"].name : null
+  ingestion_incremental_export_task_role_arn  = local.eks_manages_iam ? aws_iam_role.workload["ingestion-incremental-export"].arn : var.eks_existing_node_role_arn
+  ingestion_incremental_export_task_role_name = local.eks_manages_iam ? aws_iam_role.workload["ingestion-incremental-export"].name : null
+  ingestion_incremental_ingest_task_role_arn  = local.eks_manages_iam ? aws_iam_role.workload["ingestion-incremental-ingest"].arn : var.eks_existing_node_role_arn
+  ingestion_incremental_ingest_task_role_name = local.eks_manages_iam ? aws_iam_role.workload["ingestion-incremental-ingest"].name : null
 
   ingestion_snapshot_mysql_secret_arn = local.ingestion_is_production ? var.snapshot_mysql_secret_arn_ingestao : aws_secretsmanager_secret.snapshot_mysql[0].arn
   ingestion_live_mysql_secret_arn     = local.ingestion_is_production ? var.live_mysql_secret_arn_ingestao : aws_secretsmanager_secret.live_mysql[0].arn

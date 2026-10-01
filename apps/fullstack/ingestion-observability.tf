@@ -708,24 +708,17 @@ resource "aws_cloudwatch_dashboard" "ingestion" {
         width  = 24
         height = 6
         properties = {
-          title  = "Recursos das tasks (Container Insights)"
+          title  = "Recursos Kubernetes (Container Insights)"
           view   = "timeSeries"
           region = var.regiao
           stat   = "Average"
           period = 300
           metrics = [
             ["ContainerInsights", "node_cpu_utilization", "ClusterName", aws_eks_cluster.principal.name, { label = "CPU nós EKS" }],
-            [".", "CpuReserved", ".", ".", ".", ".", { label = "CPU backfill reservada" }],
-            [".", "MemoryUtilized", ".", ".", ".", ".", { label = "Memória backfill utilizada" }],
-            [".", "MemoryReserved", ".", ".", ".", ".", { label = "Memória backfill reservada" }],
-            [".", "EphemeralStorageUtilized", ".", ".", ".", ".", { label = "Disco backfill utilizado" }],
-            [".", "EphemeralStorageReserved", ".", ".", ".", ".", { label = "Disco backfill reservado" }],
             ["ContainerInsights", "node_memory_utilization", "ClusterName", aws_eks_cluster.principal.name, { label = "Memória nós EKS" }],
-            [".", "CpuReserved", ".", ".", ".", ".", { label = "CPU sync reservada" }],
-            [".", "MemoryUtilized", ".", ".", ".", ".", { label = "Memória sync utilizada" }],
-            [".", "MemoryReserved", ".", ".", ".", ".", { label = "Memória sync reservada" }],
-            [".", "EphemeralStorageUtilized", ".", ".", ".", ".", { label = "Disco sync utilizado" }],
-            [".", "EphemeralStorageReserved", ".", ".", ".", ".", { label = "Disco sync reservado" }],
+            ["ContainerInsights", "node_filesystem_utilization", "ClusterName", aws_eks_cluster.principal.name, { label = "Disco nós EKS" }],
+            ["ContainerInsights", "pod_cpu_utilization_over_pod_limit", "ClusterName", aws_eks_cluster.principal.name, "Namespace", var.deployment_namespace, "PodName", "api", { label = "CPU API" }],
+            ["ContainerInsights", "pod_memory_utilization_over_pod_limit", "ClusterName", aws_eks_cluster.principal.name, "Namespace", var.deployment_namespace, "PodName", "api", { label = "Memória API" }],
             ["AWS/Athena", "ProcessedBytes", "WorkGroup", aws_athena_workgroup.ingestion.name, { label = "Athena bytes processados" }],
           ]
         }

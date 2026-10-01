@@ -419,7 +419,7 @@ locals {
 }
 
 resource "aws_iam_role_policy" "api_import" {
-  count = 1
+  count = local.eks_manages_iam ? 1 : 0
 
   name   = "${var.deployment_namespace}-api-import"
   role   = local.api_task_role_name
@@ -427,7 +427,7 @@ resource "aws_iam_role_policy" "api_import" {
 }
 
 resource "aws_iam_role_policy" "ingestion_import" {
-  count = 1
+  count = local.eks_manages_iam ? 1 : 0
 
   name   = "${var.deployment_namespace}-ingestion-import"
   role   = local.ingestion_import_task_role_name

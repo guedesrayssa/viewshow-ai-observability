@@ -11,6 +11,18 @@ const cluster = resource("aws_eks_cluster", "aws_eks_cluster.principal", [
   "create",
 ]);
 const plan = (...changes) => ({ resource_changes: [cluster, ...changes] });
+test("complete no-change plans pass while failed or deferred plans fail closed", () => {
+  const unchanged = {
+    complete: true,
+    errored: false,
+    applyable: false,
+    resource_changes: [resource("aws_eks_cluster", "aws_eks_cluster.principal", ["no-op"])],
+  };
+  validatePlan(unchanged, { update: true });
+  assert.throws(() => validatePlan({ ...unchanged, errored: true }));
+  assert.throws(() => validatePlan({ ...unchanged, complete: false }));
+  assert.throws(() => validatePlan({ ...unchanged, resource_changes: [cluster] }));
+});
 test("Kubernetes creation and updates pass", () => {
   validatePlan(
     plan(

@@ -13,6 +13,7 @@ output "kubernetes_deployment" {
   description = "Entrada sensível para apps/kubernetes/deploy.mjs; nunca versione este output."
   sensitive   = true
   value = {
+    iam_mode                    = var.eks_iam_mode
     cluster_name                = aws_eks_cluster.principal.name
     cluster_arn                 = aws_eks_cluster.principal.arn
     region                      = var.regiao
@@ -46,7 +47,7 @@ output "kubernetes_runbook" {
     namespace         = var.deployment_namespace
     imports_namespace = "${var.deployment_namespace}-imports"
     region            = var.regiao
-    kubeconfig        = "aws eks update-kubeconfig --name ${aws_eks_cluster.principal.name} --region ${var.regiao} --role-arn ${var.eks_admin_role_arn}"
+    kubeconfig        = "aws eks update-kubeconfig --name ${aws_eks_cluster.principal.name} --region ${var.regiao}${local.eks_manages_iam ? " --role-arn ${var.eks_admin_role_arn}" : ""}"
     api_logs          = "kubectl -n ${var.deployment_namespace} logs -f deployment/api"
     ingestion_logs    = "kubectl -n ${var.deployment_namespace}-imports logs -f job/IMPORT_JOB -c ingestion"
     deploy            = "node apps/kubernetes/deploy.mjs"

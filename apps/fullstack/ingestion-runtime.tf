@@ -163,7 +163,7 @@ data "aws_ecr_image" "ingestion" {
 }
 
 resource "aws_iam_role_policy" "ingestion_incremental_export" {
-  count = 1
+  count = local.eks_manages_iam ? 1 : 0
 
   name = "${local.ingestion_name_prefix}-incremental-export"
   role = local.ingestion_incremental_export_task_role_name
@@ -242,7 +242,7 @@ resource "aws_iam_role_policy" "ingestion_incremental_export" {
 }
 
 resource "aws_iam_role_policy" "ingestion_incremental_ingest" {
-  count = 1
+  count = local.eks_manages_iam ? 1 : 0
 
   name = "${local.ingestion_name_prefix}-incremental-ingest"
   role = local.ingestion_incremental_ingest_task_role_name

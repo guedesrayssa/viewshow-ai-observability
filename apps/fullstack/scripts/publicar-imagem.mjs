@@ -40,7 +40,10 @@ function executar(comando, argumentos, opcoes = {}) {
 
 const executarAws = (argumentos) => executar("aws", argumentos);
 const executarDocker = (argumentos, opcoes = {}) =>
-  executar("docker", argumentos, { stdio: ["inherit", "inherit", "inherit"], ...opcoes });
+  executar("docker", argumentos, {
+    stdio: ["inherit", "inherit", "inherit"],
+    ...opcoes,
+  });
 
 function exigir(resultado, comando) {
   if (resultado.status !== 0) {
@@ -68,7 +71,8 @@ export function publicarImagem(ambiente = process.env, executores = {}) {
   const { aws = executarAws, docker = executarDocker } = executores;
 
   for (const nome of VARIAVEIS_OBRIGATORIAS) {
-    if (!ambiente[nome]) throw new Error(`variável de ambiente ausente: ${nome}`);
+    if (!ambiente[nome])
+      throw new Error(`variável de ambiente ausente: ${nome}`);
   }
 
   const { REGIAO, REPO_URL, TAG, CONTEXTO } = ambiente;
@@ -84,13 +88,22 @@ export function publicarImagem(ambiente = process.env, executores = {}) {
 
   // A senha entra por stdin, nunca como argumento: argumentos de processo são
   // legíveis por qualquer usuário da máquina via /proc ou Gerenciador de Tarefas.
-  exigir(
-    docker(["login", "--username", "AWS", "--password-stdin", registro], {
-      input: senha,
-      stdio: ["pipe", "inherit", "inherit"],
-    }),
-    "docker login",
-  );
+  // Concurrent Terraform image builds share the Docker credential helper.
+  // macOS Keychain may report a duplicate item when two logins overlap.
+  let login;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    login = docker(
+      ["login", "--username", "AWS", "--password-stdin", registro],
+      {
+        input: senha,
+        stdio: ["pipe", "inherit", "inherit"],
+      },
+    );
+    if (login.status === 0) break;
+    if (attempt < 2)
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 750);
+  }
+  exigir(login, "docker login");
 
   const existente = aws([
     "ecr",
@@ -112,7 +125,9 @@ export function publicarImagem(ambiente = process.env, executores = {}) {
   // "exec format error".
   console.log(`construindo ${imagem}`);
   exigir(
-    docker(["build", "--platform", "linux/amd64", "-t", imagem, "."], { cwd: CONTEXTO }),
+    docker(["build", "--platform", "linux/amd64", "-t", imagem, "."], {
+      cwd: CONTEXTO,
+    }),
     "docker build",
   );
 
@@ -123,7 +138,10 @@ export function publicarImagem(ambiente = process.env, executores = {}) {
   return "published";
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     publicarImagem();
   } catch (error) {

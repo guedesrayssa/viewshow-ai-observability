@@ -171,3 +171,39 @@ test("missing live credentials are allowed only while the schedule is suspended"
     /Missing required secret/,
   );
 });
+
+test("Academy uses node credentials while retaining Kubernetes service accounts/RBAC", async () => {
+  const lab = structuredClone(config);
+  lab.iam_mode = "learner-lab-existing";
+  lab.workload_roles = {};
+  const output = await render(lab, async () => "test-password");
+  for (const serviceAccount of output.resources.filter(
+    (r) => r.kind === "ServiceAccount",
+  ))
+    assert.equal(
+      serviceAccount.metadata.annotations?.["eks.amazonaws.com/role-arn"],
+      undefined,
+    );
+  const api = output.resources.find(
+    (r) => r.kind === "Deployment" && r.metadata.name === "api",
+  );
+  assert.equal(api.spec.template.spec.serviceAccountName, "api");
+  const pod = output.resources.find(
+    (r) => r.kind === "CronJob" && r.metadata.name === "ingestion-import",
+  ).spec.jobTemplate.spec.template.spec;
+  assert.equal(pod.containers[0].resources.requests.cpu, "500m");
+  assert.equal(pod.initContainers[0].resources.requests.cpu, "500m");
+  assert.equal(pod.containers[0].resources.limits.cpu, "1000m");
+  assert.equal(
+    api.spec.template.spec.containers[0].env.find(
+      (v) => v.name === "AWS_EC2_METADATA_DISABLED",
+    ).value,
+    "false",
+  );
+  assert.equal(
+    find("Deployment", "api").spec.template.spec.containers[0].env.find(
+      (v) => v.name === "AWS_EC2_METADATA_DISABLED",
+    ).value,
+    "true",
+  );
+});

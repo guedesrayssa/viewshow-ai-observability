@@ -25,12 +25,13 @@ trap 'rm -rf -- "${RENDER_WORK_DIR}"' EXIT HUP INT TERM
 sed \
   -e "s|\${account_id}|$(escape_sed_replacement "${RENDER_AWS_ACCOUNT_ID}")|g" \
   -e "s|\${aws_region}|$(escape_sed_replacement "${RENDER_AWS_REGION}")|g" \
-  -e 's|${cluster_name}|data-ingestion-cluster|g' \
+  -e 's|${cluster_name}|view-show-iac-cluster|g' \
+  -e 's|${namespace}|view-show|g' \
   -e 's|${service_name}|monitoracao-api-service|g' \
   -e 's|${load_balancer}|data-ingestion-alb|g' \
   -e 's|${target_group}|monitoracao-api-tg|g' \
   -e 's|${operational_table}|monitoracao-operacional|g' \
-  -e 's|${log_group}|/ecs/monitoracao-api|g' \
+  -e 's|${log_group}|/aws/containerinsights/view-show-iac-cluster/application|g' \
   "${SCRIPT_DIR}/view-show-aws.json.tftpl" >"${RENDER_WORK_DIR}/view-show-aws.json"
 
 COMPOSE_GZIP=$(encode_file "${SCRIPT_DIR}/docker-compose.yml")

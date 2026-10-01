@@ -17,9 +17,13 @@ mock_provider "random" {
 }
 mock_provider "archive" {}
 variables {
-  deployment_namespace    = "view-show"
-  eks_admin_role_arn      = "arn:aws:iam::123456789012:role/operator"
-  eks_public_access_cidrs = ["192.0.2.1/32"]
+  eks_node_root_volume_gib = 300
+  eks_node_instance_store  = false
+  eks_node_instance_types  = ["m6i.xlarge"]
+  eks_iam_mode             = "managed"
+  deployment_namespace     = "view-show"
+  eks_admin_role_arn       = "arn:aws:iam::123456789012:role/operator"
+  eks_public_access_cidrs  = ["192.0.2.1/32"]
 }
 override_resource {
   target          = aws_dynamodb_table.operacional
@@ -88,4 +92,39 @@ run "observability_migration_preserves_history" {
     condition     = !aws_instance.observabilidade[0].user_data_replace_on_change
     error_message = "Observability must update the EKS dashboard without replacing historical volumes."
   }
+}
+
+run "academy_existing_roles_without_iam_mutations" {
+  command = plan
+  variables {
+    eks_iam_mode                  = "learner-lab-existing"
+    eks_existing_cluster_role_arn = "arn:aws:iam::123456789012:role/LabEksClusterRole"
+    eks_existing_node_role_arn    = "arn:aws:iam::123456789012:role/LabRole"
+    eks_existing_instance_profile = "LabInstanceProfile"
+    eks_node_root_volume_gib      = 100
+    eks_node_instance_store       = true
+    eks_node_instance_types       = ["i3.large"]
+  }
+  assert {
+    condition     = length(aws_iam_role.eks_cluster) == 0 && length(aws_iam_role.eks_node) == 0 && length(aws_iam_role.workload) == 0 && length(aws_iam_role.eks_system) == 0 && length(aws_iam_openid_connect_provider.eks) == 0 && length(aws_iam_role.administration) == 0 && length(aws_iam_role_policy.api_import) == 0 && length(aws_iam_role_policy.ingestion_runtime) == 0
+    error_message = "Academy must never create roles, OIDC providers or policies."
+  }
+  assert {
+    condition     = aws_eks_cluster.principal.role_arn == var.eks_existing_cluster_role_arn && aws_eks_node_group.principal.node_role_arn == var.eks_existing_node_role_arn && aws_launch_template.eks_node.metadata_options[0].http_put_response_hop_limit == 2 && aws_instance.bastion.iam_instance_profile == "LabInstanceProfile" && strcontains(base64decode(aws_launch_template.eks_node.user_data), "strategy: RAID0")
+    error_message = "Academy must reuse the pre-provisioned roles/profile and permit IMDSv2 from Pods."
+  }
+}
+run "existing_roles_reject_production" {
+  command = plan
+  variables {
+    ambiente                      = "production"
+    eks_iam_mode                  = "learner-lab-existing"
+    eks_existing_cluster_role_arn = "arn:aws:iam::123456789012:role/LabEksClusterRole"
+    eks_existing_node_role_arn    = "arn:aws:iam::123456789012:role/LabRole"
+    eks_existing_instance_profile = "LabInstanceProfile"
+    eks_node_root_volume_gib      = 100
+    eks_node_instance_store       = true
+    eks_node_instance_types       = ["i3.large"]
+  }
+  expect_failures = [terraform_data.eks_iam_guardrails, terraform_data.ingestion_guardrails]
 }

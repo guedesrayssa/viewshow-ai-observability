@@ -1,5 +1,6 @@
 resource "aws_iam_role_policy" "api_runtime" {
-  role = aws_iam_role.workload["api"].name
+  count = local.eks_manages_iam ? 1 : 0
+  role  = aws_iam_role.workload["api"].name
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:BatchGetItem", "dynamodb:BatchWriteItem", "dynamodb:ConditionCheckItem"], Resource = [aws_dynamodb_table.operacional.arn, "${aws_dynamodb_table.operacional.arn}/index/*", aws_dynamodb_table.golden_set.arn, "${aws_dynamodb_table.golden_set.arn}/index/*"] },
     { Effect = "Allow", Action = ["cognito-idp:InitiateAuth", "cognito-idp:RespondToAuthChallenge"], Resource = aws_cognito_user_pool.principal.arn },
@@ -8,7 +9,7 @@ resource "aws_iam_role_policy" "api_runtime" {
   ] })
 }
 resource "aws_iam_role_policy" "ingestion_runtime" {
-  for_each = toset(["ingestion-backfill", "ingestion-sync"])
+  for_each = local.eks_manages_iam ? toset(["ingestion-backfill", "ingestion-sync"]) : toset([])
   role     = aws_iam_role.workload[each.key].name
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:BatchGetItem", "dynamodb:BatchWriteItem", "dynamodb:ConditionCheckItem"], Resource = [aws_dynamodb_table.operacional.arn, "${aws_dynamodb_table.operacional.arn}/index/*"] },
@@ -20,7 +21,8 @@ resource "aws_iam_role_policy" "ingestion_runtime" {
   ] })
 }
 resource "aws_iam_role_policy" "analysis_runtime" {
-  role = aws_iam_role.workload["analysis-worker"].name
+  count = local.eks_manages_iam ? 1 : 0
+  role  = aws_iam_role.workload["analysis-worker"].name
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.analysis.arn },
     { Effect = "Allow", Action = ["sqs:SendMessage"], Resource = aws_sqs_queue.analysis_dlq.arn },
