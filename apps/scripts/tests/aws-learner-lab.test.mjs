@@ -86,6 +86,15 @@ function testEnvironment({
   analysisCanaryState = "SUCCEEDED",
   analysisCanaryInitialEmptyReads = 0,
   observabilityEndpoint = "http://10.0.10.5:4320",
+  grafanaAccess = {
+    usuario: "admin",
+    tunel_ssm: "aws ssm start-session --target i-0123456789abcdef0",
+    url_tunel: "http://localhost:3002",
+  },
+  observabilityInstanceId = "i-0123456789abcdef0",
+  grafanaPassword = "TestGrafanaPassword123",
+  bastionAccess = { instancia_id: "i-0abc1234def567890" },
+  bastionPrivateIp = "10.0.10.20",
   updateGateAccepted = true,
   activeImportId = null,
   activeImportIds = null,
@@ -222,6 +231,9 @@ function testEnvironment({
             stderr: "",
           }
         : { status: 255, stdout: "", stderr: "InvalidKeyPair.NotFound" };
+    }
+    if (command === "aws" && args[0] === "ec2" && args[1] === "describe-instances") {
+      return { status: 0, stdout: `${bastionPrivateIp}\n`, stderr: "" };
     }
     if (command === "aws" && args[0] === "ec2") {
       return credentialsActive
@@ -430,6 +442,18 @@ function testEnvironment({
       return { status: 0, stdout: JSON.stringify({ MessageId: "message-canary-1" }), stderr: "" };
     }
     if (command === "terraform" && args.includes("output")) {
+      if (args.at(-1) === "grafana_acesso") {
+        return { status: 0, stdout: JSON.stringify(grafanaAccess), stderr: "" };
+      }
+      if (args.at(-1) === "observabilidade_instancia_id") {
+        return { status: 0, stdout: `${observabilityInstanceId}\n`, stderr: "" };
+      }
+      if (args.at(-1) === "grafana_senha") {
+        return { status: 0, stdout: `${grafanaPassword}\n`, stderr: "" };
+      }
+      if (args.at(-1) === "bastion_acesso") {
+        return { status: 0, stdout: JSON.stringify(bastionAccess), stderr: "" };
+      }
       if (args.at(-1) === "observabilidade_otlp_workers_endpoint") {
         if (observabilityEndpoint === null && !applied) {
           return {
@@ -1193,6 +1217,83 @@ test("help commands print usage and perform no infrastructure work", async () =>
     assert.deepEqual(a.calls, [], String(step));
     assert.match(a.logs.join("\n"), /usage:.*aws-learner-lab\.mjs/i);
     assert.match(a.logs.join("\n"), /check.*build-snapshot.*deploy.*seed.*evidence.*all/is);
+  }
+});
+
+test("grafana starts a private SSM tunnel from validated Terraform outputs on every supported OS", async () => {
+  for (const platform of ["linux", "darwin", "win32"]) {
+    const a = testEnvironment({ platform });
+
+    const result = await runLearnerLab({ ...a.options, step: "grafana" });
+
+    assert.equal(result.status, 0, platform);
+    assert.ok(a.logs.includes("Grafana URL: http://localhost:3002"), platform);
+    assert.ok(a.logs.includes("Grafana user: admin"), platform);
+    assert.ok(a.logs.some((line) => line.includes("grafana_senha")), platform);
+    const tunnel = a.calls.find(
+      (call) => call.command === "aws" && call.args[0] === "ssm" && call.args[1] === "start-session",
+    );
+    assert.deepEqual(tunnel?.args, [
+      "ssm",
+      "start-session",
+      "--target",
+      "i-0123456789abcdef0",
+      "--document-name",
+      "AWS-StartPortForwardingSession",
+      "--parameters",
+      "portNumber=3000,localPortNumber=3002",
+      "--region",
+      "us-east-1",
+      "--profile",
+      "default",
+    ], platform);
+    assert.equal(tunnel?.options.stdio, "inherit", platform);
+  }
+});
+
+test("grafana --senha prints the local password without starting a tunnel", async () => {
+  const a = testEnvironment();
+
+  const result = await runLearnerLab({
+    ...a.options,
+    step: "grafana",
+    extraArguments: ["--senha"],
+  });
+
+  assert.equal(result.status, 0);
+  assert.ok(a.logs.includes("Grafana password: TestGrafanaPassword123"));
+  assert.equal(
+    a.calls.some((call) => call.command === "aws"),
+    false,
+  );
+});
+
+test("analysis-bridge opens the private Ollama bridge without touching ECS on every supported OS", async () => {
+  for (const platform of ["linux", "darwin", "win32"]) {
+    const a = testEnvironment({ platform });
+    const spawned = [];
+    const killed = [];
+    const result = await runLearnerLab({
+      ...a.options,
+      step: "analysis-bridge",
+      readInput: async (prompt) => ({
+        "Ollama SSH user: ": "student",
+        "Ollama SSH host: ": "10.8.8.10",
+        "Bastion key file: ": "/tmp/vockey.pem",
+      })[prompt],
+      spawnProcess: (command, args, options) => {
+        spawned.push({ command, args, options });
+        return { kill: (signal) => killed.push({ command, signal }) };
+      },
+      waitForPort: async () => {},
+      waitForBridgeStop: async (_children, stop) => stop(),
+    });
+
+    assert.equal(result.status, 0, a.logs.join("\n"));
+    assert.deepEqual(spawned.map((entry) => entry.command), ["ssh", "aws", "ssh"], platform);
+    assert.equal(a.calls.some((call) => call.args[0] === "ecs"), false, platform);
+    assert.equal(killed.length, 3, platform);
+    assert.ok(a.logs.some((line) => line.includes("Ollama bridge ready")), platform);
   }
 });
 

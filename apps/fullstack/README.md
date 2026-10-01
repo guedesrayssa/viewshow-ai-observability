@@ -83,6 +83,19 @@ export VIEW_SHOW_OLLAMA_BASE_URL="http://<ipv4-rfc1918>:11434"
 export VIEW_SHOW_OLLAMA_MODEL_ID="<modelo-instalado-no-ollama>"
 ```
 
+Quando o Ollama da faculdade não tem rota direta para a VPC, abra a ponte SSH
+temporária em um único terminal antes de ativar o worker:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs analysis-bridge
+```
+
+O comando pede interativamente o usuário/host do Ollama e o caminho local da
+chave `vockey`; ele não grava esses valores. Mantenha-o aberto, copie o endpoint
+privado informado para `VIEW_SHOW_OLLAMA_BASE_URL` no terminal que executará
+`analysis-activate` e use `Ctrl+C` para encerrar os três túneis. A configuração
+restrita de `sshd` no bastion (`PermitListen`) continua sendo pré-requisito único.
+
 Para uma stack nova, passe também o model ID no `setup` ou `deploy`. O serviço é criado com zero réplicas:
 
 ```bash
@@ -130,6 +143,26 @@ O worker continua restrito ao perfil `learner-lab`. Sem uma rota privada aprovad
 
 O checklist completo, os critérios de bloqueio, o rollback e o modelo de
 evidências ficam no [runbook de rollout do Agentic com Ollama](observability/docs/runbooks/agentic-ollama-deployment.md).
+
+## Abrir o Grafana privado
+
+Com a observabilidade provisionada e credenciais AWS ativas, abra o Grafana em
+um único comando, no Linux, macOS ou Windows:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs grafana
+```
+
+O comando abre o túnel SSM e informa `http://localhost:3002` e o usuário
+`admin`. Ele permanece em execução até `Ctrl+C`. A senha é sensível e é lida
+somente pela pessoa que possui o state Terraform local:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs grafana --senha
+```
+
+Esse modo mostra a senha no terminal e não abre o túnel; use-o apenas em um
+terminal privado.
 
 ## Destroy
 

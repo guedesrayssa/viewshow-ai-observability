@@ -118,43 +118,20 @@ Não coloque SSH ou credenciais na task ECS.
    ele cria o worker com zero réplicas e a regra restrita da ponte. O comando
    guarda essa escolha no manifesto local para ativação e desativação.
 
-4. Em outro terminal do notebook, mantenha o túnel local do Gate local aberto:
+4. Em um terminal do notebook, abra os três túneis com o facilitador
+   multiplataforma. Ele pergunta o usuário/host do Ollama e o caminho da chave
+   `vockey` sem gravá-los; a senha do Ollama continua sendo solicitada pelo SSH:
 
    ```bash
-   read -r -p "SSH user: " OLLAMA_SSH_USER
-   read -r -p "SSH host: " OLLAMA_SSH_HOST
-   ssh -N -T -L 127.0.0.1:11434:127.0.0.1:11434 "${OLLAMA_SSH_USER}@${OLLAMA_SSH_HOST}"
+   node apps/scripts/aws-learner-lab.mjs analysis-bridge
    ```
 
-5. Em outro terminal, obtenha novamente `BASTION_ID` pelo comando do passo 1
-   e mantenha uma sessão SSM encaminhando a porta SSH do
-   bastion para uma porta local. Isso não exige abrir SSH público na EC2:
+   Mantenha o processo aberto. Ele exibe o endpoint privado do bastion; exporte
+   esse valor em `VIEW_SHOW_OLLAMA_BASE_URL` no terminal de ativação. Em Windows,
+   use PowerShell ou Prompt de Comando com os clientes `ssh`, AWS CLI v2 e Session
+   Manager Plugin instalados.
 
-   ```bash
-   aws ssm start-session --target "$BASTION_ID" --region us-east-1 \
-     --document-name AWS-StartPortForwardingSession \
-     --parameters '{"portNumber":["22"],"localPortNumber":["2222"]}'
-   ```
-
-6. Em outro terminal, obtenha novamente `BASTION_ID` e
-   `BASTION_PRIVATE_IP` pelos comandos do passo 1. Use a chave SSH `vockey`
-   correspondente à instância; a chave `labsuser.pem` não deve ser presumida
-   equivalente. Se `vockey` não estiver disponível, gere uma chave temporária
-   exclusiva para este teste e adicione somente sua chave pública ao
-   `authorized_keys` de `ec2-user` via SSM, com as restrições
-   `restrict,port-forwarding,permitlisten="<IP_PRIVADO_DO_BASTION>:11434",command="/bin/false"`.
-   Confira a impressão digital da chave de host via SSM antes de aceitar uma
-   chave nova no notebook e mantenha o túnel reverso aberto:
-
-   ```bash
-   read -r -p "Caminho da chave SSH do bastion: " BASTION_KEY_FILE
-   ssh -N -T -i "$BASTION_KEY_FILE" -p 2222 \
-     -o HostKeyAlias=view-show-bastion -o ExitOnForwardFailure=yes \
-     -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
-     -R "${BASTION_PRIVATE_IP}:11434:127.0.0.1:11434" ec2-user@127.0.0.1
-   ```
-
-7. Confirme `/api/tags` pelo IP privado dentro do bastion e depois execute
+5. Confirme `/api/tags` pelo IP privado dentro do bastion e depois execute
    `analysis-check`. Se a conexão SSH cair, interrompa a ativação e deixe o
    worker em zero réplicas. Ao terminar o canário, execute
    `analysis-deactivate` antes de fechar os túneis. A regra da ponte permanece

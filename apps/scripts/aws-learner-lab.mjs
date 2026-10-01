@@ -19,7 +19,7 @@
 // This script never activates a candidate dataset; activation remains a separate,
 // deliberate operation.
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
   accessSync,
@@ -50,6 +50,18 @@ import { createInterface } from "node:readline/promises";
 import { tmpdir } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  grafanaTunnelArguments,
+  readGrafanaAccess,
+  readGrafanaPassword,
+  readObservabilityInstanceId,
+  parseGrafanaArguments,
+} from "./lib/grafana-access.mjs";
+import {
+  readBastionAccess,
+  readPrivateIpv4,
+  runOllamaBridge,
+} from "./lib/ollama-bridge.mjs";
 import { normalizePrivateOllamaBaseUrl } from "./ollama-url-policy.mjs";
 
 const COMMANDS = [
@@ -63,6 +75,8 @@ const COMMANDS = [
   "seed",
   "import-canary",
   "evidence",
+  "grafana",
+  "analysis-bridge",
   "analysis-prepare",
   "analysis-check",
   "analysis-activate",
@@ -261,6 +275,8 @@ const ANALYSIS_CANARY_TIMEOUT_SECONDS = 300;
 const HELP = `Usage: node apps/scripts/aws-learner-lab.mjs <command>
        node apps/scripts/aws-learner-lab.mjs setup [--profile <name>] [--yes] [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
        node apps/scripts/aws-learner-lab.mjs deploy [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
+       node apps/scripts/aws-learner-lab.mjs grafana [--senha]
+       node apps/scripts/aws-learner-lab.mjs analysis-bridge
        node apps/scripts/aws-learner-lab.mjs analysis-prepare --analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json> --analysis-model-id <ollama-model> [--ssh-bridge]
        node apps/scripts/aws-learner-lab.mjs analysis-check|analysis-activate|analysis-smoke|analysis-canary|analysis-deactivate
        node apps/scripts/aws-learner-lab.mjs destroy
@@ -277,6 +293,8 @@ Commands:
   update          Apply one hardcoded update preset to an existing stack
   seed            Upload the snapshot and run a non-activating backfill
   import-canary   Exercise the public multipart import without activating it
+  grafana         Open a private SSM tunnel; --senha prints the local Grafana password
+  analysis-bridge Open the temporary private SSH bridge from ECS to Ollama
   analysis-prepare    Provision the Ollama worker and observability with zero replicas
   analysis-check      Check Ollama connectivity from a one-off private ECS task
   analysis-activate   Repeat the connectivity check and scale the worker from 0 to 1
@@ -1451,7 +1469,7 @@ export function isExactConfirmation(answer, phrase) {
 }
 
 function checkPrerequisites(context) {
-  const { execute, log, platform, root, step, exists, profile } = context;
+  const { execute, log, platform, root, step, exists, profile, grafanaConfiguration } = context;
   const missing = [];
   const awsArgs = (args) => [...args, "--profile", profile];
   const require = (label, ok, resolution) => {
@@ -1470,6 +1488,7 @@ function checkPrerequisites(context) {
     "seed",
     "import-canary",
     "analysis-prepare",
+    "analysis-bridge",
     "analysis-check",
     "analysis-activate",
     "analysis-smoke",
@@ -1489,6 +1508,7 @@ function checkPrerequisites(context) {
     "seed",
     "import-canary",
     "analysis-prepare",
+    "analysis-bridge",
     "analysis-check",
     "analysis-activate",
     "analysis-smoke",
@@ -1496,9 +1516,10 @@ function checkPrerequisites(context) {
     "analysis-deactivate",
     "evidence",
     "all",
-  ].includes(step);
+  ].includes(step) || (step === "grafana" && !grafanaConfiguration?.showPassword);
   const needsDocker = ["setup", "check", "deploy", "plan-update", "update", "analysis-prepare", "all"].includes(step);
   const needsPython = ["check", "build-snapshot", "seed", "all"].includes(step);
+  const needsSsh = step === "analysis-bridge";
 
   if (needsTerraform) {
     const result = execute("terraform", ["version", "-json"], terraformOptions(context));
@@ -1541,6 +1562,13 @@ function checkPrerequisites(context) {
       "AWS CLI v2",
       awsCliVersion(result)?.[0] === 2,
       "install AWS CLI v2",
+    );
+  }
+  if (needsSsh) {
+    require(
+      "OpenSSH client",
+      execute("ssh", ["-V"]).status === 0,
+      "install an OpenSSH client and rerun",
     );
   }
   if (needsDocker) {
@@ -1654,6 +1682,84 @@ function checkPrerequisites(context) {
   }
   log("");
   return { ok: true, python, identity, venv: venvPython(root, platform) };
+}
+
+function openGrafana(context) {
+  const stack = path.join("apps", "fullstack");
+  const accessResult = context.execute(
+    "terraform",
+    [`-chdir=${stack}`, "output", "-json", "grafana_acesso"],
+    { cwd: context.root },
+  );
+  if (accessResult.status !== 0) throw new Error("terraform output grafana_acesso failed");
+  const access = readGrafanaAccess(parseJsonObject(accessResult.stdout, "terraform output grafana_acesso"));
+
+  const instanceResult = context.execute(
+    "terraform",
+    [`-chdir=${stack}`, "output", "-raw", "observabilidade_instancia_id"],
+    { cwd: context.root },
+  );
+  if (instanceResult.status !== 0) throw new Error("terraform output observabilidade_instancia_id failed");
+  const instanceId = readObservabilityInstanceId(instanceResult.stdout);
+
+  context.log(`Grafana URL: ${access.url}`);
+  context.log(`Grafana user: ${access.user}`);
+  context.log("To retrieve the password locally: terraform -chdir=apps/fullstack output -raw grafana_senha");
+  context.log("Starting the private SSM tunnel. Press Ctrl+C to close it.");
+  const tunnel = context.execute(
+    "aws",
+    grafanaTunnelArguments(instanceId, REGION, context.profile),
+    { cwd: context.root, stdio: "inherit" },
+  );
+  if (tunnel.status !== 0) throw new Error("Grafana SSM tunnel failed");
+}
+
+function printGrafanaPassword(context) {
+  const result = context.execute(
+    "terraform",
+    ["-chdir=apps/fullstack", "output", "-raw", "grafana_senha"],
+    { cwd: context.root },
+  );
+  if (result.status !== 0) throw new Error("terraform output grafana_senha failed");
+  context.log(`Grafana password: ${readGrafanaPassword(result.stdout)}`);
+}
+
+async function openAnalysisBridge(context) {
+  const stack = path.join("apps", "fullstack");
+  const accessResult = context.execute(
+    "terraform",
+    [`-chdir=${stack}`, "output", "-json", "bastion_acesso"],
+    { cwd: context.root },
+  );
+  if (accessResult.status !== 0) throw new Error("terraform output bastion_acesso failed");
+  const bastion = readBastionAccess(parseJsonObject(accessResult.stdout, "terraform output bastion_acesso"));
+  const addressResult = context.execute(
+    "aws",
+    awsArguments(context, [
+      "ec2", "describe-instances", "--instance-ids", bastion.id,
+      "--query", "Reservations[0].Instances[0].PrivateIpAddress",
+      "--output", "text",
+    ]),
+  );
+  if (addressResult.status !== 0) throw new Error("could not read the bastion private IP");
+  const privateIp = readPrivateIpv4(addressResult.stdout);
+  const ollamaUser = await context.readInput("Ollama SSH user: ");
+  const ollamaHost = await context.readInput("Ollama SSH host: ");
+  const bastionKeyFile = await context.readInput("Bastion key file: ");
+  await runOllamaBridge({
+    ...bastion,
+    privateIp,
+    ollamaUser,
+    ollamaHost,
+    bastionKeyFile,
+    region: REGION,
+    profile: context.profile,
+    platform: context.platform,
+    spawnProcess: context.spawnProcess,
+    waitForPort: context.waitForPort,
+    waitForStop: context.waitForBridgeStop,
+    log: context.log,
+  });
 }
 
 function ensureVenv({ execute, log, root, platform, python, exists }) {
@@ -5001,6 +5107,9 @@ export async function runLearnerLab(options = {}) {
     removeSensitiveFile = unlinkSync,
     removeSensitiveDirectory = rmdirSync,
     environment = process.env,
+    spawnProcess = spawn,
+    waitForPort,
+    waitForBridgeStop,
     // The command lives under apps/scripts; resolve project paths from the repository root.
     root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.."),
   } = options;
@@ -5023,11 +5132,28 @@ export async function runLearnerLab(options = {}) {
 
   let seedConfiguration = null;
   let importCanaryConfiguration = null;
+  let grafanaConfiguration = null;
   let setupConfiguration = null;
   let initialUser = null;
   if (["plan-update", "update"].includes(step)) {
     if (!Object.hasOwn(UPDATE_PRESETS, preset) || hasExtraArguments) {
       log(`update requires one preset: ${Object.keys(UPDATE_PRESETS).join(", ")}`);
+      return { status: 2 };
+    }
+  } else if (step === "grafana") {
+    if (hasPresetArgument) {
+      log("grafana options must be passed as named arguments");
+      return { status: 2 };
+    }
+    try {
+      grafanaConfiguration = parseGrafanaArguments(extraArguments);
+    } catch (error) {
+      log(error instanceof Error ? error.message : String(error));
+      return { status: 2 };
+    }
+  } else if (step === "analysis-bridge") {
+    if (hasPresetArgument || hasExtraArguments) {
+      log("analysis-bridge does not accept extra arguments");
       return { status: 2 };
     }
   } else if (step === "setup") {
@@ -5188,6 +5314,9 @@ export async function runLearnerLab(options = {}) {
     removeSensitiveFile,
     removeSensitiveDirectory,
     environment,
+    spawnProcess,
+    waitForPort,
+    waitForBridgeStop,
     profile: setupConfiguration?.profile ?? "default",
     autoApprove: setupConfiguration?.autoApprove ?? false,
     analysisWorker: setupConfiguration?.analysisWorker ?? null,
@@ -5195,6 +5324,7 @@ export async function runLearnerLab(options = {}) {
     preset,
     seedConfiguration,
     importCanaryConfiguration,
+    grafanaConfiguration,
   };
   const shouldRun = (name) => step === "all" || step === name;
   let importCanaryInspection = null;
@@ -5214,6 +5344,18 @@ export async function runLearnerLab(options = {}) {
     const checked = checkPrerequisites(context);
     if (!checked.ok) return { status: 1 };
     context.identity = checked.identity;
+    if (step === "grafana") {
+      if (context.grafanaConfiguration.showPassword) {
+        printGrafanaPassword(context);
+        return { status: 0 };
+      }
+      openGrafana(context);
+      return { status: 0 };
+    }
+    if (step === "analysis-bridge") {
+      await openAnalysisBridge(context);
+      return { status: 0 };
+    }
     if (step === "setup") {
       const applied = await deploy({ ...context, identity: checked.identity });
       if (!applied) return { status: 1 };
