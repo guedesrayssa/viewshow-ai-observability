@@ -171,7 +171,7 @@ Fonte: Material produzido pelos autores (2026).
 | RNF | Descrição resumida | Plano aprimorado | Ferramenta | Critério objetivo | Testes | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
 | RNF01 | Aceitar continuamente 10.000 eventos válidos/min sem perda | Importar uma janela sintética de 150.000 eventos válidos e medir a vazão de processamento; conferir contagem no DynamoDB/Athena | k6 (`ingestao-batch.js`, `MODE=drenagem`) + CloudWatch + consulta de contagem | `recordsWritten = 150.000`; `recordsRejected = 0`; duração de `VALIDATING+PROCESSING` ≤ 900 s (≥ 166,67 eventos/s); 0 duplicados; `checks rate==1` | CG-02, CG-05 | **Reprovado** — INGESTING a ~15 mil eventos/min, mas o pipeline até `READY` levou 13.915 s na R2, por PROJECTING e ARCHIVING (CG-02) |
-| RNF02 | Evento disponível para consulta em ≤ 120 s após captura | Marcar `t0` na entrada do lote incremental, `t1` no fim da ingestão e `t2` quando o watermark de `/dashboard/overview` passar de `t0` | k6 (`MODE=frescor`) | `t2 − t0 ≤ 120 s` em 100% das amostras | CG-03 | **Reprovado** — o watermark de `meta.freshness` vem da projeção OVERVIEW do dia final do manifesto ACTIVE, e o `ingest-incremental` não atualiza nenhum dos dois; constatado por código e leitura do manifesto, sem medição de `t2 − t0` (CG-03) |
+| RNF02 | Evento disponível para consulta em ≤ 120 s após captura | Marcar `t0` na entrada do lote incremental, `t1` no fim da ingestão e `t2` quando o watermark de `/dashboard/overview` passar de `t0` | k6 (`MODE=frescor`) | `t2 − t0 ≤ 120 s` em 100% das amostras | CG-03 | **Bloqueado** — o watermark de `meta.freshness` vem da projeção OVERVIEW do dia final do manifesto ACTIVE, e o `ingest-incremental` não atualiza nenhum dos dois; sem essa atualização, `t2 − t0` não pode ser medido (CG-03, achado 10) |
 | RNF03 | Degradar de forma controlada sob payload inválido, fila sem capacidade e timeout; recuperar sem reinício | Injetar cada falha da Seção 6 sob carga nominal, observar a resposta e depois retirar a falha | k6 + AWS CLI (injeção) + CloudWatch | Falha sempre explícita (`409`/`429`/`503`/`FAILED`/`QUARANTINED`/DLQ); 0 eventos aceitos e não persistidos; recuperação ao patamar de CG-02 sem reinício manual | RS-01 a RS-06 | **Parcial** — importação: falhas explícitas e recuperação automática (RS-02, RS-03b, CG-04); incremental: na rodada da manhã os lotes nunca foram persistidos (`PK`/`SK`); na da tarde, após a correção, os 300.000 eventos foram gravados, mas um dos 2 lotes não foi confirmado e foi para a DLQ (`visibility_timeout`, RS-01) |
 | RNF09 | Disponibilidade das APIs ≥ 99,9% | Durante toda a bateria de ingestão, medir erro inesperado nas rotas de import (excluindo `409`/`429`/`503` esperados) | k6 `http_req_failed` | `http_req_failed rate < 0,001` nas rotas `/api/v1/imports*` | CG-01, CG-04 | **Aprovado** — 0 erro inesperado em CG-01, CG-02, CG-04 e RS-06 (os `503` são respostas seguras previstas; ver ressalva no CG-04) |
 | RNF15 | Degradação sinalizada ao operador em ≤ 30 s | Durante RS-01 a RS-05, cronometrar o intervalo entre a injeção da falha e o disparo do alarme correspondente | CloudWatch Alarms / Grafana Alerting | Alarme em estado `ALARM` em ≤ 30 s (registrar o valor real, mesmo que acima) | RS-01 a RS-05 | **Reprovado** — 35 s no melhor caso; 111–190 s nas filas; sem alarme em RS-02(a)/(b) |
@@ -426,7 +426,7 @@ Fonte: Material produzido pelos autores (2026).
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | R1 | 150.000 | 150.000 (INGESTING) | 0 | não medida | não medida (ARCHIVING interrompido) | não medido | 601 (INGESTING) + 1.069 (PROJECTING) + ≥ 1.694 (ARCHIVING, interrompido) | 14.975 (só INGESTING); ≤ 2.679 no pipeline até a interrupção | 38,1 | Reprovado |
 | R2 | 150.000 (M-02 `--variant r2`, dump distinto) | 150.000 | 0 | 150.000 (reconciliação de cobertura) | 150.000 (1.585/1.585 `COUNT(*)` conferidos) | não medido (chaves determinísticas) | 606,5 (INGESTING) + 1.057,1 (PROJECTING) + 12.246,4 (ARCHIVING) = 13.915 até `READY` | 14.840 (só INGESTING); 647 no pipeline | 39,7 | Reprovado (sem perda) |
-| R3 | 150.000 | — | — | — | — | — | — | — | — | Não executado |
+| R3 | 150.000 | — | — | — | — | — | — | — | — | Não executado (pendente) |
 | **Média** | — | — | — | — | — | — | INGESTING 603,8; PROJECTING 1.063,1 (ARCHIVING só na R2) | 14.908 (só INGESTING) | 38,9 | — |
 
 <div align="center">
@@ -454,11 +454,11 @@ Fonte: Material produzido pelos autores (2026).
 | Métricas coletadas | `t1 − t0` (ingestão), `t2 − t0` (ponta a ponta), idade da mensagem na FIFO |
 | Critérios de sucesso | `t2 − t0 ≤ 120 s` em 100% das amostras |
 | Resultado esperado | Frescor dentro de 120 s |
-| Resultados medidos | Nenhuma amostra de `t0`, `t1` ou `t2`: as 5 amostras com k6 não foram executadas (encerramento da janela de testes). Foi feita, antes, uma verificação só de leitura da condição de que o critério depende — se o watermark de `meta.freshness` pode avançar depois de uma ingestão incremental |
+| Resultados medidos | Nenhuma amostra de `t0`, `t1` ou `t2`: as 5 amostras com k6 estão pendentes. Foi feita uma verificação só de leitura da condição de que o critério depende — se o watermark de `meta.freshness` pode avançar depois de uma ingestão incremental |
 | Resultado obtido | O watermark de `meta.freshness` não avança com a ingestão incremental, então `t2` (watermark ≥ `t0`) não ocorre por esse caminho. **Código:** `meta.freshness` é montado a partir da projeção `DATASET#<versão ativa>#VIEW#OVERVIEW#<fonte>#<dia>` (`activeOverview` em `apps/backend/api/src/modules/dashboard/adapters/dynamodb-dashboard-read-repository.ts`). O dia é o último fim de intervalo de `availableIntervals` do manifesto ACTIVE (`intervalDay`), e a fonte preferida é `live_qoe_hourly`. O `ingest-incremental` grava só fatos, via `sync` (`application/ingest_incremental.py`, `application/sync.py`): lê o `availableIntervals` do manifesto ACTIVE, mas não o atualiza e não escreve nenhuma projeção OVERVIEW. `availableIntervals` só é escrito pelo `backfill` (`application/backfill.py`), e as projeções só pelo `backfill` e pelo comando manual `rebuild-projections`; nenhum dos dois é agendado (as 3 agendas são `sync`, `incremental-ingest` e `incremental-export`). **Stack:** os fatos de `signal_bucket` de 30/09 existem — 300.000 itens em `DATASET#dsv_f58aa0f8…#FACT#TS#signal_bucket#20260930`, gravados pelo RS-01 da tarde (`rs01-drenagem.txt`). O manifesto ACTIVE continua com a versão `dsv_f58aa0f8…`, e o intervalo de `signal_bucket` e de `live_qoe_hourly` termina em 2026-09-28T18:00:00.000Z (`manifesto-active.json`). Logo a API lê a OVERVIEW de 28/09, qualquer que seja o dado ingerido depois |
-| Situação | **Reprovado** (limitação de arquitetura, constatada por análise de código e leitura do manifesto, sem medição de `t2 − t0`) |
-| Análise e conclusão | **Por que Reprovado, e não Parcial nem Não executado:** o critério exige `t2 − t0 ≤ 120 s`, e `t2` só existe quando o watermark passa de `t0`. O código implantado (revisão 6) e o manifesto ACTIVE mostram que o caminho incremental não move esse watermark; a verificação pode ser repetida lendo o mesmo código e o mesmo item `CONTROL#DATASET`/`ACTIVE`. Nenhuma parte do critério foi atendida, então não cabe Parcial; e houve verificação reproduzível de que o critério não pode ser atendido, então não cabe Não executado. A ressalva é que nenhum tempo foi medido: o resultado não diz quanto o frescor ficaria acima de 120 s se o watermark fosse atualizado. Fatores que pesariam nessa medição, sem medida própria: a agenda de 5 min do consumidor e a escrita de um lote de 150.000 eventos acima do `visibility_timeout` de 300 s (runs de 482 s e 712 s no RS-01 da tarde, achado 9). Achado 10 da Seção 9 |
-| Evidências / reprodução | Em `assets/testes-carga/2026-10-01-ingestao/cg03/`: `manifesto-active.json` (item `CONTROL#DATASET`/`ACTIVE` da tabela `view-show-iac-operacional`, lido em 2026-10-01 ~02:15 UTC). Em `assets/testes-carga/2026-09-30-ingestao/`: `rs01-drenagem.txt` (contagem de 300.000 fatos de 30/09). **`cg03/projecao-overview.corrompido.txt` não serve como evidência:** o arquivo foi corrompido ao consolidar a contagem paginada, e as linhas das projeções OVERVIEW de 28/09 ficaram cortadas. Na leitura feita na sessão, a OVERVIEW de 28/09 tinha `observedThrough` 2026-09-28T17:45:00Z (`signal_bucket`) e 2026-09-28T17:00:00Z (`live_qoe_hourly`), e as consultas pela OVERVIEW de 30/09 voltaram vazias, mas essa leitura não foi salva de forma íntegra e esses valores **não** são evidência verificada. A conclusão acima não depende deles: com o manifesto ACTIVE terminando em 28/09, a API não consulta a OVERVIEW de 30/09 |
+| Situação | **Bloqueado** (dependência: o caminho incremental não atualiza o watermark de que o critério depende; constatado por análise de código e leitura do manifesto) |
+| Análise e conclusão | **Por que Bloqueado:** o critério exige `t2 − t0 ≤ 120 s`, e `t2` só existe quando o watermark passa de `t0`. O código implantado (revisão 6) e o manifesto ACTIVE mostram que o caminho incremental não move esse watermark; a verificação pode ser repetida lendo o mesmo código e o mesmo item `CONTROL#DATASET`/`ACTIVE`. Enquanto o `ingest-incremental` não atualizar o manifesto ACTIVE e a projeção OVERVIEW (achado 10), não há como medir o frescor por esse caminho, então o teste depende dessa correção. Nenhum tempo foi medido: o resultado não diz quanto o frescor ficaria acima ou abaixo de 120 s. Fatores que pesarão nessa medição: a agenda de 5 min do consumidor e a escrita de um lote de 150.000 eventos acima do `visibility_timeout` de 300 s (runs de 482 s e 712 s no RS-01 da tarde, achado 9). Achado 10 da Seção 9 |
+| Evidências / reprodução | Em `assets/testes-carga/2026-10-01-ingestao/cg03/`: `manifesto-active.json` (item `CONTROL#DATASET`/`ACTIVE` da tabela `view-show-iac-operacional`, lido em 2026-10-01 ~02:15 UTC). Em `assets/testes-carga/2026-09-30-ingestao/`: `rs01-drenagem.txt` (contagem de 300.000 fatos de 30/09). |
 
 <div align="center">
 
@@ -517,8 +517,8 @@ Fonte: Material produzido pelos autores (2026).
 | Critérios de sucesso | Exploratório — sem aprovação/reprovação; registrar o volume em que a vazão cai abaixo de 166,67 eventos/s, se houver |
 | Resultado esperado | Curva volume × vazão e identificação do primeiro recurso a saturar |
 | Resultados medidos | Ver Tabela 14 |
-| Resultado obtido | Não executado. Massas M-03 (300 mil) e M-04 (750 mil) geradas e registradas na Tabela 7 |
-| Situação | **Não executado** (exploratório) |
+| Resultado obtido | Pendente. Massas M-03 (300 mil) e M-04 (750 mil) geradas e registradas na Tabela 7 |
+| Situação | **Não executado** (pendente; exploratório) |
 | Análise e conclusão | Inviável na sessão do Learner Lab (4 h): pelo CG-02, 150 mil eventos levam ~28 min até o fim de PROJECTING e, com o gerador atual, ARCHIVING cresce com o número de partições diárias (M-03 ≈ 3.125 dias, M-04 ≈ 7.812 dias → estimados ~5 h e ~13 h só de verificação Athena). Além disso, repetir um dump idêntico não mede nada (a versão é endereçada por conteúdo). Pré-requisitos para executar: gerador que concentre as linhas numa janela realista e verificação de ARCHIVING em lote ou paralela |
 | Evidências / reprodução | Manifestos em `.artifacts/argus-benchmarks/{300000,750000}/manifest.json` |
 
@@ -678,8 +678,8 @@ Fonte: Material produzido pelos autores (2026).
 | Critérios de sucesso | 0 eventos do lote inválido persistidos; 100% dos eventos válidos persistidos; importação seguinte conclui em `READY` |
 | Resultado esperado | Isolamento completo do dado inválido |
 | Resultados medidos | (a) não executado; (b) M-07 `imp_01M3S40B0C0GQGJ7C1Y921DHKZ` → `FAILED` na etapa `VALIDATING` (`VALIDATION_ERROR`, `retryable: false`, `candidateVersion: null`) em ~91 s após o upload; importação seguinte (`imp_01M3S43AAX45SPM5RATEJEZT9H`, teardown do CG-04) → `READY` |
-| Resultado obtido | (b) O dump corrompido foi rejeitado na validação, sem publicar nada, com mensagem segura, e a importação seguinte concluiu normalmente. (a) Não executado: até 19:45 UTC de 30/09 o `claim` do lote falhava antes da validação de schema (defeito `PK`/`SK`, RS-01); depois da correção, o teste ficou para a rodada de 2026-10-01, e a janela de testes foi encerrada antes de ele começar. Não há script do RS-03(a) no repositório; a sequência planejada é a da Seção 11.3 (`publish_incremental_batch.py` com `--variant valid`, `missing-column` e `valid` em janelas consecutivas, consumo pela agenda do `ingest-incremental`) |
-| Situação | **Parcial** — (b) aprovado; (a) não executado |
+| Resultado obtido | (b) O dump corrompido foi rejeitado na validação, sem publicar nada, com mensagem segura, e a importação seguinte concluiu normalmente. (a) Não executado: até 19:45 UTC de 30/09 o `claim` do lote falhava antes da validação de schema (defeito `PK`/`SK`, RS-01); depois da correção, o teste ficou pendente: a rodada foi pausada em 30/09, por volta das 23:15 UTC, com as credenciais do Learner Lab revogadas, antes de ele começar. Não há script do RS-03(a) no repositório; a sequência planejada é a da Seção 11.3 (`publish_incremental_batch.py` com `--variant valid`, `missing-column` e `valid` em janelas consecutivas, consumo pela agenda do `ingest-incremental`) |
+| Situação | **Parcial** — (b) aprovado; (a) pendente |
 | Análise e conclusão | O isolamento de dump inválido na importação funciona ponta a ponta. A quarentena de lote incremental (`SCHEMA_INCOMPATIBLE`) só foi validada localmente (dry-run do publicador e testes unitários). Na execução do (a), considerar o defeito novo do RS-01: se os lotes válidos M-05 passarem de 300 s de escrita, a reentrega pode levá-los à DLQ independentemente da quarentena do lote inválido |
 | Tempo até alarme (RNF15) | (b) **35 s**: `FAILED` às 12:19:37, `view-show-import-worker-failures` em `ALARM` às 12:20:12 (o `*-schema-drift` não se aplica a dump corrompido); (a) não medido |
 | Evidências / reprodução | `k6 run ... -e MODE=smoke -e DUMP=<M-07> -e RUN_LABEL=rs03-m07 ingestao-batch.js`. Em `assets/testes-carga/2026-09-30-ingestao/`: `resumo-ingestao-rs03-m07.json`, `k6-rs03-m07.log`, `import-rs03-m07.json`, `dryrun-missing-column.json` |
@@ -711,8 +711,8 @@ Fonte: Material produzido pelos autores (2026).
 | Critérios de sucesso | Contagem final = 150.000; distintos = total; mensagem não foi para a DLQ |
 | Resultado esperado | Processamento idempotente após a reentrega |
 | Resultados medidos | Nenhuma medição com a falha planejada (task interrompida). Observações indiretas: no RS-05 (manhã) a mesma mensagem voltou visível a cada ~5,5 min (`rs05-ciclos.txt`); no RS-01 da tarde, sem interromper nenhuma task, a mensagem do lote 1 foi reentregue enquanto o primeiro run ainda escrevia, e o reprocessamento terminou com `written 0`, `unchanged 150000` e contagem total de 300.000 itens para 2 lotes (`rs01-drenagem.txt`) |
-| Resultado obtido | Não executado. Até 19:45 UTC de 30/09 o consumidor falhava em ~0,4 s, antes de qualquer escrita (defeito `PK`/`SK`); depois da correção, o teste ficou para a rodada de 2026-10-01, e a janela de testes foi encerrada antes de ele começar |
-| Situação | **Não executado** (encerramento da janela de testes) |
+| Resultado obtido | Não executado. Até 19:45 UTC de 30/09 o consumidor falhava em ~0,4 s, antes de qualquer escrita (defeito `PK`/`SK`); depois da correção, o teste ficou pendente: a rodada foi pausada em 30/09, por volta das 23:15 UTC, com as credenciais do Learner Lab revogadas, antes de ele começar |
+| Situação | **Não executado** (pendente) |
 | Análise e conclusão | A mecânica de fila (invisibilidade por 300 s e reentrega) funciona. O RS-01 da tarde mostra reprocessamento idempotente de um lote reentregue, mas não substitui o RS-04: a falha não foi a planejada (task interrompida) e não houve contagem de distintos. Ao executar, considerar o defeito novo do RS-01: com escrita acima de 300 s, a reentrega acontece mesmo sem interromper a task |
 | Evidências / reprodução | Nenhuma execução. Observações indiretas: `rs05-ciclos.txt`, `rs01-drenagem.txt`, `rs01-logs-ingest.txt` |
 
@@ -803,13 +803,13 @@ Fonte: Material produzido pelos autores (2026).
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | CG-01 | RNF01, RNF09 | 10:10:38 | 2 min 44 s | `READY` e contagem igual | `READY`, 1.000/1.000, 0 rejeitados | **Aprovado** | `resumo-ingestao-cg01.json` |
 | CG-02 | RNF01 | 10:16:50 (R1), 12:29:37 (R2) | R1 60 min (interrompida); R2 3 h 53 min | ≥ 10.000 eventos/min, 0 perda, ≤ 900 s | 0 perda (150.000/150.000, 23/23 datasets); INGESTING ~15 mil/min; R2 13.915 s até `READY` | **Reprovado** | `resumo-ingestao-cg02-r*.json`, `etapas-cg02-r*.json`, `athena-cg02-r2.json` |
-| CG-03 | RNF02 | 2026-10-01 ~02:15 (leitura do manifesto) | — | `t2 − t0 ≤ 120 s` | Sem amostra; watermark não avança pelo caminho incremental (ACTIVE termina em 28/09 18:00Z, fatos de 30/09 gravados) | **Reprovado** | `2026-10-01-ingestao/cg03/manifesto-active.json`, `rs01-drenagem.txt` |
+| CG-03 | RNF02 | 2026-10-01 ~02:15 (leitura do manifesto) | — | `t2 − t0 ≤ 120 s` | Sem amostra; watermark não avança pelo caminho incremental (ACTIVE termina em 28/09 18:00Z, fatos de 30/09 gravados) | **Bloqueado** | `2026-10-01-ingestao/cg03/manifesto-active.json`, `rs01-drenagem.txt` |
 | CG-04 | RNF03, RNF09 | 12:19:40 | 5 min 18 s | 1 × `201`, demais `409` | 1 × `201`, 1.516 × `409`, 71 × `503`; p95 GET 431 ms | **Parcial** | `resumo-ingestao-cg04.json`, `cg04-status-post.txt` |
-| CG-05 | RNF01 | — | — | Exploratório | — | **Não executado** | — |
+| CG-05 | RNF01 | — | — | Exploratório | — | **Não executado** (pendente) | — |
 | RS-01 | RNF03 | 11:01:03 (manhã), 20:16:48 (tarde) | manhã: acúmulo 19 min, drenagem falhou; tarde: acúmulo 7 min, drenagem interrompida no limite de 1.800 s | 0 perda, 0 DLQ, drenagem < N × 15 min | manhã: 0/300.000 persistidos (`PK`/`SK`); tarde: 300.000/300.000 persistidos, 1 lote sem confirmação e 1 mensagem na DLQ (`visibility_timeout`) | **Reprovado** | `rs01-*`, `sqs-rs01-rs05.json`, `sqs-rs01.json` |
 | RS-02 | RNF03 | 11:14:44 (b), 19:51:53 (a), 12:27:00 (c) | — | Falha explícita, vaga liberada | `503 UPLOAD_PREPARATION_FAILED`; `FAILED/WORKER_STOPPED` em ~130 s; timeout explícito | **Aprovado** | `rs02*` |
-| RS-03 | RNF03 | 12:18:04 | 1 min 36 s | Inválido isolado | M-07 → `FAILED` em `VALIDATING`; (a) não executado | **Parcial** | `import-rs03-m07.json` |
-| RS-04 | RNF03 | — | — | Reentrega sem duplicar | — | **Não executado** | — |
+| RS-03 | RNF03 | 12:18:04 | 1 min 36 s | Inválido isolado | M-07 → `FAILED` em `VALIDATING`; (a) pendente | **Parcial** | `import-rs03-m07.json` |
+| RS-04 | RNF03 | — | — | Reentrega sem duplicar | — | **Não executado** (pendente) | — |
 | RS-05 | RNF03 | 11:20 → 12:33 | ~73 min (pausas incluídas) | Venenosa na DLQ | 2 mensagens na DLQ após 5 recebimentos; alarme em ~3 min | **Parcial** | `rs05-*` |
 | RS-06 | RNF03, RNF09 | 11:01:16 | 4 min 3 s | `429` sem `5xx` | 0 × `429`, 0 `5xx` inesperado, 0 importação criada | **Parcial** | `resumo-ingestao-rs06.json`, `rs06-diagnostico-rate-limit.txt` |
 
@@ -844,7 +844,7 @@ Fonte: Material produzido pelos autores (2026).
 | RS-01 Fila cheia — tarde (revisão 6) | Parcial (2 runs `FAILED` com `ConditionalWriteError` no log; 3 runs `SUCCEEDED` sem causa) | Não — 300.000/300.000 persistidos; 1 lote sem confirmação e 1 mensagem na DLQ | Não medida (contagem = esperado) | Não (drenagem não concluída em 1.800 s) | — | 185 (backlog) / 111–152 (DLQ) |
 | RS-02 Timeout | Sim | Não | Não | Sim | ~170 (a); ~330 (b, até o lease expirar) | sem alarme (a, b) |
 | RS-03 Payload inválido | Sim (b) | Não | Não | Sim | ~180 (próxima importação `READY`) | 35 |
-| RS-04 Reentrega | — (não executado) | — | — | — | — | — |
+| RS-04 Reentrega | — (pendente) | — | — | — | — | — |
 | RS-05 DLQ | Sim (DLQ) | Sim (defeito `PK`/`SK` do RS-01 da manhã) | Não | — | — | ~155–190 |
 | RS-06 Rate limit | Não (`429` ausente) | Não | Não | Sim | 0,13 | — |
 
@@ -867,7 +867,7 @@ Fonte: Material produzido pelos autores (2026).
 | 10 mil eventos/min | Bloqueado na stack atual; histórico aprovado no Flask | Executado na stack real: INGESTING ~15 mil eventos/min; pipeline completo reprovado (13.915 s até `READY` para 150 mil na R2) | Deixou de ser bloqueado; o gargalo mudou de “inexistente” para PROJECTING/ARCHIVING |
 | Fila cheia | Bloqueado; histórico `429 queue_full` no Flask | Acúmulo real na FIFO sem perda de mensagem; drenagem reprovada nas duas rodadas (manhã: defeito `PK`/`SK`, corrigido; tarde: eventos gravados, mas lote reentregue durante a escrita e enviado à DLQ); `429` inexistente pela entrada pública | Acúmulo medido de fato; revelou dois defeitos no consumidor (um corrigido, um pendente) e rate limit ineficaz |
 | Timeout | Bloqueado; histórico `504 dependency_timeout` no Flask | Falha real de S3 e de task ECS: `503` seguro, `FAILED` em ~130 s, vaga liberada | Aprovado com dependências reais |
-| Frescor (RNF02) | Bloqueado | Reprovado por arquitetura: a ingestão incremental grava os fatos, mas não atualiza o manifesto ACTIVE nem a projeção OVERVIEW de onde sai o watermark | Deixou de ser bloqueado; revelou que o caminho incremental não alimenta o frescor exposto pela API |
+| Frescor (RNF02) | Bloqueado | Bloqueado por arquitetura: a ingestão incremental grava os fatos, mas não atualiza o manifesto ACTIVE nem a projeção OVERVIEW de onde sai o watermark | Continua bloqueado, agora por outro motivo; revelou que o caminho incremental não alimenta o frescor exposto pela API |
 
 <div align="center">
 
@@ -997,7 +997,7 @@ Fonte: Material produzido pelos autores (2026).
 | `*-backfill-cpu-utilization` | CPU da task acima de 70% | CG-05 | Não (CPU máx. 39,7%, CG-02 R2) | — | — |
 | `*-backfill-storage-utilization` | Storage efêmero acima de 70% | CG-05 | Não (máx. 1,7%) | — | — |
 | `view-show-import-worker-failures` (`Runs{status=FAILED}`) | Run do `import-dump` com falha (período 300 s) | RS-02, RS-03 | Sim em RS-03(b); **não** em RS-02(a) e (b) | 35 (RS-03b) | Sim, às 12:35:12 |
-| `*-schema-drift` | Drift de schema | RS-03 | Não avaliado (RS-03a não executado) | — | — |
+| `*-schema-drift` | Drift de schema | RS-03 | Não avaliado (RS-03a pendente) | — | — |
 | `view-show-ingestion-projecting-duration` | `StageDurationMs{stage=PROJECTING, command=backfill}` ≥ 300 s | CG-02 | **Não**, apesar de PROJECTING = 1.069 s no CG-02 R1 e 1.057,1 s na R2: o alarme filtra `command=backfill`, e a importação emite `command=import-dump` — **lacuna de configuração** | — | — |
 | `view-show-ingestion-incremental-dlq-depth` | DLQ visível ≥ 1 (período 300 s) | RS-05, RS-01 (tarde) | Sim / Sim | ~155–190 (RS-05) / ~111–152 (RS-01, tarde: `ALARM` às 20:52:12) | Sim, depois da limpeza da DLQ de 16:03:57 (estado `OK` desde 16:10:20 UTC, `rs01-acumulo.txt`); de novo em `ALARM` desde 20:52:12, com a mensagem do RS-01 da tarde mantida na DLQ |
 | `view-show-ingestion-incremental-queue-oldest-age` / `-queue-backlog` | Idade ≥ 900 s / visíveis ≥ 1 (período 300 s) | RS-01 | Manhã: Sim / Sim; tarde: horário de `ALARM` não registrado / Sim | Manhã: ~146 após cruzar 900 s / ~118. Tarde: — / ~185 (`ALARM` às 20:19:53) | Oscilou com os recebimentos; ao fim da tarde, `OK` às 20:56:43 (idade) e 20:31:53 (backlog) |
@@ -1043,7 +1043,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 10. Limitações
 
-&emsp;A rodada de 2026-09-30 aconteceu numa única sessão do Learner Lab e esbarrou em limites de ambiente, de massa de dados e de ferramenta. Em 2026-10-01 houve só verificações de leitura (ambiente e CG-03), e a janela de testes foi encerrada antes de qualquer injeção. Todos os limites estão registrados abaixo, porque mudam a leitura dos números.
+&emsp;A rodada de 2026-09-30 aconteceu numa única sessão do Learner Lab e esbarrou em limites de ambiente, de massa de dados e de ferramenta. A rodada foi pausada em 30/09, por volta das 23:15 UTC, com as credenciais do Learner Lab revogadas; em 2026-10-01 houve só verificações de leitura (ambiente e CG-03), sem nenhuma injeção. Todos os limites estão registrados abaixo, porque mudam a leitura dos números.
 
 **Ambiente**
 
@@ -1070,12 +1070,11 @@ Fonte: Material produzido pelos autores (2026).
 
 **Cenários não executados ou parciais**
 
-- **RS-03(a) e RS-04: não executados.** Estavam bloqueados pelo defeito `PK`/`SK` no `ingest-incremental`, corrigido e implantado às 19:45 UTC de 30/09; ficaram para a rodada de 2026-10-01, e a janela de testes foi encerrada antes de eles começarem. Ao rodá-los, considerar o defeito novo do RS-01 (achado 9 da Seção 9).
-- **CG-03: reprovado sem medição de tempo.** A verificação de 2026-10-01 (código e manifesto ACTIVE, só leitura) mostrou que o caminho incremental não atualiza o manifesto ACTIVE nem a projeção OVERVIEW de onde sai `meta.freshness` (achado 10). Nenhuma amostra de `t2 − t0` foi coletada, então não há medida de quanto o frescor ficaria acima de 120 s.
-- **Evidência corrompida:** `2026-10-01-ingestao/cg03/projecao-overview.corrompido.txt` foi corrompido ao consolidar a contagem paginada (as linhas das projeções OVERVIEW de 28/09 ficaram cortadas) e não serve como evidência. Os valores de `observedThrough` da OVERVIEW de 28/09 (17:45Z em `signal_bucket` e 17:00Z em `live_qoe_hourly`) e o resultado vazio da OVERVIEW de 30/09 vêm de uma leitura que não foi salva de forma íntegra; não são evidência verificada. A releitura não foi autorizada.
+- **RS-03(a) e RS-04: pendentes.** Estavam bloqueados pelo defeito `PK`/`SK` no `ingest-incremental`, corrigido e implantado às 19:45 UTC de 30/09; a rodada foi pausada em 30/09, por volta das 23:15 UTC, com as credenciais do Learner Lab revogadas, antes de eles começarem. Ao rodá-los, considerar o defeito novo do RS-01 (achado 9 da Seção 9).
+- **CG-03: bloqueado, sem medição de tempo.** A verificação de 2026-10-01 (código e manifesto ACTIVE, só leitura) mostrou que o caminho incremental não atualiza o manifesto ACTIVE nem a projeção OVERVIEW de onde sai `meta.freshness` (achado 10). Enquanto isso não for corrigido, nenhuma amostra de `t2 − t0` pode ser coletada por esse caminho.
 - **DLQ incremental:** a verificação de 2026-10-01 ~02:06 UTC encontrou 1 mensagem na `view-show-ingestion-incremental-batches-dlq.fifo` (`verificacao-ambiente.txt`). Ela não foi lida, de propósito, para não alterar o `ApproximateReceiveCount`, então a origem não foi confirmada; possivelmente é a do lote `bat_f68597fc…` do RS-01 da tarde (`rs01-dlq-espiar.json`), mas isso continua pendente.
 - **RS-01** executado duas vezes, reprovado nas duas por causas diferentes (manhã: `PK`/`SK`; tarde: `visibility_timeout`), e só com `BACKLOG_BATCHES = 2` (3 e 4 não executados).
-- **CG-02 R3 e CG-05: não executados** por tempo de sessão (ver CG-02 e CG-05) e, depois, pelo encerramento da janela de testes.
+- **CG-02 R3 e CG-05: pendentes.** Não couberam no tempo da sessão de 30/09 (ver CG-02 e CG-05) e ficaram para a próxima rodada.
 - **RS-05** exercitado com os lotes do RS-01 da manhã (que falhavam sempre por causa do defeito `PK`/`SK`) no lugar da mensagem venenosa sintética; o efeito medido — reentregas até a DLQ — é o mesmo, mas “as válidas seguem” não foi verificado. Não foi repetido após a correção.
 
 ## 11. Procedimentos de reprodução
