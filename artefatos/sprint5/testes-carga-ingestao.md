@@ -1194,30 +1194,25 @@ k6 run -e MODE=limite -e DUMP=$M/1000/argus_dump.sql.gz -e BURST_RATE=20 -e RUN_
 
 ## 12. Convenção de evidências
 
-&emsp;As evidências estão versionadas em `assets/testes-carga/<AAAA-MM-DD>-ingestao/`, somente com arquivos brutos (a descrição de cada arquivo fica neste documento):
-
-- `resumo-<teste>.json` — resumo do k6 (`--summary-export`) de cada execução; na rodada de 2026-09-30, `resumo-ingestao-<teste>.json` (resumo do `handleSummary`) e `k6-summary-<teste>.json` (`--summary-export`), com o log em `k6-<teste>.log`;
-- `contagem-<teste>.txt` — saída das consultas de contagem (DynamoDB/Athena); na rodada de 2026-09-30 não houve recontagem independente: a contagem da importação veio da reconciliação do pipeline (`athena-cg02-r2.json`, `import-cg02-r2-final.json`) e a do incremental está em `rs01-acumulo.txt` e `rs01-drenagem.txt`;
-- `dryrun-<variante>.json` — validação local dos lotes do publicador (M-05, M-06 e mensagem venenosa);
-- `execucoes.txt` — linha do tempo das execuções, injeções, reversões e implantações;
-- `sqs-<teste>.json`, `cloudwatch-<metrica>-<teste>.json` — séries exportadas;
-- `prometheus/<indicador>.json` — séries dos indicadores da Seção 8;
-- `grafana-<nn>-<indicador>.png` — capturas dos painéis;
-- `ambiente.txt` — versões, commit, imagens e parâmetros da Tabela 6.
+&emsp;As evidências ficam em `assets/testes-carga/<AAAA-MM-DD>-ingestao/`, somente com arquivos brutos; a descrição de cada arquivo fica neste documento. A Tabela 29 reúne, para cada item testado ou implementado, onde ele foi implementado, quais arquivos servem de evidência e o que cada um contém.
 
 <div align="center">
 
-<strong>Tabela 29: Histórico de implementação</strong>
+<strong>Tabela 29: Implementação e arquivos de evidência</strong>
 
 </div>
 
-| Item | Onde foi implementado | Onde está a evidência |
-| --- | --- | --- |
-| CG-01 a CG-05 | `apps/backend/api/loadtest/k6/ingestao-batch.js` (modos `smoke`, `drenagem`, `pico`) | `assets/testes-carga/2026-09-30-ingestao/` (`resumo-ingestao-cg*.json`, `k6-cg*.log`, `etapas-*.json`) |
-| RS-01 a RS-06 | `ingestao-batch.js` (`limite`), `ingestao-falhas.sh`, `apps/backend/ingestion-data/scripts/publish_incremental_batch.py` | `assets/testes-carga/2026-09-30-ingestao/` (`rs0*`, `sqs-rs01-rs05.json`, `sqs-rs01.json`, `alarmes-antes.json`) |
-| Correção `PK`/`SK` e log de causa no `ingest-incremental` | `apps/backend/ingestion-data` (commits `cc0dbbc`, `afc303c`, `0eded5d`), implantada às 19:45 UTC | `pytest-resiliencia-linux.txt`, `rs01-digest-task.txt`, `execucoes.txt` |
-| Agenda do `ingest-incremental` e frescor (RNF02, CG-03) | Agenda `view-show-ingestion-incremental-ingest` (`rate(5 minutes)`); `meta.freshness` lido da projeção OVERVIEW do dia final do manifesto ACTIVE (`dynamodb-dashboard-read-repository.ts`), que o `ingest-incremental` não atualiza (achado 10) | `assets/testes-carga/2026-10-01-ingestao/cg03/manifesto-active.json`, `assets/testes-carga/2026-10-01-ingestao/verificacao-ambiente.txt` |
-| Dashboard de ingestão | CloudWatch `view-show-ingestion` (Terraform `ingestion-observability.tf`) | Séries exportadas em JSON (`cloudwatch-*.json`, `sqs-*.json`); capturas pendentes |
+| Item | Onde foi implementado | Arquivos de evidência | Conteúdo |
+| --- | --- | --- | --- |
+| CG-01 a CG-05 | `apps/backend/api/loadtest/k6/ingestao-batch.js` (modos `smoke`, `drenagem`, `pico`) | `resumo-ingestao-<teste>.json`, `k6-summary-<teste>.json`, `k6-<teste>.log`, `etapas-<teste>.json` | Resumo do `handleSummary`, resumo do `--summary-export` e log de cada execução do k6; duração de cada etapa do worker |
+| RS-01 a RS-06 | `ingestao-batch.js` (modo `limite`), `ingestao-falhas.sh`, `apps/backend/ingestion-data/scripts/publish_incremental_batch.py` | `rs0*`, `sqs-rs01-rs05.json`, `sqs-rs01.json`, `alarmes-antes.json` | Injeções e reversões, monitoramento, lotes, tasks e DLQ de cada cenário; séries das filas; estado dos alarmes antes da rodada |
+| Contagem de eventos (CG-02, RS-01) | Reconciliação do próprio pipeline (cobertura × persistidos e `COUNT(*)` por partição) | `contagem-<teste>.txt`; na rodada de 2026-09-30, `athena-cg02-r2.json`, `import-cg02-r2-final.json`, `rs01-acumulo.txt` e `rs01-drenagem.txt` | Saída das consultas de contagem no DynamoDB e no Athena. Na rodada de 2026-09-30 não houve recontagem independente |
+| Validação local dos lotes | `publish_incremental_batch.py --dry-run` | `dryrun-<variante>.json` | Leitura dos lotes M-05, M-06 e da mensagem venenosa com os adaptadores do worker |
+| Correção `PK`/`SK` e log de causa no `ingest-incremental` | `apps/backend/ingestion-data` (commits `cc0dbbc`, `afc303c`, `0eded5d`), implantada às 19:45 UTC | `pytest-resiliencia-linux.txt`, `rs01-digest-task.txt`, `execucoes.txt` | Suíte de resiliência após a correção; digest da imagem implantada nas tasks |
+| Agenda do `ingest-incremental` e frescor (RNF02, CG-03) | Agenda `view-show-ingestion-incremental-ingest` (`rate(5 minutes)`); `meta.freshness` lido da projeção OVERVIEW do dia final do manifesto ACTIVE (`dynamodb-dashboard-read-repository.ts`), que o `ingest-incremental` não atualiza (achado 10) | `2026-10-01-ingestao/cg03/manifesto-active.json`, `2026-10-01-ingestao/verificacao-ambiente.txt` | Manifesto ACTIVE lido no CG-03; estado das tasks, agendamentos e filas em 2026-10-01 |
+| Dashboard de ingestão | CloudWatch `view-show-ingestion` (Terraform `ingestion-observability.tf`) | `sqs-<teste>.json`, `cloudwatch-<metrica>-<teste>.json`, `grafana-<nn>-<indicador>.png` | Séries exportadas das filas, do DynamoDB e de CPU/memória; capturas dos painéis (pendentes) |
+| Indicadores da Seção 8 | Prometheus/Grafana (`apps/fullstack/observability/`) | `prometheus/<indicador>.json` | Séries dos indicadores da Seção 8 |
+| Ambiente e linha do tempo | — | `execucoes.txt`, `ambiente.txt` | Linha do tempo das execuções, injeções, reversões e implantações; versões, commit, imagens e parâmetros da Tabela 6 |
 
 <div align="center">
 
