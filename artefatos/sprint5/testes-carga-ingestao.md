@@ -2,9 +2,9 @@
 
 ## Visão Geral
 
-&emsp;Este documento aprimora os testes dos requisitos não funcionais realizados na Sprint 3 ([`sprint3/testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)), agora com foco na **API de ingestão** do sistema ARGUS/View Show. Na Sprint 3, os cenários de ingestão (10 mil eventos/minuto, fila cheia e timeout) ficaram **bloqueados**, porque o adaptador de importação respondia `503 FEATURE_UNAVAILABLE` de forma incondicional. Na Sprint 4 o pipeline passou a existir de ponta a ponta: upload multipart ao S3 pela API, task ECS `import-dump`, MySQL efêmero, normalização, publicação no DynamoDB e Parquet/Glue/Athena, outbox e filas SQS com DLQ. Com isso, os cenários que antes só podiam ser planejados passam a ser executáveis contra a stack real.
+&emsp;Este documento aprimora os testes dos requisitos não funcionais realizados nas sprints passadas ([`testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)), agora com foco na **API de ingestão** do sistema ARGUS/View Show. Naquele momento, os cenários de ingestão (10 mil eventos/minuto, fila cheia e timeout) ficaram **bloqueados**, porque o adaptador de importação respondia `503 FEATURE_UNAVAILABLE` de forma incondicional. Depois disso, o pipeline passou a existir de ponta a ponta: upload multipart ao S3 pela API, task ECS `import-dump`, MySQL efêmero, normalização, publicação no DynamoDB e Parquet/Glue/Athena, outbox e filas SQS com DLQ. Com isso, os cenários que antes só podiam ser planejados passam a ser executáveis contra a stack real.
 
-&emsp;Para cada teste são especificados identificador, objetivo e requisito relacionado, perfil de carga ou falha injetada, pré-condições e dados de entrada, procedimento, métricas coletadas, critérios de sucesso, resultado esperado, resultados medidos, resultado obtido, situação, análise e evidências de reprodução. Nenhum número deste documento deve ser escrito sem um arquivo de evidência correspondente em `assets/`.
+&emsp;Para cada teste são especificados identificador, objetivo e requisito relacionado, perfil de carga ou falha injetada, pré-condições e dados de entrada, procedimento, métricas coletadas, critérios de sucesso, resultado esperado, resultados medidos, resultado obtido, situação, análise e evidências de reprodução.
 
 &emsp;Os comandos de reprodução foram escritos para um terminal compatível com Bash. Dependendo do sistema operacional, a forma de definir variáveis de ambiente pode mudar.
 
@@ -65,11 +65,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 1.3 Convenções adotadas
 
-- Requisitos não funcionais são identificados como `RNFXX`, conforme [`sprint1/requisitos.md`](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste).
+- Requisitos não funcionais são identificados como `RNFXX`, conforme os requisitos definidos nas sprints passadas ([`requisitos.md`](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste)).
 - Testes de carga são identificados como `CG-XX`; testes de falha e resiliência, como `RS-XX`.
 - Percentis são indicados como `p50`, `p95` e `p99`.
 - **10.000 eventos/minuto = 166,67 eventos/s = 150.000 eventos por janela de 15 minutos** (a janela de detecção usada pela ingestão).
-- Cada resultado é classificado em um dos estados da Tabela 2, e só neles (mesma convenção da Sprint 3).
+- Cada resultado é classificado em um dos estados da Tabela 2, e só neles (mesma convenção adotada nas sprints passadas).
 
 <div align="center">
 
@@ -134,7 +134,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 2.2 Tradução dos cenários obrigatórios para a arquitetura atual
 
-&emsp;O plano da Sprint 1 supunha uma ingestão HTTP síncrona que respondia `429 queue_full` e `504 dependency_timeout`. A arquitetura implementada é **assíncrona e em lote**: a API só reserva e confirma a importação, e o processamento acontece numa task ECS. A Tabela 3 mostra como cada cenário exigido pela entrega é medido agora. O cenário descrito no enunciado como “abertura de venda de 10 mil eventos/minuto” corresponde, no domínio do View Show, a um **pico de audiência** (estreia, jogo ao vivo), quando o volume de telemetria sobe de uma vez.
+&emsp;O plano elaborado nas sprints passadas supunha uma ingestão HTTP síncrona que respondia `429 queue_full` e `504 dependency_timeout`. A arquitetura implementada é **assíncrona e em lote**: a API só reserva e confirma a importação, e o processamento acontece numa task ECS. A Tabela 3 mostra como cada cenário exigido pela entrega é medido agora. O cenário descrito no enunciado como “abertura de venda de 10 mil eventos/minuto” corresponde, no domínio do View Show, a um **pico de audiência** (estreia, jogo ao vivo), quando o volume de telemetria sobe de uma vez.
 
 <div align="center">
 
@@ -160,7 +160,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ## 3. Requisitos não funcionais e planos de teste aprimorados
 
-&emsp;Os requisitos abaixo foram desenvolvidos durante a [Sprint 1](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste). A coluna “Plano aprimorado” atualiza o plano desenvolvido para os testes na Sprint 3 ([Tabela 4 de `testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md#41-requisitos-de-ingestão)).
+&emsp;Os requisitos abaixo foram desenvolvidos nas [sprints passadas](../sprint1/requisitos.md#4-requisitos-não-funcionais-rnf-e-planos-de-teste). A coluna “Plano aprimorado” atualiza o plano de testes elaborado anteriormente ([Tabela 4 de `testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md#41-requisitos-de-ingestão)).
 
 <div align="center">
 
@@ -244,7 +244,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 4.2 Massa de dados
 
-&emsp;Os cenários de volume dependem de dumps sintéticos com quantidade **conhecida** de eventos, para que a contagem final possa ser comparada com a enviada. Cada arquivo deve ter o SHA-256 registrado.
+&emsp;Os cenários de volume dependem de dumps sintéticos com quantidade **conhecida** de eventos, para que a contagem final possa ser comparada com a enviada. O SHA-256 de cada arquivo está registrado na Tabela 7.
 
 <div align="center">
 
@@ -296,11 +296,11 @@ Fonte: Material produzido pelos autores (2026).
 
 ### 4.4 Ferramentas e testes reaproveitados
 
-&emsp;Os testes deste documento não foram criados do zero: partiram de scripts e testes automatizados das Sprints 3 e 4, que foram adaptados à API de ingestão atual. Os testes automatizados existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado; os testes deste documento repetem esses cenários **sob carga e contra a stack real na AWS**, medindo tempo, vazão e recuperação.
+&emsp;Os testes deste documento não foram criados do zero: partiram de scripts e testes automatizados das sprints passadas, que foram adaptados à API de ingestão atual. Os testes automatizados existentes (Vitest e pytest) comprovam o **comportamento** de cada falha em ambiente controlado; os testes deste documento repetem esses cenários **sob carga e contra a stack real na AWS**, medindo tempo, vazão e recuperação.
 
-&emsp;Nos testes de carga, o script k6 [`ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js), criado na Sprint 3, foi reescrito para o contrato atual. A versão anterior esperava estados em minúsculo e não sabia enviar o arquivo; agora ele faz o upload real em partes de 16 MiB, com a assinatura das partes, o envio ao S3 e a confirmação, acompanha a importação até `READY` e mede a duração de cada estado e a vazão em eventos por segundo. Também passou a fazer login real no Cognito e ganhou os modos de smoke (CG-01), pico de requisições (CG-04) e proteção contra excesso de requisições (RS-06). Como a API não tem rota para cancelar uma importação e um upload abandonado segura a vaga por 24 horas, os modos de pico e de excesso concluem, ao final, a importação que criaram. O modo de acúmulo saiu do k6: com a trava de uma importação por vez, o acúmulo real acontece na fila incremental e passou a ser provocado pelo publicador de lotes.
+&emsp;Nos testes de carga, o script k6 [`ingestao-batch.js`](../../apps/backend/api/loadtest/k6/ingestao-batch.js), criado nas sprints passadas, foi reescrito para o contrato atual. A versão anterior esperava estados em minúsculo e não sabia enviar o arquivo; agora ele faz o upload real em partes de 16 MiB, com a assinatura das partes, o envio ao S3 e a confirmação, acompanha a importação até `READY` e mede a duração de cada estado e a vazão em eventos por segundo. Também passou a fazer login real no Cognito e ganhou os modos de smoke (CG-01), pico de requisições (CG-04) e proteção contra excesso de requisições (RS-06). Como a API não tem rota para cancelar uma importação e um upload abandonado segura a vaga por 24 horas, os modos de pico e de excesso concluem, ao final, a importação que criaram. O modo de acúmulo saiu do k6: com a trava de uma importação por vez, o acúmulo real acontece na fila incremental e passou a ser provocado pelo publicador de lotes.
 
-&emsp;Nos testes de falha, os cenários de timeout de dependência (RS-02), payload inválido (RS-03) e reentrega de mensagens (RS-04) já eram cobertos por testes automatizados, mas só localmente. Para repeti-los na AWS, foram criados dois utilitários. O [`publish_incremental_batch.py`](../../apps/backend/ingestion-data/scripts/publish_incremental_batch.py) publica na fila incremental lotes válidos, lotes sem uma coluna obrigatória e a mensagem venenosa do RS-05, que era o único cenário sem nenhuma base. Ele usa os mesmos adaptadores do worker e substitui o `export-incremental`, que depende do MySQL de produção. O [`ingestao-falhas.sh`](../../apps/backend/api/loadtest/k6/ingestao-falhas.sh) injeta e reverte cada falha (negação de upload no S3, interrupção de tasks, agendamentos), dispara o consumidor sob demanda e exporta as métricas das filas. Os testes de fila cheia e timeout da Sprint 2, sobre a API Flask, ficam apenas como referência histórica.
+&emsp;Nos testes de falha, os cenários de timeout de dependência (RS-02), payload inválido (RS-03) e reentrega de mensagens (RS-04) já eram cobertos por testes automatizados, mas só localmente. Para repeti-los na AWS, foram criados dois utilitários. O [`publish_incremental_batch.py`](../../apps/backend/ingestion-data/scripts/publish_incremental_batch.py) publica na fila incremental lotes válidos, lotes sem uma coluna obrigatória e a mensagem venenosa do RS-05, que era o único cenário sem nenhuma base. Ele usa os mesmos adaptadores do worker e substitui o `export-incremental`, que depende do MySQL de produção. O [`ingestao-falhas.sh`](../../apps/backend/api/loadtest/k6/ingestao-falhas.sh) injeta e reverte cada falha (negação de upload no S3, interrupção de tasks, agendamentos), dispara o consumidor sob demanda e exporta as métricas das filas. Os testes de fila cheia e timeout das sprints passadas, sobre a API Flask, ficam apenas como referência histórica.
 
 &emsp;Na observabilidade, é usado o dashboard `view-show-ingestion` do CloudWatch, que já existia e mostra as filas, as DLQs e as execuções da ingestão, junto com o dashboard `View Show — API (RED)` do Grafana para a latência e os erros das rotas de importação.
 
@@ -309,7 +309,7 @@ Fonte: Material produzido pelos autores (2026).
 &emsp;Para registrar a execução dos testes automatizados existentes como evidência de apoio:
 
 ```bash
-# Vitest — casos da importação (Sprint 4)
+# Vitest — casos da importação
 cd apps/backend/api
 npm test -- --run tests/gateway-http.integration.test.ts -t "UC-IMP" --reporter=verbose
 
@@ -365,7 +365,7 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `CG-01` |
-| Já existe? | **Parcial** — IT-AWS-05 (Sprint 4) já executa o início real da importação na AWS, mas para em `UPLOADING`; falta seguir até `READY` e o modo `smoke` no k6 |
+| Já existe? | **Parcial** — IT-AWS-05 (sprints passadas) já executa o início real da importação na AWS, mas para em `UPLOADING`; falta seguir até `READY` e o modo `smoke` no k6 |
 | Objetivo e requisito relacionado | Confirmar que o fluxo completo (`POST /imports` → partes → `complete` → `READY`) funciona na stack antes das rodadas de carga, e obter a linha de base de latência e duração. RNF01, RNF09 |
 | Perfil de carga | 1 VU, 1 importação, dump reduzido (M-01) |
 | Pré-condições e dados de entrada | Stack aplicada; nenhuma importação ativa; usuário técnico no Cognito; massa M-01 |
@@ -396,7 +396,7 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `CG-02` |
-| Já existe? | **Parcial** — modo `drenagem` de `ingestao-batch.js` (Sprint 3), bloqueado na época e desatualizado frente ao contrato atual; linha de base local em `benchmark_snapshot_reader.py` |
+| Já existe? | **Parcial** — modo `drenagem` de `ingestao-batch.js` (sprints passadas), bloqueado na época e desatualizado frente ao contrato atual; linha de base local em `benchmark_snapshot_reader.py` |
 | Objetivo e requisito relacionado | Comprovar que a ingestão processa uma janela de 15 minutos a 10.000 eventos/min (150.000 eventos) dentro da própria janela, sem perda nem duplicidade. **RNF01** |
 | Perfil de carga | Uma importação de 150.000 eventos válidos (M-02); repetida 3 vezes para medir variação |
 | Pré-condições e dados de entrada | CG-01 aprovado; nenhuma importação ativa; massa M-02; observabilidade coletando |
@@ -446,7 +446,7 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `CG-03` |
-| Já existe? | **Parcial** — modo `frescor` de `ingestao-batch.js` (Sprint 3), desatualizado frente ao contrato atual |
+| Já existe? | **Parcial** — modo `frescor` de `ingestao-batch.js` (sprints passadas), desatualizado frente ao contrato atual |
 | Objetivo e requisito relacionado | Medir o tempo entre a entrada de um lote e sua disponibilidade na API de consulta. **RNF02** |
 | Perfil de carga | Lotes incrementais de 150.000 eventos (M-05), no mínimo 5 amostras |
 | Pré-condições e dados de entrada | Dataset ativo; caminho incremental habilitado (`incremental_s3_enabled=true`, `live_sync_enabled=true`) ou lote publicado manualmente na FIFO; massa M-05 |
@@ -477,7 +477,7 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `CG-04` |
-| Já existe? | **Parcial** — UC-IMP-03 e IT-AWS-05 (Sprint 4) comprovam o `409` com uma requisição concorrente; falta o modo `pico` com muitas requisições simultâneas |
+| Já existe? | **Parcial** — UC-IMP-03 e IT-AWS-05 (sprints passadas) comprovam o `409` com uma requisição concorrente; falta o modo `pico` com muitas requisições simultâneas |
 | Objetivo e requisito relacionado | Simular muitos clientes chegando ao mesmo tempo à API de ingestão, como na abertura de um evento ao vivo: verificar que a exclusão mútua se mantém (uma única importação vence), que as demais recebem `409` com o `importId` ativo, e que a API continua respondendo ao polling. RNF03, RNF09 |
 | Perfil de carga | `ramping-arrival-rate`: 0 → _N_ req/s em 30 s, platô de 2 min, descida em 30 s. Mistura: 20% `POST /imports` (chaves distintas), 70% `GET /imports/:id`, 10% `GET /imports` |
 | Pré-condições e dados de entrada | Nenhuma importação ativa no início; `rate_limit_por_minuto` elevado para a janela (registrar valor) |
@@ -488,7 +488,7 @@ Fonte: Material produzido pelos autores (2026).
 | Resultados medidos | 7.532 requisições (23,8 req/s de média; `PEAK_RATE=50` não foi atingido de forma sustentada pelos VUs); `POST /imports`: **`201` = 1** (12:19:44) · `409` = 1.516 (100% com o `importId` ativo) · **`503` = 71** (4,5%, espalhados de 12:20:02 a 12:22:22, 21–393 ms) · `429` = 0 · outros `5xx` = 0; `GET /imports/:id` 5.147 × `200`, `GET /imports` 764 × `200`; p95 geral 477 ms, **p95 `GET` = 431 ms**, máx. 1.360 ms; **CPU máx. da API 92,8%** (1 task de 0,25 vCPU); multipart abertos ao final = 0 (o teardown concluiu a importação `imp_01M3S43AAX45SPM5RATEJEZT9H` em `READY`) |
 | Resultado obtido | Exclusão mútua preservada: um único `201` e nenhuma segunda importação criada, com o plano de controle respondendo (p95 `GET` bem abaixo de 2 s). Porém 71 `POST` concorrentes receberam `503` em vez de `409`; o autoscaling só reagiu às 12:25:54 (segunda task às 12:25:56), ~3 min depois do fim do platô |
 | Situação | **Parcial** — atendidos: exatamente 1 `201`, 0 multipart órfão, `5xx` inesperados = 0, p95 `GET` < 2 s; não atendido: “todos os demais `POST` = `409`” (4,5% de `503`) |
-| Análise e conclusão | A trava de uma importação ativa segura sob concorrência, que é o que protege o dado. Os `503` são respostas explícitas e seguras (sem detalhe interno) e coincidem com a CPU da única task em 92,8%: sob disputa, a leitura do registro ativo falha e a API responde o `503` seguro de UC-IMP-04/“armazenamento de controle sobrecarregado” (`import.ts:71`) em vez de `409`. O log da API não grava o `error.code`, então a distinção não pôde ser feita. O autoscaling por CPU (alvo 50%, 3 períodos de 60 s) reage tarde demais para um pico de 3 min, confirmando o achado da Sprint 4. **Desvio do plano:** o rate limit não foi elevado via `terraform apply`, porque pela URL pública (API Gateway) o limiter não atua (ver RS-06); o efeito é o mesmo de um limite elevado |
+| Análise e conclusão | A trava de uma importação ativa segura sob concorrência, que é o que protege o dado. Os `503` são respostas explícitas e seguras (sem detalhe interno) e coincidem com a CPU da única task em 92,8%: sob disputa, a leitura do registro ativo falha e a API responde o `503` seguro de UC-IMP-04/“armazenamento de controle sobrecarregado” (`import.ts:71`) em vez de `409`. O log da API não grava o `error.code`, então a distinção não pôde ser feita. O autoscaling por CPU (alvo 50%, 3 períodos de 60 s) reage tarde demais para um pico de 3 min, confirmando o achado das sprints passadas. **Desvio do plano:** o rate limit não foi elevado via `terraform apply`, porque pela URL pública (API Gateway) o limiter não atua (ver RS-06); o efeito é o mesmo de um limite elevado |
 | Evidências / reprodução | `k6 run ... -e MODE=pico -e DUMP=<M-01> -e PEAK_RATE=50 -e RUN_LABEL=cg04 ingestao-batch.js`. Em `assets/testes-carga/2026-09-30-ingestao/`: `resumo-ingestao-cg04.json`, `k6-cg04.log`, `cg04-status-post.txt` (status por log da API, multipart e jobs ao final), `cloudwatch-recursos-api-cg04.json` |
 
 <div align="center">
@@ -563,7 +563,7 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `RS-01` |
-| Já existe? | **Parcial** — modo `acumulo` de `ingestao-batch.js` (Sprint 3); versão histórica com `429 queue_full` em `sprint2/testes-carga/k6/ingestao-resiliencia.js` (Flask) |
+| Já existe? | **Parcial** — modo `acumulo` de `ingestao-batch.js` (sprints passadas); versão histórica com `429 queue_full` em `sprint2/testes-carga/k6/ingestao-resiliencia.js` (Flask) |
 | Objetivo e requisito relacionado | Verificar que, quando chegam mais janelas do que o consumidor processa, os lotes ficam represados na fila **sem perda**, e que o backlog é drenado automaticamente depois. **RNF03** (fila sem capacidade), RNF01 |
 | Falha injetada | Desabilitar a agenda do `ingest-incremental` enquanto 2, 3 e 4 lotes (M-05) são publicados na FIFO (`BACKLOG_BATCHES`); depois reabilitar |
 | Duração da falha | `BACKLOG_BATCHES × 15 min` (ou lotes publicados em sequência rápida) |
@@ -616,7 +616,7 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `RS-02` (três variantes) |
-| Já existe? | **Parcial** — (a) UC-IMP-06 (Sprint 4); (b, c) `test_checkpoint_resume.py`, `test_idempotent_backfill.py` e `test_canonical_first_failures.py` em ambiente controlado; versão histórica com `504 dependency_timeout` no Flask |
+| Já existe? | **Parcial** — (a) UC-IMP-06 (sprints passadas); (b, c) `test_checkpoint_resume.py`, `test_idempotent_backfill.py` e `test_canonical_first_failures.py` em ambiente controlado; versão histórica com `504 dependency_timeout` no Flask |
 | Objetivo e requisito relacionado | Verificar que, quando uma dependência não responde, a ingestão falha de forma explícita, não deixa a vaga de importação presa e aceita uma nova tentativa sem reinício. **RNF03** (timeout de dependência) |
 | Falha injetada | **(a)** S3 indisponível ao preparar o multipart (ex.: política de bucket negando `s3:CreateMultipartUpload` temporariamente); **(b)** task `import-dump` interrompida durante `PROCESSING` (`aws ecs stop-task`); **(c)** task que não conclui no prazo (`POLL_TIMEOUT_S` reduzido ou dependência lenta) |
 | Duração da falha | (a) 13 s (19:51:53–19:52:06 UTC); (b) instantânea (11:14:44 UTC); (c) `POLL_TIMEOUT_S=30` |
@@ -766,7 +766,7 @@ Fonte: Material produzido pelos autores (2026).
 | Campo | Descrição |
 | --- | --- |
 | Identificador | `RS-06` |
-| Já existe? | **Parcial** — medição de `429` já feita na Sprint 3, porém nas rotas de consulta; falta aplicar às rotas `/api/v1/imports*` |
+| Já existe? | **Parcial** — medição de `429` já feita nas sprints passadas, porém nas rotas de consulta; falta aplicar às rotas `/api/v1/imports*` |
 | Objetivo e requisito relacionado | Verificar que, com o rate limit de produção (180 req/min por IP), o excesso de requisições à API de ingestão recebe `429 RATE_LIMITED` explícito, sem erro `5xx` nem efeito colateral no dado, e que a API volta a responder `2xx` quando a carga cai. RNF03, RNF09 |
 | Falha injetada | Rajada de `GET /imports/:id` e `POST /imports` acima de 3 req/s por origem, com `rate_limit_por_minuto=180` |
 | Pré-condições e dados de entrada | Rate limit no padrão de produção; uma importação ativa |
@@ -824,7 +824,7 @@ Fonte: Material produzido pelos autores (2026).
 - **Vazão frente à meta:** a etapa de ingestão propriamente dita (INGESTING) escreveu 150 mil eventos em ~600 s (601 s na R1, 606,5 s na R2), ≈ 250 eventos/s — **1,5× a meta** de 166,67 eventos/s. O pipeline completo não atende: só PROJECTING levou 1.069 s (R1) e 1.057,1 s (R2), e ARCHIVING levou 12.246,4 s na R2 (~3 h 24 min), com a massa sintética atual. A R2 chegou a `READY` em 13.915 s. O RNF01 é reprovado pelo que acontece **depois** da ingestão.
 - **Etapa dominante:** com 1.000 eventos, o custo fixo domina (partida da task ~55–100 s e ARCHIVING 85 s). Com 150 mil, PROJECTING (pico de ~84 mil WCU/min no DynamoDB nas duas repetições) e ARCHIVING dominam. Na R2, ARCHIVING fez **1.585 consultas `COUNT(*)` no Athena, uma por partição, todas `SUCCEEDED`**, que somam 1.323 s de execução (~11% dos 12.246 s da etapa). Upload, RESTORING e VALIDATING somam poucos segundos.
 - **Recurso que satura:** nenhum. Na task `import-dump`, CPU máx. 38,1% (R1) e 39,7% (R2), memória máx. 6,5% e 6,4%, storage máx. 1,7% nas duas; 0 throttling no DynamoDB (1,65 M WCU no total na R1 e 1,75 M na R2). O limitante é latência de operações em série.
-- **Plano de controle:** p95 de 145–179 ms com carga baixa e 431 ms (GET) com 23,8 req/s, quando a única task de 0,25 vCPU chegou a 92,8% de CPU — em linha com o teto de ~58 req/s por vCPU medido na Sprint 3 para a API de consulta ([`sprint3/testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)).
+- **Plano de controle:** p95 de 145–179 ms com carga baixa e 431 ms (GET) com 23,8 req/s, quando a única task de 0,25 vCPU chegou a 92,8% de CPU — em linha com o teto de ~58 req/s por vCPU medido nas sprints passadas para a API de consulta ([`testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)).
 
 ### 7.3 Análise de resiliência
 
@@ -1027,7 +1027,7 @@ Fonte: Material produzido pelos autores (2026).
 | 3 | RS-01/RS-05 (manhã): nenhum lote incremental era gravado na stack — `claim` falhava com `Missing the key pk` (chaves `PK`/`SK` no adaptador × `pk`/`sk` na tabela); falha tratada como retentável sem log; lotes acabavam na DLQ (`rs01-causa-raiz.txt`) | Agenda de 5 min do `ingest-incremental` e caminho incremental como fonte de frescor (RNF02) | **Era bloqueante; corrigido.** Adaptador passou a usar `pk`/`sk` (`cc0dbbc`), com teste de chaves sobre moto com `KeySchema` `pk`/`sk` (`afc303c`, `test_incremental_batch_keys.py`) e log da exceção no ramo retentável (`0eded5d`); pytest 148/148 em Linux; implantado às 19:45 UTC (imagem `sha256:2d409c86…`, revisão 6). O RS-01 da tarde confirmou a correção: 300.000 de 300.000 eventos gravados (`rs01-drenagem.txt`). A agenda de 5 min, sozinha, ainda tende a estourar os 120 s do RNF02 | Corrigido e implantado |
 | 4 | CG-02 R1: CPU máx. 38,1%, memória 6,5%, storage 1,7%, 0 throttling no DynamoDB; mesmo assim PROJECTING levou 1.069 s (~83 mil WCU/min) e ARCHIVING faz 1 consulta Athena por partição diária, em série (~6 s cada) | Dimensionamento da task `import-dump` (2 vCPU / 8 GiB / 200 GiB) | **Superdimensionada para o gargalo real.** O limitante é latência de E/S em série, não recurso. Mais vCPU não ajuda; paralelizar a escrita de projeções e a verificação do ARCHIVING (ou verificar com uma única consulta agregada por `dataset_version`) ajuda. Pode-se reduzir a task para 1 vCPU / 2–4 GiB | Revisar |
 | 5 | RS-05: 5 recebimentos com reentrega a cada ~300 s e desvio para a DLQ no 6º; alarme de DLQ em ~3 min; na FIFO com grupo único, uma mensagem que sempre falha trava o grupo por ~25–30 min | SQS com DLQ e `maxReceiveCount = 5` | **Confirmada** como proteção. Para a FIFO incremental, considerar `maxReceiveCount` menor ou falhas permanentes (como o `ValidationException` do RS-01) classificadas como não retentáveis, para não travar o grupo | Confirmada, com ajuste |
-| 6 | CG-04: CPU 92,8% de 12:19 a 12:23 com 1 task de 0,25 vCPU; `AlarmHigh` às 12:25:54 e 2ª task às 12:25:56 (~6 min depois do início); 71 × `503` no platô | Autoscaling da API (mín. 1 / máx. 4, alvo 50% CPU) | **Confirma o achado da Sprint 4:** reage tarde para picos de minutos. Opções: mínimo de 2 tasks, 0,5 vCPU, escalonamento por `RequestCountPerTarget` do ALB ou agendado para eventos ao vivo | Revisar |
+| 6 | CG-04: CPU 92,8% de 12:19 a 12:23 com 1 task de 0,25 vCPU; `AlarmHigh` às 12:25:54 e 2ª task às 12:25:56 (~6 min depois do início); 71 × `503` no platô | Autoscaling da API (mín. 1 / máx. 4, alvo 50% CPU) | **Confirma o achado das sprints passadas:** reage tarde para picos de minutos. Opções: mínimo de 2 tasks, 0,5 vCPU, escalonamento por `RequestCountPerTarget` do ALB ou agendado para eventos ao vivo | Revisar |
 | 7 | Tempos medidos até `ALARM`: 35 s (falha de run), ~118 s (backlog), ~146 s (idade), ~155–190 s (DLQ); nenhum alarme para parada da task (RS-02b) nem para S3 indisponível (RS-02a); `projecting-duration` filtra `command=backfill` e não cobre `import-dump` | Alertas CloudWatch com período de 300 s frente ao RNF15 de 30 s | **RNF15 não atendido estruturalmente.** Período de 60 s com 1 avaliação e alarmes de métrica de alta resolução onde couber; alarme sobre `ImportJob` em `FAILED` publicado pelo reconciliador (não pelo worker); incluir `command=import-dump` no alarme de PROJECTING | Revisar |
 | 8 | RS-06: pela URL pública (API Gateway) 250/250 requisições em rajada passaram; direto no ALB o limite de 180/min funcionou (70 × `429`) | Rate limit em memória por `request.ip` com `trust proxy = 1` | **Ineficaz atrás do API Gateway**: o IP visto é o do API Gateway, que varia. Usar `trust proxy` compatível com API Gateway → ALB (2 saltos) ou throttling nativo do API Gateway; restringir o ALB para aceitar só o API Gateway | Correção necessária |
 | 9 | RS-01 (tarde, já com a correção do achado 3): a escrita de um lote de 150.000 eventos passa do `visibility_timeout` de 300 s da FIFO; com a agenda de 5 min, outro run recebe a mesma mensagem enquanto o primeiro ainda escreve, muda o estado/versão do registro do lote, e a transição final do primeiro falha com `ConditionalWriteError` (runs de 482 s e 712 s). Resultado: 300.000/300.000 eventos gravados, mas 1 de 2 lotes sem confirmação, mensagem na DLQ e drenagem não concluída em 1.800 s. Os runs que encontram o lote em uso terminam `SUCCEEDED` sem log da causa (`rs01-drenagem.txt`, `rs01-logs-ingest.txt`, `rs01-tarde-tasks.txt`) | `visibility_timeout = 300 s` da FIFO incremental × duração da escrita de um lote; agenda de 5 min do `ingest-incremental`; lease/estado do lote como proteção contra concorrência | **Defeito novo, sem correção.** Opções a avaliar: estender a visibilidade da mensagem durante o processamento (`ChangeMessageVisibility` periódico, como heartbeat); `visibility_timeout` maior que o pior tempo de escrita de um lote; impedir que um run inicie enquanto outro processa o mesmo grupo (lease por dataset); e fazer o run que encontra o lote em uso registrar isso em log e em métrica, em vez de terminar `SUCCEEDED` sem causa. Depende de nova execução do RS-01 para confirmar | Correção necessária |
@@ -1189,13 +1189,13 @@ $FALHAS filas && $FALHAS dlq-espiar              # 1 mensagem na DLQ, com 5 rece
 k6 run -e MODE=limite -e DUMP=$M/1000/argus_dump.sql.gz -e BURST_RATE=20 -e RUN_LABEL=rs06 $K6
 ```
 
-&emsp;Observação sobre o RS-05: a fila incremental é FIFO com um único grupo por dataset, então a mensagem venenosa bloqueia os lotes que chegam depois dela até ir para a DLQ (cerca de 5 × 5 minutos). O critério "não bloqueia as demais" deve ser lido como "as demais são processadas depois que a venenosa sai da fila", e o atraso está registrado no achado 5 da Seção 9.
+&emsp;Observação sobre o RS-05: a fila incremental é FIFO com um único grupo por dataset, então a mensagem venenosa bloqueia os lotes que chegam depois dela até ir para a DLQ (cerca de 5 × 5 minutos). O critério "não bloqueia as demais" foi interpretado como "as demais são processadas depois que a venenosa sai da fila", e o atraso está registrado no achado 5 da Seção 9.
 
 ---
 
 ## 12. Convenção de evidências
 
-&emsp;As evidências devem ser versionadas em `assets/testes-carga/<AAAA-MM-DD>-ingestao/`, somente com arquivos brutos (a descrição de cada arquivo fica neste documento):
+&emsp;As evidências estão versionadas em `assets/testes-carga/<AAAA-MM-DD>-ingestao/`, somente com arquivos brutos (a descrição de cada arquivo fica neste documento):
 
 - `resumo-<teste>.json` — resumo do k6 (`--summary-export`) de cada execução; na rodada de 2026-09-30, `resumo-ingestao-<teste>.json` (resumo do `handleSummary`) e `k6-summary-<teste>.json` (`--summary-export`), com o log em `k6-<teste>.log`;
 - `contagem-<teste>.txt` — saída das consultas de contagem (DynamoDB/Athena); na rodada de 2026-09-30 não houve recontagem independente: a contagem da importação veio da reconciliação do pipeline (`athena-cg02-r2.json`, `import-cg02-r2-final.json`) e a do incremental está em `rs01-acumulo.txt` e `rs01-drenagem.txt`;
