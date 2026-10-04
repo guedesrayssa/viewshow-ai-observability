@@ -65,8 +65,9 @@ O dashboard **View Show — API (RED)** é provisionado automaticamente e exibe
 latência p95, throughput, erros por segundo e uso de CPU a partir do Prometheus.
 Na AWS, o dashboard **View Show — Ingestão** usa o data source CloudWatch para
 mostrar esses mesmos quatro indicadores no contexto batch, além de duração por
-etapa, freshness, filas, DLQs, qualidade de dados e eventos operacionais. Os
-filtros `Comando` e `Task ECS` mantêm a comparação na mesma carga executada.
+etapa, freshness, filas, DLQs, qualidade de dados e eventos operacionais. O
+seletor único `Operação` (`operation`) associa o texto do comando à família ECS
+correspondente, mantendo métricas da aplicação e CPU na mesma operação.
 
 O Grafana lê `grafana/provisioning/datasources/datasources.yml` a cada subida e
 sincroniza os três data sources. Eles ficam marcados como somente leitura: para
@@ -122,6 +123,13 @@ SSM.
 
 O CI renderiza o mesmo bootstrap sem acessar a AWS. Para repetir essa validação
 localmente, execute `./deploy-learner-lab.sh --validate-only` nesse diretório.
+O renderer `validate-user-data.sh` produz `user-data.sh` para inspeção da sintaxe
+e `user-data.sh.gz` como payload enviado à EC2. O modo `--validate-only` renderiza
+e empacota os quatro dashboards (AWS, ingestão, aplicação e API), verifica
+placeholders não substituídos no bootstrap, sintaxe shell e o limite de 16 KiB
+do payload comprimido. Esses arquivos são gerados no diretório temporário do
+script e removidos ao sair. A validação local não comprova aceite das consultas
+pelo CloudWatch, execução do bootstrap na EC2 ou saúde do Grafana na AWS.
 
 ### Aplicação completa com Terraform
 
@@ -203,14 +211,27 @@ O Terraform injeta `OTEL_SERVICE_NAME=view-show-api` e o endereço privado do Te
 na task ECS somente quando o opt-in está ativo. A API TypeScript inicializa o
 SDK OpenTelemetry quando esse endpoint existe.
 
-Os futuros tasks de ingestão e análise devem reutilizar o security group da
-aplicação e definir `OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
-`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes em
-`apps/backend/ingestion-data` e `apps/backend/agentic` já implementam o contrato,
-mas não existem tasks ou entrypoints desses workers nesta entrega.
+Para habilitar o caminho OTLP opcional dos workers Python na AWS, as tasks devem
+ter acesso ao receptor pelo security group da aplicação e definir
+`OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
+`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes Python
+em `apps/backend/ingestion-data` e `apps/backend/agentic` fornecem hooks para esse
+caminho. A ingestão já possui CLI e tasks ECS; suas métricas batch no dashboard
+de ingestão usam EMF/CloudWatch, independentemente de habilitar OTLP.
 Os workers escrevem logs JSON em `stdout`; em ECS, mantenha o driver `awslogs`
 para enviá-los ao CloudWatch sem acoplar o processamento à disponibilidade do
 Loki.
+
+O dashboard de ingestão está versionado e teve aceite funcional na AWS em
+04/10/2026 após as correções do MR 90. Throughput usa duas séries distintas, `RecordsRead/300` e
+`RecordsWritten/300`, e erros/s usam o mesmo período CloudWatch fixo de 300 s.
+A versão corrigida foi implantada; sete painéis de métricas e um de logs foram
+validados pela API para as quatro operações, e o navegador executou as cinco
+expressões com dimensões interpoladas. O [JSON de validação](../../../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json)
+e a [captura sanitizada](../../../assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png)
+estão versionados. As métricas da ingestão sem amostras na janela histórica e
+os pontos esparsos de SQS não comprovam desempenho ou sucesso do benchmark;
+os logs foram validados em uma janela posterior à recriação dos grupos.
 
 ### Operação e custo no Learner Lab
 
@@ -245,17 +266,21 @@ Para enviar traces da API rodando no host, aponte o exportador OTLP para
 
 ## Coletar métricas dos workers Python
 
-Os serviços de ingestão e análise usam OTLP/HTTP em vez de expor um servidor
-Prometheus dentro de processos batch. Com a stack local no ar:
+Os hooks Python de ingestão e análise podem enviar métricas e traces por
+OTLP/HTTP, sem expor um servidor Prometheus dentro de processos batch. Para
+habilitar esse caminho opcional com a stack local no ar:
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4320
 export OTEL_SERVICE_NAME=view-show-ingestion # ou view-show-agentic
 ```
 
-O Alloy preserva `service.name` como label `service_name`. Como esses dois
-diretórios ainda não contêm lógica de negócio, painéis e alertas permanecem sem
-séries até que um entrypoint real chame os hooks de observabilidade.
+O Alloy preserva `service.name` como label `service_name`. Os diretórios de
+ingestão e análise já contêm lógica de negócio; a biblioteca Python da camada
+agêntica fornece hooks para consumidores Python. Séries no Prometheus e traces
+no Tempo dependem da chamada desses hooks durante a execução e do exportador
+OTLP configurado. A existência do código ou do endpoint não comprova coleta;
+o dashboard de ingestão consulta as métricas EMF no CloudWatch.
 
 ## Limites da implantação
 

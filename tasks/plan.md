@@ -8,8 +8,9 @@ são relevantes, como interpretar os quatro indicadores exigidos em um worker
 batch, quais logs precisam existir e como registrar método, evidências, resultados
 e impactos arquiteturais.
 
-Esta tarefa não implementa o dashboard Grafana. Ela entrega o contrato que a tarefa
-seguinte usará para construir o módulo da ingestão no Grafana.
+As tarefas 1 a 4 definiram o contrato do módulo da ingestão no Grafana. A fase
+de implementação e aceite do MR 90, ao final deste plano, acompanha as correções
+locais e o aceite funcional AWS concluído em 04/10/2026.
 
 ## Relação com os itens avaliados
 
@@ -30,8 +31,10 @@ resultados dos itens 1 e 2.
 | Fila cheia | Acúmulo de lotes/janelas na fila incremental ou na outbox, não HTTP 429 | profundidade, idade da mensagem mais antiga, DLQ, tempo de drenagem e recuperação |
 | Timeout | Comando ou dependência excede o prazo e termina explicitamente em falha/parcial | duração, estado terminal, etapa, código seguro de erro e recuperação posterior |
 
-Para a vazão, `RecordsRead / duração` representa processamento e
-`RecordsWritten / duração` representa novas escritas. Runs retomados podem produzir
+No dashboard, a vazão usa duas séries: `RecordsRead/300` para processamento e
+`RecordsWritten/300` para novas escritas, com soma de cada métrica em período
+CloudWatch fixo de 300 s. A vazão histórica de uma etapa usa sua contagem
+dividida pela duração medida da etapa. Runs retomados podem produzir
 `RecordsUnchanged`; portanto, vazão e integridade devem ser analisadas junto da
 reconciliação `lidos = escritos + inalterados + rejeitados`, nunca apenas pelo
 contador de escrita.
@@ -43,7 +46,7 @@ EMF no CloudWatch. O caminho mais simples e coerente é:
 
 - usar **CloudWatch Metrics** como fonte das métricas de aplicação e AWS;
 - usar **CloudWatch Logs** como fonte dos logs estruturados;
-- usar o **data source CloudWatch do Grafana** na tarefa seguinte;
+- usar o **data source CloudWatch do Grafana** no módulo de ingestão;
 - usar Prometheus/OTLP apenas se uma necessidade do ambiente local não puder ser
   atendida pelo caminho acima.
 
@@ -57,8 +60,8 @@ Os indicadores da rubrica não devem ser interpretados como RED de uma API HTTP:
 | Indicador exigido | Interpretação na ingestão batch | Sinal principal |
 | --- | --- | --- |
 | Latência | Tempo para um comando ou etapa concluir | `RunDurationMs` e, para diagnóstico, `StageDurationMs` |
-| Throughput | Registros lidos/escritos por unidade de tempo | `RecordsRead` e `RecordsWritten`, normalizados pela janela |
-| Erros por segundo | Falhas/parciais de execução e registros rejeitados por tempo | `Runs{status=FAILED|PARTIAL}` e `RecordsRejected` |
+| Throughput | Leitura e escrita em séries distintas, com período fixo de 300 s | `RecordsRead/300` e `RecordsWritten/300` |
+| Erros por segundo | Falhas/parciais de execução e registros rejeitados por tempo, com período fixo de 300 s | soma de `Runs` com `status=FAILED` ou `PARTIAL`, dividida por 300, e `RecordsRejected/300` |
 | CPU | Utilização real da task, não CPU do processo isolado | `ECS/ContainerInsights` (`CpuUtilized` / `CpuReserved`) |
 
 No artefato, cada painel deve declarar a unidade e a janela. Para runs pouco
@@ -73,7 +76,7 @@ por segundo deve permanecer calculável para atender ao critério.
 | --- | --- | --- | --- |
 | P0 | A execução concluiu? | `Runs` por `command` e `status` | Série temporal por resultado + total do último período |
 | P0 | Quanto tempo levou? | `RunDurationMs` por `command` | p50/p95 ou máximo quando houver poucas amostras |
-| P0 | Qual foi a vazão? | `RecordsRead` e `RecordsWritten` | registros/s ou registros/min |
+| P0 | Qual foi a vazão? | `RecordsRead/300` e `RecordsWritten/300` | duas séries em registros/s |
 | P0 | Houve erro ou perda rejeitada? | `Runs` em `FAILED`/`PARTIAL` e `RecordsRejected` | taxa de falha + rejeitados por tempo |
 | P0 | A task saturou CPU? | Container Insights `CpuUtilized`/`CpuReserved` | utilização percentual |
 | P0 | O dado está fresco? | `SourceLagSeconds` e `IncrementalBatchLagSeconds` | maior lag por dataset |
@@ -145,7 +148,7 @@ As seções de resultado só devem ser preenchidas depois da execução. Configu
 existente deve ser rotulada como “configurado”; apenas série ou log capturado na
 janela pode ser apresentado como “medido”.
 
-## Evidência exigida para a tarefa seguinte do Grafana
+## Evidência exigida para o aceite AWS do Grafana
 
 Para cada painel da ingestão, registrar:
 
@@ -156,13 +159,13 @@ Para cada painel da ingestão, registrar:
 5. bruto da consulta salvo em `assets/testes-carga/<data>-ingestao/`;
 6. interpretação do resultado e limitação do leito.
 
-## Fora de escopo
+## Limites do escopo
 
-- implementar ou provisionar o dashboard Grafana;
-- executar os testes de carga nesta etapa de definição;
+- tratar implementação local como aceite AWS ou medição de capacidade;
+- executar novos testes de carga nesta fase de correções do MR 90;
 - criar novas métricas sem antes confirmar uma lacuna no catálogo existente;
 - definir SLO ou afirmar capacidade sem resultado bruto;
-- alterar o runtime, Terraform ou a pilha LGTM.
+- alterar o runtime ou redesenhar a pilha LGTM.
 
 ## Lista de tarefas
 
@@ -173,5 +176,19 @@ Para cada painel da ingestão, registrar:
 
 ## Critério de conclusão
 
-A próxima tarefa consegue implementar os painéis da ingestão no Grafana sem
-rediscutir semântica, prioridade, unidade, fonte de dados ou evidência exigida.
+O contrato das tarefas 1 a 4 permite implementar os painéis sem rediscutir
+semântica, prioridade, unidade, fonte de dados ou evidência exigida. O aceite
+do MR 90 depende também das verificações AWS e da evidência durável abaixo.
+
+## Fase de implementação e aceite do MR 90
+
+- [x] Corrigir throughput e erros/s com período CloudWatch fixo de 300 s.
+- [x] Correlacionar comando e família ECS em um único seletor `operation`.
+- [x] Restaurar o bootstrap isolado com user data gzip menor ou igual a 16 KiB.
+- [x] Cobrir dashboard e bootstrap com regressões locais determinísticas.
+- [x] Validar todas as consultas com credenciais AWS Learner Lab renovadas: aceite funcional da API e do navegador em 04/10/2026.
+- [x] Aplicar somente o plano Terraform aprovado e registrar evidência durável: versão corrigida implantada, com [JSON de validação](../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json) e [captura sanitizada](../assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png) versionados.
+
+O aceite confirma a execução das consultas e a interpolação das quatro operações.
+As séries de ingestão sem amostras na janela histórica e os pontos esparsos de
+SQS não comprovam desempenho, vazão ou sucesso do benchmark de 29–30/09/2026.

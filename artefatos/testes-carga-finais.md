@@ -15,12 +15,15 @@ O recorte cobre os três itens da especificação:
 | Resultados de desempenho e resiliência | Define as medidas, critérios e evidências que devem acompanhar cada execução. |
 | Grafana ou Prometheus | Implementa o módulo de ingestão no Grafana, provisionado sobre o CloudWatch. |
 
-> **Estado em 30/09/2026:** contrato de observabilidade definido; 72 testes locais
-> aprovados; cenário AWS de 150 mil registros executado e reprovado end-to-end.
-> O cenário de fila cheia permanece pendente. O dashboard da ingestão já está
-> versionado, implantado e validado contra as APIs de métricas e
-> logs do CloudWatch; configuração existente e
-> teste de componente não são apresentados como resultado de carga do pipeline.
+> **Estado após as correções do MR 90:** contrato de observabilidade definido;
+> rodada histórica de 29–30/09/2026 com 72 testes locais aprovados e cenário AWS
+> de 150 mil registros executado e reprovado end-to-end. O cenário de fila cheia
+> permanece pendente. O dashboard corrigido foi validado na AWS em 04/10/2026:
+> serviços saudáveis, expressões executadas e quatro operações verificadas na API
+> e no navegador, com JSON e captura sanitizada versionados. As séries de ingestão
+> permanecem sem amostras na janela histórica; esse aceite funcional não mede desempenho.
+> Configuração existente e teste de componente não são apresentados como resultado
+> de carga do pipeline nem como aceite AWS do dashboard reparado.
 
 ## 2. Semântica dos cenários na arquitetura batch
 
@@ -34,8 +37,10 @@ execução e de sua fila.
 | Fila cheia | Produzir lotes acima da capacidade momentânea do consumidor incremental e interromper a produção após atingir o backlog planejado. | mensagens visíveis, idade da mais antiga, DLQ, lotes em quarentena e tempo de drenagem | backlog e idade ficam visíveis; não há descarte silencioso; após cessar a produção, a fila retorna a zero ou ao patamar inicial | Pendente de execução |
 | Timeout | Forçar o comando ou uma dependência a exceder seu prazo controlado. | duração, `FAILED`/`PARTIAL`, etapa, código de erro, retries, backlog e execução seguinte | a run termina em estado explícito, sem permanecer indefinida; a causa é correlacionável pelo `runId`; uma execução posterior consegue retomar ou recuperar | Observado; reprovado por ausência de estado terminal |
 
-No cenário de carga, `RecordsRead / duração` representa a taxa de processamento,
-enquanto `RecordsWritten / duração` representa novas escritas. Uma retomada pode
+No dashboard, `RecordsRead/300` representa a taxa de processamento, enquanto
+`RecordsWritten/300` representa novas escritas; são séries separadas, com soma
+de cada métrica em um período CloudWatch fixo de 300 s. A vazão histórica de uma
+etapa usa sua contagem dividida pela duração medida da etapa. Uma retomada pode
 gerar `RecordsUnchanged`; portanto, analisar somente escritas produziria uma
 conclusão incorreta sobre capacidade e integridade.
 
@@ -53,7 +58,7 @@ flowchart LR
 
 O CloudWatch permanece como fonte autoritativa porque o worker já emite métricas
 EMF e a infraestrutura já coleta métricas nativas de ECS e SQS. O Grafana é a
-camada de visualização, usando o data source CloudWatch já provisionado. Não foi
+camada de visualização, usando o data source CloudWatch configurado na stack. Não foi
 criado um segundo caminho Prometheus/OTLP sem uma lacuna
 comprovada, evitando duplicação de coleta, custo e manutenção.
 
@@ -65,13 +70,15 @@ alertas não devem preencher essa ausência como sucesso.
 
 | Indicador | Fonte e consulta a configurar no Grafana | Unidade e agregação | Interpretação |
 | --- | --- | --- | --- |
-| Latência | `view-show/Ingestion`, `RunDurationMs`, por `command`; usar percentil 95 e máximo | milissegundos por run | tempo de conclusão do comando; `StageDurationMs` fica disponível para diagnóstico |
-| Throughput | soma de `RecordsRead` e `RecordsWritten`, por `command`, dividida pelo período do painel | registros/s e registros/min | capacidade de leitura e persistência; deve ser lida com `RecordsUnchanged` e `RecordsRejected` |
-| Erros por segundo | soma de `Runs` com `status=FAILED` ou `PARTIAL`, dividida pelos segundos do período; exibir também `RecordsRejected / período` | erros/s e registros rejeitados/s | falhas de execução e degradação de qualidade são séries distintas |
-| CPU | `ECS/ContainerInsights`: `100 * CpuUtilized / CpuReserved`, por `ClusterName` e `TaskDefinitionFamily` | percentual, média e máximo | saturação da task durante a mesma janela do teste |
+| Latência | `view-show/Ingestion`: `RunDurationMs` com estatística `p95` por `command`, e `StageDurationMs` com estatística `Maximum` por `command` e `stage=PROJECTING`, em período de 300 s | milissegundos | tempo de conclusão do comando e maior duração da etapa de projeção |
+| Throughput | duas séries por `command`: `RecordsRead/300` e `RecordsWritten/300`, cada uma usando a soma de sua métrica no período CloudWatch fixo de 300 s | registros/s | capacidade de leitura e persistência; deve ser lida com `RecordsUnchanged` e `RecordsRejected` |
+| Erros por segundo | soma de `Runs` com `status=FAILED` ou `PARTIAL`, dividida por 300; exibir também `RecordsRejected/300`, com período CloudWatch fixo de 300 s | erros/s e registros rejeitados/s | falhas de execução e degradação de qualidade são séries distintas |
+| CPU | `ECS/ContainerInsights`: `100 * CpuUtilized / CpuReserved`, com estatística `Average` para ambas as métricas, por `ClusterName` e `TaskDefinitionFamily`, em período de 300 s | percentual calculado sobre as médias | utilização da CPU reservada para a task durante a mesma janela do teste |
 
-Quando houver poucas runs, o máximo e o valor individual devem acompanhar o p95;
-um percentil calculado sobre uma única amostra não acrescenta evidência. Para
+Quando houver poucas runs, a análise deve consultar também o valor individual
+e o máximo da duração da run; o máximo de projeção exibido no dashboard é uma
+métrica de etapa distinta. Um percentil calculado sobre uma única amostra não
+acrescenta evidência. Para
 erros raros, o painel pode exibir adicionalmente erros/min, mas a transformação
 para erros/s deve permanecer disponível para atender ao critério da rubrica.
 
@@ -129,13 +136,33 @@ visão pequena, organizada em três linhas:
    permanecem no dashboard CloudWatch nativo para não sobrecarregar a visão.
 
 O dashboard tem UID estável `view-show-ingestion`, usa o data source
-`cloudwatch` e é instalado automaticamente pelo mesmo `user_data` da stack de
-observabilidade. Os filtros `Comando` e `Task ECS` evitam misturar operações e
-recursos diferentes. A implantação e a captura visual continuam dependentes de
-habilitar `observabilidade_habilitada=true` no ambiente do teste. Em 30/09/2026,
-o dashboard foi implantado na AWS e a API do Grafana confirmou seu UID e a saúde
-do data source CloudWatch. A captura da janela do benchmark confirmou as séries
-de duração das cinco etapas concluídas; a evidência está em
+`cloudwatch` e está configurado para instalação pelo mesmo `user_data` da stack
+de observabilidade. O seletor único `Operação` (`operation`) associa cada um dos
+quatro comandos à família ECS correspondente. A versão corrigida do commit
+`5f993a5` foi validada em 04/10/2026 na instância `i-02d8393487d67a0bf`, região
+`us-east-1`: cloud-init concluído, cinco containers em execução, banco do Grafana
+`ok`, dashboard provisionado e data source CloudWatch saudável. Foram aceitas
+32 chamadas diretas à API do Grafana: sete painéis de métricas e um de logs para
+cada operação. No navegador, as cinco expressões de throughput, erros e CPU
+foram enviadas e executadas com HTTP 200, sem erros; as dimensões de comando e
+família ECS foram conferidas após a interpolação para as quatro opções.
+
+A janela das métricas e da [captura sanitizada](../assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png)
+é `2026-09-29T23:45:00Z–2026-09-30T03:00:00Z`. A captura mostra as duas primeiras
+linhas de métricas, incluindo os quatro indicadores obrigatórios, título,
+seletor, unidades e legendas. Como os grupos de logs foram recriados depois
+desse benchmark, os logs foram validados separadamente entre
+`2026-10-04T20:51:39.471Z` e `2026-10-04T21:06:39.471Z`, também com HTTP 200 na
+API e no navegador. Os resultados por painel, operação e janela estão no
+[JSON de validação](../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json).
+Frames sem amostras nas métricas da ingestão e pontos esparsos de SQS não
+comprovam desempenho, vazão nem sucesso do benchmark histórico.
+
+O registro de 30/09/2026 relata implantação de uma versão anterior, respostas
+da API do Grafana e observação das séries de duração de cinco etapas. A captura
+citada não foi versionada e as consultas de throughput/erros não foram validadas
+nessa rodada. Esse histórico não comprova o aceite do dashboard reparado nem
+validação de todos os painéis; seus limites estão no registro de
 [validação do Grafana da ingestão](../assets/testes-carga/2026-09-29-ingestao/grafana-ingestion-validation.md).
 
 Cada painel deve registrar no próprio título, descrição ou documentação associada:
@@ -146,9 +173,9 @@ Cada painel deve registrar no próprio título, descrição ou documentação as
 - tratamento de ausência de dados;
 - RNF ou pergunta operacional respondida.
 
-O período da consulta deve ser compatível com a duração do teste e permanecer
-igual nas séries comparadas. CPU, throughput e falhas só podem ser correlacionados
-quando usam a mesma janela temporal.
+As consultas de throughput e erros/s usam período CloudWatch fixo de 300 s,
+independentemente do intervalo visual do painel. CPU, throughput e falhas só
+podem ser correlacionados quando usam a mesma operação e janela temporal.
 
 ## 7. Coleta e preservação das evidências
 
@@ -173,7 +200,11 @@ Modelo para preenchimento após cada execução:
 | Fila cheia | Pendente | Pendente | backlog, idade, DLQ e drenagem | conforme Seção 2 | Pendente | Não executado | Pendente |
 | Timeout | 29/09 23:48:59–30/09 02:56:06 UTC | `47eccb9` | estado terminal e duração | estado terminal explícito em até 3.600 s | permaneceu em `ARCHIVING`; parada controlada após 11.227,484 s | Reprovado | Seção 7.1 |
 
-### 7.1 Resultado AWS: 150 mil registros
+### 7.1 Resultado AWS histórico: 150 mil registros
+
+Esta rodada de 29–30/09/2026 antecede as correções do MR 90. Os números abaixo
+são medições do benchmark histórico e não validam as consultas ou a implantação
+do dashboard reparado.
 
 O teste foi executado com uma única task ECS, sem ativação do dataset e sem
 paralelismo artificial. A janela observada foi de `2026-09-29T23:48:59.445Z` a
@@ -242,8 +273,12 @@ prematura e mantém o artefato auditável.
 
 ## 9. Limitações atuais
 
-- Há evidência local e uma rodada operacional AWS, mas ainda não há capturas do
-  módulo de ingestão no Grafana.
+- Há evidência local, uma rodada operacional AWS histórica e aceite funcional
+  do dashboard corrigido em 04/10/2026, com [JSON de validação](../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json)
+  e [captura sanitizada](../assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png)
+  versionados. O registro de 30/09/2026 cita uma captura não versionada. As séries
+  de ingestão sem amostras e os pontos esparsos de SQS no aceite de 04/10 não
+  comprovam desempenho nem sucesso do benchmark histórico.
 - A proposta de 150 mil registros representa 10 mil eventos/min por 15 minutos;
   a equivalência deve ser registrada junto ao gerador de carga utilizado.
 - Métricas de Scheduler, SQS e ECS dependem de Container Insights e dos recursos
@@ -263,7 +298,8 @@ prematura e mantém o artefato auditável.
 - [Infraestrutura de observabilidade](../apps/fullstack/ingestion-observability.tf):
   alarmes, métricas AWS e dashboard CloudWatch existentes.
 - [Data source CloudWatch do Grafana](../apps/fullstack/observability/aws/cloudwatch-datasource.yml):
-  integração que será reutilizada na próxima tarefa.
+  integração configurada para o dashboard; aceite funcional da versão corrigida
+  registrado no [JSON de 04/10/2026](../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json).
 
 Este arquivo é a fonte da metodologia e dos resultados datados. Evidências brutas
 ficam em `assets/testes-carga/`; instruções operacionais permanentes ficam no

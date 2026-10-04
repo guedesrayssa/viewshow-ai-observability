@@ -73,8 +73,8 @@ unidade, janela de teste, captura e bruto que deverão ser preservados.
 
 **Verificação:**
 
-- [x] Conferir que o data source CloudWatch já está provisionado na pilha Grafana AWS.
-- [x] Validar as consultas contra nomes e dimensões do Terraform.
+- [x] Conferir a configuração de provisionamento do data source CloudWatch na pilha Grafana AWS.
+- [x] Validar consultas contra nomes e dimensões do Terraform; aceite funcional na AWS/API e no navegador registrado em 04/10/2026.
 - [x] Revisar se os quatro indicadores obrigatórios aparecem na primeira visão.
 
 **Dependências:** Tarefa 2.
@@ -118,3 +118,16 @@ arquitetura. Resultados ainda não executados devem permanecer marcados como pen
 - [x] O artefato define métricas, logs, fontes, consultas e evidências esperadas.
 - [x] Não há resultado futuro apresentado como medição concluída.
 - [x] A tarefa seguinte pode implementar e capturar o módulo Grafana diretamente.
+
+## Tarefa 5: Implementar e validar o módulo Grafana da ingestão
+
+**Critérios de aceite:**
+
+- [x] Dashboard renderiza JSON válido e usa `RecordsRead`/`RecordsWritten`.
+- [x] Nenhuma expressão aplica `PERIOD()` a resultado de `SEARCH`.
+- [x] Um seletor correlaciona os quatro comandos às quatro famílias ECS.
+- [x] Bootstrap isolado inclui o dashboard e respeita 16 KiB comprimidos.
+- [x] CloudWatch aceita as quatro expressões reparadas ([evidência sanitizada](../assets/testes-carga/2026-10-04-ingestao/cloudwatch-query-validation.json)).
+- [x] Grafana provisionado está saudável e a [captura sanitizada](../assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png) foi versionada.
+- [x] API e navegador executam as cinco expressões visíveis e interpolam corretamente as quatro operações ([validação de 04/10/2026](../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json)).
+- [x] Logs validados em janela posterior à criação dos grupos; dados esparsos/ausentes não são apresentados como resultado de desempenho.
