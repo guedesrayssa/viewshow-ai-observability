@@ -27,11 +27,6 @@ locals {
     "${arquivo}:${filesha256("${local.analysis_worker_dir}/${arquivo}")}\n"
   ]))
   analysis_worker_image_tag = substr(local.analysis_worker_image_hash, 0, 12)
-  analysis_worker_service_version = (
-    var.analysis_worker_image_uri != ""
-    ? substr(sha256(var.analysis_worker_image_uri), 0, 12)
-    : local.analysis_worker_image_tag
-  )
 
   // Sem imagem informada, o Terraform constrói e publica a do módulo.
   analysis_worker_builds_image = var.analysis_worker_habilitado && var.analysis_worker_image_uri == ""
@@ -39,7 +34,7 @@ locals {
   // O sufixo [0] só é avaliado quando o repositório existe.
   analysis_worker_image_uri = !var.analysis_worker_habilitado ? "" : (
     var.analysis_worker_image_uri != "" ? var.analysis_worker_image_uri :
-    "${data.aws_caller_identity.atual.account_id}.dkr.ecr.${var.regiao}.amazonaws.com/${var.deployment_namespace}-analysis-worker:${local.analysis_worker_image_tag}"
+    "${aws_ecr_repository.analysis_worker[0].repository_url}:${local.analysis_worker_image_tag}"
   )
 
   // Com arquivos locais, o Terraform publica os dois no bucket da ingestão em
@@ -153,24 +148,6 @@ resource "aws_cloudwatch_log_group" "analysis_worker" {
   retention_in_days = var.retencao_logs_dias
 }
 
-resource "aws_security_group_rule" "ollama_ssh_bridge" {
-  count                    = var.analysis_worker_habilitado && var.analysis_ssh_bridge_habilitado ? 1 : 0
-  type                     = "ingress"
-  description              = "Ollama via SSH reverso somente a partir do Security Group do servico ECS"
-  from_port                = 11434
-  to_port                  = 11434
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.bastion.id
-  source_security_group_id = aws_security_group.servico.id
-
-  lifecycle {
-    precondition {
-      condition     = var.analysis_ollama_base_url == "http://${aws_instance.bastion.private_ip}:11434"
-      error_message = "A ponte SSH exige o IP privado do bastion como endpoint Ollama."
-    }
-  }
-}
-
 resource "aws_ecs_task_definition" "analysis_worker" {
   count                    = var.analysis_worker_habilitado ? 1 : 0
   family                   = "${var.deployment_namespace}-analysis-worker"
@@ -205,10 +182,6 @@ resource "aws_ecs_task_definition" "analysis_worker" {
       { name = "LLM_PROVIDER", value = var.analysis_llm_provider },
       { name = "LLM_MODEL_ID", value = var.analysis_llm_model_id },
       { name = "OLLAMA_BASE_URL", value = var.analysis_ollama_base_url },
-      { name = "OTEL_SERVICE_NAME", value = "view-show-agentic" },
-      { name = "OTEL_DEPLOYMENT_ENVIRONMENT", value = "aws" },
-      { name = "OTEL_SERVICE_VERSION", value = local.analysis_worker_service_version },
-      { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4320" : "" },
     ], var.analysis_llm_timeout_ms != "" ? [{ name = "LLM_TIMEOUT_MS", value = var.analysis_llm_timeout_ms }] : [])
 
     logConfiguration = {
@@ -259,7 +232,7 @@ resource "aws_ecs_service" "analysis_worker" {
   name            = "${var.deployment_namespace}-analysis-worker"
   cluster         = aws_ecs_cluster.principal.id
   task_definition = aws_ecs_task_definition.analysis_worker[0].arn
-  desired_count   = var.analysis_worker_desired_count
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {

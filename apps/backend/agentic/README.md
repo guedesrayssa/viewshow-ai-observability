@@ -84,40 +84,6 @@ evidência fraca, previsão preventiva e caso sem evidência. Resultado medido,
 recomendação de modelo e limitações em
 [`avaliacao-modelos.md`](../../../artefatos/arquitetura/implementacao/camada-agentica/avaliacao-modelos.md).
 
-### Validação local de observabilidade do Ollama
-
-Suba a stack de observabilidade existente:
-
-```bash
-cd apps/fullstack
-docker compose -f docker-compose.observability.yml up -d
-```
-
-Em outro terminal, abra o túnel sem colocar a senha no histórico ou em arquivo:
-
-```bash
-read -r -p "SSH user: " OLLAMA_SSH_USER
-read -r -p "SSH host: " OLLAMA_SSH_HOST
-ssh -N -L 11434:127.0.0.1:11434 "${OLLAMA_SSH_USER}@${OLLAMA_SSH_HOST}"
-```
-
-Em um terceiro terminal, descubra o modelo exposto e execute os dois checks:
-
-```bash
-export OLLAMA_BASE_URL=http://127.0.0.1:11434
-export LLM_MODEL_ID="$(curl --fail --silent "$OLLAMA_BASE_URL/api/tags" | jq -er '.models[0].name')"
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4320
-export OTEL_SERVICE_NAME=view-show-agentic
-export OTEL_DEPLOYMENT_ENVIRONMENT=local
-export OTEL_SERVICE_VERSION=development
-cd apps/backend/agentic
-npm run check:ollama-connectivity
-npm run smoke:ollama-observability
-```
-
-Os comandos devem sair com código zero. O Grafana deve receber métricas `llm_*`
-e o Tempo deve exibir `llm.generate`; prompt e resposta nunca são impressos.
-
 ## Contrato de observabilidade (Python)
 
 O pacote Python `view_show_agentic` já fornece os hooks que o futuro Worker de

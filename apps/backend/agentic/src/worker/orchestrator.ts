@@ -34,7 +34,6 @@ export class AnalysisWorker {
     const { queue, store } = this.deps, now = this.deps.now ?? Date.now;
     const log = this.deps.telemetry ?? (() => {});
     let lease: Lease | undefined, timer: ReturnType<typeof setInterval> | undefined;
-    let eventType = "unknown";
     let heartbeat: Promise<void> = Promise.resolve(), lost = false;
     const stopHeartbeat = async () => { if (timer) clearInterval(timer); await heartbeat; };
     try {
@@ -43,24 +42,10 @@ export class AnalysisWorker {
       const parsed = parseAnalysisEvent(raw);
       if (!parsed.ok) throw new AnalysisError("INVALID_EVENT_CONTRACT", true);
       const event = parsed.event;
-      eventType = event.eventType;
-      log("analysis_started", {
-        eventType,
-        deliveryId: delivery.id,
-        receives: delivery.receives,
-      });
       const runId = analysisRunId(event, digest), owner = randomUUID();
       const claim = await store.acquire(runId, owner, now(), 300000, digest({ type: event.eventType, payload: event.payload }));
-      if (claim === "complete") {
-        log("analysis_completed", { eventType, reason: "duplicate", scopes: 0 });
-        await queue.acknowledge(delivery.receipt);
-        return;
-      }
-      if (claim === "busy") {
-        log("analysis_deferred", { eventType, reason: "lease_busy" });
-        await queue.visibility(delivery.receipt, 60);
-        return;
-      }
+      if (claim === "complete") { await queue.acknowledge(delivery.receipt); return; }
+      if (claim === "busy") { await queue.visibility(delivery.receipt, 60); return; }
       lease = { runId, owner };
       const activeLease = lease;
       timer = setInterval(() => {
@@ -121,18 +106,12 @@ export class AnalysisWorker {
       if (lost) throw new AnalysisError("LEASE_LOST");
       await store.finish(lease, "SUCCEEDED", now());
       await queue.acknowledge(delivery.receipt);
-      log("analysis_completed", { eventType, runId: lease.runId, scopes: scopes.length });
+      log("analysis_completed", { runId: lease.runId, scopes: scopes.length });
     } catch (error) {
       await stopHeartbeat();
       const code = error instanceof AnalysisError ? error.code : "DEPENDENCY_FAILURE";
       const terminal = (error instanceof AnalysisError && error.permanent) || delivery.receives >= 5;
-      log("analysis_failed", {
-        eventType,
-        runId: lease?.runId ?? null,
-        code,
-        status: terminal ? "failure" : "retry",
-        terminal,
-      });
+      log("analysis_failed", { runId: lease?.runId ?? null, code, terminal });
       if (lost || code === "LEASE_LOST") return;
       if (terminal) {
         await queue.deadLetter(delivery, code, { runId: lease?.runId ?? null });

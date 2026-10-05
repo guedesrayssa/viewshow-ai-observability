@@ -89,7 +89,6 @@ services:
     image: grafana/tempo:3.0.3
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3200:3200"
       - "4317:4317"
       - "4318:4318"
     command: -config.file=/etc/tempo/tempo.yml

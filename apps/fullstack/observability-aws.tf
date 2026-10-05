@@ -100,15 +100,6 @@ locals {
       log_group         = aws_cloudwatch_log_group.api.name
     }
   ) : ""
-
-  agentic_dashboard_aws = var.observabilidade_habilitada ? templatefile(
-    "${path.module}/observability/aws/view-show-agentic-aws.json.tftpl",
-    {
-      aws_account_id            = data.aws_caller_identity.atual.account_id
-      aws_region                = var.regiao
-      analysis_worker_log_group = "/ecs/${var.deployment_namespace}-analysis-worker"
-    }
-  ) : ""
 }
 
 resource "aws_instance" "observabilidade" {
@@ -142,8 +133,7 @@ resource "aws_instance" "observabilidade" {
     // do provisionamento na AWS: só a pilha local o recebia. São exatamente os
     // quatro indicadores que o artefato de testes de carga precisa mostrar, e
     // sem esta linha eles não existem no Grafana da nuvem.
-    api_dashboard_gzip     = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-api.json"))
-    agentic_dashboard_gzip = base64gzip(local.agentic_dashboard_aws)
+    api_dashboard_gzip = base64gzip(file("${path.module}/observability/grafana/provisioning/dashboards/json/view-show-api.json"))
   })
 
   // Uma mudança nas configurações recria a instância para que o cloud-init

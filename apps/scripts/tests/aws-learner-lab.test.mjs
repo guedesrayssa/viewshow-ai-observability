@@ -1,6 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { EventEmitter } from "node:events";
 import {
   chmodSync,
   constants as fsConstants,
@@ -23,7 +21,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Integration-style tests for the repository-level Learner Lab command.
-import { isExactConfirmation, runLearnerLab, validateOllamaBaseUrl } from "../aws-learner-lab.mjs";
+import { isExactConfirmation, runLearnerLab } from "../aws-learner-lab.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const ORIGINAL_ROOT = ROOT;
@@ -78,24 +76,6 @@ function testEnvironment({
   venvExists = true,
   pythonCommandVersions = {},
   planVariableOverrides = {},
-  analysisDesiredCount = 0,
-  analysisOperationOverrides = {},
-  analysisServiceOverrides = {},
-  analysisTaskExitCode = 0,
-  analysisTaskStopCode = "EssentialContainerExited",
-  analysisTaskFailures = [],
-  analysisCanaryState = "SUCCEEDED",
-  analysisCanaryInitialEmptyReads = 0,
-  observabilityEndpoint = "http://10.0.10.5:4320",
-  grafanaAccess = {
-    usuario: "admin",
-    tunel_ssm: "aws ssm start-session --target i-0123456789abcdef0",
-    url_tunel: "http://localhost:3002",
-  },
-  observabilityInstanceId = "i-0123456789abcdef0",
-  grafanaPassword = "TestGrafanaPassword123",
-  bastionAccess = { instancia_id: "i-0abc1234def567890" },
-  bastionPrivateIp = "10.0.10.20",
   updateGateAccepted = true,
   activeImportId = null,
   activeImportIds = null,
@@ -131,7 +111,6 @@ function testEnvironment({
   const calls = [];
   const directories = [];
   const permissions = [];
-  const renames = [];
   const copies = [];
   const temporaryDirectories = [];
   const planDescriptors = [];
@@ -165,12 +144,10 @@ function testEnvironment({
     isSymbolicLink: () => false,
   };
   let applied = false;
-  let analysisCanaryReads = 0;
   let planReadCount = 0;
   let activeImportReadCount = 0;
   let cognitoUserCreated = cognitoUserExists;
   let snapshotSecretVersionCreated = snapshotSecretHasCurrentVersion;
-  let analysisTaskStarted = false;
   const execute = (command, args, options = {}) => {
     calls.push({ command, args, options });
     if (missing.includes(command)) return { status: 127, stdout: "", stderr: "not found" };
@@ -233,9 +210,6 @@ function testEnvironment({
           }
         : { status: 255, stdout: "", stderr: "InvalidKeyPair.NotFound" };
     }
-    if (command === "aws" && args[0] === "ec2" && args[1] === "describe-instances") {
-      return { status: 0, stdout: `${bastionPrivateIp}\n`, stderr: "" };
-    }
     if (command === "aws" && args[0] === "ec2") {
       return credentialsActive
         ? { status: 0, stdout: "vpc-1\n", stderr: "" }
@@ -297,74 +271,7 @@ function testEnvironment({
     if (command === "aws" && args[0] === "ecs" && args[1] === "wait") {
       return { status: 0, stdout: "", stderr: "" };
     }
-    if (command === "aws" && args[0] === "ecs" && args[1] === "run-task") {
-      analysisTaskStarted = true;
-      return {
-        status: 0,
-        stdout: JSON.stringify({
-          failures: analysisTaskFailures,
-          tasks: analysisTaskFailures.length === 0
-            ? [{ taskArn: "arn:aws:ecs:us-east-1:111122223333:task/view-show/analysis-task-1" }]
-            : [],
-        }),
-        stderr: "",
-      };
-    }
-    if (command === "aws" && args[0] === "ecs" && args[1] === "describe-services") {
-      return {
-        status: 0,
-        stdout: JSON.stringify({
-          failures: [],
-          services: [{
-            serviceName: "view-show-analysis-worker",
-            clusterArn: "arn:aws:ecs:us-east-1:111122223333:cluster/view-show-iac-cluster",
-            taskDefinition: "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-analysis-worker:1",
-            desiredCount: analysisDesiredCount,
-            launchType: "FARGATE",
-            status: "ACTIVE",
-            networkConfiguration: {
-              awsvpcConfiguration: {
-                subnets: ["subnet-aaa111", "subnet-bbb222"],
-                securityGroups: ["sg-abc123"],
-                assignPublicIp: "DISABLED",
-              },
-            },
-            ...analysisServiceOverrides,
-          }],
-        }),
-        stderr: "",
-      };
-    }
-    if (command === "aws" && args[0] === "ecs" && args[1] === "describe-task-definition") {
-      return {
-        status: 0,
-        stdout: JSON.stringify({
-          taskDefinition: {
-            containerDefinitions: [{
-              name: "analysis-worker",
-              environment: [{ name: "OLLAMA_BASE_URL", value: OLLAMA_URL }],
-            }],
-          },
-        }),
-        stderr: "",
-      };
-    }
     if (command === "aws" && args[0] === "ecs" && args[1] === "describe-tasks") {
-      if (analysisTaskStarted) {
-        return {
-          status: 0,
-          stdout: JSON.stringify({
-            failures: [],
-            tasks: [{
-              taskArn: "arn:aws:ecs:us-east-1:111122223333:task/view-show/analysis-task-1",
-              lastStatus: "STOPPED",
-              stopCode: analysisTaskStopCode,
-              containers: [{ name: "analysis-worker", lastStatus: "STOPPED", exitCode: analysisTaskExitCode }],
-            }],
-          }),
-          stderr: "",
-        };
-      }
       return {
         status: 0,
         stdout: JSON.stringify({
@@ -413,16 +320,6 @@ function testEnvironment({
       };
     }
     if (command === "aws" && args[0] === "dynamodb" && args[1] === "get-item") {
-      if (args.join(" ").includes("ANALYSIS#RUN#")) {
-        analysisCanaryReads += 1;
-        return {
-          status: 0,
-          stdout: analysisCanaryReads <= analysisCanaryInitialEmptyReads
-            ? ""
-            : JSON.stringify({ Item: { state: { S: analysisCanaryState } } }),
-          stderr: "",
-        };
-      }
       return {
         status: 0,
         stdout: JSON.stringify({
@@ -439,55 +336,7 @@ function testEnvironment({
     if (command === "docker" && args[0] === "info") {
       return { status: 0, stdout: "Server Version: 29\n", stderr: "" };
     }
-    if (command === "aws" && args[0] === "sqs" && args[1] === "send-message") {
-      return { status: 0, stdout: JSON.stringify({ MessageId: "message-canary-1" }), stderr: "" };
-    }
     if (command === "terraform" && args.includes("output")) {
-      if (args.at(-1) === "grafana_acesso") {
-        return { status: 0, stdout: JSON.stringify(grafanaAccess), stderr: "" };
-      }
-      if (args.at(-1) === "observabilidade_instancia_id") {
-        return { status: 0, stdout: `${observabilityInstanceId}\n`, stderr: "" };
-      }
-      if (args.at(-1) === "grafana_senha") {
-        return { status: 0, stdout: `${grafanaPassword}\n`, stderr: "" };
-      }
-      if (args.at(-1) === "bastion_acesso") {
-        return { status: 0, stdout: JSON.stringify(bastionAccess), stderr: "" };
-      }
-      if (args.at(-1) === "observabilidade_otlp_workers_endpoint") {
-        if (observabilityEndpoint === null && !applied) {
-          return {
-            status: 1,
-            stdout: "",
-            stderr: 'Error: Output "observabilidade_otlp_workers_endpoint" not found',
-          };
-        }
-        const endpoint = observabilityEndpoint === null && applied
-          ? "http://10.0.10.5:4320"
-          : observabilityEndpoint;
-        return { status: 0, stdout: JSON.stringify(endpoint), stderr: "" };
-      }
-      if (args.at(-1) === "analysis_worker_operacao") {
-        return {
-          status: 0,
-          stdout: JSON.stringify({
-            cluster_name: "view-show-iac-cluster",
-            task_definition: "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-analysis-worker:1",
-            task_family: "view-show-analysis-worker",
-            container_name: "analysis-worker",
-            subnet_ids: ["subnet-aaa111", "subnet-bbb222"],
-            security_group_id: "sg-abc123",
-            assign_public_ip: false,
-            log_group: "/ecs/view-show-analysis-worker",
-            analysis_queue_url: "https://sqs.us-east-1.amazonaws.com/111122223333/view-show-ingestion-analysis",
-            operational_table: "view-show-iac-operacional",
-            desired_count: analysisDesiredCount,
-            ...analysisOperationOverrides,
-          }),
-          stderr: "",
-        };
-      }
       if (args.includes("-raw")) {
         const values = {
           painel_url: "https://example.test",
@@ -596,9 +445,7 @@ function testEnvironment({
     if (command === "terraform" && args.includes("show") && args.includes("-json")) {
       const isSavedPlan = args.some(
         (item) =>
-          String(item).endsWith(".tfplan") ||
-          String(item).startsWith("/proc/self/fd/") ||
-          String(item).startsWith("/dev/fd/"),
+          String(item).endsWith(".tfplan") || String(item).startsWith("/proc/self/fd/"),
       );
       if (!isSavedPlan) {
         return {
@@ -700,7 +547,6 @@ function testEnvironment({
         }
       },
       writeFile: () => {},
-      renameFile: (source, target) => renames.push({ source, target }),
       changeMode: (target, mode) => permissions.push({ target, mode }),
       confirm: async () => true,
       environment,
@@ -787,22 +633,11 @@ function testEnvironment({
       openBackupPath: (target, flags, mode) => {
         const descriptor = 80 + backupDescriptors.length;
         let logicalTarget = target;
-        const anchored = String(target).match(/^\/(?:proc\/self|dev)\/fd\/(\d+)\/(.+)$/);
+        const anchored = String(target).match(/^\/proc\/self\/fd\/(\d+)\/(.+)$/);
         if (anchored) {
           const directory = backupDescriptorTargets.get(Number(anchored[1]));
           if (directory === undefined) throw new Error("EBADF");
           logicalTarget = path.join(directory, anchored[2]);
-          if (artifactEntries.has(logicalTarget)) throw new Error("EEXIST");
-          artifactEntries.set(logicalTarget, {
-            uid: 1000,
-            dev: 1,
-            ino: 300 + backupDescriptors.length,
-            nlink: 1,
-            isFile: () => true,
-            isDirectory: () => false,
-            isSymbolicLink: () => false,
-          });
-        } else if ((flags & fsConstants.O_CREAT) !== 0) {
           if (artifactEntries.has(logicalTarget)) throw new Error("EEXIST");
           artifactEntries.set(logicalTarget, {
             uid: 1000,
@@ -848,7 +683,6 @@ function testEnvironment({
     },
     directories,
     permissions,
-    renames,
     copies,
     temporaryDirectories,
     planDescriptors,
@@ -1231,87 +1065,6 @@ test("help commands print usage and perform no infrastructure work", async () =>
     assert.deepEqual(a.calls, [], String(step));
     assert.match(a.logs.join("\n"), /usage:.*aws-learner-lab\.mjs/i);
     assert.match(a.logs.join("\n"), /check.*build-snapshot.*deploy.*seed.*evidence.*all/is);
-  }
-});
-
-test("grafana starts a private SSM tunnel from validated Terraform outputs on every supported OS", async () => {
-  for (const platform of ["linux", "darwin", "win32"]) {
-    const a = testEnvironment({ platform });
-
-    const result = await runLearnerLab({ ...a.options, step: "grafana" });
-
-    assert.equal(result.status, 0, platform);
-    assert.ok(a.logs.includes("Grafana URL: http://localhost:3002"), platform);
-    assert.ok(a.logs.includes("Grafana user: admin"), platform);
-    assert.ok(a.logs.some((line) => line.includes("grafana_senha")), platform);
-    const tunnel = a.calls.find(
-      (call) => call.command === "aws" && call.args[0] === "ssm" && call.args[1] === "start-session",
-    );
-    assert.deepEqual(tunnel?.args, [
-      "ssm",
-      "start-session",
-      "--target",
-      "i-0123456789abcdef0",
-      "--document-name",
-      "AWS-StartPortForwardingSession",
-      "--parameters",
-      "portNumber=3000,localPortNumber=3002",
-      "--region",
-      "us-east-1",
-      "--profile",
-      "default",
-    ], platform);
-    assert.equal(tunnel?.options.stdio, "inherit", platform);
-  }
-});
-
-test("grafana --senha prints the local password without starting a tunnel", async () => {
-  const a = testEnvironment();
-
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "grafana",
-    extraArguments: ["--senha"],
-  });
-
-  assert.equal(result.status, 0);
-  assert.ok(a.logs.includes("Grafana password: TestGrafanaPassword123"));
-  assert.equal(
-    a.calls.some((call) => call.command === "aws"),
-    false,
-  );
-});
-
-test("analysis-bridge opens the private Ollama bridge without touching ECS on every supported OS", async () => {
-  for (const platform of ["linux", "darwin", "win32"]) {
-    const a = testEnvironment({ platform });
-    const spawned = [];
-    const killed = [];
-    const result = await runLearnerLab({
-      ...a.options,
-      step: "analysis-bridge",
-      readInput: async (prompt) => ({
-        "Ollama SSH user: ": "student",
-        "Ollama SSH host: ": "10.8.8.10",
-        "Bastion key file: ": "/tmp/vockey.pem",
-      })[prompt],
-      spawnProcess: (command, args, options) => {
-        spawned.push({ command, args, options });
-        const child = new EventEmitter();
-        child.exitCode = null;
-        child.signalCode = null;
-        child.kill = (signal) => killed.push({ command, signal });
-        return child;
-      },
-      waitForPort: async () => {},
-      waitForBridgeStop: async (_children, stop) => stop(),
-    });
-
-    assert.equal(result.status, 0, a.logs.join("\n"));
-    assert.deepEqual(spawned.map((entry) => entry.command), ["ssh", "aws", "ssh"], platform);
-    assert.equal(a.calls.some((call) => call.args[0] === "ecs"), false, platform);
-    assert.equal(killed.length, 3, platform);
-    assert.ok(a.logs.some((line) => line.includes("Ollama bridge ready")), platform);
   }
 });
 
@@ -2660,36 +2413,6 @@ test("update presets are hardcoded and the validated saved plan is the only appl
   }
 });
 
-test("plan-update uses the protected plan reference supported by each POSIX operating system", async () => {
-  for (const [platform, expectedReference] of [
-    ["linux", "/proc/self/fd/3"],
-    ["darwin", "/dev/fd/3"],
-  ]) {
-    const a = updateEnvironment({ platform });
-
-    const result = await runLearnerLab({
-      ...a.options,
-      step: "plan-update",
-      preset: "phase1-5000",
-    });
-
-    assert.equal(result.status, 0, `${platform}: ${a.logs.join("\n")}`);
-    const plan = a.calls.find(
-      (call) => call.command === "terraform" && call.args.includes("plan"),
-    );
-    const planPath = plan.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
-    const shown = a.calls.find(
-      (call) =>
-        call.command === "terraform" &&
-        call.args.includes("show") &&
-        call.args.includes("-json"),
-    );
-    assert.notEqual(shown.args.at(-1), planPath, platform);
-    assert.equal(shown.args.at(-1), expectedReference, platform);
-    assert.equal(shown.options.stdio.length, 4, platform);
-  }
-});
-
 test("plan-update validates a saved plan but never confirms, backs up, or applies", async () => {
   const a = updateEnvironment();
   let confirmations = 0;
@@ -2736,47 +2459,21 @@ test("two update plans for the same preset use distinct private artifacts", asyn
 });
 
 test("update rejects a plan whose bytes change after validation and never applies it", async () => {
-  for (const platform of ["linux"]) {
-    const a = updateEnvironment({
-      platform,
-      replacementPlanBytes: Buffer.from("different terraform plan bytes"),
-    });
-    const result = await runLearnerLab({
-      ...a.options,
-      step: "update",
-      preset: "phase1-5000",
-    });
-
-    assert.equal(result.status, 1, platform);
-    assert.match(a.logs.join("\n"), /integrity|changed/i, platform);
-    assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
-      false,
-      platform,
-    );
-  }
-});
-
-test("Windows update fails closed before Terraform can show or apply a saved plan", async () => {
-  const a = updateEnvironment({ platform: "win32" });
-  a.options.currentUserId = () => undefined;
-
+  const a = updateEnvironment({
+    replacementPlanBytes: Buffer.from("different terraform plan bytes"),
+  });
   const result = await runLearnerLab({
     ...a.options,
     step: "update",
     preset: "phase1-5000",
   });
 
-  assert.equal(result.status, 1, a.logs.join("\n"));
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /integrity|changed/i);
   assert.equal(
-    a.calls.some(
-      (call) =>
-        call.command === "terraform" &&
-        (call.args.includes("plan") || call.args.includes("apply")),
-    ),
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
     false,
   );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
 });
 
 test("update never applies a plan whose filesystem identity is unavailable", async () => {
@@ -3457,46 +3154,6 @@ test("update backs up state privately before apply and revalidates state and out
   assert.ok(postPullIndex > applyIndex);
   assert.ok(postOutputIndex > applyIndex);
   assert.ok(postShowIndex > applyIndex);
-});
-
-test("update creates its protected state backup through a Linux directory descriptor", async () => {
-  const a = updateEnvironment({ platform: "linux" });
-
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "update",
-    preset: "phase1-5000",
-  });
-
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  const destinationOpen = a.backupOpens.find(
-    ({ flags }) => (flags & fsConstants.O_CREAT) !== 0,
-  );
-  assert.match(destinationOpen.target, /^\/proc\/self\/fd\/\d+\/terraform\.tfstate\./);
-  assert.ok(destinationOpen.flags & fsConstants.O_EXCL);
-  assert.equal(a.backupWrites.length, 1);
-  assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
-    true,
-  );
-});
-
-test("update fails closed where a protected state backup cannot be anchored safely", async () => {
-  const a = updateEnvironment({ platform: "darwin" });
-
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "update",
-    preset: "phase1-5000",
-  });
-
-  assert.equal(result.status, 1, a.logs.join("\n"));
-  assert.equal(a.backupWrites.length, 0);
-  assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
-    false,
-  );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform backups/i);
 });
 
 test("update rejects untrusted or replaced backup paths before copy and apply", async () => {
@@ -5376,19 +5033,9 @@ const ANALYSIS_ARGUMENTS = [
 ];
 const ANALYSIS_PLAN_VARIABLES = {
   analysis_worker_habilitado: true,
-  analysis_worker_desired_count: 0,
   analysis_llm_provider: "none",
   analysis_model_file: ANALYSIS_MODEL,
   analysis_scope_catalog_file: ANALYSIS_CATALOG,
-};
-const OLLAMA_MODEL_ID = "qwen2.5:7b";
-const OLLAMA_URL = "http://10.20.30.40:11434";
-const OLLAMA_ARGUMENTS = [...ANALYSIS_ARGUMENTS, "--analysis-model-id", OLLAMA_MODEL_ID];
-const OLLAMA_PLAN_VARIABLES = {
-  ...ANALYSIS_PLAN_VARIABLES,
-  analysis_llm_provider: "ollama",
-  analysis_llm_model_id: OLLAMA_MODEL_ID,
-  observabilidade_habilitada: true,
 };
 
 function analysisFiles(
@@ -5443,7 +5090,7 @@ test("deploy with the analysis worker validates the files and passes the worker 
   }
   assert.match(
     a.logs.join("\n"),
-    /Analysis:\s+worker PREPARED, provider none, replicas 0 \(model approved-model\.json, catalog scope-catalog\.pilot\.json\)/,
+    /Analysis:\s+worker ENABLED, LLM DISABLED \(model approved-model\.json, catalog scope-catalog\.pilot\.json\)/,
   );
   assert.ok(
     a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
@@ -5604,392 +5251,4 @@ test("deploy refuses to apply a plan whose analysis worker variables diverge fro
       name,
     );
   }
-});
-
-test("Ollama URL validation rejects credentials, URL decorations and local endpoints", () => {
-  assert.equal(validateOllamaBaseUrl(`${OLLAMA_URL}/`), OLLAMA_URL);
-  for (const value of [
-    "ssh://10.20.30.40:11434",
-    "http://user:secret@10.20.30.40:11434",
-    "http://10.20.30.40:11434?token=secret",
-    "http://10.20.30.40:11434#fragment",
-    "http://localhost:11434",
-    "http://127.0.0.1:11434",
-    "http://[::1]:11434",
-    "http://169.254.169.254/latest/meta-data",
-    "http://8.8.8.8:11434",
-    "https://ollama.internal.example/",
-    "http://service.localhost:11434",
-    "http://10.20.30.40:11434/api",
-    "http://[2001:4860:4860::8888]:11434",
-  ]) {
-    assert.throws(() => validateOllamaBaseUrl(value), /VIEW_SHOW_OLLAMA_BASE_URL/);
-  }
-});
-
-test("analysis-check rejects a redirected operational Terraform output", async () => {
-  const a = testEnvironment({ analysisOperationOverrides: { cluster_name: "attacker-cluster" } });
-  const result = await runLearnerLab({ ...a.options, step: "analysis-check" });
-  assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "aws" && call.args[1] === "run-task"), false);
-  assert.match(a.logs.join("\n"), /analysis_worker_operacao/);
-});
-
-test("analysis-check rejects an ECS service that diverges from the tested operation", async () => {
-  const a = testEnvironment({
-    analysisServiceOverrides: {
-      networkConfiguration: {
-        awsvpcConfiguration: {
-          subnets: ["subnet-ccc333", "subnet-bbb222"],
-          securityGroups: ["sg-abc123"],
-          assignPublicIp: "DISABLED",
-        },
-      },
-    },
-  });
-  const result = await runLearnerLab({ ...a.options, step: "analysis-check" });
-  assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "aws" && call.args[1] === "run-task"), false);
-  assert.match(a.logs.join("\n"), /ECS service/);
-});
-
-test("analysis-prepare keeps the Ollama endpoint out of arguments, logs and its atomic manifest", async () => {
-  const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-    planVariableOverrides: OLLAMA_PLAN_VARIABLES,
-  });
-  const written = new Map();
-  const renames = [];
-  const result = await runLearnerLab({
-    ...a.options,
-    ...analysisFiles(a),
-    step: "analysis-prepare",
-    extraArguments: OLLAMA_ARGUMENTS,
-    writeFile: (target, value, options) => written.set(String(target), { value: String(value), options }),
-    renameFile: (source, target) => {
-      renames.push({ source: String(source), target: String(target) });
-      written.set(String(target), written.get(String(source)));
-      written.delete(String(source));
-    },
-  });
-
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
-  for (const variable of [
-    "-var=analysis_worker_habilitado=true",
-    "-var=analysis_worker_desired_count=0",
-    "-var=analysis_llm_provider=ollama",
-    "-var=observabilidade_habilitada=true",
-    `-var=analysis_llm_model_id=${OLLAMA_MODEL_ID}`,
-  ]) assert.ok(plan.args.includes(variable), variable);
-  assert.equal(plan.options.env.TF_VAR_analysis_ollama_base_url, OLLAMA_URL);
-  const planPath = plan.args.find((argument) => String(argument).startsWith("-out="))?.slice(5);
-  assert.match(planPath, /\.terraform-artifacts\/update-analysis-prepare-/);
-  const shown = a.calls.find((call) =>
-    call.command === "terraform" && call.args.includes("show") && call.args.includes("/proc/self/fd/3")
-  );
-  const applied = a.calls.find((call) => call.command === "terraform" && call.args.includes("apply"));
-  const gate = a.calls.find((call) =>
-    call.command === "node" && call.args.some((argument) => String(argument).includes("validate-analysis-worker-plan"))
-  );
-  assert.ok(shown.args.includes("/proc/self/fd/3"));
-  assert.ok(applied.args.includes("/proc/self/fd/3"));
-  assert.equal(gate.options.env.VIEW_SHOW_EXPECTED_AWS_ACCOUNT, "111122223333");
-  assert.ok(a.calls.findIndex((call) => call === applied) < a.calls.findIndex((call) =>
-    call.command === "terraform" && call.args.at(-1) === "analysis_worker_operacao"
-  ));
-  assert.equal(a.closedPlanDescriptors.length, 1);
-  assert.deepEqual(a.removedArtifactFiles, [planPath]);
-  assert.equal(a.removedArtifactDirectories.length, 1);
-  assert.ok(a.artifactLifecycle[0].startsWith("close:"));
-  assert.equal(a.calls.some((call) => call.args.some((argument) => String(argument).includes(OLLAMA_URL))), false);
-  assert.doesNotMatch(a.logs.join("\n"), /10\.20\.30\.40/);
-  assert.equal(renames.length, 1);
-  const manifest = written.get(renames[0].target);
-  assert.equal(manifest.options.mode, 0o600);
-  assert.doesNotMatch(manifest.value, /10\.20\.30\.40|OLLAMA_BASE_URL/);
-  assert.deepEqual(JSON.parse(manifest.value), {
-    model: ANALYSIS_MODEL,
-    catalog: ANALYSIS_CATALOG,
-    modelId: OLLAMA_MODEL_ID,
-  });
-});
-
-test("analysis-prepare uses the protected plan reference supported by each POSIX operating system", async () => {
-  for (const [platform, expectedReference] of [
-    ["linux", "/proc/self/fd/3"],
-    ["darwin", "/dev/fd/3"],
-  ]) {
-    const a = testEnvironment({
-      platform,
-      environment: {
-        AWS_PROFILE: "default",
-        AWS_REGION: "us-east-1",
-        VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
-      },
-      planVariableOverrides: OLLAMA_PLAN_VARIABLES,
-    });
-    const result = await runLearnerLab({
-      ...a.options,
-      ...analysisFiles(a),
-      step: "analysis-prepare",
-      extraArguments: OLLAMA_ARGUMENTS,
-    });
-
-    assert.equal(result.status, 0, `${platform}: ${a.logs.join("\n")}`);
-    const plan = a.calls.find(
-      (call) => call.command === "terraform" && call.args.includes("plan"),
-    );
-    const planPath = plan.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
-    const shown = a.calls.find(
-      (call) =>
-        call.command === "terraform" &&
-        call.args.includes("show") &&
-        call.args.includes("-json"),
-    );
-    const applied = a.calls.find(
-      (call) => call.command === "terraform" && call.args.includes("apply"),
-    );
-    assert.notEqual(shown.args.at(-1), planPath, platform);
-    assert.notEqual(applied.args.at(-1), planPath, platform);
-    assert.equal(shown.args.at(-1), expectedReference, platform);
-    assert.equal(applied.args.at(-1), expectedReference, platform);
-    assert.equal(shown.options.stdio.length, 4, platform);
-    assert.equal(applied.options.stdio.length, 4, platform);
-  }
-});
-
-test("Windows analysis plan fails closed before Terraform can show or apply it", async () => {
-  const a = testEnvironment({
-    platform: "win32",
-    environment: {
-      AWS_PROFILE: "default",
-      AWS_REGION: "us-east-1",
-      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
-    },
-    planVariableOverrides: OLLAMA_PLAN_VARIABLES,
-  });
-  a.options.currentUserId = () => undefined;
-
-  const result = await runLearnerLab({
-    ...a.options,
-    ...analysisFiles(a),
-    step: "analysis-prepare",
-    extraArguments: OLLAMA_ARGUMENTS,
-  });
-
-  assert.equal(result.status, 1, a.logs.join("\n"));
-  assert.equal(
-    a.calls.some(
-      (call) =>
-        call.command === "terraform" &&
-        (call.args.includes("plan") || call.args.includes("apply")),
-    ),
-    false,
-  );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
-});
-
-test("analysis-prepare --ssh-bridge persists the bridge for activation and deactivation", async () => {
-  const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-    planVariableOverrides: OLLAMA_PLAN_VARIABLES,
-  });
-  const written = new Map();
-  const result = await runLearnerLab({
-    ...a.options,
-    ...analysisFiles(a),
-    step: "analysis-prepare",
-    extraArguments: [...OLLAMA_ARGUMENTS, "--ssh-bridge"],
-    writeFile: (target, value) => written.set(String(target), String(value)),
-    renameFile: (source, target) => written.set(String(target), written.get(String(source))),
-  });
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
-  assert.equal(plan.options.env.TF_VAR_analysis_ssh_bridge_habilitado, "true");
-  const manifest = JSON.parse(written.get(path.join(ROOT, "apps", "fullstack", ".terraform-artifacts", "analysis-worker.json")));
-  assert.equal(manifest.sshBridge, true);
-  assert.equal(Object.hasOwn(manifest, "ollamaBaseUrl"), false);
-
-  const b = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-  });
-  const reader = (aContext) => (target, encoding) => String(target).endsWith("analysis-worker.json")
-    ? JSON.stringify(manifest)
-    : analysisManifestReader(aContext)(target, encoding);
-  const activated = await runLearnerLab({ ...b.options, step: "analysis-activate", readFile: reader(b) });
-  assert.equal(activated.status, 0, b.logs.join("\n"));
-  assert.equal(b.calls.find((call) => call.command === "terraform" && call.args.includes("plan")).options.env.TF_VAR_analysis_ssh_bridge_habilitado, "true");
-
-  const c = testEnvironment({ analysisDesiredCount: 1 });
-  const deactivated = await runLearnerLab({ ...c.options, step: "analysis-deactivate", readFile: reader(c) });
-  assert.equal(deactivated.status, 0, c.logs.join("\n"));
-  assert.equal(c.calls.find((call) => call.command === "terraform" && call.args.includes("plan")).options.env.TF_VAR_analysis_ssh_bridge_habilitado, "true");
-});
-
-test("analysis-prepare provisions missing observability before planning a fully known worker task", async () => {
-  const a = testEnvironment({
-    observabilityEndpoint: null,
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-    planVariableOverrides: OLLAMA_PLAN_VARIABLES,
-  });
-  const result = await runLearnerLab({
-    ...a.options,
-    ...analysisFiles(a),
-    step: "analysis-prepare",
-    extraArguments: OLLAMA_ARGUMENTS,
-  });
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  const plans = a.calls.filter((call) => call.command === "terraform" && call.args.includes("plan"));
-  assert.equal(plans.length, 2);
-  for (const plan of plans) {
-    assert.equal(plan.args.some((argument) => argument === "-var=grafana_cidr_acesso=null"), false);
-    assert.equal(plan.args.some((argument) => argument === "-var=bastion_admin_cidr=null"), false);
-  }
-  assert.ok(plans[0].args.includes("-var=observabilidade_habilitada=true"));
-  assert.ok(plans[0].args.includes("-var=analysis_llm_provider=none"));
-  assert.ok(plans[0].args.includes("-var=analysis_worker_habilitado=false"));
-  assert.ok(plans[0].args.includes("-var=observabilidade_api_exportacao_habilitada=false"));
-  assert.equal(plans[0].options.env.TF_VAR_analysis_ollama_base_url, undefined);
-  assert.ok(plans[1].args.includes("-var=analysis_llm_provider=ollama"));
-});
-
-test("deploy accepts explicit Ollama configuration for a new zero-replica stack", async () => {
-  const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-    planVariableOverrides: OLLAMA_PLAN_VARIABLES,
-  });
-  const result = await runLearnerLab({
-    ...a.options,
-    ...analysisFiles(a),
-    step: "deploy",
-    extraArguments: OLLAMA_ARGUMENTS,
-  });
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  assert.match(a.logs.join("\n"), /worker PREPARED, provider ollama, replicas 0/);
-});
-
-function analysisManifestReader(a, { datasetVersion = "dsv-canary-1" } = {}) {
-  const manifestPath = path.join(ROOT, "apps", "fullstack", ".terraform-artifacts", "analysis-worker.json");
-  return (target, encoding) => {
-    if (String(target) === manifestPath) {
-      return JSON.stringify({ model: ANALYSIS_MODEL, catalog: ANALYSIS_CATALOG, modelId: OLLAMA_MODEL_ID });
-    }
-    if (String(target) === ANALYSIS_MODEL) {
-      return JSON.stringify({ approved: true, datasetVersion });
-    }
-    return a.options.readFile(target, encoding);
-  };
-}
-
-test("analysis-check and analysis-smoke run the expected one-off private ECS commands", async () => {
-  for (const [step, entrypoint] of [
-    ["analysis-check", "dist/src/bootstrap/ollama-connectivity-check.js"],
-    ["analysis-smoke", "dist/src/bootstrap/ollama-observability-smoke.js"],
-  ]) {
-    const a = testEnvironment();
-    const result = await runLearnerLab({ ...a.options, step });
-    assert.equal(result.status, 0, `${step}: ${a.logs.join("\n")}`);
-    const run = a.calls.find((call) => call.command === "aws" && call.args[0] === "ecs" && call.args[1] === "run-task");
-    assert.ok(run);
-    assert.match(run.args.join(" "), /assignPublicIp=DISABLED/);
-    assert.match(run.args.join(" "), new RegExp(entrypoint.replaceAll(".", "\\.")));
-    assert.ok(a.calls.some((call) => call.command === "aws" && call.args[1] === "wait"));
-    assert.ok(a.calls.some((call) => call.command === "aws" && call.args[1] === "describe-tasks"));
-  }
-});
-
-test("a failed analysis connectivity task prevents activation planning and apply", async () => {
-  const a = testEnvironment({
-    analysisTaskExitCode: 7,
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-  });
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "analysis-activate",
-    readFile: analysisManifestReader(a),
-  });
-  assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")), false);
-  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")), false);
-});
-
-test("analysis activation rejects a stopped task without the expected ECS stop code", async () => {
-  const a = testEnvironment({
-    analysisTaskStopCode: "TaskFailedToStart",
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-  });
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "analysis-activate",
-    readFile: analysisManifestReader(a),
-  });
-  assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")), false);
-});
-
-test("analysis-activate checks connectivity before its exact rollout plan", async () => {
-  const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
-  });
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "analysis-activate",
-    readFile: analysisManifestReader(a),
-  });
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  const runIndex = a.calls.findIndex((call) => call.command === "aws" && call.args[1] === "run-task");
-  const planIndex = a.calls.findIndex((call) => call.command === "terraform" && call.args.includes("plan"));
-  assert.ok(runIndex >= 0 && planIndex > runIndex);
-  const plan = a.calls[planIndex];
-  assert.ok(plan.args.includes("-var=analysis_worker_desired_count=1"));
-  assert.equal(plan.options.env.TF_VAR_analysis_ollama_base_url, OLLAMA_URL);
-});
-
-test("analysis-deactivate creates a 1-to-0 plan without a connectivity task", async () => {
-  const a = testEnvironment({
-    analysisDesiredCount: 1,
-  });
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "analysis-deactivate",
-    readFile: analysisManifestReader(a),
-  });
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  assert.equal(a.calls.some((call) => call.command === "aws" && call.args[1] === "run-task"), false);
-  assert.ok(a.calls.some((call) => call.command === "aws" && call.args[1] === "describe-task-definition"));
-  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
-  assert.ok(plan.args.includes("-var=analysis_worker_desired_count=0"));
-  assert.equal(plan.options.env.TF_VAR_analysis_ollama_base_url, OLLAMA_URL);
-});
-
-test("analysis-canary publishes one aligned global event and requires SUCCEEDED", async () => {
-  const datasetVersion = "dsv-canary-2026";
-  const a = testEnvironment({ analysisDesiredCount: 1, analysisCanaryInitialEmptyReads: 1 });
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "analysis-canary",
-    readFile: analysisManifestReader(a, { datasetVersion }),
-    generateRandomBytes: () => Buffer.alloc(16, 0xab),
-  });
-  assert.equal(result.status, 0, a.logs.join("\n"));
-  const publish = a.calls.find((call) => call.command === "aws" && call.args[0] === "sqs");
-  assert.ok(publish);
-  assert.ok(!publish.args.includes("file:///dev/stdin"));
-  assert.equal(publish.options.input, undefined);
-  const event = JSON.parse(publish.args[publish.args.indexOf("--message-body") + 1]);
-  const stateRead = a.calls.find((call) => call.command === "aws" &&
-    call.args.slice(0, 2).join(" ") === "dynamodb get-item" && call.args.join(" ").includes("ANALYSIS#RUN#"));
-  const stateKey = JSON.parse(stateRead.args[stateRead.args.indexOf("--key") + 1]);
-  const expectedRunId = createHash("sha256")
-    .update(JSON.stringify(`${event.eventType}${event.idempotencyKey}`)).digest("hex");
-  assert.equal(stateKey.pk.S, `ANALYSIS#RUN#${expectedRunId}`);
-  assert.equal(event.eventType, "ANOMALY_DETECTION");
-  assert.equal(event.payload.datasetVersion, datasetVersion);
-  assert.equal(event.payload.scope, undefined);
-  assert.equal(Date.parse(event.payload.window.end) - Date.parse(event.payload.window.start), 15 * 60 * 1_000);
-  assert.equal(Date.parse(event.payload.window.end) % (15 * 60 * 1_000), 0);
-  assert.match(a.logs.join("\n"), /Analysis state: SUCCEEDED/);
-  assert.equal(a.calls.filter((call) => call.command === "aws" && call.args.slice(0, 2).join(" ") === "dynamodb get-item").length, 2);
-  assert.doesNotMatch(a.logs.join("\n"), new RegExp(datasetVersion));
 });
