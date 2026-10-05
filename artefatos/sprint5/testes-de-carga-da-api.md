@@ -25,7 +25,7 @@
 
 &emsp;O objetivo foi observar o comportamento da API sob níveis crescentes de carga e identificar a faixa em que a configuração testada começa a apresentar degradação. A API recebe as consultas do frontend e compõe respostas a partir de dados operacionais e projeções armazenadas no DynamoDB.
 
-&emsp;Foram executados quatro perfis em uma stack temporária na AWS: verificação básica (*smoke*), carga sustentada (*load*), estresse (*stress*) e rajada (*spike*). Os resultados apresentados neste documento correspondem às execuções realizadas em 30/09/2026.
+&emsp;Foram executados quatro perfis em uma stack temporária na AWS: verificação básica (*smoke*), carga sustentada (*load*), estresse (*stress*) e rajada (*spike*). Os resultados das seções 6 e 7 correspondem às execuções realizadas em 30/09/2026. A reexecução de 01/10/2026, com o gerador dentro da região e métricas de CloudWatch, está na seção 12.1 e é a base das conclusões de capacidade.
 
 ### 1.2 Organização para consolidação
 
@@ -172,7 +172,7 @@
 | Tarefa da API | 256 CPU e 512 MiB de memória |
 | Auto scaling | mínimo 1 e máximo 4 tarefas, alvo por CPU |
 | Persistência | tabela operacional do DynamoDB com seed sintético |
-| Gerador | k6 executado em uma única máquina |
+| Gerador | k6 executado em uma única máquina, fora da região da AWS (mediana de ~140 a 150 ms, compatível com o RTT de uma rede externa) |
 
 <div align="center">
 
@@ -190,7 +190,7 @@
 
 ### 6.1 Visão consolidada
 
-&emsp;A Tabela 5 resume os valores dos arquivos brutos k6. As durações p95 e p99 são da métrica completa `http_req_duration`; a coluna adicional de p95/p99 HTTP 200 indica as respostas válidas usadas pelos thresholds de latência. As taxas observadas são médias da execução inteira e, portanto, são menores que a taxa de pico nas rodadas com rampa.
+&emsp;A Tabela 5 resume os valores dos arquivos brutos k6. As durações p95 e p99 são da métrica completa `http_req_duration`; a coluna adicional de p95/p99 HTTP 200 indica as respostas válidas usadas pelos thresholds de latência. As taxas observadas são médias da execução inteira e, portanto, são menores que a taxa de pico nas rodadas com rampa. As latências foram medidas por um gerador fora da região e incluem o RTT de rede: de dentro da VPC, a mediana de um perfil equivalente é de ~20 ms (seção 12.1). Os valores da coluna "Falhas HTTP inesperadas" não contam respostas 503, que o script tratava como esperadas em todas as rotas; os indicadores efetivos de falha são as colunas Contrato e Checks (seção 12, item 3).
 
 <div align="center">
 
@@ -207,7 +207,7 @@
 
 <div align="center">
 
-<sup>Fonte: arquivos JSON em `apps/backend/api/loadtest/results/aws/`. Valores de latência arredondados para apresentação.</sup>
+<sup>Fonte: arquivos JSON em `apps/backend/api/loadtest/results/aws/`. Valores de latência arredondados para apresentação. Latências medidas de fora da região.</sup>
 
 </div>
 
@@ -225,19 +225,21 @@
 
 &emsp;O perfil de carga sustentou a taxa configurada de 10 iterações/s durante cinco minutos, precedida por uma rampa de 30 segundos e seguida por uma rampa de saída de 15 segundos. No total, o k6 registrou 3.239 iterações e 3.240 requisições em aproximadamente 5m45s.
 
-&emsp;Não houve iteração descartada, resposta 429, erro HTTP inesperado ou falha de check. O p95 foi 256 ms e o p99 362 ms na métrica geral; nas respostas 200, o p95 foi 258 ms e o p99 364 ms. O perfil atendeu os thresholds configurados.
+&emsp;Não houve iteração descartada, resposta 429, erro HTTP inesperado (o script não contava 503) ou falha de check. O p95 foi 256 ms e o p99 362 ms na métrica geral; nas respostas 200, o p95 foi 258 ms e o p99 364 ms. O perfil atendeu os thresholds configurados.
 
 ### 6.4 Stress
 
 &emsp;O perfil começou em 10 iterações/s, passou por rampa de 30 segundos até 20/s e sustentou essa taxa durante três minutos, retornando depois à taxa base. Ao longo de aproximadamente seis minutos, foram concluídas 5.699 iterações e 5.700 requisições. A taxa média completa foi 15,81 iterações/s, abaixo do pico configurado por causa dos estágios de rampa e recuperação.
 
-&emsp;Não houve iteração descartada, resposta 429, erro HTTP inesperado ou falha de check. O p95 foi 262 ms e o p99 414 ms na métrica geral; nas respostas 200, 263 ms e 418 ms, respectivamente. O perfil atendeu os thresholds configurados.
+&emsp;Não houve iteração descartada, resposta 429, erro HTTP inesperado (o script não contava 503) ou falha de check. O p95 foi 262 ms e o p99 414 ms na métrica geral; nas respostas 200, 263 ms e 418 ms, respectivamente. O perfil atendeu os thresholds configurados.
 
 ### 6.5 Spike
 
 &emsp;O perfil elevou a taxa de chegada de 10 para 40 iterações/s em dez segundos, manteve o pico durante 30 segundos e retornou à taxa base. A execução completa durou aproximadamente 2m50s, com 2.719 iterações concluídas e 2.720 requisições registradas.
 
-&emsp;A rajada resultou em 180 iterações descartadas. A latência geral alcançou p95 de 24,83 segundos e p99 de 30,12 segundos; considerando somente respostas HTTP 200, os percentis foram 18,58 e 28,86 segundos. A taxa de sucesso do contrato ficou em 97,17%, abaixo do limite de 98%, e a taxa de checks ficou em 98,20%. O perfil **reprovou** thresholds de duração, contrato e iterações descartadas, apesar de não haver resposta 429 ou erro HTTP inesperado.
+&emsp;A rajada resultou em 180 iterações descartadas. A latência geral alcançou p95 de 24,83 segundos e p99 de 30,12 segundos; considerando somente respostas HTTP 200, os percentis foram 18,58 e 28,86 segundos. A taxa de sucesso do contrato ficou em 97,17%, abaixo do limite de 98%, e a taxa de checks ficou em 98,20%. O perfil **reprovou** thresholds de duração, contrato e iterações descartadas, apesar de não haver resposta 429 nem falha HTTP contada pelo script (que não considerava o 503).
+
+&emsp;O painel desiste de uma requisição após 8 s (`REQUEST_TIMEOUT` em `apps/frontend/lib/data/client.ts`), enquanto o k6 esperava até 60 s. Com mediana de 262 ms e p90 de 11,4 s, pelo menos 10% das requisições teriam virado "indisponível" na tela, inclusive as que o script contou como sucesso por voltarem 200.
 
 ---
 
@@ -245,13 +247,17 @@
 
 ### 7.1 Capacidade observada
 
-&emsp;Na configuração medida, a API manteve latência abaixo de 500 ms no p99 durante os perfis load e stress. Isso demonstra estabilidade para a mistura de rotas sintéticas exercitada até o perfil de stress — com pico de 20 iterações/s —, dentro da duração limitada das rodadas.
+&emsp;As rodadas de 30/09 sustentam apenas o seguinte: com a mistura de rotas sintéticas, 300 incidentes e uma tarefa de 0,25 vCPU, a API respondeu sem falhas e com p99 abaixo de 500 ms nos perfis load (10 iterações/s) e stress (pico de 20/s), em rodadas de poucos minutos. Essa latência foi medida de fora da região e inclui o RTT de rede. O resultado não pode ser extrapolado para outras taxas, outros volumes de dados ou outras durações, nem para a taxa do RNF14 (137 req/s), que é de 7 a 14 vezes maior que a dos perfis load e stress.
 
-&emsp;A rajada de 40 iterações/s encontrou um limite claro. A latência aumentou em ordens de grandeza, surgiram chegadas descartadas e a taxa do contrato caiu abaixo do critério. Assim, o resultado mais relevante da rodada é que a configuração não absorveu a rajada sem degradação, mesmo que os requests concluídos não tenham retornado 429 ou erro HTTP inesperado.
+&emsp;A rajada de 40 iterações/s encontrou um limite claro. A latência aumentou em ordens de grandeza, surgiram chegadas descartadas e a taxa do contrato caiu abaixo do critério. A configuração não absorveu a rajada sem degradação, mesmo que as requisições concluídas não tenham retornado 429 nem falha HTTP contada pelo script.
+
+&emsp;A reexecução de 01/10, com o gerador dentro da região e métricas de CloudWatch (seção 12.1), localiza o limite. Com 300 incidentes, uma tarefa de 0,25 vCPU respondeu sem falhas até 30 req/s, com p95 de 503 ms nesse patamar, e passou a falhar em 25% das requisições a 35 req/s. O gargalo é a CPU da tarefa (cerca de 7 a 9 ms de vCPU por requisição), com memória entre 14% e 23% e sem throttling no DynamoDB. Com as quatro tarefas do limite do autoscaling, a capacidade teórica a 100% de CPU é de cerca de 115 req/s, abaixo dos 137 req/s do RNF14, e o autoscaling não reage a tempo a uma rajada (seção 7.2). Na configuração atual, portanto, o RNF14 não é atendido. O teste de 137 iterações/s reprovou com 69% de falha e, como o gerador emitiu só 56% da carga prevista, esse valor é um limite inferior.
+
+&emsp;A capacidade medida vale para 300 incidentes. Incidentes, diagnóstico e overview carregam a projeção inteira (um item do DynamoDB) a cada requisição e, em testes locais, o custo de CPU por requisição passou de 3,9 ms para 8,2 ms ao subir de 300 para 2.500 incidentes. Esse efeito não foi medido na AWS.
 
 ### 7.2 Auto scaling e recuperação
 
-&emsp;Durante a execução de spike, o serviço chegou a duas tarefas ativas, enquanto o perfil de load e stress não precisou desse aumento. O scale out observado não evitou a elevação de latência da rajada: a criação de capacidade não foi instantânea e a pressão acumulada no caminho de requisições persistiu. Esse teste não permite concluir qual componente específico foi o gargalo; seria necessário correlacionar as métricas de API Gateway, ECS, ALB e DynamoDB em uma nova rodada.
+&emsp;Durante a execução de spike, o serviço chegou a duas tarefas ativas, enquanto o perfil de load e stress não precisou desse aumento. O scale out observado não evitou a elevação de latência da rajada: a criação de capacidade não foi instantânea e a pressão acumulada no caminho de requisições persistiu. Esse teste não permite concluir qual componente específico foi o gargalo; seria necessário correlacionar as métricas de API Gateway, ECS, ALB e DynamoDB em uma nova rodada. Essa correlação foi feita na reexecução de 01/10 (seção 12.1): o limite é a CPU da tarefa, e o scale out só dispara depois de três minutos consecutivos acima de 50%, o que uma rajada de 30 a 40 s não alcança.
 
 &emsp;Uma hipótese a avaliar é iniciar o teste com mais tarefas ou pré-aquecer a capacidade. Outra é instrumentar e correlacionar o tempo de escala com a latência de cada serviço. Essas são propostas de experimento e não foram validadas por esta bateria.
 
@@ -265,13 +271,13 @@
 
 ## 8. Limitações
 
-1. A conclusão representa uma conta Learner Lab, uma região, uma definição de tarefa e uma mistura específica de consultas. Não é uma capacidade garantida para produção nem comprova disponibilidade mensal.
-2. O k6 foi executado em uma única máquina. O teste não modela múltiplos geradores distribuídos nem clientes com redes geograficamente distintas.
+1. A conclusão representa uma conta Learner Lab, uma região, uma definição de tarefa e uma mistura específica de consultas. A massa tem 300 incidentes. Não é uma capacidade garantida para produção nem comprova disponibilidade mensal.
+2. O k6 foi executado em uma única máquina, fora da região da AWS, então as latências medidas incluem o RTT de rede; a reexecução de 01/10 usou um gerador dentro da VPC. O teste não modela múltiplos geradores distribuídos nem clientes com redes geograficamente distintas.
 3. A massa sintética foi inserida diretamente na tabela operacional. Os resultados não medem ingestão, transformação, publicação de projeção, nem comportamento com distribuição e volume representativos dos dados reais.
 4. Os snapshots de dashboard envelhecem (a API passa a responder 200 com o aviso `STALE_SNAPSHOT`). A rota de monitoramento responde sempre `DATA_UNAVAILABLE`, por ser um stub.
 5. A sessão válida foi preparada antes da carga. Os resultados não caracterizam throughput de login, callback SSO ou Cognito sob carga.
-6. O perfil `breakpoint` — degraus de carga até 150 iterações/s — e o perfil `soak` de longa duração não foram executados nesta rodada AWS. Não há medida nesta bateria para carga máxima sustentada por várias horas.
-7. A falha no spike indica saturação do conjunto API Gateway, ECS, aplicação e dependências, mas os JSON k6 não identificam sozinhos o recurso limitante. Atribuição de causa exige métricas de infraestrutura correlacionadas.
+6. O perfil `breakpoint` — degraus de carga até 150 iterações/s — e o perfil `soak` de longa duração não foram executados nesta rodada AWS; foram executados na reexecução de 01/10 (seção 12.1), com soak de 30 min. Não há medida para carga sustentada por várias horas.
+7. A falha no spike indica saturação do conjunto API Gateway, ECS, aplicação e dependências, mas os JSON k6 não identificam sozinhos o recurso limitante. Atribuição de causa exige métricas de infraestrutura correlacionadas, o que foi feito na reexecução de 01/10.
 
 ---
 
@@ -363,9 +369,11 @@ Apply complete! Resources: 0 added, 0 changed, 129 destroyed.
 | 2 | Seção 7.3: os `503 DATA_UNAVAILABLE` do monitoramento decorrem de snapshots que envelhecem durante a rodada | `monitoring()` é um stub que responde sempre `503 DATA_UNAVAILABLE` (`dashboard-queries.ts`). Os contadores (3, 208, 435, 285) equivalem a cerca de 7% das iterações, o peso da rota no mix, e não dependem do tempo de seed. A rota não foi exercitada em nenhuma rodada. O envelhecimento de snapshot existe, mas afeta `dashboard/overview` (200 com aviso `STALE_SNAPSHOT`) |
 | 3 | Tabela 5: "Falhas HTTP inesperadas = 0" | O script marcava 503 como resposta esperada em **todas** as rotas (`setResponseCallback(200, 503)`), então `http_req_failed` nunca contava 503. Em um controle negativo com o banco fora do ar, 96% das respostas foram 503 e a métrica marcou 0%. Só `checks` e o contrato percebiam |
 | 4 | Seção 6.5: contrato de 97,17% na rajada | O painel desiste após 8 s (`REQUEST_TIMEOUT` em `apps/frontend/lib/data/client.ts`) e o k6 esperava 60 s. Na rajada, a mediana foi 262 ms e o p90 11,4 s: pelo menos 10% das requisições teriam virado "indisponível" na tela, mas contavam como sucesso se voltassem 200. O script corrigido usa o mesmo limite de 8 s |
-| 5 | Seção 7.1: a API mantém p99 abaixo de 500 ms | Vale para 10 a 20 iterações/s, cerca de 7% a 15% dos 137 req/s do RNF14, em uma task de 0,25 vCPU. Numa emulação local dessa task (mesma imagem, `--cpus=0.25`), a latência estava baixa até 25 req/s (p95 de 54 ms), degradou a 50 req/s (p95 de 3,3 s) e desmoronou a 75 req/s (30% de falhas por timeout), com a CPU presa no teto de 25%. Isso é coerente com a rajada de 40/s da AWS |
+| 5 | Seção 7.1: a API mantém p99 abaixo de 500 ms | Vale para 10 a 20 iterações/s, cerca de 7% a 15% dos 137 req/s do RNF14, em uma task de 0,25 vCPU. Numa emulação local dessa task (mesma imagem, `--cpus=0.25`), a latência estava baixa até 25 req/s (p95 de 54 ms), degradou a 50 req/s (p95 de 3,3 s) e desmoronou a 75 req/s (30% de falhas por timeout), com a CPU presa no teto de 25%. Isso é coerente com a rajada de 40/s da AWS. A seção 7.1 foi reescrita com base nesses dados |
 | 6 | Seção 3.2: massa de 300 incidentes | A leitura de incidentes, de diagnóstico e do overview carrega a projeção inteira (um item do DynamoDB) a cada requisição e filtra em memória. Com 2.500 incidentes o custo de CPU por requisição passou de 3,9 ms para 8,2 ms. A capacidade medida vale para 300 incidentes |
 | 7 | Seção 1.2: outros capítulos cobririam o frontend (o script se chama `front-api.js`, e o commit e o README falavam em "testes de carga do frontend") | A suíte mede só a API. O painel é um export estático no Amplify: a entrega dos assets (CloudFront, brotli, mas `Cache-Control: max-age=0` também nos arquivos com hash), o salto do Amplify e o tempo de renderização (RNF07) não foram medidos, e o `/metrics` da API não tem nenhuma amostra de Web Vitals: nenhum navegador real reportou até agora |
+
+&emsp;Status: os itens 1 a 5 foram corrigidos no corpo do texto (seções 2.1, 6.1, 6.3 a 6.5, 7.1 a 7.3 e 8); os itens 6 e 7 permanecem como ressalvas.
 
 &emsp;O script corrigido imprime o resultado por rota e por fase, valida o envelope `{data, meta}` que o painel exige, confere a massa antes de gastar a rodada e deixa de tratar 503 como esperado fora do monitoramento. Detalhes de uso e limites conhecidos estão no [README da suíte](../../apps/backend/api/loadtest/README.md).
 
@@ -387,7 +395,7 @@ Apply complete! Resources: 0 added, 0 changed, 129 destroyed.
 | Spike, 10→40/s | 42% de falha no pico, 523 timeouts de 8 s, recuperação em ~1 min | Reproduz a seção 6.5. A task chegou a 99,6% de CPU |
 | Load, 137/s (RNF14) | 69% de falha no patamar; 19.463 de 44.197 chegadas não emitidas | RNF14 reprovado. O gerador emitiu ~70 req/s efetivos, então é um limite inferior da falha |
 
-&emsp;Três conclusões que a seção 7 não tinha como tirar:
+&emsp;Três conclusões que as rodadas de 30/09 não permitiam tirar:
 
 1. **O gargalo é a CPU da task.** Memória em 14–23% e `GetItem` do DynamoDB em ~2 ms, sem throttling, em todas as rodadas. Com ~8 ms de vCPU por requisição, uma task de 0,25 vCPU esgota em ~30 req/s e as quatro tasks do limite do autoscaling somariam ~115 req/s a 100% de CPU, abaixo dos 137 do RNF14.
 2. **O health check mata a task no pior momento.** Nas rodadas saturadas o `/health` do ALB (intervalo 15 s, 3 falhas, timeout 5 s) não respondeu e o ECS registrou "replaced 1 tasks due to an unhealthy status" (spike, breakpoint e load a 137/s). A capacidade vai a zero por ~45 s, o ALB passa a devolver 5xx próprios (~6.250 no breakpoint em rampas) e o API Gateway ~8.800; o cliente já tinha desistido aos 8 s, então o k6 só vê timeouts.
