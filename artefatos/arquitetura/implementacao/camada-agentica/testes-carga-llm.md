@@ -59,10 +59,21 @@ não é o gargalo e serve de régua para as rodadas com provider real.
 
 ### 3.2 Gate de falha (`FAKE_ERROR_RATE=0.1`)
 
-&emsp; A rodada com 10% de erro injetado saiu com `exit 1`, reprovando C=1 (8%),
-C=2 (6%) e C=8 (14%) contra o limite de 5%. As falhas aparecem como
-`failed/PROVIDER_ERROR` e o processo continua, sem derrubar o estágio. Fonte:
+&emsp; A rodada com 10% de erro injetado saiu com `exit 1`. As falhas aparecem
+como `failed/PROVIDER_ERROR` e o processo continua, sem derrubar o estágio.
+Fonte:
 [`resumo-fake-erro-injetado.json`](../../../../assets/testes-carga/2026-09-29-llm/resumo-fake-erro-injetado.json).
+
+| C | Falhas | `taxaFalha` gravada (÷ 50) | Recalculada (÷ 34 chamadas ao LLM) |
+|--:|--:|--:|--:|
+| 1 | 4 | 8% | 11,8% |
+| 2 | 3 | 6% | 8,8% |
+| 4 | 2 | 4% | 5,9% |
+| 8 | 7 | 14% | 20,6% |
+| 16 | 2 | 4% | 5,9% |
+
+&emsp; O JSON foi gravado antes da correção da seção 4.1 e reprovou só C=1, C=2
+e C=8. Com o denominador corrigido, os **cinco** estágios ficam acima de 5%.
 
 ## 4. Aderência ao padrão dos outros testes de carga
 
@@ -78,15 +89,15 @@ C=2 (6%) e C=8 (14%) contra o limite de 5%. As falhas aparecem como
 | Correlação com observabilidade (`X-Request-Id`, Prometheus) | roda em processo; nada chega ao Prometheus | **Não segue** (aceitável: não há API no caminho) |
 | Estatística testada | `tests/load-stats.test.ts` | Segue |
 
-### 4.1 Problema encontrado: a taxa de falha é diluída
+### 4.1 Problema encontrado e corrigido: a taxa de falha era diluída
 
-&emsp; `taxaFalha` divide as falhas por **todas** as investigações do estágio,
+&emsp; `taxaFalha` dividia as falhas por **todas** as investigações do estágio,
 incluindo o terço barrado no gate, que nunca chama o modelo e portanto nunca
-falha. Com a mistura atual, um provider que falha 5% das chamadas aparece como
-~3,4%. Recalculada sobre as 34 chamadas reais por estágio, a rodada 3.2 teria
-falhado nos **cinco** estágios (C=16: 2/34 = 5,9%; C=4: 2/34 = 5,9%), e não em
-três. Para o limite medir o provider, `resumir()` deve usar como denominador as
-amostras com `llmMs !== null`.
+falha. Com a mistura atual, um provider que falha 5% das chamadas aparecia como
+~3,4%. `resumir()` agora usa como denominador só as amostras com
+`llmMs !== null`, e o limite passa a medir o provider (coberto em
+`tests/load-stats.test.ts`). O efeito na rodada 3.2 está na tabela daquela
+seção.
 
 ## 5. Limitações e pendências
 
@@ -102,4 +113,3 @@ amostras com `llmMs !== null`.
 4. **Metadados manuais.** O script deveria gravar o comando, o commit, as datas
    e o ambiente no próprio JSON, como o `handleSummary()` da suíte k6, em vez
    de depender de arquivamento manual.
-5. **Gate de falha diluído** (seção 4.1).

@@ -26,7 +26,7 @@ daquela execução, no mesmo formato de
 | Arquivo                          | Cenário                              | `exit` | Leitura                                                                                       |
 | -------------------------------- | ------------------------------------ | -----: | --------------------------------------------------------------------------------------------- |
 | `resumo-fake-baseline.json`      | `npm run load:llm`                   |      0 | linha de base: 0% de falha em todos os estágios; a vazão cresce linearmente de 1,87 para 24,03 req/s |
-| `resumo-fake-erro-injetado.json` | `FAKE_ERROR_RATE=0.1 npm run load:llm` |    1 | **reprovada de propósito**: comprova que o gate de `ERROR_RATE_MAX` reprova a rodada (C=1, 2 e 8 acima de 5%) |
+| `resumo-fake-erro-injetado.json` | `FAKE_ERROR_RATE=0.1 npm run load:llm` |    1 | **reprovada de propósito**: comprova que o gate de `ERROR_RATE_MAX` reprova a rodada (C=1, 2 e 8 acima de 5%). Gravado antes de `taxaFalha` passar a dividir só pelas chamadas ao LLM; com o cálculo atual, os cinco estágios reprovam |
 
 `exit=1` significa que algum estágio violou um limite (o equivalente ao
 `exit=99` do k6).

@@ -23,6 +23,7 @@ export interface ResumoEstagio {
   readonly latenciaLlmP95Ms: number | null;
   readonly status: Record<string, number>;
   readonly motivos: Record<string, number>;
+  /** Falhas / amostras que chamaram o LLM (`llmMs !== null`). */
   readonly taxaFalha: number;
   readonly tokens: { readonly entrada: number; readonly saida: number };
 }
@@ -43,7 +44,10 @@ function contar(itens: readonly string[]): Record<string, number> {
 export function resumir(concorrencia: number, duracaoMs: number, amostras: readonly Amostra[]): ResumoEstagio {
   const totais = amostras.map((a) => a.totalMs).sort((a, b) => a - b);
   const llm = amostras.flatMap((a) => (a.llmMs === null ? [] : [a.llmMs])).sort((a, b) => a - b);
-  const falhas = amostras.filter((a) => a.status === "failed").length;
+  // Taxa de falha só sobre quem chamou o modelo: amostras barradas antes
+  // (ex.: NO_EVIDENCE) não exercitam o LLM e diluiriam a taxa.
+  const comLlm = amostras.filter((a) => a.llmMs !== null);
+  const falhas = comLlm.filter((a) => a.status === "failed").length;
   const soma = totais.reduce((acc, v) => acc + v, 0);
 
   return {
@@ -63,7 +67,7 @@ export function resumir(concorrencia: number, duracaoMs: number, amostras: reado
     latenciaLlmP95Ms: llm.length ? percentil(llm, 95) : null,
     status: contar(amostras.map((a) => a.status)),
     motivos: contar(amostras.flatMap((a) => a.reasonCodes)),
-    taxaFalha: amostras.length ? Number((falhas / amostras.length).toFixed(4)) : 0,
+    taxaFalha: comLlm.length ? Number((falhas / comLlm.length).toFixed(4)) : 0,
     tokens: {
       entrada: amostras.reduce((acc, a) => acc + (a.inputTokens ?? 0), 0),
       saida: amostras.reduce((acc, a) => acc + (a.outputTokens ?? 0), 0),

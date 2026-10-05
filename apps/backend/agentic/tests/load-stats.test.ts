@@ -27,11 +27,13 @@ test("resumir agrega latência, vazão, falhas, motivos e tokens", () => {
   assert.equal(r.latenciaLlmP95Ms, 280);
   assert.deepEqual(r.status, { ready: 2, failed: 1, pending: 1 });
   assert.deepEqual(r.motivos, { PROVIDER_ERROR: 1, NO_EVIDENCE: 1 });
-  assert.equal(r.taxaFalha, 0.25);
+  // 1 falha em 3 amostras que chamaram o LLM; a pending sem chamada fica fora.
+  assert.equal(r.taxaFalha, 0.3333);
   assert.deepEqual(r.tokens, { entrada: 22, saida: 11 });
 });
 
 test("estágio sem chamada ao modelo não inventa latência de LLM", () => {
   const r = resumir(1, 10, [{ totalMs: 1, llmMs: null, status: "pending", reasonCodes: [] }]);
   assert.equal(r.latenciaLlmP95Ms, null);
+  assert.equal(r.taxaFalha, 0);
 });
