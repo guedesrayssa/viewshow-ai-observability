@@ -169,9 +169,9 @@ export const PERIOD_LABELS: Record<PeriodKey, string> = {
 };
 
 /**
- * Se um incidente aberto há `minutesAgo` minutos entra no período. O recorte
- * é feito na tela sobre a lista completa: a API publicada devolve a mesma
- * lista em qualquer janela, e "mais de 24 horas" nem tem janela na API.
+ * Se um incidente aberto há `minutesAgo` minutos entra no período. As janelas
+ * relativas também vão à API (`window=24h`); este recorte na tela é o que faz
+ * "mais de 24 horas", que não tem janela na API e é lido com `window=all`.
  */
 export function withinPeriod(minutesAgo: number, period: PeriodKey | string): boolean {
   if (period === "1440") return minutesAgo <= 1440;

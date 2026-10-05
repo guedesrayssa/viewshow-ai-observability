@@ -38,6 +38,12 @@ export type EventsData = {
   correlationStatuses: Array<"linked" | "unlinked">;
   hasMore: boolean;
   nextCursor: string | null;
+  /**
+   * Intervalo `from`/`to` que esta leitura enviou, ou `null` quando foi por
+   * janela (`window=all`). A próxima página precisa repetir exatamente o mesmo
+   * intervalo: o cursor da API só vale para o `from`/`to` em que foi emitido.
+   */
+  resolvedRange: { from: string; to: string } | null;
 };
 
 export function eventQueryKey(query: Omit<EventsQuery, "cursor">): string {
@@ -59,19 +65,39 @@ export function eventQueryKey(query: Omit<EventsQuery, "cursor">): string {
  * janela relativa do período. A API usa `from`/`to` no lugar de `window`
  * quando recebe os dois.
  */
-function timeParams(query: Pick<EventsQuery, "period" | "range">) {
+function timeParams(
+  query: Pick<EventsQuery, "period" | "range">,
+): { from: string; to: string } | { window: string } {
   if (query.range) return { from: query.range.from, to: query.range.to };
+  const now = Date.now();
   // "Mais de 24 horas" não tem janela na API: vai como intervalo, do limite
   // que a API aceita (31 dias) até 24 horas atrás.
   if (query.period === "older") {
-    const now = Date.now();
     return {
       from: new Date(now - OLDER_SPAN_MS).toISOString(),
       to: new Date(now - DAY_MS).toISOString(),
     };
   }
+  // As janelas relativas também vão como intervalo. Com `window=24h` a API
+  // recalcula o início e o fim a cada chamada, e o cursor de "Carregar mais",
+  // preso ao intervalo da primeira página, voltava 400 na segunda.
+  const span = RELATIVE_SPANS_MS[query.period];
+  if (span !== undefined) {
+    return {
+      from: new Date(now - span).toISOString(),
+      to: new Date(now).toISOString(),
+    };
+  }
   return { window: windowOf(query.period) };
 }
+
+const MINUTE_MS = 60 * 1000;
+const RELATIVE_SPANS_MS: Record<string, number> = {
+  "30": 30 * MINUTE_MS,
+  "60": 60 * MINUTE_MS,
+  "360": 360 * MINUTE_MS,
+  "1440": 1440 * MINUTE_MS,
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Um pouco menos que os 31 dias que a API aceita num intervalo explícito. */
@@ -260,7 +286,9 @@ export function fetchEventDetail(
   });
 }
 
-function mapEvents(response: EventsResponse): Omit<EventsData, "queryKey"> {
+function mapEvents(
+  response: EventsResponse,
+): Omit<EventsData, "queryKey" | "resolvedRange"> {
   const total = response.categoryStats.reduce(
     (sum, item) => sum + item.count,
     0,
@@ -284,12 +312,15 @@ function mapEvents(response: EventsResponse): Omit<EventsData, "queryKey"> {
 }
 
 export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
+  // Resolvido uma vez por leitura, para devolver à tela o mesmo intervalo
+  // que foi à API.
+  const filters = filterParams(query);
   return loadResource<EventsResponse, EventsData>({
     path: query.incidentId
       ? ENDPOINTS.events(query.incidentId)
       : ENDPOINTS.globalEvents,
     params: {
-      ...filterParams(query),
+      ...filters,
       sort: query.sort && query.sort !== "recent" ? query.sort : undefined,
       cursor: query.cursor,
       limit: 50,
@@ -297,6 +328,8 @@ export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
     map: (response) => ({
       ...mapEvents(response),
       queryKey: eventQueryKey(query),
+      resolvedRange:
+        "from" in filters ? { from: filters.from, to: filters.to } : null,
     }),
   });
 }

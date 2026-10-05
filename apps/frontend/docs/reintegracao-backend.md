@@ -28,13 +28,19 @@ ServiceNow), use as rotas da tabela, com o `id` interno do incidente
 
 ### `GET /api/v1/incidents`
 
-- Sempre com `window=all` e `limit=100`. O período da tela (Últimas 24 horas,
-  Mais de 24 horas, Todo o período) é aplicado **no front** sobre `startedAt`,
-  porque a API publicada devolve a mesma lista em qualquer janela.
+- Sempre com `limit=100`. "Últimas 24 horas" vai como `window=24h` e "Todo o
+  período" como `window=all`: a API recorta por `startedAt` **antes** de
+  aplicar o limite. "Mais de 24 horas" não tem janela na API (e um `from`/`to`
+  cobre no máximo 31 dias), então é lido com `window=all` e recortado no
+  front. O front repete o recorte por `startedAt` nos três casos, como
+  proteção.
 - Envia `priority`, `status` e `sort=priority` só quando a dimensão aparece em
   `capabilities.filtering.supportedDimensions`. Filtros ausentes dessa lista
-  somem da tela. `deviceType`, `region` e `appVersion` não são mais enviados.
-- Lê `page.hasMore` para avisar que a lista foi truncada em 100.
+  somem da tela. `deviceType`, `region` e `appVersion` não são mais enviados:
+  a API responde **422** `UNSUPPORTED_FILTER_COMBINATION` para eles.
+- Lê `page.hasMore` para avisar que a lista foi truncada em 100. Em "Mais de
+  24 horas" o aviso diz que parte dos incidentes antigos pode não aparecer,
+  porque o recorte é feito sobre os 100 que chegaram.
 - Usa `number` como código legível (`INC-E2E-0044`); sem ele, cai para o `id`.
 
 ### `GET /api/v1/incidents/{id}/diagnosis`
@@ -73,9 +79,17 @@ clique) e trata:
 
 ### `GET /api/v1/events` e `GET /api/v1/incidents/{id}/events`
 
-- Período: `window=24h`, `window=all` ou, para "Mais de 24 horas", `from`/`to`
-  de 30 dias atrás até 24 horas atrás. O "Intervalo personalizado" também usa
-  `from`/`to`.
+- Período: "Todo o período" vai como `window=all`. Os demais vão como
+  `from`/`to` explícitos: "Últimas 24 horas" (de 24 horas atrás até agora),
+  "Mais de 24 horas" (de 30 dias atrás até 24 horas atrás) e o "Intervalo
+  personalizado".
+- O `from`/`to` é calculado **uma vez**, na primeira página, e repetido
+  idêntico em cada "Carregar mais". O cursor da API carrega uma impressão
+  digital do intervalo (`cursorFingerprint` usa `from` e `to`): se o intervalo
+  muda um segundo, a API responde 400 "O cursor é inválido para estes
+  filtros". Pelo mesmo motivo o front não usa `window=24h` em eventos — a API
+  resolve essa janela contra o relógio a cada chamada, e o cursor da primeira
+  página nunca valeria na segunda.
 - Filtros: `search` (com debounce de 350 ms), `category`, `sourceDataset`,
   `correlation` (só no feed global) e `sort=oldest` quando escolhido.
 - Paginação: `limit=50` e `cursor` vindo de `page.nextCursor` ("Carregar
@@ -107,8 +121,11 @@ Em ordem de impacto no que a pessoa usuária vê:
    `writeReview` do repositório não é chamado.
 3. **Reanálise.** O `POST …/reanalyze` responde sempre 503, mesmo com o
    publisher SQS injetado (o argumento `_reanalysis` é ignorado).
-4. **Janela em `/incidents`.** Respeitar `window` na listagem. Hoje o front
-   recorta por conta própria.
+4. **Cursor de eventos com janela relativa.** Com `window=15m…24h`, o
+   `from`/`to` resolvido muda a cada chamada e invalida o cursor emitido na
+   página anterior. O front contorna enviando `from`/`to` fixos; o ideal é o
+   cursor guardar o intervalo resolvido (ou a impressão digital usar o
+   `preset`).
 5. **Paginação de incidentes.** Aceitar `cursor` e devolver `page.nextCursor`
    (hoje `cursor` responde 400). Com isso o front troca o aviso "até 100" por
    "carregar mais".

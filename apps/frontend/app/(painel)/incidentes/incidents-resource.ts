@@ -23,7 +23,7 @@ export type IncidentsQuery = {
   status?: string;
   sort?: SortKey;
   /**
-   * Dimensões que a API de incidentes ainda não recorta (responde 400
+   * Dimensões que a API de incidentes ainda não recorta (responde 422
    * `UNSUPPORTED_FILTER_COMBINATION`). Só vão na leitura quando diferentes de
    * "all"; a tela deixa de oferecê-las enquanto `capabilities` não as listar.
    */
@@ -85,7 +85,8 @@ function windowOf(minutes: string): string {
         "60": "1h",
         "360": "6h",
         "1440": "24h",
-        // "Mais de 24 horas" lê tudo e recorta na tela.
+        // "Mais de 24 horas" não tem janela na API (e um `from`/`to` só cobre
+        // 31 dias): lê tudo e recorta na tela.
         older: "all",
         all: "all",
       } as Record<string, string>
@@ -140,8 +141,10 @@ export function fetchIncidents(
   return loadResource<IncidentsResponse, IncidentsList>({
     path: ENDPOINTS.incidents,
     params: {
-      // A lista vem inteira e o período é aplicado na tela (withinPeriod).
-      window: "all",
+      // O período vai à API, que recorta por `startedAt` antes de aplicar o
+      // limite. Com `window=all` em todos os casos, um recorte de 24 horas
+      // com mais de 100 incidentes no total perdia itens sem necessidade.
+      window: windowOf(query.period),
       priority: optional(query.priority),
       status: optional(query.status),
       // A API ordena por prioridade ou recência; "mais dispositivos" é
@@ -154,6 +157,8 @@ export function fetchIncidents(
       limit: INCIDENTS_PAGE_LIMIT,
     },
     map: (response) => ({
+      // O recorte na tela continua: é ele que faz "Mais de 24 horas", e
+      // protege a lista se a API publicada ignorar a janela.
       items: mapIncidents(response).filter((incident) =>
         withinPeriod(incident.startedMinutesAgo, query.period),
       ),

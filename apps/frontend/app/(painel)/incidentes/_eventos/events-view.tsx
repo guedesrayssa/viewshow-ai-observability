@@ -178,9 +178,11 @@ function EventsScreen({
     key: string;
     items: CorrelatedEvent[];
     nextCursor: string | null;
+    /** `to` do intervalo da primeira página a que estas páginas dão sequência. */
+    anchor: string | null;
     loading: boolean;
     error?: string;
-  }>({ key: filterKey, items: [], nextCursor: null, loading: false });
+  }>({ key: filterKey, items: [], nextCursor: null, anchor: null, loading: false });
 
   const summary = useResource(() => fetchIncidentSummary(incidentId), [incidentId], {
     enabled: mode === "incident",
@@ -206,7 +208,17 @@ function EventsScreen({
   );
 
   const current = events.data?.queryKey === filterKey ? events.data : undefined;
-  const ownContinuation = continuation.key === filterKey ? continuation : undefined;
+  // O cursor da API só vale para o `from`/`to` exato em que foi emitido. As
+  // páginas seguintes repetem o intervalo da primeira (`pageRange`), em vez
+  // de recalculá-lo a partir de "agora" — o que mudava alguns segundos e
+  // fazia "Carregar mais" voltar 400. Quando a primeira página é relida
+  // (Atualizar), o intervalo muda e a sequência antiga é descartada.
+  const pageRange = current?.resolvedRange ?? null;
+  const anchor = pageRange?.to ?? null;
+  const ownContinuation =
+    continuation.key === filterKey && continuation.anchor === anchor
+      ? continuation
+      : undefined;
 
   const loadedEvents = useMemo(() => {
     const pages = mergeEventPages(current?.events ?? [], ownContinuation?.items ?? []);
@@ -230,13 +242,20 @@ function EventsScreen({
 
   async function loadNextPage() {
     if (!nextCursor || continuation.loading) return;
+    const sameSequence = (state: typeof continuation) =>
+      state.key === filterKey && state.anchor === anchor;
     setContinuation((state) => ({
       key: filterKey,
-      items: state.key === filterKey ? state.items : [],
+      items: sameSequence(state) ? state.items : [],
       nextCursor,
+      anchor,
       loading: true,
     }));
-    const page = await fetchEvents({ ...eventQuery, cursor: nextCursor });
+    const page = await fetchEvents({
+      ...eventQuery,
+      range: pageRange ?? eventQuery.range,
+      cursor: nextCursor,
+    });
     if (!page.data) {
       setContinuation((state) => ({
         ...state,
@@ -249,10 +268,11 @@ function EventsScreen({
     setContinuation((state) => ({
       key: filterKey,
       items: mergeEventPages(
-        state.key === filterKey ? state.items : [],
+        sameSequence(state) ? state.items : [],
         page.data?.events ?? [],
       ),
       nextCursor: page.data?.nextCursor ?? null,
+      anchor,
       loading: false,
     }));
   }

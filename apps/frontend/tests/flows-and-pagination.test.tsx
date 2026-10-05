@@ -235,7 +235,7 @@ describe("leituras de incidentes e eventos", () => {
     });
   });
 
-  it("recorta incidentes em últimas 24 horas e mais de 24 horas na tela", async () => {
+  it("envia a janela de 24 horas à API e recorta mais de 24 horas na tela", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://gateway.test");
     const incident = (id: string, hoursAgo: number) => ({
       id,
@@ -266,10 +266,57 @@ describe("leituras de incidentes e eventos", () => {
     expect(recent.data?.items.map((item) => item.id)).toEqual(["inc_recente"]);
     expect(older.data?.items.map((item) => item.id)).toEqual(["inc_antigo"]);
     expect(all.data?.items).toHaveLength(2);
-    // A lista sempre vem inteira da API; o período é aplicado na tela.
-    for (const call of fetchMock.mock.calls) {
-      expect(String(call[0])).toContain("window=all");
+    // A janela relativa vai à API, que recorta antes do limite de 100. "Mais
+    // de 24 horas" não tem janela: lê tudo e é recortado na tela.
+    const windows = fetchMock.mock.calls.map((call) =>
+      new URL(String(call[0])).searchParams.get("window"),
+    );
+    expect(windows).toEqual(["24h", "all", "all"]);
+  });
+
+  it("repete na próxima página o intervalo exato da primeira", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://gateway.test");
+    const fetchMock = vi.fn(async () =>
+      response({
+        categoryStats: [],
+        volumeSeries: null,
+        items: [],
+        facets: { categories: [], sourceDatasets: [], correlationStatuses: [] },
+        page: { limit: 50, hasMore: true, nextCursor: "cursor-2" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { fetchEvents } = await import("@/app/(painel)/incidentes/_eventos/events-resource");
+    const base = {
+      incidentId: "",
+      search: "",
+      category: "all" as const,
+      source: "all",
+      correlation: "all" as const,
+    };
+
+    for (const period of ["older", "1440"]) {
+      fetchMock.mockClear();
+      const first = await fetchEvents({ ...base, period });
+      const range = first.data?.resolvedRange;
+      expect(range).not.toBeNull();
+
+      // O relógio anda entre o primeiro bloco e o clique em "Carregar mais".
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      await fetchEvents({ ...base, period, range, cursor: "cursor-2" });
+
+      const [firstUrl, nextUrl] = fetchMock.mock.calls.map(
+        (call) => new URL(String(call[0])),
+      );
+      expect(firstUrl?.searchParams.has("window")).toBe(false);
+      expect(nextUrl?.searchParams.get("cursor")).toBe("cursor-2");
+      expect(nextUrl?.searchParams.get("from")).toBe(firstUrl?.searchParams.get("from"));
+      expect(nextUrl?.searchParams.get("to")).toBe(firstUrl?.searchParams.get("to"));
     }
+
+    // "Todo o período" continua por janela: a API resolve um intervalo fixo.
+    const all = await fetchEvents({ ...base, period: "all" });
+    expect(all.data?.resolvedRange).toBeNull();
   });
 
   it("pede mais de 24 horas de eventos como intervalo explícito", async () => {
@@ -326,7 +373,13 @@ describe("leituras de incidentes e eventos", () => {
       correlation: "all" as const,
     };
     await fetchEventVolume(base);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("window=6h");
+    // Janelas relativas vão como intervalo explícito (ver "Carregar mais").
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    const span =
+      Date.parse(url.searchParams.get("to") ?? "") -
+      Date.parse(url.searchParams.get("from") ?? "");
+    expect(url.searchParams.has("window")).toBe(false);
+    expect(span).toBe(6 * 3600_000);
 
     // O gráfico segue os mesmos filtros da lista.
     await fetchEventVolume({ ...base, search: "smart", category: "live_event", source: "signal_point", correlation: "unlinked" });

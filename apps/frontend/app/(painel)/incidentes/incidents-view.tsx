@@ -9,7 +9,7 @@
  * Os filtros oferecidos são os que a API de incidentes aceita (período,
  * prioridade e estado). Dispositivo, região e versão só aparecem quando a
  * origem os declarar em `capabilities`: antes eles eram oferecidos, a API
- * respondia 400 e a tela mostrava "nenhum incidente".
+ * respondia erro e a tela mostrava "nenhum incidente".
  *
  * Filtros, ordenação e página moram na URL, para que recarregar, voltar do
  * detalhe ou compartilhar o link reproduza a mesma lista.
@@ -86,7 +86,7 @@ export function IncidentsView() {
 
   // A API diz em `capabilities.filtering` quais dimensões ela recorta. Até a
   // primeira resposta, os filtros previstos aparecem; depois, um filtro que
-  // ela não aceita some da tela e não vai na leitura, em vez de voltar 400 e
+  // ela não aceita some da tela e não vai na leitura, em vez de voltar 422 e
   // parecer uma lista vazia.
   const [supportedDimensions, setSupportedDimensions] = useState<string[] | null>(null);
   const supports = (dimension: string) =>
@@ -340,9 +340,9 @@ export function IncidentsView() {
 
           {list?.hasMore ? (
             <Alert tone="warning" className="mt-5">
-              A origem entrega até {formatInteger(list.limit)} incidentes por
-              leitura e há mais neste recorte. Restrinja o período, a prioridade
-              ou o estado para ver o restante.
+              {period === "older"
+                ? `A origem entrega até ${formatInteger(list.limit)} incidentes por leitura, e "Mais de 24 horas" é recortado a partir deles: parte dos incidentes antigos pode não aparecer. Filtre por prioridade ou estado para alcançá-los.`
+                : `A origem entrega até ${formatInteger(list.limit)} incidentes por leitura e há mais neste recorte. Restrinja o período, a prioridade ou o estado para ver o restante.`}
             </Alert>
           ) : null}
 
