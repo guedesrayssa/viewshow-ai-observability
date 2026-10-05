@@ -32,8 +32,20 @@ export interface OllamaConfig {
   readonly fetch?: typeof globalThis.fetch;
 }
 
+export type OllamaErrorCode =
+  | "OLLAMA_TIMEOUT"
+  | "OLLAMA_NETWORK"
+  | "OLLAMA_HTTP"
+  | "OLLAMA_INVALID_JSON"
+  | "OLLAMA_INVALID_RESPONSE"
+  | "OLLAMA_EMPTY_RESPONSE";
+
 export class OllamaError extends Error {
-  constructor(message: string, readonly cause?: unknown) {
+  constructor(
+    readonly code: OllamaErrorCode,
+    message: string,
+    readonly cause?: unknown,
+  ) {
     super(message);
     this.name = "OllamaError";
   }
@@ -85,9 +97,9 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
       } catch (error) {
         clearTimeout(timer);
         if (error instanceof Error && error.name === "AbortError") {
-          throw new OllamaError(`Ollama não respondeu em ${timeoutMs} ms.`, error);
+          throw new OllamaError("OLLAMA_TIMEOUT", `Ollama não respondeu em ${timeoutMs} ms.`, error);
         }
-        throw new OllamaError(`Falha ao falar com o Ollama em ${endpoint}.`, error);
+        throw new OllamaError("OLLAMA_NETWORK", `Falha ao falar com o Ollama em ${endpoint}.`, error);
       }
 
       if (!http.ok) {
@@ -95,20 +107,20 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
         // devolve página HTML, e despejá-la no log não ajuda ninguém.
         const trecho = (await http.text().catch(() => "")).slice(0, 200);
         clearTimeout(timer);
-        throw new OllamaError(`Ollama respondeu HTTP ${http.status}: ${trecho}`);
+        throw new OllamaError("OLLAMA_HTTP", `Ollama respondeu HTTP ${http.status}: ${trecho}`);
       }
 
       let corpo: unknown;
       try {
         corpo = await http.json();
       } catch (error) {
-        throw new OllamaError("Ollama respondeu com corpo que não é JSON.", error);
+        throw new OllamaError("OLLAMA_INVALID_JSON", "Ollama respondeu com corpo que não é JSON.", error);
       } finally {
         clearTimeout(timer);
       }
 
-      if (typeof corpo !== "object" || corpo === null) {
-        throw new OllamaError("Ollama respondeu um JSON que não é objeto.");
+      if (typeof corpo !== "object" || corpo === null || Array.isArray(corpo)) {
+        throw new OllamaError("OLLAMA_INVALID_RESPONSE", "Ollama respondeu um JSON que não é objeto.");
       }
 
       const envelope = corpo as {
@@ -119,7 +131,14 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
       };
       const texto = envelope.message?.content;
 
-      if (typeof texto !== "string" || texto.trim() === "") {
+      if (typeof texto !== "string") {
+        throw new OllamaError(
+          "OLLAMA_INVALID_RESPONSE",
+          "Ollama respondeu sem `message.content` textual.",
+        );
+      }
+
+      if (texto.trim() === "") {
         // O motivo da parada é o que distingue as causas possíveis, e sem ele
         // o erro obriga a adivinhar: "length" significa orçamento de tokens
         // esgotado (aumentar maxTokens), qualquer outro aponta para outro
@@ -129,6 +148,7 @@ export function createOllamaProvider(config: OllamaConfig): LlmProvider {
           typeof envelope.message?.thinking === "string" && envelope.message.thinking.trim() !== "";
         const gerados = typeof envelope.eval_count === "number" ? envelope.eval_count : "?";
         throw new OllamaError(
+          "OLLAMA_EMPTY_RESPONSE",
           `Ollama respondeu sem conteúdo em \`message.content\` ` +
             `(done_reason: ${String(envelope.done_reason)}, tokens gerados: ${gerados}` +
             `${pensou ? ", com raciocínio em `message.thinking`" : ""}).` +
