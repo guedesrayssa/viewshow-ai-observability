@@ -178,6 +178,12 @@ const emptyIncidentRepository: IncidentRepository = {
   async listEvidence() {
     return [];
   },
+  async listHypotheses() {
+    return [];
+  },
+  async latestDiagnosis() {
+    return null;
+  },
   async writeReview() {
     return {};
   },
@@ -1041,7 +1047,7 @@ describe("api monolith over HTTP", () => {
     { path: "complete", limit: 4 * 1024 * 1024 },
     { path: "start", limit: 64 * 1024 },
   ])(
-    "CU-IMP-05: retorna envelope 413 estável acima do limite do parser de $path",
+    "UC-IMP-05: retorna envelope 413 estável acima do limite do parser de $path",
     async ({ path, limit }) => {
       const { fixture, url, headers } = await importHttpFixture();
       const route =
@@ -1065,7 +1071,7 @@ describe("api monolith over HTTP", () => {
     },
   );
 
-  it("CU-IMP-01: aplica os limites do GZIP antes de reservar a importação", async () => {
+  it("UC-IMP-01: aplica os limites do GZIP antes de reservar a importação", async () => {
     const limit = 5 * 1024 ** 3;
     const cases = [
       { label: "mínimo válido", sizeBytes: 1, expectedStatus: 201 },
@@ -1133,7 +1139,7 @@ describe("api monolith over HTTP", () => {
     }
   });
 
-  it("CU-IMP-02: aplica os limites do ZIP e do nome antes de reservar a importação", async () => {
+  it("UC-IMP-02: aplica os limites do ZIP e do nome antes de reservar a importação", async () => {
     const sizeLimit = 10 * 1024 ** 3;
     const maxName = `${"a".repeat(251)}.zip`;
     const cases = [
@@ -1217,7 +1223,7 @@ describe("api monolith over HTTP", () => {
     }
   });
 
-  it("CU-IMP-06: terminaliza com segurança quando o multipart não pode ser preparado", async () => {
+  it("UC-IMP-06: terminaliza com segurança quando o multipart não pode ser preparado", async () => {
     const { fixture, url, headers } = await importHttpFixture();
     fixture.store.create.mockRejectedValueOnce(
       new Error("detalhe privado do armazenamento"),
@@ -1247,7 +1253,7 @@ describe("api monolith over HTTP", () => {
   });
 
   it.each(["missing", "unavailable"])(
-    "CU-IMP-04: retorna 503 seguro quando a disputa tem registro ativo %s",
+    "UC-IMP-04: retorna 503 seguro quando a disputa tem registro ativo %s",
     async (mode) => {
       const { fixture, url, headers } = await importHttpFixture();
       await fixture.useCases.start(startInput);
@@ -1347,7 +1353,7 @@ describe("api monolith over HTTP", () => {
     expect(fixture.store.complete).not.toHaveBeenCalled();
   });
 
-  it("CU-IMP-03: autentica, garante idempotência e protege a importação ativa", async () => {
+  it("UC-IMP-03: autentica, garante idempotência e protege a importação ativa", async () => {
     const fixture = importFixture();
     const auth = createAuthModule({
       AUTH_COOKIE_SECRET: secret,

@@ -21,7 +21,7 @@
 
 &emsp;A prioridade de cada grupo de testes segue o risco funcional do fluxo, não a ordem de apresentação das seções:
 
-1. **Prioridade 1 — a importação de snapshot do ARGUS (Seção 3: UC-09, casos CU-IMP-01 a CU-IMP-06; Seção 2: IT-AWS-05 e IT-UPLOAD-01 a IT-UPLOAD-03).** A importação é o fluxo de maior risco funcional do sistema porque é por ela que os dados entram: todo incidente consultado depois, no dashboard (RF07) ou na análise de falhas críticas (RF09), depende de uma importação que tenha começado certo. Uma falha aqui — duas importações rodando ao mesmo tempo, uma repetição que duplica o registro, uma vaga de importação que fica presa, um envio preparado no S3 que fica órfão ou um falso sucesso quando o banco está indisponível — contamina tudo o que vem depois. Por isso o UC-09 foi o caso de uso escolhido para a Seção 3, e a criação real do registro no DynamoDB e do envio no S3 foi comprovada contra a stack publicada (IT-AWS-05). Todos foram aprovados.
+1. **Prioridade 1 — a importação de snapshot do ARGUS (Seção 3: UC-09, casos UC-IMP-01 a UC-IMP-06; Seção 2: IT-AWS-05 e IT-UPLOAD-01 a IT-UPLOAD-03).** A importação é o fluxo de maior risco funcional do sistema porque é por ela que os dados entram: todo incidente consultado depois, no dashboard (RF07) ou na análise de falhas críticas (RF09), depende de uma importação que tenha começado certo. Uma falha aqui — duas importações rodando ao mesmo tempo, uma repetição que duplica o registro, uma vaga de importação que fica presa, um envio preparado no S3 que fica órfão ou um falso sucesso quando o banco está indisponível — contamina tudo o que vem depois. Por isso o UC-09 foi o caso de uso escolhido para a Seção 3, e a criação real do registro no DynamoDB e do envio no S3 foi comprovada contra a stack publicada (IT-AWS-05). Todos foram aprovados.
 2. **Prioridade 2 — a leitura dos dados publicados (Seção 2: IT-AWS-01 a IT-AWS-04; Seção 1: UT01 a UT04).** Depois de garantir que os dados entram corretamente, o próximo risco é a API devolver um dado diferente do que está gravado ou expor campos internos do banco. Os testes de integração comparam a resposta da API com o que está no DynamoDB, e os unitários protegem as peças usadas nessa leitura (cursor assinado, login no Cognito, validação do `limit`). O risco é menor do que o da Prioridade 1 porque um erro de leitura não altera o dado gravado.
 3. **Prioridade 3 — evidência complementar da consulta paginada (Seção 3: CT-01 a CT-12) e Testes de Carga (Seção 4).** A consulta filtrada e paginada de incidentes (RF09) foi testada numa rodada anterior, de 21/09/2026, e passou a servir de evidência complementar ao UC-09. Os testes de carga dependem da mesma massa de dados (300 incidentes sintéticos) e verificam se as respostas continuam corretas quando a concorrência sobe. O risco funcional é menor porque esses testes só leem dados e não alteram a base.
 
@@ -286,28 +286,28 @@ npm test -- --run "app/(painel)/dados/importacoes/imports-view.integration.test.
 
 &emsp;Caso de uso escolhido: **[UC-09 — Iniciar importação manual de snapshot do ARGUS](../sprint3/modelagem.md#39-uc-09--iniciar-importação-manual-de-snapshot-do-argus)**, extensão operacional do UC-08 e relacionado a RF01, RF02, RF03, RNF04 e RIE02. O UC-09 foi separado do processamento assíncrono porque possui ator, término e pós-condições próprios. Ele termina quando o sistema está pronto para receber o arquivo: existe um único registro de importação aguardando o envio (`ImportJob` em `UPLOADING`), a vaga de importação está reservada para ele, já que só uma importação pode acontecer por vez, e o S3 está preparado para receber o arquivo em partes (multipart). Restaurar, normalizar e ativar os dados continuam sendo responsabilidade do UC-08. O detalhamento DS-01B já estabelecia `argus_dump.sql.gz` ou ZIP como entradas dessa operação.
 
-&emsp;A suíte cobre o fluxo básico, os dois fluxos alternativos, todos os fluxos de exceção do UC-09, suas pós-condições e os limites de tamanho, nome e corpo HTTP. Os identificadores `CU-IMP-01` a `CU-IMP-06` são casos de teste do mesmo UC-09. A execução filtrada produziu **8/8 testes Vitest aprovados** — dois identificadores são parametrizados — além das 15 combinações internas de GZIP e ZIP.
+&emsp;A suíte cobre o fluxo básico, os dois fluxos alternativos, todos os fluxos de exceção do UC-09, suas pós-condições e os limites de tamanho, nome e corpo HTTP. Os identificadores `UC-IMP-01` a `UC-IMP-06` são casos de teste do mesmo UC-09. A execução filtrada produziu **8/8 testes Vitest aprovados** — dois identificadores são parametrizados — além das 15 combinações internas de GZIP e ZIP.
 
 &emsp;Foi escolhida a técnica de **caixa-preta**: os testes olham apenas o que entra e o que sai, sem depender de como cada função é implementada por dentro. Cada teste sobe uma instância temporária da API (Express), envia requisições HTTP reais e verifica o código de resposta, o corpo devolvido e o que o sistema tentou gravar no banco e no armazenamento. Como o banco e o armazenamento são substituídos por versões controladas, dá para simular falhas e confirmar, por exemplo, que um pedido inválido não gravou nada. A requisição passa pelas mesmas camadas da produção: rota → validação do pedido (schema) → regra de negócio → banco/armazenamento.
 
-### CU-IMP-01 — Iniciar importação de GZIP
+### UC-IMP-01 — Iniciar importação de GZIP
 
 <div align="center">
 
-<strong>Tabela 8: Especificação do caso de uso CU-IMP-01 — Iniciar importação de GZIP</strong>
+<strong>Tabela 8: Especificação do caso de uso UC-IMP-01 — Iniciar importação de GZIP</strong>
 
 </div>
 
 | Campo | Descrição |
 | --- | --- |
-| Identificador | `CU-IMP-01` |
+| Identificador | `UC-IMP-01` |
 | Objetivo e requisito/caso de uso | Validar o fluxo básico e os limites do GZIP no **UC-09**, relacionado a RF01, RF02 e RF03: `argus_dump.sql.gz` só deve reservar a importação quando nome, data e tamanho obedecem ao contrato. |
 | Pré-condições e dados de entrada | Sessão `engineer` válida; API Express real em porta efêmera; repositório e armazenamento controlados. Tamanhos `0`, `1`, `5 GiB - 1`, `5 GiB` e `5 GiB + 1`; nome inválido; data civil inválida. |
 | Procedimento | Para cada entrada, enviar `POST /api/v1/imports` com JSON e chave de idempotência. Conferir status/envelope e verificar se `store.create` e o registro `UPLOADING` existem somente nos casos válidos. |
 | Resultado esperado | `1`, `5 GiB - 1` e `5 GiB` retornam `201`; `0`, `5 GiB + 1`, nome incorreto e data inválida retornam `400 VALIDATION_ERROR`. Nenhum caso inválido reserva a vaga ou cria multipart. |
 | Resultado obtido | Todos os sete cenários produziram o status esperado. Nos três válidos houve exatamente uma criação e registro `UPLOADING`; nos quatro inválidos não houve escrita nem chamada ao armazenamento. |
 | Situação | **Aprovado** |
-| Evidências e reprodução | Código em [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-01`. Executar `npm test -- --run tests/gateway-http.integration.test.ts -t "CU-IMP" --reporter=verbose` em `apps/backend/api`. Saída em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+| Evidências e reprodução | Código em [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `UC-IMP-01`. Executar `npm test -- --run tests/gateway-http.integration.test.ts -t "UC-IMP" --reporter=verbose` em `apps/backend/api`. Saída em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
 
 <div align="center">
 
@@ -315,24 +315,24 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### CU-IMP-02 — Iniciar importação de ZIP
+### UC-IMP-02 — Iniciar importação de ZIP
 
 <div align="center">
 
-<strong>Tabela 9: Especificação do caso de uso CU-IMP-02 — Iniciar importação de ZIP</strong>
+<strong>Tabela 9: Especificação do caso de uso UC-IMP-02 — Iniciar importação de ZIP</strong>
 
 </div>
 
 | Campo | Descrição |
 | --- | --- |
-| Identificador | `CU-IMP-02` |
+| Identificador | `UC-IMP-02` |
 | Objetivo e requisito/caso de uso | Validar o fluxo alternativo 1a do **UC-09**, relacionado a RF01, RF02 e RF03: aceitar ZIP dentro de 10 GiB e com nome seguro, rejeitando caminho ou nome fora da faixa. |
-| Pré-condições e dados de entrada | Mesma sessão e API do CU-IMP-01. Tamanhos `1`, `10 GiB - 1`, `10 GiB` e `10 GiB + 1`; nomes `.zip`, 251 caracteres + `.zip`, 252 caracteres + `.zip` e `pasta/argus.zip`. |
+| Pré-condições e dados de entrada | Mesma sessão e API do UC-IMP-01. Tamanhos `1`, `10 GiB - 1`, `10 GiB` e `10 GiB + 1`; nomes `.zip`, 251 caracteres + `.zip`, 252 caracteres + `.zip` e `pasta/argus.zip`. |
 | Procedimento | Enviar cada combinação a `POST /api/v1/imports`; conferir status/envelope; verificar criação do multipart e registro `UPLOADING` apenas quando tamanho e nome são válidos. |
 | Resultado esperado | Limite inferior, imediatamente abaixo do máximo e máximo retornam `201`; `10 GiB + 1`, nome vazio, nome com 252 caracteres antes da extensão e caminho retornam `400 VALIDATION_ERROR`. O nome com 251 caracteres é aceito. |
 | Resultado obtido | Os oito cenários passaram. Quatro entradas válidas reservaram a importação; quatro inválidas foram rejeitadas sem qualquer efeito persistente ou chamada ao armazenamento. |
 | Situação | **Aprovado** |
-| Evidências e reprodução | Mesmo arquivo e comando do CU-IMP-01, teste `CU-IMP-02`. Evidência em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
+| Evidências e reprodução | Mesmo arquivo e comando do UC-IMP-01, teste `UC-IMP-02`. Evidência em [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt). |
 
 <div align="center">
 
@@ -340,24 +340,24 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### CU-IMP-03 — Autenticação, idempotência e exclusão mútua
+### UC-IMP-03 — Autenticação, idempotência e exclusão mútua
 
 <div align="center">
 
-<strong>Tabela 10: Especificação do caso de uso CU-IMP-03 — Autenticação, idempotência e exclusão mútua</strong>
+<strong>Tabela 10: Especificação do caso de uso UC-IMP-03 — Autenticação, idempotência e exclusão mútua</strong>
 
 </div>
 
 | Campo | Descrição |
 | --- | --- |
-| Identificador | `CU-IMP-03` |
+| Identificador | `UC-IMP-03` |
 | Objetivo e requisito/caso de uso | Cobrir o fluxo básico, a repetição idempotente 4a e as exceções 3a, 3b e 4b do UC-09, incluindo RNF04. |
 | Pré-condições e dados de entrada | API Express real; sessão `engineer`; arquivo GZIP válido; mesma chave `start-http` repetida e uma chave concorrente diferente; chamadas sem sessão e sem chave. |
 | Procedimento | Enviar chamadas HTTP sem sessão, sem chave, com corpo extra inválido, válida, repetida com a mesma chave e concorrente com chave diferente; observar status, `importId`, estado e quantidade de chamadas ao armazenamento. |
 | Resultado esperado | Sem sessão: `401`; sem chave/corpo estrito inválido: `400`; primeira válida: `201 UPLOADING`; repetição: mesmo `importId` e nenhum multipart adicional; concorrente: `409 IMPORT_IN_PROGRESS`, preservando a ativa. |
 | Resultado obtido | Todos os status coincidiram; a repetição devolveu o mesmo `importId`, `store.create` permaneceu com uma chamada e a tentativa concorrente recebeu `409` com o identificador ativo. |
 | Situação | **Aprovado** |
-| Evidências e reprodução | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `CU-IMP-03`; executar o comando comum indicado em CU-IMP-01. Saída na evidência consolidada de 25/09/2026. |
+| Evidências e reprodução | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), teste `UC-IMP-03`; executar o comando comum indicado em UC-IMP-01. Saída na evidência consolidada de 25/09/2026. |
 
 <div align="center">
 
@@ -365,24 +365,24 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### CU-IMP-04 — Estado ativo indeterminável
+### UC-IMP-04 — Estado ativo indeterminável
 
 <div align="center">
 
-<strong>Tabela 11: Especificação do caso de uso CU-IMP-04 — Estado ativo indeterminável</strong>
+<strong>Tabela 11: Especificação do caso de uso UC-IMP-04 — Estado ativo indeterminável</strong>
 
 </div>
 
 | Campo | Descrição |
 | --- | --- |
-| Identificador | `CU-IMP-04` (duas parametrizações) |
+| Identificador | `UC-IMP-04` (duas parametrizações) |
 | Objetivo e requisito/caso de uso | Cobrir a exceção 4c do UC-09: se duas importações disputam a vaga e o sistema não consegue confirmar qual delas está ativa, ele recusa a nova (`503`) em vez de arriscar aceitar as duas. |
 | Pré-condições e dados de entrada | Uma importação já ocupando a vaga; nova solicitação válida com outra chave de idempotência; a consulta da importação ativa (`getActive`) não encontra o registro ou falha com um erro interno. |
 | Procedimento | Disputar a reserva nos dois modos e inspecionar status e envelope público. |
 | Resultado esperado | `503 DATA_UNAVAILABLE` com a resposta de erro padrão da API, sem expor detalhes internos. |
 | Resultado obtido | As duas parametrizações retornaram `503`; nenhum texto privado apareceu no envelope. |
 | Situação | **Aprovado** |
-| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-04` na saída Vitest. |
+| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `UC-IMP-04` na saída Vitest. |
 
 <div align="center">
 
@@ -390,24 +390,24 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### CU-IMP-05 — Limite do corpo HTTP
+### UC-IMP-05 — Limite do corpo HTTP
 
 <div align="center">
 
-<strong>Tabela 12: Especificação do caso de uso CU-IMP-05 — Limite do corpo HTTP</strong>
+<strong>Tabela 12: Especificação do caso de uso UC-IMP-05 — Limite do corpo HTTP</strong>
 
 </div>
 
 | Campo | Descrição |
 | --- | --- |
-| Identificador | `CU-IMP-05` (duas parametrizações; a de `start` pertence ao UC-09) |
+| Identificador | `UC-IMP-05` (duas parametrizações; a de `start` pertence ao UC-09) |
 | Objetivo e requisito/caso de uso | Verificar o requisito especial do UC-09 que limita o corpo inicial a 64 KiB e impede efeitos antes da validação. |
 | Pré-condições e dados de entrada | Corpo JSON imediatamente acima de 64 KiB em `POST /api/v1/imports`; a parametrização de regressão também verifica 4 MiB em `complete`. |
 | Procedimento | Enviar os corpos acima dos respectivos limites e verificar resposta e chamadas ao repositório/armazenamento. |
 | Resultado esperado | `413 VALIDATION_ERROR`, request ID preservado e nenhuma criação ou conclusão chamada. |
 | Resultado obtido | As duas parametrizações retornaram o envelope `413` esperado; `store.create` e `store.complete` não foram chamados. |
 | Situação | **Aprovado** |
-| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `CU-IMP-05` na saída Vitest. |
+| Evidências e reprodução | Mesmo arquivo, comando e evidência consolidada; duas linhas `UC-IMP-05` na saída Vitest. |
 
 <div align="center">
 
@@ -415,17 +415,17 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-### CU-IMP-06 — Falha ao preparar multipart
+### UC-IMP-06 — Falha ao preparar multipart
 
 <div align="center">
 
-<strong>Tabela 13: Especificação do caso de uso CU-IMP-06 — Falha ao preparar multipart</strong>
+<strong>Tabela 13: Especificação do caso de uso UC-IMP-06 — Falha ao preparar multipart</strong>
 
 </div>
 
 | Campo | Descrição |
 | --- | --- |
-| Identificador | `CU-IMP-06` |
+| Identificador | `UC-IMP-06` |
 | Objetivo e requisito/caso de uso | Cobrir a exceção 5a e a garantia mínima do UC-09: se o S3 falhar ao preparar o recebimento do arquivo, a importação deve ser marcada como falha e a vaga liberada, para que o usuário possa tentar de novo. |
 | Pré-condições e dados de entrada | Sessão e GZIP válidos; a preparação do armazenamento (`store.create`) configurada para falhar com uma mensagem interna. |
 | Procedimento | Enviar `POST /api/v1/imports` e verificar a resposta de erro, o estado final da importação e se a vaga ficou livre. |
@@ -450,26 +450,26 @@ Fonte: Material produzido pelos autores (2026).
 
 | Fluxo/condição | Caso | Entrada | Resultado esperado e obtido | Pós-condição | Situação |
 | --- | --- | --- | --- | --- | --- |
-| Principal GZIP | CU-IMP-01.1 | `argus_dump.sql.gz`, `1 byte`, data válida | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
-| Limite GZIP: abaixo do máximo | CU-IMP-01.2 | `5 GiB - 1` | `201` | Reserva criada | Aprovado |
-| Limite GZIP: máximo | CU-IMP-01.3 | `5 GiB` | `201` | Reserva criada | Aprovado |
-| Exceção GZIP: acima do máximo | CU-IMP-01.4 | `5 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
-| Exceção GZIP: abaixo do mínimo | CU-IMP-01.5 | `0 byte` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
-| Exceção GZIP: formato | CU-IMP-01.6 | `argus_dump.sql` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
-| Exceção GZIP: data | CU-IMP-01.7 | `2026-02-29` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
-| Alternativo ZIP | CU-IMP-02.1 | `argus.zip`, `1 byte` | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
-| Limite ZIP: abaixo do máximo | CU-IMP-02.2 | `10 GiB - 1` | `201` | Reserva criada | Aprovado |
-| Limite ZIP: máximo | CU-IMP-02.3 | `10 GiB` | `201` | Reserva criada | Aprovado |
-| Exceção ZIP: acima do máximo | CU-IMP-02.4 | `10 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
-| Limite do nome | CU-IMP-02.5/6/7 | 0, 251 e 252 caracteres antes de `.zip` | `400`, `201`, `400`, respectivamente | Escrita somente no limite válido | Aprovado |
-| Exceção ZIP: caminho | CU-IMP-02.8 | `pasta/argus.zip` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
-| Alternativo 4a — repetição idempotente | CU-IMP-03 | Mesma solicitação e chave `start-http` | `201`, mesmo `importId` | Um único `ImportJob` e um único multipart | Aprovado |
-| Exceção 3a — sem sessão | CU-IMP-03 | Requisição sem cookie | `401 UNAUTHENTICATED` | Nenhum multipart adicional | Aprovado |
-| Exceção 3b — sem chave | CU-IMP-03 | Sessão válida sem `Idempotency-Key` | `400 VALIDATION_ERROR` | Nenhum multipart adicional | Aprovado |
-| Exceção 4b — concorrência | CU-IMP-03 | Nova chave durante importação ativa | `409 IMPORT_IN_PROGRESS` | Importação original preservada | Aprovado |
-| Exceção 4c — ativo indeterminável | CU-IMP-04 | Registro ativo ausente ou repositório indisponível após disputa | `503 DATA_UNAVAILABLE` seguro | Nenhum falso sucesso | Aprovado |
-| Limite do corpo inicial | CU-IMP-05 | JSON acima de 64 KiB | `413 VALIDATION_ERROR` | Nenhum registro e nenhum multipart | Aprovado |
-| Exceção 5a — armazenamento falha | CU-IMP-06 | Falha privada em `store.create` | `503 UPLOAD_PREPARATION_FAILED` | Registro `FAILED`, lock liberado, sem vazamento | Aprovado |
+| Principal GZIP | UC-IMP-01.1 | `argus_dump.sql.gz`, `1 byte`, data válida | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
+| Limite GZIP: abaixo do máximo | UC-IMP-01.2 | `5 GiB - 1` | `201` | Reserva criada | Aprovado |
+| Limite GZIP: máximo | UC-IMP-01.3 | `5 GiB` | `201` | Reserva criada | Aprovado |
+| Exceção GZIP: acima do máximo | UC-IMP-01.4 | `5 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: abaixo do mínimo | UC-IMP-01.5 | `0 byte` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: formato | UC-IMP-01.6 | `argus_dump.sql` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Exceção GZIP: data | UC-IMP-01.7 | `2026-02-29` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Alternativo ZIP | UC-IMP-02.1 | `argus.zip`, `1 byte` | `201` | Uma reserva `UPLOADING`; `store.create` uma vez | Aprovado |
+| Limite ZIP: abaixo do máximo | UC-IMP-02.2 | `10 GiB - 1` | `201` | Reserva criada | Aprovado |
+| Limite ZIP: máximo | UC-IMP-02.3 | `10 GiB` | `201` | Reserva criada | Aprovado |
+| Exceção ZIP: acima do máximo | UC-IMP-02.4 | `10 GiB + 1` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Limite do nome | UC-IMP-02.5/6/7 | 0, 251 e 252 caracteres antes de `.zip` | `400`, `201`, `400`, respectivamente | Escrita somente no limite válido | Aprovado |
+| Exceção ZIP: caminho | UC-IMP-02.8 | `pasta/argus.zip` | `400 VALIDATION_ERROR` | Nenhuma reserva e nenhum multipart | Aprovado |
+| Alternativo 4a — repetição idempotente | UC-IMP-03 | Mesma solicitação e chave `start-http` | `201`, mesmo `importId` | Um único `ImportJob` e um único multipart | Aprovado |
+| Exceção 3a — sem sessão | UC-IMP-03 | Requisição sem cookie | `401 UNAUTHENTICATED` | Nenhum multipart adicional | Aprovado |
+| Exceção 3b — sem chave | UC-IMP-03 | Sessão válida sem `Idempotency-Key` | `400 VALIDATION_ERROR` | Nenhum multipart adicional | Aprovado |
+| Exceção 4b — concorrência | UC-IMP-03 | Nova chave durante importação ativa | `409 IMPORT_IN_PROGRESS` | Importação original preservada | Aprovado |
+| Exceção 4c — ativo indeterminável | UC-IMP-04 | Registro ativo ausente ou repositório indisponível após disputa | `503 DATA_UNAVAILABLE` seguro | Nenhum falso sucesso | Aprovado |
+| Limite do corpo inicial | UC-IMP-05 | JSON acima de 64 KiB | `413 VALIDATION_ERROR` | Nenhum registro e nenhum multipart | Aprovado |
+| Exceção 5a — armazenamento falha | UC-IMP-06 | Falha privada em `store.create` | `503 UPLOAD_PREPARATION_FAILED` | Registro `FAILED`, lock liberado, sem vazamento | Aprovado |
 
 <div align="center">
 
@@ -479,7 +479,7 @@ Fonte: Material produzido pelos autores (2026).
 
 ### Evidência complementar anterior — consulta de incidentes
 
-&emsp;A rodada anterior também documentou a **consulta filtrada e paginada de incidentes** (RF09). Ela permanece abaixo como evidência complementar ao UC-09 e aos casos CU-IMP-01 a CU-IMP-06 acima.
+&emsp;A rodada anterior também documentou a **consulta filtrada e paginada de incidentes** (RF09). Ela permanece abaixo como evidência complementar ao UC-09 e aos casos UC-IMP-01 a UC-IMP-06 acima.
 
 &emsp;Caso de uso complementar: **consulta filtrada e paginada de incidentes** (RF09, rota `GET /api/v1/incidents`, exposta em [`src/http/public-routes.ts`](../../apps/backend/api/src/http/public-routes.ts) como `incidents`).
 
@@ -737,7 +737,7 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 
 &emsp;A Seção 1 (Testes Unitários) já foi executada: os quatro testes (UT01–UT04) passaram, com evidência em [`assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-unitarios.txt) e na saída completa da suíte em [`assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt`](../../assets/testes-funcionais/2026-09-17/resultado-vitest-suite-completa.txt) (71 testes passando, 1 ignorado, de 11 arquivos).
 
-&emsp;A Seção 3 agora cobre integralmente o UC-09 por caixa-preta com CU-IMP-01 a CU-IMP-06: fluxo básico, formatos GZIP/ZIP, idempotência, autenticação, concorrência, indisponibilidade, falha do armazenamento, pós-condições e limites imediatamente abaixo, nos extremos e imediatamente acima. As oito execuções automatizadas passaram; a análise anterior CT-01 a CT-12 foi mantida como evidência complementar.
+&emsp;A Seção 3 agora cobre integralmente o UC-09 por caixa-preta com UC-IMP-01 a UC-IMP-06: fluxo básico, formatos GZIP/ZIP, idempotência, autenticação, concorrência, indisponibilidade, falha do armazenamento, pós-condições e limites imediatamente abaixo, nos extremos e imediatamente acima. As oito execuções automatizadas passaram; a análise anterior CT-01 a CT-12 foi mantida como evidência complementar.
 
 &emsp;A Seção 4 (Níveis 1 a 3) também já foi executada contra a mesma stack AWS — resultados, análise e evidência (`resumo-nivel{1,2,3}.json`) em cada tabela da Seção 4. Resumo: correção de conteúdo (schema, ausência de campo físico, ausência de duplicidade entre páginas) aprovada nos três níveis, 100% das vezes que uma resposta chegou; nenhum nível atendeu integralmente aos critérios de desempenho; no Nível 1, apenas corretude e taxa de erros foram aprovadas — Níveis 2 e 3 expuseram que uma única task Fargate de 1 vCPU sem autoscaling reagindo a tempo não sustenta os alvos de RNF09/RNF14 nesta configuração.
 
@@ -757,7 +757,7 @@ terraform apply -input=false .terraform-artifacts/rate-limit-alto.tfplan
 | --- | --- | --- |
 | IT-AWS-01 a IT-AWS-05 | [`tests/live-aws.integration.test.ts`](../../apps/backend/api/tests/live-aws.integration.test.ts), executado contra Amplify, API Gateway, ALB, ECS, Cognito, DynamoDB e S3 reais | [`resultado-vitest-integracao-aws-pos-deploy.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-aws-pos-deploy.txt) |
 | IT-UPLOAD-01 a IT-UPLOAD-03 | [`imports-view.integration.test.tsx`](../../apps/frontend/app/(painel)/dados/importacoes/imports-view.integration.test.tsx), usando `ImportsView`, provider e diálogo reais | [`resultado-vitest-integracao-upload.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-integracao-upload.txt) |
-| CU-IMP-01 a CU-IMP-06 (UC-09) | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), rota HTTP real com ports controlados | [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt) |
+| UC-IMP-01 a UC-IMP-06 (UC-09) | [`gateway-http.integration.test.ts`](../../apps/backend/api/tests/gateway-http.integration.test.ts), rota HTTP real com ports controlados | [`resultado-vitest-casos-uso-importacao.txt`](../../assets/testes-funcionais/2026-09-25/resultado-vitest-casos-uso-importacao.txt) |
 | Evidência complementar CT-01 a CT-12 | [`tests/incidents-aws-live.functional.test.ts`](../../apps/backend/api/tests/incidents-aws-live.functional.test.ts) | `assets/testes-funcionais/2026-09-21/` (ver Seção 3.7) |
 | Seção 4 — Níveis 1, 2 e 3 | `consultas.js` estendido in-place + [`lib/asserts.js`](../../apps/backend/api/loadtest/k6/lib/asserts.js) (novo) | `assets/testes-funcionais/2026-09-21/resumo-nivel{1,2,3}.json` |
 
