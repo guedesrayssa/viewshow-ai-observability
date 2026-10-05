@@ -65,7 +65,7 @@ if [[ "$ready" != 1 ]]; then
   exit 1
 fi
 
-echo "Alvo local: http://127.0.0.1:${API_PORT:-3000} | modo: $mode | taxa: ${RATE:-50} req/s"
+echo "Alvo local: http://127.0.0.1:${API_PORT:-3000} | modo: $mode | RATE=${RATE:-50} iterações/s (o smoke ignora RATE e usa 1/s)"
 mkdir -p "$script_dir/results"
 export BASE_URL="http://127.0.0.1:${API_PORT:-3000}"
 k6 run \

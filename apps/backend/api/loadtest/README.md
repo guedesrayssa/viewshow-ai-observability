@@ -1,35 +1,96 @@
 # Testes de carga — apps/backend/api
 
-## Nova bateria local do frontend
+## Bateria do frontend (`k6/front-api.js`)
 
-`k6/front-api.js` exercita uma mistura de leituras das telas do frontend:
+O painel (`apps/frontend`) é um export estático (Next.js `output: "export"`,
+hospedado no Amplify) e "inteiramente client-side": todo o trabalho de servidor
+que ele provoca é HTTP contra esta API. `k6/front-api.js` reproduz o padrão de
+chamadas das telas contra a API — é um teste de carga **da API com o mix do
+painel**, não do frontend em si (veja "O que esta bateria não mede").
 
-| Rota                                          | Peso aproximado |
-| --------------------------------------------- | --------------: |
-| `GET /api/v1/incidents` (24h, lista paginada) |             32% |
-| `GET /api/v1/dashboard/overview`              |             18% |
-| `GET /api/v1/incidents/:id/diagnosis`         |             16% |
-| `GET /api/v1/incidents/:id/events`            |             12% |
-| `GET /api/v1/events`                          |             10% |
-| `GET /api/v1/monitoring/overview`             |              7% |
-| `GET /auth/session`                           |              4% |
-| `GET /api/v1/integrations/argus`              |              1% |
+| Tag da rota           | Chamada do painel                                                             | Peso |
+| --------------------- | ----------------------------------------------------------------------------- | ---: |
+| `incidents_list`      | Incidentes — `GET /api/v1/incidents?window=24h` (+ variantes com filtros)     |  24% |
+| `incidents_chart`     | Incidentes, gráfico — `?window=1h&chartMetric=affected_devices`               |   8% |
+| `dashboard_overview`  | Visão Geral — `GET /api/v1/dashboard/overview`                                |  16% |
+| `incident_diagnosis`  | Evidências — `GET /api/v1/incidents/:id/diagnosis` (a tela chama duas vezes)  |  16% |
+| `incident_events`     | Eventos de um incidente — `GET /api/v1/incidents/:id/events`                  |  10% |
+| `global_events`       | Eventos — lista (`limit=50`) e agregado de volume (`limit=1`)                 |  10% |
+| `monitoring_overview` | Monitoramento — `GET /api/v1/monitoring/overview`                             |   7% |
+| `auth_session`        | Todas as telas, uma vez por carregamento — `GET /auth/session`                |   4% |
+| `rum_beacon`          | Web Vitals/erros a cada visita — `POST /api/v1/telemetry/rum` (única escrita) |   4% |
+| `argus_integration`   | Configurações — `GET /api/v1/integrations/argus`                              |   1% |
 
-O perfil exercita respostas, latência p50/p90/p95/p99, taxa de sucesso,
-limites de concorrência do gerador, respostas 429/503 e eco de
-`X-Request-Id`. Exige p95 abaixo de 2 s e p99 abaixo de 5 s em respostas 200;
-`smoke` exige sucesso total, e os demais perfis exigem pelo menos 98% de
-sucesso, sem 429 nem iterações descartadas. Uma exceção explícita é
-`monitoring/overview`: no `develop` atual ela responde 503
-`DATA_UNAVAILABLE` enquanto não existir projeção pública compatível; o teste
-confere esse contrato e registra a indisponibilidade como métrica separada.
-503 em qualquer outra rota conta como falha.
+Os pesos são uma estimativa da equipe, não uma medição de produção. Quando
+houver tráfego real, derive-os de `http_request_duration_seconds` em `/metrics`.
 
-A bateria não executa mutações nas hipóteses, reanálises, importações, login
-no Cognito, ingestão, nem chamadas ao LLM. Ela usa uma sessão local assinada e
-um seed sintético. O script não direciona requisições para AWS: cada execução
-sobe uma instância descartável de DynamoDB Local, cria tabela isolada, semeia
-300 incidentes, inicia a API em loopback e remove o contêiner ao final.
+**Fidelidade ao frontend** (`apps/frontend/lib/data/client.ts`): timeout de 8 s
+por requisição — acima disso o painel desiste e mostra o bloco como
+indisponível, então aqui é falha (`front_api_client_timeout_total`); um 200 só
+conta se trouxer o envelope `{data, meta}` que o painel valida; a paginação por
+cursor é a da tela de Eventos ("carregar mais"), a única que a usa.
+
+**O que esta bateria não mede**
+
+- A entrega dos assets estáticos (Amplify/CDN, ~1 MB de JS no total) nem o
+  tempo de renderização no navegador: FCP/LCP/INP (RNF07) exigem Lighthouse ou
+  Playwright contra o painel publicado. Nada aqui os cobre.
+- O salto do Amplify: por padrão o k6 fala direto com o API Gateway. O
+  navegador real entra por `https://<branch>.<id>.amplifyapp.com` e o Amplify
+  repassa `/api`, `/auth` e `/health`. Para incluir esse salto use
+  `TARGET=amplify` em `run-aws.mjs`, com taxa baixa (serviço gerenciado).
+- O modelo de usuários do painel: as telas se atualizam sozinhas (Visão Geral a
+  cada 30 s, Incidentes a cada 45 s, Monitoramento a cada 20 s). Como regra de
+  bolso, uma aba de Visão Geral aberta custa 2 req/min, então `RATE=50` equivale
+  a cerca de 1.500 abas dessa tela abertas.
+- O login (`POST /auth/login`), a ingestão, reanálise/revisão e importação.
+- Volume de dados realista: o seed cria 300 incidentes. A leitura de incidentes,
+  do diagnóstico e do overview carrega a projeção inteira (um único item do
+  DynamoDB) a cada requisição e filtra em memória; o custo cresce com o número
+  de incidentes (medido: 300 → 2.500 incidentes dobrou a CPU por requisição).
+  Use `INCIDENTS_PER_HOUR=100 node scripts/seed-carga.cjs` e
+  `INCIDENT_COUNT=2500` para medir com um volume maior. O limite físico é o
+  item de 400 KB do DynamoDB.
+
+**Limites conhecidos da API que a bateria evidencia** (estado de `develop`):
+
+- `monitoring/overview` é um stub: responde sempre `503 DATA_UNAVAILABLE`. A
+  rota pesa 7% do mix e não exercita nada; o sumário avisa. Quando a projeção
+  existir, rode com `MONITORING_EXPECTED=available` para exigir 200.
+- `GET /api/v1/incidents` devolve `hasMore=true` com `nextCursor=null`: a lista
+  de incidentes não pagina. O contador `front_api_has_more_without_cursor_total`
+  expõe o desvio; a paginação exercitada é a de Eventos.
+- Com o seed, `events` volta com 0 itens (`SEED_EVENTS_NOT_MATERIALIZED`) e
+  incidentes/diagnóstico com `meta.partial=true`. O sumário mostra a fração
+  parcial por rota; cerca de 22% do mix toca rotas que hoje respondem sem
+  trabalho real.
+
+**Critérios** (`load`/`soak` seguem o RNF09, 99,9%; `stress`/`spike`/`breakpoint`
+empurram além do regime normal e toleram até 2%):
+
+| Métrica                                               | Smoke         | Load, soak | Stress, spike, breakpoint |
+| ----------------------------------------------------- | ------------- | ---------- | ------------------------- |
+| `checks`, `front_api_contract_success_rate`           | `==1`         | `>0.999`   | `>0.98`                   |
+| `http_req_failed` (200 só; 503 só no monitoramento)   | `==0`         | `<0.001`   | `<0.02`                   |
+| p95 / p99 em `status:200`                             | < 2 s / < 5 s | idem       | idem                      |
+| p95 / p99 por rota (`rota:<tag>`)                     | < 2 s / < 5 s | idem       | idem                      |
+| falha e contrato por rota                             | `==0`         | `<0.02`    | `<0.02`                   |
+| 429 (exceto RUM), timeouts > 8 s, iterações descartadas | `==0`       | `==0`      | `==0`                     |
+
+O sumário impresso separa o resultado por rota e por fase (`s2_plateau`, `r75`,
+…), então o `breakpoint` mostra em que taxa a API cede; sem isso ele só
+devolveria agregados. O JSON completo vai para `loadtest/results/`.
+
+A bateria não executa mutações nas hipóteses, reanálises e importações, nem
+login no Cognito, ingestão ou chamadas ao LLM. Ela usa uma sessão local assinada
+e um seed sintético. `local.sh` não direciona requisições para a AWS: cada
+execução sobe uma instância descartável de DynamoDB Local, cria tabela isolada,
+semeia 300 incidentes, inicia a API em loopback e remove o contêiner ao final.
+
+Antes de gastar uma rodada, o `setup()` confere que a lista de incidentes não
+está vazia e que `inc-000001` e `inc-<INCIDENT_COUNT>` existem (`PREFLIGHT=0`
+desliga). Contra uma API sem a massa sintética — por exemplo a stack AWS com
+dados reais ingeridos — ele aborta com a causa, em vez de reportar 100% de 404.
 
 Pré-requisitos: Docker, Node.js 22, dependências npm de `apps/backend/api` já
 instaladas e k6 disponível no `PATH`. A partir desta pasta:
@@ -40,33 +101,50 @@ RATE=50 ./local.sh load
 RATE=50 ./local.sh spike
 RATE=50 ./local.sh stress
 RATE=50 DURATION=30m ./local.sh soak
-./local.sh breakpoint  # degraus de 10 a 150 chegadas/s
+./local.sh breakpoint  # degraus de 10 a 150 chegadas/s (sobe 10 s, segura 50 s), sumário por fase
 ```
 
-`load` sustenta a taxa configurada por cinco minutos; `spike` aplica uma
-rajada de quatro vezes a taxa base; `stress` sustenta duas vezes a taxa base;
-`soak` dura 30 minutos por padrão. Cada modo começa com banco limpo e seed novo.
-Resultados JSON são salvos em `loadtest/results/` e o arquivo é ignorado pelo
-Git. A taxa do limite de API local é 30.000 req/min por padrão para deixar o
-gerador medir a API; ajuste com `API_RATE_LIMIT_PER_MINUTE` se necessário.
-O cenário é carga de chegada aberta (arrival rate), então a pressão não cai
-quando a API fica lenta.
+`RATE` é a taxa de chegada de **iterações por segundo**; cada iteração faz uma
+requisição (mais a segunda página de eventos, quando existe). `load` sustenta a
+taxa por cinco minutos; `spike` aplica uma rajada de quatro vezes a taxa base;
+`stress` sustenta duas vezes a taxa base; `soak` dura 30 minutos por padrão. O
+RNF14 pede 137 req/s (`RATE=137`). Cada modo começa com banco limpo e seed novo.
+A taxa do limite de API local é 30.000 req/min por padrão para deixar o gerador
+medir a API; ajuste com `API_RATE_LIMIT_PER_MINUTE` se necessário (o limiter do
+beacon RUM, fixo em 600/min, responde 429 sem contar como falha). O cenário é
+carga de chegada aberta (arrival rate), então a pressão não cai quando a API
+fica lenta.
+
+Variáveis do script: `BASE_URL`, `MODE`, `RATE`, `DURATION`, `INCIDENT_COUNT`,
+`AUTH_COOKIE_SECRET` (ou `AUTH_USERNAME`/`AUTH_PASSWORD`), `MONITORING_EXPECTED`
+(`either` | `unavailable` | `available`), `FOLLOWUP_PROBABILITY` (0,15),
+`PREFLIGHT` (1), `ROUTE_P95_MS`/`ROUTE_P99_MS` (2000/5000), `INCIDENT_IDS` (`synthetic` |
+`discover`, para medir um dataset real descobrindo os IDs na API), `WINDOW_OVERRIDE` (ex.: `all`),
+`MAX_VUS`, `BREAKPOINT_STEPS` (padrão `10,20,30,40,50,75,100,150`) e `RESULTS_DIR`.
+No `breakpoint`, leia só até o primeiro degrau que falha: depois dele o serviço já está
+degradado (fila, task reiniciada pelo health check do ALB).
+
+**Dimensione o gerador.** O modelo é aberto: se a API segura cada requisição até o
+timeout de 8 s, o k6 precisa de `taxa x 8` VUs para continuar emitindo a carga
+pedida (o piso de `maxVUs` já considera isso, ~1,2x). Com poucos VUs ele descarta
+chegadas e a carga efetiva fica abaixo da pretendida; o sumário avisa. Cada VU custa
+cerca de 1 MB de RAM: um t3.micro (0,9 GB) não sustenta mais que ~700 VUs, então
+prefira um gerador maior para `RATE` alto. Rode o gerador na mesma região da stack:
+da região do bastion o RTT ao API Gateway é de ~45 ms e ao ALB ~5 ms; de fora, a
+latência medida é majoritariamente rede.
 
 Use primeiro `smoke`; os perfis acima dele podem consumir bastante CPU e
-memória do computador. A taxa atingida é a taxa de chegada configurada; o
-relatório registra também as iterações descartadas caso k6 não consiga
-acompanhar. Os resultados locais medem a capacidade desta máquina e do
-DynamoDB Local, não estimam por si só a capacidade da AWS.
+memória do computador. Os resultados locais medem a capacidade desta máquina e
+do DynamoDB Local, não a da AWS. Para aproximar a AWS, limite a CPU da API
+(`docker run --cpus=0.25 --memory=512m` com a imagem implantada, apontando para
+o DynamoDB Local) e compare.
 
 Para rodar somente o script em outra API de teste, use k6 diretamente com
 `BASE_URL`, `AUTH_COOKIE_SECRET` (o mesmo segredo do servidor) ou
 `AUTH_USERNAME`/`AUTH_PASSWORD`, `MODE`, `RATE` e `INCIDENT_COUNT`. Prepare
 antes os IDs ordinais `inc-000001` a `inc-000300` e as projeções de dashboard e
-dashboard overview. A rota de monitoramento deve manter seu 503
-`DATA_UNAVAILABLE` esperado até a projeção ser implementada. A API deve
-permitir taxa suficiente por IP; o limite padrão
-de produção (180 req/min) vai bloquear um gerador único em carga alta. A etapa
-AWS será configurada separadamente, após o setup de nuvem.
+dashboard overview. A API deve permitir taxa suficiente por IP; o limite padrão
+de produção (180 req/min) vai bloquear um gerador único em carga alta.
 
 ### Implementação anterior
 
@@ -101,8 +179,10 @@ sozinho em `setup()`, conforme as variáveis presentes:
 - **Login real** (`-e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha>`):
   `POST /auth/login` de verdade contra o Cognito (`apps/fullstack/cognito.tf`
   provisiona o User Pool). Recomendado contra qualquer stack aplicada pelo
-  Terraform, porque o segredo HMAC (`AUTH_COOKIE_SECRET`) é gerado por
-  `random_password` e nunca sai em texto claro.
+  Terraform, porque não exige conhecer o segredo HMAC (`AUTH_COOKIE_SECRET`).
+  Observação: hoje esse segredo aparece em texto claro na definição da task ECS
+  (ver a nota na seção AWS), então ele "nunca sai" apenas no sentido de que o
+  Terraform não o exibe como output.
 - **Cookie forjado** (`-e AUTH_COOKIE_SECRET=<segredo>`, mínimo 32
   caracteres): `k6/lib/session.js` forja o cookie localmente (HMAC, mesmo
   algoritmo de `SessionCodec`), sem chamada HTTP. Útil só quando o segredo é
@@ -165,24 +245,42 @@ k6 run -e BASE_URL=http://<dns-do-alb> -e AUTH_USERNAME=<email-de-teste> -e AUTH
 Na stack do Learner Lab, `run-aws.mjs` valida a conta, espera a task ECS
 saudável, obtém o segredo de sessão somente em memória e executa a mesma
 bateria contra o endpoint HTTPS do API Gateway. O segredo não é impresso nem
-gravado nos resultados:
+gravado nos resultados. O ID da conta muda a cada laboratório; confira o da
+sessão atual em vez de copiar um valor antigo:
 
 ```bash
-EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=smoke node run-aws.mjs
-EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=load RATE=10 node run-aws.mjs
-EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=stress RATE=10 node run-aws.mjs
-EXPECTED_AWS_ACCOUNT_ID=908494055566 MODE=spike RATE=10 node run-aws.mjs
+export EXPECTED_AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+MODE=smoke node run-aws.mjs
+MODE=load RATE=10 node run-aws.mjs
+MODE=stress RATE=10 node run-aws.mjs
+MODE=spike RATE=10 node run-aws.mjs
+TARGET=amplify MODE=smoke node run-aws.mjs   # entra pelo painel (salto do Amplify)
 ```
 
-O fluxo AWS usa `ALLOW_REMOTE_SEED=1` apenas para inserir a massa sintética na
-tabela operacional antes de cada rodada. Para cargas acima do limite padrão,
+O runner lê `RATE_LIMIT_PER_MINUTE` da task ativa e aborta quando o pico do
+perfil excede o limite (`ALLOW_RATE_LIMITED=1` ignora): acima dele o k6 mediria
+o 429, não a API. `RATE=10` é 14 vezes menor que os 137 req/s do RNF14; uma
+rodada aprovada nessa taxa não comprova o requisito.
+
+**Não semeie uma tabela que já tenha dados ingeridos.** `seed-carga.cjs` com
+`ALLOW_REMOTE_SEED=1` grava o item `CONTROL#DATASET/ACTIVE` (manifesto do
+dataset ativo) além das projeções: a API passa a servir o dataset sintético e o
+dataset real deixa de ser o ativo até ser reativado. Use essa etapa somente em
+uma stack isolada e vazia, ou exporte antes o item de controle para poder
+restaurá-lo. Sem a massa sintética, o `PREFLIGHT` do k6 aborta com a causa.
+Para desfazer um seed remoto (restaura o manifesto do backup e apaga só os itens
+sintéticos, com ensaio por padrão), tire antes um backup completo com
+`scripts/backup-table.cjs <backup.json>` e depois use
+`scripts/undo-remote-seed.cjs <backup.json> [--apply]`.
+Para cargas acima do limite padrão,
 o comando protegido `update loadtest-20000` eleva temporariamente o limite e
 `update baseline` o restaura para 180 req/min.
 
-(`AUTH_COOKIE_SECRET` continua funcionando como alternativa se o segredo HMAC
-da task ECS for conhecido por outra via, mas não é mais necessário: o
-Terraform gera esse segredo com `random_password` e não o expõe como output
-em texto claro.)
+(`AUTH_COOKIE_SECRET` continua funcionando como alternativa. Atenção: o
+Terraform gera o segredo com `random_password`, mas o injeta como variável de
+ambiente comum na definição da task ECS — é de lá que `run-aws.mjs` o lê. Quem
+tem `ecs:DescribeTaskDefinition` consegue forjar sessões de qualquer perfil;
+o caminho correto é o bloco `secrets` com Secrets Manager/SSM.)
 
 Dois pontos que mudam de verdade ao sair do localhost:
 

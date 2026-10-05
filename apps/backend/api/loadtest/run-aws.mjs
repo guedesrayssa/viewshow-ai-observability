@@ -66,7 +66,18 @@ if (account !== expectedAccount) {
   throw new Error(`AWS account mismatch: expected ${expectedAccount}, received ${account}.`);
 }
 
-const baseUrl = terraformOutput("api_url_https").replace(/\/$/, "");
+// `api` (padrão) fala direto com o API Gateway. `amplify` usa o endereço do
+// painel, por onde o navegador de verdade entra: o Amplify repassa /api, /auth
+// e /health ao mesmo API Gateway, então o caminho ganha um salto a mais. Use
+// taxas baixas nesse alvo — é um serviço gerenciado compartilhado, não a API.
+const target = process.env.TARGET || "api";
+if (!["api", "amplify"].includes(target)) {
+  throw new Error("TARGET deve ser api ou amplify.");
+}
+const baseUrl = terraformOutput(target === "amplify" ? "painel_url" : "api_url_https").replace(
+  /\/$/,
+  "",
+);
 const service = awsJson(["ecs", "describe-services", "--cluster", cluster, "--services", serviceName])
   .services?.[0];
 if (!service || service.status !== "ACTIVE" || !service.taskDefinition) {
@@ -90,6 +101,32 @@ const cookieSecret = container?.environment?.find(
 )?.value;
 if (typeof cookieSecret !== "string" || cookieSecret.length < 32) {
   throw new Error("The active API task definition has no usable session secret.");
+}
+
+// O limitador da API é por IP: acima dele o gerador mede o 429, não a API. Aborta
+// antes de gastar a rodada (ALLOW_RATE_LIMITED=1 ignora, para medir o limitador
+// de propósito).
+const rateLimitPerMinute = Number(
+  container?.environment?.find((item) => item.name === "RATE_LIMIT_PER_MINUTE")?.value ?? 180,
+);
+const peakByMode = {
+  smoke: 1,
+  load: Number(rate),
+  stress: Number(rate) * 2,
+  spike: Number(rate) * 4,
+  breakpoint: 150,
+  soak: Number(rate),
+};
+const plannedPeak = peakByMode[mode];
+if (!Number.isFinite(plannedPeak)) {
+  throw new Error(`MODE inválido: ${mode}. Use ${Object.keys(peakByMode).join(", ")}.`);
+}
+if (plannedPeak * 60 > rateLimitPerMinute && process.env.ALLOW_RATE_LIMITED !== "1") {
+  throw new Error(
+    `O pico do perfil ${mode} (${plannedPeak} req/s = ${plannedPeak * 60}/min) excede ` +
+      `RATE_LIMIT_PER_MINUTE=${rateLimitPerMinute} da task ativa; o k6 mediria o 429, não a API. ` +
+      "Eleve o limite só na janela do teste (preset protegido loadtest-20000) ou reduza RATE.",
+  );
 }
 
 let healthy = false;
@@ -122,7 +159,10 @@ const env = {
 };
 if (duration) env.DURATION = duration;
 
-console.log(`AWS account verified: ${account}; API health: HTTP 200; mode: ${mode}.`);
+console.log(
+  `AWS account verified: ${account}; target: ${target}; API health: HTTP 200; mode: ${mode}; ` +
+    `planned peak: ${plannedPeak} req/s (limit ${rateLimitPerMinute}/min).`,
+);
 const args = ["run"];
 for (const name of ["BASE_URL", "MODE", "RATE", "INCIDENT_COUNT", "RESULTS_DIR"]) {
   args.push("-e", `${name}=${env[name]}`);
