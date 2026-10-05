@@ -1,0 +1,465 @@
+{
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)",
+      "p(99)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": true
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 170455.978
+  },
+  "metrics": {
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 995721,
+        "rate": 5841.514106357714
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 0,
+        "max": 408.22,
+        "p(90)": 124.7453,
+        "p(95)": 126.40055000000001,
+        "p(99)": 130.83754,
+        "avg": 15.547557352941181,
+        "min": 0
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 3403.6808395277726,
+        "min": 122.496667,
+        "med": 391.732958,
+        "max": 30484.130375,
+        "p(90)": 11445.780133600008,
+        "p(95)": 24924.11355359999,
+        "p(99)": 30122.88605356
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "min": 150,
+        "max": 330,
+        "value": 330
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 24830.27539999999,
+        "p(99)": 30122.23631,
+        "avg": 3351.4837845588313,
+        "min": 121.828,
+        "med": 153.7005,
+        "max": 30483.752,
+        "p(90)": 11426.471200000009
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2719,
+        "rate": 15.951332607413747
+      }
+    },
+    "front_api_data_unavailable_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 285,
+        "rate": 1.6719859481842287
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 3370.5836922794124,
+        "min": 121.998,
+        "med": 262.00199999999995,
+        "max": 30483.981,
+        "p(90)": 11428.563600000009,
+        "p(95)": 24831.43814999999,
+        "p(99)": 30122.47653
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 26450411,
+        "rate": 155174.44040595632
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2720,
+        "rate": 15.957199224775797
+      }
+    },
+    "http_req_blocked": {
+      "values": {
+        "min": 0,
+        "med": 0.001,
+        "max": 1247.526,
+        "p(90)": 246.22920000000002,
+        "p(95)": 248.82035,
+        "p(99)": 256.12102999999996,
+        "avg": 30.841751470588065
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "dropped_iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 180,
+        "rate": 1.0559911251689866
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 262.00199999999995,
+        "max": 30483.981,
+        "p(90)": 11428.563600000009,
+        "p(95)": 24831.43814999999,
+        "p(99)": 30122.47653,
+        "avg": 3370.5836922794124,
+        "min": 121.998
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 126.21428999999999,
+        "avg": 15.271074264705874,
+        "min": 0,
+        "med": 0,
+        "max": 1124.044,
+        "p(90)": 120.576,
+        "p(95)": 122.0725
+      }
+    },
+    "http_req_duration{status:200}": {
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      },
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 18576.94469999999,
+        "p(99)": 28859.45944,
+        "avg": 2632.20257043121,
+        "min": 121.998,
+        "med": 261.087,
+        "max": 30085.944,
+        "p(90)": 4395.8074000000015
+      }
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 121.11755000000001,
+        "p(99)": 240.02999,
+        "avg": 18.944982352941206,
+        "min": 0.019,
+        "med": 0.108,
+        "max": 727.894,
+        "p(90)": 119.1903
+      }
+    },
+    "front_api_contract_success_rate": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.9716807649871276,
+        "passes": 2642,
+        "fails": 77
+      },
+      "thresholds": {
+        "rate>0.98": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.15492536764705891,
+        "min": 0.031,
+        "med": 0.149,
+        "max": 1.359,
+        "p(90)": 0.22,
+        "p(95)": 0.246,
+        "p(99)": 0.32161999999999996
+      }
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 324
+      }
+    },
+    "front_api_rate_limited_total": {
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 2720
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": true
+        }
+      }
+    },
+    "checks": {
+      "contains": "default",
+      "values": {
+        "rate": 0.98204833141542,
+        "passes": 8534,
+        "fails": 156
+      },
+      "thresholds": {
+        "rate>0.98": {
+          "ok": true
+        }
+      },
+      "type": "rate"
+    }
+  },
+  "setup_data": {
+    "cookie": "<redigido: cookie de sessão>"
+  },
+  "root_group": {
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [],
+    "checks": [
+        {
+          "name": "dashboard_overview: sem campo físico vazado",
+          "path": "::dashboard_overview: sem campo físico vazado",
+          "id": "ec7c9fd5ff99d98b905f2098584bb8d8",
+          "passes": 483,
+          "fails": 0
+        },
+        {
+          "passes": 483,
+          "fails": 14,
+          "name": "dashboard_overview: resposta de contrato",
+          "path": "::dashboard_overview: resposta de contrato",
+          "id": "6901cf8c0f2394523684ecf38b88a454"
+        },
+        {
+          "fails": 14,
+          "name": "dashboard_overview: request id ecoado",
+          "path": "::dashboard_overview: request id ecoado",
+          "id": "7eb12c59a238f8730f72a3cd11c1cdf2",
+          "passes": 483
+        },
+        {
+          "passes": 141,
+          "fails": 0,
+          "name": "auth_session: sem campo físico vazado",
+          "path": "::auth_session: sem campo físico vazado",
+          "id": "05ab26654f303f6dd955ae20cc43a980"
+        },
+        {
+          "fails": 1,
+          "name": "auth_session: resposta de contrato",
+          "path": "::auth_session: resposta de contrato",
+          "id": "8ef8d55b949b030733ba5f156f10d56c",
+          "passes": 141
+        },
+        {
+          "name": "auth_session: request id ecoado",
+          "path": "::auth_session: request id ecoado",
+          "id": "f4a0916154dd27c0dd6660966bcab36b",
+          "passes": 141,
+          "fails": 1
+        },
+        {
+          "passes": 818,
+          "fails": 0,
+          "name": "incidents_list: sem campo físico vazado",
+          "path": "::incidents_list: sem campo físico vazado",
+          "id": "4feb435340955ea4b2b471710d7e23a3"
+        },
+        {
+          "fails": 0,
+          "name": "incidents_list: schema de items",
+          "path": "::incidents_list: schema de items",
+          "id": "6cc80af1a62f7646521d95769a9d6cd5",
+          "passes": 818
+        },
+        {
+          "name": "incidents_list: resposta de contrato",
+          "path": "::incidents_list: resposta de contrato",
+          "id": "fd5e4e26bfba5b6226775378cfeb5416",
+          "passes": 818,
+          "fails": 19
+        },
+        {
+          "path": "::incidents_list: request id ecoado",
+          "id": "14192d4c4729924583d63db9ae7eda91",
+          "passes": 818,
+          "fails": 19,
+          "name": "incidents_list: request id ecoado"
+        },
+        {
+          "passes": 401,
+          "fails": 0,
+          "name": "incident_diagnosis: sem campo físico vazado",
+          "path": "::incident_diagnosis: sem campo físico vazado",
+          "id": "420b92b2f5592a3e32d4c52aa9c18042"
+        },
+        {
+          "fails": 18,
+          "name": "incident_diagnosis: resposta de contrato",
+          "path": "::incident_diagnosis: resposta de contrato",
+          "id": "c82e1b7c90c579a18c0f0384d91c3468",
+          "passes": 401
+        },
+        {
+          "name": "incident_diagnosis: request id ecoado",
+          "path": "::incident_diagnosis: request id ecoado",
+          "id": "09295b3b58f1349c3772e807ee7fc517",
+          "passes": 401,
+          "fails": 18
+        },
+        {
+          "id": "5278fed5bcfa378ea5fb6759b2a839a5",
+          "passes": 207,
+          "fails": 1,
+          "name": "monitoring_overview: resposta de contrato",
+          "path": "::monitoring_overview: resposta de contrato"
+        },
+        {
+          "fails": 1,
+          "name": "monitoring_overview: request id ecoado",
+          "path": "::monitoring_overview: request id ecoado",
+          "id": "0faba9d3d47e2fd42c0832829888df53",
+          "passes": 207
+        },
+        {
+          "id": "2bfa7788a03de81c298c7fcb6c356455",
+          "passes": 323,
+          "fails": 0,
+          "name": "incident_events: sem campo físico vazado",
+          "path": "::incident_events: sem campo físico vazado"
+        },
+        {
+          "fails": 10,
+          "name": "incident_events: resposta de contrato",
+          "path": "::incident_events: resposta de contrato",
+          "id": "18f8c5dc5e4dce71db49317ccbdc9c06",
+          "passes": 323
+        },
+        {
+          "name": "incident_events: request id ecoado",
+          "path": "::incident_events: request id ecoado",
+          "id": "e241ef2ba827272ba017fb7e85731718",
+          "passes": 323,
+          "fails": 10
+        },
+        {
+          "name": "global_events: sem campo físico vazado",
+          "path": "::global_events: sem campo físico vazado",
+          "id": "970f00152ca5f8307767b6a09000052b",
+          "passes": 236,
+          "fails": 0
+        },
+        {
+          "name": "global_events: resposta de contrato",
+          "path": "::global_events: resposta de contrato",
+          "id": "18a0eeb956cd9ca1e036a520d9ea0b66",
+          "passes": 236,
+          "fails": 10
+        },
+        {
+          "name": "global_events: request id ecoado",
+          "path": "::global_events: request id ecoado",
+          "id": "cc5997eaf6921f00dbf7b60f0b4a3ed5",
+          "passes": 236,
+          "fails": 10
+        },
+        {
+          "path": "::argus_integration: sem campo físico vazado",
+          "id": "51982aecef90975b000f060b71af6a59",
+          "passes": 32,
+          "fails": 0,
+          "name": "argus_integration: sem campo físico vazado"
+        },
+        {
+          "path": "::argus_integration: resposta de contrato",
+          "id": "d02f960802ad0166da31e14999cb303b",
+          "passes": 32,
+          "fails": 5,
+          "name": "argus_integration: resposta de contrato"
+        },
+        {
+          "name": "argus_integration: request id ecoado",
+          "path": "::argus_integration: request id ecoado",
+          "id": "3638213efcd1a6951ecaec0622fbdbef",
+          "passes": 32,
+          "fails": 5
+        }
+      ],
+    "name": ""
+  }
+}

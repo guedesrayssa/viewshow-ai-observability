@@ -1,0 +1,30 @@
+Carga da API consumida pelo frontend — modo soak
+Taxa de chegada (iterações/s): base 25, pico 25; 2250 iterações, 2254 requisições, 25.0 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 147; timeouts do cliente (>8000 ms): 14; iterações descartadas: 0
+
+THRESHOLDS: 6 reprovados, 82 aprovados
+  ✗ http_req_failed rate<0.001
+  ✗ front_api_contract_success_rate rate>0.999
+  ✗ front_api_client_timeout_total count==0
+  ✗ http_req_failed{rota:rum_beacon} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:rum_beacon} rate<0.02
+  ✗ checks rate>0.999
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list         546    0.00     100.00      11     101     165     100.0
+incidents_chart        178    0.00     100.00      10     111     163     100.0
+dashboard_overview     366    0.00     100.00      13     134     258       0.0
+incident_diagnosis     374    0.00     100.00      14     131     209     100.0
+incident_events        199    0.00     100.00      13     151     219     100.0
+global_events          246    0.00     100.00       7      89     194     100.0
+monitoring_overview    147    0.00     100.00       4      85     132       0.0
+auth_session            74    0.00     100.00       1      49      87       0.0
+argus_integration       27    0.00     100.00       4      83      87       0.0
+rum_beacon              93   15.05      84.95       1      41      63       0.0
+
+Observações:
+  - monitoring_overview: 147/147 respostas 503 DATA_UNAVAILABLE — a rota não está sendo exercitada (sem projeção)
+  - incidents_list: 546 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+
+Resumo detalhado: C:/Users/lcsmi/AppData/Local/Temp/claude/C--Users-lcsmi-OneDrive-Documentos-g05/28f0d8ea-0bf8-4421-add5-487c28ee90d9/scratchpad/results-emul-n300/resumo-front-api-soak.json

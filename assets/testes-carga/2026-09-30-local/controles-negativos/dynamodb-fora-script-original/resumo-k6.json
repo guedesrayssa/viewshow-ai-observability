@@ -1,0 +1,416 @@
+{
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)",
+      "p(99)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 60005.7263
+  },
+  "metrics": {
+    "vus": {
+      "contains": "default",
+      "values": {
+        "value": 0,
+        "min": 0,
+        "max": 2
+      },
+      "type": "gauge"
+    },
+    "front_api_data_unavailable_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 9.665744184151306,
+        "count": 580
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 0.6772,
+        "med": 2.4938000000000002,
+        "max": 302.6519,
+        "p(90)": 3.1669199999999997,
+        "p(95)": 80.5677099999945,
+        "p(99)": 241.87586100000001,
+        "avg": 11.807737209302317
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 524246,
+        "rate": 8736.59952683549
+      }
+    },
+    "http_req_duration{status:200}": {
+      "contains": "time",
+      "values": {
+        "max": 1.677,
+        "p(90)": 1.3505400000000003,
+        "p(95)": 1.5037049999999998,
+        "p(99)": 1.6421189999999999,
+        "avg": 1.1020727272727273,
+        "min": 0.6772,
+        "med": 1.0030000000000001
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": true
+        },
+        "p(99)<5000": {
+          "ok": true
+        }
+      },
+      "type": "trend"
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 150,
+        "min": 150,
+        "max": 150
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 241.8853,
+        "avg": 12.270402995008324,
+        "min": 1.0058,
+        "med": 2.9448,
+        "max": 303.4754,
+        "p(90)": 3.5162,
+        "p(95)": 84.9065
+      }
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 0,
+        "med": 0.5051,
+        "max": 1.0007,
+        "p(90)": 0.5105,
+        "p(95)": 0.5116,
+        "p(99)": 0.514695,
+        "avg": 0.4010724252491696
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0.5105,
+        "p(95)": 0.511595,
+        "p(99)": 0.5142,
+        "avg": 0.37284435215946865,
+        "min": 0,
+        "med": 0.5047,
+        "max": 1.0007
+      }
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 0,
+        "med": 0,
+        "max": 1.2326,
+        "p(90)": 0.4605999999999999,
+        "p(95)": 0.49959,
+        "p(99)": 0.5428600000000001,
+        "avg": 0.13196877076411956
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 601,
+        "rate": 10.0157107839223
+      }
+    },
+    "front_api_contract_success_rate": {
+      "contains": "default",
+      "values": {
+        "rate": 0.09983361064891846,
+        "passes": 60,
+        "fails": 541
+      },
+      "thresholds": {
+        "rate>0.98": {
+          "ok": false
+        }
+      },
+      "type": "rate"
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 0.6772,
+        "med": 2.4938000000000002,
+        "max": 302.6519,
+        "p(90)": 3.1669199999999997,
+        "p(95)": 80.5677099999945,
+        "p(99)": 241.87586100000001,
+        "avg": 11.807737209302317
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 602
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_rate_limited_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0,
+        "min": 0,
+        "med": 0,
+        "max": 0,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 0
+      }
+    },
+    "data_sent": {
+      "contains": "data",
+      "values": {
+        "count": 289858,
+        "rate": 4830.505651258153
+      },
+      "type": "counter"
+    },
+    "http_reqs": {
+      "values": {
+        "count": 602,
+        "rate": 10.032375860101872
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "checks": {
+      "thresholds": {
+        "rate>0.98": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5576451349141456,
+        "passes": 682,
+        "fails": 541
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 0.510799,
+        "avg": 0.05515116279069768,
+        "min": 0,
+        "med": 0,
+        "max": 0.7841,
+        "p(90)": 0.50318,
+        "p(95)": 0.506195
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 11.620617275747497,
+        "min": 0.494,
+        "med": 2.1500000000000004,
+        "max": 302.6519,
+        "p(90)": 3.01093,
+        "p(95)": 80.54876499999448,
+        "p(99)": 241.371456
+      }
+    },
+    "dropped_iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "count": 0
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": true
+        }
+      }
+    }
+  },
+  "setup_data": {
+    "cookie": "<redigido: cookie de sessão>"
+  },
+  "root_group": {
+    "groups": [],
+    "checks": [
+        {
+          "name": "dashboard_overview: resposta de contrato",
+          "path": "::dashboard_overview: resposta de contrato",
+          "id": "6901cf8c0f2394523684ecf38b88a454",
+          "passes": 0,
+          "fails": 99
+        },
+        {
+          "fails": 0,
+          "name": "dashboard_overview: request id ecoado",
+          "path": "::dashboard_overview: request id ecoado",
+          "id": "7eb12c59a238f8730f72a3cd11c1cdf2",
+          "passes": 99
+        },
+        {
+          "id": "18a0eeb956cd9ca1e036a520d9ea0b66",
+          "passes": 0,
+          "fails": 65,
+          "name": "global_events: resposta de contrato",
+          "path": "::global_events: resposta de contrato"
+        },
+        {
+          "path": "::global_events: request id ecoado",
+          "id": "cc5997eaf6921f00dbf7b60f0b4a3ed5",
+          "passes": 65,
+          "fails": 0,
+          "name": "global_events: request id ecoado"
+        },
+        {
+          "name": "incident_events: resposta de contrato",
+          "path": "::incident_events: resposta de contrato",
+          "id": "18f8c5dc5e4dce71db49317ccbdc9c06",
+          "passes": 0,
+          "fails": 72
+        },
+        {
+          "name": "incident_events: request id ecoado",
+          "path": "::incident_events: request id ecoado",
+          "id": "e241ef2ba827272ba017fb7e85731718",
+          "passes": 72,
+          "fails": 0
+        },
+        {
+          "fails": 201,
+          "name": "incidents_list: resposta de contrato",
+          "path": "::incidents_list: resposta de contrato",
+          "id": "fd5e4e26bfba5b6226775378cfeb5416",
+          "passes": 0
+        },
+        {
+          "name": "incidents_list: request id ecoado",
+          "path": "::incidents_list: request id ecoado",
+          "id": "14192d4c4729924583d63db9ae7eda91",
+          "passes": 201,
+          "fails": 0
+        },
+        {
+          "name": "incident_diagnosis: resposta de contrato",
+          "path": "::incident_diagnosis: resposta de contrato",
+          "id": "c82e1b7c90c579a18c0f0384d91c3468",
+          "passes": 0,
+          "fails": 98
+        },
+        {
+          "passes": 98,
+          "fails": 0,
+          "name": "incident_diagnosis: request id ecoado",
+          "path": "::incident_diagnosis: request id ecoado",
+          "id": "09295b3b58f1349c3772e807ee7fc517"
+        },
+        {
+          "name": "monitoring_overview: resposta de contrato",
+          "path": "::monitoring_overview: resposta de contrato",
+          "id": "5278fed5bcfa378ea5fb6759b2a839a5",
+          "passes": 39,
+          "fails": 0
+        },
+        {
+          "fails": 0,
+          "name": "monitoring_overview: request id ecoado",
+          "path": "::monitoring_overview: request id ecoado",
+          "id": "0faba9d3d47e2fd42c0832829888df53",
+          "passes": 39
+        },
+        {
+          "path": "::auth_session: sem campo físico vazado",
+          "id": "05ab26654f303f6dd955ae20cc43a980",
+          "passes": 21,
+          "fails": 0,
+          "name": "auth_session: sem campo físico vazado"
+        },
+        {
+          "name": "auth_session: resposta de contrato",
+          "path": "::auth_session: resposta de contrato",
+          "id": "8ef8d55b949b030733ba5f156f10d56c",
+          "passes": 21,
+          "fails": 0
+        },
+        {
+          "passes": 21,
+          "fails": 0,
+          "name": "auth_session: request id ecoado",
+          "path": "::auth_session: request id ecoado",
+          "id": "f4a0916154dd27c0dd6660966bcab36b"
+        },
+        {
+          "path": "::argus_integration: resposta de contrato",
+          "id": "d02f960802ad0166da31e14999cb303b",
+          "passes": 0,
+          "fails": 6,
+          "name": "argus_integration: resposta de contrato"
+        },
+        {
+          "name": "argus_integration: request id ecoado",
+          "path": "::argus_integration: request id ecoado",
+          "id": "3638213efcd1a6951ecaec0622fbdbef",
+          "passes": 6,
+          "fails": 0
+        }
+      ],
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e"
+  }
+}
