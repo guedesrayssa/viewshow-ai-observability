@@ -1,18 +1,24 @@
 /** Diagnosis reads and optimistic human review through the public gateway. */
 import {
-  type BufferingPeriodKey,
-  type BufferingPoint,
+  type BufferingSeries,
+  type DiagnosisStatus,
   type EvidenceData,
+  type EvidenceField,
   type EvidenceSource,
+  type IncidentSummary,
   type ReviewStatus,
-} from "@/app/(painel)/evidencias/evidence-data";
+} from "@/app/(painel)/incidentes/detalhe/evidence-data";
 import { gatewayUrl, loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
+import { formatDateTime, minutesSince } from "@/lib/format";
 import { reportRum } from "@/lib/rum";
+
+export type { BufferingSeries } from "@/app/(painel)/incidentes/detalhe/evidence-data";
 
 type DiagnosisResponse = {
   incident: {
     id: string;
+    number?: string | null;
     title: string;
     priority: string;
     status: string;
@@ -26,7 +32,7 @@ type DiagnosisResponse = {
     primaryComponent: { id: string; name: string } | null;
   };
   diagnosis: {
-    status: "not_started" | "processing" | "ready" | "inconclusive" | "failed";
+    status: DiagnosisStatus;
     summary: string | null;
     primaryHypothesisId: string | null;
     confidence: number | null;
@@ -44,6 +50,8 @@ type DiagnosisResponse = {
     eventId: string;
     incidentId: string;
     type: string;
+    title?: string | null;
+    statement?: string | null;
     relation: "supports" | "contradicts" | "context";
     hypothesisIds: string[];
     strength: "strong" | "moderate" | "weak";
@@ -113,9 +121,50 @@ function toClock(iso: string): string {
     : date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+/** Distância entre o evento e o incidente, em palavras. */
+function formatDistance(seconds: number): string {
+  const absolute = Math.abs(seconds);
+  const amount =
+    absolute < 60
+      ? `${absolute} s`
+      : absolute < 3600
+        ? `${Math.round(absolute / 60)} min`
+        : `${Math.round(absolute / 3600)} h`;
+  if (seconds === 0) return "no mesmo instante";
+  return seconds < 0 ? `${amount} antes do início` : `${amount} após o início`;
+}
+
 function toEvidence(
   item: DiagnosisResponse["evidence"][number],
 ): EvidenceSource {
+  const matched = item.correlation.matchedFields.map(
+    (field) => `${field.eventField} = ${field.value}`,
+  );
+  // A lista precisa diferenciar uma evidência da outra. O enunciado da
+  // origem vem primeiro; sem ele, o que casou com o incidente e quando.
+  const summary =
+    item.statement?.trim() ||
+    item.title?.trim() ||
+    [matched[0], formatDistance(item.correlation.timeDistanceSeconds)]
+      .filter(Boolean)
+      .join(" · ");
+
+  const fields: EvidenceField[] = [
+    { label: "Evento", value: item.eventId },
+    { label: "Conjunto de dados", value: item.source.dataset },
+    { label: "Registro de origem", value: item.source.recordId },
+    { label: "Horário", value: item.observedAt ? formatDateTime(item.observedAt) : "ausente na origem" },
+    { label: "Distância do início", value: formatDistance(item.correlation.timeDistanceSeconds) },
+    { label: "Regra de correlação", value: item.correlation.ruleVersion },
+    ...(matched.length > 0
+      ? [{ label: "Campos casados", value: matched.join(", ") }]
+      : []),
+    {
+      label: "Qualidade",
+      value: [item.quality.status, ...item.quality.flags].join(" · "),
+    },
+  ];
+
   return {
     id: item.id,
     eventId: item.eventId,
@@ -124,29 +173,48 @@ function toEvidence(
     qualityStatus: item.quality.status,
     qualityFlags: item.quality.flags,
     source: item.source.name,
-    summary: "Evento ARGUS correlacionado ao incidente",
-    strength:
-      item.relation === "contradicts"
-        ? "contra"
-        : item.strength === "strong"
-          ? "forte"
-          : "neutra",
-    detail: [
-      `Evento ${item.eventId}`,
-      `Regra ${item.correlation.ruleVersion}`,
-      `Distância ${item.correlation.timeDistanceSeconds}s`,
-      `Registro ${item.source.recordId}`,
-      ...item.correlation.matchedFields.map(
-        (field) =>
-          `${field.eventField} = ${field.value} (${field.incidentField})`,
-      ),
-      ...item.quality.flags,
-    ].join(" · "),
+    dataset: item.source.dataset,
+    type: item.type,
+    relation: item.relation,
+    strength: item.strength,
+    summary,
+    fields,
+  };
+}
+
+function toSummary(incident: DiagnosisResponse["incident"]): IncidentSummary {
+  return {
+    id: incident.id,
+    number: incident.number ?? null,
+    title: incident.title,
+    startedAt: incident.startedAt,
+    startedMinutesAgo: minutesSince(incident.startedAt),
+    severity: incident.priority,
+    investigationStatus: incident.status,
+    affectedDevices: incident.impact.affectedDevices.value,
+    component: incident.primaryComponent?.name ?? null,
+  };
+}
+
+function toBuffering(chart: BufferingContract | null): BufferingSeries | null {
+  if (!chart || chart.points.length === 0) return null;
+  const points = chart.points.map((point) => ({
+    time: toClock(point.timestamp),
+    value: point.value,
+  }));
+  const markerIndex = chart.marker
+    ? chart.points.findIndex((point) => point.timestamp === chart.marker?.timestamp)
+    : -1;
+  return {
+    points,
+    marker:
+      chart.marker && markerIndex >= 0
+        ? { index: markerIndex, label: chart.marker.label }
+        : null,
   };
 }
 
 function toData(response: DiagnosisResponse): EvidenceData {
-  const devices = response.incident.impact.affectedDevices.value;
   const hypothesis =
     response.diagnosis.hypotheses.find(
       (item) => item.id === response.diagnosis.primaryHypothesisId,
@@ -166,37 +234,29 @@ function toData(response: DiagnosisResponse): EvidenceData {
       : "pending";
   return {
     incidentId: response.incident.id,
-    incident: {
-      id: response.incident.id,
-      title: response.incident.title,
-      startedMinutesAgo: Math.max(
-        0,
-        Math.round(
-          (Date.now() - new Date(response.incident.startedAt).getTime()) /
-            60_000,
-        ),
-      ),
-      severity: response.incident.priority,
-      investigationStatus: response.incident.status,
-      affectedDevices: devices,
-    },
+    incident: toSummary(response.incident),
+    diagnosisStatus: response.diagnosis.status,
     hypothesis: hypothesis
       ? {
           title: hypothesis.statement,
           component: hypothesis.component?.name ?? "—",
-          confidence: hypothesis.probability === null ? null : Math.round(hypothesis.probability * 100),
+          confidence:
+            hypothesis.probability === null
+              ? null
+              : Math.round(hypothesis.probability * 100),
           summary: hypothesis.rationale ?? response.diagnosis.summary ?? "",
         }
       : null,
     reviewStatus,
-    concentration: response.charts.concentrations,
-    concentrationNote: response.charts.concentrationNote,
-    sources: response.evidence.map(toEvidence),
-    timeline: response.timeline.map((mark) => ({
+    concentration: response.charts.concentrations ?? [],
+    concentrationNote: response.charts.concentrationNote ?? "",
+    sources: (response.evidence ?? []).map(toEvidence),
+    buffering: toBuffering(response.charts.buffering),
+    timeline: (response.timeline ?? []).map((mark) => ({
       ...mark,
       time: toClock(mark.timestamp),
     })),
-    changes: response.changes,
+    changes: response.changes ?? [],
   };
 }
 
@@ -209,44 +269,87 @@ export function fetchEvidence(
   });
 }
 
-export type BufferingSeries = {
-  points: BufferingPoint[];
-  marker: { index: number; label: string } | null;
-};
-
-export function fetchBuffering(
+/**
+ * Só o resumo do incidente, para o cabeçalho das abas que não desenham o
+ * diagnóstico (Eventos). A API não tem uma rota de incidente avulsa: o resumo
+ * sai da mesma leitura do diagnóstico.
+ */
+export function fetchIncidentSummary(
   incidentId: string,
-  period: BufferingPeriodKey,
-  revision = 0,
-): Promise<Resource<BufferingSeries>> {
-  void revision;
-  return loadResource<DiagnosisResponse, BufferingSeries>({
+): Promise<Resource<IncidentSummary>> {
+  return loadResource<DiagnosisResponse, IncidentSummary>({
     path: ENDPOINTS.diagnosis(incidentId),
-    map: (response) => {
-      const chart = response.charts.buffering;
-      if (!chart)
-        throw new Error(
-          "A série de buffering não está disponível para este incidente.",
-        );
-      const points = chart.points.map((point) => ({
-        time: toClock(point.timestamp),
-        value: point.value,
-      }));
-      const markerIndex = chart.marker
-        ? points.findIndex(
-            (_, index) =>
-              chart.points[index]?.timestamp === chart.marker?.timestamp,
-          )
-        : -1;
-      return {
-        points,
-        marker:
-          chart.marker && markerIndex >= 0
-            ? { index: markerIndex, label: chart.marker.label }
-            : null,
-      };
-    },
+    map: (response) => toSummary(response.incident),
   });
+}
+
+export type ReanalyzeResult =
+  | { ok: true }
+  | { ok: false; needsSignIn: boolean; message: string };
+
+/**
+ * Pede uma nova análise automática do incidente.
+ *
+ * A API aceita o pedido (202) e processa em segundo plano; o diagnóstico novo
+ * aparece numa leitura seguinte. A chave de idempotência evita dois pedidos
+ * quando o mesmo clique é reenviado.
+ */
+export async function requestReanalysis(
+  incidentId: string,
+): Promise<ReanalyzeResult> {
+  try {
+    const response = await fetch(gatewayUrl(ENDPOINTS.reanalyze(incidentId)), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Idempotency-Key": idempotencyKey() },
+    });
+    if (response.ok) return { ok: true };
+
+    reportRum("frontend_api_fetch_errors_total", 1);
+    if (response.status === 401 || response.status === 403) {
+      return {
+        ok: false,
+        needsSignIn: true,
+        message: "Sua sessão expirou. Entre novamente para pedir a reanálise.",
+      };
+    }
+    const body = (await response.json().catch(() => null)) as {
+      error?: { code?: string; message?: string };
+    } | null;
+    if (body?.error?.code === "FEATURE_UNAVAILABLE") {
+      return {
+        ok: false,
+        needsSignIn: false,
+        message:
+          "A reanálise manual ainda não está habilitada neste ambiente. O diagnóstico automático continua rodando.",
+      };
+    }
+    if (response.status === 409) {
+      return {
+        ok: false,
+        needsSignIn: false,
+        message: "Já existe uma análise em andamento para este incidente.",
+      };
+    }
+    return {
+      ok: false,
+      needsSignIn: false,
+      message: body?.error?.message ?? "Não foi possível pedir a reanálise agora.",
+    };
+  } catch {
+    reportRum("frontend_api_fetch_errors_total", 1);
+    return {
+      ok: false,
+      needsSignIn: false,
+      message: "Não conseguimos falar com o gateway.",
+    };
+  }
+}
+
+function idempotencyKey(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `reanalyze-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export type ReviewResult =

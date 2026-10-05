@@ -11,6 +11,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { Fragment } from "react";
 
 import { Reveal } from "@/components/motion/reveal";
@@ -18,13 +19,14 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { incidentDiagnosisHref } from "@/lib/routes";
 
 import {
   CATEGORY_LABELS,
   CATEGORY_TEXT_CLASSES,
   type CorrelatedEvent,
   type EventCategory,
-} from "@/app/(painel)/eventos/events-data";
+} from "@/app/(painel)/incidentes/_eventos/events-data";
 
 const ROW_ACCENT_CLASSES: Record<EventCategory, string> = {
   signal_observation: "border-l-brand-orange bg-warning/5",
@@ -36,12 +38,18 @@ export type EventsTableProps = {
   events: CorrelatedEvent[];
   expandedId: string | null;
   onToggle: (id: string) => void;
+  /**
+   * Mostra, no detalhe, os incidentes a que o evento pertence. Útil no feed
+   * global; no detalhe de um incidente, o vínculo já é o próprio contexto.
+   */
+  showIncidentLinks?: boolean;
 };
 
 export function EventsTable({
   events,
   expandedId,
   onToggle,
+  showIncidentLinks = false,
 }: EventsTableProps) {
   if (events.length === 0) {
     return (
@@ -55,7 +63,7 @@ export function EventsTable({
     <div className="mt-6 overflow-x-auto">
       <table className="w-full min-w-[56rem] border-collapse">
         <thead>
-          <tr className="text-left text-caption font-medium uppercase text-ink-brand">
+          <tr className="text-left text-caption font-normal text-ink-subtle">
             <th scope="col" className="pb-3 pr-4">
               Horário
             </th>
@@ -201,6 +209,26 @@ export function EventsTable({
                               Dado bruto não disponível:{" "}
                               {event.detail.rawReason}.
                             </Alert>
+                          ) : null}
+
+                          {showIncidentLinks && event.incidentIds.length > 0 ? (
+                            <div className="mt-3">
+                              <p className="text-label font-medium text-ink">
+                                Incidentes correlacionados
+                              </p>
+                              <ul className="mt-1.5 flex flex-wrap gap-2">
+                                {event.incidentIds.map((incidentId) => (
+                                  <li key={incidentId}>
+                                    <Link
+                                      href={incidentDiagnosisHref(incidentId)}
+                                      className="focus-ring rounded-field text-caption font-semibold text-ink-brand hover:underline"
+                                    >
+                                      Abrir {incidentId}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ) : null}
                         </div>
                       </div>

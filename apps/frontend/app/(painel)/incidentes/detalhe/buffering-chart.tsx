@@ -11,15 +11,10 @@
 
 "use client";
 
-import {
-  BUFFERING_PERIOD_LABELS,
-  type BufferingPeriodKey,
-  type BufferingPoint,
-} from "@/app/(painel)/evidencias/evidence-data";
+import { type BufferingPoint } from "@/app/(painel)/incidentes/detalhe/evidence-data";
 import { TimeSeriesChart } from "@/components/charts/time-series-chart";
 import { Unavailable } from "@/components/dashboard/unavailable";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDecimal } from "@/lib/format";
 
@@ -29,8 +24,6 @@ export type BufferingChartProps = {
   error?: string;
   /** Marco de deploy na série, quando a origem o registra. */
   marker: { index: number; label: string } | null;
-  period: BufferingPeriodKey;
-  onPeriodChange: (period: BufferingPeriodKey) => void;
   historical?: boolean;
   observedAt?: string;
 };
@@ -45,8 +38,6 @@ export function BufferingChart({
   status,
   error,
   marker,
-  period,
-  onPeriodChange,
   historical,
   observedAt,
 }: BufferingChartProps) {
@@ -62,15 +53,6 @@ export function BufferingChart({
             <CardDescription className="mt-1">Última série disponível: {new Date(observedAt).toLocaleString("pt-BR")}</CardDescription>
           ) : null}
         </div>
-
-        <Select
-          aria-label="Período do gráfico de buffering"
-          value={period}
-          onValueChange={(value) => onPeriodChange(value as BufferingPeriodKey)}
-          options={(
-            Object.keys(BUFFERING_PERIOD_LABELS) as BufferingPeriodKey[]
-          ).map((key) => ({ value: key, label: BUFFERING_PERIOD_LABELS[key] }))}
-        />
       </div>
 
       {status === "loading" ? (

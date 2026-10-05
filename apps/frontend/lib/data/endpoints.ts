@@ -18,6 +18,8 @@ export const ENDPOINTS = {
     `/api/v1/incidents/${encodeURIComponent(incidentId)}/events`,
   event: (incidentId: string, eventId: string) =>
     `/api/v1/incidents/${encodeURIComponent(incidentId)}/events/${encodeURIComponent(eventId)}`,
+  reanalyze: (incidentId: string) =>
+    `/api/v1/incidents/${encodeURIComponent(incidentId)}/reanalyze`,
   review: (incidentId: string, hypothesisId: string) =>
     `/api/v1/incidents/${encodeURIComponent(incidentId)}/hypotheses/${encodeURIComponent(hypothesisId)}/review`,
   monitoringOverview: "/api/v1/monitoring/overview",

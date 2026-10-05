@@ -317,7 +317,7 @@ export function MonitoringView() {
                 <div className="mt-4 overflow-x-auto">
                   <table className="w-full min-w-[32rem] text-left text-body-sm">
                     <thead>
-                      <tr className="text-caption uppercase text-ink-brand">
+                      <tr className="text-caption text-ink-subtle">
                         <th className="pb-3">Fonte</th>
                         <th className="pb-3">Atualização</th>
                         <th className="pb-3">Cobertura</th>

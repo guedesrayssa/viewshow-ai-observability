@@ -1,12 +1,16 @@
 import {
   CATEGORY_LABELS,
+  PERIOD_WINDOWS,
   type CategoryStat,
   type CorrelatedEvent,
   type EventCategory,
+  type EventSort,
+  type PeriodKey,
   type VolumeSeries,
-} from "@/app/(painel)/eventos/events-data";
+} from "@/app/(painel)/incidentes/_eventos/events-data";
 import { loadResource, type Resource } from "@/lib/data/client";
 import { ENDPOINTS } from "@/lib/data/endpoints";
+import { formatDateTime, minutesSince } from "@/lib/format";
 
 export type EventsQuery = {
   incidentId: string;
@@ -15,17 +19,31 @@ export type EventsQuery = {
   category: EventCategory | "all";
   source: string;
   correlation: "all" | "linked" | "unlinked";
+  sort?: EventSort;
+  /**
+   * Intervalo explícito. Quando presente, vai à API como `from`/`to` e
+   * substitui a janela relativa de `period`.
+   */
+  range?: { from: string; to: string } | null;
   cursor?: string;
 };
 
 export type EventsData = {
   queryKey: string;
   events: CorrelatedEvent[];
+  /** Total de eventos no recorte (soma das categorias), para a contagem da lista. */
+  total: number;
   categories: CategoryStat[];
   sourceDatasets: string[];
   correlationStatuses: Array<"linked" | "unlinked">;
   hasMore: boolean;
   nextCursor: string | null;
+  /**
+   * Intervalo `from`/`to` que esta leitura enviou, ou `null` quando foi por
+   * janela (`window=all`). A próxima página precisa repetir exatamente o mesmo
+   * intervalo: o cursor da API só vale para o `from`/`to` em que foi emitido.
+   */
+  resolvedRange: { from: string; to: string } | null;
 };
 
 export function eventQueryKey(query: Omit<EventsQuery, "cursor">): string {
@@ -36,7 +54,64 @@ export function eventQueryKey(query: Omit<EventsQuery, "cursor">): string {
     query.category,
     query.source,
     query.correlation,
+    query.sort ?? "recent",
+    query.range?.from ?? null,
+    query.range?.to ?? null,
   ]);
+}
+
+/**
+ * Recorte temporal da leitura: o intervalo explícito, quando houver, ou a
+ * janela relativa do período. A API usa `from`/`to` no lugar de `window`
+ * quando recebe os dois.
+ */
+function timeParams(
+  query: Pick<EventsQuery, "period" | "range">,
+): { from: string; to: string } | { window: string } {
+  if (query.range) return { from: query.range.from, to: query.range.to };
+  const now = Date.now();
+  // "Mais de 24 horas" não tem janela na API: vai como intervalo, do limite
+  // que a API aceita (31 dias) até 24 horas atrás.
+  if (query.period === "older") {
+    return {
+      from: new Date(now - OLDER_SPAN_MS).toISOString(),
+      to: new Date(now - DAY_MS).toISOString(),
+    };
+  }
+  // As janelas relativas também vão como intervalo. Com `window=24h` a API
+  // recalcula o início e o fim a cada chamada, e o cursor de "Carregar mais",
+  // preso ao intervalo da primeira página, voltava 400 na segunda.
+  const span = RELATIVE_SPANS_MS[query.period];
+  if (span !== undefined) {
+    return {
+      from: new Date(now - span).toISOString(),
+      to: new Date(now).toISOString(),
+    };
+  }
+  return { window: windowOf(query.period) };
+}
+
+const MINUTE_MS = 60 * 1000;
+const RELATIVE_SPANS_MS: Record<string, number> = {
+  "30": 30 * MINUTE_MS,
+  "60": 60 * MINUTE_MS,
+  "360": 360 * MINUTE_MS,
+  "1440": 1440 * MINUTE_MS,
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Um pouco menos que os 31 dias que a API aceita num intervalo explícito. */
+const OLDER_SPAN_MS = 30 * DAY_MS;
+
+/** Filtros da leitura, os mesmos para a lista e para o gráfico de volume. */
+function filterParams(query: Omit<EventsQuery, "cursor">) {
+  return {
+    ...timeParams(query),
+    search: optional(query.search),
+    category: optional(query.category),
+    sourceDataset: optional(query.source),
+    correlation: query.incidentId ? undefined : query.correlation,
+  };
 }
 
 export function mergeEventPages(
@@ -102,31 +177,19 @@ function optional(value: string): string | undefined {
   return value === "all" || value.trim() === "" ? undefined : value;
 }
 
-function windowOf(minutes: string): string {
-  return (
-    (
-      {
-        "30": "30m",
-        "60": "1h",
-        "180": "6h",
-        "360": "6h",
-        "1440": "24h",
-        all: "all",
-      } as Record<string, string>
-    )[minutes] ?? minutes
-  );
+/**
+ * Janela da API para o período da tela. Antes, "últimas 3 horas" do gráfico
+ * pedia `6h` à API e o gráfico mostrava o dobro do que dizia.
+ */
+function windowOf(period: string): string {
+  return PERIOD_WINDOWS[period as PeriodKey] ?? period;
 }
 
-function toClock(iso: string | null, seconds = false): string {
-  if (iso === null) return "Sem timestamp";
+function toClock(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? iso
-    : date.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: seconds ? "2-digit" : undefined,
-      });
+    : date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function displayValue(value: JsonValue | undefined): string {
@@ -135,9 +198,18 @@ function displayValue(value: JsonValue | undefined): string {
   return JSON.stringify(value);
 }
 
-function firstValue(record: Record<string, JsonValue>): string {
-  const entry = Object.entries(record)[0];
-  return entry ? `${entry[0]}: ${displayValue(entry[1])}` : "Sem medidas";
+/**
+ * Medidas do evento em uma linha. Mostrar só a primeira deixava linhas
+ * diferentes com o mesmo resumo e escondia qual métrica o valor media.
+ */
+function measuresSummary(record: Record<string, JsonValue>, limit = 3): string {
+  const entries = Object.entries(record);
+  if (entries.length === 0) return "Sem medidas";
+  const shown = entries
+    .slice(0, limit)
+    .map(([key, value]) => `${key}: ${displayValue(value)}`);
+  const rest = entries.length - limit;
+  return rest > 0 ? `${shown.join(" · ")} · +${rest}` : shown.join(" · ");
 }
 
 function dimension(
@@ -152,14 +224,13 @@ function dimension(
 }
 
 function toEvent(item: EventItem): CorrelatedEvent {
-  const occurred = item.occurredAt ? new Date(item.occurredAt) : null;
   return {
     id: item.id,
-    time: toClock(item.occurredAt, true),
-    minutesAgo:
-      occurred && !Number.isNaN(occurred.getTime())
-        ? Math.max(0, Math.round((Date.now() - occurred.getTime()) / 60_000))
-        : 0,
+    // Com a data: em "Todo o período" ou 24 horas, a hora sozinha não diz o dia.
+    time: item.occurredAt
+      ? formatDateTime(item.occurredAt, { seconds: true })
+      : "Sem timestamp",
+    minutesAgo: minutesSince(item.occurredAt),
     category: item.category,
     source: item.source.dataset,
     entity: dimension(
@@ -169,7 +240,7 @@ function toEvent(item: EventItem): CorrelatedEvent {
       "component",
       "sdeId",
     ),
-    summary: firstValue(item.measures),
+    summary: measuresSummary(item.measures),
     quality: {
       label:
         item.correlation.status === "linked"
@@ -187,13 +258,14 @@ function toEvent(item: EventItem): CorrelatedEvent {
     deviceType: dimension(item.dimensions, "deviceType", "device_type"),
     region: dimension(item.dimensions, "region", "uf", "pop"),
     appVersion: dimension(item.dimensions, "appVersion", "app_version"),
+    incidentIds: item.correlation.incidentIds ?? [],
     detail: {
       metric: item.category,
       timestamp: item.occurredAt ?? "Timestamp ausente na origem",
       tags: Object.entries(item.dimensions).map(
         ([key, value]) => `${key}:${displayValue(value)}`,
       ),
-      value: firstValue(item.measures),
+      value: measuresSummary(item.measures, Number.POSITIVE_INFINITY),
       rawAvailable: item.raw.available,
       rawReason: item.raw.reason,
       sourceRecordId: item.source.recordId,
@@ -214,13 +286,16 @@ export function fetchEventDetail(
   });
 }
 
-function mapEvents(response: EventsResponse): Omit<EventsData, "queryKey"> {
+function mapEvents(
+  response: EventsResponse,
+): Omit<EventsData, "queryKey" | "resolvedRange"> {
   const total = response.categoryStats.reduce(
     (sum, item) => sum + item.count,
     0,
   );
   return {
     events: response.items.map(toEvent),
+    total,
     categories: [
       { key: "all", label: "Todos", total: total.toLocaleString("pt-BR") },
       ...response.categoryStats.map((item) => ({
@@ -237,22 +312,24 @@ function mapEvents(response: EventsResponse): Omit<EventsData, "queryKey"> {
 }
 
 export function fetchEvents(query: EventsQuery): Promise<Resource<EventsData>> {
+  // Resolvido uma vez por leitura, para devolver à tela o mesmo intervalo
+  // que foi à API.
+  const filters = filterParams(query);
   return loadResource<EventsResponse, EventsData>({
     path: query.incidentId
       ? ENDPOINTS.events(query.incidentId)
       : ENDPOINTS.globalEvents,
     params: {
-      window: windowOf(query.period),
-      search: optional(query.search),
-      category: optional(query.category),
-      sourceDataset: optional(query.source),
-      correlation: query.incidentId ? undefined : query.correlation,
+      ...filters,
+      sort: query.sort && query.sort !== "recent" ? query.sort : undefined,
       cursor: query.cursor,
       limit: 50,
     },
     map: (response) => ({
       ...mapEvents(response),
       queryKey: eventQueryKey(query),
+      resolvedRange:
+        "from" in filters ? { from: filters.from, to: filters.to } : null,
     }),
   });
 }
@@ -264,35 +341,36 @@ function axisFor(values: number[]): { axisMax: number; axisTicks: number[] } {
   return { axisMax, axisTicks: [0, axisMax / 2, axisMax] };
 }
 
+/**
+ * Série de volume do mesmo recorte da lista. Antes o gráfico só recebia o
+ * período e ignorava busca, tipo, fonte e vínculo: a tabela e o gráfico
+ * contavam coisas diferentes.
+ */
 export function fetchEventVolume(
-  incidentId: string,
-  period: string,
+  query: Omit<EventsQuery, "cursor">,
   revision = 0,
 ): Promise<Resource<VolumeSeries>> {
   void revision;
   return loadResource<EventsResponse, VolumeSeries>({
-    path: incidentId ? ENDPOINTS.events(incidentId) : ENDPOINTS.globalEvents,
-    params: { window: windowOf(period), limit: 1 },
-    map: (response) => {
-      if (!response.volumeSeries)
-        throw new Error(
-          "O agregado temporal de eventos ainda não está disponível.",
-        );
-      const values = response.volumeSeries.points.map((point) => point.count);
-      const peakIndex = values.reduce(
-        (best, value, index, all) =>
-          value > (all[best] ?? -Infinity) ? index : best,
-        0,
-      );
-      return {
-        times: response.volumeSeries.points.map((point) =>
-          toClock(point.timestamp),
-        ),
-        values,
-        peakIndex,
-        anomalyRange: null,
-        ...axisFor(values),
-      };
-    },
+    path: query.incidentId ? ENDPOINTS.events(query.incidentId) : ENDPOINTS.globalEvents,
+    params: { ...filterParams(query), limit: 1 },
+    map: toVolume,
   });
+}
+
+function toVolume(response: EventsResponse): VolumeSeries {
+  if (!response.volumeSeries)
+    throw new Error("O agregado temporal de eventos ainda não está disponível.");
+  const values = response.volumeSeries.points.map((point) => point.count);
+  const peakIndex = values.reduce(
+    (best, value, index, all) => (value > (all[best] ?? -Infinity) ? index : best),
+    0,
+  );
+  return {
+    times: response.volumeSeries.points.map((point) => toClock(point.timestamp)),
+    values,
+    peakIndex,
+    anomalyRange: null,
+    ...axisFor(values),
+  };
 }
