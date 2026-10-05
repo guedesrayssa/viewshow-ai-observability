@@ -1,0 +1,24 @@
+Carga da API consumida pelo frontend — modo soak
+Taxa de chegada (iterações/s): base 50, pico 50; 4501 iterações, 4505 requisições, 50.0 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 310; timeouts do cliente (>8000 ms): 0; iterações descartadas: 0
+
+THRESHOLDS: todos os 88 aprovados
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list        1057    0.00     100.00       6       7       9     100.0
+incidents_chart        370    0.00     100.00       5       7       8     100.0
+dashboard_overview     704    0.00     100.00       7      10      11       0.0
+incident_diagnosis     728    0.00     100.00       8      10      11     100.0
+incident_events        477    0.00     100.00       8      10      13     100.0
+global_events          442    0.00     100.00       5       7       8     100.0
+monitoring_overview    310    0.00     100.00       3       3       4       0.0
+auth_session           204    0.00     100.00       1       1       1       0.0
+argus_integration       39    0.00     100.00       2       3       4       0.0
+rum_beacon             170    0.00     100.00       1       1       1       0.0
+
+Observações:
+  - monitoring_overview: 310/310 respostas 503 DATA_UNAVAILABLE — a rota não está sendo exercitada (sem projeção)
+  - incidents_list: 1057 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+
+Resumo detalhado: C:/Users/lcsmi/AppData/Local/Temp/claude/C--Users-lcsmi-OneDrive-Documentos-g05/28f0d8ea-0bf8-4421-add5-487c28ee90d9/scratchpad/results-n300/resumo-front-api-soak.json
