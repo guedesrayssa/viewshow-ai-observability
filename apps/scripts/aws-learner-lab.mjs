@@ -19,7 +19,7 @@
 // This script never activates a candidate dataset; activation remains a separate,
 // deliberate operation.
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
   accessSync,
@@ -50,6 +50,19 @@ import { createInterface } from "node:readline/promises";
 import { tmpdir } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  grafanaTunnelArguments,
+  readGrafanaAccess,
+  readGrafanaPassword,
+  readObservabilityInstanceId,
+  parseGrafanaArguments,
+} from "./lib/grafana-access.mjs";
+import {
+  readBastionAccess,
+  readPrivateIpv4,
+  runOllamaBridge,
+} from "./lib/ollama-bridge.mjs";
+import { normalizePrivateOllamaBaseUrl } from "./ollama-url-policy.mjs";
 
 const COMMANDS = [
   "setup",
@@ -62,6 +75,14 @@ const COMMANDS = [
   "seed",
   "import-canary",
   "evidence",
+  "grafana",
+  "analysis-bridge",
+  "analysis-prepare",
+  "analysis-check",
+  "analysis-activate",
+  "analysis-smoke",
+  "analysis-canary",
+  "analysis-deactivate",
   "all",
 ];
 const HELP_COMMANDS = new Set(["help", "--help", "-h"]);
@@ -75,6 +96,12 @@ const PROTECTED_COMMANDS = new Set([
   "update",
   "seed",
   "import-canary",
+  "analysis-prepare",
+  "analysis-check",
+  "analysis-activate",
+  "analysis-smoke",
+  "analysis-canary",
+  "analysis-deactivate",
   "all",
 ]);
 const MAX_COMMAND_OUTPUT_BYTES = 25 * 1024 * 1024;
@@ -188,10 +215,9 @@ const LEARNER_LAB_PLAN_VARIABLES = Object.freeze({
 });
 // The analysis worker is opt-in. The model and catalog are local files that
 // Terraform publishes to the ingestion bucket; Bedrock is unavailable in the
-// Learner Lab, so the worker always runs with the LLM disabled.
+// Learner Lab, with Ollama enabled only through the explicit rollout commands.
 const ANALYSIS_MODEL_MAX_BYTES = 128 * 1024 * 1024;
 const ANALYSIS_CATALOG_MAX_BYTES = 8 * 1024 * 1024;
-const ANALYSIS_LLM_PROVIDER = "none";
 // Provenance of the canonical fixture used only by the reduced smoke workflow.
 // Real snapshots must provide their own extraction date to upload_snapshot.py.
 const REDUCED_FIXTURE_EXTRACTED_ON = "2026-09-01";
@@ -243,9 +269,16 @@ const IMPORT_CANARY_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IMPORT_CANARY_DATASET_VERSION = /^dsv_[0-9a-f]{64}$/;
 const IMPORT_CANARY_TIMESTAMP =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$/;
+const ANALYSIS_CANARY_WINDOW_MILLISECONDS = 15 * 60 * 1_000;
+const ANALYSIS_CANARY_POLL_MILLISECONDS = 5_000;
+const ANALYSIS_CANARY_TIMEOUT_SECONDS = 300;
 const HELP = `Usage: node apps/scripts/aws-learner-lab.mjs <command>
        node apps/scripts/aws-learner-lab.mjs setup [--profile <name>] [--yes] [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
        node apps/scripts/aws-learner-lab.mjs deploy [--analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json>]
+       node apps/scripts/aws-learner-lab.mjs grafana [--senha]
+       node apps/scripts/aws-learner-lab.mjs analysis-bridge
+       node apps/scripts/aws-learner-lab.mjs analysis-prepare --analysis-model <approved-model.json> --analysis-catalog <scope-catalog.json> --analysis-model-id <ollama-model> [--ssh-bridge]
+       node apps/scripts/aws-learner-lab.mjs analysis-check|analysis-activate|analysis-smoke|analysis-canary|analysis-deactivate
        node apps/scripts/aws-learner-lab.mjs destroy
        node apps/scripts/aws-learner-lab.mjs seed --snapshot <file.sql.gz> --extracted-on <YYYY-MM-DD> --label <slug> --timeout-seconds <n>
        node apps/scripts/aws-learner-lab.mjs import-canary --snapshot <argus_dump.sql.gz> --extracted-on <YYYY-MM-DD> --username <email> --label <slug> --timeout-seconds <n> [--stop-at-stage <stage>]
@@ -260,8 +293,20 @@ Commands:
   update          Apply one hardcoded update preset to an existing stack
   seed            Upload the snapshot and run a non-activating backfill
   import-canary   Exercise the public multipart import without activating it
+  grafana         Open a private SSM tunnel; --senha prints the local Grafana password
+  analysis-bridge Open the temporary private SSH bridge from ECS to Ollama
+  analysis-prepare    Provision the Ollama worker and observability with zero replicas
+  analysis-check      Check Ollama connectivity from a one-off private ECS task
+  analysis-activate   Repeat the connectivity check and scale the worker from 0 to 1
+  analysis-smoke      Exercise Ollama and OTLP from a one-off private ECS task
+  analysis-canary     Publish one controlled 15-minute global analysis event
+  analysis-deactivate Scale the worker from 1 to 0 without running connectivity checks
   evidence        Print the durable ingestion run evidence
   all             Run check, build-snapshot, deploy, seed and evidence`;
+
+export function validateOllamaBaseUrl(raw) {
+  return normalizePrivateOllamaBaseUrl(raw);
+}
 
 function readAnalysisArtifact(rawPath, label, maxBytes, { root, lstat, accessFile, readFile }) {
   const resolved = path.resolve(root, rawPath);
@@ -326,8 +371,15 @@ function parseSetupConfiguration(extraArguments, files, { command = "setup" } = 
   let profileSeen = false;
   let analysisModel;
   let analysisCatalog;
+  let analysisModelId;
+  let sshBridge = false;
   for (let index = 0; index < extraArguments.length; index += 1) {
     const argument = extraArguments[index];
+    if (command === "analysis-prepare" && argument === "--ssh-bridge") {
+      if (sshBridge) throw new Error(`${command} option --ssh-bridge may only be passed once`);
+      sshBridge = true;
+      continue;
+    }
     if (acceptsProfile && argument === "--yes") {
       if (autoApprove) throw new Error(`${command} option --yes may only be passed once`);
       autoApprove = true;
@@ -350,8 +402,8 @@ function parseSetupConfiguration(extraArguments, files, { command = "setup" } = 
       index += 1;
       continue;
     }
-    if (argument === "--analysis-model" || argument === "--analysis-catalog") {
-      const seen = argument === "--analysis-model" ? analysisModel : analysisCatalog;
+    if (["--analysis-model", "--analysis-catalog", "--analysis-model-id"].includes(argument)) {
+      const seen = argument === "--analysis-model" ? analysisModel : argument === "--analysis-catalog" ? analysisCatalog : analysisModelId;
       if (seen !== undefined) {
         throw new Error(`${command} option ${argument} may only be passed once`);
       }
@@ -360,13 +412,25 @@ function parseSetupConfiguration(extraArguments, files, { command = "setup" } = 
         throw new Error(`${command} requires a value after ${argument}`);
       }
       if (argument === "--analysis-model") analysisModel = value;
-      else analysisCatalog = value;
+      else if (argument === "--analysis-catalog") analysisCatalog = value;
+      else analysisModelId = value;
       index += 1;
       continue;
     }
     throw new Error(`${command} does not support option: ${String(argument)}`);
   }
   const analysisWorker = parseAnalysisWorkerFiles(analysisModel, analysisCatalog, files);
+  if (sshBridge && analysisModelId === undefined) throw new Error("--ssh-bridge requires an Ollama model id");
+  if (analysisModelId !== undefined && !analysisWorker) throw new Error("--analysis-model-id requires analysis model and catalog");
+  if (analysisModelId !== undefined && !/^[A-Za-z0-9_.:/-]{1,200}$/.test(analysisModelId)) {
+    throw new Error("analysis model id contains unsupported characters");
+  }
+  if (analysisWorker && analysisModelId !== undefined) {
+    const rawUrl = files.environment?.VIEW_SHOW_OLLAMA_BASE_URL;
+    if (!rawUrl) throw new Error("VIEW_SHOW_OLLAMA_BASE_URL is required for Ollama");
+    Object.assign(analysisWorker, { provider: "ollama", modelId: analysisModelId, ollamaBaseUrl: validateOllamaBaseUrl(rawUrl) });
+  }
+  if (sshBridge) analysisWorker.sshBridge = true;
   return { profile, autoApprove, analysisWorker };
 }
 
@@ -591,6 +655,12 @@ function terraformOptions(context, options = {}) {
       AWS_PROFILE: context.profile,
       AWS_REGION: REGION,
       AWS_DEFAULT_REGION: REGION,
+      ...(context.analysisWorker?.ollamaBaseUrl
+        ? { TF_VAR_analysis_ollama_base_url: context.analysisWorker.ollamaBaseUrl }
+        : {}),
+      ...(context.analysisWorker?.sshBridge
+        ? { TF_VAR_analysis_ssh_bridge_habilitado: "true" }
+        : {}),
     },
   };
 }
@@ -768,9 +838,12 @@ function assertNoAutomaticVariableFiles({ readDirectory, root }) {
 }
 
 function analysisWorkerVariables(analysisWorker) {
+  const provider = analysisWorker.provider ?? "none";
   return [
     "-var=analysis_worker_habilitado=true",
-    `-var=analysis_llm_provider=${ANALYSIS_LLM_PROVIDER}`,
+    "-var=analysis_worker_desired_count=0",
+    `-var=analysis_llm_provider=${provider}`,
+    ...(provider === "ollama" ? ["-var=observabilidade_habilitada=true", `-var=analysis_llm_model_id=${analysisWorker.modelId}`] : []),
     `-var=analysis_model_file=${analysisWorker.model}`,
     `-var=analysis_scope_catalog_file=${analysisWorker.catalog}`,
   ];
@@ -790,7 +863,8 @@ function validateAnalysisWorkerPlan(plan, analysisWorker) {
   }
   const expected = {
     analysis_worker_habilitado: [true, "true"],
-    analysis_llm_provider: [ANALYSIS_LLM_PROVIDER],
+    analysis_worker_desired_count: [0, "0"],
+    analysis_llm_provider: [analysisWorker.provider ?? "none"],
     analysis_model_file: [analysisWorker.model],
     analysis_scope_catalog_file: [analysisWorker.catalog],
   };
@@ -807,7 +881,8 @@ function validateAnalysisWorkerPlan(plan, analysisWorker) {
 
 function validateLearnerLabPlan(plan, analysisWorker = null) {
   validateAnalysisWorkerPlan(plan, analysisWorker);
-  const mismatches = Object.entries(LEARNER_LAB_PLAN_VARIABLES)
+  const expectedProfile = { ...LEARNER_LAB_PLAN_VARIABLES, ...(analysisWorker?.provider === "ollama" ? { observabilidade_habilitada: true } : {}) };
+  const mismatches = Object.entries(expectedProfile)
     .filter(([name, expected]) => {
       if (!Object.hasOwn(plan.variables ?? {}, name)) return true;
       const actual = plan.variables[name]?.value;
@@ -850,6 +925,34 @@ function restrictPermissions({ changeMode, platform }, target, mode) {
   if (platform !== "win32") changeMode(target, mode);
 }
 
+function artifactOwnedByCurrentUser(context, metadata) {
+  if (context.platform === "win32") return true;
+  const userId = context.currentUserId();
+  return Number.isInteger(userId) && metadata.uid === userId;
+}
+
+function assertProtectedTerraformPlanPlatform(context) {
+  if (!["linux", "darwin"].includes(context.platform)) {
+    throw new Error(`unsupported platform for protected Terraform plans: ${context.platform}`);
+  }
+}
+
+function terraformPlanReference(context, descriptor) {
+  assertProtectedTerraformPlanPlatform(context);
+  if (context.platform === "linux") {
+    return { path: "/proc/self/fd/3", stdioDescriptor: descriptor };
+  }
+  if (context.platform === "darwin") {
+    return { path: "/dev/fd/3", stdioDescriptor: descriptor };
+  }
+}
+
+function terraformPlanStdio(standardStreams, reference) {
+  return reference.stdioDescriptor === null
+    ? standardStreams
+    : [...standardStreams, reference.stdioDescriptor];
+}
+
 function readPlanSnapshot(context, target) {
   let metadata;
   try {
@@ -857,12 +960,10 @@ function readPlanSnapshot(context, target) {
   } catch {
     throw new Error("the validated Terraform plan is missing");
   }
-  const userId = context.currentUserId();
   if (
     metadata.isSymbolicLink() ||
     !metadata.isFile() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     (Number.isInteger(metadata.nlink) && metadata.nlink !== 1)
   ) {
     throw new Error("the validated Terraform plan is not a private regular file");
@@ -903,11 +1004,9 @@ function openValidatedPlan(context, target, validatedSnapshot) {
       fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
     );
     const metadata = context.inspectPlanFile(descriptor);
-    const userId = context.currentUserId();
     if (
       !metadata.isFile() ||
-      !Number.isInteger(userId) ||
-      metadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, metadata) ||
       (Number.isInteger(metadata.nlink) && metadata.nlink !== 1) ||
       (validatedSnapshot.device !== null && metadata.dev !== validatedSnapshot.device) ||
       (validatedSnapshot.inode !== null && metadata.ino !== validatedSnapshot.inode)
@@ -969,14 +1068,12 @@ function validateArtifactParent(context, artifacts) {
   } catch {
     throw new Error("the Terraform artifact parent could not be verified");
   }
-  const userId = context.currentUserId();
   if (
     artifacts !== expected ||
     canonical !== expected ||
     metadata.isSymbolicLink() ||
     !metadata.isDirectory() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId
+    !artifactOwnedByCurrentUser(context, metadata)
   ) {
     throw new Error("the Terraform artifact parent is not a private physical directory");
   }
@@ -1009,14 +1106,12 @@ function validateStateBackupDirectory(context, parent, target, expectedIdentity 
   } catch {
     throw new Error("the Terraform state backup directory could not be verified");
   }
-  const userId = context.currentUserId();
   if (
     target !== expected ||
     canonical !== expected ||
     metadata.isSymbolicLink() ||
     !metadata.isDirectory() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId
+    !artifactOwnedByCurrentUser(context, metadata)
   ) {
     throw new Error("the Terraform state backup directory is not a private physical directory");
   }
@@ -1045,14 +1140,12 @@ function validateStateBackupFile(context, directory, target) {
   } catch {
     throw new Error("the Terraform state backup file could not be verified");
   }
-  const userId = context.currentUserId();
   if (
     path.dirname(target) !== directory.path ||
     canonical !== target ||
     metadata.isSymbolicLink() ||
     !metadata.isFile() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     metadata.nlink !== 1
   ) {
     throw new Error("the Terraform state backup is not a private physical file");
@@ -1060,15 +1153,24 @@ function validateStateBackupFile(context, directory, target) {
   return { path: target, ...artifactIdentity(metadata) };
 }
 
-function copyStateBackupThroughDescriptors(context, source, directory, target) {
-  if (
-    context.platform !== "linux" ||
-    !Number.isInteger(fsConstants.O_NOFOLLOW) ||
-    !Number.isInteger(fsConstants.O_DIRECTORY)
-  ) {
-    throw new Error("secure Terraform state backups require Linux descriptor safeguards");
+function stateBackupDestination(context, directoryDescriptor, target) {
+  if (context.platform !== "linux") {
+    throw new Error(`unsupported platform for protected Terraform backups: ${context.platform}`);
   }
-  const userId = context.currentUserId();
+  return `/proc/self/fd/${directoryDescriptor}/${path.basename(target)}`;
+}
+
+function copyStateBackupThroughDescriptors(context, source, directory, target) {
+  if (context.platform !== "linux") {
+    throw new Error(`unsupported platform for protected Terraform backups: ${context.platform}`);
+  }
+  if (
+    (!Number.isInteger(fsConstants.O_NOFOLLOW) ||
+      !Number.isInteger(fsConstants.O_DIRECTORY))
+  ) {
+    throw new Error("secure Terraform state backups require descriptor safeguards");
+  }
+  const noFollow = fsConstants.O_NOFOLLOW;
   let sourceDescriptor = null;
   let directoryDescriptor = null;
   let destinationDescriptor = null;
@@ -1076,13 +1178,13 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
   try {
     sourceDescriptor = context.openBackupPath(
       source.path,
-      fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
+      fsConstants.O_RDONLY | noFollow,
     );
     const sourceMetadata = context.inspectBackupFile(sourceDescriptor);
     if (
       !sourceMetadata.isFile() ||
       sourceMetadata.isSymbolicLink?.() === true ||
-      sourceMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, sourceMetadata) ||
       sourceMetadata.nlink !== 1 ||
       !identityMatches(sourceMetadata, source)
     ) {
@@ -1091,32 +1193,36 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
 
     directoryDescriptor = context.openBackupPath(
       directory.path,
-      fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW,
+      fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | noFollow,
     );
     const directoryMetadata = context.inspectBackupFile(directoryDescriptor);
     if (
       !directoryMetadata.isDirectory() ||
       directoryMetadata.isSymbolicLink?.() === true ||
-      directoryMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, directoryMetadata) ||
       !identityMatches(directoryMetadata, directory)
     ) {
       throw new Error("the Terraform state backup directory descriptor changed identity");
     }
 
-    const anchoredTarget = `/proc/self/fd/${directoryDescriptor}/${path.basename(target)}`;
+    const anchoredTarget = stateBackupDestination(
+      context,
+      directoryDescriptor,
+      target,
+    );
     destinationDescriptor = context.openBackupPath(
       anchoredTarget,
       fsConstants.O_WRONLY |
         fsConstants.O_CREAT |
         fsConstants.O_EXCL |
-        fsConstants.O_NOFOLLOW,
+        noFollow,
       0o600,
     );
     const destinationMetadata = context.inspectBackupFile(destinationDescriptor);
     if (
       !destinationMetadata.isFile() ||
       destinationMetadata.isSymbolicLink?.() === true ||
-      destinationMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, destinationMetadata) ||
       destinationMetadata.nlink !== 1
     ) {
       throw new Error("the Terraform state backup descriptor is not a private regular file");
@@ -1167,12 +1273,10 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
 function assertPrivateDirectory(context, target, expectedIdentity) {
   const metadata = inspectArtifactIfPresent(context, target, "update directory");
   if (metadata === null) return null;
-  const userId = context.currentUserId();
   if (
     metadata.isSymbolicLink() ||
     !metadata.isDirectory() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     !identityMatches(metadata, expectedIdentity)
   ) {
     throw new Error("the private Terraform update directory changed identity");
@@ -1194,12 +1298,10 @@ function createExclusiveUpdatePlan(context, parent, preset) {
   let artifact = null;
   try {
     const metadata = context.inspectArtifactPath(directory);
-    const userId = context.currentUserId();
     if (
       metadata.isSymbolicLink() ||
       !metadata.isDirectory() ||
-      !Number.isInteger(userId) ||
-      metadata.uid !== userId
+      !artifactOwnedByCurrentUser(context, metadata)
     ) {
       throw new Error("could not verify the private Terraform plan directory");
     }
@@ -1245,7 +1347,6 @@ function cleanupExclusiveUpdatePlan(context, artifact, validatedSnapshot) {
     artifact,
   );
   if (directoryMetadata === null) return;
-  const userId = context.currentUserId();
   assertArtifactParentUnchanged(context, artifact.parent);
   assertPrivateDirectory(context, artifact.directory, artifact);
   restrictPermissions(context, artifact.directory, 0o700);
@@ -1257,7 +1358,7 @@ function cleanupExclusiveUpdatePlan(context, artifact, validatedSnapshot) {
       validatedSnapshot === null ||
       planMetadata.isSymbolicLink() ||
       !planMetadata.isFile() ||
-      planMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, planMetadata) ||
       planMetadata.nlink !== 1 ||
       !identityMatches(planMetadata, validatedSnapshot)
     ) {
@@ -1270,7 +1371,7 @@ function cleanupExclusiveUpdatePlan(context, artifact, validatedSnapshot) {
       planBeforeUnlink === null ||
       planBeforeUnlink.isSymbolicLink() ||
       !planBeforeUnlink.isFile() ||
-      planBeforeUnlink.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, planBeforeUnlink) ||
       planBeforeUnlink.nlink !== 1 ||
       !identityMatches(planBeforeUnlink, validatedSnapshot)
     ) {
@@ -1302,7 +1403,7 @@ function parseStateSnapshot(text, label) {
 }
 
 function validateLocalState(context) {
-  const { root, lstat, readFile, currentUserId } = context;
+  const { root, lstat, readFile } = context;
   const statePath = path.join(root, "apps", "fullstack", "terraform.tfstate");
   let metadata;
   try {
@@ -1310,12 +1411,10 @@ function validateLocalState(context) {
   } catch {
     throw new Error("the protected Terraform state is missing");
   }
-  const userId = currentUserId();
   if (
     metadata.isSymbolicLink() ||
     !metadata.isFile() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     metadata.nlink !== 1
   ) {
     throw new Error("the protected Terraform state must be a regular, owned, non-symlink file");
@@ -1394,7 +1493,7 @@ export function isExactConfirmation(answer, phrase) {
 }
 
 function checkPrerequisites(context) {
-  const { execute, log, platform, root, step, exists, profile } = context;
+  const { execute, log, platform, root, step, exists, profile, grafanaConfiguration } = context;
   const missing = [];
   const awsArgs = (args) => [...args, "--profile", profile];
   const require = (label, ok, resolution) => {
@@ -1412,10 +1511,17 @@ function checkPrerequisites(context) {
     "update",
     "seed",
     "import-canary",
+    "analysis-prepare",
+    "analysis-bridge",
+    "analysis-check",
+    "analysis-activate",
+    "analysis-smoke",
+    "analysis-canary",
+    "analysis-deactivate",
     "all",
   ].includes(step);
-  const needsNode = ["setup", "check", "deploy", "plan-update", "update", "all"].includes(step);
-  const needsNpm = ["setup", "check", "deploy", "plan-update", "update", "all"].includes(step);
+  const needsNode = ["setup", "check", "deploy", "plan-update", "update", "analysis-prepare", "analysis-activate", "analysis-deactivate", "all"].includes(step);
+  const needsNpm = ["setup", "check", "deploy", "plan-update", "update", "analysis-prepare", "all"].includes(step);
   const needsAws = [
     "setup",
     "check",
@@ -1425,11 +1531,19 @@ function checkPrerequisites(context) {
     "update",
     "seed",
     "import-canary",
+    "analysis-prepare",
+    "analysis-bridge",
+    "analysis-check",
+    "analysis-activate",
+    "analysis-smoke",
+    "analysis-canary",
+    "analysis-deactivate",
     "evidence",
     "all",
-  ].includes(step);
-  const needsDocker = ["setup", "check", "deploy", "plan-update", "update", "all"].includes(step);
+  ].includes(step) || (step === "grafana" && !grafanaConfiguration?.showPassword);
+  const needsDocker = ["setup", "check", "deploy", "plan-update", "update", "analysis-prepare", "all"].includes(step);
   const needsPython = ["check", "build-snapshot", "seed", "all"].includes(step);
+  const needsSsh = step === "analysis-bridge";
 
   if (needsTerraform) {
     const result = execute("terraform", ["version", "-json"], terraformOptions(context));
@@ -1472,6 +1586,13 @@ function checkPrerequisites(context) {
       "AWS CLI v2",
       awsCliVersion(result)?.[0] === 2,
       "install AWS CLI v2",
+    );
+  }
+  if (needsSsh) {
+    require(
+      "OpenSSH client",
+      execute("ssh", ["-V"]).status === 0,
+      "install an OpenSSH client and rerun",
     );
   }
   if (needsDocker) {
@@ -1585,6 +1706,84 @@ function checkPrerequisites(context) {
   }
   log("");
   return { ok: true, python, identity, venv: venvPython(root, platform) };
+}
+
+function openGrafana(context) {
+  const stack = path.join("apps", "fullstack");
+  const accessResult = context.execute(
+    "terraform",
+    [`-chdir=${stack}`, "output", "-json", "grafana_acesso"],
+    { cwd: context.root },
+  );
+  if (accessResult.status !== 0) throw new Error("terraform output grafana_acesso failed");
+  const access = readGrafanaAccess(parseJsonObject(accessResult.stdout, "terraform output grafana_acesso"));
+
+  const instanceResult = context.execute(
+    "terraform",
+    [`-chdir=${stack}`, "output", "-raw", "observabilidade_instancia_id"],
+    { cwd: context.root },
+  );
+  if (instanceResult.status !== 0) throw new Error("terraform output observabilidade_instancia_id failed");
+  const instanceId = readObservabilityInstanceId(instanceResult.stdout);
+
+  context.log(`Grafana URL: ${access.url}`);
+  context.log(`Grafana user: ${access.user}`);
+  context.log("To retrieve the password locally: terraform -chdir=apps/fullstack output -raw grafana_senha");
+  context.log("Starting the private SSM tunnel. Press Ctrl+C to close it.");
+  const tunnel = context.execute(
+    "aws",
+    grafanaTunnelArguments(instanceId, REGION, context.profile),
+    { cwd: context.root, stdio: "inherit" },
+  );
+  if (tunnel.status !== 0) throw new Error("Grafana SSM tunnel failed");
+}
+
+function printGrafanaPassword(context) {
+  const result = context.execute(
+    "terraform",
+    ["-chdir=apps/fullstack", "output", "-raw", "grafana_senha"],
+    { cwd: context.root },
+  );
+  if (result.status !== 0) throw new Error("terraform output grafana_senha failed");
+  context.log(`Grafana password: ${readGrafanaPassword(result.stdout)}`);
+}
+
+async function openAnalysisBridge(context) {
+  const stack = path.join("apps", "fullstack");
+  const accessResult = context.execute(
+    "terraform",
+    [`-chdir=${stack}`, "output", "-json", "bastion_acesso"],
+    { cwd: context.root },
+  );
+  if (accessResult.status !== 0) throw new Error("terraform output bastion_acesso failed");
+  const bastion = readBastionAccess(parseJsonObject(accessResult.stdout, "terraform output bastion_acesso"));
+  const addressResult = context.execute(
+    "aws",
+    awsArguments(context, [
+      "ec2", "describe-instances", "--instance-ids", bastion.id,
+      "--query", "Reservations[0].Instances[0].PrivateIpAddress",
+      "--output", "text",
+    ]),
+  );
+  if (addressResult.status !== 0) throw new Error("could not read the bastion private IP");
+  const privateIp = readPrivateIpv4(addressResult.stdout);
+  const ollamaUser = await context.readInput("Ollama SSH user: ");
+  const ollamaHost = await context.readInput("Ollama SSH host: ");
+  const bastionKeyFile = await context.readInput("Bastion key file: ");
+  await runOllamaBridge({
+    ...bastion,
+    privateIp,
+    ollamaUser,
+    ollamaHost,
+    bastionKeyFile,
+    region: REGION,
+    profile: context.profile,
+    platform: context.platform,
+    spawnProcess: context.spawnProcess,
+    waitForPort: context.waitForPort,
+    waitForStop: context.waitForBridgeStop,
+    log: context.log,
+  });
 }
 
 function ensureVenv({ execute, log, root, platform, python, exists }) {
@@ -1717,7 +1916,7 @@ async function deploy(context) {
   log("  Scheduler:    DISABLED");
   log(
     analysisWorker
-      ? `  Analysis:     worker ENABLED, LLM DISABLED (model ${path.basename(analysisWorker.model)}, catalog ${path.basename(analysisWorker.catalog)})`
+      ? `  Analysis:     worker PREPARED, provider ${analysisWorker.provider ?? "none"}, replicas 0 (model ${path.basename(analysisWorker.model)}, catalog ${path.basename(analysisWorker.catalog)})`
       : "  Analysis:     worker DISABLED",
   );
   log("  Plan policy:  create/no-op only");
@@ -2551,6 +2750,7 @@ function validateCurrentTerraformState(context, runbook, preset, expectedPlanIma
 }
 
 async function updateExistingStack(context, existingStack) {
+  assertProtectedTerraformPlanPlatform(context);
   const {
     execute,
     log,
@@ -2594,12 +2794,15 @@ async function updateExistingStack(context, existingStack) {
     restrictPermissions(context, plan, 0o400);
     validatedPlanSnapshot = readPlanSnapshot(context, plan);
     planDescriptor = openValidatedPlan(context, plan, validatedPlanSnapshot);
-    const descriptorPath = "/proc/self/fd/3";
+    const planReference = terraformPlanReference(context, planDescriptor);
 
     const shown = execute(
       "terraform",
-      [`-chdir=${stack}`, "show", "-json", descriptorPath],
-      { cwd: root, stdio: ["ignore", "pipe", "pipe", planDescriptor] },
+      [`-chdir=${stack}`, "show", "-json", planReference.path],
+      {
+        cwd: root,
+        stdio: terraformPlanStdio(["ignore", "pipe", "pipe"], planReference),
+      },
     );
     if (shown.status !== 0) throw new Error("terraform show failed for the saved update plan");
     const planJson = parseJsonObject(shown.stdout, "terraform show -json update plan");
@@ -2686,8 +2889,11 @@ async function updateExistingStack(context, existingStack) {
     log("terraform apply validated update plan");
     const applied = execute(
       "terraform",
-      [`-chdir=${stack}`, "apply", "-input=false", descriptorPath],
-      { cwd: root, stdio: ["ignore", "inherit", "inherit", planDescriptor] },
+      [`-chdir=${stack}`, "apply", "-input=false", planReference.path],
+      {
+        cwd: root,
+        stdio: terraformPlanStdio(["ignore", "inherit", "inherit"], planReference),
+      },
     );
     if (applied.status !== 0) throw new Error("terraform update apply failed");
 
@@ -4487,6 +4693,409 @@ async function readInputFromTerminal(prompt) {
   }
 }
 
+function analysisManifestPath(root) {
+  return path.join(root, "apps", "fullstack", ".terraform-artifacts", "analysis-worker.json");
+}
+
+function writeAnalysisManifest(context, worker) {
+  const target = analysisManifestPath(context.root);
+  context.makeDirectory(path.dirname(target), { recursive: true, mode: 0o700 });
+  const temporary = `${target}.tmp-${process.pid}`;
+  const value = JSON.stringify({
+    model: worker.model, catalog: worker.catalog, modelId: worker.modelId,
+    ...(worker.sshBridge ? { sshBridge: true } : {}),
+  }, null, 2);
+  context.writeFile(temporary, `${value}\n`, { mode: 0o600 });
+  context.changeMode(temporary, 0o600);
+  context.renameFile(temporary, target);
+  context.changeMode(target, 0o600);
+}
+
+function readAnalysisManifest(context, { requireEndpoint = false } = {}) {
+  const value = parseJsonObject(context.readFile(analysisManifestPath(context.root), "utf8"), "analysis worker manifest");
+  if (!/^[A-Za-z0-9_.:/-]{1,200}$/.test(value.modelId ?? "")) throw new Error("analysis worker manifest is invalid");
+  if (typeof value.model !== "string" || typeof value.catalog !== "string") throw new Error("analysis worker manifest is invalid");
+  if (value.sshBridge !== undefined && value.sshBridge !== true) throw new Error("analysis worker manifest is invalid");
+  const worker = {
+    model: value.model, catalog: value.catalog, modelId: value.modelId, provider: "ollama",
+    ...(value.sshBridge ? { sshBridge: true } : {}),
+  };
+  if (requireEndpoint) {
+    const rawEndpoint = context.environment.VIEW_SHOW_OLLAMA_BASE_URL;
+    if (!rawEndpoint) throw new Error("VIEW_SHOW_OLLAMA_BASE_URL is required for Ollama");
+    worker.ollamaBaseUrl = validateOllamaBaseUrl(rawEndpoint);
+  }
+  return worker;
+}
+
+function readAnalysisOperation(context) {
+  const result = context.execute("terraform", ["-chdir=apps/fullstack", "output", "-json", "analysis_worker_operacao"], terraformOptions(context, { cwd: context.root }));
+  if (result.status !== 0) throw new Error("terraform output analysis_worker_operacao failed");
+  const value = parseJsonObject(result.stdout, "analysis_worker_operacao");
+  const account = context.identity?.account;
+  const escapedRegion = REGION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedAccount = typeof account === "string"
+    ? account.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    : "";
+  const expectedKeys = [
+    "analysis_queue_url", "assign_public_ip", "cluster_name", "container_name",
+    "desired_count", "log_group", "operational_table", "security_group_id",
+    "subnet_ids", "task_definition", "task_family",
+  ];
+  if (
+    !/^\d{12}$/.test(account ?? "") ||
+    JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expectedKeys) ||
+    value.cluster_name !== `${NAMESPACE}-iac-cluster` ||
+    value.task_family !== `${NAMESPACE}-analysis-worker` ||
+    !new RegExp(`^arn:aws:ecs:${escapedRegion}:${escapedAccount}:task-definition/${NAMESPACE}-analysis-worker:\\d+$`).test(value.task_definition ?? "") ||
+    value.container_name !== "analysis-worker" || !Array.isArray(value.subnet_ids) || value.subnet_ids.length !== 2 ||
+    new Set(value.subnet_ids).size !== 2 || value.subnet_ids.some((item) => !/^subnet-[a-f0-9]+$/.test(item)) ||
+    !/^sg-[a-f0-9]+$/.test(value.security_group_id ?? "") || value.assign_public_ip !== false ||
+    ![0, 1].includes(value.desired_count) || value.log_group !== `/ecs/${NAMESPACE}-analysis-worker` ||
+    !new RegExp(`^https://sqs\\.${escapedRegion}\\.amazonaws\\.com/${escapedAccount}/[A-Za-z0-9_-]+-analysis$`).test(value.analysis_queue_url ?? "") ||
+    value.operational_table !== `${NAMESPACE}-iac-operacional`
+  ) throw new Error("analysis_worker_operacao has an unsafe shape or identity");
+  const described = context.execute(
+    "aws",
+    awsArguments(context, [
+      "ecs", "describe-services", "--cluster", value.cluster_name,
+      "--services", `${NAMESPACE}-analysis-worker`, "--output", "json",
+    ]),
+    { cwd: context.root },
+  );
+  if (described.status !== 0) throw new Error("analysis ECS service could not be read");
+  const response = parseJsonObject(described.stdout, "ecs describe-services");
+  const service = response.services?.[0];
+  const network = service?.networkConfiguration?.awsvpcConfiguration;
+  const sameSubnets = Array.isArray(network?.subnets) &&
+    JSON.stringify([...network.subnets].sort()) === JSON.stringify([...value.subnet_ids].sort());
+  if (
+    (response.failures?.length ?? 0) !== 0 || response.services?.length !== 1 ||
+    service.serviceName !== `${NAMESPACE}-analysis-worker` || service.status !== "ACTIVE" ||
+    service.clusterArn !== `arn:aws:ecs:${REGION}:${account}:cluster/${value.cluster_name}` ||
+    service.taskDefinition !== value.task_definition || service.desiredCount !== value.desired_count ||
+    service.launchType !== "FARGATE" || network?.assignPublicIp !== "DISABLED" || !sameSubnets ||
+    JSON.stringify(network?.securityGroups) !== JSON.stringify([value.security_group_id])
+  ) throw new Error("analysis ECS service diverges from the validated operation");
+  return value;
+}
+
+function runAnalysisTask(context, command) {
+  const operation = readAnalysisOperation(context);
+  const network = `awsvpcConfiguration={subnets=[${operation.subnet_ids.join(",")}],securityGroups=[${operation.security_group_id}],assignPublicIp=DISABLED}`;
+  const override = JSON.stringify({ containerOverrides: [{ name: operation.container_name, command: ["node", command] }] });
+  const started = context.execute("aws", awsArguments(context, ["ecs", "run-task", "--cluster", operation.cluster_name, "--task-definition", operation.task_definition, "--launch-type", "FARGATE", "--network-configuration", network, "--overrides", override, "--output", "json"]), { cwd: context.root });
+  if (started.status !== 0) throw new Error("analysis task could not be started");
+  const payload = parseJsonObject(started.stdout, "ecs run-task");
+  const taskArn = payload.tasks?.[0]?.taskArn;
+  if (typeof taskArn !== "string" || (payload.failures?.length ?? 0) !== 0) throw new Error("analysis task placement failed");
+  const waited = context.execute("aws", awsArguments(context, ["ecs", "wait", "tasks-stopped", "--cluster", operation.cluster_name, "--tasks", taskArn]), { cwd: context.root });
+  if (waited.status !== 0) throw new Error("analysis task timed out");
+  const described = context.execute("aws", awsArguments(context, ["ecs", "describe-tasks", "--cluster", operation.cluster_name, "--tasks", taskArn, "--output", "json"]), { cwd: context.root });
+  if (described.status !== 0) throw new Error("analysis task status could not be read");
+  const description = parseJsonObject(described.stdout, "ecs describe-tasks");
+  if ((description.failures?.length ?? 0) !== 0 || description.tasks?.length !== 1) {
+    throw new Error("analysis task status is incomplete");
+  }
+  const task = description.tasks[0];
+  const container = task?.containers?.find((item) => item.name === operation.container_name);
+  if (
+    task?.lastStatus !== "STOPPED" || task?.stopCode !== "EssentialContainerExited" ||
+    container?.lastStatus !== "STOPPED" || container?.exitCode !== 0
+  ) throw new Error("analysis task did not exit successfully");
+  context.log(`Analysis task: ${taskArn}`);
+  context.log(`Exit code: ${container.exitCode}`);
+  context.log(`Log group: ${operation.log_group}`);
+  return operation;
+}
+
+function readAnalysisDatasetVersion(context, worker) {
+  let document;
+  try {
+    document = parseJsonObject(context.readFile(worker.model, "utf8"), "analysis model");
+  } catch {
+    throw new Error("approved analysis model could not be read");
+  }
+  if (document.approved !== true || !/^[A-Za-z0-9_.:-]{1,200}$/.test(document.datasetVersion ?? "")) {
+    throw new Error("approved analysis model has an invalid datasetVersion");
+  }
+  return document.datasetVersion;
+}
+
+async function runAnalysisCanary(context, identity) {
+  const operation = readAnalysisOperation(context);
+  if (operation.desired_count !== 1) throw new Error("analysis canary requires one active worker replica");
+  const worker = readAnalysisManifest(context);
+  const datasetVersion = readAnalysisDatasetVersion(context, worker);
+  const phrase = `CANARY ANALYSIS ${identity.account}`;
+  if (!(await context.confirm(phrase))) return false;
+
+  const random = context.generateRandomBytes(16).toString("hex");
+  const eventType = "ANOMALY_DETECTION";
+  const eventId = `evt_canary_${random}`;
+  const idempotencyKey = `ana_canary_${random}`;
+  const runId = createHash("sha256").update(JSON.stringify(`${eventType}${idempotencyKey}`)).digest("hex");
+  const producedAt = context.now();
+  const windowEndMs = Math.floor(producedAt.getTime() / ANALYSIS_CANARY_WINDOW_MILLISECONDS) * ANALYSIS_CANARY_WINDOW_MILLISECONDS;
+  const windowEnd = new Date(windowEndMs).toISOString();
+  const event = {
+    eventId,
+    eventType,
+    schemaVersion: "1.0",
+    idempotencyKey,
+    traceId: `trc_canary_${random}`,
+    occurredAt: windowEnd,
+    producedAt: producedAt.toISOString(),
+    source: "learner-lab-analysis-canary",
+    payload: {
+      window: {
+        start: new Date(windowEndMs - ANALYSIS_CANARY_WINDOW_MILLISECONDS).toISOString(),
+        end: windowEnd,
+        grainSeconds: 900,
+      },
+      inputWatermark: windowEnd,
+      datasetVersion,
+    },
+  };
+  const sent = context.execute(
+    "aws",
+    awsArguments(context, [
+      "sqs", "send-message", "--queue-url", operation.analysis_queue_url,
+      "--message-body", JSON.stringify(event), "--output", "json",
+    ]),
+    { cwd: context.root },
+  );
+  if (sent.status !== 0) throw new Error("analysis canary event could not be published");
+  const messageId = parseJsonObject(sent.stdout, "sqs send-message").MessageId;
+  if (typeof messageId !== "string" || messageId.length === 0) throw new Error("analysis canary publish returned no message id");
+  context.log(`Analysis event: ${eventId}`);
+  context.log(`Analysis run: ${runId}`);
+
+  const deadline = context.monotonic() + ANALYSIS_CANARY_TIMEOUT_SECONDS;
+  while (context.monotonic() <= deadline) {
+    const result = context.execute(
+      "aws",
+      awsArguments(context, [
+        "dynamodb", "get-item", "--table-name", operation.operational_table,
+        "--key", JSON.stringify({ pk: { S: `ANALYSIS#RUN#${runId}` }, sk: { S: "META" } }),
+        "--consistent-read", "--output", "json",
+      ]),
+      { cwd: context.root },
+    );
+    if (result.status !== 0) throw new Error("analysis canary state could not be read");
+    // AWS CLI prints an empty stdout while GetItem has no Item yet.
+    const item = result.stdout.trim() === ""
+      ? undefined
+      : parseJsonObject(result.stdout, "analysis canary state").Item;
+    const state = dynamoString(item, "state");
+    if (state === "SUCCEEDED") {
+      context.log("Analysis state: SUCCEEDED");
+      return true;
+    }
+    if (state === "FAILED") throw new Error(`analysis canary ${runId} failed`);
+    await context.sleep(ANALYSIS_CANARY_POLL_MILLISECONDS);
+  }
+  throw new Error(`analysis canary ${runId} timed out`);
+}
+
+function learnerVariables(worker, count) {
+  const base = Object.entries(LEARNER_LAB_PLAN_VARIABLES).flatMap(([name, value]) => {
+    if (value === null) return [];
+    const normalized = Array.isArray(value) ? JSON.stringify(value) : String(value);
+    return [`-var=${name}=${normalized}`];
+  });
+  return [...base, ...analysisWorkerVariables(worker).filter((value) => !value.startsWith("-var=analysis_worker_desired_count=")), `-var=analysis_worker_desired_count=${count}`];
+}
+
+function prepareObservabilityVariables() {
+  return [
+    ...Object.entries({
+      ...LEARNER_LAB_PLAN_VARIABLES,
+      observabilidade_habilitada: true,
+    }).flatMap(([name, value]) => value === null
+      ? []
+      : [`-var=${name}=${Array.isArray(value) ? JSON.stringify(value) : String(value)}`]),
+    "-var=analysis_worker_habilitado=false",
+    "-var=analysis_worker_desired_count=0",
+    "-var=analysis_llm_provider=none",
+    "-var=observabilidade_api_exportacao_habilitada=false",
+  ];
+}
+
+function readObservabilityWorkersEndpoint(context) {
+  const result = context.execute(
+    "terraform",
+    ["-chdir=apps/fullstack", "output", "-json", "observabilidade_otlp_workers_endpoint"],
+    terraformOptions({ ...context, analysisWorker: null }, { cwd: context.root }),
+  );
+  if (result.status !== 0) {
+    if (result.stderr.includes('Output "observabilidade_otlp_workers_endpoint" not found')) return null;
+    throw new Error("terraform output observabilidade_otlp_workers_endpoint failed");
+  }
+  let value;
+  try {
+    value = JSON.parse(result.stdout);
+  } catch {
+    throw new Error("observabilidade_otlp_workers_endpoint is invalid");
+  }
+  if (value === null) return null;
+  if (typeof value !== "string") throw new Error("observabilidade_otlp_workers_endpoint is invalid");
+  let endpoint;
+  try {
+    endpoint = new URL(value);
+  } catch {
+    throw new Error("observabilidade_otlp_workers_endpoint is invalid");
+  }
+  const host = endpoint.hostname;
+  const privateHost = /^10\./.test(host) || /^192\.168\./.test(host) || (() => {
+    const match = host.match(/^172\.(\d+)\./);
+    return match !== null && Number(match[1]) >= 16 && Number(match[1]) <= 31;
+  })();
+  if (
+    endpoint.protocol !== "http:" || endpoint.port !== "4320" || endpoint.pathname !== "/" ||
+    endpoint.username || endpoint.password || endpoint.search || endpoint.hash || !privateHost
+  ) throw new Error("observabilidade_otlp_workers_endpoint must be a private OTLP/HTTP endpoint");
+  return value.replace(/\/$/, "");
+}
+
+function readDeployedOllamaEndpoint(context) {
+  const operation = readAnalysisOperation(context);
+  const described = context.execute(
+    "aws",
+    awsArguments(context, [
+      "ecs", "describe-task-definition", "--task-definition", operation.task_definition,
+      "--output", "json",
+    ]),
+    { cwd: context.root },
+  );
+  if (described.status !== 0) throw new Error("deployed analysis task definition could not be read");
+  const definition = parseJsonObject(described.stdout, "ecs describe-task-definition").taskDefinition;
+  const containers = definition?.containerDefinitions;
+  if (!Array.isArray(containers) || containers.length !== 1 || containers[0]?.name !== operation.container_name) {
+    throw new Error("deployed analysis task definition has an unsafe shape");
+  }
+  const bindings = (containers[0].environment ?? []).filter((entry) => entry?.name === "OLLAMA_BASE_URL");
+  if (bindings.length !== 1 || typeof bindings[0].value !== "string") {
+    throw new Error("deployed analysis task definition has no unique Ollama endpoint");
+  }
+  return validateOllamaBaseUrl(bindings[0].value);
+}
+
+async function applyAnalysisPlan(context, identity, mode, worker, variables) {
+  assertProtectedTerraformPlanPlatform(context);
+  const stack = "apps/fullstack";
+  const artifacts = path.join(context.root, stack, ".terraform-artifacts");
+  context.makeDirectory(artifacts, { recursive: true, mode: 0o700 });
+  const artifactParent = validateArtifactParent(context, artifacts);
+  restrictPermissions(context, artifacts, 0o700);
+  assertArtifactParentUnchanged(context, artifactParent);
+  const artifact = createExclusiveUpdatePlan(context, artifactParent, `analysis-${mode}`);
+  let validatedPlanSnapshot = null;
+  let planDescriptor = null;
+  let primaryError = null;
+  let descriptorCloseFailed = false;
+
+  try {
+    const planContext = mode === "prepare-observability"
+      ? { ...context, analysisWorker: null }
+      : context;
+    const planned = context.execute(
+      "terraform",
+      [`-chdir=${stack}`, "plan", "-input=false", ...variables, `-out=${artifact.plan}`],
+      terraformOptions(planContext, { cwd: context.root }),
+    );
+    if (planned.status !== 0) throw new Error(`analysis ${mode} plan failed`);
+    restrictPermissions(context, artifact.plan, 0o400);
+    validatedPlanSnapshot = readPlanSnapshot(context, artifact.plan);
+    planDescriptor = openValidatedPlan(context, artifact.plan, validatedPlanSnapshot);
+    const planReference = terraformPlanReference(
+      context,
+      planDescriptor,
+    );
+    const shown = context.execute(
+      "terraform",
+      [`-chdir=${stack}`, "show", "-json", planReference.path],
+      {
+        ...terraformOptions(planContext, { cwd: context.root }),
+        stdio: terraformPlanStdio(["ignore", "pipe", "pipe"], planReference),
+      },
+    );
+    if (shown.status !== 0) throw new Error(`analysis ${mode} plan could not be read`);
+    const gate = context.execute(
+      "node",
+      [path.join(context.root, "apps", "scripts", "terraform", "validate-analysis-worker-plan.mjs"), "--mode", mode],
+      {
+        cwd: context.root,
+        input: shown.stdout,
+        env: { ...context.environment, VIEW_SHOW_EXPECTED_AWS_ACCOUNT: identity.account },
+      },
+    );
+    if (gate.status !== 0) throw new Error(`analysis ${mode} plan rejected`);
+    restrictPermissions(context, artifact.directory, 0o500);
+    const phrase = `${mode.toUpperCase()} ANALYSIS ${identity.account}`;
+    if (!(await context.confirm(phrase))) return false;
+    assertPlanUnchanged(context, artifact.plan, validatedPlanSnapshot);
+    const applied = context.execute(
+      "terraform",
+      [`-chdir=${stack}`, "apply", "-input=false", planReference.path],
+      {
+        ...terraformOptions(planContext, { cwd: context.root }),
+        stdio: terraformPlanStdio(["ignore", "inherit", "inherit"], planReference),
+      },
+    );
+    if (applied.status !== 0) throw new Error(`analysis ${mode} apply failed`);
+    if (mode === "prepare") {
+      readAnalysisOperation(context);
+      writeAnalysisManifest(context, worker);
+    }
+    return true;
+  } catch (error) {
+    primaryError = error;
+    descriptorCloseFailed = error?.planDescriptorCloseFailed === true;
+    throw error;
+  } finally {
+    let closeError = descriptorCloseFailed ? primaryError : null;
+    if (Number.isInteger(planDescriptor)) {
+      try {
+        context.closePlanFile(planDescriptor);
+      } catch (error) {
+        closeError = error;
+      }
+    }
+    if (closeError !== null) {
+      context.log("Validated analysis plan descriptor close failed; private artifact retained.");
+      if (primaryError === null) throw new Error("could not close the validated analysis plan", { cause: closeError });
+    } else {
+      try {
+        cleanupExclusiveUpdatePlan(context, artifact, validatedPlanSnapshot);
+      } catch (cleanupError) {
+        context.log("Terraform analysis artifact cleanup failed; private artifact retained.");
+        if (primaryError === null) {
+          throw new Error("could not securely clean the Terraform analysis artifact", { cause: cleanupError });
+        }
+      }
+    }
+  }
+}
+
+async function changeAnalysisWorker(context, identity, mode, worker) {
+  const count = mode === "activate" ? 1 : 0;
+  if (mode === "prepare" && readObservabilityWorkersEndpoint(context) === null) {
+    const prepared = await applyAnalysisPlan(
+      context,
+      identity,
+      "prepare-observability",
+      null,
+      prepareObservabilityVariables(),
+    );
+    if (!prepared) return false;
+    if (readObservabilityWorkersEndpoint(context) === null) {
+      throw new Error("observability endpoint is still unavailable after preparation");
+    }
+  }
+  return applyAnalysisPlan(context, identity, mode, worker, learnerVariables(worker, count));
+}
+
 export async function runLearnerLab(options = {}) {
   const {
     step,
@@ -4500,6 +5109,7 @@ export async function runLearnerLab(options = {}) {
     makeDirectory = mkdirSync,
     writeFile = writeFileSync,
     changeMode = chmodSync,
+    renameFile = renameSync,
     lstat = lstatSync,
     readFile = readFileSync,
     readPlanFile = readFileSync,
@@ -4538,6 +5148,9 @@ export async function runLearnerLab(options = {}) {
     removeSensitiveFile = unlinkSync,
     removeSensitiveDirectory = rmdirSync,
     environment = process.env,
+    spawnProcess = spawn,
+    waitForPort,
+    waitForBridgeStop,
     // The command lives under apps/scripts; resolve project paths from the repository root.
     root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.."),
   } = options;
@@ -4560,11 +5173,28 @@ export async function runLearnerLab(options = {}) {
 
   let seedConfiguration = null;
   let importCanaryConfiguration = null;
+  let grafanaConfiguration = null;
   let setupConfiguration = null;
   let initialUser = null;
   if (["plan-update", "update"].includes(step)) {
     if (!Object.hasOwn(UPDATE_PRESETS, preset) || hasExtraArguments) {
       log(`update requires one preset: ${Object.keys(UPDATE_PRESETS).join(", ")}`);
+      return { status: 2 };
+    }
+  } else if (step === "grafana") {
+    if (hasPresetArgument) {
+      log("grafana options must be passed as named arguments");
+      return { status: 2 };
+    }
+    try {
+      grafanaConfiguration = parseGrafanaArguments(extraArguments);
+    } catch (error) {
+      log(error instanceof Error ? error.message : String(error));
+      return { status: 2 };
+    }
+  } else if (step === "analysis-bridge") {
+    if (hasPresetArgument || hasExtraArguments) {
+      log("analysis-bridge does not accept extra arguments");
       return { status: 2 };
     }
   } else if (step === "setup") {
@@ -4578,6 +5208,7 @@ export async function runLearnerLab(options = {}) {
         lstat,
         accessFile,
         readFile,
+        environment,
       });
       const email = String(await readInput("Initial user email: ")).trim();
       const password = await readSecret("Initial user password: ");
@@ -4595,9 +5226,24 @@ export async function runLearnerLab(options = {}) {
     try {
       setupConfiguration = parseSetupConfiguration(
         extraArguments,
-        { root, lstat, accessFile, readFile },
+        { root, lstat, accessFile, readFile, environment },
         { command: "deploy" },
       );
+    } catch (error) {
+      log(error instanceof Error ? error.message : String(error));
+      return { status: 2 };
+    }
+  } else if (step === "analysis-prepare") {
+    if (hasPresetArgument) return { status: 2 };
+    try {
+      setupConfiguration = parseSetupConfiguration(
+        extraArguments,
+        { root, lstat, accessFile, readFile, environment },
+        { command: "analysis-prepare" },
+      );
+      if (!setupConfiguration.analysisWorker?.modelId) {
+        throw new Error("analysis-prepare requires model, catalog and model id");
+      }
     } catch (error) {
       log(error instanceof Error ? error.message : String(error));
       return { status: 2 };
@@ -4645,13 +5291,13 @@ export async function runLearnerLab(options = {}) {
   }
 
   if (
-    ["setup", "check", "deploy", "destroy", "plan-update", "update", "seed", "import-canary", "all"].includes(
+    ["setup", "check", "deploy", "destroy", "plan-update", "update", "seed", "import-canary", "analysis-prepare", "analysis-check", "analysis-activate", "analysis-smoke", "analysis-canary", "analysis-deactivate", "all"].includes(
       step,
     )
   ) {
     try {
       assertCleanTerraformEnvironment(environment);
-      if (["setup", "check", "deploy", "destroy", "plan-update", "update", "all"].includes(step)) {
+      if (["setup", "check", "deploy", "destroy", "plan-update", "update", "analysis-prepare", "analysis-check", "analysis-activate", "analysis-smoke", "analysis-canary", "analysis-deactivate", "all"].includes(step)) {
         assertNoAutomaticVariableFiles({ readDirectory, root });
       }
     } catch (error) {
@@ -4670,6 +5316,7 @@ export async function runLearnerLab(options = {}) {
     makeDirectory,
     writeFile,
     changeMode,
+    renameFile,
     lstat,
     readFile,
     readPlanFile,
@@ -4708,6 +5355,9 @@ export async function runLearnerLab(options = {}) {
     removeSensitiveFile,
     removeSensitiveDirectory,
     environment,
+    spawnProcess,
+    waitForPort,
+    waitForBridgeStop,
     profile: setupConfiguration?.profile ?? "default",
     autoApprove: setupConfiguration?.autoApprove ?? false,
     analysisWorker: setupConfiguration?.analysisWorker ?? null,
@@ -4715,6 +5365,7 @@ export async function runLearnerLab(options = {}) {
     preset,
     seedConfiguration,
     importCanaryConfiguration,
+    grafanaConfiguration,
   };
   const shouldRun = (name) => step === "all" || step === name;
   let importCanaryInspection = null;
@@ -4733,9 +5384,23 @@ export async function runLearnerLab(options = {}) {
     }
     const checked = checkPrerequisites(context);
     if (!checked.ok) return { status: 1 };
+    context.identity = checked.identity;
+    if (step === "grafana") {
+      if (context.grafanaConfiguration.showPassword) {
+        printGrafanaPassword(context);
+        return { status: 0 };
+      }
+      openGrafana(context);
+      return { status: 0 };
+    }
+    if (step === "analysis-bridge") {
+      await openAnalysisBridge(context);
+      return { status: 0 };
+    }
     if (step === "setup") {
       const applied = await deploy({ ...context, identity: checked.identity });
       if (!applied) return { status: 1 };
+      if (context.analysisWorker?.provider === "ollama") writeAnalysisManifest(context, context.analysisWorker);
       const outputs = readSetupOutputs(context);
       ensureInternalIngestionCredential(context, outputs.runbook);
       provisionInitialCognitoUser(context, outputs, initialUser.email, initialUser.password);
@@ -4745,6 +5410,40 @@ export async function runLearnerLab(options = {}) {
     if (step === "check") {
       initializeAndValidateExistingStack(context, checked.identity);
       return { status: 0 };
+    }
+    if (step === "analysis-prepare") {
+      initializeAndValidateExistingStack(context, checked.identity);
+      const changed = await changeAnalysisWorker(context, checked.identity, "prepare", context.analysisWorker);
+      return { status: changed ? 0 : 1 };
+    }
+    if (["analysis-check", "analysis-smoke"].includes(step)) {
+      initializeAndValidateExistingStack(context, checked.identity);
+      runAnalysisTask(
+        context,
+        step === "analysis-check"
+          ? "dist/src/bootstrap/ollama-connectivity-check.js"
+          : "dist/src/bootstrap/ollama-observability-smoke.js",
+      );
+      return { status: 0 };
+    }
+    if (["analysis-activate", "analysis-deactivate"].includes(step)) {
+      initializeAndValidateExistingStack(context, checked.identity);
+      const worker = readAnalysisManifest(context, { requireEndpoint: step === "analysis-activate" });
+      if (step === "analysis-deactivate") {
+        worker.ollamaBaseUrl = readDeployedOllamaEndpoint(context);
+      }
+      context.analysisWorker = worker;
+      if (step === "analysis-activate") {
+        runAnalysisTask(context, "dist/src/bootstrap/ollama-connectivity-check.js");
+      }
+      const mode = step === "analysis-activate" ? "activate" : "deactivate";
+      const changed = await changeAnalysisWorker(context, checked.identity, mode, worker);
+      return { status: changed ? 0 : 1 };
+    }
+    if (step === "analysis-canary") {
+      initializeAndValidateExistingStack(context, checked.identity);
+      const succeeded = await runAnalysisCanary(context, checked.identity);
+      return { status: succeeded ? 0 : 1 };
     }
     if (step === "destroy") {
       const destroyed = await destroy({ ...context, identity: checked.identity });
@@ -4781,6 +5480,7 @@ export async function runLearnerLab(options = {}) {
     if (shouldRun("deploy")) {
       const applied = await deploy({ ...context, identity: checked.identity });
       if (!applied) return { status: 1 };
+      if (context.analysisWorker?.provider === "ollama") writeAnalysisManifest(context, context.analysisWorker);
       ensureInternalIngestionCredential(context, readIngestionRunbook(context));
     }
     if (shouldRun("seed")) {

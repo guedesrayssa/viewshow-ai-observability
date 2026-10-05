@@ -64,7 +64,7 @@ node apps/scripts/aws-learner-lab.mjs check
 
 ## Worker de análise (opcional)
 
-O worker consome a fila de análise que a ingestão publica (uma única fila e uma única DLQ, `view-show-ingestion-analysis`), detecta anomalias, prevê o risco de QoE e grava incidentes e previsões que a API lê. Ele nasce desabilitado. Para habilitá-lo em uma stack nova, informe um bundle de modelo já aprovado e o catálogo de séries, tanto no `setup` quanto no `deploy`:
+O worker consome a fila de análise que a ingestão publica (uma única fila e uma única DLQ, `view-show-ingestion-analysis`), detecta anomalias, prevê o risco de QoE e grava incidentes e previsões que a API lê. Ele nasce desabilitado. Sem um model ID, `setup` e `deploy` preservam o modo sem LLM:
 
 ```bash
 node apps/scripts/aws-learner-lab.mjs setup \
@@ -74,13 +74,95 @@ node apps/scripts/aws-learner-lab.mjs setup \
 
 O script valida os dois arquivos antes de qualquer chamada externa (o modelo precisa ter `approved: true`). Durante o `apply`, o Terraform constrói a imagem do worker no ECR e publica o modelo e o catálogo no bucket da ingestão, em `analysis/models/<sha256>.json` e `analysis/catalogs/<sha256>.json`. O bundle aprovado é gerado fora do repositório (a pasta `models/` é ignorada pelo git); veja o [guia do worker](../../artefatos/arquitetura/implementacao/worker-analise.md).
 
-O Learner Lab não tem Bedrock, então o worker roda com `LLM_PROVIDER=none`: a detecção e a previsão funcionam e o diagnóstico é registrado como `failed` com o código `LLM_DISABLED`, sem retentativas nem mensagens na DLQ. Para acompanhar o serviço:
+### Rollout Ollama em duas etapas
+
+A URL precisa ser alcançável pelas subnets privadas da VPC e usar um IPv4 literal RFC1918 (`10/8`, `172.16/12` ou `192.168/16`) na raiz, sem DNS, caminho, usuário/senha, query ou fragmento. A variável fica apenas no ambiente do processo Terraform e não é gravada no manifest operacional:
+
+```bash
+export VIEW_SHOW_OLLAMA_BASE_URL="http://<ipv4-rfc1918>:11434"
+export VIEW_SHOW_OLLAMA_MODEL_ID="<modelo-instalado-no-ollama>"
+```
+
+Quando o Ollama da faculdade não tem rota direta para a VPC, abra a ponte SSH
+temporária em um único terminal antes de ativar o worker:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs analysis-bridge
+```
+
+O comando pede interativamente o usuário/host do Ollama e o caminho local da
+chave `vockey`; ele não grava esses valores. Mantenha-o aberto, copie o endpoint
+privado informado para `VIEW_SHOW_OLLAMA_BASE_URL` no terminal que executará
+`analysis-activate` e use `Ctrl+C` para encerrar os três túneis. A configuração
+restrita de `sshd` no bastion (`PermitListen`) continua sendo pré-requisito único.
+
+Para uma stack nova, passe também o model ID no `setup` ou `deploy`. O serviço é criado com zero réplicas:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs deploy \
+  --analysis-model apps/backend/agentic/models/approved.json \
+  --analysis-catalog apps/backend/agentic/config/scope-catalog.pilot.json \
+  --analysis-model-id "$VIEW_SHOW_OLLAMA_MODEL_ID"
+```
+
+Para complementar uma stack já existente, use o fluxo controlado:
+
+```bash
+# Etapa 1: provisiona observabilidade, imagem, artefatos e serviço com 0 réplicas.
+node apps/scripts/aws-learner-lab.mjs analysis-prepare \
+  --analysis-model apps/backend/agentic/models/approved.json \
+  --analysis-catalog apps/backend/agentic/config/scope-catalog.pilot.json \
+  --analysis-model-id "$VIEW_SHOW_OLLAMA_MODEL_ID"
+
+# Valida a rota ECS -> Ollama sem consumir a fila.
+node apps/scripts/aws-learner-lab.mjs analysis-check
+
+# Valida Ollama e exportação OTLP para a observabilidade existente.
+node apps/scripts/aws-learner-lab.mjs analysis-smoke
+
+# Etapa 2: repete o check e permite somente a transição de 0 para 1 réplica.
+node apps/scripts/aws-learner-lab.mjs analysis-activate
+
+# Publica um evento global controlado e exige SUCCEEDED no DynamoDB.
+node apps/scripts/aws-learner-lab.mjs analysis-canary
+```
+
+Cada `apply` pede uma confirmação exata. O validador recusa mudanças fora do conjunto esperado; ativação e rollback aceitam somente a alteração de `desired_count`. Para interromper o consumidor sem destruir a stack:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs analysis-deactivate
+```
+
+`analysis-activate` e `analysis-deactivate` precisam novamente de `VIEW_SHOW_OLLAMA_BASE_URL` para que o plano preserve a task definition sem persistir o endpoint fora do state Terraform. Não use mais de uma réplica neste perfil. Para acompanhar o serviço depois da ativação:
 
 ```bash
 aws logs tail /ecs/view-show-analysis-worker --follow --region us-east-1
 ```
 
-Limites atuais: o worker só é suportado no perfil `learner-lab`, e os presets de `update` ainda não o preservam. Em uma stack que já existe, faça o destroy e crie o ambiente de novo com os dois arquivos.
+O worker continua restrito ao perfil `learner-lab`. Sem uma rota privada aprovada até o Ollama, mantenha o serviço em zero réplicas ou use o provider `none`; a detecção e a previsão continuam disponíveis, mas o diagnóstico por LLM fica desativado.
+
+O checklist completo, os critérios de bloqueio, o rollback e o modelo de
+evidências ficam no [runbook de rollout do Agentic com Ollama](observability/docs/runbooks/agentic-ollama-deployment.md).
+
+## Abrir o Grafana privado
+
+Com a observabilidade provisionada e credenciais AWS ativas, abra o Grafana em
+um único comando, no Linux, macOS ou Windows:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs grafana
+```
+
+O comando abre o túnel SSM e informa `http://localhost:3002` e o usuário
+`admin`. Ele permanece em execução até `Ctrl+C`. A senha é sensível e é lida
+somente pela pessoa que possui o state Terraform local:
+
+```bash
+node apps/scripts/aws-learner-lab.mjs grafana --senha
+```
+
+Esse modo mostra a senha no terminal e não abre o túnel; use-o apenas em um
+terminal privado.
 
 ## Destroy
 

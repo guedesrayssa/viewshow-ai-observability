@@ -119,6 +119,22 @@ variable "analysis_worker_habilitado" {
   }
 }
 
+variable "analysis_worker_desired_count" {
+  description = "Número de réplicas do worker; mantenha 0 até o gate de conectividade com o Ollama passar."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = contains([0, 1], var.analysis_worker_desired_count)
+    error_message = "Use 0 durante o gate ou 1 após a validação do Ollama."
+  }
+
+  validation {
+    condition     = var.analysis_worker_habilitado || var.analysis_worker_desired_count == 0
+    error_message = "Habilite o worker antes de solicitar uma réplica."
+  }
+}
+
 variable "analysis_worker_image_uri" {
   description = "Imagem imutável do worker. Vazia, o Terraform constrói e publica a imagem de apps/backend/agentic no ECR do Learner Lab durante o apply."
   type        = string
@@ -226,9 +242,20 @@ variable "analysis_ollama_base_url" {
   description = "URL do Ollama quando esse provider for selecionado."
   type        = string
   default     = ""
+  sensitive   = true
   validation {
     condition     = var.analysis_llm_provider != "ollama" || length(var.analysis_ollama_base_url) > 0
     error_message = "Informe analysis_ollama_base_url para Ollama."
+  }
+}
+
+variable "analysis_ssh_bridge_habilitado" {
+  description = "Abre somente a porta 11434 do bastion para o Security Group do serviço ECS quando um túnel SSH reverso está em uso."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.analysis_ssh_bridge_habilitado || !var.analysis_worker_habilitado || var.analysis_llm_provider == "ollama"
+    error_message = "A ponte SSH requer provider Ollama quando o worker está habilitado."
   }
 }
 
@@ -275,6 +302,12 @@ variable "observabilidade_habilitada" {
   description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki, Tempo e Alloy em uma EC2."
   type        = bool
   default     = false
+}
+
+variable "observabilidade_api_exportacao_habilitada" {
+  description = "Conecta a task da API aos endpoints privados da observabilidade. O rollout seguro a desliga apenas na fase que cria a EC2 e a religa quando o IP já é conhecido."
+  type        = bool
+  default     = true
 }
 
 variable "tipo_instancia_observabilidade" {
