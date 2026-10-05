@@ -1,373 +1,242 @@
 # Testes de carga — apps/backend/api
 
-## Bateria do frontend (`k6/front-api.js`)
+Suíte k6 da API operacional. A análise dos resultados está em
+[`artefatos/sprint5/testes-de-carga-da-api.md`](../../../../artefatos/sprint5/testes-de-carga-da-api.md) e os
+brutos de cada execução em [`assets/testes-carga/`](../../../../assets/testes-carga/README.md). Este README cobre
+como executar e como interpretar.
 
-O painel (`apps/frontend`) é um export estático (Next.js `output: "export"`,
-hospedado no Amplify) e "inteiramente client-side": todo o trabalho de servidor
-que ele provoca é HTTP contra esta API. `k6/front-api.js` reproduz o padrão de
-chamadas das telas contra a API — é um teste de carga **da API com o mix do
-painel**, não do frontend em si (veja "O que esta bateria não mede").
+## Conteúdo
 
-| Tag da rota           | Chamada do painel                                                             | Peso |
-| --------------------- | ----------------------------------------------------------------------------- | ---: |
-| `incidents_list`      | Incidentes — `GET /api/v1/incidents?window=24h` (+ variantes com filtros)     |  24% |
-| `incidents_chart`     | Incidentes, gráfico — `?window=1h&chartMetric=affected_devices`               |   8% |
-| `dashboard_overview`  | Visão Geral — `GET /api/v1/dashboard/overview`                                |  16% |
-| `incident_diagnosis`  | Evidências — `GET /api/v1/incidents/:id/diagnosis` (a tela chama duas vezes)  |  16% |
-| `incident_events`     | Eventos de um incidente — `GET /api/v1/incidents/:id/events`                  |  10% |
-| `global_events`       | Eventos — lista (`limit=50`) e agregado de volume (`limit=1`)                 |  10% |
-| `monitoring_overview` | Monitoramento — `GET /api/v1/monitoring/overview`                             |   7% |
-| `auth_session`        | Todas as telas, uma vez por carregamento — `GET /auth/session`                |   4% |
-| `rum_beacon`          | Web Vitals/erros a cada visita — `POST /api/v1/telemetry/rum` (única escrita) |   4% |
-| `argus_integration`   | Configurações — `GET /api/v1/integrations/argus`                              |   1% |
+| Arquivo | Para quê | Status |
+| --- | --- | --- |
+| `k6/front-api.js` | **Cenário principal.** Carga mista nas rotas de leitura que o painel consome, com perfis smoke, load, soak, breakpoint, spike e stress | Em uso |
+| `local.sh` | Roda o cenário principal em um ambiente local descartável (DynamoDB Local em Docker, seed e API) | Em uso |
+| `run-aws.mjs` | Roda o cenário principal contra a stack da AWS a partir desta máquina | Em uso |
+| `scripts/backup-table.cjs`, `scripts/undo-remote-seed.cjs` | Backup completo da tabela e desfazer de um seed remoto | Em uso |
+| `scripts/ensure-local-table.cjs` | Cria a tabela no DynamoDB Local (usado por `local.sh`) | Em uso |
+| `../scripts/seed-carga.cjs` | Popula incidentes, evidências, hipóteses e projeções no DynamoDB | Em uso |
+| `k6/auth-check.js` | RNF04: controle de acesso rota a rota (uma iteração) | Roda; hoje reprova 14 de 37 checks, porque as rotas de leitura respondem sem sessão |
+| `k6/consultas.js`, `k6/rodadas.sh`, `k6/bateria.sh` | Suíte anterior (RNF14/RNF09, taxa alvo de 137 req/s) e seus runners | Legada; o cenário de monitoramento exige 200 e a rota hoje responde 503 |
+| `k6/ingestao-batch.js` | RNF01 a RNF03: drenagem de 10 mil eventos/min | Bloqueado: o adaptador de importação é fail-closed |
+| `k6/lib/session.js`, `k6/lib/asserts.js` | Sessão (login real ou cookie forjado), `X-Request-Id` e checks de conteúdo | Compartilhados |
 
-Os pesos são uma estimativa da equipe, não uma medição de produção. Quando
-houver tráfego real, derive-os de `http_request_duration_seconds` em `/metrics`.
+## O cenário principal
 
-**Fidelidade ao frontend** (`apps/frontend/lib/data/client.ts`): timeout de 8 s
-por requisição — acima disso o painel desiste e mostra o bloco como
-indisponível, então aqui é falha (`front_api_client_timeout_total`); um 200 só
-conta se trouxer o envelope `{data, meta}` que o painel valida; a paginação por
-cursor é a da tela de Eventos ("carregar mais"), a única que a usa.
+O painel é um site estático: todo o trabalho de servidor que ele causa é HTTP contra esta API. O cenário
+`front-api.js` sorteia uma rota por iteração, com os pesos abaixo, que são uma estimativa e não uma
+medição (quando houver tráfego real, derive-os de `http_request_duration_seconds` em `/metrics`).
 
-**O que esta bateria não mede**
+| Rota (tag) | Chamada | Peso |
+| --- | --- | ---: |
+| `incidents_list` | `GET /api/v1/incidents?window=24h` e variantes com filtros | 24% |
+| `incidents_chart` | `GET /api/v1/incidents?window=1h&chartMetric=affected_devices` | 8% |
+| `dashboard_overview` | `GET /api/v1/dashboard/overview` | 16% |
+| `incident_diagnosis` | `GET /api/v1/incidents/:id/diagnosis` | 16% |
+| `incident_events` | `GET /api/v1/incidents/:id/events` | 10% |
+| `global_events` | `GET /api/v1/events` (lista com `limit=50` e agregado com `limit=1`) | 10% |
+| `monitoring_overview` | `GET /api/v1/monitoring/overview` | 7% |
+| `auth_session` | `GET /auth/session` | 4% |
+| `rum_beacon` | `POST /api/v1/telemetry/rum` (única escrita) | 4% |
+| `argus_integration` | `GET /api/v1/integrations/argus` | 1% |
 
-- A entrega dos assets estáticos (Amplify/CDN, ~1 MB de JS no total) nem o
-  tempo de renderização no navegador: FCP/LCP/INP (RNF07) exigem Lighthouse ou
-  Playwright contra o painel publicado. Nada aqui os cobre.
-- O salto do Amplify: por padrão o k6 fala direto com o API Gateway. O
-  navegador real entra por `https://<branch>.<id>.amplifyapp.com` e o Amplify
-  repassa `/api`, `/auth` e `/health`. Para incluir esse salto use
-  `TARGET=amplify` em `run-aws.mjs`, com taxa baixa (serviço gerenciado).
-- O modelo de usuários do painel: as telas se atualizam sozinhas (Visão Geral a
-  cada 30 s, Incidentes a cada 45 s, Monitoramento a cada 20 s). Como regra de
-  bolso, uma aba de Visão Geral aberta custa 2 req/min, então `RATE=50` equivale
-  a cerca de 1.500 abas dessa tela abertas.
-- O login (`POST /auth/login`), a ingestão, reanálise/revisão e importação.
-- Volume de dados realista: o seed cria 300 incidentes. A leitura de incidentes,
-  do diagnóstico e do overview carrega a projeção inteira (um único item do
-  DynamoDB) a cada requisição e filtra em memória; o custo cresce com o número
-  de incidentes (medido: 300 → 2.500 incidentes dobrou a CPU por requisição).
-  Use `INCIDENTS_PER_HOUR=100 node scripts/seed-carga.cjs` e
-  `INCIDENT_COUNT=2500` para medir com um volume maior. O limite físico é o
-  item de 400 KB do DynamoDB.
+O cenário reproduz o cliente real em três pontos: timeout de 8 s por requisição (o painel desiste nesse
+prazo, então é falha), validação do envelope `{data, meta}` que o painel exige e paginação por cursor na
+lista de eventos, a única tela que a usa. Não há login no Cognito, ingestão, reanálise nem importação:
+a sessão é um cookie assinado preparado uma vez no `setup()`.
 
-**Limites conhecidos da API que a bateria evidencia** (estado de `develop`):
+### Perfis e critérios
 
-- `monitoring/overview` é um stub: responde sempre `503 DATA_UNAVAILABLE`. A
-  rota pesa 7% do mix e não exercita nada; o sumário avisa. Quando a projeção
-  existir, rode com `MONITORING_EXPECTED=available` para exigir 200.
-- `GET /api/v1/incidents` devolve `hasMore=true` com `nextCursor=null`: a lista
-  de incidentes não pagina. O contador `front_api_has_more_without_cursor_total`
-  expõe o desvio; a paginação exercitada é a de Eventos.
-- Com o seed, `events` volta com 0 itens (`SEED_EVENTS_NOT_MATERIALIZED`) e
-  incidentes/diagnóstico com `meta.partial=true`. O sumário mostra a fração
-  parcial por rota; cerca de 22% do mix toca rotas que hoje respondem sem
-  trabalho real.
+`RATE` é a taxa de chegada em iterações por segundo (cada iteração faz uma requisição; o modelo é aberto, então
+a pressão não cai quando a API fica lenta).
 
-**Critérios** (`load`/`soak` seguem o RNF09, 99,9%; `stress`/`spike`/`breakpoint`
-empurram além do regime normal e toleram até 2%):
+| Modo | Perfil |
+| --- | --- |
+| `smoke` | 1/s por 30 s (ignora `RATE`) |
+| `load` | rampa a `RATE` em 30 s, `RATE` por 5 min, saída em 15 s |
+| `stress` | `RATE` por 1 min, rampa a 2 × `RATE`, 2 × `RATE` por 3 min, volta a `RATE` |
+| `spike` | `RATE` por 1 min, rampa a 4 × `RATE` em 10 s, 4 × `RATE` por 30 s, volta a `RATE` |
+| `breakpoint` | degraus de `BREAKPOINT_STEPS` (padrão 10, 20, 30, 40, 50, 75, 100, 150), cada um sobe em 10 s e segura 50 s |
+| `soak` | `RATE` por `DURATION` (padrão 30 min) |
 
-| Métrica                                               | Smoke         | Load, soak | Stress, spike, breakpoint |
-| ----------------------------------------------------- | ------------- | ---------- | ------------------------- |
-| `checks`, `front_api_contract_success_rate`           | `==1`         | `>0.999`   | `>0.98`                   |
-| `http_req_failed` (200 só; 503 só no monitoramento)   | `==0`         | `<0.001`   | `<0.02`                   |
-| p95 / p99 em `status:200`                             | < 2 s / < 5 s | idem       | idem                      |
-| p95 / p99 por rota (`rota:<tag>`)                     | < 2 s / < 5 s | idem       | idem                      |
-| falha e contrato por rota                             | `==0`         | `<0.02`    | `<0.02`                   |
-| 429 (exceto RUM), timeouts > 8 s, iterações descartadas | `==0`       | `==0`      | `==0`                     |
+| Métrica | Smoke | Load e soak | Stress, spike e breakpoint |
+| --- | --- | --- | --- |
+| `checks` e sucesso do contrato | `==1` | `>0.999` | `>0.98` |
+| `http_req_failed` (503 só conta como esperado no monitoramento) | `==0` | `<0.001` | `<0.02` |
+| p95 / p99 em `status:200`, global e por rota | < 2 s / < 5 s | idem | idem |
+| Falha e contrato por rota | `==0` | `<0.02` | `<0.02` |
+| 429 (exceto o beacon), timeouts de 8 s e iterações descartadas | `==0` | `==0` | `==0` |
 
-O sumário impresso separa o resultado por rota e por fase (`s2_plateau`, `r75`,
-…), então o `breakpoint` mostra em que taxa a API cede; sem isso ele só
-devolveria agregados. O JSON completo vai para `loadtest/results/`.
+Load e soak seguem o RNF09 (99,9%). O RNF14 pede 137 req/s (`RATE=137`).
 
-A bateria não executa mutações nas hipóteses, reanálises e importações, nem
-login no Cognito, ingestão ou chamadas ao LLM. Ela usa uma sessão local assinada
-e um seed sintético. `local.sh` não direciona requisições para a AWS: cada
-execução sobe uma instância descartável de DynamoDB Local, cria tabela isolada,
-semeia 300 incidentes, inicia a API em loopback e remove o contêiner ao final.
+## Executar localmente
 
-Antes de gastar uma rodada, o `setup()` confere que a lista de incidentes não
-está vazia e que `inc-000001` e `inc-<INCIDENT_COUNT>` existem (`PREFLIGHT=0`
-desliga). Contra uma API sem a massa sintética — por exemplo a stack AWS com
-dados reais ingeridos — ele aborta com a causa, em vez de reportar 100% de 404.
-
-Pré-requisitos: Docker, Node.js 22, dependências npm de `apps/backend/api` já
-instaladas e k6 disponível no `PATH`. A partir desta pasta:
+Pré-requisitos: Docker, Node.js 22, k6 no `PATH` e as dependências npm de `apps/backend/api` instaladas. A
+partir desta pasta:
 
 ```bash
-./local.sh smoke       # verificação curta e conservadora (1 iteração/s)
+./local.sh smoke                  # primeiro: curto e conservador
 RATE=50 ./local.sh load
-RATE=50 ./local.sh spike
 RATE=50 ./local.sh stress
+RATE=50 ./local.sh spike
 RATE=50 DURATION=30m ./local.sh soak
-./local.sh breakpoint  # degraus de 10 a 150 chegadas/s (sobe 10 s, segura 50 s), sumário por fase
+./local.sh breakpoint
 ```
 
-`RATE` é a taxa de chegada de **iterações por segundo**; cada iteração faz uma
-requisição (mais a segunda página de eventos, quando existe). `load` sustenta a
-taxa por cinco minutos; `spike` aplica uma rajada de quatro vezes a taxa base;
-`stress` sustenta duas vezes a taxa base; `soak` dura 30 minutos por padrão. O
-RNF14 pede 137 req/s (`RATE=137`). Cada modo começa com banco limpo e seed novo.
-A taxa do limite de API local é 30.000 req/min por padrão para deixar o gerador
-medir a API; ajuste com `API_RATE_LIMIT_PER_MINUTE` se necessário (o limiter do
-beacon RUM, fixo em 600/min, responde 429 sem contar como falha). O cenário é
-carga de chegada aberta (arrival rate), então a pressão não cai quando a API
-fica lenta.
+Cada execução sobe um DynamoDB Local descartável, cria uma tabela isolada, semeia 300 incidentes, inicia a
+API em loopback e remove o contêiner ao final; nada vai para a AWS. O resultado em JSON vai para
+`results/` (ignorado pelo Git). O limite de taxa local é de 30.000 req/min (`API_RATE_LIMIT_PER_MINUTE` ajusta).
 
-Variáveis do script: `BASE_URL`, `MODE`, `RATE`, `DURATION`, `INCIDENT_COUNT`,
-`AUTH_COOKIE_SECRET` (ou `AUTH_USERNAME`/`AUTH_PASSWORD`), `MONITORING_EXPECTED`
-(`either` | `unavailable` | `available`), `FOLLOWUP_PROBABILITY` (0,15),
-`PREFLIGHT` (1), `ROUTE_P95_MS`/`ROUTE_P99_MS` (2000/5000), `INCIDENT_IDS` (`synthetic` |
-`discover`, para medir um dataset real descobrindo os IDs na API), `WINDOW_OVERRIDE` (ex.: `all`),
-`MAX_VUS`, `BREAKPOINT_STEPS` (padrão `10,20,30,40,50,75,100,150`) e `RESULTS_DIR`.
-No `breakpoint`, leia só até o primeiro degrau que falha: depois dele o serviço já está
-degradado (fila, task reiniciada pelo health check do ALB).
+Os resultados locais medem esta máquina e o DynamoDB Local, não a AWS. Para aproximar a tarefa implantada,
+limite a CPU da API (`docker run --cpus=0.25 --memory=512m` com a imagem da AWS apontando para o DynamoDB
+Local; um exemplo está em
+[`assets/testes-carga/2026-09-30-local/`](../../../../assets/testes-carga/2026-09-30-local/README.md)).
 
-**Dimensione o gerador.** O modelo é aberto: se a API segura cada requisição até o
-timeout de 8 s, o k6 precisa de `taxa x 8` VUs para continuar emitindo a carga
-pedida (o piso de `maxVUs` já considera isso, ~1,2x). Com poucos VUs ele descarta
-chegadas e a carga efetiva fica abaixo da pretendida; o sumário avisa. Cada VU custa
-cerca de 1 MB de RAM: um t3.micro (0,9 GB) não sustenta mais que ~700 VUs, então
-prefira um gerador maior para `RATE` alto. Rode o gerador na mesma região da stack:
-da região do bastion o RTT ao API Gateway é de ~45 ms e ao ALB ~5 ms; de fora, a
-latência medida é majoritariamente rede.
+### Variáveis do cenário
 
-Use primeiro `smoke`; os perfis acima dele podem consumir bastante CPU e
-memória do computador. Os resultados locais medem a capacidade desta máquina e
-do DynamoDB Local, não a da AWS. Para aproximar a AWS, limite a CPU da API
-(`docker run --cpus=0.25 --memory=512m` com a imagem implantada, apontando para
-o DynamoDB Local) e compare.
+| Variável | Padrão | Efeito |
+| --- | --- | --- |
+| `BASE_URL`, `MODE`, `RATE`, `DURATION` | `smoke`, 50, 30m | Alvo, perfil, taxa e duração do soak |
+| `AUTH_COOKIE_SECRET` ou `AUTH_USERNAME` e `AUTH_PASSWORD` | | Cookie forjado (mesmo segredo da API, 32+ caracteres) ou login real no Cognito |
+| `INCIDENT_COUNT` | 300 | Sorteia `inc-000001` a `inc-<INCIDENT_COUNT>` |
+| `INCIDENT_IDS`, `WINDOW_OVERRIDE` | `synthetic` | `discover` lê os IDs na própria API (`window=all`) para medir um dataset real; `WINDOW_OVERRIDE=all` troca as janelas de incidentes e eventos |
+| `MONITORING_EXPECTED` | `either` | `unavailable`, `available` ou `either`: quais respostas do monitoramento contam como sucesso |
+| `FOLLOWUP_PROBABILITY` | 0,15 | Fração das listas de eventos que pedem a segunda página |
+| `PREFLIGHT` | 1 | Confere massa e IDs antes da rodada; 0 desliga |
+| `ROUTE_P95_MS`, `ROUTE_P99_MS` | 2000, 5000 | Limites por rota |
+| `MAX_VUS` | taxa × 8 × 1,2 | Teto de VUs (veja "Dimensionar o gerador") |
+| `BREAKPOINT_STEPS` | `10,20,30,40,50,75,100,150` | Degraus do breakpoint |
+| `RESULTS_DIR` | `.` | Pasta do JSON de resumo |
 
-Para rodar somente o script em outra API de teste, use k6 diretamente com
-`BASE_URL`, `AUTH_COOKIE_SECRET` (o mesmo segredo do servidor) ou
-`AUTH_USERNAME`/`AUTH_PASSWORD`, `MODE`, `RATE` e `INCIDENT_COUNT`. Prepare
-antes os IDs ordinais `inc-000001` a `inc-000300` e as projeções de dashboard e
-dashboard overview. A API deve permitir taxa suficiente por IP; o limite padrão
-de produção (180 req/min) vai bloquear um gerador único em carga alta.
+## Interpretar o resultado
 
-### Implementação anterior
+O sumário impresso mostra os thresholds reprovados, o resultado por rota, por fase (ou por degrau, no
+breakpoint) e por status HTTP (0 é timeout ou erro de rede), seguido de observações. Antes de confiar numa
+rodada, confira:
 
-Suíte k6 do contrato atual de `apps/backend/api` (monólito modular). Ignora
-por completo `apps/basica` (Flask legado, fora da arquitetura aprovada).
+- **A carga pedida foi entregue.** O sumário avisa quando há iterações descartadas. Numa API lenta cada
+  requisição fica presa até o timeout de 8 s e o k6 precisa de `taxa × 8` VUs para continuar emitindo; com
+  menos, a carga efetiva fica abaixo da pretendida e a falha medida é um limite inferior. Cada VU custa
+  cerca de 1 MB de RAM: uma máquina de 0,9 GB sustenta no máximo ~700 VUs.
+- **O gerador não é o limite.** Acompanhe o CPU e a memória dele; na AWS, rode-o na mesma região da stack.
+  De fora, a latência medida é majoritariamente rede (~150 ms contra ~20 ms de dentro da VPC).
+- **No breakpoint, leia só até o primeiro degrau que falha.** Depois dele o serviço já está degradado (fila,
+  tarefa reiniciada pelo health check do ALB).
+- **As rotas fazem trabalho real.** O sumário sinaliza o monitoramento quando 100% das respostas são 503,
+  e conta respostas parciais (`meta.partial`) e snapshots desatualizados (`STALE_SNAPSHOT`).
+- **O volume de dados é realista.** O seed cria 300 incidentes. Incidentes, diagnóstico e overview carregam
+  a projeção inteira (um item do DynamoDB) a cada requisição, então o custo cresce com o volume: de 300 para
+  2.500 incidentes a CPU por requisição mais que dobrou. Para medir com mais dados, use
+  `INCIDENTS_PER_HOUR=100 node scripts/seed-carga.cjs` e `INCIDENT_COUNT=2500`; o limite físico é o item de
+  400 KB do DynamoDB.
 
-Documentação do artefato de entrega (requisitos, plano de testes, resultados,
-observabilidade da rodada anterior):
-[`artefatos/sprint3/testes-carga-inicial.md`](../../../../artefatos/sprint3/testes-carga-inicial.md).
-O relatório da execução AWS desta suíte está em
-[`artefatos/sprint5/testes-de-carga-da-api.md`](../../../../artefatos/sprint5/testes-de-carga-da-api.md),
-com cópias dos resumos JSON em `artefatos/sprint5/evidencias/testes-carga-api/aws/`.
-Este README cobre principalmente o operacional — como rodar e o que esperar.
+### Limites conhecidos da API que o cenário evidencia
 
-## Arquivos
+- `monitoring/overview` é um stub: responde sempre `503 DATA_UNAVAILABLE`. Quando a projeção existir, use
+  `MONITORING_EXPECTED=available`.
+- `GET /api/v1/incidents` devolve `hasMore=true` com `nextCursor=null`: a lista de incidentes não pagina. O
+  contador `front_api_has_more_without_cursor_total` expõe o desvio.
+- Com o seed, `events` volta com 0 itens (`SEED_EVENTS_NOT_MATERIALIZED`) e incidentes e diagnóstico com
+  `meta.partial=true`. Cerca de 27% da mistura (eventos e monitoramento) toca rotas sem trabalho real.
+- O limite de taxa (180 req/min por IP) é um teto para o gerador: acima dele o k6 mede o 429, não a API. O
+  limitador do beacon de telemetria é fixo em 600/min e responde 429 sem contar como falha.
 
-| Arquivo                                                  | Cobre                                                                                                                                          | Roda hoje?                                                                 |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `k6/consultas.js`                                        | RNF14/RNF09 — `/api/v1/incidents` (lista, diagnóstico, eventos, paginação), `/dashboard/overview`, `/monitoring/overview`                      | Sim                                                                        |
-| `k6/auth-check.js`                                       | RNF04 — controle de acesso em todas as rotas, incluindo `auth/session`, `auth/login`, `auth/callback`, `auth/logout`, `reanalyze` e `imports*` | Sim                                                                        |
-| `k6/ingestao-batch.js`                                   | RNF01/RNF02/RNF03 — drenagem de 10k eventos/min, acúmulo (backlog), frescor ponta a ponta                                                      | Não — adaptador de import fail-closed por design (ver cabeçalho do script) |
-| `k6/rodadas.sh`                                          | Bateria `smoke → load → breakpoint → estresse → spike → soak` de `consultas.js`                                                                | Sim                                                                        |
-| `k6/lib/session.js`                                      | Sessão (login real ou cookie forjado) e o header `X-Request-Id`, compartilhado pelos três scripts                                              | —                                                                          |
-| `k6/lib/asserts.js`                                      | Checks de conteúdo de `consultas.js`: schema mínimo, campo físico vazado, duplicidade entre páginas, eco de `X-Request-Id`                     | —                                                                          |
-| [`../scripts/seed-carga.cjs`](../scripts/seed-carga.cjs) | Popula incidentes, evidências, hipóteses e projeções de overview/monitoring no DynamoDB                                                        | Sim                                                                        |
+## Executar na AWS
+
+1. **Conta.** O ID da conta muda a cada laboratório; use `aws sts get-caller-identity`.
+2. **Dados.** O cenário precisa dos incidentes sintéticos. **Não semeie uma tabela que tenha dados
+   ingeridos:** `seed-carga.cjs` com `ALLOW_REMOTE_SEED=1` grava `CONTROL#DATASET/ACTIVE` e troca o dataset
+   ativo pelo sintético. Use uma stack isolada, ou tire antes um backup e desfaça depois:
+
+   ```bash
+   cd apps/backend/api
+   export OPERATIONAL_TABLE_NAME=<tabela> AWS_REGION=us-east-1
+   node loadtest/scripts/backup-table.cjs backup.json           # somente leitura
+   ALLOW_REMOTE_SEED=1 node scripts/seed-carga.cjs              # sem CLEAN=1
+   # ... testes ...
+   node loadtest/scripts/undo-remote-seed.cjs backup.json           # ensaio
+   node loadtest/scripts/undo-remote-seed.cjs backup.json --apply   # restaura o manifesto e apaga só o sintético
+   ```
+
+   Sem a massa sintética, o `PREFLIGHT` aborta com a causa em vez de reportar 100% de 404.
+3. **Rate limit.** O padrão de 180 req/min vale para o gerador inteiro. Para taxas maiores, eleve-o só na
+   janela do teste: `node apps/scripts/aws-learner-lab.mjs update loadtest-20000` e, ao final, `update baseline`
+   (fluxo protegido; exige Linux ou macOS e que não haja `*.auto.tfvars` em `apps/fullstack`). Alternativa
+   sem Terraform: registrar uma revisão da definição da tarefa com `RATE_LIMIT_PER_MINUTE` alto, apontar o
+   serviço para ela e reverter ao final; isso gera drift no state e precisa ser desfeito.
+4. **Gerador.** Da máquina local, `run-aws.mjs` confere a conta, espera a tarefa saudável e roda o cenário
+   contra o API Gateway; ele aborta se o pico do perfil excede o limite da tarefa (`ALLOW_RATE_LIMITED=1`
+   ignora):
+
+   ```bash
+   export EXPECTED_AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+   MODE=smoke node run-aws.mjs
+   MODE=load RATE=10 node run-aws.mjs
+   TARGET=amplify MODE=smoke node run-aws.mjs   # entra pelo painel (salto do Amplify), com taxa baixa
+   ```
+
+   Para medir a capacidade, rode o k6 **dentro da VPC**, por exemplo no bastion via SSM (sem SSH): instale o
+   k6 (`curl` do release no GitHub), copie `k6/front-api.js` e `k6/lib/` (tar, gzip e base64 em um
+   `aws ssm send-command` com `AWS-RunShellScript`) e rode `k6 run -e BASE_URL=<api> -e MODE=... front-api.js`
+   na instância. Leia o `AUTH_COOKIE_SECRET` da definição da tarefa pela própria instância, para o segredo
+   não ficar no histórico do SSM. Ao final, remova o k6 e os arquivos.
+5. **Correlacionar com CloudWatch.** Para atribuir um gargalo, colete por minuto, na janela do teste: ECS
+   (`CPUUtilization`, `MemoryUtilization`), ALB (`RequestCount`, `HTTPCode_Target_5XX_Count`,
+   `HTTPCode_ELB_5XX_Count`, `TargetResponseTime`, `HealthyHostCount`, `UnHealthyHostCount`), API Gateway
+   (`Count`, `5xx`, `Latency`, `IntegrationLatency`) e DynamoDB (`ConsumedReadCapacityUnits`,
+   `ReadThrottleEvents`). Veja também os eventos do serviço ECS e as atividades do autoscaling
+   (`aws ecs describe-services`, `aws application-autoscaling describe-scaling-activities`).
+
+O segredo de sessão fica em texto claro na definição da tarefa ECS (é de lá que `run-aws.mjs` o lê); quem
+tem `ecs:DescribeTaskDefinition` consegue forjar sessões. O caminho correto é o bloco `secrets` com Secrets
+Manager ou SSM. Com `AUTH_USERNAME` e `AUTH_PASSWORD` o `setup()` faz um login real no Cognito e não exige o
+segredo.
 
 ## Autenticação
 
-Duas formas, a escolha de quem chama `k6 run` — `k6/lib/session.js` decide
-sozinho em `setup()`, conforme as variáveis presentes:
+`k6/lib/session.js` decide no `setup()`: com `AUTH_USERNAME` e `AUTH_PASSWORD` faz `POST /auth/login` no
+Cognito uma vez e usa o cookie emitido; com `AUTH_COOKIE_SECRET` forja o cookie localmente (HMAC, mesmo
+algoritmo do `SessionCodec`). Nenhum dos dois mede o login sob carga. `GET /auth/login` e `/auth/callback`
+(SSO federado) respondem `503 FEATURE_UNAVAILABLE` até o SSO corporativo ser configurado, o que não afeta
+esses caminhos. As rotas de incidentes, dashboard, diagnóstico e monitoramento ignoram o cookie; só
+`/auth/session`, eventos e a integração Argus o exigem.
 
-- **Login real** (`-e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha>`):
-  `POST /auth/login` de verdade contra o Cognito (`apps/fullstack/cognito.tf`
-  provisiona o User Pool). Recomendado contra qualquer stack aplicada pelo
-  Terraform, porque não exige conhecer o segredo HMAC (`AUTH_COOKIE_SECRET`).
-  Observação: hoje esse segredo aparece em texto claro na definição da task ECS
-  (ver a nota na seção AWS), então ele "nunca sai" apenas no sentido de que o
-  Terraform não o exibe como output.
-- **Cookie forjado** (`-e AUTH_COOKIE_SECRET=<segredo>`, mínimo 32
-  caracteres): `k6/lib/session.js` forja o cookie localmente (HMAC, mesmo
-  algoritmo de `SessionCodec`), sem chamada HTTP. Útil só quando o segredo é
-  conhecido de outra forma (ex.: `.env` local).
-
-`GET /auth/login`/`GET /auth/callback` (SSO federado) continuam
-`503 FEATURE_UNAVAILABLE` enquanto o SSO corporativo não for configurado —
-isso não afeta nenhuma das duas formas acima, que usam login de senha direto.
-
-## Como rodar
+## Outras suítes
 
 ```bash
-# 1. Semear (a partir de apps/backend/api)
-CLEAN=1 node scripts/seed-carga.cjs
-
-# 2. k6 (a partir de apps/backend/api/loadtest/k6) — cookie forjado
-export BASE_URL=http://localhost:3000
-export AUTH_COOKIE_SECRET=<mesmo segredo do processo da API>   # 32+ chars
-
-k6 run -e BASE_URL=$BASE_URL -e AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET -e MODE=smoke consultas.js
-k6 run -e BASE_URL=$BASE_URL -e AUTH_COOKIE_SECRET=$AUTH_COOKIE_SECRET auth-check.js
-./rodadas.sh   # bateria completa de consultas.js (lê AUTH_COOKIE_SECRET do ambiente)
+# a partir de apps/backend/api: CLEAN=1 node scripts/seed-carga.cjs   (local; semeie imediatamente antes)
+# a partir de apps/backend/api/loadtest/k6:
+k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<segredo> -e MODE=smoke consultas.js
+k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<segredo> auth-check.js
+./rodadas.sh                  # bateria completa de consultas.js
 ```
 
-`consultas.js` também aceita `-e AUTH_USERNAME=<email> -e AUTH_PASSWORD=<senha>`
-no lugar de `AUTH_COOKIE_SECRET`, para logar de verdade (ver seção
-Autenticação) — `auth-check.js` e `ingestao-batch.js` continuam só com
-cookie forjado por enquanto.
-
-Variáveis de `consultas.js`: `RATE` (padrão 137 req/s), `INCIDENT_COUNT`
-(300), `STRESS_MULTIPLIER` (3). Variáveis de `ingestao-batch.js`:
-`EVENT_RATE` (10000/min), `WINDOW_MINUTES` (15), `BACKLOG_BATCHES` (1–4),
-`POLL_TIMEOUT_S`.
-
-## Rodando contra dados reais (AWS)
-
-O seed local (`seed-carga.cjs`) gera incidentes sintéticos — suficiente para
-RNF09/RNF14 (a API não sabe se o item veio do seed ou de ingestão real), mas
-não passa pelo caminho de ingestão de verdade. Para rodar contra a stack real:
-
-```bash
-# 1. Descobrir o endpoint e a tabela da stack aplicada (a partir de apps/fullstack)
-terraform output api_url            # BASE_URL para k6 (HTTP direto no ALB)
-terraform output -raw tabelas_dynamodb
-
-# 2. Criar (uma vez) um usuário de teste no Cognito da stack —
-#    user pool id sai de `terraform output cognito_user_pool_id`
-aws cognito-idp admin-create-user \
-  --user-pool-id <cognito_user_pool_id> --username "<email-de-teste>" \
-  --user-attributes Name=email,Value=<email-de-teste> Name=email_verified,Value=true \
-  --message-action SUPPRESS --region us-east-1
-aws cognito-idp admin-set-user-password \
-  --user-pool-id <cognito_user_pool_id> --username "<email-de-teste>" \
-  --password "<senha>" --permanent --region us-east-1
-
-# 3. k6 aponta para qualquer BASE_URL — é HTTP puro, não usa credenciais AWS
-k6 run -e BASE_URL=http://<dns-do-alb> -e AUTH_USERNAME=<email-de-teste> -e AUTH_PASSWORD=<senha> -e MODE=smoke consultas.js
-```
-
-Na stack do Learner Lab, `run-aws.mjs` valida a conta, espera a task ECS
-saudável, obtém o segredo de sessão somente em memória e executa a mesma
-bateria contra o endpoint HTTPS do API Gateway. O segredo não é impresso nem
-gravado nos resultados. O ID da conta muda a cada laboratório; confira o da
-sessão atual em vez de copiar um valor antigo:
-
-```bash
-export EXPECTED_AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-MODE=smoke node run-aws.mjs
-MODE=load RATE=10 node run-aws.mjs
-MODE=stress RATE=10 node run-aws.mjs
-MODE=spike RATE=10 node run-aws.mjs
-TARGET=amplify MODE=smoke node run-aws.mjs   # entra pelo painel (salto do Amplify)
-```
-
-O runner lê `RATE_LIMIT_PER_MINUTE` da task ativa e aborta quando o pico do
-perfil excede o limite (`ALLOW_RATE_LIMITED=1` ignora): acima dele o k6 mediria
-o 429, não a API. `RATE=10` é 14 vezes menor que os 137 req/s do RNF14; uma
-rodada aprovada nessa taxa não comprova o requisito.
-
-**Não semeie uma tabela que já tenha dados ingeridos.** `seed-carga.cjs` com
-`ALLOW_REMOTE_SEED=1` grava o item `CONTROL#DATASET/ACTIVE` (manifesto do
-dataset ativo) além das projeções: a API passa a servir o dataset sintético e o
-dataset real deixa de ser o ativo até ser reativado. Use essa etapa somente em
-uma stack isolada e vazia, ou exporte antes o item de controle para poder
-restaurá-lo. Sem a massa sintética, o `PREFLIGHT` do k6 aborta com a causa.
-Para desfazer um seed remoto (restaura o manifesto do backup e apaga só os itens
-sintéticos, com ensaio por padrão), tire antes um backup completo com
-`scripts/backup-table.cjs <backup.json>` e depois use
-`scripts/undo-remote-seed.cjs <backup.json> [--apply]`.
-Para cargas acima do limite padrão,
-o comando protegido `update loadtest-20000` eleva temporariamente o limite e
-`update baseline` o restaura para 180 req/min.
-
-(`AUTH_COOKIE_SECRET` continua funcionando como alternativa. Atenção: o
-Terraform gera o segredo com `random_password`, mas o injeta como variável de
-ambiente comum na definição da task ECS — é de lá que `run-aws.mjs` o lê. Quem
-tem `ecs:DescribeTaskDefinition` consegue forjar sessões de qualquer perfil;
-o caminho correto é o bloco `secrets` com Secrets Manager/SSM.)
-
-Dois pontos que mudam de verdade ao sair do localhost:
-
-- **O rate limit (180 req/min por IP) é o mesmo teto** contra a AWS — um
-  gerador único continua sem provar os 137 req/s do RNF14. Para medir
-  capacidade real: rode k6 distribuído (múltiplas origens/IPs — k6 Cloud ou
-  várias instâncias EC2 na mesma subnet) ou peça ao time de backend para
-  subir o limite só na janela do teste.
-- **Ingestão real (`ingestao-batch.js`) continua bloqueada** até dois pontos
-  serem resolvidos, independente do ambiente: (a) um adaptador real de
-  `ImportControlPort` (hoje é `UnavailableImportControl`, fail-closed por
-  design) ligado a S3 + uma tarefa de processamento, e (b) o contrato
-  (`contracts/openapi/public.openapi.json`, schema `ImportStartData`) expor
-  `upload.parts[].url` — as URLs pré-assinadas que `completeImport()` já
-  espera receber para subir bytes de verdade. Sem isso, `setup()` aborta
-  igual em qualquer ambiente, local ou AWS.
-
-Evite `CLEAN=1 node scripts/seed-carga.cjs` contra a tabela real sem alinhar
-com o time — o script tem uma trava (`ALLOW_REMOTE_SEED=1`) justamente para
-isso não acontecer sem querer.
-
-## Limitações a interpretar antes de ler os números
-
-1. **Rate limit por IP** (`rateLimiter(config.rateLimitPerMinute)` em
-   `src/app.ts`, padrão **180 req/min**) teta o throughput observável de um
-   gerador único a ~3,9 req/s — bem abaixo dos 137 do RNF14. Não é bug do
-   teste. Para medir a API de verdade, rode distribuído (múltiplas origens) ou
-   suba o limite **só na janela do teste** com
-   `RATE_LIMIT_PER_MINUTE=<alto> npm start` (em ECS, pela variável Terraform
-   `rate_limit_por_minuto`), devolvendo ao padrão depois. Medido no leito
-   local: **97,06%** de 429 com o limite em 180, contra 0% e **133,12 req/s**
-   de vazão útil com o limite elevado. Em ECS Fargate com 1 vCPU e o limite
-   elevado, a vazão útil não passou de **58,5 req/s** — ver o artefato de
-   entrega.
-2. **`dashboard/overview`/`monitoring/overview` envelhecem.** Os snapshots
-   gravados pelo seed só respondem 200 enquanto a idade cabe na janela pedida
-   (o mais novo tem 5 min; `monitoring` usa janela de 15 min por padrão); fora
-   dela vem `503 DATA_UNAVAILABLE`. Os checks de `consultas.js` exigem 200, e
-   por isso **semeie imediatamente antes de cada rodada** — `CLEAN=1 node
-scripts/seed-carga.cjs` leva cerca de 1 s.
-3. **`ingestao-batch.js` está bloqueado por design** — o adaptador de import
-   é fail-closed (503) até S3 e a tarefa de ingestão serem configurados;
-   `setup()` detecta isso e aborta com mensagem clara.
-4. **Autenticação testa uma sessão válida, não o fluxo de login em si** —
-   com `AUTH_USERNAME`/`AUTH_PASSWORD` o `POST /auth/login` roda uma vez em
-   `setup()` (login real, contra o Cognito), não a cada iteração; com
-   `AUTH_COOKIE_SECRET` nem isso, o cookie é forjado direto. Nenhum dos dois
-   mede o fluxo de login sob carga — para isso, ver `auth-check.js`.
-5. **`consultas.js` confere schema mínimo, não o contrato Zod completo** —
-   os checks de `lib/asserts.js` (schema de `data.items`, campo físico
-   vazado, duplicidade entre páginas, eco de `X-Request-Id`) são uma forma
-   manual enxuta: o runtime do k6 (goja) não roda os schemas Zod de
-   `@view-show/contracts`. A validação completa do contrato é feita pelos
-   testes funcionais HTTP em Vitest/Node
-   (`apps/backend/api/tests/incidents-aws-live.functional.test.ts`).
+`consultas.js` aceita `RATE` (padrão 137), `INCIDENT_COUNT` (300) e `STRESS_MULTIPLIER` (3), e login real no lugar
+do cookie forjado. `auth-check.js` e `ingestao-batch.js` usam só cookie forjado. `ingestao-batch.js`
+(`EVENT_RATE`, `WINDOW_MINUTES`, `BACKLOG_BATCHES`, `POLL_TIMEOUT_S`) aborta no `setup()` enquanto o adaptador
+de importação for fail-closed e o contrato não expuser `upload.parts[].url`. `bateria.sh` roda uma
+bateria de `consultas.js` gravando um `metadados-*.json` auditável em `assets/testes-carga/<data>-aws/`
+(formato das evidências de 11/09/2026).
 
 ## Observabilidade
 
-A stack Grafana LGTM do projeto vive em
-[`apps/fullstack/observability`](../../../fullstack/observability)
-(Prometheus, Loki, Tempo, Alloy) e sobe com:
+A pilha Grafana do projeto (Prometheus, Loki, Tempo, Alloy) está em
+[`apps/fullstack/observability`](../../../fullstack/observability/README.md) e sobe com
+`docker compose -f apps/fullstack/docker-compose.observability.yml up -d` (Grafana em
+`http://127.0.0.1:3002`, Prometheus em `:9090`).
 
-```bash
-docker compose -f apps/fullstack/docker-compose.observability.yml up -d
-# Grafana em http://127.0.0.1:3002 (pasta "View Show"), Prometheus em :9090
-```
-
-- **Métricas (Prometheus):** a API expõe `GET /metrics` sempre que
-  `METRICS_ENABLED=true` (padrão). O alvo `view-show-api` já está **declarado**
-  em `prometheus.yml`, apontando para `host.docker.internal:3000`; a composição
-  não inicia a API, então mantenha o processo rodando no host para o alvo ficar
-  saudável (confira em `http://127.0.0.1:9090/targets`).
-- **Traces (Tempo):** suba a API com
-  `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` para que cada
-  requisição vire um span automaticamente (auto-instrumentação HTTP) — sem
-  mudança nenhuma no k6.
-- **Logs (Loki):** a API grava `request_id` estruturado em cada linha. O Alloy
-  da pilha coleta logs **de contêineres** (`loki.source.docker`), e a API deste
-  roteiro roda direto no host — portanto a saída dela não chega ao Loki assim.
-  Leia o stdout do processo (ou rode a API em contêiner na mesma rede) enquanto
-  esse gap não for fechado.
-- Cada chamada dos três scripts carrega `X-Request-Id` prefixado
-  (`k6-consultas-<MODE>`, `k6-authcheck`, `k6-ingestao`) para correlação.
+- **Métricas:** a API expõe `GET /metrics` quando `METRICS_ENABLED=true` (padrão). O alvo `view-show-api` do
+  Prometheus aponta para `host.docker.internal:3000`; mantenha a API rodando no host.
+- **Traces:** suba a API com `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` e cada requisição vira um span.
+- **Logs:** a API grava `request_id` estruturado. O Alloy coleta logs de contêineres, não de processos no host;
+  leia o stdout da API ou rode-a em contêiner.
+- **Correlação:** cada requisição leva um `X-Request-Id` com prefixo (`k6-front-<modo>`, `k6-consultas-<modo>`,
+  `k6-authcheck`, `k6-ingestao`).
 
 ## Documentos relacionados
 
+- [Testes de Carga da API](../../../../artefatos/sprint5/testes-de-carga-da-api.md): análise dos resultados.
+- [Índice de evidências](../../../../assets/testes-carga/README.md)
+- [Testes de Carga e Observabilidade (Sprint 3)](../../../../artefatos/sprint3/testes-carga-inicial.md): RNFs e
+  resultados da suíte anterior, mantido como registro histórico.
+- [Suíte da Sprint 2](../../../../artefatos/sprint2/testes-carga/README.md): arquitetura anterior.
 - [`apps/backend/api/README.md`](../README.md)
-- [Artefato de entrega — testes de carga e observabilidade](../../../../artefatos/sprint3/testes-carga-inicial.md)
-- [Pilha de observabilidade](../../../fullstack/observability/README.md)
-- [Suíte histórica (sprint2, contrato anterior)](../../../../artefatos/sprint2/testes-carga/README.md)
