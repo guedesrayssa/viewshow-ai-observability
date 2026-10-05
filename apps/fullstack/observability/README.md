@@ -125,7 +125,7 @@ O CI renderiza o mesmo bootstrap sem acessar a AWS. Para repetir essa validaçã
 localmente, execute `./deploy-learner-lab.sh --validate-only` nesse diretório.
 O renderer `validate-user-data.sh` produz `user-data.sh` para inspeção da sintaxe
 e `user-data.sh.gz` como payload enviado à EC2. O modo `--validate-only` renderiza
-e empacota os quatro dashboards (AWS, ingestão, aplicação e API), verifica
+e empacota os cinco dashboards (AWS, ingestão, Agentic AWS, aplicação e API), verifica
 placeholders não substituídos no bootstrap, sintaxe shell e o limite de 16 KiB
 do payload comprimido. Esses arquivos são gerados no diretório temporário do
 script e removidos ao sair. A validação local não comprova aceite das consultas
@@ -133,49 +133,47 @@ pelo CloudWatch, execução do bootstrap na EC2 ou saúde do Grafana na AWS.
 
 ### Aplicação completa com Terraform
 
-Pré-requisitos: Terraform, Docker, Node, AWS CLI, Session Manager plugin e uma
+Pré-requisitos: Terraform, Node 22, AWS CLI v2, Session Manager plugin e uma
 sessão válida do AWS Academy. As credenciais temporárias são as mesmas usadas
-pela infraestrutura fullstack.
+pela infraestrutura fullstack. A partir da raiz do repositório, use o fluxo
+protegido:
 
 ```bash
-cd apps/fullstack
-aws sts get-caller-identity
-terraform init
-terraform plan \
-  -var='deployment_namespace=view-show' \
-  -var='observabilidade_habilitada=true' \
-  -out=view-show-observabilidade.tfplan
-terraform apply view-show-observabilidade.tfplan
+node apps/scripts/aws-learner-lab.mjs grafana
 ```
 
-Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
-na AWS. O plano acima cria uma EC2 `view-show-observabilidade` do tipo `t3.medium`
+Se a observabilidade estiver ausente, o comando gera e valida um plano salvo,
+confirma a conta Learner Lab e pede `PROVISION GRAFANA <account-id>` antes do
+`apply`. O plano cria uma EC2 `view-show-observabilidade` do tipo `t3.medium`
 com 30 GiB de gp3 criptografado, instala o Docker Compose e inicia os cinco
 componentes. Não é necessário clonar o
 repositório na instância: os arquivos versionados são compactados e enviados
 pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
 `running`.
 
-Por padrão nenhuma porta administrativa fica aberta à internet. Abra o túnel
-SSM que o output entrega:
+Se a EC2 já existir, o comando não planeja nem aplica novamente: verifica por
+SSM o marcador do bootstrap, os cinco containers, a saúde do Grafana, o data
+source CloudWatch e os dashboards `view-show-ingestion` e
+`view-show-agentic-aws`. Uma instância existente que falhe nesses checks não é
+substituída automaticamente. Depois da validação, o script mostra a URL
+<http://localhost:3002>, o usuário `admin`, a senha apenas no terminal
+interativo e abre o túnel SSM até `Ctrl+C`.
+
+Ollama é opcional nesse fluxo. `Ollama/LLM: NOT_CONFIGURED` não falha o comando
+nem reduz a saúde da observabilidade; `CONFIGURED` confirma somente a presença
+da configuração local, não a conectividade. Para imprimir apenas a senha, sem
+provisionar nem abrir o túnel:
 
 ```bash
-terraform output grafana_acesso
-terraform output -raw grafana_senha
-
-aws ssm start-session \
-  --target "$(terraform output -raw observabilidade_instancia_id)" \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters portNumber=3000,localPortNumber=3002 \
-  --region us-east-1
+node apps/scripts/aws-learner-lab.mjs grafana --senha
 ```
 
-Enquanto a sessão estiver aberta, acesse <http://localhost:3002> com o usuário
-`admin` e a senha impressa pelo segundo comando. Os dashboards provisionados
+Enquanto a sessão estiver aberta, acesse <http://localhost:3002>. Os dashboards provisionados
 ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
 gerenciados e **View Show — Application Observability** cobre RED, Web Vitals,
 logs correlacionados e alertas da aplicação. **View Show — Ingestão** cobre a
-saúde e o diagnóstico do pipeline batch diretamente no CloudWatch.
+saúde e o diagnóstico do pipeline batch diretamente no CloudWatch, e **View
+Show — Agentic AWS** cobre o worker de análise e seus logs.
 
 Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
 
