@@ -1,0 +1,30 @@
+2026-10-05T14:09:05Z verificacao do ambiente (so leitura): sem importacao ativa (CONTROL#IMPORT/ACTIVE ausente); sem lease INGESTION#SOURCE#SYNC_GLOBAL nem INGESTION#SOURCE#argus; FIFO incremental e DLQ com 0 mensagens; so a task da API em execucao; agendas incrementais DISABLED
+2026-10-05T14:09Z+ (logo apos a verificacao acima; horario exato nao registrado) imp_01M44G3H9J6PWRQA70DQ2M2DQ3 (cg05-750000 de 2026-10-04) encontrada em READY / SUCCEEDED, 750000 lidos e 750000 escritos, updatedAt 2026-10-05T01:20:38.984Z
+2026-10-05T14:09Z-14:21Z (horario exato nao registrado) node apps/scripts/aws-learner-lab.mjs plan-update baseline: falhou antes do plano ("the protected Terraform state must be a regular, owned, non-symlink file"; process.getuid inexistente no Windows); nada aplicado
+2026-10-05T14:21:00Z backup do state: apps/fullstack/.terraform-artifacts/state-backups/terraform.tfstate.antes-deploy-achado9-20261005T142100Z (sha256 22ce9756...6d5a)
+2026-10-05T14:28:32Z imagem view-show-ingestion:8be4568def6e publicada (sha256:08474aaa...3615) por apps/fullstack/scripts/publicar-imagem.mjs, a partir do commit 1c0d9fa
+2026-10-05T14:32:07Z terraform apply -target (plano salvo deploy-plan-taskdefs-agendas.txt): 5 task definitions de ingestao :1 -> :2, 3 agendamentos para :2 (DISABLED), terraform_data.ingestion_image adotou a imagem ja publicada
+2026-10-05T14:32:17Z apply concluido: 6 added, 3 changed, 6 destroyed (a :1 de cada familia ficou INACTIVE)
+2026-10-05T14:35:21Z backup do state: apps/fullstack/.terraform-artifacts/state-backups/terraform.tfstate.antes-refresh-only-20261005T143521Z (sha256 b7db7fcd...474f)
+2026-10-05T14:43:46Z terraform apply -refresh-only (plano salvo deploy-plan-refresh-only.txt): so state e outputs; 0 added, 0 changed, 0 destroyed
+2026-10-05T14:43:49Z refresh-only concluido; ingestion_runbook com ingest_task_arn :2 e imagem sha256:08474aaa... (verificacao-pos-deploy.txt)
+2026-10-05T15:29:36Z pre-condicao do RS-01: senha do usuario de teste k6-ingestao@viewshow.test (user pool us-east-1_v7GzlS2Bs) redefinida como permanente por aws cognito-idp admin-set-user-password (status antes: RESET_REQUIRED; depois: CONFIRMED); senha aleatoria, fora do repositorio
+2026-10-05T15:29:49Z pre-condicao do RS-01: POST /api/v1/imports/imp_01M4478AZCSGHRCRYFT3ZP7AED/activate -> HTTP 200, datasetVersion dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965, activatedAt 2026-10-05T15:29:49.619Z, changed=true (nao havia CONTROL#DATASET/ACTIVE: stack recriada em 2026-10-04)
+2026-10-05T15:30Z  CONTROL#DATASET/ACTIVE confirmado (activeDatasetVersion dsv_81253140...9965); nenhuma task nova iniciada
+2026-10-05T15:35:36Z rs01-2lotes tentativa 1 inicio (pre-checagem: agendas DISABLED, fila e DLQ 0/0, leases ausentes)
+2026-10-05T15:35:51Z rs01-2lotes tentativa 1 ABORTADA na publicacao: botocore NoRegionError ao criar o cliente SQS (sem AWS_DEFAULT_REGION no ambiente do publicador); data.parquet e manifest.json da janela 15:00Z (bat_45f768dc...) gravados no S3, nenhuma mensagem enviada, agenda nao ligada; nao conta como rodada do RS-01
+2026-10-05T15:38:39Z rs01-2lotes inicio (tentativa 2; AWS_DEFAULT_REGION=us-east-1; --window-start 2026-10-05T15:00:00Z): agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-05T15:38:56Z rs01-2lotes publicacao concluida: bat_45f768dc... (janela 15:00Z, objetos S3 da tentativa 1 adotados) e bat_286f4cc3... (janela 15:15Z)
+2026-10-05T15:46:31Z rs01-2lotes agenda do ingest-incremental ENABLED (inicio da drenagem; prazo 1800 s ate 16:16:36Z)
+2026-10-05T15:47:39Z rs01-2lotes run aa381476 recebe as 2 mensagens; lote 1 INGESTING
+2026-10-05T15:52:43Z rs01-2lotes run concorrente bfc8aba7 termina sem receber mensagens (0/0/0)
+2026-10-05T15:54:39.981Z rs01-2lotes lote 1 COMPLETED (written 150000)
+2026-10-05T15:57:48Z rs01-2lotes run concorrente ab53dcfd termina sem receber mensagens (0/0/0)
+2026-10-05T16:01:50.812Z rs01-2lotes lote 2 COMPLETED (written 150000); run aa381476 SUCCEEDED com batchesCompleted 2, batchesRetryable 0, 851,8 s
+2026-10-05T16:02:42Z rs01-2lotes primeira leitura do monitor com fila 0/0 e DLQ 0/0 apos a drenagem
+2026-10-05T16:16:36Z (aprox., horario exato nao registrado) monitor do teste terminou com erro de sintaxe: o script foi editado durante a execucao; a agenda ficou ENABLED (falha do instrumento, nao do sistema)
+2026-10-05T16:36:10Z rs01-2lotes agenda do ingest-incremental DISABLED manualmente (reversao); runs vazios as 16:02, 16:07, 16:12, 16:17, 16:22, 16:27 e 16:32
+2026-10-05T16:37:01Z rs01-2lotes coleta final: fila e DLQ 0/0, leases ausentes, 0 tasks, 300000 eventos na particao 20261005 (antes: 0), 0 alertas no log
+2026-10-05T16:42:59Z rs01-3lotes inicio: agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-05T16:43:19Z rs01-3lotes publicacao concluida: bat_05bdc6a6..., bat_98a3b861..., bat_ce95dd61... (janelas padrao)
+2026-10-05T16:48:30Z rs01-3lotes INTERROMPIDA a pedido da usuaria durante o acumulo (limite de horario); a agenda nunca foi ligada; fila com 3 mensagens visiveis nao consumidas, DLQ 0/0, 0 tasks; rodadas de 3 e 4 lotes nao executadas
