@@ -170,7 +170,7 @@ Fonte: Material produzido pelos autores (2026).
 
 | RNF | Descrição resumida | Plano aprimorado | Ferramenta | Critério objetivo | Testes | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| RNF01 | Aceitar continuamente 10.000 eventos válidos/min sem perda | Importar uma janela sintética de 150.000 eventos válidos e medir a vazão de processamento; conferir contagem no DynamoDB/Athena | k6 (`ingestao-batch.js`, `MODE=drenagem`) + CloudWatch + consulta de contagem | `recordsWritten = 150.000`; `recordsRejected = 0`; duração de `VALIDATING+PROCESSING` ≤ 900 s (≥ 166,67 eventos/s); 0 duplicados; `checks rate==1` | CG-02, CG-05 | **Reprovado** — INGESTING a ~15 mil eventos/min, mas o pipeline até `READY` levou 13.915 s na R2, por PROJECTING e ARCHIVING (CG-02) |
+| RNF01 | Aceitar continuamente 10.000 eventos válidos/min sem perda | Importar uma janela sintética de 150.000 eventos válidos e medir a vazão de processamento; conferir contagem no DynamoDB/Athena | k6 (`ingestao-batch.js`, `MODE=drenagem`) + CloudWatch + consulta de contagem | `recordsWritten = 150.000`; `recordsRejected = 0`; duração de `VALIDATING+PROCESSING` ≤ 900 s (≥ 166,67 eventos/s); 0 duplicados; `checks rate==1` | CG-02, CG-05 | **Reprovado** — INGESTING a ~15 mil eventos/min, mas o pipeline até `READY` levou 13.915 s na R2, por PROJECTING e ARCHIVING (CG-02); no CG-05, com eventos concentrados em janelas, o pipeline ficou em 3.956 eventos/min com 150.000 (2.275 s) e 4.152 eventos/min com 300.000 (4.335 s), com ARCHIVING limitado por um núcleo de CPU |
 | RNF02 | Evento disponível para consulta em ≤ 120 s após captura | Marcar `t0` na entrada do lote incremental, `t1` no fim da ingestão e `t2` quando o watermark de `/dashboard/overview` passar de `t0` | k6 (`MODE=frescor`) | `t2 − t0 ≤ 120 s` em 100% das amostras | CG-03 | **Bloqueado** — o watermark de `meta.freshness` vem da projeção OVERVIEW do dia final do manifesto ACTIVE, e o `ingest-incremental` não atualiza nenhum dos dois; sem essa atualização, `t2 − t0` não pode ser medido (CG-03, achado 10) |
 | RNF03 | Degradar de forma controlada sob payload inválido, fila sem capacidade e timeout; recuperar sem reinício | Injetar cada falha da Seção 6 sob carga nominal, observar a resposta e depois retirar a falha | k6 + AWS CLI (injeção) + CloudWatch | Falha sempre explícita (`409`/`429`/`503`/`FAILED`/`QUARANTINED`/DLQ); 0 eventos aceitos e não persistidos; recuperação ao patamar de CG-02 sem reinício manual | RS-01 a RS-06 | **Parcial** — importação: falhas explícitas e recuperação automática (RS-02, RS-03b, CG-04); incremental, com a correção de `PK`/`SK`: lote inválido isolado em quarentena sem bloquear os válidos (RS-03a) reprocessamento sem perda nem duplicação após interrupção (RS-04) e mensagem venenosa desviada para a DLQ sem impedir o lote válido seguinte (RS-05); continua reprovado o acúmulo (RS-01), porque a escrita de um lote passa do `visibility_timeout` de 300 s e a confirmação na fila falha (achado 9) |
 | RNF09 | Disponibilidade das APIs ≥ 99,9% | Durante toda a bateria de ingestão, medir erro inesperado nas rotas de import (excluindo `409`/`429`/`503` esperados) | k6 `http_req_failed` | `http_req_failed rate < 0,001` nas rotas `/api/v1/imports*` | CG-01, CG-04 | **Aprovado** — 0 erro inesperado em CG-01, CG-02, CG-04 e RS-06 (os `503` são respostas seguras previstas; ver ressalva no CG-04) |
@@ -236,6 +236,7 @@ Fonte: Material produzido pelos autores (2026).
 | Autenticação | Login real no Cognito (`us-east-1_Yr4YHWZ4a`) via `POST /auth/login`, usuário técnico `carga-sprint5@viewshow.test` criado para os testes |
 | Verificação de 2026-10-01 (~02:06 UTC, só leitura) | Cluster `view-show-iac-cluster`, com o serviço `view-show-iac-api-service` e uma task em execução (`view-show-iac-api-task:5`); nenhuma task de ingestão em execução. Task definitions `view-show-ingestion-{import,incremental-ingest,incremental-export,sync,backfill}` na **revisão 6**, todas com a imagem `view-show-ingestion@sha256:2d409c86…`. Agendamentos `sync` e `incremental-export` (`rate(15 minutes)`) e `incremental-ingest` (`rate(5 minutes)`) **DISABLED**, apontando para a revisão 6. Bucket de ingestão sem política. `visibility_timeout` de 300 s na FIFO incremental e na fila de análise; 1 mensagem na DLQ incremental (`assets/testes-carga/2026-10-01-ingestao/verificacao-ambiente.txt`, transcrição das saídas do terminal) |
 | Rodada de 2026-10-01 (tarde: RS-03(a), RS-04, RS-05) | Conta `080158589617` / `us-east-1`, mesma stack `view-show`. O RS-05 ficou pausado de 16:55 a 18:36 UTC para renovar a sessão do Learner Lab e terminou às 18:45 UTC. Commit `0939869` (inclui a correção de `PK`/`SK`). Imagem da ingestão `view-show-ingestion:fix-0939869a` (`sha256:6388b798…`), nas task definitions `import:7`, `incremental-ingest:5`, `incremental-export:5`, `backfill:6` e `sync:5`; API sem mudança (`view-show-iac-api-task:4`). Agendamentos **DISABLED**; consumidor disparado sob demanda por `rodar-ingestao`. `visibility_timeout` de 300 s e `maxReceiveCount = 5` na FIFO incremental (`2026-10-01-ingestao/ambiente-rodada-tarde.txt`) |
+| Rodada de 2026-10-04 (CG-05) | Novo Learner Lab: conta `145497513075` / `us-east-1`, stack criada do zero em 2026-10-04 por `node apps/scripts/aws-learner-lab.mjs setup` (mesmas variáveis validadas do script: import 2 vCPU / 8 GiB / 200 GiB, API 0,25 vCPU / 512 MiB, agendamentos **DISABLED**). Commit `d7f56de` mais a opção `--rows-per-window` do gerador. Imagem da ingestão `view-show-ingestion@sha256:90dcf1de…6a18a35` (`view-show-ingestion-import:1`); Container Insights habilitado; DynamoDB `PAY_PER_REQUEST`. API `https://hk4ooeetbi.execute-api.us-east-1.amazonaws.com`, usuário técnico `k6-ingestao@viewshow.test`. k6 (`grafana/k6` via Docker) fora da AWS, no mesmo Windows 11 (`2026-10-04-ingestao/ambiente.txt`) |
 
 <div align="center">
 
@@ -256,12 +257,15 @@ Fonte: Material produzido pelos autores (2026).
 | ID | Arquivo | Eventos válidos | Eventos inválidos | Tamanho | SHA-256 | Usado em |
 | --- | --- | ---: | ---: | --- | --- | --- |
 | M-01 | `argus_dump.sql.gz` (reduzido, `--rows 1000`) | 1.000 (974 `signal_bucket` + 26 fixture) | 0 | 11.548 B | `2e98c82e…6f36373` | CG-01, RS-02, RS-03, RS-06 |
-| M-02 | `argus_dump.sql.gz` (1 janela) | 150.000 | 0 | 917.703 B | `21069cb5…6feee15` | CG-02, CG-05, RS-02 |
-| M-03 | `argus_dump.sql.gz` (2 janelas) | 300.000 | 0 | 1.828.944 B | `6b39cf9b…6daecc` | CG-05 |
-| M-04 | `argus_dump.sql.gz` (5 janelas) | 750.000 | 0 | 4.562.832 B | `53298f4b…19aab68a` | CG-05 |
+| M-02 | `argus_dump.sql.gz` (1 janela) | 150.000 | 0 | 917.703 B | `21069cb5…6feee15` | CG-02, RS-02 |
+| M-03 | `argus_dump.sql.gz` (2 janelas) | 300.000 | 0 | 1.828.944 B | `6b39cf9b…6daecc` | Planejada para o CG-05; substituída por M-09 |
+| M-04 | `argus_dump.sql.gz` (5 janelas) | 750.000 | 0 | 4.562.832 B | `53298f4b…19aab68a` | Planejada para o CG-05; substituída por M-10 |
 | M-05 | Lotes incrementais de 15 min | 150.000 por lote | 0 | 177.684 B (Parquet) | `523e1f44…58ac9148` (janela 09:00Z; muda por janela) | CG-03, RS-01 |
 | M-06 | Lote incremental com coluna obrigatória ausente | 0 | 150.000 (sem `value`) | 58.805 B (Parquet) | `bbb45f66…fe75` (janela 09:00Z; muda por janela) | RS-03 |
 | M-07 | Dump corrompido (GZIP truncado, metade de M-01) | — | — | 5.774 B | `ad5e5bae…98bc689` | RS-03 |
+| M-08 | `argus_dump.sql.gz` (1 janela concentrada, `--rows-per-window 150000`, `--variant cg05`) | 150.000 | 0 | 828.035 B | `b78e9d48…c024d6673a` | CG-05 |
+| M-09 | `argus_dump.sql.gz` (2 janelas concentradas, idem) | 300.000 | 0 | 1.649.770 B | `c29263ab…0aabfc2f7b` | CG-05 |
+| M-10 | `argus_dump.sql.gz` (5 janelas concentradas, idem) | 750.000 | 0 | 4.114.927 B | `2a6c9c79…0584c4f752` | CG-05 |
 
 <div align="center">
 
@@ -270,6 +274,8 @@ Fonte: Material produzido pelos autores (2026).
 </div>
 
 &emsp;Gerador da massa: [`apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py`](../../apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py), que já existe. Ele gera um `argus_dump.sql.gz` determinístico com a quantidade de linhas pedida (`--rows`) e um `manifest.json` com a contagem, e é o mesmo gerador usado no benchmark de leitura MySQL. O `rowCount` do manifesto inclui as linhas de fixture das outras tabelas (com `--rows 1000`, são 974 de `signal_bucket` e 26 de fixture); ele é o `EXPECTED_EVENTS`, porque o `recordsWritten` conta o `rowCount` inteiro, como o CG-01 confirmou. Os lotes incrementais (M-05 e M-06) são gerados e publicados por [`publish_incremental_batch.py`](../../apps/backend/ingestion-data/scripts/publish_incremental_batch.py), e o dump corrompido (M-07) pelo comando `m07` de [`ingestao-falhas.sh`](../../apps/backend/api/loadtest/k6/ingestao-falhas.sh).
+
+&emsp;As massas M-08 a M-10 do CG-05 usam a opção `--rows-per-window` do mesmo gerador. Sem ela, cada linha sintética de `signal_bucket` ocupa um bucket de 15 min com a mesma entidade, e M-02 a M-04 cobrem milhares de dias. Com `--rows-per-window 150000`, cada 150.000 linhas compartilham o mesmo `bts`, alinhado ao grão de 900 s, e cada linha tem uma entidade própria (`benchmark-cg05-000000` a `-149999`), o que mantém a chave natural `(source, entity, metric, bts)` única. Isso materializa a definição da Tabela 3 (150.000 eventos = 10.000/min × 15 min), e as 5 janelas de M-10 cabem num único dia (2026-08-29). Sem a opção, a saída continua byte a byte idêntica: M-02 regenerado com o gerador alterado manteve o SHA-256 `21069cb5…6feee15`.
 
 ```bash
 # a partir de apps/backend/ingestion-data (exemplo para M-02)
@@ -511,17 +517,17 @@ Fonte: Material produzido pelos autores (2026).
 | Identificador | `CG-05` |
 | Já existe? | **Parcial** — gerador `build_benchmark_snapshot.py` e benchmark local de leitura já existem; falta a execução na AWS por volume |
 | Objetivo e requisito relacionado | Descobrir até que volume a vazão se mantém acima de 10.000 eventos/min e qual recurso satura primeiro (CPU, memória, disco efêmero, DynamoDB). RNF01 (margem de escala) |
-| Perfil de carga | Importações sequenciais de 150.000 (M-02), 300.000 (M-03) e 750.000 (M-04) eventos |
-| Pré-condições e dados de entrada | CG-02 aprovado; massas M-02 a M-04 |
-| Procedimento | Executar uma importação por volume, aguardando `READY` entre elas; registrar métricas de recurso da task |
+| Perfil de carga | Importações sequenciais de 150.000, 300.000 e 750.000 eventos. Planejado com M-02 a M-04; executado com as massas concentradas M-08 a M-10 (desvio 2) |
+| Pré-condições e dados de entrada | CG-02 aprovado; massas de 150, 300 e 750 mil eventos. **Desvio 1:** o CG-02 foi reprovado (pipeline acima de 900 s), então a pré-condição não foi atendida; o CG-05 foi executado mesmo assim, por ser exploratório e porque a pergunta dele (onde a vazão cai e o que satura) continua válida. **Desvio 2:** M-02 a M-04 espalham as linhas por ~1.562 a ~7.812 dias, o que torna o ARCHIVING inviável numa sessão (ver Análise) e contradiz a definição de "janela" da Tabela 3. As massas M-08 a M-10 concentram 150.000 eventos por janela de 15 min (Seção 4.2) |
+| Procedimento | Executar uma importação por volume, aguardando `READY` entre elas; registrar métricas de recurso da task. Na rodada de 2026-10-04 os volumes foram executados em sequência na mesma stack: 150.000 (M-08) às 19:46 UTC, 300.000 (M-09) às 20:45 UTC e 750.000 (M-10) às 22:21 UTC; a execução de 750.000 foi interrompida no gerador (Tabela 14) |
 | Métricas coletadas | Vazão por volume; CPU, memória e storage efêmero da task; consumo e throttling do DynamoDB |
 | Critérios de sucesso | Exploratório — sem aprovação/reprovação; registrar o volume em que a vazão cai abaixo de 166,67 eventos/s, se houver |
 | Resultado esperado | Curva volume × vazão e identificação do primeiro recurso a saturar |
-| Resultados medidos | Ver Tabela 14 |
-| Resultado obtido | Pendente. Massas M-03 (300 mil) e M-04 (750 mil) geradas e registradas na Tabela 7 |
-| Situação | **Não executado** (pendente; exploratório) |
-| Análise e conclusão | Inviável na sessão do Learner Lab (4 h): pelo CG-02, 150 mil eventos levam ~28 min até o fim de PROJECTING e, com o gerador atual, ARCHIVING cresce com o número de partições diárias (M-03 ≈ 3.125 dias, M-04 ≈ 7.812 dias → estimados ~5 h e ~13 h só de verificação Athena). Além disso, repetir um dump idêntico não mede nada (a versão é endereçada por conteúdo). Pré-requisitos para executar: gerador que concentre as linhas numa janela realista e verificação de ARCHIVING em lote ou paralela |
-| Evidências / reprodução | Manifestos em `.artifacts/argus-benchmarks/{300000,750000}/manifest.json` |
+| Resultados medidos | Ver Tabelas 14, 14a e 14b (registro campo a campo de cada execução). 2026-10-04, M-08 (150.000): k6 iniciado às 19:46:30 UTC, worker de 19:47:49 a 20:24:19 UTC (`SUCCEEDED`), `READY` já lido pelo k6 quando ele encerrou, às 20:24:31 UTC (o instante exato da transição não foi registrado); `PROCESSING` 2.275,2 s no k6 (2.188,6 s de execução do worker); 150.000 lidos = 150.000 escritos, 0 rejeitados; versão `dsv_81253140…`. Etapas: INGESTING 447,5 s, PROJECTING 958,1 s, ARCHIVING 778,2 s (as demais somam ~4 s). M-09 (300.000): k6 iniciado às 20:45:37 UTC, worker de 20:46:50 a 21:57:53 UTC (`SUCCEEDED`); `PROCESSING` 4.334,9 s no k6 (4.263,3 s no worker); 300.000 lidos = 300.000 escritos, 0 rejeitados; versão `dsv_ae410594…`. Etapas: INGESTING 868,5 s, PROJECTING 1.914,7 s, ARCHIVING 1.473,5 s |
+| Resultado obtido | Os dois volumes executados terminaram `READY` sem perda, com vazão do pipeline **abaixo de 10.000/min já no menor volume**: 3.956 eventos/min (150.000) e 4.152 eventos/min (300.000). Só a etapa INGESTING passa da meta (20.111 e 20.726 eventos/min). A vazão de cada etapa ficou praticamente constante ao dobrar o volume, ou seja, o tempo cresce de forma linear e não há um ponto em que a vazão despenca. Primeiro recurso a saturar: **um núcleo de CPU** durante o ARCHIVING (CPU da task estável em ~50% de 2 vCPU, sem DynamoDB nem Athena no intervalo: ~10 min com 150.000 e ~21 min com 300.000). Segundo recurso a observar: a **memória no ARCHIVING cresce com o tamanho da partição diária** (14,5% → 26,0% de 8 GiB). DynamoDB sem throttling (pico de ~1.392 WCU/s); storage máx. 1,96% |
+| Situação | **Parcial** (exploratório) — 2 de 3 volumes concluídos (150.000 e 300.000); o de 750.000 foi iniciado e interrompido no gerador, sem resultado. A vazão do pipeline já fica abaixo de 166,67 eventos/s no menor volume |
+| Análise e conclusão | **Ressalva metodológica:** as massas concentradas M-08 a M-10 são adequadas ao objetivo do CG-05, porque materializam a definição de janela da Tabela 3 (150.000 eventos em 15 min) e fazem a vazão até `READY` variar com o número de eventos, e não com o número de dias. Por isso mesmo, os resultados do CG-05 **não são diretamente comparáveis** aos do CG-02 (M-02, ~1.562 dias): a distribuição temporal muda o particionamento (uma partição diária de `signal_bucket` em vez de milhares), o que altera o trabalho de PROJECTING e, principalmente, de ARCHIVING. As comparações abaixo com o CG-02 R2 servem só como referência; a única etapa cujo trabalho não depende do particionamento é INGESTING. **Por que as massas concentradas:** com M-02 a M-04, o ARCHIVING cresce com o número de partições diárias (estimados ~5 h para M-03 e ~13 h para M-04), e a vazão até `READY` mediria a quantidade de dias, não a de eventos. Na R2 do CG-02 (M-02), o ARCHIVING levou 12.246 s; com M-08 levou 778 s (15,7× menos). **O que muda na carga:** os fatos de `signal_bucket` caem todos na mesma chave diária do DynamoDB (`DATASET#{versão}#{família}#signal_bucket#20260829`), e o PROJECTING passa a processar um único grupo diário. Era o cenário com mais risco de chave quente, e mesmo assim não houve throttling: o consumo ficou em ~1.380 WCU/s durante ~15 min (PROJECTING). **Comparação com o CG-02 R2:** só a etapa INGESTING é comparável, e ela foi 26% mais rápida (447,5 s × 606,5 s); PROJECTING foi 9% mais rápido (958 s × 1.057 s); ARCHIVING não é comparável. **Onde está o gargalo:** entre 20:12:18 e 20:22:59 UTC, as 21 contagens no Athena dos datasets pequenos já tinham terminado (as 23 consultas somam 18,5 s de execução), e não houve escrita nem leitura no DynamoDB; a CPU ficou em ~50% (um núcleo cheio de 2 vCPU) e a memória subiu de 6% para 14,5% até a contagem do `signal_bucket`. É, portanto, processamento local single-thread sobre a partição de 150.000 linhas, antes da verificação no Athena. Pela estrutura do código, a hipótese é a codificação Parquet com verificação de replay (`adapters/archive/parquet.py`), mas o log do worker não registra o tempo por sub-etapa, então isso não foi confirmado. **Escala de 150.000 para 300.000:** INGESTING 1,94×, PROJECTING 2,00× e ARCHIVING 1,89× o tempo; a vazão por etapa ficou estável, e o processamento local do ARCHIVING passou de ~10 min para ~21 min (as 23 consultas no Athena somaram 19,1 s). A memória máxima do ARCHIVING subiu de 14,5% para 26,0% da task (de ~1,2 GiB para ~2,1 GiB), enquanto INGESTING e PROJECTING ficaram em ~6–7%: o ARCHIVING mantém em memória uma parte proporcional à partição diária. Por extrapolação linear (não medida), uma partição de 750.000 linhas ficaria perto de 60% de 8 GiB. **Implicação para RNF01:** o limite de 10.000 eventos/min no pipeline completo não é atendido nem com 150.000 eventos; com a segunda vCPU ociosa no ARCHIVING e a CPU em ~21% no INGESTING, a margem de escala depende de paralelizar o processamento por partição, e não de dar mais recursos à task |
+| Evidências / reprodução | Em `assets/testes-carga/2026-10-04-ingestao/`: `resumo-ingestao-cg05-150000.json`, `k6-cg05-150000.log`, `etapas-cg05-150000.json`, `cloudwatch-recursos-cg05-150000.json`, `cloudwatch-dynamodb-cg05-150000.json`, `athena-cg05-150000.json` (as 23 consultas do ARCHIVING), `logs-import-cg05-150000.json` (log do worker), e os mesmos arquivos com sufixo `cg05-300000`; `k6-cg05-750000.log` (execução de 750.000 interrompida); `ambiente.txt`, `execucoes.txt`. Manifestos em `.artifacts/argus-benchmarks/cg05-{150000,300000,750000}/manifest.json`. Comandos na Seção 11.2 |
 
 <div align="center">
 
@@ -535,15 +541,66 @@ Fonte: Material produzido pelos autores (2026).
 
 </div>
 
-| Volume (eventos) | Duração `PROCESSING` (s) | Vazão (eventos/min) | CPU máx. (%) | Memória máx. (%) | Storage efêmero máx. (%) | Throttling DynamoDB | Estado final |
+| Volume (massa) | Duração `PROCESSING` (s) | Vazão (eventos/min) | CPU máx. (%) | Memória máx. (%) | Storage efêmero máx. (%) | Throttling DynamoDB | Estado final |
 | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| 150.000 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 | ver CG-02 |
-| 300.000 | — | — | — | — | — | — | Não executado |
-| 750.000 | — | — | — | — | — | — | Não executado |
+| 150.000 (M-08) | 2.275,2 | 3.956 (pipeline); 20.111 (só INGESTING) | 50,9 | 14,5 | 1,65 | 0 (pico ~1.394 WCU/s) | `READY` |
+| 300.000 (M-09) | 4.334,9 | 4.152 (pipeline); 20.726 (só INGESTING) | 50,9 | 26,0 | 1,96 | 0 (pico ~1.392 WCU/s) | `READY` |
+| 750.000 (M-10) | — | — | — | — | — | — | Interrompido: o k6 começou às 22:21:11 UTC e perdeu o contêiner aos 49 min (23:10:23 UTC, `error waiting for container: unexpected EOF`, com o Docker Desktop parado). O log não registrou o `importId`, e o estado do job na AWS não foi observado |
 
 <div align="center">
 
 Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+<div align="center">
+
+<strong>Tabela 14a: Duração e recursos por etapa no CG-05 (M-08 e M-09) e comparação com o CG-02 R2 (M-02)</strong>
+
+</div>
+
+| Etapa | M-08 — duração (s) | M-08 — CPU média / máx. (%) | M-08 — memória máx. (%) | M-08 — DynamoDB (WCU/s, média por min) | M-09 — duração (s) | M-09 — CPU média / máx. (%) | M-09 — memória máx. (%) | M-09 — DynamoDB (WCU/s, média por min) | CG-02 R2 (M-02) — duração (s) |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: |
+| STARTING + RESTORING + VALIDATING | 3,8 | — | — | — | 5,4 | — | — | — | 3,9 |
+| INGESTING | 447,5 | 21,2 / 22,9 | 6,0 | ~840 | 868,5 | 22,4 / 23,3 | 6,4 | ~860 | 606,5 |
+| PROJECTING | 958,1 | 21,6 / 36,0 | 6,3 | ~1.380 | 1.914,7 | 22,0 / 50,8 | 7,0 | ~1.300 | 1.057,1 |
+| ARCHIVING | 778,2 | 45,7 / 50,9 | 14,5 | ~0 (Athena: 23 consultas, 18,5 s) | 1.473,5 | 47,8 / 50,9 | 26,0 | ~0 (Athena: 23 consultas, 19,1 s) | 12.246,4 |
+| ACTIVATING + PUBLISHING | 0,4 | — | — | — | 0,4 | — | — | — | 1,0 |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026).
+
+</div>
+
+<div align="center">
+
+<strong>Tabela 14b: Registro das execuções concluídas do CG-05</strong>
+
+</div>
+
+| Campo | CG-05 — 150.000 eventos | CG-05 — 300.000 eventos |
+| --- | --- | --- |
+| Massa | M-08: `argus_dump.sql.gz`, `--rows-per-window 150000 --variant cg05`, SHA-256 `b78e9d48…c024d6673a` | M-09: idem, SHA-256 `c29263ab…0aabfc2f7b` |
+| Eventos | 150.000: 149.974 de `signal_bucket` e 26 de fixture em 22 datasets | 300.000: 299.974 de `signal_bucket` e as mesmas 26 de fixture |
+| Janela temporal | 1 janela de 15 min de `signal_bucket` (`bts` 2026-08-29T10:45:00Z, 149.974 linhas). As 21 partições diárias verificadas no ARCHIVING são todas de 29/08 | 2 janelas de 15 min (`bts` 10:45:00Z com 150.000 linhas e 11:00:00Z com 149.974), ambas em 2026-08-29. As 21 partições diárias verificadas são de 29/08 |
+| Início (UTC) | k6 às 19:46:30; worker às 19:47:50,8 (`ingestion.run.started`) | k6 às 20:45:37; worker às 20:46:50,4 |
+| Término (UTC) | Worker às 20:24:19,4 (`ingestion.run.finished`, `SUCCEEDED`); k6 às 20:24:31 | Worker às 21:57:53,7 (`SUCCEEDED`); k6 às 21:57:57 |
+| Duração total | 2.277,7 s (37 min 58 s) do `POST /imports` a `READY`; `PROCESSING` (do `complete` a `READY`) 2.275,2 s; execução do worker 2.188,6 s | 4.337,4 s (1 h 12 min 17 s) do `POST /imports` a `READY`; `PROCESSING` 4.334,9 s; execução do worker 4.263,3 s |
+| INGESTING | 447,5 s | 868,5 s |
+| PROJECTING | 958,1 s | 1.914,7 s |
+| ARCHIVING | 778,2 s | 1.473,5 s |
+| Demais etapas | STARTING + RESTORING + VALIDATING 3,8 s; ACTIVATING + PUBLISHING 0,4 s | 5,4 s; 0,4 s |
+| Chegou a `READY`? | Sim. O k6 já tinha lido `READY` quando encerrou, às 20:24:31; o instante exato da transição não foi observado | Sim. Já lido quando o k6 encerrou, às 21:57:57; o instante exato não foi observado |
+| `recordsWritten` | 150.000 (lidos 150.000; rejeitados 0; `unchanged` 0) | 300.000 (lidos 300.000; rejeitados 0; `unchanged` 0) |
+| Vazão pelo critério do CG-05 (`recordsWritten` ÷ `PROCESSING`) | 65,93 eventos/s = **3.956 eventos/min** | 69,21 eventos/s = **4.152 eventos/min** |
+| Em relação a 10.000 eventos/min | **Abaixo** (39,6% da meta); threshold `ingestion_events_per_second min>=166.67` reprovado. Só a etapa INGESTING passa da meta (20.111 eventos/min) | **Abaixo** (41,5% da meta); mesmo threshold reprovado. Só INGESTING passa da meta (20.726 eventos/min) |
+| Erros, retries, throttling e outros comportamentos | 157 requisições HTTP, 0 falhas (`http_req_failed` = 0); checks 7/7; k6 saiu com código 99 por dois thresholds reprovados (`ingestion_processing_seconds max<=900` e o de vazão), o que é esperado num teste exploratório. Log do worker sem nenhuma linha de nível `warning` ou `error` e `errorCode null`; uma única execução da task, sem nova tentativa. DynamoDB com `WriteThrottleEvents` = 0 e `ThrottledRequests` = 0 (pico de 1.394,2 WCU/s). Athena com 23/23 consultas `SUCCEEDED`. Retries internos do SDK da AWS: não observado (o worker não os registra) | 293 requisições HTTP, 0 falhas; checks 7/7; k6 com código 99 pelos mesmos dois thresholds. Log do worker sem `warning` nem `error`, `errorCode null`, uma única execução. DynamoDB sem throttling (0 e 0; pico de 1.391,6 WCU/s). Athena com 23/23 `SUCCEEDED`. Retries do SDK: não observado |
+| Resultado / observação | `READY` sem perda (lidos = escritos = 150.000). O pipeline fica abaixo da meta por PROJECTING e ARCHIVING. No ARCHIVING, um núcleo de CPU fica cheio (CPU da task ~50% de 2 vCPU) com memória máxima de 14,5% | `READY` sem perda (lidos = escritos = 300.000). As etapas levaram 1,89× a 2,00× o tempo do volume anterior, então a vazão por etapa ficou estável. A memória do ARCHIVING subiu para 26,0%, e o mesmo núcleo continua sendo o gargalo |
+
+<div align="center">
+
+Fonte: Material produzido pelos autores (2026), a partir de `resumo-ingestao-cg05-*.json`, `etapas-cg05-*.json`, `logs-import-cg05-*.json`, `cloudwatch-dynamodb-cg05-*.json`, `athena-cg05-*.json`, `execucoes.txt` e dos manifestos das massas.
 
 </div>
 
@@ -806,7 +863,7 @@ Fonte: Material produzido pelos autores (2026).
 | CG-02 | RNF01 | 10:16:50 (R1), 12:29:37 (R2) | R1 60 min (interrompida); R2 3 h 53 min | ≥ 10.000 eventos/min, 0 perda, ≤ 900 s | 0 perda (150.000/150.000, 23/23 datasets); INGESTING ~15 mil/min; R2 13.915 s até `READY` | **Reprovado** | `resumo-ingestao-cg02-r*.json`, `etapas-cg02-r*.json`, `athena-cg02-r2.json` |
 | CG-03 | RNF02 | 2026-10-01 ~02:15 (leitura do manifesto) | — | `t2 − t0 ≤ 120 s` | Sem amostra; watermark não avança pelo caminho incremental (ACTIVE termina em 28/09 18:00Z, fatos de 30/09 gravados) | **Bloqueado** | `2026-10-01-ingestao/cg03/manifesto-active.json`, `rs01-drenagem.txt` |
 | CG-04 | RNF03, RNF09 | 12:19:40 | 5 min 18 s | 1 × `201`, demais `409` | 1 × `201`, 1.516 × `409`, 71 × `503`; p95 GET 431 ms | **Parcial** | `resumo-ingestao-cg04.json`, `cg04-status-post.txt` |
-| CG-05 | RNF01 | — | — | Exploratório | — | **Não executado** (pendente) | — |
+| CG-05 | RNF01 | 2026-10-04 19:46:30 (150.000), 20:45:37 (300.000) | 37 min 58 s; 1 h 12 min 18 s | Exploratório | 150.000 (M-08) e 300.000 (M-09): `READY` sem perda; 3.956 e 4.152 eventos/min no pipeline (tempo linear no volume); ARCHIVING limitado por 1 núcleo de CPU, com memória crescendo com a partição (14,5% → 26,0%); 0 throttling no DynamoDB | **Parcial** | `2026-10-04-ingestao/*-cg05-*` |
 | RS-01 | RNF03 | 11:01:03 (manhã), 20:16:48 (tarde) | manhã: acúmulo 19 min, drenagem falhou; tarde: acúmulo 7 min, drenagem interrompida no limite de 1.800 s | 0 perda, 0 DLQ, drenagem < N × 15 min | manhã: 0/300.000 persistidos (`PK`/`SK`); tarde: 300.000/300.000 persistidos, 1 lote sem confirmação e 1 mensagem na DLQ (`visibility_timeout`) | **Reprovado** | `rs01-*`, `sqs-rs01-rs05.json`, `sqs-rs01.json` |
 | RS-02 | RNF03 | 11:14:44 (b), 19:51:53 (a), 12:27:00 (c) | — | Falha explícita, vaga liberada | `503 UPLOAD_PREPARATION_FAILED`; `FAILED/WORKER_STOPPED` em ~130 s; timeout explícito | **Aprovado** | `rs02*` |
 | RS-03 | RNF03 | 12:18:04 (b); 2026-10-01 16:08:59 (a) | (b) 1 min 36 s; (a) 18 min 33 s até a fila zerar | Inválido isolado | (b) M-07 → `FAILED` em `VALIDATING`; (a) lote M-06 `QUARANTINED` (`SCHEMA_INCOMPATIBLE`), 2 lotes válidos `COMPLETED`, +300.000 itens, 0 do inválido | **Aprovado** | `import-rs03-m07.json`, `2026-10-01-ingestao/rs03a-execucao.txt` |
@@ -996,8 +1053,8 @@ Fonte: Material produzido pelos autores (2026).
 
 | Alarme | Condição | Cenário que deveria disparar | Disparou? | Tempo até `ALARM` (s) | Voltou a `OK`? |
 | --- | --- | --- | --- | ---: | --- |
-| `*-backfill-cpu-utilization` | CPU da task acima de 70% | CG-05 | Não (CPU máx. 39,7%, CG-02 R2) | — | — |
-| `*-backfill-storage-utilization` | Storage efêmero acima de 70% | CG-05 | Não (máx. 1,7%) | — | — |
+| `*-backfill-cpu-utilization` | CPU da task acima de 70% | CG-05 | Não (CPU máx. 39,7% no CG-02 R2 e 50,9% no CG-05 com M-08). O alarme não detecta a saturação vista no CG-05, porque um núcleo cheio numa task de 2 vCPU aparece como ~50% | — | — |
+| `*-backfill-storage-utilization` | Storage efêmero acima de 70% | CG-05 | Não (máx. 1,7% no CG-02; 1,65% no CG-05) | — | — |
 | `view-show-import-worker-failures` (`Runs{status=FAILED}`) | Run do `import-dump` com falha (período 300 s) | RS-02, RS-03 | Sim em RS-03(b); **não** em RS-02(a) e (b) | 35 (RS-03b) | Sim, às 12:35:12 |
 | `*-schema-drift` | Drift de schema | RS-03 | **Não** no RS-03(a): os alarmes existentes filtram `command=backfill` e `command=sync`; o lote incremental incompatível é coberto pelo alarme de quarentena (linha abaixo) | — | — |
 | `view-show-ingestion-incremental-batch-quarantined` | `IncrementalBatchQuarantined` ≥ 1 (período 300 s) | RS-03(a) | Sim | ~634 (quarentena às 16:17:56; `ALARM` às 16:28:30) | Sim, às 16:43:30 |
@@ -1058,7 +1115,7 @@ Fonte: Material produzido pelos autores (2026).
 
 **Massa de dados**
 
-- **M-02 a M-04 não representam uma janela de 15 min:** `build_benchmark_snapshot.py` espaça as linhas de `signal_bucket` de 15 em 15 min (`index * 900_000` ms), então 150 mil eventos cobrem ~1.562 dias (2026-08-29 a 2028-02). Isso não afeta INGESTING, mas multiplica o ARCHIVING, que verifica cada partição diária em série no Athena (~6 s por partição).
+- **M-02 a M-04 não representam uma janela de 15 min:** `build_benchmark_snapshot.py` espaça as linhas de `signal_bucket` de 15 em 15 min (`index * 900_000` ms), então 150 mil eventos cobrem ~1.562 dias (2026-08-29 a 2028-02). Isso não afeta INGESTING, mas multiplica o ARCHIVING, que verifica cada partição diária em série no Athena (~6 s por partição). Para o CG-05 foram geradas M-08 a M-10, com 150.000 eventos por janela de 15 min (Seção 4.2); os números do CG-05 não são diretamente comparáveis aos do CG-02, exceto na etapa INGESTING.
 - **Dump repetido não gera carga:** a versão de dataset é endereçada por conteúdo; reimportar o mesmo arquivo termina `READY` com 0 lidos e 0 escritos. Repetições do CG-02 exigem dumps distintos (a R2 usou `--variant r2`).
 - **Distribuição sintética:** uma única entidade/métrica por linha, sem a variedade de chaves do Globoplay; a carga de escrita e de projeção pode diferir da real.
 - **Lote × fluxo contínuo:** “10 mil eventos/min” foi medido como vazão de processamento de um lote, não como 10 mil eventos chegando continuamente em tempo real.
@@ -1077,7 +1134,8 @@ Fonte: Material produzido pelos autores (2026).
 - **CG-03: bloqueado, sem medição de tempo.** A verificação de 2026-10-01 (código e manifesto ACTIVE, só leitura) mostrou que o caminho incremental não atualiza o manifesto ACTIVE nem a projeção OVERVIEW de onde sai `meta.freshness` (achado 10). Enquanto isso não for corrigido, nenhuma amostra de `t2 − t0` pode ser coletada por esse caminho.
 - **DLQ incremental:** a verificação de 2026-10-01 ~02:06 UTC encontrou 1 mensagem na `view-show-ingestion-incremental-batches-dlq.fifo` (`verificacao-ambiente.txt`). Ela não foi lida, de propósito, para não alterar o `ApproximateReceiveCount`, então a origem não foi confirmada; possivelmente é a do lote `bat_f68597fc…` do RS-01 da tarde (`rs01-dlq-espiar.json`), mas isso continua pendente.
 - **RS-01** executado duas vezes, reprovado nas duas por causas diferentes (manhã: `PK`/`SK`; tarde: `visibility_timeout`), e só com `BACKLOG_BATCHES = 2` (3 e 4 não executados).
-- **CG-02 R3 e CG-05: pendentes.** Não couberam no tempo das sessões de 30/09 e de 01/10 (a R2 levou 13.915 s, quase uma sessão inteira de 4 h; ver CG-02 e CG-05).
+- **CG-02 R3: pendente.** Não coube no tempo das sessões de 30/09 e de 01/10 (a R2 levou 13.915 s, quase uma sessão inteira de 4 h; ver CG-02).
+- **CG-05: parcial.** Executado em 2026-10-04 com 150.000 (M-08) e 300.000 (M-09) eventos, uma vez cada, com a massa concentrada e sem a pré-condição do CG-02 atendida (os dois desvios estão na Tabela 13). Sem repetição, não há medida de variação entre execuções.
 - **RS-05: repetido em 2026-10-01** com a mensagem venenosa sintética e 1 lote válido, já com a correção de `PK`/`SK`, numa única repetição. Os recebimentos 4 e 5 ficaram ~100 min separados pela renovação da sessão, então o tempo total (2 h 10 min) não representa o sistema; os demais intervalos (~5–6 min) vêm do disparo manual do consumidor. Não foi medido o caso de um lote publicado enquanto a mensagem venenosa está em processamento. Na rodada de 30/09 ele tinha sido exercitado só com os lotes do RS-01 da manhã (defeito `PK`/`SK`).
 
 ## 11. Procedimentos de reprodução
@@ -1118,9 +1176,15 @@ for r in 1 2 3; do
   k6 run -e MODE=drenagem -e DUMP=$M/150000/argus_dump.sql.gz -e EXPECTED_EVENTS=150000 -e RUN_LABEL=cg02-r$r $K6
 done
 
-# CG-05 — volumes crescentes (exploratório: os thresholds de vazão podem reprovar)
+# CG-05 — volumes crescentes com janelas concentradas (M-08 a M-10; exploratório:
+# os thresholds de vazão podem reprovar)
 for n in 150000 300000 750000; do
-  k6 run -e MODE=drenagem -e DUMP=$M/$n/argus_dump.sql.gz -e EXPECTED_EVENTS=$n -e RUN_LABEL=cg05-$n $K6
+  $PY apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py --rows $n \
+    --rows-per-window 150000 --snapshot-extracted-on 2026-10-04 --variant cg05 \
+    --output $M/cg05-$n/argus_dump.sql.gz --manifest $M/cg05-$n/manifest.json
+  k6 run -e MODE=drenagem -e DUMP=$M/cg05-$n/argus_dump.sql.gz -e EXPECTED_EVENTS=$n \
+    -e SNAPSHOT_EXTRACTED_ON=2026-10-04 -e POLL_INTERVAL_S=15 -e POLL_TIMEOUT_S=10800 \
+    -e RUN_LABEL=cg05-$n $K6
 done
 
 # CG-04 — elevar o rate limit só nesta janela e devolver a 180 depois
