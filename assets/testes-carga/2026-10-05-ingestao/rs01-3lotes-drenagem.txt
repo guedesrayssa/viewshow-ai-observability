@@ -1,0 +1,5 @@
+2026-10-05T16:51:21Z agenda ingest (view-show-ingestion-incremental-ingest): ENABLED
+2026-10-05T16:51:29Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:52:06Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE

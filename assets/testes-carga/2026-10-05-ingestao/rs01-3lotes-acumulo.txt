@@ -1,0 +1,30 @@
+contagem antes (publicado em 2026-10-05T16:43:08Z):
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261005 300000
+TOTAL 300000
+2026-10-05T16:44:07Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:44:40Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:45:13Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:45:46Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:46:19Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:46:52Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:47:25Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:47:59Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:48:33Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:49:06Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:49:40Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:50:14Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:50:47Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_05bdc6a64cbd AUSENTE
+2026-10-05T16:51:21Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0

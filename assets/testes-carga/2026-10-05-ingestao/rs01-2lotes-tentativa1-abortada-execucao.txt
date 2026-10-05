@@ -1,0 +1,28 @@
+2026-10-05T15:35:36Z RS-01 rs01-2lotes: N=2 prazo=1800s dataset=dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965
+2026-10-05T15:35:40Z agendas: sync:DISABLED incremental-ingest:DISABLED incremental-export:DISABLED 
+2026-10-05T15:35:43Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+2026-10-05T15:35:45Z lease INGESTION#SOURCE#SYNC_GLOBAL: ausente
+2026-10-05T15:35:47Z lease INGESTION#SOURCE#argus: ausente
+2026-10-05T15:35:47Z publicacao inicio
+2026-10-05T15:35:51Z publicacao fim exit=1
+    final_args = self.compute_client_args(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Inteli\projetos\modulo7\g05\apps\backend\ingestion-data\.venv\Lib\site-packages\botocore\args.py", line 259, in compute_client_args
+    endpoint_config = self._compute_endpoint_config(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Inteli\projetos\modulo7\g05\apps\backend\ingestion-data\.venv\Lib\site-packages\botocore\args.py", line 447, in _compute_endpoint_config
+    return self._resolve_endpoint(**resolve_endpoint_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Inteli\projetos\modulo7\g05\apps\backend\ingestion-data\.venv\Lib\site-packages\botocore\args.py", line 552, in _resolve_endpoint
+    return endpoint_bridge.resolve(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Inteli\projetos\modulo7\g05\apps\backend\ingestion-data\.venv\Lib\site-packages\botocore\client.py", line 671, in resolve
+    resolved = self.endpoint_resolver.construct_endpoint(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Inteli\projetos\modulo7\g05\apps\backend\ingestion-data\.venv\Lib\site-packages\botocore\regions.py", line 233, in construct_endpoint
+    result = self._endpoint_for_partition(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Inteli\projetos\modulo7\g05\apps\backend\ingestion-data\.venv\Lib\site-packages\botocore\regions.py", line 281, in _endpoint_for_partition
+    raise NoRegionError()
+botocore.exceptions.NoRegionError: You must specify a region.
+2026-10-05T15:35:51Z ABORTADO: publicacao falhou
