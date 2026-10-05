@@ -178,6 +178,12 @@ const emptyIncidentRepository: IncidentRepository = {
   async listEvidence() {
     return [];
   },
+  async listHypotheses() {
+    return [];
+  },
+  async latestDiagnosis() {
+    return null;
+  },
   async writeReview() {
     return {};
   },

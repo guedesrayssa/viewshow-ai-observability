@@ -89,7 +89,7 @@ const TASK_ADDRESSES = Object.freeze([
   "aws_ecs_task_definition.ingestion_incremental_ingest",
 ]);
 const TASK_CONTAINER_NAMES = Object.freeze({
-  "aws_ecs_task_definition.api": Object.freeze([`${NAMESPACE}-api`]),
+  "aws_ecs_task_definition.api": Object.freeze([`${NAMESPACE}-iac-api`]),
   "aws_ecs_task_definition.ingestion_backfill": Object.freeze([
     "tmp-owner",
     "mysql-snapshot",
@@ -123,42 +123,56 @@ const UPDATE_PRESETS = Object.freeze({
     ingestion_snapshot_prepare_enabled: false,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
+  }),
+  "loadtest-20000": Object.freeze({
+    ingestion_snapshot_page_size: 500,
+    ingestion_snapshot_prepare_enabled: false,
+    import_canonical_first_enabled: false,
+    import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 20000,
   }),
   "phase1-2000": Object.freeze({
     ingestion_snapshot_page_size: 2000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase1-5000": Object.freeze({
     ingestion_snapshot_page_size: 5000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase1-10000": Object.freeze({
     ingestion_snapshot_page_size: 10000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase2-2000": Object.freeze({
     ingestion_snapshot_page_size: 2000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase2-5000": Object.freeze({
     ingestion_snapshot_page_size: 5000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase2-10000": Object.freeze({
     ingestion_snapshot_page_size: 10000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
 });
 const LEARNER_LAB_PLAN_VARIABLES = Object.freeze({
@@ -1061,6 +1075,39 @@ function validateStateBackupFile(context, directory, target) {
 }
 
 function copyStateBackupThroughDescriptors(context, source, directory, target) {
+  if (context.platform === "darwin") {
+    const helper = path.join(
+      context.root,
+      "apps",
+      "scripts",
+      "terraform",
+      "secure-state-backup.py",
+    );
+    const expected = {
+      source: [source.device, source.inode],
+      directory: [directory.device, directory.inode],
+      lineage: source.lineage,
+      serial: source.serial,
+    };
+    const copied = context.execute(
+      "python3",
+      [helper, source.path, directory.path, path.basename(target), JSON.stringify(expected)],
+      { cwd: context.root },
+    );
+    if (copied.status !== 0) {
+      throw new Error("the secure Terraform state backup could not be created");
+    }
+    const metadata = context.inspectArtifactPath(target);
+    if (
+      metadata.isSymbolicLink() ||
+      !metadata.isFile() ||
+      metadata.uid !== context.currentUserId() ||
+      metadata.nlink !== 1
+    ) {
+      throw new Error("the Terraform state backup is not a private physical file");
+    }
+    return { path: target, ...artifactIdentity(metadata) };
+  }
   if (
     context.platform !== "linux" ||
     !Number.isInteger(fsConstants.O_NOFOLLOW) ||
@@ -1429,7 +1476,7 @@ function checkPrerequisites(context) {
     "all",
   ].includes(step);
   const needsDocker = ["setup", "check", "deploy", "plan-update", "update", "all"].includes(step);
-  const needsPython = ["check", "build-snapshot", "seed", "all"].includes(step);
+  const needsPython = ["check", "build-snapshot", "update", "seed", "all"].includes(step);
 
   if (needsTerraform) {
     const result = execute("terraform", ["version", "-json"], terraformOptions(context));
@@ -2095,6 +2142,7 @@ function updatePlanVariables(preset) {
     `-var=ingestion_snapshot_prepare_enabled=${selected.ingestion_snapshot_prepare_enabled}`,
     `-var=import_canonical_first_enabled=${selected.import_canonical_first_enabled}`,
     `-var=import_hot_materialization_enabled=${selected.import_hot_materialization_enabled}`,
+    `-var=rate_limit_por_minuto=${selected.rate_limit_por_minuto}`,
     "-var=import_canonical_first_production_approved=false",
   ];
 }
@@ -2503,14 +2551,16 @@ function verifyPostApplyResources(state, runbook, preset, expectedPlanImages) {
 
   const selected = UPDATE_PRESETS[preset];
   const apiEnvironment = taskEnvironment(
-    taskContainers.get("aws_ecs_task_definition.api")?.get(`${NAMESPACE}-api`),
+    taskContainers.get("aws_ecs_task_definition.api")?.get(`${NAMESPACE}-iac-api`),
     "aws_ecs_task_definition.api",
   );
   if (
     apiEnvironment.get("IMPORT_CANONICAL_FIRST_ENABLED") !==
-    String(selected.import_canonical_first_enabled)
+      String(selected.import_canonical_first_enabled) ||
+    apiEnvironment.get("RATE_LIMIT_PER_MINUTE") !==
+      String(selected.rate_limit_por_minuto)
   ) {
-    throw new Error("post-apply canonical-first API flag diverged from the preset");
+    throw new Error("post-apply API flags or rate limit diverged from the preset");
   }
   for (const [address, diskBudgetBytes] of Object.entries(TASK_DISK_BUDGET_BYTES)) {
     const environment = taskEnvironment(
@@ -2594,7 +2644,9 @@ async function updateExistingStack(context, existingStack) {
     restrictPermissions(context, plan, 0o400);
     validatedPlanSnapshot = readPlanSnapshot(context, plan);
     planDescriptor = openValidatedPlan(context, plan, validatedPlanSnapshot);
-    const descriptorPath = "/proc/self/fd/3";
+    const descriptorPath = process.platform === "darwin"
+      ? "/dev/fd/3"
+      : "/proc/self/fd/3";
 
     const shown = execute(
       "terraform",

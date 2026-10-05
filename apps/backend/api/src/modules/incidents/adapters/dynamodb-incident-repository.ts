@@ -615,7 +615,47 @@ export class DynamoIncidentRepository implements IncidentRepository {
       },
       ScanIndexForward: false,
     });
-    return items.map((item) => evidenceDto(item, active.datasetVersion));
+    // The same `EVIDENCE#` prefix also holds the worker's flat A′ facts
+    // (`itemType: "evidence"`, no ingestion envelope) — skip those here
+    // instead of letting evidenceDto's strict parse fail the whole page.
+    return items
+      .filter((item) => item.entityType === "EVIDENCE")
+      .map((item) => evidenceDto(item, active.datasetVersion));
+  }
+
+  async listHypotheses(
+    active: ActiveDatasetSnapshot,
+    incidentId: string,
+  ): Promise<readonly PhysicalItem[]> {
+    return this.queryAll({
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `DATASET#${active.datasetVersion}#INCIDENT#${incidentId}`,
+        ":prefix": "HYPOTHESIS#",
+      },
+    });
+  }
+
+  async latestDiagnosis(
+    active: ActiveDatasetSnapshot,
+    incidentId: string,
+  ): Promise<PhysicalItem | null> {
+    const items = await this.queryAll({
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `DATASET#${active.datasetVersion}#INCIDENT#${incidentId}`,
+        ":prefix": "DIAGNOSIS#",
+      },
+    });
+    return (
+      [...items].sort((left, right) => {
+        const leftCreatedAt =
+          typeof left.createdAt === "string" ? left.createdAt : "";
+        const rightCreatedAt =
+          typeof right.createdAt === "string" ? right.createdAt : "";
+        return rightCreatedAt.localeCompare(leftCreatedAt);
+      })[0] ?? null
+    );
   }
 
   private async queryAll(

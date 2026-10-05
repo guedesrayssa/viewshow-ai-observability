@@ -1,0 +1,38 @@
+STATUS: Success
+START=1790818476 END=1790818822 EXIT=0
+
+Carga da API consumida pelo frontend — modo load
+Taxa de chegada (iterações/s): base 1, pico 10; 3239 iterações, 3243 requisições, 9.4 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 245; timeouts do cliente (>8000 ms): 0; iterações descartadas: 0
+Status HTTP (0 = timeout/erro de rede): 200=2884  202=114  503=245
+
+THRESHOLDS: todos os 104 aprovados
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list         755    0.00     100.00      19      35     103     100.0
+incidents_chart        253    0.00     100.00      17      33     238     100.0
+dashboard_overview     521    0.00     100.00      21      40     104       0.0
+incident_diagnosis     494    0.00     100.00      24      39      99     100.0
+incident_events        350    0.00     100.00      23      54     202     100.0
+global_events          357    0.00     100.00      17      33     150     100.0
+monitoring_overview    245    0.00     100.00      10      23      85       0.0
+auth_session           121    0.00     100.00       7      16      32       0.0
+argus_integration       29    0.00     100.00      10      36      77       0.0
+rum_beacon             114    0.00     100.00       6      20      34       0.0
+
+Por fase            req   falha%   p50ms   p95ms   p99ms
+s1_ramp_up             164    0.00      31      68      99
+s2_plateau            3000    0.00      20      32     124
+s3_ramp_down            75    0.00      19      30     179
+
+Observações:
+  - monitoring_overview: 245/245 respostas 503 DATA_UNAVAILABLE — a rota não está sendo exercitada (sem projeção)
+  - incidents_list: 755 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+
+Resumo detalhado: /opt/loadtest/results/load10/resumo-front-api-load.json
+---ERR---
+Request Failed: 0
+---VMSTAT---
+gerador: us+sy médio=1.0% max=5.0% steal médio=0.5% amostras=70
+

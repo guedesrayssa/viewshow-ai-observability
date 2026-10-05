@@ -508,13 +508,25 @@ describe("DynamoDB adapters", () => {
         qualityFlags: [],
       },
     };
+    // The analysis worker writes its own flat A′ facts under the same
+    // `EVIDENCE#` prefix (`itemType: "evidence"`, no ingestion envelope) —
+    // listEvidence must skip it rather than fail the whole page on it.
+    const workerFactItem = {
+      pk: `DATASET#${datasetVersion}#INCIDENT#inc_1`,
+      sk: "EVIDENCE#fact_1",
+      itemType: "evidence",
+      id: "fact_1",
+      metric: "cdn_live_err_rate",
+      direction: "increase",
+      statement: "Erros de CDN cresceram no intervalo.",
+    };
     const send = vi
       .fn()
       .mockResolvedValueOnce({
         Items: [storedEvent, storedLiveEvent, storedLiveContext],
       })
       .mockResolvedValueOnce({ Item: storedLookup })
-      .mockResolvedValueOnce({ Items: [storedEvidence] });
+      .mockResolvedValueOnce({ Items: [storedEvidence, workerFactItem] });
     const repository = new DynamoIncidentRepository("us-east-1", "table", {
       send,
     } as unknown as DynamoDBDocumentClient);

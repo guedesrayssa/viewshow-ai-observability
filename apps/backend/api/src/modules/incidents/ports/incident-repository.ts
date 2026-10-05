@@ -88,6 +88,14 @@ export interface IncidentRepository {
     active: ActiveDatasetSnapshot,
     incidentId: string,
   ): Promise<readonly EvidenceDto[]>;
+  listHypotheses(
+    active: ActiveDatasetSnapshot,
+    incidentId: string,
+  ): Promise<readonly PhysicalItem[]>;
+  latestDiagnosis(
+    active: ActiveDatasetSnapshot,
+    incidentId: string,
+  ): Promise<PhysicalItem | null>;
   writeReview(write: ReviewWrite): Promise<PhysicalItem>;
 }
 
