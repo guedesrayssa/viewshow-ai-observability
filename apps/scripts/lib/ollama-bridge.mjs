@@ -44,7 +44,14 @@ export function bridgeInputs({ ollamaUser, ollamaHost, bastionKeyFile }) {
 
 export function localOllamaTunnelArguments(ollamaUser, ollamaHost) {
   const input = bridgeInputs({ ollamaUser, ollamaHost, bastionKeyFile: "unused" });
-  return ["-N", "-T", "-L", "127.0.0.1:11434:127.0.0.1:11434", `${input.ollamaUser}@${input.ollamaHost}`];
+  return [
+    "-N", "-T",
+    "-o", "ExitOnForwardFailure=yes",
+    "-o", "ServerAliveInterval=30",
+    "-o", "ServerAliveCountMax=3",
+    "-L", "127.0.0.1:11434:127.0.0.1:11434",
+    `${input.ollamaUser}@${input.ollamaHost}`,
+  ];
 }
 
 export function ssmBastionTunnelArguments(instanceId, region, profile) {
@@ -120,6 +127,35 @@ export function waitForBridgeStop(children, stop) {
   });
 }
 
+function bridgeExitError(code, signal) {
+  return new Error(`bridge process exited unexpectedly (${signal ?? code ?? "unknown"})`);
+}
+
+function monitorBridgeChild(child) {
+  const failure = new Promise((_, reject) => {
+    let settled = false;
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+    child.once("error", fail);
+    child.once("exit", (code, signal) => fail(bridgeExitError(code, signal)));
+    if (child.exitCode != null || child.signalCode != null) {
+      queueMicrotask(() => fail(bridgeExitError(child.exitCode, child.signalCode)));
+    }
+  });
+  failure.catch(() => {});
+  return failure;
+}
+
+function assertBridgeChildrenAlive(children) {
+  const exited = children.find(
+    (child) => child.exitCode != null || child.signalCode != null,
+  );
+  if (exited) throw bridgeExitError(exited.exitCode, exited.signalCode);
+}
+
 export async function runOllamaBridge({
   id,
   privateIp,
@@ -137,25 +173,43 @@ export async function runOllamaBridge({
   const input = bridgeInputs({ ollamaUser, ollamaHost, bastionKeyFile });
   const bastionPrivateIp = readPrivateIpv4(privateIp);
   const children = [];
+  const failures = [];
   let stopped = false;
   const stop = () => {
     if (stopped) return;
     stopped = true;
-    for (const child of children) child.kill("SIGTERM");
+    for (const child of children) {
+      if (child.exitCode != null || child.signalCode != null) continue;
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        // Shutdown is best effort so it cannot replace the bridge's causal error.
+      }
+    }
   };
   const options = { stdio: "inherit", shell: false };
+  const start = (command, args) => {
+    const child = spawnProcess(command, args, options);
+    children.push(child);
+    failures.push(monitorBridgeChild(child));
+    return child;
+  };
+  const raceFailures = (operation) =>
+    Promise.race([...failures, Promise.resolve().then(operation)]);
 
   try {
-    children.push(spawnProcess("ssh", localOllamaTunnelArguments(input.ollamaUser, input.ollamaHost), options));
-    children.push(spawnProcess("aws", ssmBastionTunnelArguments(id, region, profile), options));
-    await waitForPort({ host: "127.0.0.1", port: 2222 });
-    children.push(spawnProcess("ssh", reverseOllamaTunnelArguments(input.bastionKeyFile, bastionPrivateIp), options));
+    start("ssh", localOllamaTunnelArguments(input.ollamaUser, input.ollamaHost));
+    start("aws", ssmBastionTunnelArguments(id, region, profile));
+    await raceFailures(() => waitForPort({ host: "127.0.0.1", port: 2222 }));
+    assertBridgeChildrenAlive(children);
+    start("ssh", reverseOllamaTunnelArguments(input.bastionKeyFile, bastionPrivateIp));
+    assertBridgeChildrenAlive(children);
     log(`Ollama bridge ready at http://${bastionPrivateIp}:11434`);
     log(platform === "win32"
       ? `$env:VIEW_SHOW_OLLAMA_BASE_URL = "http://${bastionPrivateIp}:11434"`
       : `export VIEW_SHOW_OLLAMA_BASE_URL="http://${bastionPrivateIp}:11434"`);
     log("Keep this terminal open. Press Ctrl+C to close every bridge tunnel.");
-    await waitForStop(children, stop);
+    await raceFailures(() => waitForStop(children, stop));
   } finally {
     stop();
   }

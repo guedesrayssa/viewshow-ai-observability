@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { EventEmitter } from "node:events";
 import {
   chmodSync,
   constants as fsConstants,
@@ -595,7 +596,9 @@ function testEnvironment({
     if (command === "terraform" && args.includes("show") && args.includes("-json")) {
       const isSavedPlan = args.some(
         (item) =>
-          String(item).endsWith(".tfplan") || String(item).startsWith("/proc/self/fd/"),
+          String(item).endsWith(".tfplan") ||
+          String(item).startsWith("/proc/self/fd/") ||
+          String(item).startsWith("/dev/fd/"),
       );
       if (!isSavedPlan) {
         return {
@@ -784,11 +787,22 @@ function testEnvironment({
       openBackupPath: (target, flags, mode) => {
         const descriptor = 80 + backupDescriptors.length;
         let logicalTarget = target;
-        const anchored = String(target).match(/^\/proc\/self\/fd\/(\d+)\/(.+)$/);
+        const anchored = String(target).match(/^\/(?:proc\/self|dev)\/fd\/(\d+)\/(.+)$/);
         if (anchored) {
           const directory = backupDescriptorTargets.get(Number(anchored[1]));
           if (directory === undefined) throw new Error("EBADF");
           logicalTarget = path.join(directory, anchored[2]);
+          if (artifactEntries.has(logicalTarget)) throw new Error("EEXIST");
+          artifactEntries.set(logicalTarget, {
+            uid: 1000,
+            dev: 1,
+            ino: 300 + backupDescriptors.length,
+            nlink: 1,
+            isFile: () => true,
+            isDirectory: () => false,
+            isSymbolicLink: () => false,
+          });
+        } else if ((flags & fsConstants.O_CREAT) !== 0) {
           if (artifactEntries.has(logicalTarget)) throw new Error("EEXIST");
           artifactEntries.set(logicalTarget, {
             uid: 1000,
@@ -1283,7 +1297,11 @@ test("analysis-bridge opens the private Ollama bridge without touching ECS on ev
       })[prompt],
       spawnProcess: (command, args, options) => {
         spawned.push({ command, args, options });
-        return { kill: (signal) => killed.push({ command, signal }) };
+        const child = new EventEmitter();
+        child.exitCode = null;
+        child.signalCode = null;
+        child.kill = (signal) => killed.push({ command, signal });
+        return child;
       },
       waitForPort: async () => {},
       waitForBridgeStop: async (_children, stop) => stop(),
@@ -2642,6 +2660,36 @@ test("update presets are hardcoded and the validated saved plan is the only appl
   }
 });
 
+test("plan-update uses the protected plan reference supported by each POSIX operating system", async () => {
+  for (const [platform, expectedReference] of [
+    ["linux", "/proc/self/fd/3"],
+    ["darwin", "/dev/fd/3"],
+  ]) {
+    const a = updateEnvironment({ platform });
+
+    const result = await runLearnerLab({
+      ...a.options,
+      step: "plan-update",
+      preset: "phase1-5000",
+    });
+
+    assert.equal(result.status, 0, `${platform}: ${a.logs.join("\n")}`);
+    const plan = a.calls.find(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    );
+    const planPath = plan.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
+    const shown = a.calls.find(
+      (call) =>
+        call.command === "terraform" &&
+        call.args.includes("show") &&
+        call.args.includes("-json"),
+    );
+    assert.notEqual(shown.args.at(-1), planPath, platform);
+    assert.equal(shown.args.at(-1), expectedReference, platform);
+    assert.equal(shown.options.stdio.length, 4, platform);
+  }
+});
+
 test("plan-update validates a saved plan but never confirms, backs up, or applies", async () => {
   const a = updateEnvironment();
   let confirmations = 0;
@@ -2688,21 +2736,47 @@ test("two update plans for the same preset use distinct private artifacts", asyn
 });
 
 test("update rejects a plan whose bytes change after validation and never applies it", async () => {
-  const a = updateEnvironment({
-    replacementPlanBytes: Buffer.from("different terraform plan bytes"),
-  });
+  for (const platform of ["linux"]) {
+    const a = updateEnvironment({
+      platform,
+      replacementPlanBytes: Buffer.from("different terraform plan bytes"),
+    });
+    const result = await runLearnerLab({
+      ...a.options,
+      step: "update",
+      preset: "phase1-5000",
+    });
+
+    assert.equal(result.status, 1, platform);
+    assert.match(a.logs.join("\n"), /integrity|changed/i, platform);
+    assert.equal(
+      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+      false,
+      platform,
+    );
+  }
+});
+
+test("Windows update fails closed before Terraform can show or apply a saved plan", async () => {
+  const a = updateEnvironment({ platform: "win32" });
+  a.options.currentUserId = () => undefined;
+
   const result = await runLearnerLab({
     ...a.options,
     step: "update",
     preset: "phase1-5000",
   });
 
-  assert.equal(result.status, 1);
-  assert.match(a.logs.join("\n"), /integrity|changed/i);
+  assert.equal(result.status, 1, a.logs.join("\n"));
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) =>
+        call.command === "terraform" &&
+        (call.args.includes("plan") || call.args.includes("apply")),
+    ),
     false,
   );
+  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
 });
 
 test("update never applies a plan whose filesystem identity is unavailable", async () => {
@@ -3383,6 +3457,46 @@ test("update backs up state privately before apply and revalidates state and out
   assert.ok(postPullIndex > applyIndex);
   assert.ok(postOutputIndex > applyIndex);
   assert.ok(postShowIndex > applyIndex);
+});
+
+test("update creates its protected state backup through a Linux directory descriptor", async () => {
+  const a = updateEnvironment({ platform: "linux" });
+
+  const result = await runLearnerLab({
+    ...a.options,
+    step: "update",
+    preset: "phase1-5000",
+  });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const destinationOpen = a.backupOpens.find(
+    ({ flags }) => (flags & fsConstants.O_CREAT) !== 0,
+  );
+  assert.match(destinationOpen.target, /^\/proc\/self\/fd\/\d+\/terraform\.tfstate\./);
+  assert.ok(destinationOpen.flags & fsConstants.O_EXCL);
+  assert.equal(a.backupWrites.length, 1);
+  assert.equal(
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    true,
+  );
+});
+
+test("update fails closed where a protected state backup cannot be anchored safely", async () => {
+  const a = updateEnvironment({ platform: "darwin" });
+
+  const result = await runLearnerLab({
+    ...a.options,
+    step: "update",
+    preset: "phase1-5000",
+  });
+
+  assert.equal(result.status, 1, a.logs.join("\n"));
+  assert.equal(a.backupWrites.length, 0);
+  assert.equal(
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    false,
+  );
+  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform backups/i);
 });
 
 test("update rejects untrusted or replaced backup paths before copy and apply", async () => {
@@ -5599,6 +5713,81 @@ test("analysis-prepare keeps the Ollama endpoint out of arguments, logs and its 
     catalog: ANALYSIS_CATALOG,
     modelId: OLLAMA_MODEL_ID,
   });
+});
+
+test("analysis-prepare uses the protected plan reference supported by each POSIX operating system", async () => {
+  for (const [platform, expectedReference] of [
+    ["linux", "/proc/self/fd/3"],
+    ["darwin", "/dev/fd/3"],
+  ]) {
+    const a = testEnvironment({
+      platform,
+      environment: {
+        AWS_PROFILE: "default",
+        AWS_REGION: "us-east-1",
+        VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+      },
+      planVariableOverrides: OLLAMA_PLAN_VARIABLES,
+    });
+    const result = await runLearnerLab({
+      ...a.options,
+      ...analysisFiles(a),
+      step: "analysis-prepare",
+      extraArguments: OLLAMA_ARGUMENTS,
+    });
+
+    assert.equal(result.status, 0, `${platform}: ${a.logs.join("\n")}`);
+    const plan = a.calls.find(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    );
+    const planPath = plan.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
+    const shown = a.calls.find(
+      (call) =>
+        call.command === "terraform" &&
+        call.args.includes("show") &&
+        call.args.includes("-json"),
+    );
+    const applied = a.calls.find(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    );
+    assert.notEqual(shown.args.at(-1), planPath, platform);
+    assert.notEqual(applied.args.at(-1), planPath, platform);
+    assert.equal(shown.args.at(-1), expectedReference, platform);
+    assert.equal(applied.args.at(-1), expectedReference, platform);
+    assert.equal(shown.options.stdio.length, 4, platform);
+    assert.equal(applied.options.stdio.length, 4, platform);
+  }
+});
+
+test("Windows analysis plan fails closed before Terraform can show or apply it", async () => {
+  const a = testEnvironment({
+    platform: "win32",
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
+    planVariableOverrides: OLLAMA_PLAN_VARIABLES,
+  });
+  a.options.currentUserId = () => undefined;
+
+  const result = await runLearnerLab({
+    ...a.options,
+    ...analysisFiles(a),
+    step: "analysis-prepare",
+    extraArguments: OLLAMA_ARGUMENTS,
+  });
+
+  assert.equal(result.status, 1, a.logs.join("\n"));
+  assert.equal(
+    a.calls.some(
+      (call) =>
+        call.command === "terraform" &&
+        (call.args.includes("plan") || call.args.includes("apply")),
+    ),
+    false,
+  );
+  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
 });
 
 test("analysis-prepare --ssh-bridge persists the bridge for activation and deactivation", async () => {

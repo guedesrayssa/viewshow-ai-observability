@@ -925,6 +925,34 @@ function restrictPermissions({ changeMode, platform }, target, mode) {
   if (platform !== "win32") changeMode(target, mode);
 }
 
+function artifactOwnedByCurrentUser(context, metadata) {
+  if (context.platform === "win32") return true;
+  const userId = context.currentUserId();
+  return Number.isInteger(userId) && metadata.uid === userId;
+}
+
+function assertProtectedTerraformPlanPlatform(context) {
+  if (!["linux", "darwin"].includes(context.platform)) {
+    throw new Error(`unsupported platform for protected Terraform plans: ${context.platform}`);
+  }
+}
+
+function terraformPlanReference(context, descriptor) {
+  assertProtectedTerraformPlanPlatform(context);
+  if (context.platform === "linux") {
+    return { path: "/proc/self/fd/3", stdioDescriptor: descriptor };
+  }
+  if (context.platform === "darwin") {
+    return { path: "/dev/fd/3", stdioDescriptor: descriptor };
+  }
+}
+
+function terraformPlanStdio(standardStreams, reference) {
+  return reference.stdioDescriptor === null
+    ? standardStreams
+    : [...standardStreams, reference.stdioDescriptor];
+}
+
 function readPlanSnapshot(context, target) {
   let metadata;
   try {
@@ -932,12 +960,10 @@ function readPlanSnapshot(context, target) {
   } catch {
     throw new Error("the validated Terraform plan is missing");
   }
-  const userId = context.currentUserId();
   if (
     metadata.isSymbolicLink() ||
     !metadata.isFile() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     (Number.isInteger(metadata.nlink) && metadata.nlink !== 1)
   ) {
     throw new Error("the validated Terraform plan is not a private regular file");
@@ -978,11 +1004,9 @@ function openValidatedPlan(context, target, validatedSnapshot) {
       fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
     );
     const metadata = context.inspectPlanFile(descriptor);
-    const userId = context.currentUserId();
     if (
       !metadata.isFile() ||
-      !Number.isInteger(userId) ||
-      metadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, metadata) ||
       (Number.isInteger(metadata.nlink) && metadata.nlink !== 1) ||
       (validatedSnapshot.device !== null && metadata.dev !== validatedSnapshot.device) ||
       (validatedSnapshot.inode !== null && metadata.ino !== validatedSnapshot.inode)
@@ -1044,14 +1068,12 @@ function validateArtifactParent(context, artifacts) {
   } catch {
     throw new Error("the Terraform artifact parent could not be verified");
   }
-  const userId = context.currentUserId();
   if (
     artifacts !== expected ||
     canonical !== expected ||
     metadata.isSymbolicLink() ||
     !metadata.isDirectory() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId
+    !artifactOwnedByCurrentUser(context, metadata)
   ) {
     throw new Error("the Terraform artifact parent is not a private physical directory");
   }
@@ -1084,14 +1106,12 @@ function validateStateBackupDirectory(context, parent, target, expectedIdentity 
   } catch {
     throw new Error("the Terraform state backup directory could not be verified");
   }
-  const userId = context.currentUserId();
   if (
     target !== expected ||
     canonical !== expected ||
     metadata.isSymbolicLink() ||
     !metadata.isDirectory() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId
+    !artifactOwnedByCurrentUser(context, metadata)
   ) {
     throw new Error("the Terraform state backup directory is not a private physical directory");
   }
@@ -1120,14 +1140,12 @@ function validateStateBackupFile(context, directory, target) {
   } catch {
     throw new Error("the Terraform state backup file could not be verified");
   }
-  const userId = context.currentUserId();
   if (
     path.dirname(target) !== directory.path ||
     canonical !== target ||
     metadata.isSymbolicLink() ||
     !metadata.isFile() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     metadata.nlink !== 1
   ) {
     throw new Error("the Terraform state backup is not a private physical file");
@@ -1135,15 +1153,24 @@ function validateStateBackupFile(context, directory, target) {
   return { path: target, ...artifactIdentity(metadata) };
 }
 
-function copyStateBackupThroughDescriptors(context, source, directory, target) {
-  if (
-    context.platform !== "linux" ||
-    !Number.isInteger(fsConstants.O_NOFOLLOW) ||
-    !Number.isInteger(fsConstants.O_DIRECTORY)
-  ) {
-    throw new Error("secure Terraform state backups require Linux descriptor safeguards");
+function stateBackupDestination(context, directoryDescriptor, target) {
+  if (context.platform !== "linux") {
+    throw new Error(`unsupported platform for protected Terraform backups: ${context.platform}`);
   }
-  const userId = context.currentUserId();
+  return `/proc/self/fd/${directoryDescriptor}/${path.basename(target)}`;
+}
+
+function copyStateBackupThroughDescriptors(context, source, directory, target) {
+  if (context.platform !== "linux") {
+    throw new Error(`unsupported platform for protected Terraform backups: ${context.platform}`);
+  }
+  if (
+    (!Number.isInteger(fsConstants.O_NOFOLLOW) ||
+      !Number.isInteger(fsConstants.O_DIRECTORY))
+  ) {
+    throw new Error("secure Terraform state backups require descriptor safeguards");
+  }
+  const noFollow = fsConstants.O_NOFOLLOW;
   let sourceDescriptor = null;
   let directoryDescriptor = null;
   let destinationDescriptor = null;
@@ -1151,13 +1178,13 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
   try {
     sourceDescriptor = context.openBackupPath(
       source.path,
-      fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
+      fsConstants.O_RDONLY | noFollow,
     );
     const sourceMetadata = context.inspectBackupFile(sourceDescriptor);
     if (
       !sourceMetadata.isFile() ||
       sourceMetadata.isSymbolicLink?.() === true ||
-      sourceMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, sourceMetadata) ||
       sourceMetadata.nlink !== 1 ||
       !identityMatches(sourceMetadata, source)
     ) {
@@ -1166,32 +1193,36 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
 
     directoryDescriptor = context.openBackupPath(
       directory.path,
-      fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW,
+      fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | noFollow,
     );
     const directoryMetadata = context.inspectBackupFile(directoryDescriptor);
     if (
       !directoryMetadata.isDirectory() ||
       directoryMetadata.isSymbolicLink?.() === true ||
-      directoryMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, directoryMetadata) ||
       !identityMatches(directoryMetadata, directory)
     ) {
       throw new Error("the Terraform state backup directory descriptor changed identity");
     }
 
-    const anchoredTarget = `/proc/self/fd/${directoryDescriptor}/${path.basename(target)}`;
+    const anchoredTarget = stateBackupDestination(
+      context,
+      directoryDescriptor,
+      target,
+    );
     destinationDescriptor = context.openBackupPath(
       anchoredTarget,
       fsConstants.O_WRONLY |
         fsConstants.O_CREAT |
         fsConstants.O_EXCL |
-        fsConstants.O_NOFOLLOW,
+        noFollow,
       0o600,
     );
     const destinationMetadata = context.inspectBackupFile(destinationDescriptor);
     if (
       !destinationMetadata.isFile() ||
       destinationMetadata.isSymbolicLink?.() === true ||
-      destinationMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, destinationMetadata) ||
       destinationMetadata.nlink !== 1
     ) {
       throw new Error("the Terraform state backup descriptor is not a private regular file");
@@ -1242,12 +1273,10 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
 function assertPrivateDirectory(context, target, expectedIdentity) {
   const metadata = inspectArtifactIfPresent(context, target, "update directory");
   if (metadata === null) return null;
-  const userId = context.currentUserId();
   if (
     metadata.isSymbolicLink() ||
     !metadata.isDirectory() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     !identityMatches(metadata, expectedIdentity)
   ) {
     throw new Error("the private Terraform update directory changed identity");
@@ -1269,12 +1298,10 @@ function createExclusiveUpdatePlan(context, parent, preset) {
   let artifact = null;
   try {
     const metadata = context.inspectArtifactPath(directory);
-    const userId = context.currentUserId();
     if (
       metadata.isSymbolicLink() ||
       !metadata.isDirectory() ||
-      !Number.isInteger(userId) ||
-      metadata.uid !== userId
+      !artifactOwnedByCurrentUser(context, metadata)
     ) {
       throw new Error("could not verify the private Terraform plan directory");
     }
@@ -1320,7 +1347,6 @@ function cleanupExclusiveUpdatePlan(context, artifact, validatedSnapshot) {
     artifact,
   );
   if (directoryMetadata === null) return;
-  const userId = context.currentUserId();
   assertArtifactParentUnchanged(context, artifact.parent);
   assertPrivateDirectory(context, artifact.directory, artifact);
   restrictPermissions(context, artifact.directory, 0o700);
@@ -1332,7 +1358,7 @@ function cleanupExclusiveUpdatePlan(context, artifact, validatedSnapshot) {
       validatedSnapshot === null ||
       planMetadata.isSymbolicLink() ||
       !planMetadata.isFile() ||
-      planMetadata.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, planMetadata) ||
       planMetadata.nlink !== 1 ||
       !identityMatches(planMetadata, validatedSnapshot)
     ) {
@@ -1345,7 +1371,7 @@ function cleanupExclusiveUpdatePlan(context, artifact, validatedSnapshot) {
       planBeforeUnlink === null ||
       planBeforeUnlink.isSymbolicLink() ||
       !planBeforeUnlink.isFile() ||
-      planBeforeUnlink.uid !== userId ||
+      !artifactOwnedByCurrentUser(context, planBeforeUnlink) ||
       planBeforeUnlink.nlink !== 1 ||
       !identityMatches(planBeforeUnlink, validatedSnapshot)
     ) {
@@ -1377,7 +1403,7 @@ function parseStateSnapshot(text, label) {
 }
 
 function validateLocalState(context) {
-  const { root, lstat, readFile, currentUserId } = context;
+  const { root, lstat, readFile } = context;
   const statePath = path.join(root, "apps", "fullstack", "terraform.tfstate");
   let metadata;
   try {
@@ -1385,12 +1411,10 @@ function validateLocalState(context) {
   } catch {
     throw new Error("the protected Terraform state is missing");
   }
-  const userId = currentUserId();
   if (
     metadata.isSymbolicLink() ||
     !metadata.isFile() ||
-    !Number.isInteger(userId) ||
-    metadata.uid !== userId ||
+    !artifactOwnedByCurrentUser(context, metadata) ||
     metadata.nlink !== 1
   ) {
     throw new Error("the protected Terraform state must be a regular, owned, non-symlink file");
@@ -2726,6 +2750,7 @@ function validateCurrentTerraformState(context, runbook, preset, expectedPlanIma
 }
 
 async function updateExistingStack(context, existingStack) {
+  assertProtectedTerraformPlanPlatform(context);
   const {
     execute,
     log,
@@ -2769,12 +2794,15 @@ async function updateExistingStack(context, existingStack) {
     restrictPermissions(context, plan, 0o400);
     validatedPlanSnapshot = readPlanSnapshot(context, plan);
     planDescriptor = openValidatedPlan(context, plan, validatedPlanSnapshot);
-    const descriptorPath = "/proc/self/fd/3";
+    const planReference = terraformPlanReference(context, planDescriptor);
 
     const shown = execute(
       "terraform",
-      [`-chdir=${stack}`, "show", "-json", descriptorPath],
-      { cwd: root, stdio: ["ignore", "pipe", "pipe", planDescriptor] },
+      [`-chdir=${stack}`, "show", "-json", planReference.path],
+      {
+        cwd: root,
+        stdio: terraformPlanStdio(["ignore", "pipe", "pipe"], planReference),
+      },
     );
     if (shown.status !== 0) throw new Error("terraform show failed for the saved update plan");
     const planJson = parseJsonObject(shown.stdout, "terraform show -json update plan");
@@ -2861,8 +2889,11 @@ async function updateExistingStack(context, existingStack) {
     log("terraform apply validated update plan");
     const applied = execute(
       "terraform",
-      [`-chdir=${stack}`, "apply", "-input=false", descriptorPath],
-      { cwd: root, stdio: ["ignore", "inherit", "inherit", planDescriptor] },
+      [`-chdir=${stack}`, "apply", "-input=false", planReference.path],
+      {
+        cwd: root,
+        stdio: terraformPlanStdio(["ignore", "inherit", "inherit"], planReference),
+      },
     );
     if (applied.status !== 0) throw new Error("terraform update apply failed");
 
@@ -4951,6 +4982,7 @@ function readDeployedOllamaEndpoint(context) {
 }
 
 async function applyAnalysisPlan(context, identity, mode, worker, variables) {
+  assertProtectedTerraformPlanPlatform(context);
   const stack = "apps/fullstack";
   const artifacts = path.join(context.root, stack, ".terraform-artifacts");
   context.makeDirectory(artifacts, { recursive: true, mode: 0o700 });
@@ -4976,11 +5008,17 @@ async function applyAnalysisPlan(context, identity, mode, worker, variables) {
     restrictPermissions(context, artifact.plan, 0o400);
     validatedPlanSnapshot = readPlanSnapshot(context, artifact.plan);
     planDescriptor = openValidatedPlan(context, artifact.plan, validatedPlanSnapshot);
-    const descriptorPath = "/proc/self/fd/3";
+    const planReference = terraformPlanReference(
+      context,
+      planDescriptor,
+    );
     const shown = context.execute(
       "terraform",
-      [`-chdir=${stack}`, "show", "-json", descriptorPath],
-      { ...terraformOptions(planContext, { cwd: context.root }), stdio: ["ignore", "pipe", "pipe", planDescriptor] },
+      [`-chdir=${stack}`, "show", "-json", planReference.path],
+      {
+        ...terraformOptions(planContext, { cwd: context.root }),
+        stdio: terraformPlanStdio(["ignore", "pipe", "pipe"], planReference),
+      },
     );
     if (shown.status !== 0) throw new Error(`analysis ${mode} plan could not be read`);
     const gate = context.execute(
@@ -4999,8 +5037,11 @@ async function applyAnalysisPlan(context, identity, mode, worker, variables) {
     assertPlanUnchanged(context, artifact.plan, validatedPlanSnapshot);
     const applied = context.execute(
       "terraform",
-      [`-chdir=${stack}`, "apply", "-input=false", descriptorPath],
-      { ...terraformOptions(planContext, { cwd: context.root }), stdio: ["ignore", "inherit", "inherit", planDescriptor] },
+      [`-chdir=${stack}`, "apply", "-input=false", planReference.path],
+      {
+        ...terraformOptions(planContext, { cwd: context.root }),
+        stdio: terraformPlanStdio(["ignore", "inherit", "inherit"], planReference),
+      },
     );
     if (applied.status !== 0) throw new Error(`analysis ${mode} apply failed`);
     if (mode === "prepare") {
