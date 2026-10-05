@@ -171,6 +171,7 @@ function thresholdsFor(mode) {
   }
   if (mode === "pico") {
     return {
+      ...baseThresholds,
       imports_created_201: ["count==1"],
       unexpected_5xx: ["count==0"],
       "http_req_duration{metodo:GET}": ["p(95)<2000"],
@@ -178,6 +179,7 @@ function thresholdsFor(mode) {
   }
   if (mode === "limite") {
     return {
+      ...baseThresholds,
       unexpected_5xx: ["count==0"],
       imports_created_201: ["count==0"],
       recovery_2xx_rate: ["rate==1"],

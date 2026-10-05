@@ -318,6 +318,7 @@ class IngestIncremental:
         batch: IncrementalBatchRecord,
         code: str,
     ) -> IngestIncrementalResult:
+        self._checkpoint()
         if batch.state in {BatchState.VALIDATING, BatchState.INGESTING}:
             batch = self._batches.finish(
                 batch.batch_id,
@@ -329,12 +330,15 @@ class IngestIncremental:
             )
         try:
             self._ack(delivery)
+        except VisibilityHeartbeatLost:
+            raise
         except Exception as error:
             _log_failure("quarantine ack", delivery, error)
             return IngestIncrementalResult(retryable=1)
         return IngestIncrementalResult(quarantined=1)
 
     def _retryable(self, batch: IncrementalBatchRecord | None) -> IngestIncrementalResult:
+        self._checkpoint()
         if batch is not None and batch.state in {BatchState.VALIDATING, BatchState.INGESTING}:
             self._batches.transition(
                 batch.batch_id,
@@ -356,6 +360,7 @@ class IngestIncremental:
             return IngestIncrementalResult(retryable=1)
 
         try:
+            self._checkpoint()
             batch = self._batches.claim(manifest, delivery.reference)
             if batch.state is BatchState.COMPLETED:
                 self._ack(delivery)
@@ -378,6 +383,7 @@ class IngestIncremental:
             schema = reader.validate_schema(descriptor)
             if not schema.is_compatible:
                 return self._quarantine(delivery, batch, "SCHEMA_INCOMPATIBLE")
+            self._checkpoint()
             if batch.state is BatchState.VALIDATING:
                 batch = self._batches.transition(
                     batch.batch_id,
@@ -404,6 +410,7 @@ class IngestIncremental:
                     batch.version,
                     BatchState.COMMITTING,
                 )
+            self._checkpoint()
             self._batches.finish(
                 batch.batch_id,
                 BatchState.COMMITTING,
@@ -447,6 +454,7 @@ class IngestIncremental:
                 try:
                     heartbeat.check()
                     result = self._process(delivery)
+                    heartbeat.release(delivery)
                 except VisibilityHeartbeatLost:
                     _LOGGER.warning(
                         "ingest-incremental aborted after visibility loss batch_id=%s "
@@ -456,7 +464,6 @@ class IngestIncremental:
                         len(deliveries) - position,
                     )
                     raise
-                heartbeat.release(delivery)
                 self._observe_result(delivery.source_dataset, result)
                 total += result
         finally:

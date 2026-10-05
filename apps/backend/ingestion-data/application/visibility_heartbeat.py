@@ -74,8 +74,9 @@ class VisibilityHeartbeat:
                 self._deadlines[delivery.message_id] = (delivery, deadline)
 
     def release(self, delivery: BatchDelivery) -> None:
-        """Encerra a renovação de uma entrega; espera uma renovação em curso terminar."""
+        """Libera a entrega só se a visibilidade ainda é garantida, após a renovação em curso."""
         with self._lock:
+            self._check_locked()
             self._deadlines.pop(delivery.message_id, None)
 
     def tick(self) -> None:
@@ -113,9 +114,11 @@ class VisibilityHeartbeat:
     def check(self) -> None:
         """Levanta ``VisibilityHeartbeatLost`` se alguma renovação falhou."""
         with self._lock:
-            error = self._error
-        if error is not None:
-            raise VisibilityHeartbeatLost("incremental queue visibility was lost") from error
+            self._check_locked()
+
+    def _check_locked(self) -> None:
+        if self._error is not None:
+            raise VisibilityHeartbeatLost("incremental queue visibility was lost") from self._error
 
     def _run(self) -> None:
         while not self._stop.wait(self._interval):

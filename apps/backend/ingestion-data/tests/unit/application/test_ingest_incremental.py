@@ -742,3 +742,90 @@ def test_heartbeat_failure_aborts_without_finishing_acking_or_processing_waiting
     assert recovered.completed == 1
     assert dependencies.batches.records[first.batch_id].state is BatchState.COMPLETED
     assert queue.acked == (DELIVERY_ID,)
+
+
+@pytest.mark.parametrize(
+    ("phase", "expected_state"),
+    [
+        ("manifest", None),
+        ("sync-error", BatchState.INGESTING),
+        ("committing", BatchState.COMMITTING),
+        ("completed", BatchState.COMPLETED),
+        ("quarantined", BatchState.QUARANTINED),
+    ],
+)
+def test_visibility_loss_aborts_manifest_error_and_finalization_paths(
+    monkeypatch: pytest.MonkeyPatch, phase: str, expected_state: BatchState | None
+) -> None:
+    registry = DatasetRegistry.load_argus_v2()
+    selected = manifest(registry, missing_column="value") if phase == "quarantined" else None
+    _, dependencies = ingest_service(batch=selected)
+    failed = threading.Event()
+    original_extend = dependencies.queue.extend_visibility
+
+    def extend(delivery: BatchDelivery, seconds: int) -> None:
+        try:
+            original_extend(delivery, seconds)
+        finally:
+            if dependencies.queue.extension_failure is not None:
+                failed.set()
+
+    monkeypatch.setattr(dependencies.queue, "extend_visibility", extend)
+
+    def lose_visibility() -> None:
+        dependencies.queue.extension_failure = RuntimeError("receipt handle has expired")
+        _wait_for(failed)
+
+    def fail_write() -> None:
+        lose_visibility()
+        raise RuntimeError("write failed during visibility loss")
+
+    wrap_sync = (
+        (lambda sync: cast(Sync, _GatedSync(sync, fail_write)))
+        if phase == "sync-error"
+        else None
+    )
+    service = rebuild_service(dependencies, wrap_sync=wrap_sync, **FAST_HEARTBEAT)
+    if phase == "manifest":
+        original_load = dependencies.store.load_manifest
+
+        def load(reference: IncrementalBatchReference) -> IncrementalBatchManifest:
+            result = original_load(reference)
+            lose_visibility()
+            return result
+
+        monkeypatch.setattr(dependencies.store, "load_manifest", load)
+    elif phase == "committing":
+        original_transition = dependencies.batches.transition
+
+        def transition(*args: Any, **kwargs: Any) -> Any:
+            result = original_transition(*args, **kwargs)
+            if result.state is BatchState.COMMITTING:
+                lose_visibility()
+            return result
+
+        monkeypatch.setattr(dependencies.batches, "transition", transition)
+    elif phase in {"completed", "quarantined"}:
+        original_finish = dependencies.batches.finish
+
+        def finish(*args: Any, **kwargs: Any) -> Any:
+            result = original_finish(*args, **kwargs)
+            lose_visibility()
+            return result
+
+        monkeypatch.setattr(dependencies.batches, "finish", finish)
+
+    with pytest.raises(VisibilityHeartbeatLost):
+        service.drain(limit=1)
+
+    assert dependencies.queue.acked == ()
+    if expected_state is None:
+        assert dependencies.batches.records == {}
+    else:
+        assert next(iter(dependencies.batches.records.values())).state is expected_state
+
+    if phase in {"completed", "quarantined"}:
+        dependencies.queue.extension_failure = None
+        result = rebuild_service(dependencies).drain(limit=1)
+        assert result.completed + result.quarantined == 1
+        assert dependencies.queue.acked == (DELIVERY_ID,)

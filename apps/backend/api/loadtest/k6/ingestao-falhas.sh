@@ -150,7 +150,10 @@ cmd_s3_negar() {
   local bucket
   bucket="$(rb storage.bucket)"
   mkdir -p "$(dirname "$ESTADO")"
-  if aws s3api get-bucket-policy --region "$REGIAO" --bucket "$bucket" --query Policy --output text \
+  # Repetir a injeção não pode substituir o backup pela política já negada.
+  if [ -f "$ESTADO.politica-original.json" ]; then
+    echo "reutilizando política original salva em $ESTADO.politica-original.json"
+  elif aws s3api get-bucket-policy --region "$REGIAO" --bucket "$bucket" --query Policy --output text \
       > "$ESTADO.politica-original.json" 2>/dev/null; then
     echo "política original salva em $ESTADO.politica-original.json"
   else

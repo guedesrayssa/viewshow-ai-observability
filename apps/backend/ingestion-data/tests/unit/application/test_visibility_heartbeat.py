@@ -107,6 +107,19 @@ def test_deadline_passed_before_renewal_counts_as_loss() -> None:
         subject.check()
 
 
+def test_cannot_release_a_delivery_after_a_failed_renewal() -> None:
+    queue, clock = FakeIncrementalBatchQueue(), FakeClock()
+    subject = heartbeat(queue, clock)
+    item = delivery("m-1")
+    subject.track((item,), received_at=0.0)
+    queue.extension_failure = RuntimeError("receipt handle has expired")
+
+    run_checks(subject, clock, until=240)
+
+    with pytest.raises(VisibilityHeartbeatLost):
+        subject.release(item)
+
+
 @pytest.mark.parametrize(
     "changes",
     [
