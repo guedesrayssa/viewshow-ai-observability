@@ -265,8 +265,7 @@ export function toDiagnosisData(
   const hypotheses = children.filter(
     (item) =>
       itemKind(item) === "hypothesis" &&
-      text(item.statement ?? item.text) !== null &&
-      number(item.probability ?? item.score) !== null,
+      text(item.statement ?? item.text) !== null,
   );
   const evidence = children.filter(
     (item) =>
@@ -274,26 +273,7 @@ export function toDiagnosisData(
       text(item.statement ?? item.description) !== null,
   );
   const incident = toIncidentDto(incidentItem, hypotheses, now);
-  const ranked = [...hypotheses]
-    .sort(
-      (left, right) =>
-        (number(right.probability ?? right.score) ?? 0) -
-        (number(left.probability ?? left.score) ?? 0),
-    )
-    .map((item, index) => ({
-      id: hypothesisId(item),
-      rank: index + 1,
-      statement: text(item.statement ?? item.text) as string,
-      component: incident.primaryComponent,
-      probability: number(item.probability ?? item.score) as number,
-      rationale: text(item.rationale),
-      review: {
-        status: reviewStatus(item.reviewStatus),
-        note: text(item.reviewNote),
-        reviewedAt: iso(item.reviewedAt),
-        version: number(item.reviewVersion ?? item.version) ?? 0,
-      },
-    }));
+  const ranked = rankedHypotheses(hypotheses, incident.primaryComponent);
   const latest = latestHypothesis(hypotheses);
   const presentation = diagnosisPresentation(incidentItem);
   return {
@@ -357,5 +337,65 @@ export function toDiagnosisData(
       observedThrough: iso(incidentItem.observedThrough),
       gaps: presentation.charts.buffering ? [] : ["INGESTION_PROJECTIONS_NOT_AVAILABLE"],
     },
+  };
+}
+
+/**
+ * Ranks hypothesis items by probability when present; ties (including the
+ * common case where the worker never scores a hypothesis) keep read order.
+ */
+export function rankedHypotheses(
+  hypotheses: readonly PhysicalItem[],
+  component: IncidentDto["primaryComponent"],
+): DiagnosisData["diagnosis"]["hypotheses"] {
+  return [...hypotheses]
+    .sort(
+      (left, right) =>
+        (number(right.probability ?? right.score) ?? 0) -
+        (number(left.probability ?? left.score) ?? 0),
+    )
+    .map((item, index) => ({
+      id: hypothesisId(item),
+      rank: index + 1,
+      statement: text(item.statement ?? item.text) as string,
+      component,
+      probability: number(item.probability ?? item.score),
+      rationale: text(item.rationale),
+      review: {
+        status: reviewStatus(item.reviewStatus),
+        note: text(item.reviewNote),
+        reviewedAt: iso(item.reviewedAt),
+        version: number(item.reviewVersion ?? item.version) ?? 0,
+      },
+    }));
+}
+
+/**
+ * A run that produced a `DIAGNOSIS#` item but zero hypotheses (the model found
+ * no supported candidate) is still `ready`, distinct from `not_started` (no
+ * run attempted) and `failed` (the run errored — see `worker/orchestrator.ts`).
+ */
+export function diagnosisStatusBlock(
+  diagnosisItem: PhysicalItem | null,
+  hypotheses: readonly PhysicalItem[],
+): Pick<
+  DiagnosisData["diagnosis"],
+  "status" | "generatedAt" | "summary" | "primaryHypothesisId" | "confidence"
+> {
+  if (!diagnosisItem)
+    return {
+      status: "not_started",
+      generatedAt: null,
+      summary: null,
+      primaryHypothesisId: null,
+      confidence: null,
+    };
+  const latest = latestHypothesis(hypotheses);
+  return {
+    status: diagnosisItem.status === "failed" ? "failed" : "ready",
+    generatedAt: iso(diagnosisItem.createdAt),
+    summary: latest ? text(latest.summary ?? latest.explanation) : null,
+    primaryHypothesisId: latest ? hypothesisId(latest) : null,
+    confidence: latest ? number(latest.probability ?? latest.score) : null,
   };
 }

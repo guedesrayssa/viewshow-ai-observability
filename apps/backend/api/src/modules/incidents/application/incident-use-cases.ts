@@ -25,6 +25,7 @@ import type {
   ActiveDatasetSnapshot,
 } from "../../datasets/ports/active-dataset-resolver.js";
 import type { CursorCodec } from "../domain/cursor.js";
+import { diagnosisStatusBlock, rankedHypotheses } from "../domain/incident.js";
 import type {
   ActiveIncidentProjection,
   EventPagePosition,
@@ -274,7 +275,7 @@ export class IncidentUseCases {
     private readonly cursor: CursorCodec,
     _feedback: ReviewFeedbackPort,
     private readonly clock: () => Date = () => new Date(),
-    _reanalysis: ReanalysisPublisherPort = new UnavailableReanalysisPublisherPort(),
+    private readonly reanalysis: ReanalysisPublisherPort = new UnavailableReanalysisPublisherPort(),
   ) {}
 
   private async activeIncidents(
@@ -529,16 +530,16 @@ export class IncidentUseCases {
         "A projeção de Evidências ainda não foi publicada pela ingestão.",
       );
     const incident = (await this.requiredIncident(active, incidentId)).dto;
-    const evidence = await this.repository.listEvidence(active, incidentId);
+    const [evidence, hypotheses, diagnosisItem] = await Promise.all([
+      this.repository.listEvidence(active, incidentId),
+      this.repository.listHypotheses(active, incidentId),
+      this.repository.latestDiagnosis(active, incidentId),
+    ]);
     const data = diagnosisDataSchema.parse({
       incident,
       diagnosis: {
-        status: "not_started",
-        generatedAt: null,
-        summary: null,
-        primaryHypothesisId: null,
-        confidence: null,
-        hypotheses: [],
+        ...diagnosisStatusBlock(diagnosisItem, hypotheses),
+        hypotheses: rankedHypotheses(hypotheses, incident.primaryComponent),
       },
       evidence,
       charts: { buffering: null, concentrations: [], concentrationNote: "" },
@@ -560,26 +561,69 @@ export class IncidentUseCases {
   }
 
   async reanalyze(
-    _incidentId: string,
-    _idempotencyKey: string,
-    _requestedBy: string,
+    incidentId: string,
+    idempotencyKey: string,
+    requestedBy: string,
   ): Promise<void> {
     await requireActiveDataset(this.activeDataset);
-    return featureUnavailable(
-      "A reanálise manual não está disponível para o contrato físico ativo.",
-    );
+    const { incident } = await this.repository.bundle(incidentId);
+    if (!incident)
+      dataUnavailable(
+        "O incidente não foi encontrado no armazenamento operacional.",
+      );
+    const outcome = await this.reanalysis.publish({
+      incidentId,
+      idempotencyKey,
+      requestedBy,
+      reason: "MANUAL_REQUEST",
+    });
+    if (outcome === "unavailable")
+      featureUnavailable(
+        "A reanálise manual não está disponível para o contrato físico ativo.",
+      );
   }
 
   async review(
-    _incidentId: string,
-    _selectedHypothesisId: string,
-    _body: ReviewBody,
-    _reviewerId: string,
+    incidentId: string,
+    selectedHypothesisId: string,
+    body: ReviewBody,
+    reviewerId: string,
   ): Promise<InternalResponse<ReviewData>> {
-    await requireActiveDataset(this.activeDataset);
-    return featureUnavailable(
-      "A revisão de hipóteses não está disponível para o contrato físico ativo.",
-    );
+    const active = await requireActiveDataset(this.activeDataset);
+    const { incident } = await this.repository.bundle(incidentId);
+    if (!incident)
+      dataUnavailable(
+        "O incidente não foi encontrado no armazenamento operacional.",
+      );
+    const reviewedAt = this.clock().toISOString();
+    const updated = await this.repository.writeReview({
+      key: { pk: incident.pk, sk: `HYPOTHESIS#${selectedHypothesisId}` },
+      expectedVersion: body.expectedVersion,
+      status: body.status,
+      note: body.note ?? null,
+      reviewedAt,
+      reviewerId,
+    });
+    return {
+      data: {
+        incidentId,
+        hypothesisId: selectedHypothesisId,
+        review: {
+          status: body.status,
+          note: body.note ?? null,
+          reviewedAt,
+          version: Number(updated.reviewVersion),
+        },
+      },
+      datasetVersion: active.datasetVersion,
+      quality: {
+        window: null,
+        partial: false,
+        refreshAfterSeconds: null,
+        freshness: [],
+        warnings: [],
+      },
+    };
   }
 }
 
