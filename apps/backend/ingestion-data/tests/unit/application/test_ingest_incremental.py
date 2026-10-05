@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import threading
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from typing import Any, cast
 
 import pytest
 
 from application.ingest_incremental import IngestIncremental, S3IncrementalSourceReader
 from application.publish_outbox import OutboxPublisher
-from application.sync import Sync
+from application.sync import Sync, SyncRequest, SyncResult
+from application.visibility_heartbeat import VisibilityHeartbeatLost
 from contracts.registry import DatasetRegistry
 from domain.identity import canonical_dataset_version, dataset_version
 from domain.incremental_batches import (
@@ -192,9 +195,14 @@ class IngestDependencies:
     leases: FakeLeaseRepository
 
 
-def rebuild_service(dependencies: IngestDependencies) -> IngestIncremental:
+def rebuild_service(
+    dependencies: IngestDependencies,
+    *,
+    wrap_sync: Callable[[Sync], Sync] | None = None,
+    **options: Any,
+) -> IngestIncremental:
     def sync_factory(reader: SourceReader) -> Sync:
-        return Sync(
+        sync = Sync(
             registry=dependencies.registry,
             reader_factory=lambda: reader,
             hot_sink=dependencies.hot_sink,
@@ -208,6 +216,7 @@ def rebuild_service(dependencies: IngestDependencies) -> IngestIncremental:
                 "QOE_FORECAST": ("live_qoe_hourly",),
             },
         )
+        return sync if wrap_sync is None else wrap_sync(sync)
 
     return IngestIncremental(
         registry=dependencies.registry,
@@ -218,6 +227,7 @@ def rebuild_service(dependencies: IngestDependencies) -> IngestIncremental:
         sync_factory=sync_factory,
         metrics=dependencies.metrics,
         page_size=1,
+        **options,
     )
 
 
@@ -628,3 +638,107 @@ def test_delivery_identity_mismatch_is_quarantined_before_hot_writes() -> None:
     assert dependencies.queue.acked == (DELIVERY_ID,)
     batch_id = manifest(dependencies.registry).batch_id
     assert dependencies.batches.records[batch_id].state is BatchState.QUARANTINED
+
+
+# Renovação rápida: com timeout de 1 s e antecedência de 1 s, toda verificação renova.
+FAST_HEARTBEAT: dict[str, Any] = {
+    "visibility_timeout_seconds": 1,
+    "heartbeat_check_seconds": 0.01,
+    "heartbeat_renew_before_seconds": 1,
+}
+
+
+class _GatedSync:
+    """Segura a escrita até um evento, como um lote que passa do visibility_timeout."""
+
+    def __init__(self, sync: Sync, before: Callable[[], None]) -> None:
+        self._sync = sync
+        self._before = before
+
+    def execute(self, request: SyncRequest) -> SyncResult:
+        self._before()
+        return self._sync.execute(request)
+
+
+def _wait_for(event: threading.Event) -> None:
+    assert event.wait(5), "heartbeat did not run during the write"
+
+
+def test_long_write_renews_visibility_and_stops_after_ack() -> None:
+    _, dependencies = ingest_service()
+    queue = dependencies.queue
+    renewed = threading.Event()
+    original_extend = queue.extend_visibility
+
+    def extend(delivery: BatchDelivery, seconds: int) -> None:
+        original_extend(delivery, seconds)
+        renewed.set()
+
+    queue.extend_visibility = extend  # type: ignore[method-assign]
+    service = rebuild_service(
+        dependencies,
+        wrap_sync=lambda sync: cast(Sync, _GatedSync(sync, lambda: _wait_for(renewed))),
+        **FAST_HEARTBEAT,
+    )
+
+    result = service.drain(limit=1)
+
+    assert result.completed == 1
+    assert queue.acked == (DELIVERY_ID,)
+    assert (DELIVERY_ID, 1) in queue.extensions
+    renewals = len(queue.extensions)
+    renewed.clear()
+    assert not renewed.wait(0.1)
+    assert len(queue.extensions) == renewals
+
+
+def test_heartbeat_failure_aborts_without_finishing_acking_or_processing_waiting() -> None:
+    registry = DatasetRegistry.load_argus_v2()
+    first = manifest(registry)
+    _, dependencies = ingest_service(batch=first)
+    second_window = TimeWindow(
+        datetime(2026, 9, 1, 0, 15, tzinfo=UTC),
+        datetime(2026, 9, 1, 0, 30, tzinfo=UTC),
+        900,
+    )
+    second = manifest(registry, window=second_window)
+    dependencies.store.seed(
+        second, _reference(second), (_raw_row(second.source_dataset, second_window),)
+    )
+    dependencies.queue.enqueue(_delivery(second, message_id="delivery-2"))
+    queue = dependencies.queue
+    failed = threading.Event()
+    original_extend = queue.extend_visibility
+
+    def extend(delivery: BatchDelivery, seconds: int) -> None:
+        try:
+            original_extend(delivery, seconds)
+        finally:
+            if queue.extension_failure is not None:
+                failed.set()
+
+    queue.extend_visibility = extend  # type: ignore[method-assign]
+
+    def lose_visibility() -> None:
+        queue.extension_failure = RuntimeError("receipt handle has expired")
+        _wait_for(failed)
+
+    service = rebuild_service(
+        dependencies,
+        wrap_sync=lambda sync: cast(Sync, _GatedSync(sync, lose_visibility)),
+        **FAST_HEARTBEAT,
+    )
+
+    with pytest.raises(VisibilityHeartbeatLost):
+        service.drain(limit=2)
+
+    assert queue.acked == ()
+    assert dependencies.batches.records[first.batch_id].state is BatchState.INGESTING
+    assert second.batch_id not in dependencies.batches.records
+
+    queue.extension_failure = None
+    recovered = rebuild_service(dependencies, **FAST_HEARTBEAT).drain(limit=1)
+
+    assert recovered.completed == 1
+    assert dependencies.batches.records[first.batch_id].state is BatchState.COMPLETED
+    assert queue.acked == (DELIVERY_ID,)

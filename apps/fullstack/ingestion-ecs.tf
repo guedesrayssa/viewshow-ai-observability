@@ -764,6 +764,7 @@ resource "aws_iam_role_policy" "ingestion_incremental_ingest" {
         Sid    = "ConsumeIncrementalBatchReferences"
         Effect = "Allow"
         Action = [
+          "sqs:ChangeMessageVisibility",
           "sqs:DeleteMessage",
           "sqs:ReceiveMessage",
         ]

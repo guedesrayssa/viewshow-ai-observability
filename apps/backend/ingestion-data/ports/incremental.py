@@ -86,6 +86,11 @@ class IncrementalBatchQueue(ABC):
     def ack(self, delivery: BatchDelivery) -> None:
         raise NotImplementedError
 
+    @abstractmethod
+    def extend_visibility(self, delivery: BatchDelivery, seconds: int) -> None:
+        """Mantém a entrega invisível por ``seconds`` a partir de agora."""
+        raise NotImplementedError
+
 
 class IncrementalBatchRepository(ABC):
     @abstractmethod

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from uuid import uuid4
 
 from application.sync import Sync, SyncRequest
+from application.visibility_heartbeat import VisibilityHeartbeat, VisibilityHeartbeatLost
 from contracts.registry import DatasetRegistry, UnknownDatasetError
 from domain.datasets import DatasetDescriptor
 from domain.incremental_batches import (
@@ -204,6 +206,10 @@ class IngestIncremental:
         sync_factory: SyncFactory,
         metrics: MetricsPublisher,
         page_size: int = 500,
+        visibility_timeout_seconds: int = 300,
+        heartbeat_check_seconds: float = 15.0,
+        heartbeat_renew_before_seconds: float = 60.0,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         if not isinstance(registry, DatasetRegistry):
             raise TypeError("registry must be a DatasetRegistry")
@@ -229,6 +235,32 @@ class IngestIncremental:
         self._sync_factory = sync_factory
         self._metrics = metrics
         self._page_size = page_size
+        self._visibility_timeout_seconds = visibility_timeout_seconds
+        self._heartbeat_check_seconds = heartbeat_check_seconds
+        self._heartbeat_renew_before_seconds = heartbeat_renew_before_seconds
+        self._clock = clock
+        self._heartbeat: VisibilityHeartbeat | None = None
+        # Valida a configuração na construção, não no primeiro recebimento.
+        self._new_heartbeat()
+
+    def _new_heartbeat(self) -> VisibilityHeartbeat:
+        return VisibilityHeartbeat(
+            self._queue,
+            visibility_timeout_seconds=self._visibility_timeout_seconds,
+            check_interval_seconds=self._heartbeat_check_seconds,
+            renew_before_seconds=self._heartbeat_renew_before_seconds,
+            clock=self._clock,
+        )
+
+    def _ack(self, delivery: BatchDelivery) -> None:
+        # Libera antes do DeleteMessage para a renovação não usar um recibo já removido.
+        if self._heartbeat is not None:
+            self._heartbeat.release(delivery)
+        self._queue.ack(delivery)
+
+    def _checkpoint(self) -> None:
+        if self._heartbeat is not None:
+            self._heartbeat.check()
 
     def _validate_identity(
         self,
@@ -296,7 +328,7 @@ class IngestIncremental:
                 error_code=code,
             )
         try:
-            self._queue.ack(delivery)
+            self._ack(delivery)
         except Exception as error:
             _log_failure("quarantine ack", delivery, error)
             return IngestIncrementalResult(retryable=1)
@@ -317,7 +349,7 @@ class IngestIncremental:
         try:
             manifest = self._store.load_manifest(delivery.reference)
         except (TypeError, ValueError, IdempotencyConflict):
-            self._queue.ack(delivery)
+            self._ack(delivery)
             return IngestIncrementalResult(quarantined=1)
         except Exception as error:
             _log_failure("manifest load", delivery, error)
@@ -326,10 +358,10 @@ class IngestIncremental:
         try:
             batch = self._batches.claim(manifest, delivery.reference)
             if batch.state is BatchState.COMPLETED:
-                self._queue.ack(delivery)
+                self._ack(delivery)
                 return IngestIncrementalResult(completed=1)
             if batch.state is BatchState.QUARANTINED:
-                self._queue.ack(delivery)
+                self._ack(delivery)
                 return IngestIncrementalResult(quarantined=1)
 
             if batch.state in {BatchState.RECEIVED, BatchState.RETRYABLE_FAILED}:
@@ -342,6 +374,7 @@ class IngestIncremental:
             descriptor = self._validate_identity(delivery, manifest)
             self._validate_window(descriptor, manifest.window)
             reader = S3IncrementalSourceReader(self._store, manifest)
+            self._checkpoint()
             schema = reader.validate_schema(descriptor)
             if not schema.is_compatible:
                 return self._quarantine(delivery, batch, "SCHEMA_INCOMPATIBLE")
@@ -353,6 +386,9 @@ class IngestIncremental:
                     BatchState.INGESTING,
                 )
             result = self._sync_factory(reader).execute(self._sync_request(manifest))
+            # Sem a posse da mensagem, outra execução pode estar com o lote: não finaliza nem
+            # confirma; a reentrega retoma pelo estado durável, como depois de uma interrupção.
+            self._checkpoint()
             if result.stage is not RunStage.SUCCEEDED:
                 return self._retryable(batch)
             counts = {
@@ -375,19 +411,21 @@ class IngestIncremental:
                 BatchState.COMPLETED,
                 counts=counts,
             )
-            self._queue.ack(delivery)
+            self._ack(delivery)
             return IngestIncrementalResult(
                 completed=1,
                 extra_columns=len(manifest.extra_columns),
             )
         except _PermanentBatchError as error:
             if batch is None:
-                self._queue.ack(delivery)
+                self._ack(delivery)
                 return IngestIncrementalResult(quarantined=1)
             return self._quarantine(delivery, batch, error.code)
         except IdempotencyConflict:
-            self._queue.ack(delivery)
+            self._ack(delivery)
             return IngestIncrementalResult(quarantined=1)
+        except VisibilityHeartbeatLost:
+            raise
         except Exception as error:
             _log_failure("batch processing", delivery, error)
             return self._retryable(batch)
@@ -396,10 +434,34 @@ class IngestIncremental:
         if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
             raise ValueError("limit must be a positive integer")
         total = IngestIncrementalResult()
-        for delivery in self._queue.receive(limit):
-            result = self._process(delivery)
-            self._observe_result(delivery.source_dataset, result)
-            total += result
+        received_at = self._clock()
+        deliveries = self._queue.receive(limit)
+        if not deliveries:
+            return total
+        heartbeat = self._new_heartbeat()
+        heartbeat.track(deliveries, received_at)
+        heartbeat.start()
+        self._heartbeat = heartbeat
+        try:
+            for position, delivery in enumerate(deliveries):
+                try:
+                    heartbeat.check()
+                    result = self._process(delivery)
+                except VisibilityHeartbeatLost:
+                    _LOGGER.warning(
+                        "ingest-incremental aborted after visibility loss batch_id=%s "
+                        "message_id=%s unprocessed_deliveries=%d",
+                        delivery.batch_id,
+                        delivery.message_id,
+                        len(deliveries) - position,
+                    )
+                    raise
+                heartbeat.release(delivery)
+                self._observe_result(delivery.source_dataset, result)
+                total += result
+        finally:
+            self._heartbeat = None
+            heartbeat.stop()
         return total
 
     def _observe_result(self, dataset: str, result: IngestIncrementalResult) -> None:
