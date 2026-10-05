@@ -5,6 +5,7 @@ nos documentos de `artefatos/`; as pastas abaixo guardam só o que foi medido e 
 
 | Pasta | Data | O que é | Status | Documento |
 | --- | --- | --- | --- | --- |
+| [`2026-10-05-frontend/`](2026-10-05-frontend/README.md) | 05/10/2026 | Exportação estática atual: Autocannon (smoke, carga, pico e recuperação), Lighthouse móvel/desktop e smoke comparativo do Amplify | **Vigente para o frontend da branch** | [Testes de Carga Finais](../../artefatos/testes-carga-finais.md) |
 | [`2026-10-01-aws-gerador-na-regiao/`](2026-10-01-aws-gerador-na-regiao/README.md) | 01/10/2026 | `front-api.js` revisado na AWS (tarefa de 0,25 vCPU), k6 dentro da VPC, com métricas de CloudWatch | **Vigente** | [Testes de Carga da API](../../artefatos/sprint5/testes-de-carga-da-api.md) |
 | [`2026-09-30-local/`](2026-09-30-local/README.md) | 30/09/2026 | Experimentos locais e emulação da tarefa: volume de dados, controles negativos, limitador de taxa | Complementar | [Testes de Carga da API](../../artefatos/sprint5/testes-de-carga-da-api.md) |
 | [`2026-09-30-aws-gerador-externo/`](2026-09-30-aws-gerador-externo/README.md) | 30/09/2026 | Primeira rodada do `front-api.js` na AWS (script original, k6 fora da região) e suas erratas | Histórica | [Testes de Carga da API](../../artefatos/sprint5/testes-de-carga-da-api.md) |
