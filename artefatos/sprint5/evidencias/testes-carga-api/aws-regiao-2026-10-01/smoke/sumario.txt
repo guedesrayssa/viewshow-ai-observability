@@ -1,0 +1,31 @@
+STATUS: Success
+START=1790818088 END=1790818118 EXIT=0
+
+Carga da API consumida pelo frontend — modo smoke
+Taxa de chegada (iterações/s): base 1, pico 1; 31 iterações, 35 requisições, 1.0 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 1; timeouts do cliente (>8000 ms): 0; iterações descartadas: 0
+Status HTTP (0 = timeout/erro de rede): 200=33  202=1  503=1
+
+THRESHOLDS: todos os 98 aprovados
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list           8    0.00     100.00      34      75      91     100.0
+incidents_chart          2    0.00     100.00      33      35      35     100.0
+dashboard_overview       5    0.00     100.00      45      76      81       0.0
+incident_diagnosis       3    0.00     100.00      40      40      40     100.0
+incident_events          4    0.00     100.00      45      53      53     100.0
+global_events            3    0.00     100.00      32      88      93     100.0
+monitoring_overview      1    0.00     100.00      23      23      23       0.0
+auth_session             4    0.00     100.00      19      21      22       0.0
+rum_beacon               1    0.00     100.00      21      21      21       0.0
+
+Observações:
+  - monitoring_overview: 1/1 respostas 503 DATA_UNAVAILABLE — a rota não está sendo exercitada (sem projeção)
+  - incidents_list: 8 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+
+Resumo detalhado: /opt/loadtest/results/smoke1/resumo-front-api-smoke.json
+---ERR---
+Request Failed: 0
+---VMSTAT---
+gerador: us+sy médio=0.3% max=1.0% steal médio=0.0% amostras=7
+
