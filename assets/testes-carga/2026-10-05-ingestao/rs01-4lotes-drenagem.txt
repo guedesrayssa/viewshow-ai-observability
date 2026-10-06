@@ -1,0 +1,265 @@
+2026-10-06T04:07:32Z agenda ingest (view-show-ingestion-incremental-ingest): ENABLED
+2026-10-06T04:07:38Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:08:17Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:08:57Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:08:58Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:09:38Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:09:39Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:10:18Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:10:20Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:10:59Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:11:00Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:11:40Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:11:41Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:12:20Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:12:22Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:13:01Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:13:02Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:13:41Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:13:43Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+2026-10-06T04:13:43Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/f0eea5a0253b44b0bebb6442fdd86fff	PENDING	None	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:14:22Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:14:23Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:15:03Z fila visiveis=0 em_processamento=4 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:15:04Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:08:43.463Z"}
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:15:43Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:15:44Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:16:24Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:16:25Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:17:04Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:17:06Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:17:45Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:17:47Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:18:26Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:18:27Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/38cce8656543466d9e9a40b0033267b3	PROVISIONING	None	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+2026-10-06T04:18:27Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:19:07Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:19:09Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/38cce8656543466d9e9a40b0033267b3	RUNNING	2026-10-06T01:18:53.707000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+2026-10-06T04:19:09Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:19:48Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:19:50Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:20:29Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:20:30Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:21:10Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:21:12Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:21:53Z fila visiveis=0 em_processamento=3 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:21:54Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:15:23.143Z"}
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:22:35Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:22:37Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:23:17Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:23:18Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:23:58Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:24:00Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/af7a4bebb3bb484399e4b36bb5fa9e9a	RUNNING	2026-10-06T01:23:42.741000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+2026-10-06T04:24:00Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:24:39Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:24:40Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:25:20Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:25:21Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:26:01Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:26:02Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:26:41Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:26:42Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:27:22Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:27:23Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:28:03Z fila visiveis=0 em_processamento=2 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:28:04Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:21:59.748Z"}
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:28:44Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:28:45Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/4b632baa72af4c72a2d7f690d07eabb5	PENDING	None	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+2026-10-06T04:28:45Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:29:25Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:29:26Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:30:06Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:30:07Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:30:47Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:30:48Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:31:28Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:31:30Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:32:09Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:32:10Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:32:50Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:32:51Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:33:31Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:33:32Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+2026-10-06T04:33:32Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/f826d500c3104ee8935d8d274b6017db	PENDING	None	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:34:12Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:34:13Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+2026-10-06T04:34:13Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/f826d500c3104ee8935d8d274b6017db	DEPROVISIONING	2026-10-06T01:33:42.567000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:34:53Z fila visiveis=0 em_processamento=1 | dlq visiveis=0 em_processamento=0
+2026-10-06T04:34:54Z task RUNNING arn:aws:ecs:us-east-1:145497513075:task/view-show-iac-cluster/baebbaf52610412f8c5a537919a430b4	RUNNING	2026-10-06T01:08:42.680000-03:00	arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "INGESTING", "version": "2", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:28:27.083Z"}
+2026-10-06T04:35:34Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:35:00.824Z"}
+2026-10-06T04:35:47Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:08:43.448Z", "updatedAt": "2026-10-06T04:15:23.034Z"}
+bat_798dde97a2f5 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:15:23.133Z", "updatedAt": "2026-10-06T04:21:59.639Z"}
+bat_0a7961c203ee {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:21:59.737Z", "updatedAt": "2026-10-06T04:28:26.968Z"}
+bat_dae1da8c8515 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T04:28:27.072Z", "updatedAt": "2026-10-06T04:35:00.824Z"}
+contagem depois:
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261006 1350000
+TOTAL 1350000

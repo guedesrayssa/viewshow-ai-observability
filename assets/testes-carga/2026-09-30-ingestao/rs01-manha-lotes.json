@@ -1,0 +1,30 @@
+[
+  {
+    "variant": "valid",
+    "batchId": "bat_4b2db3a9b692276dfe3937c678f7944ec6218c2f5f020fb28b685dcd67cbd88a",
+    "windowStart": "2026-09-30T10:30:00.000Z",
+    "windowEnd": "2026-09-30T10:45:00.000Z",
+    "rows": 150000,
+    "sizeBytes": 177780,
+    "sha256": "7ee5ab7723f5d8a0088996186207cb31914b2f9cdfddcf8a69845105ab7558eb",
+    "schemaDifferences": [],
+    "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20260930T103000000Z/batch_id=bat_4b2db3a9b692276dfe3937c678f7944ec6218c2f5f020fb28b685dcd67cbd88a/manifest.json",
+    "manifestVersionId": "2y2BWlhkq.dkhQMdU5ti1tEEfxOKYybo",
+    "publishedAt": "2026-09-30T11:01:03.374Z",
+    "dryRun": false
+  },
+  {
+    "variant": "valid",
+    "batchId": "bat_ccb05360b7955649fafbc28f5db5c65bff541cb49b8626a74c21146f8e71b205",
+    "windowStart": "2026-09-30T10:45:00.000Z",
+    "windowEnd": "2026-09-30T11:00:00.000Z",
+    "rows": 150000,
+    "sizeBytes": 177259,
+    "sha256": "2971633d2713a65a74f771058994abc7a9d7382af6e5895220cad65544f9d3c7",
+    "schemaDifferences": [],
+    "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20260930T104500000Z/batch_id=bat_ccb05360b7955649fafbc28f5db5c65bff541cb49b8626a74c21146f8e71b205/manifest.json",
+    "manifestVersionId": "YPl5_xV1CzsNO8A_tmLlleO9Rikqq6e2",
+    "publishedAt": "2026-09-30T11:01:07.920Z",
+    "dryRun": false
+  }
+]

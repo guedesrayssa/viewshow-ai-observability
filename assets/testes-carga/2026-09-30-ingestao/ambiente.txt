@@ -1,0 +1,17 @@
+Data: 2026-09-30 (UTC)
+Conta: 114388221188 / us-east-1 (AWS Academy Learner Lab)
+Namespace: view-show
+Commit: 4c9b236 (branch feat/testes-ingestao); alterações locais: apps/scripts/aws-learner-lab.mjs
+Imagem API: 114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api:96ef64f46bff
+Imagem ingestão: 114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:1fa9cb2d7fcd016c4f850facd6163cda1f60e174b67e39c10e3022fd03d92d93
+{"cpu":"256","mem":"512","env":[{"name":"RATE_LIMIT_PER_MINUTE","value":"180"}]}
+{"cpu":"2048","mem":"8192","storage":{"sizeInGiB":200}}
+{"rev":5,"cpu":"1024","mem":"2048"}
+Gerador de carga: k6 v2.3.0 (grafana/k6 via Docker), fora da AWS (rede residencial/Inteli), Windows 11
+Autenticação: Cognito us-east-1_Yr4YHWZ4a, usuário técnico carga-sprint5@viewshow.test
+BASE_URL: https://ygnmcngd28.execute-api.us-east-1.amazonaws.com (API Gateway → ALB → ECS)
+
+A partir de 2026-09-30T19:45:13Z (deploy por terraform apply -target; ver execucoes.txt):
+Commit: 0eded5d (branch feat/testes-ingestao) — correção pk/sk (cc0dbbc, afc303c) e log de causa (0eded5d)
+Imagem ingestão: view-show-ingestion:52b405d7ae76 = 114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de (5 task definitions de ingestão na revisão 6; ver rs01-digest-task.txt)
+Imagem API: sem mudança. Bastion fora do escopo do apply (pendência de ambiente).

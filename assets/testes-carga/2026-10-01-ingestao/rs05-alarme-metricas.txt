@@ -1,0 +1,15 @@
+# histórico do alarme view-show-ingestion-incremental-dlq-depth (RS-05, 2026-10-01), consultado em 2026-10-01T18:56:02Z
+2026-10-01T15:45:24.607000-03:00	Alarm updated from OK to ALARM
+2026-09-30T10:39:15.855000-03:00	Alarm updated from INSUFFICIENT_DATA to OK
+2026-09-25T15:53:54.557000-03:00	Alarm updated from INSUFFICIENT_DATA to OK
+2026-09-25T00:20:40.376000-03:00	Alarm updated from INSUFFICIENT_DATA to OK
+
+# NumberOfMessagesReceived / NumberOfMessagesDeleted na FIFO incremental (soma por 5 min)
+## NumberOfMessagesReceived
+2026-10-01T13:30:00-03:00	2.0
+2026-10-01T13:40:00-03:00	2.0
+2026-10-01T13:45:00-03:00	1.0
+2026-10-01T13:50:00-03:00	1.0
+2026-10-01T15:35:00-03:00	1.0
+## NumberOfMessagesDeleted
+2026-10-01T13:40:00-03:00	1.0

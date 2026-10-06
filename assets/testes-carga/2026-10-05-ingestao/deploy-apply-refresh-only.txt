@@ -1,0 +1,196 @@
+
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+api_url = "http://view-show-iac-alb-368299248.us-east-1.elb.amazonaws.com"
+api_url_https = "https://hk4ooeetbi.execute-api.us-east-1.amazonaws.com/"
+aviso_custo = "Preserve a stack e o novo estado local ao fim da sessao para inspecao e diagnostico. Execute 'terraform destroy' somente sob pedido explicito posterior, usando esse mesmo estado. Enquanto provisionados, ALB, NAT Gateway, bastion, tasks Fargate e a EC2 opcional de observabilidade continuam gerando custo."
+bastion_acesso = {
+  "instancia_id" = "i-0dbc4cedf800ead98"
+  "ip_publico" = "3.86.70.75"
+  "sessao_ssm" = "aws ssm start-session --target i-0dbc4cedf800ead98 --region us-east-1"
+  "ssh" = tostring(null)
+}
+cognito_client_id = "2hq7jgtsomdjavi636jlrn8ogh"
+cognito_client_secret = <sensitive>
+cognito_hosted_ui_base_url = "https://view-show-145497513075-iac-auth.auth.us-east-1.amazoncognito.com"
+cognito_issuer_url = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_v7GzlS2Bs"
+cognito_user_pool_id = "us-east-1_v7GzlS2Bs"
+comando_ingestion_backfill = "aws ecs run-task --cluster view-show-iac-cluster --task-definition arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-backfill:2 --launch-type FARGATE --platform-version 1.4.0 --network-configuration 'awsvpcConfiguration={subnets=[subnet-0bc7fa505aecf28a7,subnet-08138d250abe09959],securityGroups=[sg-0e502bb53fa34b583],assignPublicIp=DISABLED}' --region us-east-1"
+comando_logs = "aws logs tail /ecs/view-show-iac-api --follow --region us-east-1"
+comandos_logs_ingestao = {
+  "backfill" = "aws logs tail /ecs/view-show-ingestion-backfill --follow --region us-east-1"
+  "incremental_export" = "aws logs tail /ecs/view-show-ingestion-incremental-export --follow --region us-east-1"
+  "incremental_ingest" = "aws logs tail /ecs/view-show-ingestion-incremental-ingest --follow --region us-east-1"
+  "sync" = "aws logs tail /ecs/view-show-ingestion-sync --follow --region us-east-1"
+}
+deployment_namespace = "view-show"
+ecs_auto_scaling = {
+  "cpu_alvo" = 50
+  "maximo" = 4
+  "minimo" = 1
+  "politica" = "view-show-iac-api-service-cpu-target"
+}
+flow_logs = {
+  "bucket" = "view-show-145497513075-vpc-flow-logs"
+  "flow_log_id" = "fl-0d505aed0490740b6"
+  "prefixo" = "vpc-flow-logs/AWSLogs/145497513075"
+}
+imagem_ecr = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api:96ef64f46bff"
+ingestion_runbook = {
+  "ambiente" = "learner-lab"
+  "data" = {
+    "live_mysql_secret_arn" = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD"
+    "operational_table" = "view-show-iac-operacional"
+    "outbox_pending_index" = "outbox-pending-index"
+    "snapshot_secret_arn" = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/snapshot-mysql-UaMal8"
+  }
+  "deployment_namespace" = "view-show"
+  "image" = {
+    "immutable_uri" = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615"
+    "repository_url" = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion"
+  }
+  "imports" = {
+    "active_upload_age_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-import-active-upload-age"
+    "api_task_role_arn" = "arn:aws:iam::145497513075:role/LabRole"
+    "assign_public_ip" = false
+    "bucket" = "view-show-ingestion-145497513075-us-east-1"
+    "cluster_arn" = "arn:aws:ecs:us-east-1:145497513075:cluster/view-show-iac-cluster"
+    "container_name" = "ingestion"
+    "cors_origin" = "https://producao.di2pd1m9dnag1.amplifyapp.com"
+    "disk_budget_bytes" = 68719476736
+    "ephemeral_storage_gib" = 200
+    "expected_bucket_owner" = "145497513075"
+    "iam_isolation_enforced" = false
+    "platform_version" = "1.4.0"
+    "reconciliation_failure_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-import-reconciliation-failures"
+    "security_group_id" = "sg-0e502bb53fa34b583"
+    "subnet_ids" = [
+      "subnet-0bc7fa505aecf28a7",
+      "subnet-08138d250abe09959",
+    ]
+    "task_definition_arn" = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:2"
+    "worker_execution_role_arn" = "arn:aws:iam::145497513075:role/LabRole"
+    "worker_failure_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-import-worker-failures"
+    "worker_task_role_arn" = "arn:aws:iam::145497513075:role/LabRole"
+  }
+  "incremental" = {
+    "dlq_alarm_arn" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-incremental-dlq-depth"
+    "enabled" = false
+    "export_schedule_arn" = "arn:aws:scheduler:us-east-1:145497513075:schedule/view-show-ingestion/view-show-ingestion-incremental-export"
+    "export_schedule_expression" = "rate(15 minutes)"
+    "export_schedule_state" = "DISABLED"
+    "export_task_arn" = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-export:2"
+    "export_task_family" = "view-show-ingestion-incremental-export"
+    "export_task_role_arn" = "arn:aws:iam::145497513075:role/LabRole"
+    "ingest_schedule_arn" = "arn:aws:scheduler:us-east-1:145497513075:schedule/view-show-ingestion/view-show-ingestion-incremental-ingest"
+    "ingest_schedule_expression" = "rate(5 minutes)"
+    "ingest_schedule_state" = "DISABLED"
+    "ingest_task_arn" = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2"
+    "ingest_task_family" = "view-show-ingestion-incremental-ingest"
+    "ingest_task_role_arn" = "arn:aws:iam::145497513075:role/LabRole"
+    "live_integration_gate" = false
+    "quarantine_alarm_arn" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-incremental-batch-quarantined"
+    "queue_backlog_alarm_arn" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-incremental-queue-backlog"
+    "queue_oldest_age_alarm_arn" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-incremental-queue-oldest-age"
+    "watermark_lag_alarm_arn" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-incremental-watermark-lag"
+  }
+  "messaging" = {
+    "analysis_dlq_arn" = "arn:aws:sqs:us-east-1:145497513075:view-show-ingestion-analysis-dlq"
+    "analysis_queue_arn" = "arn:aws:sqs:us-east-1:145497513075:view-show-ingestion-analysis"
+    "analysis_queue_url" = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis"
+    "incremental_dlq_arn" = "arn:aws:sqs:us-east-1:145497513075:view-show-ingestion-incremental-batches-dlq.fifo"
+    "incremental_dlq_url" = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches-dlq.fifo"
+    "incremental_queue_arn" = "arn:aws:sqs:us-east-1:145497513075:view-show-ingestion-incremental-batches.fifo"
+    "incremental_queue_url" = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches.fifo"
+    "scheduler_dlq_arn" = "arn:aws:sqs:us-east-1:145497513075:view-show-ingestion-scheduler-dlq"
+    "scheduler_dlq_url" = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-scheduler-dlq"
+  }
+  "observability" = {
+    "analysis_backlog_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-analysis-queue-backlog"
+    "analysis_dlq_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-analysis-dlq-depth"
+    "analysis_oldest_age_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-analysis-queue-oldest-age"
+    "athena_failure_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-athena-failures"
+    "athena_processed_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-athena-processed-bytes"
+    "backfill_failure_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-backfill-failures"
+    "dashboard_name" = "view-show-ingestion"
+    "outbox_oldest_age_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-outbox-oldest-age"
+    "partial_alarm_arns" = {
+      "backfill" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-backfill-partial"
+      "sync" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-sync-partial"
+    }
+    "projecting_duration_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-projecting-duration"
+    "rebuild_projections_failure_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-rebuild-projections-failures"
+    "resource_utilization_alarm_arns" = {
+      "backfill-cpu" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-backfill-cpu-utilization"
+      "backfill-memory" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-backfill-memory-utilization"
+      "backfill-storage" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-backfill-storage-utilization"
+      "sync-cpu" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-sync-cpu-utilization"
+      "sync-memory" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-sync-memory-utilization"
+      "sync-storage" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-sync-storage-utilization"
+    }
+    "scheduler_dlq_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-scheduler-dlq-depth"
+    "scheduler_target_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-scheduler-target-errors"
+    "schema_drift_alarm_arns" = {
+      "backfill" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-backfill-schema-drift"
+      "sync" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-sync-schema-drift"
+    }
+    "stage_failure_alarm_arns" = {
+      "archiving" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-archiving-failures"
+      "projecting" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-projecting-failures"
+    }
+    "sync_absence_alarm" = null
+    "sync_failure_alarm" = "arn:aws:cloudwatch:us-east-1:145497513075:alarm:view-show-ingestion-sync-failures"
+  }
+  "runtime" = {
+    "assign_public_ip" = false
+    "backfill_log_group" = "/ecs/view-show-ingestion-backfill"
+    "backfill_task_arn" = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-backfill:2"
+    "backfill_task_family" = "view-show-ingestion-backfill"
+    "cluster_arn" = "arn:aws:ecs:us-east-1:145497513075:cluster/view-show-iac-cluster"
+    "cluster_name" = "view-show-iac-cluster"
+    "import_task_arn" = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:2"
+    "import_task_family" = "view-show-ingestion-import"
+    "platform_version" = "1.4.0"
+    "security_group_id" = "sg-0e502bb53fa34b583"
+    "subnet_ids" = [
+      "subnet-0bc7fa505aecf28a7",
+      "subnet-08138d250abe09959",
+    ]
+    "sync_log_group" = "/ecs/view-show-ingestion-sync"
+    "sync_task_arn" = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-sync:2"
+    "sync_task_family" = "view-show-ingestion-sync"
+  }
+  "scheduler" = {
+    "group_name" = "view-show-ingestion"
+    "name" = "view-show-ingestion-sync"
+    "schedule_arn" = "arn:aws:scheduler:us-east-1:145497513075:schedule/view-show-ingestion/view-show-ingestion-sync"
+    "state" = "DISABLED"
+  }
+  "storage" = {
+    "athena_output_location" = "s3://view-show-ingestion-145497513075-us-east-1/athena-results/"
+    "athena_workgroup" = "view-show-ingestion"
+    "bucket" = "view-show-ingestion-145497513075-us-east-1"
+    "glue_database" = "view_show_ingestion"
+    "incremental_raw_prefix" = "raw/argus/incremental/"
+    "incremental_retention_days" = 90
+  }
+}
+painel_url = "https://producao.di2pd1m9dnag1.amplifyapp.com"
+rede_vpc = {
+  "nat_gateway_id" = "nat-0b6a4c4b92ba2f582"
+  "subredes_privadas" = {
+    "a" = "subnet-0bc7fa505aecf28a7"
+    "b" = "subnet-08138d250abe09959"
+  }
+  "subredes_publicas" = {
+    "a" = "subnet-0cec1e8e1a3cfd3b2"
+    "b" = "subnet-037380d23e4347389"
+  }
+  "vpc_id" = "vpc-0083b163a6f508a36"
+}
+tabelas_dynamodb = {
+  "golden_set" = "view-show-iac-golden-set"
+  "operacional" = "view-show-iac-operacional"
+}

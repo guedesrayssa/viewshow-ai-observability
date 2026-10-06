@@ -1,0 +1,64 @@
+contagem antes (publicado em 2026-10-06T03:58:05Z):
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261006 750000
+TOTAL 750000
+2026-10-06T04:00:09Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:00:46Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:01:23Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:02:00Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:02:37Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:03:14Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:03:50Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:04:27Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:05:04Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:05:41Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:06:18Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:06:55Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_0f6dfbeadc5c AUSENTE
+bat_798dde97a2f5 AUSENTE
+bat_0a7961c203ee AUSENTE
+bat_dae1da8c8515 AUSENTE
+2026-10-06T04:07:31Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
