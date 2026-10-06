@@ -7,6 +7,7 @@ import lighthouse from "lighthouse";
 import desktopConfig from "lighthouse/core/config/desktop-config.js";
 import { launch } from "chrome-launcher";
 import { sha256 } from "./static-contract.mjs";
+import { validateLighthouseReport } from "./lighthouse-contract.mjs";
 
 const target = new URL(process.env.LIGHTHOUSE_URL || "http://127.0.0.1:4173/login/");
 const output = path.resolve(process.env.RESULTS_DIR || "loadtest/results");
@@ -41,7 +42,7 @@ for (const profile of ["desktop", "mobile"]) {
     const finishedAt = new Date().toISOString();
     const bytes = await readFile(path.join(output, filename));
     const report = JSON.parse(bytes);
-    if (report.runtimeError) throw new Error(JSON.stringify(report.runtimeError));
+    validateLighthouseReport(report);
     runs.push({ profile, index, startedAt, finishedAt,
       command: [process.execPath, process.argv[1]], chromePath: process.env.CHROME_PATH || "auto",
       settings: report.configSettings,
