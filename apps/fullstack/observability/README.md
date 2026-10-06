@@ -336,6 +336,34 @@ verificador gera requisições com IDs conhecidos e confere nos backends reais: 
 nome do span, correlação nos dois sentidos, exemplar, ausência de segredos em log e trace e a
 execução sem erro de **toda** query de **todo** painel. Sai com código 1 se algo falhar.
 
+### Validar na AWS
+
+Na AWS, Loki, Tempo e Prometheus são privados e a senha do Grafana é gerada pelo Terraform.
+Rode o verificador **dentro da EC2** (SSM), em um contêiner na rede da stack, para a senha
+nunca sair da instância. O `user_data` já deixa as credenciais em
+`/opt/view-show-observability/.env`:
+
+```bash
+# envie verify-api-observability.mjs para /tmp/verify.mjs na EC2 (por exemplo em base64, via
+# aws ssm send-command) e execute lá:
+set -a; . /opt/view-show-observability/.env; set +a
+docker run --rm --network view-show-observability -v /tmp/verify.mjs:/verify.mjs:ro \
+  -e BASE_URL=http://<dns-do-alb> -e LOKI_URL=http://loki:3100 -e TEMPO_URL=http://tempo:3200 \
+  -e PROMETHEUS_URL=http://prometheus:9090 -e GRAFANA_URL=http://grafana:3000 \
+  -e DASHBOARD_UIDS=view-show-api,view-show-observability \
+  -e GRAFANA_AUTH="admin:$GRAFANA_ADMIN_PASSWORD" node:22-alpine node /verify.mjs
+```
+
+Sem `AUTH_COOKIE_SECRET` o verificador não usa sessão (as rotas que ele exercita são públicas).
+Para o verificador consultar Loki, Tempo e Prometheus pelo proxy do Grafana a partir de um
+túnel SSM, em vez de rodar na EC2, use `LOKI_URL`, `TEMPO_URL` e `PROMETHEUS_URL` apontando para
+`http://localhost:3002/api/datasources/proxy/uid/{loki,tempo,prometheus}` e `BACKEND_AUTH=admin:<senha>`.
+
+A API só exporta traces e logs para a EC2 quando `observabilidade_api_exportacao_habilitada` é
+`true`. O fluxo de criação da EC2 do Learner Lab a deixa `false` até o IP privado existir;
+depois, um `terraform apply` que a ligue altera só a task definition da API (as variáveis
+`OTEL_EXPORTER_OTLP_ENDPOINT` e `LOKI_PUSH_URL`) e o serviço ECS.
+
 ## Coletar métricas dos workers Python
 
 Os hooks Python de ingestão e análise podem enviar métricas e traces por
