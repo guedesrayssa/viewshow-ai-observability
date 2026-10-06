@@ -5,6 +5,7 @@ nos documentos de `artefatos/`; as pastas abaixo guardam só o que foi medido e 
 
 | Pasta | Data | O que é | Status | Documento |
 | --- | --- | --- | --- | --- |
+| [`2026-10-06-frontend/`](2026-10-06-frontend/README.md) | 06/10/2026 | Conteúdo estático validado, seis Lighthouse sequenciais e recuperação nominal a 50 conexões | Vigente para o alvo local medido | [Frontend](../../artefatos/sprint5/testes-carga-finais-front.md) |
 | [`2026-10-05-frontend/`](2026-10-05-frontend/README.md) | 05/10/2026 | Primeira rodada estática e Lighthouse; auditorias concorrentes mantidas como históricas | Histórica | [Frontend](../../artefatos/sprint5/testes-carga-finais-front.md) |
 | [`2026-10-05-ingestao/`](2026-10-05-ingestao/README.md) | 05–06/10/2026 | RS-01 após o heartbeat: 2, 3 e 4 lotes drenados, com logs, contagens e séries SQS | Vigente para os cenários medidos | [Ingestão](../../artefatos/sprint5/testes-carga-ingestao.md) |
 | [`2026-10-04-ingestao/`](2026-10-04-ingestao/README.md) | 04/10/2026 | CG-05: 150.000 e 300.000 eventos concluídos; 750.000 interrompido; captura Grafana sem dados em outra conta/janela | Complementar, com limitações | [Ingestão](../../artefatos/sprint5/testes-carga-ingestao.md) |

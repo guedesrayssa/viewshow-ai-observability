@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { validateLighthouseReport } from "./lighthouse-contract.mjs";
 
 const names = ["first-contentful-paint", "largest-contentful-paint", "speed-index", "total-blocking-time", "cumulative-layout-shift"];
-const valid = () => ({ audits: Object.fromEntries(names.map((name) => [name, { numericValue: 0 }])) });
+const valid = () => ({ audits: Object.fromEntries(names.map((name, index) => [name, { numericValue: index < 3 ? 100 : 0 }])) });
 
 test("an errored LCP audit cannot be promoted to an accepted sample", () => {
   const report = valid();

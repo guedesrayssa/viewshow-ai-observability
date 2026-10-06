@@ -2,7 +2,13 @@
 
 Rodada executada na branch `feat/teste-carga-front`, commit-base
 `a89e6b6220d7b2c24714d3a450cf6d1bc0338a60`. A análise está em
-[`artefatos/testes-carga-finais.md`](../../../artefatos/testes-carga-finais.md).
+[`testes-carga-finais-front.md`](../../../artefatos/sprint5/testes-carga-finais-front.md).
+
+**Histórico:** as cinco auditorias iniciadas entre 21:13:32 e 21:13:34 UTC
+se sobrepõem; seus valores não constituem uma referência isolada de LCP/TBT.
+O smoke de recuperação usou 2 conexões e começou 19,728 s após o pico.
+A revisão e as novas medições sequenciais estão em
+[`2026-10-06-frontend`](../2026-10-06-frontend/README.md).
 
 ## Ambiente
 
@@ -27,10 +33,10 @@ alternativa oficial indicada pelo próprio erro, e gerou 21 páginas estáticas.
 | `static-smoke.json` | 2 conexões, 15 s | Aprovado |
 | `static-load.json` | 50 conexões, 60 s | Aprovado |
 | `static-spike.json` | 200 conexões, 30 s | Resiliente sem erros; reprovou o limite de latência |
-| `static-smoke-recovery.json` | repetição smoke imediatamente após o spike | Aprovado; comprova recuperação |
+| `static-smoke-recovery.json` | smoke de 2 conexões, 19,728 s após o spike | Aprovado nesse escopo; não prova recuperação a 50 conexões |
 | `static-aws-amplify-smoke.json` | smoke da publicação manual no Amplify | Sem erros; comparativo de infraestrutura, não do código novo |
-| `lighthouse-mobile-1..3.json` | três auditorias móveis da exportação atual em `/login/` | RNF07 aprovado para a rota medida |
-| `lighthouse-desktop-1..3.json` | três auditorias desktop da exportação atual em `/login/` | RNF07 aprovado para a rota medida |
+| `lighthouse-mobile-1..3.json` | auditorias móveis originais em `/login/` | Histórico; duas coletas concorrentes com desktop |
+| `lighthouse-desktop-1..3.json` | auditorias desktop originais em `/login/` | Histórico; coletas concorrentes |
 
 Os JSONs do Lighthouse são os relatórios integrais, não apenas o resumo. Os
 JSONs do Autocannon contêm configuração, mistura de URLs, distribuição de
