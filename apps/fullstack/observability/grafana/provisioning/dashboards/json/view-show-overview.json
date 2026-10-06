@@ -263,12 +263,12 @@
       "id": 13,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, model_id) (rate(bedrock_invocation_duration_seconds_bucket[5m])))",
-          "legendFormat": "{{model_id}}",
+          "expr": "histogram_quantile(0.95, sum by (le, provider, model_id) (rate(llm_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{provider}} / {{model_id}}",
           "refId": "A"
         }
       ],
-      "title": "Bedrock invocation latency p95",
+      "title": "LLM invocation latency p95",
       "type": "timeseries"
     },
     {
@@ -304,6 +304,10 @@
       "title": "Analysis queue depth",
       "type": "timeseries"
     }
+  ],
+  "links": [
+    { "title": "API: RED, logs e traces", "type": "link", "url": "/d/view-show-api" },
+    { "title": "Agentic LLM details", "type": "link", "url": "/d/view-show-agentic" }
   ],
   "refresh": "30s",
   "schemaVersion": 41,

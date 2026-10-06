@@ -70,11 +70,9 @@ describe("published dashboard projections", () => {
       },
       meta,
     }), { status: 200 })));
-    const { fetchEvidence, fetchBuffering } = await import("@/app/(painel)/evidencias/evidence-resource");
+    const { fetchEvidence } = await import("@/app/(painel)/incidentes/detalhe/evidence-resource");
     const evidence = await fetchEvidence("inc_1");
-    const buffering = await fetchBuffering("inc_1", "120");
-    expect(evidence.data).toMatchObject({ sources: [{ source: "Argus" }], concentration: [{ label: "Smart TV", percentage: 68 }], timeline: [{ label: "Incident detected" }], changes: [{ cause: "Player" }] });
-    expect(buffering.data).toMatchObject({ points: [{ value: 3.2 }], marker: { index: 0 } });
+    expect(evidence.data).toMatchObject({ sources: [{ source: "Argus" }], concentration: [{ label: "Smart TV", percentage: 68 }], timeline: [{ label: "Incident detected" }], changes: [{ cause: "Player" }], buffering: { points: [{ value: 3.2 }], marker: { index: 0 } } });
   });
 
   it("keeps the last published monitoring series visible with its historical label", async () => {

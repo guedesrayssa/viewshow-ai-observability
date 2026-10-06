@@ -10,6 +10,10 @@
  * A escolha de aparência não mora mais aqui: ela já é uma ação da barra
  * superior, ao alcance de qualquer tela, e ter o mesmo controle em dois
  * lugares só dividia a atenção.
+ *
+ * A sincronização com o ARGUS também saiu: ela liga e desliga a ingestão da
+ * plataforma inteira, não é preferência da conta, e agora fica em Dados, ao
+ * lado das importações.
  */
 
 import type { Metadata } from "next";
@@ -17,7 +21,6 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Reveal } from "@/components/motion/reveal";
 import { AccessSecurityCard } from "@/components/settings/access-security-card";
 import { AccountDetailsCard } from "@/components/settings/account-details-card";
-import { ArgusSyncCard } from "@/components/settings/argus-sync-card";
 import { DangerZoneCard } from "@/components/settings/danger-zone-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { ProfileCard } from "@/components/settings/profile-card";
@@ -50,10 +53,6 @@ export default function ConfiguracoesPage() {
       </Reveal>
 
       <Reveal delay={320}>
-        <ArgusSyncCard />
-      </Reveal>
-
-      <Reveal delay={380}>
         <DangerZoneCard />
       </Reveal>
     </div>

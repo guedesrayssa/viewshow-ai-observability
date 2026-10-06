@@ -43,6 +43,8 @@ write_config $G/dashboards/dashboards.yml "${dashboard_provider_gzip}"
 write_config $G/dashboards/json/view-show-aws.json "${dashboard_gzip}"
 write_config $G/dashboards/json/view-show-overview.json "${application_dashboard_gzip}"
 write_config $G/dashboards/json/view-show-api.json "${api_dashboard_gzip}"
+write_config $G/dashboards/json/view-show-ingestion.json "${ingestion_dashboard_gzip}"
+write_config $G/dashboards/json/view-show-agentic-aws.json "${agentic_dashboard_gzip}"
 
 {
   printf 'GRAFANA_ADMIN_PASSWORD=%s\n' "$(printf '%s' '${grafana_password_base64}' | base64 --decode)"

@@ -69,7 +69,18 @@ afterEach(async () => {
 });
 
 /** Espera o evento `finish` do servidor, que escreve a linha de acesso. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 25));
+async function settle(out: { lines: () => Line[] }): Promise<void> {
+  // A linha de acesso é escrita no evento `finish`, depois da resposta chegar
+  // ao cliente. Espera a saída parar de crescer em vez de um atraso fixo, que
+  // sob carga da máquina podia terminar antes da linha existir.
+  let previous = -1;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const current = out.lines().length;
+    if (current === previous) return;
+    previous = current;
+  }
+}
 
 describe("HTTP observability", () => {
   it("echoes a safe client request id and rejects an unsafe one", async () => {
@@ -140,7 +151,7 @@ describe("HTTP observability", () => {
       await fetch(`${base}/api/v1/dashboard/overview`, {
         headers: { "x-request-id": "r-503" },
       });
-      await settle();
+      await settle(out);
     } finally {
       out.restore();
     }
@@ -185,7 +196,7 @@ describe("HTTP observability", () => {
       expect(response.status).toBe(500);
       const body = (await response.json()) as { error: { message: string } };
       expect(body.error.message).toBe("Falha interna na API.");
-      await settle();
+      await settle(out);
     } finally {
       out.restore();
     }
@@ -216,7 +227,7 @@ describe("HTTP observability", () => {
         body: "{not json",
       });
       expect(response.status).toBe(400);
-      await settle();
+      await settle(out);
     } finally {
       out.restore();
     }
@@ -301,7 +312,7 @@ describe("audit and security events", () => {
         },
       );
       expect(response.status).toBe(200);
-      await settle();
+      await settle(out);
     } finally {
       out.restore();
     }
@@ -333,7 +344,7 @@ describe("audit and security events", () => {
         },
       });
       expect(response.status).toBe(202);
-      await settle();
+      await settle(out);
     } finally {
       out.restore();
     }
@@ -361,7 +372,7 @@ describe("audit and security events", () => {
         }),
       });
       expect(response.status).toBe(503);
-      await settle();
+      await settle(out);
     } finally {
       out.restore();
     }

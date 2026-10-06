@@ -110,3 +110,16 @@ groups:
         annotations:
           summary: Analysis worker dead-letter queue contains messages
           runbook: apps/fullstack/observability/docs/runbooks/agentic-high-failure-rate.md
+      - alert: ViewShowLlmHighFailureRate
+        expr: |
+          sum(rate(llm_requests_total{status="failure"}[10m]))
+          /
+          clamp_min(sum(rate(llm_requests_total[10m])), 0.001)
+          > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          service: view-show-agentic
+        annotations:
+          summary: LLM request failure ratio is above five percent
+          runbook: apps/fullstack/observability/docs/runbooks/agentic-high-failure-rate.md
