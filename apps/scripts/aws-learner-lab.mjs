@@ -2248,6 +2248,17 @@ function secretHasCurrentVersion(context, secretArn) {
   );
 }
 
+/**
+ * Value for an AWS CLI parameter that loads its content from a local file.
+ *
+ * The CLI treats everything after `file://` as the path. `pathToFileURL` does not fit: it
+ * percent-encodes spaces and non-ASCII characters, which the CLI never decodes, and on Windows
+ * it yields `file:///C:/...`, which the CLI rejects (it expects `file://C:/...`).
+ */
+export function awsFileArgument(filePath, platform = process.platform) {
+  return `file://${platform === "win32" ? filePath.replaceAll("\\", "/") : filePath}`;
+}
+
 function ensureInternalIngestionCredential(context, runbook) {
   const secretArn = snapshotSecretArn(runbook);
   if (secretHasCurrentVersion(context, secretArn)) {
@@ -2275,7 +2286,7 @@ function ensureInternalIngestionCredential(context, runbook) {
         "--secret-id",
         secretArn,
         "--secret-string",
-        pathToFileURL(sensitiveFile).href,
+        awsFileArgument(sensitiveFile, context.platform),
         "--client-request-token",
         context.generateRandomBytes(24).toString("base64url"),
       ]),
@@ -2370,7 +2381,7 @@ function provisionInitialCognitoUser(context, outputs, email, password) {
         "cognito-idp",
         "admin-set-user-password",
         "--cli-input-json",
-        pathToFileURL(sensitiveFile).href,
+        awsFileArgument(sensitiveFile, context.platform),
       ]),
       { cwd: context.root },
     );

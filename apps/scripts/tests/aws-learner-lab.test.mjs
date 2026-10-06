@@ -23,7 +23,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Integration-style tests for the repository-level Learner Lab command.
-import { isExactConfirmation, runLearnerLab, validateOllamaBaseUrl } from "../aws-learner-lab.mjs";
+import {
+  awsFileArgument,
+  isExactConfirmation,
+  runLearnerLab,
+  validateOllamaBaseUrl,
+} from "../aws-learner-lab.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const ORIGINAL_ROOT = ROOT;
@@ -1594,13 +1599,48 @@ test("deploy creates and verifies the internal ingestion credential when its sec
   );
   assert.ok(write);
   assert.ok(write.args.includes("--secret-string"));
-  assert.match(
+  assert.equal(
     String(write.args[write.args.indexOf("--secret-string") + 1]),
-    /^file:\/\//,
+    awsFileArgument(sensitiveWrites[0].target, "linux"),
   );
   const observableText = JSON.stringify({ calls: a.calls, logs: a.logs });
   assert.doesNotMatch(observableText, new RegExp(encodedCredential));
   assert.match(a.logs.join("\n"), /internal ingestion credential is ready/i);
+});
+
+test("deploy on Windows hands the AWS CLI a file://C:/ path for the ingestion credential", async () => {
+  const a = testEnvironment({ platform: "win32" });
+  const directory = "C:\\Users\\Jo\u00e3o Silva\\AppData\\Local\\Temp\\view-show-test-ingestion";
+
+  const result = await runLearnerLab({
+    ...a.options,
+    step: "deploy",
+    makeSensitiveTemporaryDirectory: () => directory,
+    writeSensitiveFile: () => {},
+    removeSensitiveFile: () => {},
+    removeSensitiveDirectory: () => {},
+  });
+
+  assert.equal(result.status, 0);
+  const write = a.calls.find(
+    (call) =>
+      call.command === "aws" &&
+      call.args[0] === "secretsmanager" &&
+      call.args[1] === "put-secret-value",
+  );
+  assert.ok(write);
+  const value = String(write.args[write.args.indexOf("--secret-string") + 1]);
+  assert.match(value, /^file:\/\/C:\/Users\/Jo\u00e3o Silva\/.+\/snapshot-mysql-password\.txt$/);
+  assert.ok(!value.includes("\\") && !value.includes("%"), "no backslashes or percent escapes");
+});
+
+test("awsFileArgument builds the file:// value the AWS CLI accepts on each platform", () => {
+  assert.equal(
+    awsFileArgument("C:\\Users\\Jo\u00e3o Silva\\AppData\\Local\\Temp\\view-show-x\\secret.txt", "win32"),
+    "file://C:/Users/Jo\u00e3o Silva/AppData/Local/Temp/view-show-x/secret.txt",
+  );
+  assert.equal(awsFileArgument("/tmp/view-show-x/secret.txt", "linux"), "file:///tmp/view-show-x/secret.txt");
+  assert.equal(awsFileArgument("/tmp/with space/secret.txt", "darwin"), "file:///tmp/with space/secret.txt");
 });
 
 test("deploy reuses an existing internal ingestion credential without replacing it", async () => {
