@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import {
@@ -15,6 +16,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -25,6 +27,7 @@ import { fileURLToPath } from "node:url";
 // Integration-style tests for the repository-level Learner Lab command.
 import {
   awsFileArgument,
+  holdPlanFileOnWindows,
   isExactConfirmation,
   runLearnerLab,
   validateOllamaBaseUrl,
@@ -58,6 +61,12 @@ const SAFE_PLAN_VARIABLES = {
   import_canonical_first_production_approved: false,
   acoes_alarme_ingestao: [],
 };
+
+// Windows tools are invoked by absolute System32 path, never through PATH.
+const isWindowsTool = (command, name) =>
+  /^C:\\Windows\\System32\\/i.test(command) && command.toLowerCase().endsWith(`\\${name}`);
+
+const WINDOWS_TEST_SID = "S-1-5-21-1111111111-2222222222-3333333333-1001";
 
 function testEnvironment({
   root = ROOT,
@@ -134,6 +143,10 @@ function testEnvironment({
   cognitoUserExists = false,
   snapshotSecretHasCurrentVersion = false,
   putSnapshotSecretFails = false,
+  analysisGateAccepted = true,
+  icaclsFails = false,
+  lockPlanFileError = null,
+  releasePlanLockError = null,
   gitCheckout = root === ROOT ? "main" : "linked",
 } = {}) {
   const calls = [];
@@ -143,6 +156,7 @@ function testEnvironment({
   const copies = [];
   const temporaryDirectories = [];
   const planDescriptors = [];
+  const planLocks = [];
   const closedPlanDescriptors = [];
   const artifactEntries = new Map();
   const removedArtifactFiles = [];
@@ -216,6 +230,31 @@ function testEnvironment({
       return updateGateAccepted
         ? { status: 0, stdout: "update plan accepted\n", stderr: "" }
         : { status: 1, stdout: "", stderr: "unexpected address" };
+    }
+    if (
+      command === "node" &&
+      args.some((item) => String(item).includes("validate-analysis-worker-plan"))
+    ) {
+      return analysisGateAccepted
+        ? {
+            status: 0,
+            stdout: `analysis worker ${args[args.indexOf("--mode") + 1]} plan accepted
+`,
+            stderr: "",
+          }
+        : { status: 1, stdout: "", stderr: "unsafe analysis plan" };
+    }
+    if (isWindowsTool(command, "whoami.exe")) {
+      return {
+        status: 0,
+        stdout: `"DESKTOP\\\\aluno","${WINDOWS_TEST_SID}"\n`,
+        stderr: "",
+      };
+    }
+    if (isWindowsTool(command, "icacls.exe")) {
+      return icaclsFails
+        ? { status: 5, stdout: "", stderr: "Access is denied." }
+        : { status: 0, stdout: "", stderr: "" };
     }
     if (command === "aws" && args[0] === "--version") {
       return {
@@ -782,6 +821,19 @@ function testEnvironment({
         return descriptor;
       },
       inspectPlanFile: (descriptor) => artifactEntries.get(descriptorTargets.get(descriptor)),
+      lockPlanFile: async (_context, target) => {
+        if (lockPlanFileError) throw lockPlanFileError;
+        planLocks.push(target);
+        calls.push({ command: "<lock plan>", args: [target], options: {} });
+        artifactLifecycle.push(`lock:${target}`);
+        return {
+          release: async () => {
+            if (releasePlanLockError) throw releasePlanLockError;
+            calls.push({ command: "<unlock plan>", args: [target], options: {} });
+            artifactLifecycle.push(`unlock:${target}`);
+          },
+        };
+      },
       closePlanFile: (descriptor) => {
         if (closePlanError) throw closePlanError;
         closedPlanDescriptors.push(descriptor);
@@ -885,6 +937,7 @@ function testEnvironment({
     copies,
     temporaryDirectories,
     planDescriptors,
+    planLocks,
     closedPlanDescriptors,
     artifactEntries,
     removedArtifactFiles,
@@ -2939,26 +2992,268 @@ test("update rejects a plan whose bytes change after validation and never applie
   }
 });
 
-test("Windows update fails closed before Terraform can show or apply a saved plan", async () => {
-  const a = updateEnvironment({ platform: "win32" });
+// Windows cannot pass Terraform an inherited descriptor, so the plan is read by path while a
+// kernel share-mode lock (holdPlanFileOnWindows) stops anyone from changing it, and the artifacts
+// are ACL-restricted to the current user instead of chmod.
+function windowsUpdate(overrides = {}) {
+  const a = updateEnvironment({ platform: "win32", ...overrides });
   a.options.currentUserId = () => undefined;
+  return a;
+}
 
-  const result = await runLearnerLab({
-    ...a.options,
-    step: "update",
-    preset: "phase1-5000",
-  });
+function planPathOf(a) {
+  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
+  return plan?.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
+}
 
-  assert.equal(result.status, 1, a.logs.join("\n"));
+function callIndex(a, predicate) {
+  return a.calls.findIndex(predicate);
+}
+
+test("Windows update reads the saved plan by path while it is locked", async () => {
+  const a = windowsUpdate();
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const planPath = planPathOf(a);
+  const shown = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("show") && call.args.includes(planPath),
+  );
+  const applied = a.calls.find((call) => call.command === "terraform" && call.args.includes("apply"));
+  assert.equal(shown.args.at(-1), planPath);
+  assert.equal(applied.args.at(-1), planPath);
+  assert.equal(shown.options.stdio.length, 3, "no inherited descriptor exists on Windows");
+  assert.equal(applied.options.stdio.length, 3);
+  assert.deepEqual(a.planLocks, [planPath]);
+
+  const planned = callIndex(a, (call) => call.command === "terraform" && call.args.includes("plan"));
+  const locked = callIndex(a, (call) => call.command === "<lock plan>");
+  const showIndex = a.calls.indexOf(shown);
+  const applyIndex = a.calls.indexOf(applied);
+  const unlocked = callIndex(a, (call) => call.command === "<unlock plan>");
+  assert.ok(planned < locked && locked < showIndex && showIndex < applyIndex && applyIndex < unlocked);
+  const lifecycle = a.artifactLifecycle;
+  const closed = lifecycle.findIndex((entry) => entry.startsWith("close:"));
+  assert.ok(
+    lifecycle.indexOf(`unlock:${planPath}`) < closed && closed < lifecycle.indexOf(`unlink:${planPath}`),
+    "the lock is released before the plan is closed and removed",
+  );
+  assert.equal(a.removedArtifactFiles.length, 1);
+});
+
+test("Windows update keeps its artifacts private to the current user with ACLs instead of chmod", async () => {
+  const a = windowsUpdate();
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  assert.deepEqual(a.permissions, [], "chmod is meaningless on Windows");
+  const artifacts = path.join(ORIGINAL_ROOT, "apps", "fullstack", ".terraform-artifacts");
+  const acls = a.calls.filter((call) => isWindowsTool(call.command, "icacls.exe"));
+  assert.ok(acls.length > 0);
+  for (const call of acls) {
+    const [target, inheritance, grant, entry] = call.args;
+    assert.ok(target === artifacts || target.startsWith(artifacts + path.sep), target);
+    assert.equal(inheritance, "/inheritance:r");
+    assert.equal(grant, "/grant:r");
+    assert.ok(entry.startsWith(`*${WINDOWS_TEST_SID}:`), entry);
+  }
+  const rightsFor = (predicate) =>
+    acls.filter((call) => predicate(call.args[0])).map((call) => call.args[3].split(":")[1]);
+  const planPath = planPathOf(a);
+  // read-only while validated; modify (which includes DELETE) only to unlink it during cleanup
+  assert.deepEqual(rightsFor((target) => target === planPath), ["(R)", "(M)"]);
+  assert.deepEqual(
+    rightsFor((target) => target === path.dirname(planPath)),
+    ["(OI)(CI)F", "(OI)(CI)RX", "(OI)(CI)F"],
+  );
+  assert.deepEqual(rightsFor((target) => target.endsWith("state-backups")), ["(OI)(CI)F"]);
+});
+
+test("Windows update creates its state backup exclusively inside the verified private directory", async () => {
+  const a = windowsUpdate();
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const destinationOpen = a.backupOpens.find(({ flags }) => (flags & fsConstants.O_CREAT) !== 0);
+  assert.match(
+    destinationOpen.target,
+    /state-backups[\\/]terraform\.tfstate\.2026-09-21T12-34-56-789Z$/,
+  );
+  assert.ok(destinationOpen.flags & fsConstants.O_EXCL, "an existing backup is never overwritten");
+  assert.equal(destinationOpen.mode, 0o600);
+  assert.equal(a.backupOpens.some(({ target }) => String(target).startsWith("/proc/self/fd")), false);
+  assert.equal(a.backupWrites.length, 1);
+  assert.equal(a.closedBackupDescriptors.length, 2);
+});
+
+test("Windows update never applies a plan that changes after it is locked", async () => {
+  const a = windowsUpdate({ replacementPlanBytes: Buffer.from("different terraform plan bytes") });
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /integrity changed/i);
   assert.equal(
     a.calls.some(
       (call) =>
         call.command === "terraform" &&
-        (call.args.includes("plan") || call.args.includes("apply")),
+        (call.args.includes("show") || call.args.includes("apply")) &&
+        call.args.includes(planPathOf(a)),
     ),
     false,
   );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
+  assert.equal(callIndex(a, (call) => call.command === "<unlock plan>") >= 0, true, "the lock is still released");
+});
+
+test("Windows update fails closed when the plan cannot be locked", async () => {
+  const a = windowsUpdate({ lockPlanFileError: new Error("the validated Terraform plan could not be locked") });
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /could not be locked/);
+  assert.equal(
+    a.calls.some(
+      (call) =>
+        call.command === "terraform" &&
+        (call.args.includes("apply") || call.args.includes(planPathOf(a))) &&
+        !call.args.includes("plan"),
+    ),
+    false,
+  );
+  assert.equal(a.removedArtifactFiles.length, 1, "the unused plan is still cleaned up");
+});
+
+test("Windows update retains the private artifact when the plan lock cannot be released", async () => {
+  const a = windowsUpdate({ releasePlanLockError: new Error("helper did not exit") });
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /private artifact retained/i);
+  assert.equal(a.removedArtifactFiles.length, 0);
+});
+
+test("Windows update fails closed before planning when the ACL cannot be applied", async () => {
+  const a = windowsUpdate({ icaclsFails: true });
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /could not restrict the Terraform artifact to the current Windows user/);
+  assert.equal(
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    false,
+  );
+});
+
+test("update rejects a gate that exits successfully without accepting the plan", async () => {
+  const a = updateEnvironment();
+  const execute = a.options.execute;
+  a.options.execute = (command, args, options) =>
+    command === "node" && args.some((item) => String(item).includes("validate-learner-update-plan"))
+      ? { status: 0, stdout: "", stderr: "" }
+      : execute(command, args, options);
+
+  const result = await runLearnerLab({ ...a.options, step: "update", preset: "phase1-5000" });
+
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /update gate rejected the plan/);
+  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")), false);
+});
+
+// Real kernel behavior, no mocks: only meaningful where the lock is actually used.
+test(
+  "holdPlanFileOnWindows lets readers in but blocks writes, deletes and replacements until released",
+  { skip: process.platform !== "win32" },
+  async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), "view-show-plan-lock-"));
+    const plan = path.join(directory, "plan.tfplan");
+    const attacker = path.join(directory, "attacker.tfplan");
+    writeFileSync(plan, "validated plan");
+    writeFileSync(attacker, "attacker plan");
+    const blocked = (action) => {
+      try {
+        action();
+        return null;
+      } catch (error) {
+        return error.code;
+      }
+    };
+    let lock = null;
+    try {
+      lock = await holdPlanFileOnWindows({ spawnProcess: spawn, environment: process.env }, plan);
+
+      assert.equal(readFileSync(plan, "utf8"), "validated plan");
+      assert.match(blocked(() => writeFileSync(plan, "tampered")), /^(EBUSY|EPERM|EACCES)$/);
+      assert.match(blocked(() => unlinkSync(plan)), /^(EBUSY|EPERM|EACCES)$/);
+      assert.match(blocked(() => renameSync(plan, path.join(directory, "moved.tfplan"))), /^(EBUSY|EPERM|EACCES)$/);
+      assert.match(blocked(() => renameSync(attacker, plan)), /^(EBUSY|EPERM|EACCES)$/);
+      assert.equal(readFileSync(plan, "utf8"), "validated plan");
+
+      await lock.release();
+      lock = null;
+      writeFileSync(plan, "writable again");
+      assert.equal(readFileSync(plan, "utf8"), "writable again");
+    } finally {
+      if (lock !== null) await lock.release();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  "holdPlanFileOnWindows refuses to report a lock on a file it cannot open",
+  { skip: process.platform !== "win32" },
+  async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), "view-show-plan-lock-"));
+    try {
+      await assert.rejects(
+        holdPlanFileOnWindows(
+          { spawnProcess: spawn, environment: process.env },
+          path.join(directory, "missing.tfplan"),
+        ),
+        /could not be locked/,
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
+
+test("holdPlanFileOnWindows fails closed when the helper cannot start", async () => {
+  const failing = () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stdin = Object.assign(new EventEmitter(), { end() {} });
+    child.kill = () => {};
+    queueMicrotask(() => child.emit("error", new Error("spawn powershell.exe ENOENT")));
+    return child;
+  };
+
+  await assert.rejects(
+    holdPlanFileOnWindows({ spawnProcess: failing, environment: {} }, "C:\\plan.tfplan"),
+    /could not be locked/,
+  );
+});
+
+test("holdPlanFileOnWindows fails closed when the helper exits without reporting the lock", async () => {
+  const exiting = () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stdin = Object.assign(new EventEmitter(), { end() {} });
+    child.kill = () => {};
+    queueMicrotask(() => child.emit("close", 1));
+    return child;
+  };
+
+  await assert.rejects(
+    holdPlanFileOnWindows({ spawnProcess: exiting, environment: {} }, "C:\\plan.tfplan"),
+    /could not be locked/,
+  );
 });
 
 test("update never applies a plan whose filesystem identity is unavailable", async () => {
@@ -5946,7 +6241,7 @@ test("analysis-prepare uses the protected plan reference supported by each POSIX
   }
 });
 
-test("Windows analysis plan fails closed before Terraform can show or apply it", async () => {
+function windowsAnalysis(overrides = {}) {
   const a = testEnvironment({
     platform: "win32",
     environment: {
@@ -5955,8 +6250,14 @@ test("Windows analysis plan fails closed before Terraform can show or apply it",
       VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
     },
     planVariableOverrides: OLLAMA_PLAN_VARIABLES,
+    ...overrides,
   });
   a.options.currentUserId = () => undefined;
+  return a;
+}
+
+test("Windows analysis-prepare reads the saved plan by path, locked, and validates it with the analysis gate", async () => {
+  const a = windowsAnalysis();
 
   const result = await runLearnerLab({
     ...a.options,
@@ -5965,16 +6266,94 @@ test("Windows analysis plan fails closed before Terraform can show or apply it",
     extraArguments: OLLAMA_ARGUMENTS,
   });
 
-  assert.equal(result.status, 1, a.logs.join("\n"));
-  assert.equal(
-    a.calls.some(
-      (call) =>
-        call.command === "terraform" &&
-        (call.args.includes("plan") || call.args.includes("apply")),
-    ),
-    false,
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
+  const planPath = plan.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
+  const shown = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("show") && call.args.includes(planPath),
   );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
+  const applied = a.calls.find((call) => call.command === "terraform" && call.args.includes("apply"));
+  const gate = a.calls.find(
+    (call) =>
+      call.command === "node" &&
+      call.args.some((argument) => String(argument).includes("validate-analysis-worker-plan")),
+  );
+  assert.equal(shown.args.at(-1), planPath);
+  assert.equal(applied.args.at(-1), planPath);
+  assert.equal(shown.options.stdio.length, 3);
+  assert.equal(applied.options.stdio.length, 3);
+  assert.equal(gate.options.env.VIEW_SHOW_EXPECTED_AWS_ACCOUNT, "111122223333");
+  assert.deepEqual(a.planLocks, [planPath]);
+  const locked = a.calls.findIndex((call) => call.command === "<lock plan>");
+  const unlocked = a.calls.findIndex((call) => call.command === "<unlock plan>");
+  assert.ok(
+    locked < a.calls.indexOf(shown) &&
+      a.calls.indexOf(shown) < a.calls.indexOf(gate) &&
+      a.calls.indexOf(gate) < a.calls.indexOf(applied) &&
+      a.calls.indexOf(applied) < unlocked,
+  );
+  assert.ok(a.calls.some((call) => isWindowsTool(call.command, "icacls.exe")));
+  assert.equal(a.removedArtifactFiles.length, 1);
+  assert.equal(a.calls.some((call) => call.args.some((argument) => String(argument).includes(OLLAMA_URL))), false);
+});
+
+test("Windows grafana provisions missing observability through the locked protected plan", async () => {
+  const a = testEnvironment({ platform: "win32", observabilityEndpoint: null, isTty: true });
+  a.options.currentUserId = () => undefined;
+  const confirmations = [];
+
+  const result = await runLearnerLab({
+    ...a.options,
+    step: "grafana",
+    confirm: async (phrase) => {
+      confirmations.push(phrase);
+      return true;
+    },
+  });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  assert.deepEqual(confirmations, ["PROVISION GRAFANA 111122223333"]);
+  assert.equal(a.planLocks.length, 1);
+  const applied = a.calls.find((call) => call.command === "terraform" && call.args.includes("apply"));
+  assert.equal(applied.args.at(-1), a.planLocks[0]);
+  assert.equal(applied.options.stdio.length, 3);
+  assert.ok(a.logs.includes("Infraestrutura: CREATED"));
+  const tunnel = a.calls.find((call) => call.command === "aws" && call.args.includes("start-session"));
+  assert.ok(tunnel, "the SSM tunnel still opens after provisioning");
+});
+
+test("Windows grafana that finds healthy observability never plans or locks anything", async () => {
+  const a = testEnvironment({ platform: "win32", isTty: true });
+  a.options.currentUserId = () => undefined;
+
+  const result = await runLearnerLab({ ...a.options, step: "grafana" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  assert.equal(a.planLocks.length, 0);
+  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")), false);
+});
+
+test("an analysis gate that exits successfully without accepting the plan blocks the apply", async () => {
+  const a = testEnvironment({
+    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    planVariableOverrides: OLLAMA_PLAN_VARIABLES,
+  });
+  const execute = a.options.execute;
+  a.options.execute = (command, args, options) =>
+    command === "node" && args.some((item) => String(item).includes("validate-analysis-worker-plan"))
+      ? { status: 0, stdout: "", stderr: "" }
+      : execute(command, args, options);
+
+  const result = await runLearnerLab({
+    ...a.options,
+    ...analysisFiles(a),
+    step: "analysis-prepare",
+    extraArguments: OLLAMA_ARGUMENTS,
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /plan rejected/);
+  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")), false);
 });
 
 test("analysis-prepare --ssh-bridge persists the bridge for activation and deactivation", async () => {

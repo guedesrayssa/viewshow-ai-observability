@@ -174,6 +174,17 @@ node apps/scripts/aws-learner-lab.mjs grafana --senha
 
 Use esse modo apenas em um terminal privado.
 
+### Windows
+
+`grafana`, `update` e `analysis-*` funcionam no Windows (PowerShell, Prompt de
+Comando ou Git Bash). Como o Windows não passa um descritor de arquivo ao
+Terraform, o plano validado é lido por caminho enquanto um processo auxiliar do
+PowerShell o mantém bloqueado contra escrita, exclusão e troca até o `apply`
+terminar, e `.terraform-artifacts` recebe uma ACL só do usuário atual. Para isso o
+script chama `whoami.exe`, `icacls.exe` e `powershell.exe` pelo caminho absoluto
+em `System32`. Se o bloqueio ou a ACL falharem, o comando para antes de aplicar
+qualquer coisa.
+
 ## Destroy
 
 > Atenção: este comando remove todos os recursos gerenciados pelo Terraform, incluindo os dados do bucket de ingestão e as imagens do ECR. A ação é irreversível.
