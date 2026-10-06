@@ -1,10 +1,14 @@
-# 24 eventos de log no grupo /ecs/view-show-ingestion-incremental-ingest entre 03:05Z e 03:36Z
+# 34 eventos de log no grupo /ecs/view-show-ingestion-incremental-ingest entre 03:55Z e 04:40Z
 linhas de alerta (heartbeat failed / AccessDenied / InvalidParameterValue / ConditionalWriteError / batch processing failed / warning / error): 0
-73c858880ebb 2026-10-06T03:15:39.467Z started {}
-1dbbef901685 2026-10-06T03:20:46.073Z started {}
-1dbbef901685 2026-10-06T03:21:06.301Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20227.081498999978, 'errorCode': None}
-64e99bffbf4b 2026-10-06T03:25:37.480Z started {}
-64e99bffbf4b 2026-10-06T03:25:57.682Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20202.20712599999, 'errorCode': None}
-d8e634825cef 2026-10-06T03:30:39.257Z started {}
-d8e634825cef 2026-10-06T03:30:59.479Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20222.075211999992, 'errorCode': None}
-73c858880ebb 2026-10-06T03:31:27.076Z finished {'batchesCompleted': 4, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 947608.5225800001, 'errorCode': None}
+baebbaf52610 2026-10-06T04:08:43.227Z started {}
+f0eea5a0253b 2026-10-06T04:13:46.100Z started {}
+f0eea5a0253b 2026-10-06T04:14:06.331Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20231.492395999994, 'errorCode': None}
+38cce8656543 2026-10-06T04:18:54.598Z started {}
+38cce8656543 2026-10-06T04:19:14.813Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20213.983837, 'errorCode': None}
+af7a4bebb3bb 2026-10-06T04:23:43.595Z started {}
+af7a4bebb3bb 2026-10-06T04:24:03.792Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20197.110208, 'errorCode': None}
+4b632baa72af 2026-10-06T04:28:49.714Z started {}
+4b632baa72af 2026-10-06T04:29:09.924Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20209.062843, 'errorCode': None}
+f826d500c310 2026-10-06T04:33:43.418Z started {}
+f826d500c310 2026-10-06T04:34:03.627Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20209.170037999967, 'errorCode': None}
+baebbaf52610 2026-10-06T04:35:00.882Z finished {'batchesCompleted': 4, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 1577655.464712, 'errorCode': None}

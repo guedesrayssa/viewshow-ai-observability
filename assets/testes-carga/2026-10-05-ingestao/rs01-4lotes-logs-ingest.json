@@ -1,98 +1,138 @@
 [
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"timestamp\":\"2026-10-06T03:15:39.467Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-37093df941c146feb13949f9bee6952e\",\"runId\":\"ingest-incremental-0ac84be1f94c4d199c52f6ab06111b67\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"timestamp\":\"2026-10-06T04:08:43.227Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-4dc25a967a4b4df4a68df81c1b386ab3\",\"runId\":\"ingest-incremental-52f69537781d4baf9c7fca69f9f35e94\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"_aws\":{\"Timestamp\":1791256539793,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
+        "ingestion/ingestion/f0eea5a0253b44b0bebb6442fdd86fff",
+        "{\"timestamp\":\"2026-10-06T04:13:46.100Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-e281fd5bc4ae4f56887ba12c444c97e1\",\"runId\":\"ingest-incremental-8fc13373213d4e86ae47bd2face43b5a\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"_aws\":{\"Timestamp\":1791256539858,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
+        "ingestion/ingestion/f0eea5a0253b44b0bebb6442fdd86fff",
+        "{\"timestamp\":\"2026-10-06T04:14:06.331Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-e281fd5bc4ae4f56887ba12c444c97e1\",\"runId\":\"ingest-incremental-8fc13373213d4e86ae47bd2face43b5a\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20231.492395999994,\"errorCode\":null}"
     ],
     [
-        "ingestion/ingestion/1dbbef90168543e998343f1eca310b66",
-        "{\"timestamp\":\"2026-10-06T03:20:46.073Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-d362f1b201d84a8490af698f30ebe749\",\"runId\":\"ingest-incremental-797998b6c9b24b7b9cefd539001fa65f\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
+        "ingestion/ingestion/f0eea5a0253b44b0bebb6442fdd86fff",
+        "{\"_aws\":{\"Timestamp\":1791260046332,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
     ],
     [
-        "ingestion/ingestion/1dbbef90168543e998343f1eca310b66",
-        "{\"timestamp\":\"2026-10-06T03:21:06.301Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-d362f1b201d84a8490af698f30ebe749\",\"runId\":\"ingest-incremental-797998b6c9b24b7b9cefd539001fa65f\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20227.081498999978,\"errorCode\":null}"
+        "ingestion/ingestion/f0eea5a0253b44b0bebb6442fdd86fff",
+        "{\"_aws\":{\"Timestamp\":1791260046332,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20231.492395999994}"
     ],
     [
-        "ingestion/ingestion/1dbbef90168543e998343f1eca310b66",
-        "{\"_aws\":{\"Timestamp\":1791256866301,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
+        "ingestion/ingestion/f0eea5a0253b44b0bebb6442fdd86fff",
+        "{\"_aws\":{\"Timestamp\":1791260046441,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
     ],
     [
-        "ingestion/ingestion/1dbbef90168543e998343f1eca310b66",
-        "{\"_aws\":{\"Timestamp\":1791256866301,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20227.081498999978}"
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"_aws\":{\"Timestamp\":1791260123091,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
     ],
     [
-        "ingestion/ingestion/1dbbef90168543e998343f1eca310b66",
-        "{\"_aws\":{\"Timestamp\":1791256866420,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
+        "ingestion/ingestion/38cce8656543466d9e9a40b0033267b3",
+        "{\"timestamp\":\"2026-10-06T04:18:54.598Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-f1aaf91ce7e04f29a90b1848534a0d7b\",\"runId\":\"ingest-incremental-31e362cb768a40008ee17b4e76f05165\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"_aws\":{\"Timestamp\":1791257014707,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
+        "ingestion/ingestion/38cce8656543466d9e9a40b0033267b3",
+        "{\"timestamp\":\"2026-10-06T04:19:14.813Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-f1aaf91ce7e04f29a90b1848534a0d7b\",\"runId\":\"ingest-incremental-31e362cb768a40008ee17b4e76f05165\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20213.983837,\"errorCode\":null}"
     ],
     [
-        "ingestion/ingestion/64e99bffbf4b4a42ade61e7f0790373f",
-        "{\"timestamp\":\"2026-10-06T03:25:37.480Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-e3e0952903574963a001bd435cb31708\",\"runId\":\"ingest-incremental-e2f2edc7628a47f4b0571b27ebc48656\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
+        "ingestion/ingestion/38cce8656543466d9e9a40b0033267b3",
+        "{\"_aws\":{\"Timestamp\":1791260354813,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
     ],
     [
-        "ingestion/ingestion/64e99bffbf4b4a42ade61e7f0790373f",
-        "{\"timestamp\":\"2026-10-06T03:25:57.682Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-e3e0952903574963a001bd435cb31708\",\"runId\":\"ingest-incremental-e2f2edc7628a47f4b0571b27ebc48656\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20202.20712599999,\"errorCode\":null}"
+        "ingestion/ingestion/38cce8656543466d9e9a40b0033267b3",
+        "{\"_aws\":{\"Timestamp\":1791260354813,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20213.983837}"
     ],
     [
-        "ingestion/ingestion/64e99bffbf4b4a42ade61e7f0790373f",
-        "{\"_aws\":{\"Timestamp\":1791257157683,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
+        "ingestion/ingestion/38cce8656543466d9e9a40b0033267b3",
+        "{\"_aws\":{\"Timestamp\":1791260354918,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
     ],
     [
-        "ingestion/ingestion/64e99bffbf4b4a42ade61e7f0790373f",
-        "{\"_aws\":{\"Timestamp\":1791257157683,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20202.20712599999}"
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"_aws\":{\"Timestamp\":1791260519695,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
     ],
     [
-        "ingestion/ingestion/64e99bffbf4b4a42ade61e7f0790373f",
-        "{\"_aws\":{\"Timestamp\":1791257157785,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
+        "ingestion/ingestion/af7a4bebb3bb484399e4b36bb5fa9e9a",
+        "{\"timestamp\":\"2026-10-06T04:23:43.595Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-3b064c90d7594cc197d9d8a1dca07730\",\"runId\":\"ingest-incremental-286b8a439352436184717c8a8d80ef22\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
     ],
     [
-        "ingestion/ingestion/d8e634825cef4fc298e64f5a0296f085",
-        "{\"timestamp\":\"2026-10-06T03:30:39.257Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-c77f84efef354e30923805109f627d93\",\"runId\":\"ingest-incremental-14d0ac209c09465b835d11b908b56135\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
+        "ingestion/ingestion/af7a4bebb3bb484399e4b36bb5fa9e9a",
+        "{\"timestamp\":\"2026-10-06T04:24:03.792Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-3b064c90d7594cc197d9d8a1dca07730\",\"runId\":\"ingest-incremental-286b8a439352436184717c8a8d80ef22\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20197.110208,\"errorCode\":null}"
     ],
     [
-        "ingestion/ingestion/d8e634825cef4fc298e64f5a0296f085",
-        "{\"timestamp\":\"2026-10-06T03:30:59.479Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-c77f84efef354e30923805109f627d93\",\"runId\":\"ingest-incremental-14d0ac209c09465b835d11b908b56135\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20222.075211999992,\"errorCode\":null}"
+        "ingestion/ingestion/af7a4bebb3bb484399e4b36bb5fa9e9a",
+        "{\"_aws\":{\"Timestamp\":1791260643792,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
     ],
     [
-        "ingestion/ingestion/d8e634825cef4fc298e64f5a0296f085",
-        "{\"_aws\":{\"Timestamp\":1791257459480,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
+        "ingestion/ingestion/af7a4bebb3bb484399e4b36bb5fa9e9a",
+        "{\"_aws\":{\"Timestamp\":1791260643793,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20197.110208}"
     ],
     [
-        "ingestion/ingestion/d8e634825cef4fc298e64f5a0296f085",
-        "{\"_aws\":{\"Timestamp\":1791257459480,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20222.075211999992}"
+        "ingestion/ingestion/af7a4bebb3bb484399e4b36bb5fa9e9a",
+        "{\"_aws\":{\"Timestamp\":1791260643893,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
     ],
     [
-        "ingestion/ingestion/d8e634825cef4fc298e64f5a0296f085",
-        "{\"_aws\":{\"Timestamp\":1791257459588,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"_aws\":{\"Timestamp\":1791260907028,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"_aws\":{\"Timestamp\":1791257487075,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
+        "ingestion/ingestion/4b632baa72af4c72a2d7f690d07eabb5",
+        "{\"timestamp\":\"2026-10-06T04:28:49.714Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-f59395714bb744c1ab3f6c6e863b4e1e\",\"runId\":\"ingest-incremental-c4abb183b34a40d38f4dcdf482cf12a2\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"timestamp\":\"2026-10-06T03:31:27.076Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-37093df941c146feb13949f9bee6952e\",\"runId\":\"ingest-incremental-0ac84be1f94c4d199c52f6ab06111b67\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":4,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":947608.5225800001,\"errorCode\":null}"
+        "ingestion/ingestion/4b632baa72af4c72a2d7f690d07eabb5",
+        "{\"timestamp\":\"2026-10-06T04:29:09.924Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-f59395714bb744c1ab3f6c6e863b4e1e\",\"runId\":\"ingest-incremental-c4abb183b34a40d38f4dcdf482cf12a2\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20209.062843,\"errorCode\":null}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"_aws\":{\"Timestamp\":1791257487076,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
+        "ingestion/ingestion/4b632baa72af4c72a2d7f690d07eabb5",
+        "{\"_aws\":{\"Timestamp\":1791260949924,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"_aws\":{\"Timestamp\":1791257487076,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":947608.5225800001}"
+        "ingestion/ingestion/4b632baa72af4c72a2d7f690d07eabb5",
+        "{\"_aws\":{\"Timestamp\":1791260949924,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20209.062843}"
     ],
     [
-        "ingestion/ingestion/73c858880ebb49958e6121b996340766",
-        "{\"_aws\":{\"Timestamp\":1791257487182,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
+        "ingestion/ingestion/4b632baa72af4c72a2d7f690d07eabb5",
+        "{\"_aws\":{\"Timestamp\":1791260950051,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
+    ],
+    [
+        "ingestion/ingestion/f826d500c3104ee8935d8d274b6017db",
+        "{\"timestamp\":\"2026-10-06T04:33:43.418Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-78b1b6d53ecd4de8b3d2d02c7601a98b\",\"runId\":\"ingest-incremental-baa238174f5145b3abc63a3240ba83a1\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}"
+    ],
+    [
+        "ingestion/ingestion/f826d500c3104ee8935d8d274b6017db",
+        "{\"timestamp\":\"2026-10-06T04:34:03.627Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-78b1b6d53ecd4de8b3d2d02c7601a98b\",\"runId\":\"ingest-incremental-baa238174f5145b3abc63a3240ba83a1\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":0,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":20209.170037999967,\"errorCode\":null}"
+    ],
+    [
+        "ingestion/ingestion/f826d500c3104ee8935d8d274b6017db",
+        "{\"_aws\":{\"Timestamp\":1791261243628,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
+    ],
+    [
+        "ingestion/ingestion/f826d500c3104ee8935d8d274b6017db",
+        "{\"_aws\":{\"Timestamp\":1791261243628,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":20209.170037999967}"
+    ],
+    [
+        "ingestion/ingestion/f826d500c3104ee8935d8d274b6017db",
+        "{\"_aws\":{\"Timestamp\":1791261243731,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
+    ],
+    [
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"_aws\":{\"Timestamp\":1791261300882,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}"
+    ],
+    [
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"timestamp\":\"2026-10-06T04:35:00.882Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-4dc25a967a4b4df4a68df81c1b386ab3\",\"runId\":\"ingest-incremental-52f69537781d4baf9c7fca69f9f35e94\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":4,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":1577655.464712,\"errorCode\":null}"
+    ],
+    [
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"_aws\":{\"Timestamp\":1791261300883,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}"
+    ],
+    [
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"_aws\":{\"Timestamp\":1791261300883,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":1577655.464712}"
+    ],
+    [
+        "ingestion/ingestion/baebbaf52610412f8c5a537919a430b4",
+        "{\"_aws\":{\"Timestamp\":1791261300953,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}"
     ]
 ]

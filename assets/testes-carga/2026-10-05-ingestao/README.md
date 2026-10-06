@@ -61,16 +61,11 @@ de 30/09: `terraform apply -target` manual, com as mesmas variáveis do preset
 | `deploy-plan-refresh-only.txt` | Plano `-refresh-only` |
 | `deploy-apply-refresh-only.txt` | Saída do `apply -refresh-only` |
 | `ativacao-dataset-150000.json` | Resposta da ativação do dataset da importação de 150.000 eventos, pré-condição do RS-01 |
-| `rs01-2lotes-tentativa1-abortada-*` | 1ª tentativa do RS-01 com 2 lotes, abortada na publicação (`NoRegionError`); nenhuma mensagem enviada |
 | `rs01-<N>lotes-execucao.txt` | Marcos de cada rodada do RS-01 (pré-checagem, publicação, agenda ligada/desligada, motivo do fim) |
 | `rs01-<N>lotes-lotes.json`, `rs01-<N>lotes-publicacao.log` | Lotes publicados (janela, `batchId`, SHA-256, chave do manifesto) |
 | `rs01-<N>lotes-acumulo.txt` | Contagem antes da publicação e estado da fila a cada ~30 s durante o acúmulo |
 | `rs01-<N>lotes-drenagem.txt` | Fila, DLQ, tasks e registros `BATCH#` a cada ~30 s durante a drenagem, e contagem final |
 | `rs01-<N>lotes-logs-ingest.json`, `rs01-<N>lotes-runs.txt` | Logs do `ingest-incremental` na janela e resumo dos runs e das linhas de alerta |
-| `rs01-3lotes-*` | Rodada de 3 lotes de 05/10: interrompida no acúmulo, mas a drenagem aconteceu sem o monitor acompanhar os lotes; reconstruída por logs, `BATCH#` e CloudTrail (`execucoes.txt`) e refeita como `rs01-3lotes-r2` |
-| `rs01-3lotes-r2-*` | Rodada de 3 lotes de 06/10, válida |
-| `rs01-4lotes-*` | Tentativa de 4 lotes de 06/10, sem validade para o critério (2 dos 4 lotes repetiam lotes já concluídos); refeita como `rs01-4lotes-r2` |
-| `rs01-4lotes-r2-*` | Rodada de 4 lotes de 06/10, válida (`--window-start 2026-10-06T00:00:00Z`) |
 | `rs01-alarmes.txt` | Histórico de estado dos alarmes da FIFO incremental de 05/10 15:00Z a 06/10 05:00Z |
 | `rs01-2lotes-coleta-final.txt` | Coleta final feita à mão depois da falha do monitor na rodada de 2 lotes |
 | `sqs-rs01-<N>lotes.json` | Métricas SQS da janela (`ingestao-falhas.sh metricas-fila`) |

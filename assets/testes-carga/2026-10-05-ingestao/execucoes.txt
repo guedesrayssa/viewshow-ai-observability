@@ -11,10 +11,8 @@
 2026-10-05T15:29:36Z pre-condicao do RS-01: senha do usuario de teste k6-ingestao@viewshow.test (user pool us-east-1_v7GzlS2Bs) redefinida como permanente por aws cognito-idp admin-set-user-password (status antes: RESET_REQUIRED; depois: CONFIRMED); senha aleatoria, fora do repositorio
 2026-10-05T15:29:49Z pre-condicao do RS-01: POST /api/v1/imports/imp_01M4478AZCSGHRCRYFT3ZP7AED/activate -> HTTP 200, datasetVersion dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965, activatedAt 2026-10-05T15:29:49.619Z, changed=true (nao havia CONTROL#DATASET/ACTIVE: stack recriada em 2026-10-04)
 2026-10-05T15:30Z  CONTROL#DATASET/ACTIVE confirmado (activeDatasetVersion dsv_81253140...9965); nenhuma task nova iniciada
-2026-10-05T15:35:36Z rs01-2lotes tentativa 1 inicio (pre-checagem: agendas DISABLED, fila e DLQ 0/0, leases ausentes)
-2026-10-05T15:35:51Z rs01-2lotes tentativa 1 ABORTADA na publicacao: botocore NoRegionError ao criar o cliente SQS (sem AWS_DEFAULT_REGION no ambiente do publicador); data.parquet e manifest.json da janela 15:00Z (bat_45f768dc...) gravados no S3, nenhuma mensagem enviada, agenda nao ligada; nao conta como rodada do RS-01
-2026-10-05T15:38:39Z rs01-2lotes inicio (tentativa 2; AWS_DEFAULT_REGION=us-east-1; --window-start 2026-10-05T15:00:00Z): agendas DISABLED, fila e DLQ 0/0, leases ausentes
-2026-10-05T15:38:56Z rs01-2lotes publicacao concluida: bat_45f768dc... (janela 15:00Z, objetos S3 da tentativa 1 adotados) e bat_286f4cc3... (janela 15:15Z)
+2026-10-05T15:38:39Z rs01-2lotes inicio (AWS_DEFAULT_REGION=us-east-1; --window-start 2026-10-05T15:00:00Z): agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-05T15:38:56Z rs01-2lotes publicacao concluida: bat_45f768dc... (janela 15:00Z) e bat_286f4cc3... (janela 15:15Z)
 2026-10-05T15:46:31Z rs01-2lotes agenda do ingest-incremental ENABLED (inicio da drenagem; prazo 1800 s ate 16:16:36Z)
 2026-10-05T15:47:39Z rs01-2lotes run aa381476 recebe as 2 mensagens; lote 1 INGESTING
 2026-10-05T15:52:43Z rs01-2lotes run concorrente bfc8aba7 termina sem receber mensagens (0/0/0)
@@ -25,28 +23,17 @@
 2026-10-05T16:16:36Z (aprox., horario exato nao registrado) monitor do teste terminou com erro de sintaxe: o script foi editado durante a execucao; a agenda ficou ENABLED (falha do instrumento, nao do sistema)
 2026-10-05T16:36:10Z rs01-2lotes agenda do ingest-incremental DISABLED manualmente (reversao); runs vazios as 16:02, 16:07, 16:12, 16:17, 16:22, 16:27 e 16:32
 2026-10-05T16:37:01Z rs01-2lotes coleta final: fila e DLQ 0/0, leases ausentes, 0 tasks, 300000 eventos na particao 20261005 (antes: 0), 0 alertas no log
-2026-10-05T16:42:59Z rs01-3lotes inicio: agendas DISABLED, fila e DLQ 0/0, leases ausentes
-2026-10-05T16:43:19Z rs01-3lotes publicacao concluida: bat_05bdc6a6..., bat_98a3b861..., bat_ce95dd61... (janelas padrao)
-2026-10-05T16:48:30Z rs01-3lotes INTERROMPIDA a pedido da usuaria durante o acumulo (limite de horario); a agenda nunca foi ligada; fila com 3 mensagens visiveis nao consumidas, DLQ 0/0, 0 tasks; rodadas de 3 e 4 lotes nao executadas
-2026-10-06T02:24:13Z rs01-3lotes-r2 inicio solicitado (refazer a rodada de 3 lotes de 05/10, cuja drenagem ocorreu sem monitoramento); imagem 8be4568def6e (sem acb13b5)
-2026-10-06T03:05:35Z rs01-3lotes-r2 DRENADO (1371 s apos ligar a agenda; 450000 eventos em 20261006; DLQ 0); sem task do ingest-incremental as 03:05:26Z; rs01-4lotes inicio solicitado (mesmo script e imagem)
-2026-10-06T03:34:44Z rs01-4lotes DRENADO (1077 s) mas INVALIDO como rodada de 4 lotes: sem --window-start, as janelas 02:00Z e 02:15Z repetiram lotes ja COMPLETED da rs01-3lotes-r2 (bat_1ab61a48..., bat_e3855a1c...), confirmados sem regravar; so 2 lotes novos (bat_2a0b2fd9..., bat_1cdbfe76...). Refazer com janelas ineditas
-2026-10-06T02:08Z verificacao (so leitura) e CORRECAO da linha de 16:48:30Z acima: a rodada rs01-3lotes de 05/10 nao ficou parada; o processo do script ligou a agenda as 16:51:21Z e ela foi desligada a mao as 16:52:32Z (CloudTrail UpdateSchedule); o run 27a31989 (16:52:34Z -> 17:12:15Z, 1181 s) gravou os 3 lotes (COMPLETED 16:58:58Z, 17:05:29Z, 17:12:15Z), DLQ 0, 0 alertas; particao 20261005: 300000 -> 750000. O monitor nao acompanhou os lotes (copia do script juntava os 3 batchId numa so chave). Ambiente na verificacao: agendas DISABLED, fila e DLQ 0/0, sem leases, so a task da API
-2026-10-06T02:32:24Z rs01-3lotes-r2 inicio: agendas DISABLED, fila e DLQ 0/0, leases ausentes
-2026-10-06T02:32:46Z rs01-3lotes-r2 publicacao concluida: bat_995a3168... (01:45Z), bat_1ab61a48... (02:00Z), bat_e3855a1c... (02:15Z); particao 20261006 antes: 0
-2026-10-06T02:40:07Z rs01-3lotes-r2 agenda do ingest-incremental ENABLED (prazo 2700 s)
-2026-10-06T02:41:21Z rs01-3lotes-r2 run 179df344 recebe as 3 mensagens; lotes COMPLETED 02:48:24Z, 02:55:26Z, 03:02:21Z; run SUCCEEDED (batchesCompleted 3, batchesRetryable 0, 1259 s); runs concorrentes 02:46, 02:51, 02:56, 03:01 vazios
-2026-10-06T03:03:02Z rs01-3lotes-r2 DRENADO aos 1371 s; agenda DISABLED pelo script; 450000 eventos em 20261006; DLQ 0
-2026-10-06T03:05:26Z sem task do ingest-incremental em execucao
-2026-10-06T03:05:48Z rs01-4lotes inicio; 03:06:13Z publicacao sem --window-start (janelas 02:00Z-02:45Z; 2 lotes repetidos da r2); 03:14:25Z agenda ENABLED; run 73c85888 03:15:39Z -> 03:31:27Z (batchesCompleted 4); 03:32:27Z DRENADO aos 1077 s, agenda DISABLED; particao 20261006: 450000 -> 750000
-2026-10-06T03:40Z-03:45Z coleta: logs e resumo dos runs (rs01-3lotes-r2, rs01-4lotes), metricas SQS (ingestao-falhas.sh metricas-fila) e historico dos alarmes (rs01-alarmes.txt)
-2026-10-06 rodada de 4 lotes registrada como validacao futura (decisao da usuaria); RS-01 fica Parcial
-2026-10-06T03:57:45Z rs01-4lotes-r2 inicio solicitado: --window-start 2026-10-06T00:00:00Z (janelas 00:00Z-00:45Z, sem registro BATCH# no dry-run); mesma imagem 8be4568def6e
+2026-10-06T02:08Z verificacao (so leitura) antes da rodada de 3 lotes: agendas DISABLED, fila e DLQ 0/0, sem leases, so a task da API em execucao
+2026-10-06T02:32:24Z rs01-3lotes inicio (imagem 8be4568def6e): agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-06T02:32:46Z rs01-3lotes publicacao concluida: bat_995a3168... (01:45Z), bat_1ab61a48... (02:00Z), bat_e3855a1c... (02:15Z); particao 20261006 antes: 0
+2026-10-06T02:40:07Z rs01-3lotes agenda do ingest-incremental ENABLED (prazo 2700 s)
+2026-10-06T02:41:21Z rs01-3lotes run 179df344 recebe as 3 mensagens; lotes COMPLETED 02:48:24Z, 02:55:26Z, 03:02:21Z; run SUCCEEDED (batchesCompleted 3, batchesRetryable 0, 1259 s); runs concorrentes 02:46, 02:51, 02:56, 03:01 vazios
+2026-10-06T03:03:02Z rs01-3lotes DRENADO aos 1371 s; agenda DISABLED pelo script; 450000 eventos em 20261006; DLQ 0
 2026-10-06T03:56:52Z verificacao antes da rodada de 4 lotes: credenciais validas, agendas DISABLED, fila e DLQ 0/0, 0 tasks do ingest-incremental; --dry-run com --window-start 2026-10-06T00:00:00Z: os 4 batchId (bat_0f6dfbea..., bat_798dde97..., bat_0a7961c2..., bat_dae1da8c...) sem registro BATCH#
-2026-10-06T03:57:56Z rs01-4lotes-r2 inicio: agendas DISABLED, fila e DLQ 0/0, leases ausentes
-2026-10-06T03:58:19Z rs01-4lotes-r2 publicacao concluida (janelas 00:00Z, 00:15Z, 00:30Z, 00:45Z); particao 20261006 antes: 750000
-2026-10-06T04:07:32Z rs01-4lotes-r2 agenda do ingest-incremental ENABLED (prazo 3600 s)
-2026-10-06T04:08:43Z rs01-4lotes-r2 run baebbaf5 recebe as 4 mensagens; lotes COMPLETED 04:15:23Z, 04:21:59Z, 04:28:26Z, 04:35:00Z; run SUCCEEDED (batchesCompleted 4, batchesRetryable 0, 1578 s); runs concorrentes 04:13, 04:18, 04:23, 04:28, 04:33 vazios
-2026-10-06T04:35:41Z rs01-4lotes-r2 DRENADO aos 1685 s; agenda DISABLED pelo script; particao 20261006: 750000 -> 1350000 (+600000); DLQ 0
-2026-10-06T04:39:07Z rs01-4lotes-r2 FIM; coleta de logs, resumo dos runs, metricas SQS e historico dos alarmes (rs01-alarmes.txt ate 05:00Z)
-2026-10-06 RS-01 Aprovado com 2, 3 e 4 lotes (substitui o registro de 4 lotes como validacao futura)
+2026-10-06T03:57:56Z rs01-4lotes inicio: agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-06T03:58:19Z rs01-4lotes publicacao concluida (janelas 00:00Z, 00:15Z, 00:30Z, 00:45Z); particao 20261006 antes: 750000
+2026-10-06T04:07:32Z rs01-4lotes agenda do ingest-incremental ENABLED (prazo 3600 s)
+2026-10-06T04:08:43Z rs01-4lotes run baebbaf5 recebe as 4 mensagens; lotes COMPLETED 04:15:23Z, 04:21:59Z, 04:28:26Z, 04:35:00Z; run SUCCEEDED (batchesCompleted 4, batchesRetryable 0, 1578 s); runs concorrentes 04:13, 04:18, 04:23, 04:28, 04:33 vazios
+2026-10-06T04:35:41Z rs01-4lotes DRENADO aos 1685 s; agenda DISABLED pelo script; particao 20261006: 750000 -> 1350000 (+600000); DLQ 0
+2026-10-06T04:39:07Z rs01-4lotes FIM; coleta de logs, resumo dos runs, metricas SQS (ingestao-falhas.sh metricas-fila) e historico dos alarmes (rs01-alarmes.txt)
+2026-10-06 RS-01 Aprovado com 2, 3 e 4 lotes
