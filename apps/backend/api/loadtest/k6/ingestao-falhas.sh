@@ -152,12 +152,24 @@ cmd_s3_negar() {
   mkdir -p "$(dirname "$ESTADO")"
   # Repetir a injeção não pode substituir o backup pela política já negada.
   if [ -f "$ESTADO.politica-original.json" ]; then
+    [ -f "$ESTADO.bucket" ] && [ "$(cat "$ESTADO.bucket")" = "$bucket" ] ||
+      erro "backup pertence a outro bucket ou não possui identidade; confira ESTADO_FALHAS antes de injetar"
     echo "reutilizando política original salva em $ESTADO.politica-original.json"
   elif aws s3api get-bucket-policy --region "$REGIAO" --bucket "$bucket" --query Policy --output text \
-      > "$ESTADO.politica-original.json" 2>/dev/null; then
+      > "$ESTADO.politica-lida.json" 2> "$ESTADO.politica-erro.txt"; then
+    mv "$ESTADO.politica-lida.json" "$ESTADO.politica-original.json"
+    printf '%s\n' "$bucket" > "$ESTADO.bucket"
+    rm -f "$ESTADO.politica-erro.txt"
     echo "política original salva em $ESTADO.politica-original.json"
   else
+    case "$(cat "$ESTADO.politica-erro.txt")" in
+      *'(NoSuchBucketPolicy)'*) ;;
+      *) rm -f "$ESTADO.politica-lida.json"
+         erro "não foi possível ler a política original; nenhuma política foi alterada (detalhe em $ESTADO.politica-erro.txt)" ;;
+    esac
+    rm -f "$ESTADO.politica-lida.json" "$ESTADO.politica-erro.txt"
     echo '' > "$ESTADO.politica-original.json"
+    printf '%s\n' "$bucket" > "$ESTADO.bucket"
     echo "bucket sem política; s3-restaurar vai removê-la"
   fi
   python - "$ESTADO.politica-original.json" "$bucket" "$SID_NEGACAO" > "$ESTADO.politica-negada.json" <<'PY'
@@ -185,13 +197,15 @@ cmd_s3_restaurar() {
   local bucket
   bucket="$(rb storage.bucket)"
   [ -f "$ESTADO.politica-original.json" ] || erro "nada a restaurar ($ESTADO.politica-original.json ausente)"
+  [ -f "$ESTADO.bucket" ] && [ "$(cat "$ESTADO.bucket")" = "$bucket" ] ||
+    erro "backup pertence a outro bucket ou não possui identidade; nenhuma política foi alterada"
   if [ -n "$(tr -d '[:space:]' < "$ESTADO.politica-original.json")" ]; then
     aws s3api put-bucket-policy --region "$REGIAO" --bucket "$bucket" \
       --policy "$(uri_arquivo "$ESTADO.politica-original.json")"
   else
     aws s3api delete-bucket-policy --region "$REGIAO" --bucket "$bucket"
   fi
-  rm -f "$ESTADO.politica-original.json" "$ESTADO.politica-negada.json"
+  rm -f "$ESTADO.politica-original.json" "$ESTADO.politica-negada.json" "$ESTADO.bucket"
   echo "política do bucket $bucket restaurada"
 }
 

@@ -59,6 +59,7 @@ import { check, sleep } from "k6";
 import exec from "k6/execution";
 import { Counter, Rate, Trend } from "k6/metrics";
 import { forgeSessionCookie, loginSessionCookie, requestIdHeader } from "./lib/session.js";
+import { controlResponseMatches, hasRecordProgress, isImportConflict, isRateLimited } from "./lib/ingestion-contract.mjs";
 
 const BASE_URL = __ENV.BASE_URL;
 const MODE = __ENV.MODE || "smoke";
@@ -82,6 +83,18 @@ const COOLDOWN_S = Number(__ENV.COOLDOWN_S || 60);
 
 if (!BASE_URL) throw new Error("Faltou -e BASE_URL=<url da API>");
 if (!MODES.includes(MODE)) throw new Error(`MODE inválido. Use: ${MODES.join(", ")}`);
+for (const [name, value] of Object.entries({ WINDOW_SECONDS, POLL_INTERVAL_S, POLL_TIMEOUT_S, PEAK_RATE, BURST_RATE, COOLDOWN_S })) {
+  if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} deve ser positivo e finito`);
+}
+if (EXPECTED_EVENTS !== null && (!Number.isSafeInteger(EXPECTED_EVENTS) || EXPECTED_EVENTS < 1)) {
+  throw new Error("EXPECTED_EVENTS deve ser um inteiro positivo");
+}
+if (MODE === "drenagem" && (EXPECTED_EVENTS === null || ALLOW_IDEMPOTENT)) {
+  throw new Error("MODE=drenagem exige EXPECTED_EVENTS e um dump novo; reimportação idempotente não mede capacidade");
+}
+if (ALLOW_IDEMPOTENT && !EXPECTED_VERSION) {
+  throw new Error("ALLOW_IDEMPOTENT exige EXPECTED_VERSION para conferir a versão reaproveitada");
+}
 
 // open() só funciona no contexto de inicialização; o arquivo é lido uma vez
 // por VU. Os modos de rajada usam o DUMP apenas no teardown.
@@ -91,6 +104,9 @@ const DUMP = NEEDS_DUMP ? open(__ENV.DUMP, "b") : null;
 
 if (MODE === "frescor" && (!__ENV.T0 || !__ENV.EXPECT_OBSERVED_THROUGH)) {
   throw new Error("MODE=frescor exige -e T0=<ISO da publicação> e -e EXPECT_OBSERVED_THROUGH=<ISO do fim da janela>");
+}
+if (MODE === "frescor" && [__ENV.T0, __ENV.EXPECT_OBSERVED_THROUGH].some((value) => !Number.isFinite(Date.parse(value)))) {
+  throw new Error("T0 e EXPECT_OBSERVED_THROUGH devem ser timestamps ISO válidos");
 }
 
 // ---------------------------------------------------------------- métricas
@@ -174,6 +190,7 @@ function thresholdsFor(mode) {
       ...baseThresholds,
       imports_created_201: ["count==1"],
       unexpected_5xx: ["count==0"],
+      dropped_iterations: ["count==0"],
       "http_req_duration{metodo:GET}": ["p(95)<2000"],
     };
   }
@@ -182,6 +199,8 @@ function thresholdsFor(mode) {
       ...baseThresholds,
       unexpected_5xx: ["count==0"],
       imports_created_201: ["count==0"],
+      "rate_limited_429{fase:rajada}": ["count>0"],
+      dropped_iterations: ["count==0"],
       recovery_2xx_rate: ["rate==1"],
     };
   }
@@ -236,11 +255,11 @@ function json(res, path) {
 
 function track(res) {
   if (res.status === 409) importsConflict.add(1);
-  if (res.status === 429) rateLimited.add(1);
-  // 503 FEATURE_UNAVAILABLE/UPLOAD_PREPARATION_FAILED são falhas explícitas;
-  // qualquer outro 5xx é erro inesperado.
-  if (res.status === 503) explicit503.add(1);
-  if (res.status >= 500 && res.status !== 503) unexpected5xx.add(1);
+  if (res.status === 429) rateLimited.add(1, { fase: __ENV.FASE || "fora-do-cenario" });
+  // Falha explícita é um diagnóstico, não disponibilidade: nenhum modo aqui
+  // injeta falha de servidor, portanto todo 5xx reprova o plano de controle.
+  if (res.status === 503 && ["FEATURE_UNAVAILABLE", "UPLOAD_PREPARATION_FAILED"].includes(json(res, "error.code"))) explicit503.add(1);
+  if (res.status >= 500) unexpected5xx.add(1);
 }
 
 function startImport(cookie, sizeBytes, { count = true } = {}) {
@@ -376,7 +395,14 @@ function finishImport(cookie, importId, label, t0 = Date.now()) {
   if (!ok) eventsPerSecond.add(0);
   if (result.state === "READY") {
     totalSeconds.add((Date.now() - t0) / 1000);
-    const progress = result.progress && result.progress.kind === "stage" ? result.progress : null;
+    const progress = result.progress;
+    const validProgress = check(progress, {
+      [`${label}: READY contém contadores de registros válidos`]: hasRecordProgress,
+    });
+    if (!validProgress) {
+      eventsPerSecond.add(0);
+      return { importId, ...result };
+    }
     if (ALLOW_IDEMPOTENT) {
       // O DUMP já foi importado: a versão existente é reaproveitada e nada é
       // lido, escrito ou rejeitado de novo. Vazão não se aplica.
@@ -393,7 +419,7 @@ function finishImport(cookie, importId, label, t0 = Date.now()) {
           [`${label}: recordsTotal = ${EXPECTED_EVENTS}`]: (p) => Boolean(p) && p.recordsTotal === EXPECTED_EVENTS,
         });
       }
-    } else if (progress) {
+    } else {
       recordsWritten.add(progress.recordsWritten);
       recordsRejected.add(progress.recordsRejected);
       eventsPerSecond.add(progress.recordsWritten / processing);
@@ -420,7 +446,7 @@ function finishImport(cookie, importId, label, t0 = Date.now()) {
 function activeImportId(cookie) {
   const res = startImport(cookie, DUMP.byteLength, { count: false });
   if (res.status === 201) return { importId: json(res, "data.importId"), createdByUs: true };
-  if (res.status === 409) return { importId: json(res, "error.details.importId"), createdByUs: false };
+  if (isImportConflict(res)) return { importId: json(res, "error.details.importId"), createdByUs: false };
   throw new Error(`Não foi possível descobrir a importação ativa: ${res.status} ${res.body}`);
 }
 
@@ -432,7 +458,7 @@ export function setup() {
     const { importId, createdByUs } = activeImportId(cookie);
     return { cookie, importId, createdByUs };
   }
-  return { cookie };
+  return { cookie, startedAt: Date.now() };
 }
 
 let pico = { importId: null };
@@ -450,7 +476,9 @@ export default function (data) {
     const roll = Math.random();
     if (roll < 0.2 || !pico.importId) {
       const res = startImport(cookie, DUMP.byteLength);
-      check(res, { "pico: POST responde 201 ou 409": (r) => r.status === 201 || r.status === 409 });
+      check(res, { "pico: POST cria importação ou identifica a trava ativa": (r) =>
+        (r.status === 201 && typeof json(r, "data.importId") === "string") || isImportConflict(r),
+      });
       pico.importId = json(res, "data.importId") || json(res, "error.details.importId") || pico.importId;
       if (res.status === 409) {
         check(res, { "pico: 409 traz o importId ativo": (r) => Boolean(json(r, "error.details.importId")) });
@@ -468,11 +496,12 @@ export default function (data) {
   if (MODE === "limite") {
     const fase = __ENV.FASE;
     // 80% leitura, 20% tentativa de criar outra importação (deve dar 409 ou 429).
-    const res = Math.random() < 0.2
+    const method = Math.random() < 0.2 ? "POST" : "GET";
+    const res = method === "POST"
       ? startImport(cookie, DUMP.byteLength)
       : getImport(cookie, data.importId);
     // Na recuperação, 409 IMPORT_IN_PROGRESS é a resposta correta do POST.
-    const answered = res.status === 200 || res.status === 409;
+    const answered = controlResponseMatches(res, method, "recuperacao", data.importId);
     if (fase === "recuperacao") recovery2xx.add(answered);
     if (fase === "resfriamento" && answered && !firstOkSeen) {
       // O resfriamento começa no fim da rajada; o menor valor da métrica é o
@@ -480,7 +509,10 @@ export default function (data) {
       firstOkSeen = true;
       firstOkAfterBurst.add((Date.now() - exec.scenario.startTime) / 1000);
     }
-    check(res, { "limite: sem 5xx": (r) => r.status < 500 });
+    check(res, { "limite: resposta corresponde à rota e à fase": (r) =>
+      controlResponseMatches(r, method, fase, data.importId),
+    });
+    if (res.status === 429) check(res, { "limite: 429 é RATE_LIMITED": isRateLimited });
     return;
   }
 
@@ -493,7 +525,7 @@ export default function (data) {
       const observed = (json(res, "meta.freshness") || [])
         .map((entry) => Date.parse(entry.observedThrough))
         .filter((value) => !Number.isNaN(value));
-      if (observed.some((value) => value >= expected)) {
+      if (res.status === 200 && observed.some((value) => value >= expected)) {
         freshnessSeconds.add((Date.now() - t0) / 1000);
         check(null, { "frescor: lote visível na consulta": () => true });
         return;
@@ -509,10 +541,16 @@ export function teardown(data) {
   if (MODE !== "pico" && MODE !== "limite") return;
   const cookie = data.cookie;
   let importId = data.importId;
+  // Uma importação preexistente pode pertencer a outra operação; só finaliza
+  // aquela reservada por este teste. O pico a identifica por canManageUpload.
+  if (MODE === "limite" && !data.createdByUs) return;
   if (MODE === "pico") {
     const res = http.get(`${BASE_URL}/api/v1/imports?limit=20`, params(cookie, "GET /imports"));
     const items = json(res, "data.items") || [];
-    const active = items.find((item) => item.state === "UPLOADING" && item.canManageUpload);
+    const active = items.find((item) =>
+      item.state === "UPLOADING" && item.canManageUpload &&
+      Number.isFinite(data.startedAt) && Date.parse(item.createdAt) >= data.startedAt,
+    );
     importId = active && active.importId;
   }
   if (!importId) return;
@@ -558,6 +596,13 @@ function textSummary(data) {
 export function handleSummary(data) {
   const semCredenciais = {
     ...data,
+    test_config: {
+      mode: MODE, runLabel: RUN_LABEL, expectedEvents: EXPECTED_EVENTS,
+      expectedVersion: EXPECTED_VERSION, allowIdempotent: ALLOW_IDEMPOTENT,
+      windowSeconds: WINDOW_SECONDS, pollTimeoutSeconds: POLL_TIMEOUT_S,
+      peakRate: PEAK_RATE, burstRate: BURST_RATE,
+      dumpSha256: DUMP ? crypto.sha256(DUMP, "hex") : null,
+    },
     setup_data: data.setup_data ? { ...data.setup_data, cookie: "<redigido>" } : data.setup_data,
   };
   return {

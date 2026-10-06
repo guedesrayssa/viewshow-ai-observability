@@ -5,6 +5,10 @@ nos documentos de `artefatos/`; as pastas abaixo guardam só o que foi medido e 
 
 | Pasta | Data | O que é | Status | Documento |
 | --- | --- | --- | --- | --- |
+| [`2026-10-05-ingestao/`](2026-10-05-ingestao/README.md) | 05–06/10/2026 | RS-01 após o heartbeat: 2, 3 e 4 lotes drenados, com logs, contagens e séries SQS | Vigente para os cenários medidos | [Ingestão](../../artefatos/sprint5/testes-carga-ingestao.md) |
+| [`2026-10-04-ingestao/`](2026-10-04-ingestao/README.md) | 04/10/2026 | CG-05: 150.000 e 300.000 eventos concluídos; 750.000 interrompido; captura Grafana sem dados em outra conta/janela | Complementar, com limitações | [Ingestão](../../artefatos/sprint5/testes-carga-ingestao.md) |
+| [`2026-09-30-ingestao/`](2026-09-30-ingestao/README.md) | 30/09–01/10/2026 | Carga, contrapressão, S3/ECS interrompidos e resiliência incremental; correções e repetições posteriores identificadas no relatório | Histórica para os defeitos corrigidos | [Ingestão](../../artefatos/sprint5/testes-carga-ingestao.md) |
+| [`2026-10-06-revisao-ingestao/`](2026-10-06-revisao-ingestao/README.md) | Revisão 06/10/2026 | Gráficos reproduzidos dos brutos k6/CloudWatch; não constituem novas rodadas nem capturas Grafana | Visualização retrospectiva | [Ingestão](../../artefatos/sprint5/testes-carga-ingestao.md) |
 | [`2026-10-01-aws-gerador-na-regiao/`](2026-10-01-aws-gerador-na-regiao/README.md) | 01/10/2026 | `front-api.js` revisado na AWS (tarefa de 0,25 vCPU), k6 dentro da VPC, com métricas de CloudWatch | **Vigente** | [Testes de Carga da API](../../artefatos/sprint5/testes-de-carga-da-api.md) |
 | [`2026-09-30-local/`](2026-09-30-local/README.md) | 30/09/2026 | Experimentos locais e emulação da tarefa: volume de dados, controles negativos, limitador de taxa | Complementar | [Testes de Carga da API](../../artefatos/sprint5/testes-de-carga-da-api.md) |
 | [`2026-09-30-aws-gerador-externo/`](2026-09-30-aws-gerador-externo/README.md) | 30/09/2026 | Primeira rodada do `front-api.js` na AWS (script original, k6 fora da região) e suas erratas | Histórica | [Testes de Carga da API](../../artefatos/sprint5/testes-de-carga-da-api.md) |

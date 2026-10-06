@@ -217,8 +217,19 @@ do cookie forjado; `ingestao-batch.js` também aceita login real, e `auth-check.
 `ACTIVATE`, `PEAK_RATE` (50), `BURST_RATE` (20), `COOLDOWN_S` (60), `POLL_TIMEOUT_S` (3600) e
 `T0`/`EXPECT_OBSERVED_THROUGH` (frescor). Ele não roda localmente: o upload usa URLs pré-assinadas do S3 e o
 processamento é uma task ECS. Só existe uma importação ativa por vez (`409 IMPORT_IN_PROGRESS`), então rode os
-modos em sequência; como não há rota para cancelar uma importação, `pico` e `limite` concluem no teardown a
-importação que criaram. O roteiro de cada teste está em
+modos em sequência. Como não há rota para cancelar uma importação, `pico` e `limite` concluem no teardown
+somente a importação identificada como criada pelo teste.
+
+A revisão do script exige `EXPECTED_EVENTS` em `MODE=drenagem` e um dump ainda não importado.
+`ALLOW_IDEMPOTENT=true` é destinado à recuperação e exige `EXPECTED_VERSION` da primeira importação.
+O limitador precisa gerar `429 RATE_LIMITED` na rajada; respostas 401/404, conflitos de outra importação,
+qualquer 5xx fora de injeção e iterações descartadas reprovam os checks pertinentes. A recuperação aceita
+GET 200 ou POST 409 com o mesmo `importId`, não qualquer status abaixo de 500.
+
+Valide sem acessar a AWS com `node --test loadtest/tests/*.test.mjs` a partir de `apps/backend/api`.
+Os gráficos do relatório podem ser regenerados, na raiz, por
+`python apps/backend/api/loadtest/scripts/render-ingestion-evidence.py` (requer matplotlib).
+O roteiro de cada teste está em
 [`testes-carga-ingestao.md`](../../../../artefatos/sprint5/testes-carga-ingestao.md), Seção 11. `bateria.sh` roda uma
 bateria de `consultas.js` gravando um `metadados-*.json` auditável em `assets/testes-carga/<data>-aws/`
 (formato das evidências de 11/09/2026).
