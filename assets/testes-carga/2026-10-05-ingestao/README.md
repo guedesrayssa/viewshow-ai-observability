@@ -69,8 +69,9 @@ de 30/09: `terraform apply -target` manual, com as mesmas variáveis do preset
 | `rs01-<N>lotes-logs-ingest.json`, `rs01-<N>lotes-runs.txt` | Logs do `ingest-incremental` na janela e resumo dos runs e das linhas de alerta |
 | `rs01-3lotes-*` | Rodada de 3 lotes de 05/10: interrompida no acúmulo, mas a drenagem aconteceu sem o monitor acompanhar os lotes; reconstruída por logs, `BATCH#` e CloudTrail (`execucoes.txt`) e refeita como `rs01-3lotes-r2` |
 | `rs01-3lotes-r2-*` | Rodada de 3 lotes de 06/10, válida |
-| `rs01-4lotes-*` | Tentativa de 4 lotes de 06/10, sem validade para o critério (2 dos 4 lotes repetiam lotes já concluídos); 4 lotes fica como validação futura |
-| `rs01-alarmes.txt` | Histórico de estado dos alarmes da FIFO incremental de 05/10 15:00Z a 06/10 04:00Z |
+| `rs01-4lotes-*` | Tentativa de 4 lotes de 06/10, sem validade para o critério (2 dos 4 lotes repetiam lotes já concluídos); refeita como `rs01-4lotes-r2` |
+| `rs01-4lotes-r2-*` | Rodada de 4 lotes de 06/10, válida (`--window-start 2026-10-06T00:00:00Z`) |
+| `rs01-alarmes.txt` | Histórico de estado dos alarmes da FIFO incremental de 05/10 15:00Z a 06/10 05:00Z |
 | `rs01-2lotes-coleta-final.txt` | Coleta final feita à mão depois da falha do monitor na rodada de 2 lotes |
 | `sqs-rs01-<N>lotes.json` | Métricas SQS da janela (`ingestao-falhas.sh metricas-fila`) |
 | `verificacao-pos-deploy.txt` | Revisões, imagens, agendamentos, imagem no ECR, `terraform output` e comparação do `visibility_heartbeat.py` da imagem com o commit |

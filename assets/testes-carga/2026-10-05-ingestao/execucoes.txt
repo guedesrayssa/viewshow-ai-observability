@@ -41,3 +41,12 @@
 2026-10-06T03:05:48Z rs01-4lotes inicio; 03:06:13Z publicacao sem --window-start (janelas 02:00Z-02:45Z; 2 lotes repetidos da r2); 03:14:25Z agenda ENABLED; run 73c85888 03:15:39Z -> 03:31:27Z (batchesCompleted 4); 03:32:27Z DRENADO aos 1077 s, agenda DISABLED; particao 20261006: 450000 -> 750000
 2026-10-06T03:40Z-03:45Z coleta: logs e resumo dos runs (rs01-3lotes-r2, rs01-4lotes), metricas SQS (ingestao-falhas.sh metricas-fila) e historico dos alarmes (rs01-alarmes.txt)
 2026-10-06 rodada de 4 lotes registrada como validacao futura (decisao da usuaria); RS-01 fica Parcial
+2026-10-06T03:57:45Z rs01-4lotes-r2 inicio solicitado: --window-start 2026-10-06T00:00:00Z (janelas 00:00Z-00:45Z, sem registro BATCH# no dry-run); mesma imagem 8be4568def6e
+2026-10-06T03:56:52Z verificacao antes da rodada de 4 lotes: credenciais validas, agendas DISABLED, fila e DLQ 0/0, 0 tasks do ingest-incremental; --dry-run com --window-start 2026-10-06T00:00:00Z: os 4 batchId (bat_0f6dfbea..., bat_798dde97..., bat_0a7961c2..., bat_dae1da8c...) sem registro BATCH#
+2026-10-06T03:57:56Z rs01-4lotes-r2 inicio: agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-06T03:58:19Z rs01-4lotes-r2 publicacao concluida (janelas 00:00Z, 00:15Z, 00:30Z, 00:45Z); particao 20261006 antes: 750000
+2026-10-06T04:07:32Z rs01-4lotes-r2 agenda do ingest-incremental ENABLED (prazo 3600 s)
+2026-10-06T04:08:43Z rs01-4lotes-r2 run baebbaf5 recebe as 4 mensagens; lotes COMPLETED 04:15:23Z, 04:21:59Z, 04:28:26Z, 04:35:00Z; run SUCCEEDED (batchesCompleted 4, batchesRetryable 0, 1578 s); runs concorrentes 04:13, 04:18, 04:23, 04:28, 04:33 vazios
+2026-10-06T04:35:41Z rs01-4lotes-r2 DRENADO aos 1685 s; agenda DISABLED pelo script; particao 20261006: 750000 -> 1350000 (+600000); DLQ 0
+2026-10-06T04:39:07Z rs01-4lotes-r2 FIM; coleta de logs, resumo dos runs, metricas SQS e historico dos alarmes (rs01-alarmes.txt ate 05:00Z)
+2026-10-06 RS-01 Aprovado com 2, 3 e 4 lotes (substitui o registro de 4 lotes como validacao futura)
