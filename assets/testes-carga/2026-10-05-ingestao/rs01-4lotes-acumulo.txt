@@ -1,0 +1,59 @@
+contagem antes (publicado em 2026-10-06T03:05:58Z):
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261006 450000
+TOTAL 450000
+2026-10-06T03:07:24Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:08:02Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:08:39Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:09:17Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:09:54Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:10:32Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:11:10Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:11:49Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:12:28Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:13:07Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:13:45Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a AUSENTE
+bat_1cdbfe76adcc AUSENTE
+2026-10-06T03:14:25Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0

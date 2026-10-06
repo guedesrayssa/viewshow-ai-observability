@@ -1,11 +1,11 @@
-# Evidências brutas — deploy da correção do achado 9, 05/10/2026
+# Evidências brutas — deploy da correção do achado 9 e RS-01, 05–06/10/2026
 
 &emsp; Implantação da correção do achado 9 (renovação da visibilidade das
 mensagens incrementais, commit `913acfc`) na stack `view-show` do Learner Lab,
-antes da nova execução do RS-01. A especificação dos testes, os resultados e a
-análise estão em
+e as rodadas do RS-01 feitas em seguida (05/10 e madrugada de 06/10, UTC). A
+especificação dos testes, os resultados e a análise estão em
 [`artefatos/sprint5/testes-carga-ingestao.md`](../../../artefatos/sprint5/testes-carga-ingestao.md);
-esta pasta guarda só o bruto do deploy.
+esta pasta guarda só o bruto.
 
 ## Ambiente
 
@@ -15,7 +15,7 @@ esta pasta guarda só o bruto do deploy.
 | Commit | `1c0d9fa` (branch `feat/testes-ingestao`) |
 | Imagem da ingestão | `view-show-ingestion:8be4568def6e` (`sha256:08474aaa…3615`); antes, `sha256:90dcf1de…6a18a35` |
 | Task definitions | `view-show-ingestion-{import,incremental-ingest,incremental-export,sync,backfill}` de `:1` para `:2`; a `:1` de cada família ficou `INACTIVE` |
-| Agendamentos | `sync`, `incremental-export` e `incremental-ingest` apontando para a `:2`, todos **DISABLED** |
+| Agendamentos | `sync`, `incremental-export` e `incremental-ingest` apontando para a `:2`, todos **DISABLED**; o `incremental-ingest` só foi ligado durante a drenagem de cada rodada do RS-01 |
 
 ## Como o deploy foi feito
 
@@ -67,6 +67,10 @@ de 30/09: `terraform apply -target` manual, com as mesmas variáveis do preset
 | `rs01-<N>lotes-acumulo.txt` | Contagem antes da publicação e estado da fila a cada ~30 s durante o acúmulo |
 | `rs01-<N>lotes-drenagem.txt` | Fila, DLQ, tasks e registros `BATCH#` a cada ~30 s durante a drenagem, e contagem final |
 | `rs01-<N>lotes-logs-ingest.json`, `rs01-<N>lotes-runs.txt` | Logs do `ingest-incremental` na janela e resumo dos runs e das linhas de alerta |
+| `rs01-3lotes-*` | Rodada de 3 lotes de 05/10: interrompida no acúmulo, mas a drenagem aconteceu sem o monitor acompanhar os lotes; reconstruída por logs, `BATCH#` e CloudTrail (`execucoes.txt`) e refeita como `rs01-3lotes-r2` |
+| `rs01-3lotes-r2-*` | Rodada de 3 lotes de 06/10, válida |
+| `rs01-4lotes-*` | Tentativa de 4 lotes de 06/10, sem validade para o critério (2 dos 4 lotes repetiam lotes já concluídos); 4 lotes fica como validação futura |
+| `rs01-alarmes.txt` | Histórico de estado dos alarmes da FIFO incremental de 05/10 15:00Z a 06/10 04:00Z |
 | `rs01-2lotes-coleta-final.txt` | Coleta final feita à mão depois da falha do monitor na rodada de 2 lotes |
 | `sqs-rs01-<N>lotes.json` | Métricas SQS da janela (`ingestao-falhas.sh metricas-fila`) |
 | `verificacao-pos-deploy.txt` | Revisões, imagens, agendamentos, imagem no ECR, `terraform output` e comparação do `visibility_heartbeat.py` da imagem com o commit |

@@ -1,0 +1,21 @@
+2026-10-06T03:05:48Z RS-01 rs01-4lotes: N=4 prazo=3600s dataset=dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965
+2026-10-06T03:05:52Z agendas: sync:DISABLED incremental-ingest:DISABLED incremental-export:DISABLED 
+2026-10-06T03:05:55Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+2026-10-06T03:05:56Z lease INGESTION#SOURCE#SYNC_GLOBAL: ausente
+2026-10-06T03:05:58Z lease INGESTION#SOURCE#argus: ausente
+2026-10-06T03:05:58Z publicacao inicio
+2026-10-06T03:06:13Z publicacao fim exit=0
+2026-10-06T03:06:14Z lotes: bat_1ab61a48ffc33571b5aa8b18b8c1184b708f9749042e14db1c49555362b5b2e6 bat_e3855a1c0d5e520b3adc64ae0cbdfc20e753a484e0811942de5c12114b3bc898 bat_2a0b2fd9491a67b798a34e4fb4783962730757381203ef45011fbc45a2df9b5f bat_1cdbfe76adcc51fa409c85a6dcba913de28e72dd37fd555625c1b3e18cc29a2c  dias: 20261006 
+2026-10-06T03:14:25Z fila visiveis=4 em_processamento=0 | dlq visiveis=0 em_processamento=0
+2026-10-06T03:14:25Z agenda ingest (view-show-ingestion-incremental-ingest): ENABLED
+2026-10-06T03:14:30Z agenda ligada; prazo ate 2026-10-06T04:14:30Z
+2026-10-06T03:32:27Z DRENADO apos 1077s da agenda ligada
+2026-10-06T03:32:27Z agenda ingest (view-show-ingestion-incremental-ingest): DISABLED
+2026-10-06T03:32:37Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+bat_2a0b2fd9491a {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T03:15:39.903Z", "updatedAt": "2026-10-06T03:23:34.632Z"}
+bat_1cdbfe76adcc {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T03:23:34.749Z", "updatedAt": "2026-10-06T03:31:26.998Z"}
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261006 750000
+TOTAL 750000
+2026-10-06T03:34:35Z FIM rs01-4lotes

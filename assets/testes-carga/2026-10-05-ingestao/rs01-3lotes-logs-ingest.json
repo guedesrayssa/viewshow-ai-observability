@@ -1,0 +1,46 @@
+{
+    "events": [
+        {
+            "timestamp": 1791219154015,
+            "message": "{\"timestamp\":\"2026-10-05T16:52:34.014Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-38e8a54960d14bf1a4536c942c5003db\",\"runId\":\"ingest-incremental-736d1e42880345d3832e27a3198983e7\",\"command\":\"ingest-incremental\",\"stage\":\"STARTING\"}",
+            "ingestionTime": 1791219158486
+        },
+        {
+            "timestamp": 1791219538552,
+            "message": "{\"_aws\":{\"Timestamp\":1791219538552,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}",
+            "ingestionTime": 1791219543479
+        },
+        {
+            "timestamp": 1791219929407,
+            "message": "{\"_aws\":{\"Timestamp\":1791219929407,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}",
+            "ingestionTime": 1791219933478
+        },
+        {
+            "timestamp": 1791220335444,
+            "message": "{\"_aws\":{\"Timestamp\":1791220335444,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"dataset\",\"status\"]],\"Metrics\":[{\"Name\":\"IncrementalBatches\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"dataset\":\"signal_bucket\",\"status\":\"COMPLETED\",\"IncrementalBatches\":1}",
+            "ingestionTime": 1791220338485
+        },
+        {
+            "timestamp": 1791220335445,
+            "message": "{\"timestamp\":\"2026-10-05T17:12:15.445Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"ingestion.run.finished\",\"traceId\":\"trace-38e8a54960d14bf1a4536c942c5003db\",\"runId\":\"ingest-incremental-736d1e42880345d3832e27a3198983e7\",\"command\":\"ingest-incremental\",\"datasetVersion\":\"dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965\",\"batchesCompleted\":3,\"batchesRetryable\":0,\"batchesQuarantined\":0,\"stage\":\"SUCCEEDED\",\"status\":\"SUCCEEDED\",\"durationMs\":1181429.974578,\"errorCode\":null}",
+            "ingestionTime": 1791220338485
+        },
+        {
+            "timestamp": 1791220335445,
+            "message": "{\"_aws\":{\"Timestamp\":1791220335445,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"Runs\":1}",
+            "ingestionTime": 1791220338485
+        },
+        {
+            "timestamp": 1791220335445,
+            "message": "{\"_aws\":{\"Timestamp\":1791220335445,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"ingest-incremental\",\"status\":\"SUCCEEDED\",\"RunDurationMs\":1181429.974578}",
+            "ingestionTime": 1791220338485
+        },
+        {
+            "timestamp": 1791220335504,
+            "message": "{\"_aws\":{\"Timestamp\":1791220335504,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}",
+            "ingestionTime": 1791220338485
+        }
+    ],
+    "nextForwardToken": "f/39945548296501239873565248277946447043514199267652009988/s",
+    "nextBackwardToken": "b/39945521948416096006817841981520762740211835302798229504/s"
+}

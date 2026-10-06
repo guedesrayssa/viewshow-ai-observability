@@ -1,0 +1,52 @@
+contagem antes (publicado em 2026-10-06T02:32:33Z):
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261006 0
+TOTAL 0
+2026-10-06T02:32:50Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:33:26Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:34:03Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:34:40Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:35:17Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:35:53Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:36:29Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:37:05Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:37:41Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:38:17Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:38:53Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:39:29Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 AUSENTE
+bat_1ab61a48ffc3 AUSENTE
+bat_e3855a1c0d5e AUSENTE
+2026-10-06T02:40:06Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0

@@ -1,0 +1,4 @@
+# 8 eventos de log no grupo /ecs/view-show-ingestion-incremental-ingest entre 16:51Z e 17:13Z
+linhas de alerta (heartbeat failed / AccessDenied / InvalidParameterValue / ConditionalWriteError / batch processing failed / warning / error): 0
+27a3198983e7 2026-10-05T16:52:34.014Z started {}
+27a3198983e7 2026-10-05T17:12:15.445Z finished {'batchesCompleted': 3, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 1181429.974578, 'errorCode': None}

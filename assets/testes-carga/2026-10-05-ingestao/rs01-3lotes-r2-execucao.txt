@@ -1,0 +1,20 @@
+2026-10-06T02:32:24Z RS-01 rs01-3lotes-r2: N=3 prazo=2700s dataset=dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965
+2026-10-06T02:32:28Z agendas: sync:DISABLED incremental-ingest:DISABLED incremental-export:DISABLED 
+2026-10-06T02:32:31Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+2026-10-06T02:32:32Z lease INGESTION#SOURCE#SYNC_GLOBAL: ausente
+2026-10-06T02:32:33Z lease INGESTION#SOURCE#argus: ausente
+2026-10-06T02:32:33Z publicacao inicio
+2026-10-06T02:32:46Z publicacao fim exit=0
+2026-10-06T02:32:46Z lotes: bat_995a316842b1b338a2724baaa06eca9b516a5db97876bb17a78075d5782cf8e9 bat_1ab61a48ffc33571b5aa8b18b8c1184b708f9749042e14db1c49555362b5b2e6 bat_e3855a1c0d5e520b3adc64ae0cbdfc20e753a484e0811942de5c12114b3bc898  dias: 20261006 
+2026-10-06T02:40:06Z fila visiveis=3 em_processamento=0 | dlq visiveis=0 em_processamento=0
+2026-10-06T02:40:07Z agenda ingest (view-show-ingestion-incremental-ingest): ENABLED
+2026-10-06T02:40:11Z agenda ligada; prazo ate 2026-10-06T03:25:11Z
+2026-10-06T03:03:02Z DRENADO apos 1371s da agenda ligada
+2026-10-06T03:03:02Z agenda ingest (view-show-ingestion-incremental-ingest): DISABLED
+2026-10-06T03:03:09Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_995a316842b1 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:41:22.201Z", "updatedAt": "2026-10-06T02:48:24.394Z"}
+bat_1ab61a48ffc3 {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:48:24.500Z", "updatedAt": "2026-10-06T02:55:26.316Z"}
+bat_e3855a1c0d5e {"state": "COMPLETED", "version": "4", "createdAt": "2026-10-06T02:55:26.434Z", "updatedAt": "2026-10-06T03:02:21.233Z"}
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261006 450000
+TOTAL 450000
+2026-10-06T03:04:21Z FIM rs01-3lotes-r2
