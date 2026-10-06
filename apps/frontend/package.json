@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "loadtest:static": "node loadtest/static.mjs"
+    "loadtest:static": "node loadtest/static.mjs",
+    "loadtest:lighthouse": "node loadtest/lighthouse.mjs",
+    "test:loadtest": "node --test loadtest/*.test.mjs"
   },
   "dependencies": {
     "next": "16.3.1",
@@ -26,11 +28,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "autocannon": "8.0.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "autocannon": "8.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "jsdom": "^25.0.1",
+    "lighthouse": "12.8.2",
+    "serve": "14.2.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^2.1.9"
