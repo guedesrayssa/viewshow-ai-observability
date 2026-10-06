@@ -1,0 +1,79 @@
+[
+ {
+  "t": "2026-09-30T12:29:32",
+  "stage": "ARCHIVING",
+  "StageDurationMs": 66480.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T12:29:32",
+  "stage": "ACTIVATING",
+  "StageDurationMs": 108.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T12:29:33",
+  "stage": "PUBLISHING",
+  "StageDurationMs": 221.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T12:30:37",
+  "stage": "STARTING",
+  "StageDurationMs": 139.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T12:30:40",
+  "stage": "RESTORING",
+  "StageDurationMs": 2937.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T12:30:41",
+  "stage": "VALIDATING",
+  "StageDurationMs": 796.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T12:40:48",
+  "stage": "INGESTING",
+  "StageDurationMs": 606498.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T12:58:25",
+  "stage": "PROJECTING",
+  "StageDurationMs": 1057089.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T16:22:31",
+  "stage": "ARCHIVING",
+  "StageDurationMs": 12246358.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T16:22:32",
+  "stage": "ACTIVATING",
+  "StageDurationMs": 661.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T16:22:32",
+  "stage": "PUBLISHING",
+  "StageDurationMs": 386.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ }
+]

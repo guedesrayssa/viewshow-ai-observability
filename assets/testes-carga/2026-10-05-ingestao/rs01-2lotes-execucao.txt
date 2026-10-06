@@ -1,0 +1,12 @@
+2026-10-05T15:38:39Z RS-01 rs01-2lotes: N=2 prazo=1800s dataset=dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965
+2026-10-05T15:38:43Z agendas: sync:DISABLED incremental-ingest:DISABLED incremental-export:DISABLED 
+2026-10-05T15:38:45Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+2026-10-05T15:38:47Z lease INGESTION#SOURCE#SYNC_GLOBAL: ausente
+2026-10-05T15:38:48Z lease INGESTION#SOURCE#argus: ausente
+2026-10-05T15:38:48Z publicacao inicio
+2026-10-05T15:38:56Z publicacao fim exit=0
+2026-10-05T15:38:56Z lotes: bat_45f768dcba2877f451db695c81688a3d30195e9314675d1d67bd6e94e8bc651a bat_286f4cc37536a42ec3bc78c677b2fddf65685be2430129f8530fed756e5a6217  dias: 20261005
+2026-10-05T15:46:31Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+2026-10-05T15:46:31Z agenda ingest (view-show-ingestion-incremental-ingest): ENABLED
+2026-10-05T15:46:36Z agenda ligada; prazo ate 2026-10-05T16:16:36Z
+2026-10-05T16:36:10Z agenda ingest (view-show-ingestion-incremental-ingest): DISABLED

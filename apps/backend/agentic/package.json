@@ -18,6 +18,8 @@
     "test:models": "python3 -m unittest tests/test_training.py tests/test_prepare_argus.py tests/test_pilot_catalog.py",
     "eval:ollama": "npm run build && node dist/scripts/eval-ollama.js",
     "load:llm": "npm run build && node dist/scripts/load-llm.js",
+    "smoke:ollama-observability": "npm run build && node dist/scripts/smoke-ollama-observability.js",
+    "check:ollama-connectivity": "npm run build && node dist/src/bootstrap/ollama-connectivity-check.js",
     "replay:pilot": "npm run build && node dist/scripts/replay-pilot.js",
     "worker": "node dist/src/bootstrap/analysis-worker.js"
   },
@@ -30,6 +32,13 @@
     "@aws-sdk/client-dynamodb": "3.1128.0",
     "@aws-sdk/client-s3": "3.1128.0",
     "@aws-sdk/client-sqs": "3.1128.0",
-    "@aws-sdk/lib-dynamodb": "3.1128.0"
+    "@aws-sdk/lib-dynamodb": "3.1128.0",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.222.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/sdk-metrics": "2.11.0",
+    "@opentelemetry/sdk-trace-base": "2.11.0",
+    "@opentelemetry/semantic-conventions": "1.43.0"
   }
 }

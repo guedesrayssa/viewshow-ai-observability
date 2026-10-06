@@ -1,0 +1,22 @@
+# 52 eventos de log no grupo /ecs/view-show-ingestion-incremental-ingest entre 15:46Z e 16:37Z
+linhas de alerta (heartbeat failed / AccessDenied / InvalidParameterValue / ConditionalWriteError / batch processing failed / warning / error): 0
+aa381476656e 2026-10-05T15:47:39.096Z started {}
+bfc8aba7c983 2026-10-05T15:52:43.737Z started {}
+bfc8aba7c983 2026-10-05T15:53:03.955Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20217.0574, 'errorCode': None}
+ab53dcfd778f 2026-10-05T15:57:48.060Z started {}
+ab53dcfd778f 2026-10-05T15:58:08.302Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20241.360502000007, 'errorCode': None}
+aa381476656e 2026-10-05T16:01:50.872Z finished {'batchesCompleted': 2, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 851776.362889, 'errorCode': None}
+af51fe017b1e 2026-10-05T16:02:42.516Z started {}
+af51fe017b1e 2026-10-05T16:03:02.715Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20199.094453, 'errorCode': None}
+b08e03cce8bf 2026-10-05T16:07:44.590Z started {}
+b08e03cce8bf 2026-10-05T16:08:04.795Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20204.494414000004, 'errorCode': None}
+0033be96dd2c 2026-10-05T16:12:47.903Z started {}
+0033be96dd2c 2026-10-05T16:13:08.092Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20189.325963000003, 'errorCode': None}
+3dc55d35ee7d 2026-10-05T16:17:58.312Z started {}
+3dc55d35ee7d 2026-10-05T16:18:18.534Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20221.216655999997, 'errorCode': None}
+b28295e45961 2026-10-05T16:22:42.743Z started {}
+b28295e45961 2026-10-05T16:23:02.934Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20190.14872100001, 'errorCode': None}
+a94db9baa18b 2026-10-05T16:27:43.395Z started {}
+a94db9baa18b 2026-10-05T16:28:03.618Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20221.959241999997, 'errorCode': None}
+6973571d67fe 2026-10-05T16:32:45.072Z started {}
+6973571d67fe 2026-10-05T16:33:05.309Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20236.526161, 'errorCode': None}

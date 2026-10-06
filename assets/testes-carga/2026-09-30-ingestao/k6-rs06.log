@@ -1,0 +1,1471 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /repo/apps/backend/api/loadtest/k6/ingestao-batch.js
+        output: -
+
+     scenarios: (100.00%) 4 scenarios, 100 max VUs, 4m30s max duration (incl. graceful stop):
+              * nominal: 1.00 iterations/s for 1m0s (maxVUs: 5-20, gracefulStop: 30s)
+              * rajada: 20.00 iterations/s for 1m0s (maxVUs: 20-80, startTime: 1m0s, gracefulStop: 30s)
+              * resfriamento: 1.00 iterations/s for 1m0s (maxVUs: 5-20, startTime: 2m0s, gracefulStop: 30s)
+              * recuperacao: 1.00 iterations/s for 1m0s (maxVUs: 5-20, startTime: 3m0s, gracefulStop: 30s)
+
+
+Run            [ 100% ] setup()
+nominal        [   0% ]
+rajada         [   0% ]
+resfriamento   [   0% ]
+recuperacao    [   0% ]
+
+running (0m02.0s), 000/025 VUs, 1 complete and 0 interrupted iterations
+nominal        [   1% ] 00/05 VUs  0m00.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m59.2s      
+resfriamento • [   0% ] waiting    1m59.2s      
+recuperacao  • [   0% ] waiting    2m59.2s      
+
+running (0m03.0s), 000/025 VUs, 2 complete and 0 interrupted iterations
+nominal        [   3% ] 00/05 VUs  0m01.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m58.2s      
+resfriamento • [   0% ] waiting    1m58.2s      
+recuperacao  • [   0% ] waiting    2m58.2s      
+
+running (0m04.0s), 000/025 VUs, 3 complete and 0 interrupted iterations
+nominal        [   5% ] 00/05 VUs  0m02.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m57.2s      
+resfriamento • [   0% ] waiting    1m57.2s      
+recuperacao  • [   0% ] waiting    2m57.2s      
+
+running (0m05.0s), 000/025 VUs, 4 complete and 0 interrupted iterations
+nominal        [   6% ] 00/05 VUs  0m03.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m56.2s      
+resfriamento • [   0% ] waiting    1m56.2s      
+recuperacao  • [   0% ] waiting    2m56.2s      
+
+running (0m06.0s), 000/025 VUs, 5 complete and 0 interrupted iterations
+nominal        [   8% ] 00/05 VUs  0m04.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m55.2s      
+resfriamento • [   0% ] waiting    1m55.2s      
+recuperacao  • [   0% ] waiting    2m55.2s      
+
+running (0m07.0s), 000/025 VUs, 6 complete and 0 interrupted iterations
+nominal        [  10% ] 00/05 VUs  0m05.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m54.2s      
+resfriamento • [   0% ] waiting    1m54.2s      
+recuperacao  • [   0% ] waiting    2m54.2s      
+
+running (0m08.0s), 000/025 VUs, 7 complete and 0 interrupted iterations
+nominal        [  11% ] 00/05 VUs  0m06.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m53.2s      
+resfriamento • [   0% ] waiting    1m53.2s      
+recuperacao  • [   0% ] waiting    2m53.2s      
+
+running (0m09.0s), 000/025 VUs, 8 complete and 0 interrupted iterations
+nominal        [  13% ] 00/05 VUs  0m07.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m52.2s      
+resfriamento • [   0% ] waiting    1m52.2s      
+recuperacao  • [   0% ] waiting    2m52.2s      
+
+running (0m10.0s), 000/025 VUs, 9 complete and 0 interrupted iterations
+nominal        [  15% ] 00/05 VUs  0m08.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m51.2s      
+resfriamento • [   0% ] waiting    1m51.2s      
+recuperacao  • [   0% ] waiting    2m51.2s      
+
+running (0m11.0s), 000/025 VUs, 10 complete and 0 interrupted iterations
+nominal        [  16% ] 00/05 VUs  0m09.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m50.2s      
+resfriamento • [   0% ] waiting    1m50.2s      
+recuperacao  • [   0% ] waiting    2m50.2s      
+
+running (0m12.0s), 000/025 VUs, 11 complete and 0 interrupted iterations
+nominal        [  18% ] 00/05 VUs  0m10.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m49.2s      
+resfriamento • [   0% ] waiting    1m49.2s      
+recuperacao  • [   0% ] waiting    2m49.2s      
+
+running (0m13.0s), 000/025 VUs, 12 complete and 0 interrupted iterations
+nominal        [  20% ] 00/05 VUs  0m11.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m48.2s      
+resfriamento • [   0% ] waiting    1m48.2s      
+recuperacao  • [   0% ] waiting    2m48.2s      
+
+running (0m14.0s), 000/025 VUs, 13 complete and 0 interrupted iterations
+nominal        [  21% ] 00/05 VUs  0m12.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m47.2s      
+resfriamento • [   0% ] waiting    1m47.2s      
+recuperacao  • [   0% ] waiting    2m47.2s      
+
+running (0m15.0s), 000/025 VUs, 14 complete and 0 interrupted iterations
+nominal        [  23% ] 00/05 VUs  0m13.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m46.2s      
+resfriamento • [   0% ] waiting    1m46.2s      
+recuperacao  • [   0% ] waiting    2m46.2s      
+
+running (0m16.0s), 000/025 VUs, 15 complete and 0 interrupted iterations
+nominal        [  25% ] 00/05 VUs  0m14.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m45.2s      
+resfriamento • [   0% ] waiting    1m45.2s      
+recuperacao  • [   0% ] waiting    2m45.2s      
+
+running (0m17.0s), 000/025 VUs, 16 complete and 0 interrupted iterations
+nominal        [  26% ] 00/05 VUs  0m15.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m44.2s      
+resfriamento • [   0% ] waiting    1m44.2s      
+recuperacao  • [   0% ] waiting    2m44.2s      
+
+running (0m18.0s), 000/025 VUs, 17 complete and 0 interrupted iterations
+nominal        [  28% ] 00/05 VUs  0m16.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m43.2s      
+resfriamento • [   0% ] waiting    1m43.2s      
+recuperacao  • [   0% ] waiting    2m43.2s      
+
+running (0m19.0s), 000/025 VUs, 18 complete and 0 interrupted iterations
+nominal        [  30% ] 00/05 VUs  0m17.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m42.2s      
+resfriamento • [   0% ] waiting    1m42.2s      
+recuperacao  • [   0% ] waiting    2m42.2s      
+
+running (0m20.0s), 000/025 VUs, 19 complete and 0 interrupted iterations
+nominal        [  31% ] 00/05 VUs  0m18.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m41.2s      
+resfriamento • [   0% ] waiting    1m41.2s      
+recuperacao  • [   0% ] waiting    2m41.2s      
+
+running (0m21.0s), 000/025 VUs, 20 complete and 0 interrupted iterations
+nominal        [  33% ] 00/05 VUs  0m19.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m40.2s      
+resfriamento • [   0% ] waiting    1m40.2s      
+recuperacao  • [   0% ] waiting    2m40.2s      
+
+running (0m22.0s), 000/025 VUs, 21 complete and 0 interrupted iterations
+nominal        [  35% ] 00/05 VUs  0m20.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m39.2s      
+resfriamento • [   0% ] waiting    1m39.2s      
+recuperacao  • [   0% ] waiting    2m39.2s      
+
+running (0m23.0s), 000/025 VUs, 22 complete and 0 interrupted iterations
+nominal        [  36% ] 00/05 VUs  0m21.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m38.2s      
+resfriamento • [   0% ] waiting    1m38.2s      
+recuperacao  • [   0% ] waiting    2m38.2s      
+
+running (0m24.0s), 000/025 VUs, 23 complete and 0 interrupted iterations
+nominal        [  38% ] 00/05 VUs  0m22.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m37.2s      
+resfriamento • [   0% ] waiting    1m37.2s      
+recuperacao  • [   0% ] waiting    2m37.2s      
+
+running (0m25.0s), 000/025 VUs, 24 complete and 0 interrupted iterations
+nominal        [  40% ] 00/05 VUs  0m23.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m36.2s      
+resfriamento • [   0% ] waiting    1m36.2s      
+recuperacao  • [   0% ] waiting    2m36.2s      
+
+running (0m26.0s), 000/025 VUs, 25 complete and 0 interrupted iterations
+nominal        [  41% ] 00/05 VUs  0m24.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m35.2s      
+resfriamento • [   0% ] waiting    1m35.2s      
+recuperacao  • [   0% ] waiting    2m35.2s      
+
+running (0m27.0s), 000/025 VUs, 26 complete and 0 interrupted iterations
+nominal        [  43% ] 00/05 VUs  0m25.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m34.2s      
+resfriamento • [   0% ] waiting    1m34.2s      
+recuperacao  • [   0% ] waiting    2m34.2s      
+
+running (0m28.0s), 000/025 VUs, 27 complete and 0 interrupted iterations
+nominal        [  45% ] 00/05 VUs  0m26.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m33.2s      
+resfriamento • [   0% ] waiting    1m33.2s      
+recuperacao  • [   0% ] waiting    2m33.2s      
+
+running (0m29.0s), 000/025 VUs, 28 complete and 0 interrupted iterations
+nominal        [  46% ] 00/05 VUs  0m27.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m32.2s      
+resfriamento • [   0% ] waiting    1m32.2s      
+recuperacao  • [   0% ] waiting    2m32.2s      
+
+running (0m30.0s), 000/025 VUs, 29 complete and 0 interrupted iterations
+nominal        [  48% ] 00/05 VUs  0m28.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m31.2s      
+resfriamento • [   0% ] waiting    1m31.2s      
+recuperacao  • [   0% ] waiting    2m31.2s      
+
+running (0m31.0s), 000/025 VUs, 30 complete and 0 interrupted iterations
+nominal        [  50% ] 00/05 VUs  0m29.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m30.2s      
+resfriamento • [   0% ] waiting    1m30.2s      
+recuperacao  • [   0% ] waiting    2m30.2s      
+
+running (0m32.0s), 000/025 VUs, 31 complete and 0 interrupted iterations
+nominal        [  51% ] 00/05 VUs  0m30.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m29.2s      
+resfriamento • [   0% ] waiting    1m29.2s      
+recuperacao  • [   0% ] waiting    2m29.2s      
+
+running (0m33.0s), 000/025 VUs, 32 complete and 0 interrupted iterations
+nominal        [  53% ] 00/05 VUs  0m31.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m28.2s      
+resfriamento • [   0% ] waiting    1m28.2s      
+recuperacao  • [   0% ] waiting    2m28.2s      
+
+running (0m34.0s), 000/025 VUs, 33 complete and 0 interrupted iterations
+nominal        [  55% ] 00/05 VUs  0m32.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m27.2s      
+resfriamento • [   0% ] waiting    1m27.2s      
+recuperacao  • [   0% ] waiting    2m27.2s      
+
+running (0m35.0s), 000/025 VUs, 34 complete and 0 interrupted iterations
+nominal        [  56% ] 00/05 VUs  0m33.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m26.2s      
+resfriamento • [   0% ] waiting    1m26.2s      
+recuperacao  • [   0% ] waiting    2m26.2s      
+
+running (0m36.0s), 000/025 VUs, 35 complete and 0 interrupted iterations
+nominal        [  58% ] 00/05 VUs  0m34.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m25.2s      
+resfriamento • [   0% ] waiting    1m25.2s      
+recuperacao  • [   0% ] waiting    2m25.2s      
+
+running (0m37.0s), 000/025 VUs, 36 complete and 0 interrupted iterations
+nominal        [  60% ] 00/05 VUs  0m35.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m24.2s      
+resfriamento • [   0% ] waiting    1m24.2s      
+recuperacao  • [   0% ] waiting    2m24.2s      
+
+running (0m38.0s), 000/025 VUs, 37 complete and 0 interrupted iterations
+nominal        [  61% ] 00/05 VUs  0m36.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m23.2s      
+resfriamento • [   0% ] waiting    1m23.2s      
+recuperacao  • [   0% ] waiting    2m23.2s      
+
+running (0m39.0s), 000/025 VUs, 38 complete and 0 interrupted iterations
+nominal        [  63% ] 00/05 VUs  0m37.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m22.2s      
+resfriamento • [   0% ] waiting    1m22.2s      
+recuperacao  • [   0% ] waiting    2m22.2s      
+
+running (0m40.0s), 000/025 VUs, 39 complete and 0 interrupted iterations
+nominal        [  65% ] 00/05 VUs  0m38.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m21.2s      
+resfriamento • [   0% ] waiting    1m21.2s      
+recuperacao  • [   0% ] waiting    2m21.2s      
+
+running (0m41.0s), 000/025 VUs, 40 complete and 0 interrupted iterations
+nominal        [  66% ] 00/05 VUs  0m39.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m20.2s      
+resfriamento • [   0% ] waiting    1m20.2s      
+recuperacao  • [   0% ] waiting    2m20.2s      
+
+running (0m42.0s), 000/025 VUs, 41 complete and 0 interrupted iterations
+nominal        [  68% ] 00/05 VUs  0m40.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m19.2s      
+resfriamento • [   0% ] waiting    1m19.2s      
+recuperacao  • [   0% ] waiting    2m19.2s      
+
+running (0m43.0s), 000/025 VUs, 42 complete and 0 interrupted iterations
+nominal        [  70% ] 00/05 VUs  0m41.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m18.2s      
+resfriamento • [   0% ] waiting    1m18.2s      
+recuperacao  • [   0% ] waiting    2m18.2s      
+
+running (0m44.0s), 000/025 VUs, 43 complete and 0 interrupted iterations
+nominal        [  71% ] 00/05 VUs  0m42.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m17.2s      
+resfriamento • [   0% ] waiting    1m17.2s      
+recuperacao  • [   0% ] waiting    2m17.2s      
+
+running (0m45.0s), 000/025 VUs, 44 complete and 0 interrupted iterations
+nominal        [  73% ] 00/05 VUs  0m43.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m16.2s      
+resfriamento • [   0% ] waiting    1m16.2s      
+recuperacao  • [   0% ] waiting    2m16.2s      
+
+running (0m46.0s), 000/025 VUs, 45 complete and 0 interrupted iterations
+nominal        [  75% ] 00/05 VUs  0m44.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m15.2s      
+resfriamento • [   0% ] waiting    1m15.2s      
+recuperacao  • [   0% ] waiting    2m15.2s      
+
+running (0m47.0s), 000/025 VUs, 46 complete and 0 interrupted iterations
+nominal        [  76% ] 00/05 VUs  0m45.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m14.2s      
+resfriamento • [   0% ] waiting    1m14.2s      
+recuperacao  • [   0% ] waiting    2m14.2s      
+
+running (0m48.0s), 000/025 VUs, 47 complete and 0 interrupted iterations
+nominal        [  78% ] 00/05 VUs  0m46.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m13.2s      
+resfriamento • [   0% ] waiting    1m13.2s      
+recuperacao  • [   0% ] waiting    2m13.2s      
+
+running (0m49.0s), 000/025 VUs, 48 complete and 0 interrupted iterations
+nominal        [  80% ] 00/05 VUs  0m47.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m12.2s      
+resfriamento • [   0% ] waiting    1m12.2s      
+recuperacao  • [   0% ] waiting    2m12.2s      
+
+running (0m50.0s), 000/025 VUs, 49 complete and 0 interrupted iterations
+nominal        [  81% ] 00/05 VUs  0m48.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m11.2s      
+resfriamento • [   0% ] waiting    1m11.2s      
+recuperacao  • [   0% ] waiting    2m11.2s      
+
+running (0m51.0s), 000/025 VUs, 50 complete and 0 interrupted iterations
+nominal        [  83% ] 00/05 VUs  0m49.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m10.2s      
+resfriamento • [   0% ] waiting    1m10.2s      
+recuperacao  • [   0% ] waiting    2m10.2s      
+
+running (0m52.0s), 000/025 VUs, 51 complete and 0 interrupted iterations
+nominal        [  85% ] 00/05 VUs  0m50.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m09.2s      
+resfriamento • [   0% ] waiting    1m09.2s      
+recuperacao  • [   0% ] waiting    2m09.2s      
+
+running (0m53.0s), 000/025 VUs, 52 complete and 0 interrupted iterations
+nominal        [  86% ] 00/05 VUs  0m51.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m08.2s      
+resfriamento • [   0% ] waiting    1m08.2s      
+recuperacao  • [   0% ] waiting    2m08.2s      
+
+running (0m54.0s), 000/025 VUs, 53 complete and 0 interrupted iterations
+nominal        [  88% ] 00/05 VUs  0m52.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m07.2s      
+resfriamento • [   0% ] waiting    1m07.2s      
+recuperacao  • [   0% ] waiting    2m07.2s      
+
+running (0m55.0s), 000/025 VUs, 54 complete and 0 interrupted iterations
+nominal        [  90% ] 00/05 VUs  0m53.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m06.2s      
+resfriamento • [   0% ] waiting    1m06.2s      
+recuperacao  • [   0% ] waiting    2m06.2s      
+
+running (0m56.0s), 000/025 VUs, 55 complete and 0 interrupted iterations
+nominal        [  91% ] 00/05 VUs  0m54.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m05.2s      
+resfriamento • [   0% ] waiting    1m05.2s      
+recuperacao  • [   0% ] waiting    2m05.2s      
+
+running (0m57.0s), 000/025 VUs, 56 complete and 0 interrupted iterations
+nominal        [  93% ] 00/05 VUs  0m55.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m04.2s      
+resfriamento • [   0% ] waiting    1m04.2s      
+recuperacao  • [   0% ] waiting    2m04.2s      
+
+running (0m58.0s), 000/025 VUs, 57 complete and 0 interrupted iterations
+nominal        [  95% ] 00/05 VUs  0m56.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m03.2s      
+resfriamento • [   0% ] waiting    1m03.2s      
+recuperacao  • [   0% ] waiting    2m03.2s      
+
+running (0m59.0s), 000/025 VUs, 58 complete and 0 interrupted iterations
+nominal        [  96% ] 00/05 VUs  0m57.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m02.2s      
+resfriamento • [   0% ] waiting    1m02.2s      
+recuperacao  • [   0% ] waiting    2m02.2s      
+
+running (1m00.0s), 000/025 VUs, 59 complete and 0 interrupted iterations
+nominal        [  98% ] 00/05 VUs  0m58.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m01.2s      
+resfriamento • [   0% ] waiting    1m01.2s      
+recuperacao  • [   0% ] waiting    2m01.2s      
+
+running (1m01.0s), 000/025 VUs, 60 complete and 0 interrupted iterations
+nominal        [ 100% ] 00/05 VUs  0m59.8s/1m0s  1.00 iters/s
+rajada       • [   0% ] waiting    0m00.2s      
+resfriamento • [   0% ] waiting    1m00.2s      
+recuperacao  • [   0% ] waiting    2m00.2s      
+
+running (1m02.0s), 008/025 VUs, 68 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [   1% ] 08/20 VUs  0m00.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m59.2s      
+recuperacao  • [   0% ] waiting    1m59.2s      
+
+running (1m03.0s), 003/025 VUs, 93 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [   3% ] 03/20 VUs  0m01.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m58.2s      
+recuperacao  • [   0% ] waiting    1m58.2s      
+
+running (1m04.0s), 002/025 VUs, 114 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [   5% ] 02/20 VUs  0m02.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m57.2s      
+recuperacao  • [   0% ] waiting    1m57.2s      
+
+running (1m05.0s), 002/025 VUs, 134 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [   6% ] 02/20 VUs  0m03.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m56.2s      
+recuperacao  • [   0% ] waiting    1m56.2s      
+
+running (1m06.0s), 003/025 VUs, 153 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [   8% ] 03/20 VUs  0m04.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m55.2s      
+recuperacao  • [   0% ] waiting    1m55.2s      
+
+running (1m07.0s), 002/025 VUs, 174 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  10% ] 02/20 VUs  0m05.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m54.2s      
+recuperacao  • [   0% ] waiting    1m54.2s      
+
+running (1m08.0s), 002/025 VUs, 194 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  11% ] 02/20 VUs  0m06.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m53.2s      
+recuperacao  • [   0% ] waiting    1m53.2s      
+
+running (1m09.0s), 002/025 VUs, 214 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  13% ] 02/20 VUs  0m07.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m52.2s      
+recuperacao  • [   0% ] waiting    1m52.2s      
+
+running (1m10.0s), 002/025 VUs, 234 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  15% ] 02/20 VUs  0m08.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m51.2s      
+recuperacao  • [   0% ] waiting    1m51.2s      
+
+running (1m11.0s), 003/025 VUs, 253 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  16% ] 03/20 VUs  0m09.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m50.2s      
+recuperacao  • [   0% ] waiting    1m50.2s      
+
+running (1m12.0s), 002/025 VUs, 274 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  18% ] 02/20 VUs  0m10.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m49.2s      
+recuperacao  • [   0% ] waiting    1m49.2s      
+
+running (1m13.0s), 003/025 VUs, 293 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  20% ] 03/20 VUs  0m11.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m48.2s      
+recuperacao  • [   0% ] waiting    1m48.2s      
+
+running (1m14.0s), 002/025 VUs, 314 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  21% ] 02/20 VUs  0m12.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m47.2s      
+recuperacao  • [   0% ] waiting    1m47.2s      
+
+running (1m15.0s), 003/025 VUs, 333 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  23% ] 03/20 VUs  0m13.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m46.2s      
+recuperacao  • [   0% ] waiting    1m46.2s      
+
+running (1m16.0s), 004/025 VUs, 352 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  25% ] 04/20 VUs  0m14.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m45.2s      
+recuperacao  • [   0% ] waiting    1m45.2s      
+
+running (1m17.0s), 003/025 VUs, 373 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  26% ] 03/20 VUs  0m15.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m44.2s      
+recuperacao  • [   0% ] waiting    1m44.2s      
+
+running (1m18.0s), 002/025 VUs, 394 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  28% ] 02/20 VUs  0m16.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m43.2s      
+recuperacao  • [   0% ] waiting    1m43.2s      
+
+running (1m19.0s), 002/025 VUs, 414 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  30% ] 02/20 VUs  0m17.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m42.2s      
+recuperacao  • [   0% ] waiting    1m42.2s      
+
+running (1m20.0s), 003/025 VUs, 433 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  31% ] 03/20 VUs  0m18.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m41.2s      
+recuperacao  • [   0% ] waiting    1m41.2s      
+
+running (1m21.0s), 003/025 VUs, 453 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  33% ] 03/20 VUs  0m19.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m40.2s      
+recuperacao  • [   0% ] waiting    1m40.2s      
+
+running (1m22.0s), 002/025 VUs, 474 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  35% ] 02/20 VUs  0m20.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m39.2s      
+recuperacao  • [   0% ] waiting    1m39.2s      
+
+running (1m23.0s), 002/025 VUs, 494 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  36% ] 02/20 VUs  0m21.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m38.2s      
+recuperacao  • [   0% ] waiting    1m38.2s      
+
+running (1m24.0s), 003/025 VUs, 513 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  38% ] 03/20 VUs  0m22.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m37.2s      
+recuperacao  • [   0% ] waiting    1m37.2s      
+
+running (1m25.0s), 002/025 VUs, 534 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  40% ] 02/20 VUs  0m23.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m36.2s      
+recuperacao  • [   0% ] waiting    1m36.2s      
+
+running (1m26.0s), 002/025 VUs, 554 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  41% ] 02/20 VUs  0m24.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m35.2s      
+recuperacao  • [   0% ] waiting    1m35.2s      
+
+running (1m27.0s), 002/025 VUs, 574 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  43% ] 02/20 VUs  0m25.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m34.2s      
+recuperacao  • [   0% ] waiting    1m34.2s      
+
+running (1m28.0s), 003/025 VUs, 593 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  45% ] 03/20 VUs  0m26.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m33.2s      
+recuperacao  • [   0% ] waiting    1m33.2s      
+
+running (1m29.0s), 003/025 VUs, 613 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  46% ] 03/20 VUs  0m27.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m32.2s      
+recuperacao  • [   0% ] waiting    1m32.2s      
+
+running (1m30.0s), 003/025 VUs, 633 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  48% ] 03/20 VUs  0m28.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m31.2s      
+recuperacao  • [   0% ] waiting    1m31.2s      
+
+running (1m31.0s), 004/025 VUs, 652 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  50% ] 04/20 VUs  0m29.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m30.2s      
+recuperacao  • [   0% ] waiting    1m30.2s      
+
+running (1m32.0s), 003/025 VUs, 673 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  51% ] 03/20 VUs  0m30.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m29.2s      
+recuperacao  • [   0% ] waiting    1m29.2s      
+
+running (1m33.0s), 002/025 VUs, 694 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  53% ] 02/20 VUs  0m31.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m28.2s      
+recuperacao  • [   0% ] waiting    1m28.2s      
+
+running (1m34.0s), 003/025 VUs, 713 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  55% ] 03/20 VUs  0m32.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m27.2s      
+recuperacao  • [   0% ] waiting    1m27.2s      
+
+running (1m35.0s), 002/025 VUs, 734 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  56% ] 02/20 VUs  0m33.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m26.2s      
+recuperacao  • [   0% ] waiting    1m26.2s      
+
+running (1m36.0s), 002/025 VUs, 754 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  58% ] 02/20 VUs  0m34.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m25.2s      
+recuperacao  • [   0% ] waiting    1m25.2s      
+
+running (1m37.0s), 002/025 VUs, 774 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  60% ] 02/20 VUs  0m35.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m24.2s      
+recuperacao  • [   0% ] waiting    1m24.2s      
+
+running (1m38.0s), 002/025 VUs, 794 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  61% ] 02/20 VUs  0m36.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m23.2s      
+recuperacao  • [   0% ] waiting    1m23.2s      
+
+running (1m39.0s), 002/025 VUs, 814 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  63% ] 02/20 VUs  0m37.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m22.2s      
+recuperacao  • [   0% ] waiting    1m22.2s      
+
+running (1m40.0s), 003/025 VUs, 833 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  65% ] 03/20 VUs  0m38.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m21.2s      
+recuperacao  • [   0% ] waiting    1m21.2s      
+
+running (1m41.0s), 002/025 VUs, 854 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  66% ] 02/20 VUs  0m39.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m20.2s      
+recuperacao  • [   0% ] waiting    1m20.2s      
+
+running (1m42.0s), 002/025 VUs, 874 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  68% ] 02/20 VUs  0m40.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m19.2s      
+recuperacao  • [   0% ] waiting    1m19.2s      
+
+running (1m43.0s), 002/025 VUs, 894 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  70% ] 02/20 VUs  0m41.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m18.2s      
+recuperacao  • [   0% ] waiting    1m18.2s      
+
+running (1m44.0s), 003/025 VUs, 913 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  71% ] 03/20 VUs  0m42.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m17.2s      
+recuperacao  • [   0% ] waiting    1m17.2s      
+
+running (1m45.0s), 002/025 VUs, 934 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  73% ] 02/20 VUs  0m43.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m16.2s      
+recuperacao  • [   0% ] waiting    1m16.2s      
+
+running (1m46.0s), 002/025 VUs, 954 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  75% ] 02/20 VUs  0m44.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m15.2s      
+recuperacao  • [   0% ] waiting    1m15.2s      
+
+running (1m47.0s), 003/025 VUs, 973 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  76% ] 03/20 VUs  0m45.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m14.2s      
+recuperacao  • [   0% ] waiting    1m14.2s      
+
+running (1m48.0s), 002/025 VUs, 994 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  78% ] 02/20 VUs  0m46.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m13.2s      
+recuperacao  • [   0% ] waiting    1m13.2s      
+
+running (1m49.0s), 002/025 VUs, 1014 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  80% ] 02/20 VUs  0m47.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m12.2s      
+recuperacao  • [   0% ] waiting    1m12.2s      
+
+running (1m50.0s), 003/025 VUs, 1033 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  81% ] 03/20 VUs  0m48.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m11.2s      
+recuperacao  • [   0% ] waiting    1m11.2s      
+
+running (1m51.0s), 002/025 VUs, 1054 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  83% ] 02/20 VUs  0m49.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m10.2s      
+recuperacao  • [   0% ] waiting    1m10.2s      
+
+running (1m52.0s), 003/025 VUs, 1073 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  85% ] 03/20 VUs  0m50.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m09.2s      
+recuperacao  • [   0% ] waiting    1m09.2s      
+
+running (1m53.0s), 002/025 VUs, 1094 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  86% ] 02/20 VUs  0m51.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m08.2s      
+recuperacao  • [   0% ] waiting    1m08.2s      
+
+running (1m54.0s), 002/025 VUs, 1114 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  88% ] 02/20 VUs  0m52.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m07.2s      
+recuperacao  • [   0% ] waiting    1m07.2s      
+
+running (1m55.0s), 002/025 VUs, 1134 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  90% ] 02/20 VUs  0m53.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m06.2s      
+recuperacao  • [   0% ] waiting    1m06.2s      
+
+running (1m56.0s), 002/025 VUs, 1154 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  91% ] 02/20 VUs  0m54.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m05.2s      
+recuperacao  • [   0% ] waiting    1m05.2s      
+
+running (1m57.0s), 002/025 VUs, 1174 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  93% ] 02/20 VUs  0m55.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m04.2s      
+recuperacao  • [   0% ] waiting    1m04.2s      
+
+running (1m58.0s), 003/025 VUs, 1193 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  95% ] 03/20 VUs  0m56.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m03.2s      
+recuperacao  • [   0% ] waiting    1m03.2s      
+
+running (1m59.0s), 002/025 VUs, 1214 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  96% ] 02/20 VUs  0m57.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m02.2s      
+recuperacao  • [   0% ] waiting    1m02.2s      
+
+running (2m00.0s), 002/025 VUs, 1234 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [  98% ] 02/20 VUs  0m58.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m01.2s      
+recuperacao  • [   0% ] waiting    1m01.2s      
+
+running (2m01.0s), 002/025 VUs, 1254 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada         [ 100% ] 02/20 VUs  0m59.8s/1m0s  20.00 iters/s
+resfriamento • [   0% ] waiting    0m00.2s      
+recuperacao  • [   0% ] waiting    1m00.2s      
+
+running (2m02.0s), 000/025 VUs, 1261 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [   1% ] 00/05 VUs  0m00.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m59.2s      
+
+running (2m03.0s), 000/025 VUs, 1262 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [   3% ] 00/05 VUs  0m01.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m58.2s      
+
+running (2m04.0s), 000/025 VUs, 1263 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [   5% ] 00/05 VUs  0m02.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m57.2s      
+
+running (2m05.0s), 000/025 VUs, 1264 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [   6% ] 00/05 VUs  0m03.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m56.2s      
+
+running (2m06.0s), 000/025 VUs, 1265 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [   8% ] 00/05 VUs  0m04.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m55.2s      
+
+running (2m07.0s), 000/025 VUs, 1266 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  10% ] 00/05 VUs  0m05.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m54.2s      
+
+running (2m08.0s), 000/025 VUs, 1267 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  11% ] 00/05 VUs  0m06.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m53.2s      
+
+running (2m09.0s), 000/025 VUs, 1268 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  13% ] 00/05 VUs  0m07.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m52.2s      
+
+running (2m10.0s), 000/025 VUs, 1269 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  15% ] 00/05 VUs  0m08.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m51.2s      
+
+running (2m11.0s), 000/025 VUs, 1270 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  16% ] 00/05 VUs  0m09.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m50.2s      
+
+running (2m12.0s), 000/025 VUs, 1271 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  18% ] 00/05 VUs  0m10.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m49.2s      
+
+running (2m13.0s), 000/025 VUs, 1272 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  20% ] 00/05 VUs  0m11.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m48.2s      
+
+running (2m14.0s), 000/025 VUs, 1273 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  21% ] 00/05 VUs  0m12.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m47.2s      
+
+running (2m15.0s), 000/025 VUs, 1274 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  23% ] 00/05 VUs  0m13.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m46.2s      
+
+running (2m16.0s), 000/025 VUs, 1275 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  25% ] 00/05 VUs  0m14.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m45.2s      
+
+running (2m17.0s), 000/025 VUs, 1276 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  26% ] 00/05 VUs  0m15.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m44.2s      
+
+running (2m18.0s), 000/025 VUs, 1277 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  28% ] 00/05 VUs  0m16.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m43.2s      
+
+running (2m19.0s), 000/025 VUs, 1278 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  30% ] 00/05 VUs  0m17.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m42.2s      
+
+running (2m20.0s), 000/025 VUs, 1279 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  31% ] 00/05 VUs  0m18.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m41.2s      
+
+running (2m21.0s), 000/025 VUs, 1280 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  33% ] 00/05 VUs  0m19.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m40.2s      
+
+running (2m22.0s), 000/025 VUs, 1281 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  35% ] 00/05 VUs  0m20.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m39.2s      
+
+running (2m23.0s), 000/025 VUs, 1282 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  36% ] 00/05 VUs  0m21.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m38.2s      
+
+running (2m24.0s), 000/025 VUs, 1283 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  38% ] 00/05 VUs  0m22.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m37.2s      
+
+running (2m25.0s), 000/025 VUs, 1284 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  40% ] 00/05 VUs  0m23.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m36.2s      
+
+running (2m26.0s), 000/025 VUs, 1285 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  41% ] 00/05 VUs  0m24.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m35.2s      
+
+running (2m27.0s), 000/025 VUs, 1286 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  43% ] 00/05 VUs  0m25.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m34.2s      
+
+running (2m28.0s), 000/025 VUs, 1287 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  45% ] 00/05 VUs  0m26.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m33.2s      
+
+running (2m29.0s), 000/025 VUs, 1288 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  46% ] 00/05 VUs  0m27.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m32.2s      
+
+running (2m30.0s), 000/025 VUs, 1289 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  48% ] 00/05 VUs  0m28.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m31.2s      
+
+running (2m31.0s), 000/025 VUs, 1290 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  50% ] 00/05 VUs  0m29.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m30.2s      
+
+running (2m32.0s), 000/025 VUs, 1291 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  51% ] 00/05 VUs  0m30.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m29.2s      
+
+running (2m33.0s), 000/025 VUs, 1292 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  53% ] 00/05 VUs  0m31.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m28.2s      
+
+running (2m34.0s), 000/025 VUs, 1293 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  55% ] 00/05 VUs  0m32.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m27.2s      
+
+running (2m35.0s), 000/025 VUs, 1294 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  56% ] 00/05 VUs  0m33.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m26.2s      
+
+running (2m36.0s), 000/025 VUs, 1295 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  58% ] 00/05 VUs  0m34.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m25.2s      
+
+running (2m37.0s), 000/025 VUs, 1296 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  60% ] 00/05 VUs  0m35.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m24.2s      
+
+running (2m38.0s), 000/025 VUs, 1297 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  61% ] 00/05 VUs  0m36.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m23.2s      
+
+running (2m39.0s), 000/025 VUs, 1298 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  63% ] 00/05 VUs  0m37.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m22.2s      
+
+running (2m40.0s), 000/025 VUs, 1299 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  65% ] 00/05 VUs  0m38.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m21.2s      
+
+running (2m41.0s), 000/025 VUs, 1300 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  66% ] 00/05 VUs  0m39.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m20.2s      
+
+running (2m42.0s), 000/025 VUs, 1301 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  68% ] 00/05 VUs  0m40.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m19.2s      
+
+running (2m43.0s), 000/025 VUs, 1302 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  70% ] 00/05 VUs  0m41.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m18.2s      
+
+running (2m44.0s), 000/025 VUs, 1303 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  71% ] 00/05 VUs  0m42.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m17.2s      
+
+running (2m45.0s), 000/025 VUs, 1304 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  73% ] 00/05 VUs  0m43.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m16.2s      
+
+running (2m46.0s), 000/025 VUs, 1305 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  75% ] 00/05 VUs  0m44.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m15.2s      
+
+running (2m47.0s), 000/025 VUs, 1306 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  76% ] 00/05 VUs  0m45.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m14.2s      
+
+running (2m48.0s), 000/025 VUs, 1307 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  78% ] 00/05 VUs  0m46.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m13.2s      
+
+running (2m49.0s), 000/025 VUs, 1308 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  80% ] 00/05 VUs  0m47.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m12.2s      
+
+running (2m50.0s), 000/025 VUs, 1309 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  81% ] 00/05 VUs  0m48.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m11.2s      
+
+running (2m51.0s), 000/025 VUs, 1310 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  83% ] 00/05 VUs  0m49.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m10.2s      
+
+running (2m52.0s), 000/025 VUs, 1311 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  85% ] 00/05 VUs  0m50.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m09.2s      
+
+running (2m53.0s), 000/025 VUs, 1312 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  86% ] 00/05 VUs  0m51.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m08.2s      
+
+running (2m54.0s), 000/025 VUs, 1313 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  88% ] 00/05 VUs  0m52.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m07.2s      
+
+running (2m55.0s), 000/025 VUs, 1314 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  90% ] 00/05 VUs  0m53.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m06.2s      
+
+running (2m56.0s), 000/025 VUs, 1315 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  91% ] 00/05 VUs  0m54.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m05.2s      
+
+running (2m57.0s), 000/025 VUs, 1316 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  93% ] 00/05 VUs  0m55.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m04.2s      
+
+running (2m58.0s), 000/025 VUs, 1317 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  95% ] 00/05 VUs  0m56.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m03.2s      
+
+running (2m59.0s), 000/025 VUs, 1318 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  96% ] 00/05 VUs  0m57.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m02.2s      
+
+running (3m00.0s), 000/025 VUs, 1319 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [  98% ] 00/05 VUs  0m58.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m01.2s      
+
+running (3m01.0s), 000/025 VUs, 1320 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento   [ 100% ] 00/05 VUs  0m59.8s/1m0s  1.00 iters/s
+recuperacao  • [   0% ] waiting    0m00.2s      
+
+running (3m02.0s), 000/025 VUs, 1322 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [   1% ] 00/05 VUs  0m00.8s/1m0s  1.00 iters/s
+
+running (3m03.0s), 000/025 VUs, 1323 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [   3% ] 00/05 VUs  0m01.8s/1m0s  1.00 iters/s
+
+running (3m04.0s), 000/025 VUs, 1324 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [   5% ] 00/05 VUs  0m02.8s/1m0s  1.00 iters/s
+
+running (3m05.0s), 000/025 VUs, 1325 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [   6% ] 00/05 VUs  0m03.8s/1m0s  1.00 iters/s
+
+running (3m06.0s), 000/025 VUs, 1326 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [   8% ] 00/05 VUs  0m04.8s/1m0s  1.00 iters/s
+
+running (3m07.0s), 000/025 VUs, 1327 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  10% ] 00/05 VUs  0m05.8s/1m0s  1.00 iters/s
+
+running (3m08.0s), 000/025 VUs, 1328 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  11% ] 00/05 VUs  0m06.8s/1m0s  1.00 iters/s
+
+running (3m09.0s), 000/025 VUs, 1329 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  13% ] 00/05 VUs  0m07.8s/1m0s  1.00 iters/s
+
+running (3m10.0s), 000/025 VUs, 1330 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  15% ] 00/05 VUs  0m08.8s/1m0s  1.00 iters/s
+
+running (3m11.0s), 000/025 VUs, 1331 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  16% ] 00/05 VUs  0m09.8s/1m0s  1.00 iters/s
+
+running (3m12.0s), 000/025 VUs, 1332 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  18% ] 00/05 VUs  0m10.8s/1m0s  1.00 iters/s
+
+running (3m13.0s), 000/025 VUs, 1333 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  20% ] 00/05 VUs  0m11.8s/1m0s  1.00 iters/s
+
+running (3m14.0s), 000/025 VUs, 1334 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  21% ] 00/05 VUs  0m12.8s/1m0s  1.00 iters/s
+
+running (3m15.0s), 000/025 VUs, 1335 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  23% ] 00/05 VUs  0m13.8s/1m0s  1.00 iters/s
+
+running (3m16.0s), 000/025 VUs, 1336 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  25% ] 00/05 VUs  0m14.8s/1m0s  1.00 iters/s
+
+running (3m17.0s), 000/025 VUs, 1337 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  26% ] 00/05 VUs  0m15.8s/1m0s  1.00 iters/s
+
+running (3m18.0s), 000/025 VUs, 1338 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  28% ] 00/05 VUs  0m16.8s/1m0s  1.00 iters/s
+
+running (3m19.0s), 000/025 VUs, 1339 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  30% ] 00/05 VUs  0m17.8s/1m0s  1.00 iters/s
+
+running (3m20.0s), 000/025 VUs, 1340 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  31% ] 00/05 VUs  0m18.8s/1m0s  1.00 iters/s
+
+running (3m21.0s), 000/025 VUs, 1341 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  33% ] 00/05 VUs  0m19.8s/1m0s  1.00 iters/s
+
+running (3m22.0s), 000/025 VUs, 1342 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  35% ] 00/05 VUs  0m20.8s/1m0s  1.00 iters/s
+
+running (3m23.0s), 000/025 VUs, 1343 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  36% ] 00/05 VUs  0m21.8s/1m0s  1.00 iters/s
+
+running (3m24.0s), 000/025 VUs, 1344 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  38% ] 00/05 VUs  0m22.8s/1m0s  1.00 iters/s
+
+running (3m25.0s), 000/025 VUs, 1345 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  40% ] 00/05 VUs  0m23.8s/1m0s  1.00 iters/s
+
+running (3m26.0s), 000/025 VUs, 1346 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  41% ] 00/05 VUs  0m24.8s/1m0s  1.00 iters/s
+
+running (3m27.0s), 000/025 VUs, 1347 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  43% ] 00/05 VUs  0m25.8s/1m0s  1.00 iters/s
+
+running (3m28.0s), 000/025 VUs, 1348 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  45% ] 00/05 VUs  0m26.8s/1m0s  1.00 iters/s
+
+running (3m29.0s), 000/025 VUs, 1349 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  46% ] 00/05 VUs  0m27.8s/1m0s  1.00 iters/s
+
+running (3m30.0s), 000/025 VUs, 1350 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  48% ] 00/05 VUs  0m28.8s/1m0s  1.00 iters/s
+
+running (3m31.0s), 000/025 VUs, 1351 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  50% ] 00/05 VUs  0m29.8s/1m0s  1.00 iters/s
+
+running (3m32.0s), 000/025 VUs, 1352 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  51% ] 00/05 VUs  0m30.8s/1m0s  1.00 iters/s
+
+running (3m33.0s), 000/025 VUs, 1353 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  53% ] 00/05 VUs  0m31.8s/1m0s  1.00 iters/s
+
+running (3m34.0s), 000/025 VUs, 1354 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  55% ] 00/05 VUs  0m32.8s/1m0s  1.00 iters/s
+
+running (3m35.0s), 000/025 VUs, 1355 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  56% ] 00/05 VUs  0m33.8s/1m0s  1.00 iters/s
+
+running (3m36.0s), 000/025 VUs, 1356 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  58% ] 00/05 VUs  0m34.8s/1m0s  1.00 iters/s
+
+running (3m37.0s), 000/025 VUs, 1357 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  60% ] 00/05 VUs  0m35.8s/1m0s  1.00 iters/s
+
+running (3m38.0s), 000/025 VUs, 1358 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  61% ] 00/05 VUs  0m36.8s/1m0s  1.00 iters/s
+
+running (3m39.0s), 000/025 VUs, 1359 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  63% ] 00/05 VUs  0m37.8s/1m0s  1.00 iters/s
+
+running (3m40.0s), 000/025 VUs, 1360 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  65% ] 00/05 VUs  0m38.8s/1m0s  1.00 iters/s
+
+running (3m41.0s), 000/025 VUs, 1361 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  66% ] 00/05 VUs  0m39.8s/1m0s  1.00 iters/s
+
+running (3m42.0s), 000/025 VUs, 1362 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  68% ] 00/05 VUs  0m40.8s/1m0s  1.00 iters/s
+
+running (3m43.0s), 000/025 VUs, 1363 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  70% ] 00/05 VUs  0m41.8s/1m0s  1.00 iters/s
+
+running (3m44.0s), 000/025 VUs, 1364 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  71% ] 00/05 VUs  0m42.8s/1m0s  1.00 iters/s
+
+running (3m45.0s), 000/025 VUs, 1365 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  73% ] 00/05 VUs  0m43.8s/1m0s  1.00 iters/s
+
+running (3m46.0s), 000/025 VUs, 1366 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  75% ] 00/05 VUs  0m44.8s/1m0s  1.00 iters/s
+
+running (3m47.0s), 000/025 VUs, 1367 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  76% ] 00/05 VUs  0m45.8s/1m0s  1.00 iters/s
+
+running (3m48.0s), 000/025 VUs, 1368 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  78% ] 00/05 VUs  0m46.8s/1m0s  1.00 iters/s
+
+running (3m49.0s), 000/025 VUs, 1369 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  80% ] 00/05 VUs  0m47.8s/1m0s  1.00 iters/s
+
+running (3m50.0s), 000/025 VUs, 1370 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  81% ] 00/05 VUs  0m48.8s/1m0s  1.00 iters/s
+
+running (3m51.0s), 000/025 VUs, 1371 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  83% ] 00/05 VUs  0m49.8s/1m0s  1.00 iters/s
+
+running (3m52.0s), 000/025 VUs, 1372 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  85% ] 00/05 VUs  0m50.8s/1m0s  1.00 iters/s
+
+running (3m53.0s), 000/025 VUs, 1373 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  86% ] 00/05 VUs  0m51.8s/1m0s  1.00 iters/s
+
+running (3m54.0s), 000/025 VUs, 1374 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  88% ] 00/05 VUs  0m52.8s/1m0s  1.00 iters/s
+
+running (3m55.0s), 000/025 VUs, 1375 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  90% ] 00/05 VUs  0m53.8s/1m0s  1.00 iters/s
+
+running (3m56.0s), 000/025 VUs, 1376 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  91% ] 00/05 VUs  0m54.8s/1m0s  1.00 iters/s
+
+running (3m57.0s), 000/025 VUs, 1377 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  93% ] 00/05 VUs  0m55.8s/1m0s  1.00 iters/s
+
+running (3m58.0s), 000/025 VUs, 1378 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  95% ] 00/05 VUs  0m56.8s/1m0s  1.00 iters/s
+
+running (3m59.0s), 000/025 VUs, 1379 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  96% ] 00/05 VUs  0m57.8s/1m0s  1.00 iters/s
+
+running (4m00.0s), 000/025 VUs, 1380 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [  98% ] 00/05 VUs  0m58.8s/1m0s  1.00 iters/s
+
+running (4m01.0s), 000/025 VUs, 1381 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s          20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s          1.00 iters/s
+recuperacao    [ 100% ] 00/05 VUs  0m59.8s/1m0s  1.00 iters/s
+Ingestão — modo limite (rs06)
+
+running (4m01.7s), 000/025 VUs, 1382 complete and 0 interrupted iterations
+nominal      ✓ [ 100% ] 00/05 VUs  1m0s  1.00 iters/s
+rajada       ✓ [ 100% ] 00/20 VUs  1m0s  20.00 iters/s
+resfriamento ✓ [ 100% ] 00/05 VUs  1m0s  1.00 iters/s
+recuperacao  ✓ [ 100% ] 00/05 VUs  1m0s  1.00 iters/s

@@ -1,0 +1,171 @@
+2026-10-01T16:32:19Z RS-05 inicio; contagem antes:
+DATASET#dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c#FACT#TS#signal_bucket#20261001 450000
+TOTAL 450000
+{"variant": "poison", "batchId": "bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61", "windowStart": "2026-10-01T13:00:00.000Z", "windowEnd": "2026-10-01T13:15:00.000Z", "rows": 0, "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T130000000Z/batch_id=bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61/manifest.json", "manifestVersionId": "k6-carga-versao-inexistente", "messageId": "ce7f3d75-c99f-4f7f-8fcb-3618ffe81f47", "publishedAt": "2026-10-01T16:33:31.699Z", "dryRun": false}
+{"variant": "valid", "batchId": "bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc", "windowStart": "2026-10-01T13:15:00.000Z", "windowEnd": "2026-10-01T13:30:00.000Z", "rows": 150000, "sizeBytes": 177775, "sha256": "c0464a2eb493d56a44e3915e4c5bd52b4c50583b77d0d16d66494e76d6db2878", "schemaDifferences": [], "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T131500000Z/batch_id=bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc/manifest.json", "manifestVersionId": "sIu3sn3Gf6bB4gzII6N7qWKt8hviBtKy", "publishedAt": "2026-10-01T16:33:33.128Z", "dryRun": false}
+2026-10-01T16:33:38Z poison=bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 valid=bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc
+2026-10-01T16:33:38Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc AUSENTE
+2026-10-01T16:33:45Z execução 1: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/54647870d6634f6da419204cca712c72
+2026-10-01T16:34:27Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:34:51Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:35:14Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:35:38Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:36:02Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:36:25Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:36:49Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:37:13Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:37:37Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:38:01Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:38:25Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:38:50Z batches.fifo vis=0 proc=2 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:39:14Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:39:38Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:40:02Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:40:27Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:40:51Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:41:14Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:41:39Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:42:03Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:42:27Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"state": "INGESTING", "updatedAt": "2026-10-01T16:34:09.646Z", "version": "2"}
+2026-10-01T16:42:51Z batches.fifo vis=2 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T16:42:58Z execução 2: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/92c6765fe2cc4a20a4a8eddc997ecc5c
+2026-10-01T16:43:40Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T16:48:43Z execução 3: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/36c40038b1aa47dd81d453011da14dee
+2026-10-01T16:49:25Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T16:54:27Z execução 4: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/a1d70d865edb48308d3f7e350a477d8b
+2026-10-01T16:55:09Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:36:12Z retomada após renovação da sessão do Learner Lab (pausa desde 16:55); CloudWatch NumberOfMessagesReceived sem recebimentos entre 16:55 e 18:35 (venenosa com 4 recebimentos)
+2026-10-01T18:36:12Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:36:18Z execução 5: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/6a04f33082d540488cc1cc212c82e723
+2026-10-01T18:36:44Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:37:14Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:37:45Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:38:14Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:38:44Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:39:14Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:39:44Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:40:13Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:40:43Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:41:13Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:41:43Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:42:12Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:42:17Z execução 6: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/2bb9e9f805344bada6fb6ca12355eea5
+2026-10-01T18:42:44Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:43:13Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:43:42Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:44:12Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:44:41Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:45:10Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:45:38Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:46:07Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:46:36Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:47:05Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:47:34Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:48:03Z batches.fifo vis=0 proc=0 | dlq.fifo vis=1 proc=0
+  bat_e152d07a7983a72449ccfcfaf55f0a09c40d4d769fe1a75dde36bf964b215c61 AUSENTE
+  bat_0778f80143b8dcc16b446c153caf8c514a8dead34ca8ca48ab141b659f1a21dc {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:42:32.544Z", "version": "4"}
+2026-10-01T18:48:07Z contagem depois:
+DATASET#dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c#FACT#TS#signal_bucket#20261001 600000
+TOTAL 600000
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=0
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=1 em processamento=0

@@ -1,0 +1,54 @@
+Ambiente da rodada de 2026-10-01 (tarde), gerado por consultas somente leitura em 2026-10-01T16:46:07Z
+
+# sts get-caller-identity (usuário omitido)
+ arn:aws:sts::080158589617:assumed-role/voclabs/<usuário do Learner Lab>
+
+# imagens do repositório view-show-ingestion (push, tags, digest)
+2026-09-30T13:40:14.941000+00:00 None sha256:c4212a84ac2fe16c3969ab12fab681bce9b933d051ab2577a42f4231caf01a3f
+2026-09-30T13:40:15.032000+00:00 None sha256:8ae06b214d89caf1f4acddf37ba54f33e84d1fee1156fe6f3923fcb177df3636
+2026-09-30T13:40:15.517000+00:00 ['f602bb29e2a2'] sha256:6ea93cb3034875dea16fa1e4e03e2d082ca7c58689c65b7f6626974421a0936a
+2026-10-01T14:47:20.108000+00:00 None sha256:e548e5668abc7b023dd151bfca01c4a2e1cd087c34d28c3a3201a8600ca288e0
+2026-10-01T14:47:20.112000+00:00 None sha256:558000d56ebec984dd17e42360d8ce5b812fcacdc653dd85f6b687cc638540bd
+2026-10-01T14:47:20.668000+00:00 ['fix-0939869a'] sha256:6388b7984cb5cf182c6858b89dcd05e8a074466929c3c1a540c9d6ea52dbba96
+
+# task definitions de ingestão: revisões, imagem, registro
+view-show-ingestion-import:7 2048 8192 2026-10-01T14:47:50.396000+00:00 view-show-ingestion@sha256:6388b7984cb5cf182c6858b89dcd05e8a074466929c3c1a540c9d6ea52dbba96
+view-show-ingestion-import:6 2048 8192 2026-09-30T14:29:33.741000+00:00 view-show-ingestion@sha256:6ea93cb3034875dea16fa1e4e03e2d082ca7c58689c65b7f6626974421a0936a
+view-show-ingestion-incremental-ingest:5 1024 2048 2026-10-01T14:47:50.782000+00:00 view-show-ingestion@sha256:6388b7984cb5cf182c6858b89dcd05e8a074466929c3c1a540c9d6ea52dbba96
+view-show-ingestion-incremental-ingest:4 1024 2048 2026-09-30T13:40:17.870000+00:00 view-show-ingestion@sha256:6ea93cb3034875dea16fa1e4e03e2d082ca7c58689c65b7f6626974421a0936a
+view-show-ingestion-incremental-export:5 1024 2048 2026-10-01T14:47:51.167000+00:00 view-show-ingestion@sha256:6388b7984cb5cf182c6858b89dcd05e8a074466929c3c1a540c9d6ea52dbba96
+view-show-ingestion-incremental-export:4 1024 2048 2026-09-30T13:40:17.857000+00:00 view-show-ingestion@sha256:6ea93cb3034875dea16fa1e4e03e2d082ca7c58689c65b7f6626974421a0936a
+view-show-ingestion-backfill:6 2048 8192 2026-10-01T14:47:51.547000+00:00 view-show-ingestion@sha256:6388b7984cb5cf182c6858b89dcd05e8a074466929c3c1a540c9d6ea52dbba96
+view-show-ingestion-backfill:5 2048 8192 2026-09-30T13:40:17.792000+00:00 view-show-ingestion@sha256:6ea93cb3034875dea16fa1e4e03e2d082ca7c58689c65b7f6626974421a0936a
+view-show-ingestion-sync:5 1024 2048 2026-10-01T14:47:51.937000+00:00 view-show-ingestion@sha256:6388b7984cb5cf182c6858b89dcd05e8a074466929c3c1a540c9d6ea52dbba96
+view-show-ingestion-sync:4 1024 2048 2026-09-30T13:40:17.791000+00:00 view-show-ingestion@sha256:6ea93cb3034875dea16fa1e4e03e2d082ca7c58689c65b7f6626974421a0936a
+
+# API (não alterada nesta rodada)
+ view-show-iac-api-task:4 view-show-iac-api:6d40f7e2e6b2
+
+# serviços do cluster view-show-iac-cluster
+ ['view-show-analysis-worker', 'view-show-iac-api-service']
+
+# agendamentos (Target)
+view-show-ingestion-incremental-ingest DISABLED rate(5 minutes) view-show-ingestion-incremental-ingest:4
+view-show-ingestion-incremental-export DISABLED rate(15 minutes) view-show-ingestion-incremental-export:4
+view-show-ingestion-sync DISABLED rate(15 minutes) view-show-ingestion-sync:4
+
+# filas: visíveis, em processamento, visibility_timeout, maxReceiveCount
+view-show-ingestion-analysis 0 0 300 5
+view-show-ingestion-analysis-dlq 0 0 30 -
+view-show-ingestion-incremental-batches-dlq.fifo 0 0 300 -
+view-show-ingestion-incremental-batches.fifo 0 1 300 5
+view-show-ingestion-scheduler-dlq 0 0 30 -
+
+# tabela operacional
+ view-show-iac-operacional [{'AttributeName': 'pk', 'KeyType': 'HASH'}, {'AttributeName': 'sk', 'KeyType': 'RANGE'}] PAY_PER_REQUEST
+
+# manifesto ACTIVE
+ activeDatasetVersion dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c
+
+# API Gateway
+ [('view-show-api-service-tls', 'https://0s1i46nqgi.execute-api.us-east-1.amazonaws.com')]
+
+# commit do repositÃ³rio na rodada
+0939869 docs(testes-carga): consolida a seÃ§Ã£o 12 em uma tabela de implementaÃ§Ã£o e evidÃªncias

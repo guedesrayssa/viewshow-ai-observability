@@ -1,0 +1,970 @@
+{
+ "QueryExecutions": [
+  {
+   "QueryExecutionId": "63149442-883a-41d8-b235-de3d719b5da7",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"live_event\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/63149442-883a-41d8-b235-de3d719b5da7.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:55.571000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:56.307000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 542,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 736,
+    "QueryQueueTimeInMillis": 96,
+    "ServicePreProcessingTimeInMillis": 72,
+    "QueryPlanningTimeInMillis": 157,
+    "ServiceProcessingTimeInMillis": 26,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "86b168e1-338f-41df-a85d-9fe3ebc554f6",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"signal_bucket\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/86b168e1-338f-41df-a85d-9fe3ebc554f6.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:55:21.896000-03:00",
+    "CompletionDateTime": "2026-10-04T18:55:22.591000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 565,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 695,
+    "QueryQueueTimeInMillis": 66,
+    "ServicePreProcessingTimeInMillis": 40,
+    "QueryPlanningTimeInMillis": 180,
+    "ServiceProcessingTimeInMillis": 24,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "e92c0a15-8fcd-4d1a-a1b2-22ad47bbb462",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"live_event_sde\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"snapshot_date\" = '2026-10-04'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/e92c0a15-8fcd-4d1a-a1b2-22ad47bbb462.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:57.883000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:58.570000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 524,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 687,
+    "QueryQueueTimeInMillis": 63,
+    "ServicePreProcessingTimeInMillis": 75,
+    "QueryPlanningTimeInMillis": 152,
+    "ServiceProcessingTimeInMillis": 25,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "87e2208f-31ff-40ad-a902-584c2f25f1ef",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"apollo_run\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/87e2208f-31ff-40ad-a902-584c2f25f1ef.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:21.105000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:21.804000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 542,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 699,
+    "QueryQueueTimeInMillis": 61,
+    "ServicePreProcessingTimeInMillis": 66,
+    "QueryPlanningTimeInMillis": 156,
+    "ServiceProcessingTimeInMillis": 30,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "dd33d9fd-79ae-4ac4-975a-793348d30894",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"geo_hourly\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/dd33d9fd-79ae-4ac4-975a-793348d30894.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:45.179000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:45.860000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 509,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 681,
+    "QueryQueueTimeInMillis": 88,
+    "ServicePreProcessingTimeInMillis": 53,
+    "QueryPlanningTimeInMillis": 162,
+    "ServiceProcessingTimeInMillis": 31,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "284e0a92-cc9e-4553-9986-8794988fc8e7",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"app_error_model\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/284e0a92-cc9e-4553-9986-8794988fc8e7.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:25.690000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:26.438000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 516,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 748,
+    "QueryQueueTimeInMillis": 93,
+    "ServicePreProcessingTimeInMillis": 74,
+    "QueryPlanningTimeInMillis": 191,
+    "ServiceProcessingTimeInMillis": 65,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "48f6bc6a-da94-4538-9616-1548da73f8e5",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"app_error_version\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/48f6bc6a-da94-4538-9616-1548da73f8e5.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:27.957000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:28.661000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 569,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 704,
+    "QueryQueueTimeInMillis": 73,
+    "ServicePreProcessingTimeInMillis": 38,
+    "QueryPlanningTimeInMillis": 157,
+    "ServiceProcessingTimeInMillis": 24,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "f582db31-8552-4432-9811-7b819386cea7",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"signal_meta\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"snapshot_date\" = '2026-10-04'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/f582db31-8552-4432-9811-7b819386cea7.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:57:51.694000-03:00",
+    "CompletionDateTime": "2026-10-04T18:57:52.431000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 575,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 737,
+    "QueryQueueTimeInMillis": 55,
+    "ServicePreProcessingTimeInMillis": 75,
+    "QueryPlanningTimeInMillis": 173,
+    "ServiceProcessingTimeInMillis": 32,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "5ad37081-a6d1-4b07-8ac2-c6c1345954fa",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"app_error\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/5ad37081-a6d1-4b07-8ac2-c6c1345954fa.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:23.312000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:24.055000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 587,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 743,
+    "QueryQueueTimeInMillis": 59,
+    "ServicePreProcessingTimeInMillis": 76,
+    "QueryPlanningTimeInMillis": 263,
+    "ServiceProcessingTimeInMillis": 21,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "15ca70a0-8126-4eab-894f-f02f7a312660",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"finding_status_log\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/15ca70a0-8126-4eab-894f-f02f7a312660.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:42.832000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:43.683000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 686,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 851,
+    "QueryQueueTimeInMillis": 56,
+    "ServicePreProcessingTimeInMillis": 73,
+    "QueryPlanningTimeInMillis": 294,
+    "ServiceProcessingTimeInMillis": 36,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "6ec8ff44-e570-4336-9ff2-6de12b36d449",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"collector_run\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/6ec8ff44-e570-4336-9ff2-6de12b36d449.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:36.043000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:36.715000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 473,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 672,
+    "QueryQueueTimeInMillis": 88,
+    "ServicePreProcessingTimeInMillis": 82,
+    "QueryPlanningTimeInMillis": 133,
+    "ServiceProcessingTimeInMillis": 29,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "2cd7c9b3-ecda-4eb4-84ed-fa5589154744",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"player_hourly\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/2cd7c9b3-ecda-4eb4-84ed-fa5589154744.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:34:05.916000-03:00",
+    "CompletionDateTime": "2026-10-04T18:34:06.882000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 783,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 966,
+    "QueryQueueTimeInMillis": 93,
+    "ServicePreProcessingTimeInMillis": 65,
+    "QueryPlanningTimeInMillis": 212,
+    "ServiceProcessingTimeInMillis": 25,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "c46a4540-3323-47d7-8397-d10fc3351485",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"prom_run\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/c46a4540-3323-47d7-8397-d10fc3351485.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:34:08.156000-03:00",
+    "CompletionDateTime": "2026-10-04T18:34:08.857000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 485,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 701,
+    "QueryQueueTimeInMillis": 94,
+    "ServicePreProcessingTimeInMillis": 85,
+    "QueryPlanningTimeInMillis": 153,
+    "ServiceProcessingTimeInMillis": 37,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "1e3c9a68-4f69-4b75-9774-6ebb2da6f91f",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"device_hourly\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/1e3c9a68-4f69-4b75-9774-6ebb2da6f91f.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:38.285000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:39.002000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 570,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 717,
+    "QueryQueueTimeInMillis": 70,
+    "ServicePreProcessingTimeInMillis": 48,
+    "QueryPlanningTimeInMillis": 165,
+    "ServiceProcessingTimeInMillis": 29,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "dee4638f-c287-40fa-b59d-5c3efd31cbf2",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"cdn_vod_shadow\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/dee4638f-c287-40fa-b59d-5c3efd31cbf2.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:32.523000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:33.765000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 868,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 1242,
+    "QueryQueueTimeInMillis": 62,
+    "ServicePreProcessingTimeInMillis": 256,
+    "QueryPlanningTimeInMillis": 194,
+    "ServiceProcessingTimeInMillis": 56,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "38f0d89e-c11c-414d-bcd8-9d0d83d123fd",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"live_qoe_hourly\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/38f0d89e-c11c-414d-bcd8-9d0d83d123fd.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:34:00.201000-03:00",
+    "CompletionDateTime": "2026-10-04T18:34:01.070000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 582,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 869,
+    "QueryQueueTimeInMillis": 159,
+    "ServicePreProcessingTimeInMillis": 67,
+    "QueryPlanningTimeInMillis": 170,
+    "ServiceProcessingTimeInMillis": 61,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "59141cf9-13bf-4189-9f0c-fc42756f108c",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"live_active_15min\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/59141cf9-13bf-4189-9f0c-fc42756f108c.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:50.721000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:51.541000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 651,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 820,
+    "QueryQueueTimeInMillis": 62,
+    "ServicePreProcessingTimeInMillis": 63,
+    "QueryPlanningTimeInMillis": 204,
+    "ServiceProcessingTimeInMillis": 44,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "798d2858-69ac-4323-b9b9-e055683d5a08",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"incidents\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/798d2858-69ac-4323-b9b9-e055683d5a08.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:47.513000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:48.788000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 946,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 1275,
+    "QueryQueueTimeInMillis": 55,
+    "ServicePreProcessingTimeInMillis": 219,
+    "QueryPlanningTimeInMillis": 214,
+    "ServiceProcessingTimeInMillis": 55,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "eaf3a979-0f88-46ae-878a-79582e5e64aa",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"error_cat_hourly\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/eaf3a979-0f88-46ae-878a-79582e5e64aa.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:40.593000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:41.314000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 515,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 721,
+    "QueryQueueTimeInMillis": 123,
+    "ServicePreProcessingTimeInMillis": 60,
+    "QueryPlanningTimeInMillis": 159,
+    "ServiceProcessingTimeInMillis": 23,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "7bb24873-1c08-41b1-8485-a20b1d0955ef",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"rpaas_run\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/7bb24873-1c08-41b1-8485-a20b1d0955ef.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:34:10.472000-03:00",
+    "CompletionDateTime": "2026-10-04T18:34:11.354000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 762,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 882,
+    "QueryQueueTimeInMillis": 58,
+    "ServicePreProcessingTimeInMillis": 44,
+    "QueryPlanningTimeInMillis": 233,
+    "ServiceProcessingTimeInMillis": 18,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "fa329be2-ada0-4a8e-880a-b52e9316b5dd",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"ca_run\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/fa329be2-ada0-4a8e-880a-b52e9316b5dd.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:30.229000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:30.962000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 590,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 733,
+    "QueryQueueTimeInMillis": 59,
+    "ServicePreProcessingTimeInMillis": 46,
+    "QueryPlanningTimeInMillis": 197,
+    "ServiceProcessingTimeInMillis": 38,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "0f59f047-4302-4e82-bc6d-77bd891c5a2e",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"nr_run\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/0f59f047-4302-4e82-bc6d-77bd891c5a2e.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:34:02.488000-03:00",
+    "CompletionDateTime": "2026-10-04T18:34:03.753000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 912,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 1265,
+    "QueryQueueTimeInMillis": 65,
+    "ServicePreProcessingTimeInMillis": 241,
+    "QueryPlanningTimeInMillis": 271,
+    "ServiceProcessingTimeInMillis": 47,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  },
+  {
+   "QueryExecutionId": "1293ee3a-6bb1-4bc3-a50f-d8280be6d354",
+   "Query": "SELECT COUNT(*) AS \"row_count\" FROM \"view_show_ingestion\".\"live_error_attr_hourly\" WHERE \"dataset_version\" = 'dsv_ae4105943fc793f26e26b5195cd2a34c2dec73eb114bc6b7df6127b495880a0c' AND \"year\" = '2026' AND \"month\" = '08' AND \"day\" = '29'",
+   "StatementType": "DML",
+   "ResultConfiguration": {
+    "OutputLocation": "s3://view-show-ingestion-145497513075-us-east-1/athena-results/1293ee3a-6bb1-4bc3-a50f-d8280be6d354.csv",
+    "EncryptionConfiguration": {
+     "EncryptionOption": "SSE_S3"
+    }
+   },
+   "ResultReuseConfiguration": {
+    "ResultReuseByAgeConfiguration": {
+     "Enabled": false
+    }
+   },
+   "QueryExecutionContext": {
+    "Database": "view_show_ingestion"
+   },
+   "Status": {
+    "State": "SUCCEEDED",
+    "SubmissionDateTime": "2026-10-04T18:33:53.165000-03:00",
+    "CompletionDateTime": "2026-10-04T18:33:54.134000-03:00"
+   },
+   "Statistics": {
+    "EngineExecutionTimeInMillis": 772,
+    "DataScannedInBytes": 0,
+    "TotalExecutionTimeInMillis": 969,
+    "QueryQueueTimeInMillis": 88,
+    "ServicePreProcessingTimeInMillis": 74,
+    "QueryPlanningTimeInMillis": 209,
+    "ServiceProcessingTimeInMillis": 35,
+    "ResultReuseInformation": {
+     "ReusedPreviousResult": false
+    }
+   },
+   "WorkGroup": "view-show-ingestion",
+   "EngineVersion": {
+    "SelectedEngineVersion": "AUTO",
+    "EffectiveEngineVersion": "Athena engine version 3"
+   },
+   "SubstatementType": "SELECT"
+  }
+ ]
+}

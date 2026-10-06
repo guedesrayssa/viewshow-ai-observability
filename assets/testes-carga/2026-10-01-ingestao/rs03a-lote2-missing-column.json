@@ -1,0 +1,18 @@
+[
+  {
+    "variant": "missing-column",
+    "batchId": "bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a",
+    "windowStart": "2026-10-01T12:30:00.000Z",
+    "windowEnd": "2026-10-01T12:45:00.000Z",
+    "rows": 150000,
+    "sizeBytes": 58902,
+    "sha256": "ddad0d76b36e80a4c4f9e4a631b1249173d9bd73a712e755b5d8c064b02bdc46",
+    "schemaDifferences": [
+      "missing required column value"
+    ],
+    "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T123000000Z/batch_id=bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a/manifest.json",
+    "manifestVersionId": ".EPDpl2gWgm16qjacFHMcoEAU4d9bRyS",
+    "publishedAt": "2026-10-01T16:08:59.717Z",
+    "dryRun": false
+  }
+]

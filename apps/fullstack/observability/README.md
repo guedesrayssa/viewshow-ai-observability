@@ -63,6 +63,11 @@ apps/fullstack/observability/
 
 O dashboard **View Show — API (RED)** é provisionado automaticamente e exibe
 latência p95, throughput, erros por segundo e uso de CPU a partir do Prometheus.
+Na AWS, o dashboard **View Show — Ingestão** usa o data source CloudWatch para
+mostrar esses mesmos quatro indicadores no contexto batch, além de duração por
+etapa, freshness, filas, DLQs, qualidade de dados e eventos operacionais. O
+seletor único `Operação` (`operation`) associa o texto do comando à família ECS
+correspondente, mantendo métricas da aplicação e CPU na mesma operação.
 
 O Grafana lê `grafana/provisioning/datasources/datasources.yml` a cada subida e
 sincroniza os três data sources. Eles ficam marcados como somente leitura: para
@@ -118,51 +123,57 @@ SSM.
 
 O CI renderiza o mesmo bootstrap sem acessar a AWS. Para repetir essa validação
 localmente, execute `./deploy-learner-lab.sh --validate-only` nesse diretório.
+O renderer `validate-user-data.sh` produz `user-data.sh` para inspeção da sintaxe
+e `user-data.sh.gz` como payload enviado à EC2. O modo `--validate-only` renderiza
+e empacota os cinco dashboards (AWS, ingestão, Agentic AWS, aplicação e API), verifica
+placeholders não substituídos no bootstrap, sintaxe shell e o limite de 16 KiB
+do payload comprimido. Esses arquivos são gerados no diretório temporário do
+script e removidos ao sair. A validação local não comprova aceite das consultas
+pelo CloudWatch, execução do bootstrap na EC2 ou saúde do Grafana na AWS.
 
 ### Aplicação completa com Terraform
 
-Pré-requisitos: Terraform, Docker, Node, AWS CLI, Session Manager plugin e uma
+Pré-requisitos: Terraform, Node 22, AWS CLI v2, Session Manager plugin e uma
 sessão válida do AWS Academy. As credenciais temporárias são as mesmas usadas
-pela infraestrutura fullstack.
+pela infraestrutura fullstack. A partir da raiz do repositório, use o fluxo
+protegido:
 
 ```bash
-cd apps/fullstack
-aws sts get-caller-identity
-terraform init
-terraform plan \
-  -var='deployment_namespace=view-show' \
-  -var='observabilidade_habilitada=true' \
-  -out=view-show-observabilidade.tfplan
-terraform apply view-show-observabilidade.tfplan
+node apps/scripts/aws-learner-lab.mjs grafana
 ```
 
-Sem o opt-in explícito, o Terraform não cria nenhum recurso de observabilidade
-na AWS. O plano acima cria uma EC2 `view-show-observabilidade` do tipo `t3.medium`
+Se a observabilidade estiver ausente, o comando gera e valida um plano salvo,
+confirma a conta Learner Lab e pede `PROVISION GRAFANA <account-id>` antes do
+`apply`. O plano cria uma EC2 `view-show-observabilidade` do tipo `t3.medium`
 com 30 GiB de gp3 criptografado, instala o Docker Compose e inicia os cinco
 componentes. Não é necessário clonar o
 repositório na instância: os arquivos versionados são compactados e enviados
 pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
 `running`.
 
-Por padrão nenhuma porta administrativa fica aberta à internet. Abra o túnel
-SSM que o output entrega:
+Se a EC2 já existir, o comando não planeja nem aplica novamente: verifica por
+SSM o marcador do bootstrap, os cinco containers, a saúde do Grafana, o data
+source CloudWatch e os dashboards `view-show-ingestion` e
+`view-show-agentic-aws`. Uma instância existente que falhe nesses checks não é
+substituída automaticamente. Depois da validação, o script mostra a URL
+<http://localhost:3002>, o usuário `admin`, a senha apenas no terminal
+interativo e abre o túnel SSM até `Ctrl+C`.
+
+Ollama é opcional nesse fluxo. `Ollama/LLM: NOT_CONFIGURED` não falha o comando
+nem reduz a saúde da observabilidade; `CONFIGURED` confirma somente a presença
+da configuração local, não a conectividade. Para imprimir apenas a senha, sem
+provisionar nem abrir o túnel:
 
 ```bash
-terraform output grafana_acesso
-terraform output -raw grafana_senha
-
-aws ssm start-session \
-  --target "$(terraform output -raw observabilidade_instancia_id)" \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters portNumber=3000,localPortNumber=3002 \
-  --region us-east-1
+node apps/scripts/aws-learner-lab.mjs grafana --senha
 ```
 
-Enquanto a sessão estiver aberta, acesse <http://localhost:3002> com o usuário
-`admin` e a senha impressa pelo segundo comando. Os dashboards provisionados
+Enquanto a sessão estiver aberta, acesse <http://localhost:3002>. Os dashboards provisionados
 ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
 gerenciados e **View Show — Application Observability** cobre RED, Web Vitals,
-logs correlacionados e alertas da aplicação.
+logs correlacionados e alertas da aplicação. **View Show — Ingestão** cobre a
+saúde e o diagnóstico do pipeline batch diretamente no CloudWatch, e **View
+Show — Agentic AWS** cobre o worker de análise e seus logs.
 
 Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
 
@@ -198,14 +209,27 @@ O Terraform injeta `OTEL_SERVICE_NAME=view-show-api` e o endereço privado do Te
 na task ECS somente quando o opt-in está ativo. A API TypeScript inicializa o
 SDK OpenTelemetry quando esse endpoint existe.
 
-Os futuros tasks de ingestão e análise devem reutilizar o security group da
-aplicação e definir `OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
-`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes em
-`apps/backend/ingestion-data` e `apps/backend/agentic` já implementam o contrato,
-mas não existem tasks ou entrypoints desses workers nesta entrega.
+Para habilitar o caminho OTLP opcional dos workers Python na AWS, as tasks devem
+ter acesso ao receptor pelo security group da aplicação e definir
+`OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
+`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes Python
+em `apps/backend/ingestion-data` e `apps/backend/agentic` fornecem hooks para esse
+caminho. A ingestão já possui CLI e tasks ECS; suas métricas batch no dashboard
+de ingestão usam EMF/CloudWatch, independentemente de habilitar OTLP.
 Os workers escrevem logs JSON em `stdout`; em ECS, mantenha o driver `awslogs`
 para enviá-los ao CloudWatch sem acoplar o processamento à disponibilidade do
 Loki.
+
+O dashboard de ingestão está versionado e teve aceite funcional na AWS em
+04/10/2026 após as correções do MR 90. Throughput usa duas séries distintas, `RecordsRead/300` e
+`RecordsWritten/300`, e erros/s usam o mesmo período CloudWatch fixo de 300 s.
+A versão corrigida foi implantada; sete painéis de métricas e um de logs foram
+validados pela API para as quatro operações, e o navegador executou as cinco
+expressões com dimensões interpoladas. O [JSON de validação](../../../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json)
+e a [captura sanitizada](../../../assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png)
+estão versionados. As métricas da ingestão sem amostras na janela histórica e
+os pontos esparsos de SQS não comprovam desempenho ou sucesso do benchmark;
+os logs foram validados em uma janela posterior à recriação dos grupos.
 
 ### Operação e custo no Learner Lab
 
@@ -240,17 +264,21 @@ Para enviar traces da API rodando no host, aponte o exportador OTLP para
 
 ## Coletar métricas dos workers Python
 
-Os serviços de ingestão e análise usam OTLP/HTTP em vez de expor um servidor
-Prometheus dentro de processos batch. Com a stack local no ar:
+Os hooks Python de ingestão e análise podem enviar métricas e traces por
+OTLP/HTTP, sem expor um servidor Prometheus dentro de processos batch. Para
+habilitar esse caminho opcional com a stack local no ar:
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4320
 export OTEL_SERVICE_NAME=view-show-ingestion # ou view-show-agentic
 ```
 
-O Alloy preserva `service.name` como label `service_name`. Como esses dois
-diretórios ainda não contêm lógica de negócio, painéis e alertas permanecem sem
-séries até que um entrypoint real chame os hooks de observabilidade.
+O Alloy preserva `service.name` como label `service_name`. Os diretórios de
+ingestão e análise já contêm lógica de negócio; a biblioteca Python da camada
+agêntica fornece hooks para consumidores Python. Séries no Prometheus e traces
+no Tempo dependem da chamada desses hooks durante a execução e do exportador
+OTLP configurado. A existência do código ou do endpoint não comprova coleta;
+o dashboard de ingestão consulta as métricas EMF no CloudWatch.
 
 ## Limites da implantação
 
