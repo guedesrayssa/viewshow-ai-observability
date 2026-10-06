@@ -1,0 +1,45 @@
+STATUS: Success
+START=1790820440 END=1790822241 EXIT=99
+
+Carga da API consumida pelo frontend — modo soak
+Taxa de chegada (iterações/s): base 15, pico 15; 27001 iterações, 27005 requisições, 15.0 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 1957; timeouts do cliente (>8000 ms): 1; iterações descartadas: 0
+Status HTTP (0 = timeout/erro de rede): 0=1  200=23998  202=1049  503=1957
+
+THRESHOLDS: 1 reprovados, 112 aprovados
+  ✗ front_api_client_timeout_total count==0
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list        6502    0.00     100.00      18      36     198     100.0
+incidents_chart       2143    0.00     100.00      16      35     257     100.0
+dashboard_overview    4353    0.00     100.00      21      49     259      30.8
+incident_diagnosis    4314    0.02      99.98      24      55     315     100.0
+incident_events       2649    0.00     100.00      23      46     248     100.0
+global_events         2675    0.00     100.00      16      34     212     100.0
+monitoring_overview   1957    0.00     100.00      10      19     118       0.0
+auth_session          1048    0.00     100.00       6       9      36       0.0
+argus_integration      311    0.00     100.00       9      32     425       0.0
+rum_beacon            1049    0.00     100.00       6      10      61       0.0
+
+Por fase            req   falha%   p50ms   p95ms   p99ms
+t00                   4500    0.02      20      73     957
+t01                   4500    0.00      19      33      99
+t02                   4500    0.00      19      35     119
+t03                   4500    0.00      19      37     177
+t04                   4500    0.00      19      35     199
+t05                   4501    0.00      20      38     203
+
+Observações:
+  - monitoring_overview: 1957/1957 respostas 503 DATA_UNAVAILABLE — a rota não está sendo exercitada (sem projeção)
+  - incidents_list: 6502 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+  - 22635 respostas 200 com snapshot desatualizado (STALE_SNAPSHOT/delayed)
+
+Resumo detalhado: /opt/loadtest/results/soak15/resumo-front-api-soak.json
+time="2026-10-01T02:37:21Z" level=error msg="thresholds on metrics 'front_api_client_timeout_total' have been crossed"
+---ERR---
+time="2026-10-01T02:37:21Z" level=error msg="thresholds on metrics 'front_api_client_timeout_total' have been crossed"
+Request Failed: 1
+---VMSTAT---
+gerador: us+sy médio=1.8% max=8.0% steal médio=0.5% amostras=361
+

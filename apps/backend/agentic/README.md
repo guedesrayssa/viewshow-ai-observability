@@ -84,6 +84,31 @@ evidência fraca, previsão preventiva e caso sem evidência. Resultado medido,
 recomendação de modelo e limitações em
 [`avaliacao-modelos.md`](../../../artefatos/arquitetura/implementacao/camada-agentica/avaliacao-modelos.md).
 
+### Teste de carga
+
+`scripts/load-llm.ts` exercita `investigate()` sob concorrência crescente
+(modelo fechado: C clientes, cada um dispara a próxima investigação quando a
+anterior volta), no mesmo formato do worker com `WORKER_CONCURRENCY`.
+
+```bash
+npm run load:llm                                                     # fake, linha de base
+LLM_PROVIDER=ollama LLM_MODEL_ID=llama3.1 STAGES=1,2,4 REQUESTS_PER_STAGE=20 npm run load:llm
+LLM_PROVIDER=bedrock LLM_MODEL_ID=<id> STAGES=1,2 REQUESTS_PER_STAGE=10 npm run load:llm   # custa dinheiro
+```
+
+Variáveis: `STAGES` (1,2,4,8,16), `REQUESTS_PER_STAGE` (50),
+`FAKE_LATENCY_MS` (800), `FAKE_JITTER_MS` (400), `FAKE_ERROR_RATE` (0),
+`LLM_TIMEOUT_MS` (120000), `LLM_MAX_TOKENS` (2500), `P95_MAX_MS` (sem limite),
+`ERROR_RATE_MAX` (0,05) e `OUT`. O resultado vai para `resultados-carga/`
+(ignorado pelo git). Uma rodada que vira evidência é gravada com
+`OUT=../../../assets/testes-carga/<data>-llm/resumo-<rotulo>.json` e ganha um
+`metadados-<rotulo>.json` ao lado. O processo sai com código 1 se algum
+estágio violar um limite. A estatística (`scripts/load-stats.ts`) tem teste
+próprio em `tests/load-stats.test.ts`.
+
+Resultados e limitações em
+[`testes-carga-llm.md`](../../../artefatos/arquitetura/implementacao/camada-agentica/testes-carga-llm.md).
+
 ### Validação local de observabilidade do Ollama
 
 Suba a stack de observabilidade existente:

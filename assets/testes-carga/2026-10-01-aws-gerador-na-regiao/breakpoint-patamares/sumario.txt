@@ -1,0 +1,60 @@
+STATUS: Success
+START=1790822323 END=1790822811 EXIT=99
+
+Carga da API consumida pelo frontend — modo breakpoint
+Taxa de chegada (iterações/s): base 1, pico 50; 13017 iterações, 13021 requisições, 26.7 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 726; timeouts do cliente (>8000 ms): 2163; iterações descartadas: 237
+Status HTTP (0 = timeout/erro de rede): 0=2163  200=9719  202=397  502=16  503=726
+
+THRESHOLDS: 47 reprovados, 72 aprovados
+  ✗ front_api_contract_failed_rate{rota:incident_events} rate<0.02
+  ✗ http_req_failed rate<0.02
+  ✗ http_req_failed{rota:global_events} rate<0.02
+  ✗ dropped_iterations count==0
+  ✗ http_req_failed{rota:auth_session} rate<0.02
+  ✗ front_api_contract_success_rate rate>0.98
+  ✗ http_req_duration{status:200} p(95)<2000
+  ✗ http_req_duration{status:200} p(99)<5000
+  ✗ http_req_failed{rota:incidents_list} rate<0.02
+  ✗ http_req_duration{rota:incident_events} p(95)<2000
+  ✗ http_req_duration{rota:incident_events} p(99)<5000
+  ✗ checks rate>0.98
+  … e mais 35 (lista completa no JSON)
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list        3063   16.19      83.81     964    8000    8001      83.8
+incidents_chart       1093   18.57      81.43     961    8001    8001      81.4
+dashboard_overview    2113   16.52      83.48    1390    8001    8001      41.6
+incident_diagnosis    2072   16.60      83.40    1408    8001    8001      83.4
+incident_events       1305   16.55      83.45    1473    8001    8001      83.4
+global_events         1350   16.81      83.19    1261    8001    8001      83.2
+monitoring_overview    876   17.12      82.88     712    8001    8001       0.0
+auth_session           549   16.94      83.06     280    8001    8001       0.0
+argus_integration      118   16.95      83.05     372    8001    8001       0.0
+rum_beacon             478   16.95      83.05     244    8001    8001       0.0
+
+Por fase            req   falha%   p50ms   p95ms   p99ms
+r10                    554    0.00      21      86     288
+r15                    875    0.00      20      64     266
+r20                   1175    0.00      19      49     253
+r25                   1475    0.00      19     110     308
+r30                   1775    0.00      21     503    1241
+r35                   1996   24.85    3554    8001    8001
+r40                   2296   29.88    4986    8001    8001
+r50                   2871   34.73    4153    8001    8001
+
+Observações:
+  - monitoring_overview: 726/876 respostas 503 DATA_UNAVAILABLE
+  - 237 de 13254 chegadas (1.8%) não foram emitidas: os VUs esgotaram (latência alta segura cada VU) e a carga efetiva ficou abaixo da pretendida; se o gerador não está saturado, aumente MAX_VUS
+  - incidents_list: 2567 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+  - 9161 respostas 200 com snapshot desatualizado (STALE_SNAPSHOT/delayed)
+
+Resumo detalhado: /opt/loadtest/results/bp2/resumo-front-api-breakpoint.json
+time="2026-10-01T02:46:51Z" level=error msg="thresholds on metrics 'checks, dropped_iterations, front_api_client_timeout_total, front_api_contract_failed_rate{rota:argus_integration}, front_api_contract_failed_rate{rota:auth_session}, front_api_contract_failed_rate{rota:dashboard_overview}, front_api_contract_failed_rate{rota:global_events}, front_api_contract_failed_rate{rota:incident_diagnosis}, front_api_contract_failed_rate{rota:incident_events}, front_api_contract_failed_rate{rota:incidents_chart}, front_api_contract_failed_rate{rota:incidents_list}, front_api_contract_failed_rate{rota:monitoring_overview}, front_api_contract_failed_rate{rota:rum_beacon}, front_api_contract_success_rate, http_req_duration{rota:argus_integration}, http_req_duration{rota:auth_session}, http_req_duration{rota:dashboard_overview}, http_req_duration{rota:global_events}, http_req_duration{rota:incident_diagnosis}, http_req_duration{rota:incident_events}, http_req_duration{rota:incidents_chart}, http_req_duration{rota:incidents_list}, http_req_duration{rota:monitoring_overview}, http_req_duration{rota:rum_beacon}, http_req_duration{status:200}, http_req_failed, http_req_failed{rota:argus_integration}, http_req_failed{rota:auth_session}, http_req_failed{rota:dashboard_overview}, http_req_failed{rota:global_events}, http_req_failed{rota:incident_diagnosis}, http_req_failed{rota:incident_events}, http_req_failed{rota:incidents_chart}, http_req_failed{rota:incidents_list}, http_req_failed{rota:monitoring_overview}, http_req_failed{rota:rum_beacon}' have been crossed"
+---ERR---
+time="2026-10-01T02:46:51Z" level=error msg="thresholds on metrics 'checks, dropped_iterations, front_api_client_timeout_total, front_api_contract_failed_rate{rota:argus_integration}, front_api_contract_failed_rate{rota:auth_session}, front_api_contract_failed_rate{rota:dashboard_overview}, front_ap
+Request Failed: 2163
+---VMSTAT---
+gerador: us+sy médio=3.3% max=7.0% steal médio=0.6% amostras=98
+

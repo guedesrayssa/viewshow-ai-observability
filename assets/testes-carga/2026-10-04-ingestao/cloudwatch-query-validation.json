@@ -1,0 +1,38 @@
+{
+  "accountId": "992648496097",
+  "region": "us-east-1",
+  "windowUtc": {
+    "start": "2026-09-29T23:45:00Z",
+    "end": "2026-09-30T03:00:00Z"
+  },
+  "queries": [
+    {
+      "name": "read_rate",
+      "expression": "SUM(records_read)/300",
+      "status": "Complete",
+      "pointCount": 0,
+      "messages": null
+    },
+    {
+      "name": "write_rate",
+      "expression": "SUM(records_written)/300",
+      "status": "Complete",
+      "pointCount": 0,
+      "messages": null
+    },
+    {
+      "name": "error_rate",
+      "expression": "(SUM(failed_runs)+SUM(partial_runs))/300",
+      "status": "Complete",
+      "pointCount": 0,
+      "messages": null
+    },
+    {
+      "name": "rejection_rate",
+      "expression": "SUM(rejected_records)/300",
+      "status": "Complete",
+      "pointCount": 0,
+      "messages": null
+    }
+  ]
+}

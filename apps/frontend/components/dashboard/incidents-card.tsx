@@ -15,6 +15,7 @@ import { buttonClasses } from "@/components/ui/button-classes";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IncidentData } from "@/lib/dashboard-data";
+import { incidentsHref } from "@/lib/routes";
 
 export function IncidentsCard({ incidents }: { incidents: IncidentData[] }) {
   return (
@@ -30,8 +31,10 @@ export function IncidentsCard({ incidents }: { incidents: IncidentData[] }) {
         ))}
       </div>
 
+      {/* A lista de Incidentes abre em todo o período, como esta: o "Ver
+          todos" e o item da navegação levam à mesma lista. */}
       <Link
-        href="/incidentes"
+        href={incidentsHref()}
         className={buttonClasses({
           variant: "gradient",
           fullWidth: true,

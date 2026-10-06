@@ -76,7 +76,7 @@ if [[ -z "${INSTANCE_ID}" || "${INSTANCE_ID}" == "None" ]]; then
     --metadata-options HttpTokens=required,HttpEndpoint=enabled,HttpPutResponseHopLimit=2 \
     --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=30,VolumeType=gp3,Encrypted=true,DeleteOnTermination=true}' \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${INSTANCE_NAME}},{Key=Projeto,Value=view-show},{Key=Camada,Value=observabilidade},{Key=ManagedBy,Value=deploy-learner-lab}]" \
-    --user-data "file://${WORK_DIR}/user-data.sh" \
+    --user-data "fileb://${WORK_DIR}/user-data.sh.gz" \
     --query 'Instances[0].InstanceId' \
     --output text)"
 else

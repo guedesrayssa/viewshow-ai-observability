@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { EventsChart } from "@/app/(painel)/eventos/events-chart";
-import { BufferingChart } from "@/app/(painel)/evidencias/buffering-chart";
+import { EventsChart } from "@/app/(painel)/incidentes/_eventos/events-chart";
+import { BufferingChart } from "@/app/(painel)/incidentes/detalhe/buffering-chart";
 
 describe("ARGUS unavailable aggregates", () => {
   it("does not leave the Event chart in an endless loading state", () => {

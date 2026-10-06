@@ -10,42 +10,56 @@ const PRESETS = Object.freeze({
     ingestion_snapshot_prepare_enabled: "false",
     import_canonical_first_enabled: "false",
     import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "180",
+  }),
+  "loadtest-20000": Object.freeze({
+    ingestion_snapshot_page_size: "500",
+    ingestion_snapshot_prepare_enabled: "false",
+    import_canonical_first_enabled: "false",
+    import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "20000",
   }),
   "phase1-2000": Object.freeze({
     ingestion_snapshot_page_size: "2000",
     ingestion_snapshot_prepare_enabled: "true",
     import_canonical_first_enabled: "false",
     import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "180",
   }),
   "phase1-5000": Object.freeze({
     ingestion_snapshot_page_size: "5000",
     ingestion_snapshot_prepare_enabled: "true",
     import_canonical_first_enabled: "false",
     import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "180",
   }),
   "phase1-10000": Object.freeze({
     ingestion_snapshot_page_size: "10000",
     ingestion_snapshot_prepare_enabled: "true",
     import_canonical_first_enabled: "false",
     import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "180",
   }),
   "phase2-2000": Object.freeze({
     ingestion_snapshot_page_size: "2000",
     ingestion_snapshot_prepare_enabled: "true",
     import_canonical_first_enabled: "true",
     import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "180",
   }),
   "phase2-5000": Object.freeze({
     ingestion_snapshot_page_size: "5000",
     ingestion_snapshot_prepare_enabled: "true",
     import_canonical_first_enabled: "true",
     import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "180",
   }),
   "phase2-10000": Object.freeze({
     ingestion_snapshot_page_size: "10000",
     ingestion_snapshot_prepare_enabled: "true",
     import_canonical_first_enabled: "true",
     import_hot_materialization_enabled: "false",
+    rate_limit_por_minuto: "180",
   }),
 });
 const BASE_VARIABLES = Object.freeze({
@@ -75,6 +89,7 @@ const BASE_VARIABLES = Object.freeze({
   acoes_alarme_ingestao: [],
 });
 const CHANGE_ALLOWLIST = new Set([
+  "aws_appautoscaling_target.api",
   "terraform_data.ingestion_image[0]",
   "terraform_data.imagem",
   "terraform_data.build_painel",
@@ -93,6 +108,12 @@ const CHANGE_ALLOWLIST = new Set([
   "aws_cloudwatch_metric_alarm.ingestion_mysql_retries",
   "aws_cloudwatch_metric_alarm.ingestion_mysql_preflight_failures",
   "aws_cloudwatch_metric_alarm.ingestion_mysql_page_duration",
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-cpu"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-memory"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-storage"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-cpu"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-memory"]',
+  'aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-storage"]',
   "aws_s3_bucket_lifecycle_configuration.ingestion",
   "aws_cloudwatch_metric_alarm.ingestion_disk_usage_warning",
   "aws_cloudwatch_metric_alarm.ingestion_disk_usage_critical",
@@ -174,7 +195,7 @@ const KNOWN_OUTPUTS = new Set([
 ]);
 const PROTECTED_TASK_CONTRACTS = Object.freeze({
   "aws_ecs_task_definition.api": Object.freeze({
-    containerName: "view-show-api",
+    containerName: "view-show-iac-api",
     diskBudgetBytes: null,
     snapshot: false,
     ephemeralStorage: false,
@@ -323,6 +344,9 @@ function validatesProtectedTaskContract(change, address, preset) {
     address === "aws_ecs_task_definition.api"
       ? {
           IMPORT_CANONICAL_FIRST_ENABLED: selected.import_canonical_first_enabled,
+          ...(selected.rate_limit_por_minuto
+            ? { RATE_LIMIT_PER_MINUTE: selected.rate_limit_por_minuto }
+            : {}),
         }
       : {
           INGESTION_DISK_BUDGET_BYTES: contract.diskBudgetBytes,
@@ -678,6 +702,58 @@ function validateChecks(checks) {
   });
 }
 
+function onlyProviderEmptyDefaultsDrifted(resourceDrift) {
+  if (!Array.isArray(resourceDrift)) return false;
+  return resourceDrift.every((resource) => {
+    if (!isObject(resource) || !isObject(resource.change)) return false;
+    const { address, change } = resource;
+    const before = structuredClone(change.before);
+    const after = change.after;
+    if (!isObject(before) || !isObject(after)) return false;
+
+    if (address === "aws_appautoscaling_target.api") {
+      if (before.tags !== null || !isObject(after.tags) || Object.keys(after.tags).length !== 0) {
+        return false;
+      }
+      before.tags = {};
+    } else if (address === "aws_ecs_service.api") {
+      if (before.desired_count !== 1 || after.desired_count !== 2) return false;
+      before.desired_count = 2;
+    } else if (/^aws_cloudwatch_metric_alarm\.ingestion_resource_utilization\["(?:backfill|sync)-(?:cpu|memory|storage)"\]$/.test(address)) {
+      const defaults = {
+        alarm_actions: [],
+        dimensions: {},
+        insufficient_data_actions: [],
+        ok_actions: [],
+      };
+      for (const [key, normalized] of Object.entries(defaults)) {
+        if (before[key] !== null || !isDeepStrictEqual(after[key], normalized)) return false;
+        before[key] = normalized;
+      }
+      if (!Array.isArray(before.metric_query) || !Array.isArray(after.metric_query) || before.metric_query.length !== after.metric_query.length) {
+        return false;
+      }
+      for (let index = 0; index < before.metric_query.length; index += 1) {
+        if (
+          before.metric_query[index]?.period !== null ||
+          after.metric_query[index]?.period !== 0
+        ) return false;
+        before.metric_query[index].period = 0;
+      }
+    } else if (/^aws_scheduler_schedule\.ingestion_(?:sync|incremental_export|incremental_ingest)$/.test(address)) {
+      const beforeTarget = before.target?.[0]?.ecs_parameters?.[0];
+      const afterTarget = after.target?.[0]?.ecs_parameters?.[0];
+      if (beforeTarget?.tags !== null || !isObject(afterTarget?.tags) || Object.keys(afterTarget.tags).length !== 0) {
+        return false;
+      }
+      beforeTarget.tags = {};
+    } else {
+      return false;
+    }
+    return isDeepStrictEqual(before, after);
+  });
+}
+
 function validatePlanEnvelope(plan) {
   if (!isObject(plan)) {
     reject("invalid plan structure");
@@ -718,9 +794,9 @@ function validatePlanEnvelope(plan) {
   }
   if (
     Object.hasOwn(plan, "resource_drift") &&
-    (!Array.isArray(plan.resource_drift) || plan.resource_drift.length > 0)
+    !onlyProviderEmptyDefaultsDrifted(plan.resource_drift)
   ) {
-    reject("resource drift is not allowed");
+    reject("resource drift is not an approved provider empty-default normalization");
     return false;
   }
   for (const category of [

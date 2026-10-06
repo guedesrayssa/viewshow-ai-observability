@@ -94,6 +94,9 @@ function testEnvironment({
   },
   observabilityInstanceId = "i-0123456789abcdef0",
   grafanaPassword = "TestGrafanaPassword123",
+  grafanaHealthStatus = "Success",
+  analysisManifest = null,
+  isTty = true,
   bastionAccess = { instancia_id: "i-0abc1234def567890" },
   bastionPrivateIp = "10.0.10.20",
   updateGateAccepted = true,
@@ -442,6 +445,29 @@ function testEnvironment({
     if (command === "aws" && args[0] === "sqs" && args[1] === "send-message") {
       return { status: 0, stdout: JSON.stringify({ MessageId: "message-canary-1" }), stderr: "" };
     }
+    if (command === "aws" && args[0] === "ssm" && args[1] === "send-command") {
+      return {
+        status: 0,
+        stdout: JSON.stringify({ Command: { CommandId: "command-grafana-health" } }),
+        stderr: "",
+      };
+    }
+    if (command === "aws" && args[0] === "ssm" && args[1] === "wait") {
+      return { status: 0, stdout: "", stderr: "" };
+    }
+    if (command === "aws" && args[0] === "ssm" && args[1] === "get-command-invocation") {
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          Status: grafanaHealthStatus,
+          StandardOutputContent: grafanaHealthStatus === "Success"
+            ? "GRAFANA_READY CLOUDWATCH_READY DASHBOARDS=view-show-ingestion,view-show-agentic-aws\n"
+            : "",
+          StandardErrorContent: grafanaHealthStatus === "Success" ? "" : "health check failed",
+        }),
+        stderr: "",
+      };
+    }
     if (command === "terraform" && args.includes("output")) {
       if (args.at(-1) === "grafana_acesso") {
         return { status: 0, stdout: JSON.stringify(grafanaAccess), stderr: "" };
@@ -708,12 +734,13 @@ function testEnvironment({
         String(target) === path.join(root, ".git")
           ? gitMetadataStat
           : (stateStat ?? defaultStateStat),
-      readFile: () =>
-        stateFileText ??
-        JSON.stringify({
-          lineage: stateLineage,
-          serial: applied ? postApplyStateSerial : localStateSerial,
-        }),
+      readFile: (target) => String(target).endsWith("analysis-worker.json") && analysisManifest !== null
+        ? JSON.stringify(analysisManifest)
+        : stateFileText ??
+          JSON.stringify({
+            lineage: stateLineage,
+            serial: applied ? postApplyStateSerial : localStateSerial,
+          }),
       readPlanFile: () => {
         planReadCount += 1;
         return planReadCount > 1 && replacementPlanBytes !== null
@@ -845,6 +872,7 @@ function testEnvironment({
       resolveArtifactPath: (target) => target,
       currentUserId: () => 1000,
       now: () => new Date("2026-09-21T12:34:56.789Z"),
+      isTty: () => isTty,
     },
     directories,
     permissions,
@@ -871,42 +899,49 @@ const UPDATE_PRESETS = Object.freeze({
     ingestion_snapshot_prepare_enabled: false,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   },
   "phase1-2000": {
     ingestion_snapshot_page_size: 2000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   },
   "phase1-5000": {
     ingestion_snapshot_page_size: 5000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   },
   "phase1-10000": {
     ingestion_snapshot_page_size: 10000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   },
   "phase2-2000": {
     ingestion_snapshot_page_size: 2000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   },
   "phase2-5000": {
     ingestion_snapshot_page_size: 5000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   },
   "phase2-10000": {
     ingestion_snapshot_page_size: 10000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   },
 });
 
@@ -1018,10 +1053,16 @@ function postApplyState(preset) {
                 name: "IMPORT_CANONICAL_FIRST_ENABLED",
                 value: String(UPDATE_PRESETS[preset].import_canonical_first_enabled),
               },
+              ...(UPDATE_PRESETS[preset].rate_limit_por_minuto
+                ? [{
+                    name: "RATE_LIMIT_PER_MINUTE",
+                    value: String(UPDATE_PRESETS[preset].rate_limit_por_minuto),
+                  }]
+                : []),
             ],
             API_IMAGE,
             [],
-            "view-show-api",
+            "view-show-iac-api",
           ),
           task(
             "aws_ecs_task_definition.ingestion_backfill",
@@ -1243,7 +1284,7 @@ test("grafana starts a private SSM tunnel from validated Terraform outputs on ev
     assert.equal(result.status, 0, platform);
     assert.ok(a.logs.includes("Grafana URL: http://localhost:3002"), platform);
     assert.ok(a.logs.includes("Grafana user: admin"), platform);
-    assert.ok(a.logs.some((line) => line.includes("grafana_senha")), platform);
+    assert.ok(a.logs.includes("Grafana password: TestGrafanaPassword123"), platform);
     const tunnel = a.calls.find(
       (call) => call.command === "aws" && call.args[0] === "ssm" && call.args[1] === "start-session",
     );
@@ -1280,6 +1321,107 @@ test("grafana --senha prints the local password without starting a tunnel", asyn
     a.calls.some((call) => call.command === "aws"),
     false,
   );
+});
+
+test("grafana provisions missing observability before opening the tunnel", async () => {
+  const a = testEnvironment({ observabilityEndpoint: null, isTty: true });
+  const confirmations = [];
+
+  const result = await runLearnerLab({
+    ...a.options,
+    step: "grafana",
+    confirm: async (phrase) => {
+      confirmations.push(phrase);
+      return true;
+    },
+  });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const plans = a.calls.filter(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
+  assert.equal(plans.length, 1);
+  assert.ok(plans[0].args.includes("-var=observabilidade_habilitada=true"));
+  assert.ok(a.calls.some(
+    (call) => call.command === "terraform" && call.args.includes("apply"),
+  ));
+  assert.deepEqual(confirmations, ["PROVISION GRAFANA 111122223333"]);
+  assert.ok(a.logs.includes("Infraestrutura: CREATED"));
+});
+
+test("grafana reuses healthy observability without planning", async () => {
+  const a = testEnvironment({ isTty: true });
+
+  const result = await runLearnerLab({ ...a.options, step: "grafana" });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  assert.equal(
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    false,
+  );
+  assert.ok(a.logs.includes("Infraestrutura: EXISTING"));
+  assert.ok(a.logs.includes("Grafana: READY"));
+  assert.ok(a.logs.includes("CloudWatch: READY"));
+  assert.ok(a.logs.includes("Dashboard: view-show-ingestion"));
+});
+
+test("grafana reports optional Ollama and prints password only in a TTY", async () => {
+  const interactive = testEnvironment({ isTty: true, analysisManifest: null });
+  assert.equal(
+    (await runLearnerLab({ ...interactive.options, step: "grafana" })).status,
+    0,
+    interactive.logs.join("\n"),
+  );
+  assert.ok(interactive.logs.includes("Grafana password: TestGrafanaPassword123"));
+  assert.ok(interactive.logs.includes("Ollama/LLM: NOT_CONFIGURED"));
+
+  const configured = testEnvironment({
+    isTty: true,
+    analysisManifest: { modelId: "qwen2.5:7b" },
+  });
+  assert.equal(
+    (await runLearnerLab({ ...configured.options, step: "grafana" })).status,
+    0,
+    configured.logs.join("\n"),
+  );
+  assert.ok(configured.logs.includes("Ollama/LLM: CONFIGURED"));
+
+  const automated = testEnvironment({ isTty: false, analysisManifest: null });
+  assert.equal(
+    (await runLearnerLab({ ...automated.options, step: "grafana" })).status,
+    0,
+    automated.logs.join("\n"),
+  );
+  assert.equal(
+    automated.logs.some((line) => line.includes("TestGrafanaPassword123")),
+    false,
+  );
+});
+
+test("grafana never replaces an existing unhealthy instance", async () => {
+  const a = testEnvironment({ grafanaHealthStatus: "Failed" });
+  let clock = 0;
+
+  const result = await runLearnerLab({
+    ...a.options,
+    step: "grafana",
+    monotonic: () => {
+      clock += 200;
+      return clock;
+    },
+    sleep: async () => {},
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    false,
+  );
+  assert.equal(
+    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    false,
+  );
+  assert.match(a.logs.join("\n"), /did not become healthy|health check failed/i);
 });
 
 test("analysis-bridge opens the private Ollama bridge without touching ECS on every supported OS", async () => {
@@ -3481,8 +3623,13 @@ test("update creates its protected state backup through a Linux directory descri
   );
 });
 
-test("update fails closed where a protected state backup cannot be anchored safely", async () => {
+test("update fails closed when the macOS protected state backup helper fails", async () => {
   const a = updateEnvironment({ platform: "darwin" });
+  const execute = a.options.execute;
+  a.options.execute = (command, args, options) =>
+    command === "python3"
+      ? { status: 1, stdout: "", stderr: "backup helper failed" }
+      : execute(command, args, options);
 
   const result = await runLearnerLab({
     ...a.options,
@@ -3496,7 +3643,7 @@ test("update fails closed where a protected state backup cannot be anchored safe
     a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
     false,
   );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform backups/i);
+  assert.match(a.logs.join("\n"), /secure Terraform state backup could not be created/i);
 });
 
 test("update rejects untrusted or replaced backup paths before copy and apply", async () => {

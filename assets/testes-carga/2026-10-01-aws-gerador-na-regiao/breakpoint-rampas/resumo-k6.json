@@ -1,0 +1,1978 @@
+{
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 368395.146395
+  },
+  "metrics": {
+    "http_reqs{status:504}": {
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    },
+    "front_api_partial_total{rota:global_events}": {
+      "values": {
+        "count": 857,
+        "rate": 2.3263064358646814
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "http_req_duration{rota:global_events}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 5851.431084158445,
+        "min": 6.534366,
+        "med": 8000.0605225,
+        "max": 8032.526051,
+        "p(90)": 8000.9436497,
+        "p(95)": 8001.0595005,
+        "p(99)": 8002.2007550200005
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "http_reqs{rota:global_events}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 1868,
+        "rate": 5.0706422662721415
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{status:503}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 565,
+        "rate": 1.533679272186167
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{stage:s2_r25}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 2.8502004173371245,
+        "count": 1050
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 0,
+        "p(99)": 2.19497092,
+        "avg": 0.08436852891920374,
+        "min": 0,
+        "med": 0,
+        "max": 9.017557,
+        "p(90)": 0
+      }
+    },
+    "front_api_partial_total{rota:rum_beacon}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{status:202}": {
+      "contains": "default",
+      "values": {
+        "count": 307,
+        "rate": 0.8333443124976164
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "front_api_data_unavailable_total{rota:monitoring_overview}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 565,
+        "rate": 1.533679272186167
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{stage:s6_r150}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 8000.9985197,
+        "p(95)": 8001.08218355,
+        "p(99)": 8003.27389391,
+        "avg": 6971.221286523013,
+        "min": 606.010232,
+        "med": 8000.332276499999,
+        "max": 8032.526051
+      },
+      "thresholds": {
+        "max>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{status:401}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{rota:argus_integration}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 4928.500109658064,
+        "min": 5.649181,
+        "med": 6460.091419,
+        "max": 8009.645737,
+        "p(90)": 8000.937307,
+        "p(95)": 8001.0294279,
+        "p(99)": 8001.61768708
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 10.38742,
+        "p(90)": 0.1079648,
+        "p(95)": 0.13592919999999975,
+        "p(99)": 0.39125048000000023,
+        "avg": 0.0949357374812839,
+        "min": 0.028861,
+        "med": 0.077413
+      }
+    },
+    "front_api_contract_failed_rate{rota:incident_diagnosis}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5456110154905336,
+        "passes": 1585,
+        "fails": 1320
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_duration{stage:s3_r50}": {
+      "thresholds": {
+        "max>=0": {
+          "ok": true
+        }
+      },
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 8001.0794583,
+        "avg": 2762.929171921078,
+        "min": 4.077027,
+        "med": 1782.4554055,
+        "max": 8009.739299,
+        "p(90)": 8000.5402365,
+        "p(95)": 8000.85304225
+      }
+    },
+    "vus_max": {
+      "values": {
+        "value": 700,
+        "min": 100,
+        "max": 700
+      },
+      "type": "gauge",
+      "contains": "default"
+    },
+    "http_req_duration{rota:monitoring_overview}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 8001.05336425,
+        "p(99)": 8002.106792750001,
+        "avg": 5068.399002751224,
+        "min": 5.180729,
+        "med": 8000.0370905,
+        "max": 8020.500175,
+        "p(90)": 8000.935945499999
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "front_api_contract_failed_rate{rota:dashboard_overview}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5339412360688957,
+        "passes": 1581,
+        "fails": 1380
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_failed{rota:monitoring_overview}": {
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5391517128874388,
+        "passes": 661,
+        "fails": 565
+      }
+    },
+    "http_req_duration{rota:global_events_page_2}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 0,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 0,
+        "avg": 0,
+        "min": 0,
+        "med": 0
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": true
+        },
+        "p(99)<5000": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{stage:s5_r100}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 13.884547747313706,
+        "count": 5115
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_partial_total{rota:argus_integration}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_partial_total{rota:incident_diagnosis}": {
+      "values": {
+        "count": 1320,
+        "rate": 3.5831090960809564
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "front_api_data_unavailable_total{rota:incident_events}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_failed{stage:s4_r75}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5657256914741945,
+        "passes": 1984,
+        "fails": 1523
+      },
+      "thresholds": {
+        "rate>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_rate_limited_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "count": 0
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{rota:incident_diagnosis}": {
+      "contains": "time",
+      "values": {
+        "p(90)": 8000.8990276,
+        "p(95)": 8001.0472694,
+        "p(99)": 8001.682567639999,
+        "avg": 6264.733170677097,
+        "min": 5.185167,
+        "med": 8000.064816,
+        "max": 8023.265791
+      },
+      "thresholds": {
+        "p(99)<5000": {
+          "ok": false
+        },
+        "p(95)<2000": {
+          "ok": false
+        }
+      },
+      "type": "trend"
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 70279260,
+        "rate": 190771.40588775644
+      }
+    },
+    "http_req_failed{rota:incident_events}": {
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "passes": 988,
+        "fails": 831,
+        "rate": 0.543155579989005
+      }
+    },
+    "http_reqs{rota:incidents_list}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 4286,
+        "rate": 11.634246655911348
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_data_unavailable_total{rota:global_events_page_2}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_failed{stage:s6_r150}": {
+      "values": {
+        "rate": 0.7051759133964818,
+        "passes": 4169,
+        "fails": 1743
+      },
+      "thresholds": {
+        "rate>=0": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "http_req_duration{stage:s2_r25}": {
+      "contains": "time",
+      "values": {
+        "p(90)": 48.023991300000006,
+        "p(95)": 160.6625855,
+        "p(99)": 389.7582846399999,
+        "avg": 37.83991476095237,
+        "min": 4.608737,
+        "med": 20.341224,
+        "max": 642.016868
+      },
+      "thresholds": {
+        "max>=0": {
+          "ok": true
+        }
+      },
+      "type": "trend"
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 7999.964159,
+        "max": 8032.438612,
+        "p(90)": 8000.8511606,
+        "p(95)": 8000.9727226,
+        "p(99)": 8002.10975136,
+        "avg": 5661.08380737284,
+        "min": 3.782244
+      }
+    },
+    "http_req_failed{rota:global_events}": {
+      "values": {
+        "rate": 0.541220556745182,
+        "passes": 1011,
+        "fails": 857
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "http_req_failed{rota:global_events_page_2}": {
+      "thresholds": {
+        "rate<0.02": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 0
+      }
+    },
+    "http_req_failed{stage:s3_r50}": {
+      "values": {
+        "rate": 0.21219281663516068,
+        "passes": 449,
+        "fails": 1667
+      },
+      "thresholds": {
+        "rate>=0": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "front_api_contract_success_rate": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "fails": 9664,
+        "rate": 0.4639747074158301,
+        "passes": 8365
+      },
+      "thresholds": {
+        "rate>0.98": {
+          "ok": false
+        }
+      }
+    },
+    "http_reqs{status:502}": {
+      "values": {
+        "count": 29,
+        "rate": 0.07871982105026344
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "http_req_failed{rota:argus_integration}": {
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.4967741935483871,
+        "passes": 77,
+        "fails": 78
+      }
+    },
+    "http_reqs{rota:incident_diagnosis}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2905,
+        "rate": 7.885554487966044
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_data_unavailable_total{rota:rum_beacon}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{stage:s5_r100}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 3.95997,
+        "med": 8000.141709,
+        "max": 8026.063491,
+        "p(90)": 8000.9487824,
+        "p(95)": 8001.065409299999,
+        "p(99)": 8003.40623342,
+        "avg": 6400.555041176167
+      },
+      "thresholds": {
+        "max>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{status:200}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 7497,
+        "rate": 20.350430979787067
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_partial_total{rota:incidents_chart}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 704,
+        "rate": 1.9109915179098433
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_partial_total{rota:auth_session}": {
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "http_req_duration{stage:s1_r10}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 23.100256,
+        "max": 239.107427,
+        "p(90)": 34.5643016,
+        "p(95)": 66.65978579999995,
+        "p(99)": 212.74669931999955,
+        "avg": 29.475442650455943,
+        "min": 5.947875
+      },
+      "thresholds": {
+        "max>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_contract_failed_rate{rota:incident_events}": {
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.543155579989005,
+        "passes": 988,
+        "fails": 831
+      }
+    },
+    "front_api_contract_failed_rate{rota:auth_session}": {
+      "contains": "default",
+      "values": {
+        "rate": 0.5297619047619048,
+        "passes": 356,
+        "fails": 316
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate"
+    },
+    "http_req_failed{rota:rum_beacon}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5404191616766467,
+        "passes": 361,
+        "fails": 307
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_failed": {
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5359063938335275,
+        "passes": 9664,
+        "fails": 8369
+      }
+    },
+    "http_req_duration{rota:dashboard_overview}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 5813.736018468095,
+        "min": 5.414166,
+        "med": 8000.056673,
+        "max": 8025.666006,
+        "p(90)": 8000.934607,
+        "p(95)": 8001.053559,
+        "p(99)": 8002.4123186
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "front_api_contract_failed_rate{rota:global_events}": {
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.541220556745182,
+        "passes": 1011,
+        "fails": 857
+      }
+    },
+    "http_req_failed{rota:dashboard_overview}": {
+      "contains": "default",
+      "values": {
+        "fails": 1380,
+        "rate": 0.5339412360688957,
+        "passes": 1581
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate"
+    },
+    "http_req_failed{stage:s1_r10}": {
+      "thresholds": {
+        "rate>=0": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 329
+      }
+    },
+    "http_reqs{rota:argus_integration}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 155,
+        "rate": 0.42074387113071837
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{rota:monitoring_overview}": {
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 1226,
+        "rate": 3.3279482968145855
+      }
+    },
+    "front_api_partial_total{rota:global_events_page_2}": {
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "count": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "front_api_partial_total{rota:incident_events}": {
+      "contains": "default",
+      "values": {
+        "rate": 2.2557300445782387,
+        "count": 831
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "http_req_failed{stage:s2_r25}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "passes": 0,
+        "fails": 1050,
+        "rate": 0
+      },
+      "thresholds": {
+        "rate>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_partial_total{rota:incidents_list}": {
+      "contains": "default",
+      "values": {
+        "count": 2007,
+        "rate": 5.4479545119958175
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "data_sent": {
+      "values": {
+        "count": 3835580,
+        "rate": 10411.59211117136
+      },
+      "type": "counter",
+      "contains": "data"
+    },
+    "dropped_iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2100,
+        "rate": 5.700400834674249
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": false
+        }
+      }
+    },
+    "front_api_data_unavailable_total{rota:auth_session}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_client_timeout_total": {
+      "contains": "default",
+      "values": {
+        "count": 9635,
+        "rate": 26.15398192480304
+      },
+      "thresholds": {
+        "count==0": {
+          "ok": false
+        }
+      },
+      "type": "counter"
+    },
+    "http_req_duration{status:200}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 3548.933729,
+        "max": 7994.528477,
+        "p(90)": 6091.167754000001,
+        "p(95)": 6657.441634799999,
+        "p(99)": 7402.44221808,
+        "avg": 3164.2539803338673,
+        "min": 4.077027
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "front_api_partial_total{rota:monitoring_overview}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{stage:s6_r150}": {
+      "contains": "default",
+      "values": {
+        "count": 5912,
+        "rate": 16.04798558790198
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "front_api_data_unavailable_total{rota:incident_diagnosis}": {
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "http_reqs{rota:incident_events}": {
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 4.937632913463076,
+        "count": 1819
+      }
+    },
+    "front_api_data_unavailable_total{rota:dashboard_overview}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{rota:dashboard_overview}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2961,
+        "rate": 8.037565176890691
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 4.37505,
+        "med": 8000.581071,
+        "max": 8033.023614,
+        "p(90)": 8001.4783796,
+        "p(95)": 8001.6052420000005,
+        "p(99)": 8003.92282028,
+        "avg": 5663.58672460514
+      }
+    },
+    "front_api_contract_failed_rate{rota:monitoring_overview}": {
+      "contains": "default",
+      "values": {
+        "rate": 0.5391517128874388,
+        "passes": 661,
+        "fails": 565
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate"
+    },
+    "http_reqs{stage:s4_r75}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 3507,
+        "rate": 9.519669393905996
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{rota:incidents_chart}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 1469,
+        "rate": 3.987566107684034
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{rota:auth_session}": {
+      "contains": "time",
+      "values": {
+        "p(95)": 8001.067806,
+        "p(99)": 8001.6921402299995,
+        "avg": 4758.5010159300555,
+        "min": 4.077027,
+        "med": 8000.0499165,
+        "max": 8021.811174,
+        "p(90)": 8000.9186266
+      },
+      "thresholds": {
+        "p(99)<5000": {
+          "ok": false
+        },
+        "p(95)<2000": {
+          "ok": false
+        }
+      },
+      "type": "trend"
+    },
+    "front_api_data_unavailable_total{rota:global_events}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_data_unavailable_total{rota:argus_integration}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_contract_failed_rate{rota:incidents_chart}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5207624234172906,
+        "passes": 765,
+        "fails": 704
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_reqs{status:500}": {
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "front_api_data_unavailable_total{rota:incidents_chart}": {
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter"
+    },
+    "http_reqs{status:0}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 9635,
+        "rate": 26.15398192480304
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_contract_failed_rate{rota:argus_integration}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.4967741935483871,
+        "passes": 77,
+        "fails": 78
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 5661.259194548633,
+        "min": 3.95997,
+        "med": 8000.051709,
+        "max": 8032.526051,
+        "p(90)": 8000.9309454,
+        "p(95)": 8001.0513348,
+        "p(99)": 8002.1942866399995
+      }
+    },
+    "http_req_duration{stage:s4_r75}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 8021.811174,
+        "p(90)": 8000.93155,
+        "p(95)": 8001.0516071,
+        "p(99)": 8001.9314884000005,
+        "avg": 6341.778761954081,
+        "min": 532.096412,
+        "med": 8000.068737
+      },
+      "thresholds": {
+        "max>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_partial_total": {
+      "values": {
+        "count": 5856,
+        "rate": 15.895974898977334
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "http_req_duration{expected_response:true}": {
+      "contains": "time",
+      "values": {
+        "avg": 2987.642393048273,
+        "min": 4.077027,
+        "med": 3179.325464,
+        "max": 7994.528477,
+        "p(90)": 5973.7613646,
+        "p(95)": 6576.179431199999,
+        "p(99)": 7389.41985384
+      },
+      "type": "trend"
+    },
+    "front_api_data_unavailable_total": {
+      "contains": "default",
+      "values": {
+        "count": 565,
+        "rate": 1.533679272186167
+      },
+      "type": "counter"
+    },
+    "front_api_contract_failed_rate": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.53602529258417,
+        "passes": 9664,
+        "fails": 8365
+      }
+    },
+    "http_reqs{stage:s3_r50}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2116,
+        "rate": 5.743832460081291
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{rota:incidents_list}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 8000.931331,
+        "p(95)": 8001.050896,
+        "p(99)": 8002.6873856,
+        "avg": 5422.376086439333,
+        "min": 3.95997,
+        "med": 8000.049280499999,
+        "max": 8031.827433
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 18029,
+        "rate": 48.939298403972394
+      }
+    },
+    "http_reqs{status:429}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{rota:rum_beacon}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 668,
+        "rate": 1.813270360743999
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.6404427495116733,
+        "passes": 34427,
+        "fails": 19328
+      },
+      "thresholds": {
+        "rate>0.98": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_duration{rota:incidents_chart}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 7998.275765,
+        "max": 8023.285027,
+        "p(90)": 8000.9285038,
+        "p(95)": 8001.039837,
+        "p(99)": 8001.91705608,
+        "avg": 5359.413177455405,
+        "min": 4.359416
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_failed{rota:incidents_list}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5317312179188054,
+        "passes": 2279,
+        "fails": 2007
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_reqs{rota:auth_session}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 672,
+        "rate": 1.8241282670957597
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "vus": {
+      "values": {
+        "value": 34,
+        "min": 0,
+        "max": 700
+      },
+      "type": "gauge",
+      "contains": "default"
+    },
+    "http_reqs{rota:global_events_page_2}": {
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    },
+    "front_api_contract_failed_rate{rota:rum_beacon}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5404191616766467,
+        "passes": 361,
+        "fails": 307
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_duration{rota:incident_events}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 8000.9337454,
+        "p(95)": 8001.0405651,
+        "p(99)": 8001.506754739999,
+        "avg": 6190.4377918961,
+        "min": 5.057603,
+        "med": 8000.057247,
+        "max": 8013.846273
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "http_reqs{stage:s1_r10}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 329,
+        "rate": 0.893062797432299
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "front_api_partial_total{rota:dashboard_overview}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 137,
+        "rate": 0.37188329254779623
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_failed{stage:s5_r100}": {
+      "contains": "default",
+      "values": {
+        "rate": 0.5986314760508309,
+        "passes": 3062,
+        "fails": 2053
+      },
+      "thresholds": {
+        "rate>=0": {
+          "ok": true
+        }
+      },
+      "type": "rate"
+    },
+    "http_req_failed{rota:auth_session}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5297619047619048,
+        "passes": 356,
+        "fails": 316
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_failed{rota:incidents_chart}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5207624234172906,
+        "passes": 765,
+        "fails": 704
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "front_api_data_unavailable_total{rota:incidents_list}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs{status:404}": {
+      "thresholds": {
+        "count>=0": {
+          "ok": true
+        }
+      },
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "count": 0
+      }
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 26.33127,
+        "p(90)": 0.000678,
+        "p(95)": 0.0009527999999999956,
+        "p(99)": 2.98672188,
+        "avg": 0.12235687988687535,
+        "min": 0.000214,
+        "med": 0.000317
+      }
+    },
+    "http_req_receiving": {
+      "contains": "time",
+      "values": {
+        "avg": 0.0804514383630014,
+        "min": 0,
+        "med": 0,
+        "max": 17.876348,
+        "p(90)": 0.15854080000000004,
+        "p(95)": 0.3527659999999988,
+        "p(99)": 0.84477824
+      },
+      "type": "trend"
+    },
+    "front_api_stale_snapshot_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 9.15592953112202,
+        "count": 3373
+      }
+    },
+    "front_api_contract_failed_rate{rota:global_events_page_2}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 0
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 0.6540534000000001,
+        "avg": 0.03063882504297678,
+        "min": 0,
+        "med": 0,
+        "max": 22.150734
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 18033,
+        "rate": 48.950156310324154
+      }
+    },
+    "http_req_failed{rota:incident_diagnosis}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.5456110154905336,
+        "passes": 1585,
+        "fails": 1320
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      }
+    },
+    "http_req_duration{rota:rum_beacon}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 4784.332031773955,
+        "min": 4.218356,
+        "med": 8000.066661,
+        "max": 8020.104982,
+        "p(90)": 8000.9469646,
+        "p(95)": 8001.07062725,
+        "p(99)": 8002.4611628699995
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": false
+        },
+        "p(99)<5000": {
+          "ok": false
+        }
+      }
+    },
+    "front_api_contract_failed_rate{rota:incidents_list}": {
+      "values": {
+        "rate": 0.5317312179188054,
+        "passes": 2279,
+        "fails": 2007
+      },
+      "thresholds": {
+        "rate<0.02": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "front_api_has_more_without_cursor_total": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2007,
+        "rate": 5.4479545119958175
+      }
+    }
+  },
+  "setup_data": {
+    "cookie": "<redigido: cookie de sessão>",
+    "incidentIds": []
+  },
+  "root_group": {
+    "groups": [],
+    "checks": [
+        {
+          "name": "incident_diagnosis: resposta de contrato",
+          "path": "::incident_diagnosis: resposta de contrato",
+          "id": "c82e1b7c90c579a18c0f0384d91c3468",
+          "passes": 1320,
+          "fails": 1585
+        },
+        {
+          "name": "incident_diagnosis: X-Request-Id ecoado",
+          "path": "::incident_diagnosis: X-Request-Id ecoado",
+          "id": "ca213d83f26b47d9eac18d410847ba55",
+          "passes": 1320,
+          "fails": 1585
+        },
+        {
+          "name": "incident_diagnosis: sem campo físico vazado",
+          "path": "::incident_diagnosis: sem campo físico vazado",
+          "id": "420b92b2f5592a3e32d4c52aa9c18042",
+          "passes": 1320,
+          "fails": 0
+        },
+        {
+          "path": "::incident_diagnosis: envelope do gateway",
+          "id": "49e51507d74065a29a8935d23e886faa",
+          "passes": 1320,
+          "fails": 0,
+          "name": "incident_diagnosis: envelope do gateway"
+        },
+        {
+          "passes": 307,
+          "fails": 361,
+          "name": "rum_beacon: resposta de contrato",
+          "path": "::rum_beacon: resposta de contrato",
+          "id": "d886fccab7cd7c1b686c724066aa6566"
+        },
+        {
+          "name": "rum_beacon: X-Request-Id ecoado",
+          "path": "::rum_beacon: X-Request-Id ecoado",
+          "id": "23ff9b011f0df58dc5973e4174188759",
+          "passes": 307,
+          "fails": 361
+        },
+        {
+          "name": "incidents_chart: resposta de contrato",
+          "path": "::incidents_chart: resposta de contrato",
+          "id": "c67da55919cc6ee394592ba46a2d8cf9",
+          "passes": 704,
+          "fails": 765
+        },
+        {
+          "fails": 765,
+          "name": "incidents_chart: X-Request-Id ecoado",
+          "path": "::incidents_chart: X-Request-Id ecoado",
+          "id": "12dc4c4b2dc626c4272274e08a1205dd",
+          "passes": 704
+        },
+        {
+          "path": "::incidents_chart: sem campo físico vazado",
+          "id": "d41aa1ce43e69c5fd69d770689b11ede",
+          "passes": 704,
+          "fails": 0,
+          "name": "incidents_chart: sem campo físico vazado"
+        },
+        {
+          "name": "incidents_chart: envelope do gateway",
+          "path": "::incidents_chart: envelope do gateway",
+          "id": "2db4892f90efc5b6e28e03e3ab00ce1b",
+          "passes": 704,
+          "fails": 0
+        },
+        {
+          "name": "incidents_chart: schema de items",
+          "path": "::incidents_chart: schema de items",
+          "id": "46852bdda5ae44c2fc9fa46aec705982",
+          "passes": 704,
+          "fails": 0
+        },
+        {
+          "name": "incidents_list: resposta de contrato",
+          "path": "::incidents_list: resposta de contrato",
+          "id": "fd5e4e26bfba5b6226775378cfeb5416",
+          "passes": 2007,
+          "fails": 2279
+        },
+        {
+          "name": "incidents_list: X-Request-Id ecoado",
+          "path": "::incidents_list: X-Request-Id ecoado",
+          "id": "8210d3f21f8ca544270372d9a5a1f92e",
+          "passes": 2007,
+          "fails": 2279
+        },
+        {
+          "name": "incidents_list: sem campo físico vazado",
+          "path": "::incidents_list: sem campo físico vazado",
+          "id": "4feb435340955ea4b2b471710d7e23a3",
+          "passes": 2007,
+          "fails": 0
+        },
+        {
+          "name": "incidents_list: envelope do gateway",
+          "path": "::incidents_list: envelope do gateway",
+          "id": "357dabe425f060e53ca7978d94b51924",
+          "passes": 2007,
+          "fails": 0
+        },
+        {
+          "path": "::incidents_list: schema de items",
+          "id": "6cc80af1a62f7646521d95769a9d6cd5",
+          "passes": 2007,
+          "fails": 0,
+          "name": "incidents_list: schema de items"
+        },
+        {
+          "name": "dashboard_overview: resposta de contrato",
+          "path": "::dashboard_overview: resposta de contrato",
+          "id": "6901cf8c0f2394523684ecf38b88a454",
+          "passes": 1380,
+          "fails": 1581
+        },
+        {
+          "passes": 1380,
+          "fails": 1581,
+          "name": "dashboard_overview: X-Request-Id ecoado",
+          "path": "::dashboard_overview: X-Request-Id ecoado",
+          "id": "1f2e5f13c2b73cb9e4d72c52c1b8b17a"
+        },
+        {
+          "id": "ec7c9fd5ff99d98b905f2098584bb8d8",
+          "passes": 1380,
+          "fails": 0,
+          "name": "dashboard_overview: sem campo físico vazado",
+          "path": "::dashboard_overview: sem campo físico vazado"
+        },
+        {
+          "passes": 1380,
+          "fails": 0,
+          "name": "dashboard_overview: envelope do gateway",
+          "path": "::dashboard_overview: envelope do gateway",
+          "id": "9f06c4fdff7f5f13c5f3fa443d330eff"
+        },
+        {
+          "path": "::monitoring_overview: resposta de contrato",
+          "id": "5278fed5bcfa378ea5fb6759b2a839a5",
+          "passes": 565,
+          "fails": 661,
+          "name": "monitoring_overview: resposta de contrato"
+        },
+        {
+          "name": "monitoring_overview: X-Request-Id ecoado",
+          "path": "::monitoring_overview: X-Request-Id ecoado",
+          "id": "193f6f94496945b47c875dd60bc0f1b0",
+          "passes": 565,
+          "fails": 661
+        },
+        {
+          "fails": 988,
+          "name": "incident_events: resposta de contrato",
+          "path": "::incident_events: resposta de contrato",
+          "id": "18f8c5dc5e4dce71db49317ccbdc9c06",
+          "passes": 831
+        },
+        {
+          "id": "15e1aac6008bcac5332a34b51bedf066",
+          "passes": 831,
+          "fails": 988,
+          "name": "incident_events: X-Request-Id ecoado",
+          "path": "::incident_events: X-Request-Id ecoado"
+        },
+        {
+          "name": "incident_events: sem campo físico vazado",
+          "path": "::incident_events: sem campo físico vazado",
+          "id": "2bfa7788a03de81c298c7fcb6c356455",
+          "passes": 831,
+          "fails": 0
+        },
+        {
+          "id": "f6685067e98034d8d6c4177c40f9dcbc",
+          "passes": 831,
+          "fails": 0,
+          "name": "incident_events: envelope do gateway",
+          "path": "::incident_events: envelope do gateway"
+        },
+        {
+          "passes": 857,
+          "fails": 1011,
+          "name": "global_events: resposta de contrato",
+          "path": "::global_events: resposta de contrato",
+          "id": "18a0eeb956cd9ca1e036a520d9ea0b66"
+        },
+        {
+          "passes": 857,
+          "fails": 1011,
+          "name": "global_events: X-Request-Id ecoado",
+          "path": "::global_events: X-Request-Id ecoado",
+          "id": "daca9388b1efab379e8c106c07c04377"
+        },
+        {
+          "name": "global_events: sem campo físico vazado",
+          "path": "::global_events: sem campo físico vazado",
+          "id": "970f00152ca5f8307767b6a09000052b",
+          "passes": 857,
+          "fails": 0
+        },
+        {
+          "id": "8042083cf2b7b54d0ce88969395e72d5",
+          "passes": 857,
+          "fails": 0,
+          "name": "global_events: envelope do gateway",
+          "path": "::global_events: envelope do gateway"
+        },
+        {
+          "name": "auth_session: resposta de contrato",
+          "path": "::auth_session: resposta de contrato",
+          "id": "8ef8d55b949b030733ba5f156f10d56c",
+          "passes": 316,
+          "fails": 356
+        },
+        {
+          "name": "auth_session: X-Request-Id ecoado",
+          "path": "::auth_session: X-Request-Id ecoado",
+          "id": "edafc654e9f376e3cd933bf7131370a4",
+          "passes": 316,
+          "fails": 356
+        },
+        {
+          "fails": 0,
+          "name": "auth_session: sem campo físico vazado",
+          "path": "::auth_session: sem campo físico vazado",
+          "id": "05ab26654f303f6dd955ae20cc43a980",
+          "passes": 316
+        },
+        {
+          "path": "::auth_session: envelope do gateway",
+          "id": "f33bd5aae8a6c7d15f9bda01ead0b3d7",
+          "passes": 316,
+          "fails": 0,
+          "name": "auth_session: envelope do gateway"
+        },
+        {
+          "name": "argus_integration: resposta de contrato",
+          "path": "::argus_integration: resposta de contrato",
+          "id": "d02f960802ad0166da31e14999cb303b",
+          "passes": 78,
+          "fails": 77
+        },
+        {
+          "path": "::argus_integration: X-Request-Id ecoado",
+          "id": "9c46247661196caa88f8c64b8b5c7bdc",
+          "passes": 78,
+          "fails": 77,
+          "name": "argus_integration: X-Request-Id ecoado"
+        },
+        {
+          "name": "argus_integration: sem campo físico vazado",
+          "path": "::argus_integration: sem campo físico vazado",
+          "id": "51982aecef90975b000f060b71af6a59",
+          "passes": 78,
+          "fails": 0
+        },
+        {
+          "fails": 0,
+          "name": "argus_integration: envelope do gateway",
+          "path": "::argus_integration: envelope do gateway",
+          "id": "6546ada25a84cf9604de88afdf4913f4",
+          "passes": 78
+        }
+      ],
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)",
+      "p(99)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  }
+}

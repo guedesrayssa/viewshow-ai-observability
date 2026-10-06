@@ -1,31 +1,29 @@
 /**
  * page.tsx
- * Tela de Evidências do View Show.
+ * Endereço antigo da tela de Evidências.
  *
- * Apresenta a hipótese de causa provável de um incidente e organiza as
- * evidências que sustentam o diagnóstico, conforme a seção 5.4 do
- * entendimento de UX. Materializa as US-N1-02 a US-N1-05, US-ENG-01 e
- * US-ENG-04.
+ * O diagnóstico agora é a aba principal do detalhe do incidente
+ * (`/incidentes/detalhe?incidente=`). Esta rota só redireciona, para que links
+ * antigos não quebrem.
  */
 
-import type { Metadata } from "next";
+"use client";
+
 import { Suspense } from "react";
 
-import { EvidenceView } from "@/app/(painel)/evidencias/evidence-view";
+import { RouteRedirect } from "@/components/navigation/route-redirect";
 import { Skeleton } from "@/components/ui/skeleton";
+import { incidentDiagnosisHref, ROUTES } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "Evidências",
-  description:
-    "Hipótese de causa provável e evidências que sustentam o diagnóstico de um incidente do Globoplay.",
-};
+function resolve(params: URLSearchParams): string {
+  const incidentId = params.get("incidente");
+  return incidentId ? incidentDiagnosisHref(incidentId) : ROUTES.incidents;
+}
 
-export default function EvidenciasPage() {
+export default function LegacyEvidencePage() {
   return (
-    // A tela lê o incidente investigado da URL, e por isso precisa de um limite
-    // de suspensão: sem ele, a rota inteira sairia da renderização estática.
     <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-      <EvidenceView />
+      <RouteRedirect resolve={resolve} />
     </Suspense>
   );
 }

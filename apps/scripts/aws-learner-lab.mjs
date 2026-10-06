@@ -51,9 +51,12 @@ import { tmpdir } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  grafanaHealthShellCommand,
   grafanaTunnelArguments,
   readGrafanaAccess,
+  readGrafanaHealthInvocation,
   readGrafanaPassword,
+  readOllamaConfiguration,
   readObservabilityInstanceId,
   parseGrafanaArguments,
 } from "./lib/grafana-access.mjs";
@@ -92,6 +95,7 @@ const REGION = "us-east-1";
 const PROTECTED_COMMANDS = new Set([
   "check",
   "destroy",
+  "grafana",
   "plan-update",
   "update",
   "seed",
@@ -116,7 +120,7 @@ const TASK_ADDRESSES = Object.freeze([
   "aws_ecs_task_definition.ingestion_incremental_ingest",
 ]);
 const TASK_CONTAINER_NAMES = Object.freeze({
-  "aws_ecs_task_definition.api": Object.freeze([`${NAMESPACE}-api`]),
+  "aws_ecs_task_definition.api": Object.freeze([`${NAMESPACE}-iac-api`]),
   "aws_ecs_task_definition.ingestion_backfill": Object.freeze([
     "tmp-owner",
     "mysql-snapshot",
@@ -150,42 +154,56 @@ const UPDATE_PRESETS = Object.freeze({
     ingestion_snapshot_prepare_enabled: false,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
+  }),
+  "loadtest-20000": Object.freeze({
+    ingestion_snapshot_page_size: 500,
+    ingestion_snapshot_prepare_enabled: false,
+    import_canonical_first_enabled: false,
+    import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 20000,
   }),
   "phase1-2000": Object.freeze({
     ingestion_snapshot_page_size: 2000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase1-5000": Object.freeze({
     ingestion_snapshot_page_size: 5000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase1-10000": Object.freeze({
     ingestion_snapshot_page_size: 10000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: false,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase2-2000": Object.freeze({
     ingestion_snapshot_page_size: 2000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase2-5000": Object.freeze({
     ingestion_snapshot_page_size: 5000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
   "phase2-10000": Object.freeze({
     ingestion_snapshot_page_size: 10000,
     ingestion_snapshot_prepare_enabled: true,
     import_canonical_first_enabled: true,
     import_hot_materialization_enabled: false,
+    rate_limit_por_minuto: 180,
   }),
 });
 const LEARNER_LAB_PLAN_VARIABLES = Object.freeze({
@@ -293,7 +311,8 @@ Commands:
   update          Apply one hardcoded update preset to an existing stack
   seed            Upload the snapshot and run a non-activating backfill
   import-canary   Exercise the public multipart import without activating it
-  grafana         Open a private SSM tunnel; --senha prints the local Grafana password
+  grafana         Ensure private observability exists, validate it and open the SSM tunnel
+  grafana --senha Print the local Grafana password without provisioning or opening a tunnel
   analysis-bridge Open the temporary private SSH bridge from ECS to Ollama
   analysis-prepare    Provision the Ollama worker and observability with zero replicas
   analysis-check      Check Ollama connectivity from a one-off private ECS task
@@ -1153,24 +1172,48 @@ function validateStateBackupFile(context, directory, target) {
   return { path: target, ...artifactIdentity(metadata) };
 }
 
-function stateBackupDestination(context, directoryDescriptor, target) {
-  if (context.platform !== "linux") {
-    throw new Error(`unsupported platform for protected Terraform backups: ${context.platform}`);
-  }
-  return `/proc/self/fd/${directoryDescriptor}/${path.basename(target)}`;
-}
-
 function copyStateBackupThroughDescriptors(context, source, directory, target) {
-  if (context.platform !== "linux") {
-    throw new Error(`unsupported platform for protected Terraform backups: ${context.platform}`);
+  if (context.platform === "darwin") {
+    const helper = path.join(
+      context.root,
+      "apps",
+      "scripts",
+      "terraform",
+      "secure-state-backup.py",
+    );
+    const expected = {
+      source: [source.device, source.inode],
+      directory: [directory.device, directory.inode],
+      lineage: source.lineage,
+      serial: source.serial,
+    };
+    const copied = context.execute(
+      "python3",
+      [helper, source.path, directory.path, path.basename(target), JSON.stringify(expected)],
+      { cwd: context.root },
+    );
+    if (copied.status !== 0) {
+      throw new Error("the secure Terraform state backup could not be created");
+    }
+    const metadata = context.inspectArtifactPath(target);
+    if (
+      metadata.isSymbolicLink() ||
+      !metadata.isFile() ||
+      metadata.uid !== context.currentUserId() ||
+      metadata.nlink !== 1
+    ) {
+      throw new Error("the Terraform state backup is not a private physical file");
+    }
+    return { path: target, ...artifactIdentity(metadata) };
   }
   if (
-    (!Number.isInteger(fsConstants.O_NOFOLLOW) ||
-      !Number.isInteger(fsConstants.O_DIRECTORY))
+    context.platform !== "linux" ||
+    !Number.isInteger(fsConstants.O_NOFOLLOW) ||
+    !Number.isInteger(fsConstants.O_DIRECTORY)
   ) {
-    throw new Error("secure Terraform state backups require descriptor safeguards");
+    throw new Error("secure Terraform state backups require Linux descriptor safeguards");
   }
-  const noFollow = fsConstants.O_NOFOLLOW;
+  const userId = context.currentUserId();
   let sourceDescriptor = null;
   let directoryDescriptor = null;
   let destinationDescriptor = null;
@@ -1178,13 +1221,13 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
   try {
     sourceDescriptor = context.openBackupPath(
       source.path,
-      fsConstants.O_RDONLY | noFollow,
+      fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
     );
     const sourceMetadata = context.inspectBackupFile(sourceDescriptor);
     if (
       !sourceMetadata.isFile() ||
       sourceMetadata.isSymbolicLink?.() === true ||
-      !artifactOwnedByCurrentUser(context, sourceMetadata) ||
+      sourceMetadata.uid !== userId ||
       sourceMetadata.nlink !== 1 ||
       !identityMatches(sourceMetadata, source)
     ) {
@@ -1193,36 +1236,32 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
 
     directoryDescriptor = context.openBackupPath(
       directory.path,
-      fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | noFollow,
+      fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW,
     );
     const directoryMetadata = context.inspectBackupFile(directoryDescriptor);
     if (
       !directoryMetadata.isDirectory() ||
       directoryMetadata.isSymbolicLink?.() === true ||
-      !artifactOwnedByCurrentUser(context, directoryMetadata) ||
+      directoryMetadata.uid !== userId ||
       !identityMatches(directoryMetadata, directory)
     ) {
       throw new Error("the Terraform state backup directory descriptor changed identity");
     }
 
-    const anchoredTarget = stateBackupDestination(
-      context,
-      directoryDescriptor,
-      target,
-    );
+    const anchoredTarget = `/proc/self/fd/${directoryDescriptor}/${path.basename(target)}`;
     destinationDescriptor = context.openBackupPath(
       anchoredTarget,
       fsConstants.O_WRONLY |
         fsConstants.O_CREAT |
         fsConstants.O_EXCL |
-        noFollow,
+        fsConstants.O_NOFOLLOW,
       0o600,
     );
     const destinationMetadata = context.inspectBackupFile(destinationDescriptor);
     if (
       !destinationMetadata.isFile() ||
       destinationMetadata.isSymbolicLink?.() === true ||
-      !artifactOwnedByCurrentUser(context, destinationMetadata) ||
+      destinationMetadata.uid !== userId ||
       destinationMetadata.nlink !== 1
     ) {
       throw new Error("the Terraform state backup descriptor is not a private regular file");
@@ -1494,6 +1533,7 @@ export function isExactConfirmation(answer, phrase) {
 
 function checkPrerequisites(context) {
   const { execute, log, platform, root, step, exists, profile, grafanaConfiguration } = context;
+  const mutatingGrafana = step === "grafana" && !grafanaConfiguration?.showPassword;
   const missing = [];
   const awsArgs = (args) => [...args, "--profile", profile];
   const require = (label, ok, resolution) => {
@@ -1502,7 +1542,7 @@ function checkPrerequisites(context) {
   };
 
   log("Prerequisites:");
-  const needsTerraform = [
+  const needsTerraform = step === "grafana" || [
     "setup",
     "check",
     "deploy",
@@ -1520,7 +1560,7 @@ function checkPrerequisites(context) {
     "analysis-deactivate",
     "all",
   ].includes(step);
-  const needsNode = ["setup", "check", "deploy", "plan-update", "update", "analysis-prepare", "analysis-activate", "analysis-deactivate", "all"].includes(step);
+  const needsNode = mutatingGrafana || ["setup", "check", "deploy", "plan-update", "update", "analysis-prepare", "analysis-activate", "analysis-deactivate", "all"].includes(step);
   const needsNpm = ["setup", "check", "deploy", "plan-update", "update", "analysis-prepare", "all"].includes(step);
   const needsAws = [
     "setup",
@@ -1708,7 +1748,120 @@ function checkPrerequisites(context) {
   return { ok: true, python, identity, venv: venvPython(root, platform) };
 }
 
-function openGrafana(context) {
+async function waitForGrafanaHealth(context, instanceId) {
+  const deadline = context.monotonic() + 360;
+  let lastError = null;
+
+  while (context.monotonic() <= deadline) {
+    try {
+      const sent = context.execute(
+        "aws",
+        awsArguments(context, [
+          "ssm",
+          "send-command",
+          "--instance-ids",
+          instanceId,
+          "--document-name",
+          "AWS-RunShellScript",
+          "--parameters",
+          JSON.stringify({ commands: [grafanaHealthShellCommand()] }),
+          "--output",
+          "json",
+        ]),
+        { cwd: context.root },
+      );
+      if (sent.status !== 0) throw new Error("Grafana SSM health command could not be sent");
+      const commandId = parseJsonObject(sent.stdout, "ssm send-command").Command?.CommandId;
+      if (typeof commandId !== "string" || commandId.length === 0) {
+        throw new Error("Grafana SSM health command id is invalid");
+      }
+
+      const waited = context.execute(
+        "aws",
+        awsArguments(context, [
+          "ssm",
+          "wait",
+          "command-executed",
+          "--command-id",
+          commandId,
+          "--instance-id",
+          instanceId,
+        ]),
+        { cwd: context.root },
+      );
+      if (waited.status !== 0) throw new Error("Grafana SSM health command did not finish");
+
+      const invocation = context.execute(
+        "aws",
+        awsArguments(context, [
+          "ssm",
+          "get-command-invocation",
+          "--command-id",
+          commandId,
+          "--instance-id",
+          instanceId,
+          "--output",
+          "json",
+        ]),
+        { cwd: context.root },
+      );
+      if (invocation.status !== 0) throw new Error("Grafana SSM health result is unavailable");
+      return readGrafanaHealthInvocation(
+        parseJsonObject(invocation.stdout, "Grafana health invocation"),
+      );
+    } catch (error) {
+      lastError = error;
+    }
+    await context.sleep(10_000);
+  }
+
+  throw new Error("Grafana did not become healthy before the deadline", { cause: lastError });
+}
+
+async function ensureGrafana(context, identity) {
+  initializeAndValidateExistingStack(context, identity);
+  if (readObservabilityWorkersEndpoint(context) !== null) return "EXISTING";
+  const applied = await applyAnalysisPlan(
+    context,
+    identity,
+    "prepare-observability",
+    null,
+    prepareObservabilityVariables(),
+    { confirmationPhrase: `PROVISION GRAFANA ${identity.account}` },
+  );
+  if (!applied) throw new Error("Grafana provisioning was cancelled");
+  return "CREATED";
+}
+
+function readGrafanaInstanceId(context) {
+  const result = context.execute(
+    "terraform",
+    ["-chdir=apps/fullstack", "output", "-raw", "observabilidade_instancia_id"],
+    terraformOptions({ ...context, analysisWorker: null }, { cwd: context.root }),
+  );
+  if (result.status !== 0) throw new Error("terraform output observabilidade_instancia_id failed");
+  return readObservabilityInstanceId(result.stdout);
+}
+
+function readOptionalOllamaConfiguration(context) {
+  const target = path.join(
+    context.root,
+    "apps",
+    "fullstack",
+    ".terraform-artifacts",
+    "analysis-worker.json",
+  );
+  if (!context.exists(target)) return "NOT_CONFIGURED";
+  try {
+    return readOllamaConfiguration(
+      parseJsonObject(context.readFile(target, "utf8"), "analysis worker manifest"),
+    );
+  } catch {
+    return "NOT_CONFIGURED";
+  }
+}
+
+function openGrafana(context, { infrastructure, health, instanceId }) {
   const stack = path.join("apps", "fullstack");
   const accessResult = context.execute(
     "terraform",
@@ -1718,17 +1871,26 @@ function openGrafana(context) {
   if (accessResult.status !== 0) throw new Error("terraform output grafana_acesso failed");
   const access = readGrafanaAccess(parseJsonObject(accessResult.stdout, "terraform output grafana_acesso"));
 
-  const instanceResult = context.execute(
-    "terraform",
-    [`-chdir=${stack}`, "output", "-raw", "observabilidade_instancia_id"],
-    { cwd: context.root },
-  );
-  if (instanceResult.status !== 0) throw new Error("terraform output observabilidade_instancia_id failed");
-  const instanceId = readObservabilityInstanceId(instanceResult.stdout);
-
+  context.log(`Infraestrutura: ${infrastructure}`);
+  context.log(`Grafana: ${health.grafana}`);
+  context.log(`CloudWatch: ${health.cloudwatch}`);
+  for (const dashboard of health.dashboards) context.log(`Dashboard: ${dashboard}`);
   context.log(`Grafana URL: ${access.url}`);
   context.log(`Grafana user: ${access.user}`);
-  context.log("To retrieve the password locally: terraform -chdir=apps/fullstack output -raw grafana_senha");
+  if (context.isTty()) {
+    const passwordResult = context.execute(
+      "terraform",
+      [`-chdir=${stack}`, "output", "-raw", "grafana_senha"],
+      { cwd: context.root },
+    );
+    if (passwordResult.status !== 0) throw new Error("terraform output grafana_senha failed");
+    context.log(`Grafana password: ${readGrafanaPassword(passwordResult.stdout)}`);
+  } else {
+    context.log(
+      "Grafana password omitted outside an interactive terminal; use grafana --senha interactively.",
+    );
+  }
+  context.log(`Ollama/LLM: ${readOptionalOllamaConfiguration(context)}`);
   context.log("Starting the private SSM tunnel. Press Ctrl+C to close it.");
   const tunnel = context.execute(
     "aws",
@@ -2294,6 +2456,7 @@ function updatePlanVariables(preset) {
     `-var=ingestion_snapshot_prepare_enabled=${selected.ingestion_snapshot_prepare_enabled}`,
     `-var=import_canonical_first_enabled=${selected.import_canonical_first_enabled}`,
     `-var=import_hot_materialization_enabled=${selected.import_hot_materialization_enabled}`,
+    `-var=rate_limit_por_minuto=${selected.rate_limit_por_minuto}`,
     "-var=import_canonical_first_production_approved=false",
   ];
 }
@@ -2702,14 +2865,16 @@ function verifyPostApplyResources(state, runbook, preset, expectedPlanImages) {
 
   const selected = UPDATE_PRESETS[preset];
   const apiEnvironment = taskEnvironment(
-    taskContainers.get("aws_ecs_task_definition.api")?.get(`${NAMESPACE}-api`),
+    taskContainers.get("aws_ecs_task_definition.api")?.get(`${NAMESPACE}-iac-api`),
     "aws_ecs_task_definition.api",
   );
   if (
     apiEnvironment.get("IMPORT_CANONICAL_FIRST_ENABLED") !==
-    String(selected.import_canonical_first_enabled)
+      String(selected.import_canonical_first_enabled) ||
+    apiEnvironment.get("RATE_LIMIT_PER_MINUTE") !==
+      String(selected.rate_limit_por_minuto)
   ) {
-    throw new Error("post-apply canonical-first API flag diverged from the preset");
+    throw new Error("post-apply API flags or rate limit diverged from the preset");
   }
   for (const [address, diskBudgetBytes] of Object.entries(TASK_DISK_BUDGET_BYTES)) {
     const environment = taskEnvironment(
@@ -4981,7 +5146,7 @@ function readDeployedOllamaEndpoint(context) {
   return validateOllamaBaseUrl(bindings[0].value);
 }
 
-async function applyAnalysisPlan(context, identity, mode, worker, variables) {
+async function applyAnalysisPlan(context, identity, mode, worker, variables, options = {}) {
   assertProtectedTerraformPlanPlatform(context);
   const stack = "apps/fullstack";
   const artifacts = path.join(context.root, stack, ".terraform-artifacts");
@@ -5032,7 +5197,7 @@ async function applyAnalysisPlan(context, identity, mode, worker, variables) {
     );
     if (gate.status !== 0) throw new Error(`analysis ${mode} plan rejected`);
     restrictPermissions(context, artifact.directory, 0o500);
-    const phrase = `${mode.toUpperCase()} ANALYSIS ${identity.account}`;
+    const phrase = options.confirmationPhrase ?? `${mode.toUpperCase()} ANALYSIS ${identity.account}`;
     if (!(await context.confirm(phrase))) return false;
     assertPlanUnchanged(context, artifact.plan, validatedPlanSnapshot);
     const applied = context.execute(
@@ -5281,7 +5446,11 @@ export async function runLearnerLab(options = {}) {
     return { status: 2 };
   }
 
-  if (PROTECTED_COMMANDS.has(step)) {
+  const mutatingGrafana = step === "grafana" && !grafanaConfiguration?.showPassword;
+
+  if (PROTECTED_COMMANDS.has(step) && !(
+    step === "grafana" && grafanaConfiguration?.showPassword
+  )) {
     try {
       assertProtectedUpdateEnvironment({ environment, root, lstat, realpath });
     } catch (error) {
@@ -5291,13 +5460,14 @@ export async function runLearnerLab(options = {}) {
   }
 
   if (
+    mutatingGrafana ||
     ["setup", "check", "deploy", "destroy", "plan-update", "update", "seed", "import-canary", "analysis-prepare", "analysis-check", "analysis-activate", "analysis-smoke", "analysis-canary", "analysis-deactivate", "all"].includes(
       step,
     )
   ) {
     try {
       assertCleanTerraformEnvironment(environment);
-      if (["setup", "check", "deploy", "destroy", "plan-update", "update", "analysis-prepare", "analysis-check", "analysis-activate", "analysis-smoke", "analysis-canary", "analysis-deactivate", "all"].includes(step)) {
+      if (mutatingGrafana || ["setup", "check", "deploy", "destroy", "plan-update", "update", "analysis-prepare", "analysis-check", "analysis-activate", "analysis-smoke", "analysis-canary", "analysis-deactivate", "all"].includes(step)) {
         assertNoAutomaticVariableFiles({ readDirectory, root });
       }
     } catch (error) {
@@ -5390,7 +5560,10 @@ export async function runLearnerLab(options = {}) {
         printGrafanaPassword(context);
         return { status: 0 };
       }
-      openGrafana(context);
+      const infrastructure = await ensureGrafana(context, checked.identity);
+      const instanceId = readGrafanaInstanceId(context);
+      const health = await waitForGrafanaHealth(context, instanceId);
+      openGrafana(context, { infrastructure, health, instanceId });
       return { status: 0 };
     }
     if (step === "analysis-bridge") {

@@ -1,0 +1,168 @@
+{
+  "executadoEm": "2026-09-29T20:28:26.657Z",
+  "provider": "fake",
+  "modelo": "fake-deterministic",
+  "maxTokens": 2500,
+  "requisicoesPorEstagio": 50,
+  "limites": {
+    "p95MaxMs": null,
+    "taxaFalhaMax": 0.05
+  },
+  "estagios": [
+    {
+      "concorrencia": 1,
+      "requisicoes": 50,
+      "duracaoMs": 29798,
+      "vazaoPorSegundo": 1.678,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 719,
+        "p90": 1145,
+        "p95": 1198,
+        "p99": 1198,
+        "max": 1198,
+        "media": 596
+      },
+      "latenciaLlmP95Ms": 1198,
+      "status": {
+        "ready": 30,
+        "pending": 16,
+        "failed": 4
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16,
+        "PROVIDER_ERROR": 4
+      },
+      "taxaFalha": 0.08,
+      "tokens": {
+        "entrada": 23928,
+        "saida": 1650
+      }
+    },
+    {
+      "concorrencia": 2,
+      "requisicoes": 50,
+      "duracaoMs": 13477,
+      "vazaoPorSegundo": 3.71,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 627,
+        "p90": 1106,
+        "p95": 1131,
+        "p99": 1175,
+        "max": 1175,
+        "media": 531
+      },
+      "latenciaLlmP95Ms": 1173,
+      "status": {
+        "ready": 31,
+        "pending": 16,
+        "failed": 3
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16,
+        "PROVIDER_ERROR": 3
+      },
+      "taxaFalha": 0.06,
+      "tokens": {
+        "entrada": 24676,
+        "saida": 1705
+      }
+    },
+    {
+      "concorrencia": 4,
+      "requisicoes": 50,
+      "duracaoMs": 6437,
+      "vazaoPorSegundo": 7.768,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 581,
+        "p90": 984,
+        "p95": 1082,
+        "p99": 1169,
+        "max": 1169,
+        "media": 493
+      },
+      "latenciaLlmP95Ms": 1146,
+      "status": {
+        "pending": 16,
+        "ready": 32,
+        "failed": 2
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16,
+        "PROVIDER_ERROR": 2
+      },
+      "taxaFalha": 0.04,
+      "tokens": {
+        "entrada": 25331,
+        "saida": 1760
+      }
+    },
+    {
+      "concorrencia": 8,
+      "requisicoes": 50,
+      "duracaoMs": 3793,
+      "vazaoPorSegundo": 13.182,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 604,
+        "p90": 1005,
+        "p95": 1105,
+        "p99": 1196,
+        "max": 1196,
+        "media": 533
+      },
+      "latenciaLlmP95Ms": 1165,
+      "status": {
+        "pending": 16,
+        "ready": 27,
+        "failed": 7
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16,
+        "PROVIDER_ERROR": 7
+      },
+      "taxaFalha": 0.14,
+      "tokens": {
+        "entrada": 21405,
+        "saida": 1485
+      }
+    },
+    {
+      "concorrencia": 16,
+      "requisicoes": 50,
+      "duracaoMs": 2185,
+      "vazaoPorSegundo": 22.883,
+      "latenciaMs": {
+        "min": 0,
+        "p50": 540,
+        "p90": 1083,
+        "p95": 1103,
+        "p99": 1146,
+        "max": 1146,
+        "media": 529
+      },
+      "latenciaLlmP95Ms": 1116,
+      "status": {
+        "pending": 16,
+        "ready": 32,
+        "failed": 2
+      },
+      "motivos": {
+        "NO_EVIDENCE": 16,
+        "PROVIDER_ERROR": 2
+      },
+      "taxaFalha": 0.04,
+      "tokens": {
+        "entrada": 25517,
+        "saida": 1760
+      }
+    }
+  ],
+  "violacoes": [
+    "C=1: taxa de falha 0.08 > 0.05",
+    "C=2: taxa de falha 0.06 > 0.05",
+    "C=8: taxa de falha 0.14 > 0.05"
+  ]
+}

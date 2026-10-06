@@ -325,10 +325,20 @@ if (process.exitCode === undefined) {
       reject("unexpected address");
       break;
     }
+    const retryingFailedIngestionImageProvisioner =
+      address === "terraform_data.ingestion_image[0]" &&
+      resourceChange.type === "terraform_data" &&
+      resourceChange.provider_name === "terraform.io/builtin/terraform" &&
+      resourceChange.action_reason === "replace_because_tainted" &&
+      Array.isArray(change.actions) &&
+      change.actions.length === 2 &&
+      change.actions[0] === "delete" &&
+      change.actions[1] === "create";
     if (
-      !Array.isArray(change.actions) ||
-      change.actions.length !== 1 ||
-      !["create", "no-op"].includes(change.actions[0])
+      !retryingFailedIngestionImageProvisioner &&
+      (!Array.isArray(change.actions) ||
+        change.actions.length !== 1 ||
+        !["create", "no-op"].includes(change.actions[0]))
     ) {
       reject("action must be create or no-op", address);
       break;

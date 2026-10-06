@@ -144,25 +144,35 @@ O worker continua restrito ao perfil `learner-lab`. Sem uma rota privada aprovad
 O checklist completo, os critérios de bloqueio, o rollback e o modelo de
 evidências ficam no [runbook de rollout do Agentic com Ollama](observability/docs/runbooks/agentic-ollama-deployment.md).
 
-## Abrir o Grafana privado
+## Abrir ou provisionar o Grafana privado
 
-Com a observabilidade provisionada e credenciais AWS ativas, abra o Grafana em
-um único comando, no Linux, macOS ou Windows:
+Com a stack fullstack existente e credenciais AWS ativas, prepare e abra o
+Grafana em um único comando, no Linux, macOS ou Windows:
 
 ```bash
 node apps/scripts/aws-learner-lab.mjs grafana
 ```
 
-O comando abre o túnel SSM e informa `http://localhost:3002` e o usuário
-`admin`. Ele permanece em execução até `Ctrl+C`. A senha é sensível e é lida
-somente pela pessoa que possui o state Terraform local:
+Na primeira execução, se a camada de observabilidade ainda não existir, o
+script cria um plano protegido e pede a confirmação exata exibida no terminal
+antes de criar a EC2 privada. Nas execuções seguintes ele não executa `plan` ou
+`apply`: valida por SSM o Grafana, o CloudWatch e os dashboards de Ingestão e
+Agentic e então abre o túnel.
+
+O resumo informa `Infraestrutura: CREATED` ou `EXISTING`, a URL
+`http://localhost:3002`, o usuário `admin` e, somente em um terminal interativo,
+a senha. O túnel permanece em execução até `Ctrl+C`. `Ollama/LLM:
+NOT_CONFIGURED` é um resultado saudável para o Grafana; significa apenas que a
+parte opcional de LLM ainda não foi configurada.
+
+Para ler somente a senha local, sem provisionar, validar a AWS ou abrir o
+túnel:
 
 ```bash
 node apps/scripts/aws-learner-lab.mjs grafana --senha
 ```
 
-Esse modo mostra a senha no terminal e não abre o túnel; use-o apenas em um
-terminal privado.
+Use esse modo apenas em um terminal privado.
 
 ## Destroy
 

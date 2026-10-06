@@ -1,4 +1,5 @@
 const INSTANCE_ID = /^i-[0-9a-f]{8,17}$/;
+const HEALTH_SENTINEL = /^GRAFANA_READY CLOUDWATCH_READY DASHBOARDS=view-show-ingestion,view-show-agentic-aws$/m;
 
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -47,4 +48,41 @@ export function grafanaTunnelArguments(instanceId, region, profile) {
     "--profile",
     profile,
   ];
+}
+
+export function grafanaHealthShellCommand() {
+  return [
+    "set -euo pipefail",
+    "stack=/opt/view-show-observability",
+    "test -f \"$stack/.provisioned\"",
+    "cd \"$stack\"",
+    "set -a; . ./.env; set +a",
+    "for service in grafana prometheus loki tempo alloy; do docker compose ps --status running --services | grep -Fx \"$service\" >/dev/null; done",
+    "curl --fail --silent http://127.0.0.1:3000/api/health | grep -Eq '\"database\"[[:space:]]*:[[:space:]]*\"ok\"'",
+    "curl --fail --silent -u \"admin:$GRAFANA_ADMIN_PASSWORD\" http://127.0.0.1:3000/api/datasources/uid/cloudwatch/health | grep -Eiq 'success|ok'",
+    "curl --fail --silent -u \"admin:$GRAFANA_ADMIN_PASSWORD\" http://127.0.0.1:3000/api/dashboards/uid/view-show-ingestion | grep -Fq '\"uid\":\"view-show-ingestion\"'",
+    "curl --fail --silent -u \"admin:$GRAFANA_ADMIN_PASSWORD\" http://127.0.0.1:3000/api/dashboards/uid/view-show-agentic-aws | grep -Fq '\"uid\":\"view-show-agentic-aws\"'",
+    "printf '%s\\n' 'GRAFANA_READY CLOUDWATCH_READY DASHBOARDS=view-show-ingestion,view-show-agentic-aws'",
+  ].join("\n");
+}
+
+export function readGrafanaHealthInvocation(value) {
+  if (
+    !isRecord(value)
+    || value.Status !== "Success"
+    || !HEALTH_SENTINEL.test(String(value.StandardOutputContent ?? ""))
+  ) {
+    throw new Error("Grafana health check failed");
+  }
+  return {
+    grafana: "READY",
+    cloudwatch: "READY",
+    dashboards: ["view-show-ingestion", "view-show-agentic-aws"],
+  };
+}
+
+export function readOllamaConfiguration(value) {
+  return isRecord(value) && typeof value.modelId === "string" && value.modelId.length > 0
+    ? "CONFIGURED"
+    : "NOT_CONFIGURED";
 }
