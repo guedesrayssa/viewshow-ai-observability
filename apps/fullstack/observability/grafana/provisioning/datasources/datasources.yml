@@ -1,13 +1,6 @@
-# Provisionamento automático dos data sources do Grafana.
-#
-# O Grafana lê este arquivo a cada subida do container e sincroniza os data
-# sources com o que está declarado aqui. Alterações feitas pela interface web em
-# um data source provisionado são sobrescritas na próxima subida: edite este
-# arquivo, não a interface.
-#
-# Os endereços usam os nomes dos serviços do docker-compose.observability.yml,
-# resolvidos pelo DNS interno da rede view-show-observability. Por isso a porta
-# do Grafana aqui é 3000 (a porta interna) e não 3002 (a publicada no host).
+# Data sources provisionados. O Grafana sincroniza este arquivo a cada subida e
+# sobrescreve alterações feitas pela interface: edite aqui. Os endereços usam os
+# serviços do compose (porta interna 3000 do Grafana, não a 3002 do host).
 
 apiVersion: 1
 
@@ -92,6 +85,11 @@ datasources:
         tags:
           - key: service.name
             value: service
+        queries:
+          - name: Chamadas por segundo
+            query: sum(rate(traces_spanmetrics_calls_total{$$__tags}[5m])) by (span_name)
+          - name: Latência p95
+            query: histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{$$__tags}[5m])) by (le, span_name))
       # Mapa de serviços, alimentado pelo processador service-graphs do Tempo.
       serviceMap:
         datasourceUid: prometheus

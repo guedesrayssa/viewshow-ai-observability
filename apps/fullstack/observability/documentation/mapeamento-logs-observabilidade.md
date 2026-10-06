@@ -9,6 +9,17 @@
 &emsp; **Sinal Coberto:** Logs (destino: Grafana Loki, porta `3100`)  
 &emsp; **Documento Irmão:** [Mapeamento de Métricas](./mapeamento-metricas-observabilidade.md) e [Mapeamento de Traces](./mapeamento-traces-observabilidade.md)
 
+> [!NOTE]
+> **Atualização (out/2026).** Este mapeamento é normativo e foi escrito na Sprint 3, quando a API
+> era JavaScript e não tinha logger. As seções 1.3, 5 e 10 descrevem esse estado e o plano de
+> então (`console.*`, pino, `src/*.js`) e devem ser lidas como histórico. A API atual (TypeScript)
+> implementa o contrato do envelope (seção 3) com estas diferenças: mensagens em inglês, campo
+> `status` (não `status_code`), `route: "unmatched"` para rotas sem casamento, `error_code` de
+> negócio na linha de acesso e `/health` e `/metrics` sem linha. A redação (seção 3.5) é feita no
+> logger por nome de campo e por padrão de valor, e o envio ao Loki é em lote com buffer limitado.
+> O estado implementado, os eventos emitidos e o passo a passo estão em
+> [`observability/README.md`](../README.md).
+
 ---
 
 ## Sumário

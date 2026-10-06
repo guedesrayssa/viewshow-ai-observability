@@ -56,13 +56,25 @@ apps/fullstack/observability/
 ├── grafana/provisioning/dashboards/                   dashboards RED e de aplicação
 ├── loki/loki-config.yml                               Loki monolítico, disco local
 ├── prometheus/prometheus.yml                          alvos e intervalo de coleta
+├── prometheus/rules/view-show.yml                     alertas (runbooks em docs/runbooks)
+├── scripts/run-api-local.sh                           sobe a API local ligada à pilha
+├── scripts/verify-api-observability.mjs               prova de ponta a ponta (34 verificações)
 └── tempo/tempo.yml                                    receptores OTLP e metrics_generator
 ```
 
 ## Data sources provisionados
 
-O dashboard **View Show — API (RED)** é provisionado automaticamente e exibe
-latência p95, throughput, erros por segundo e uso de CPU a partir do Prometheus.
+Dois dashboards são provisionados automaticamente em **Dashboards → View Show**:
+
+- **View Show — API (RED, logs e traces)** (`view-show-api`): disponibilidade,
+  latência p95 e logins recusados; taxa, latência e status **por rota**; saturação
+  (CPU e event loop); latência das dependências AWS (derivada dos traces); tabela
+  de traces lentos ou com erro; logs `warn`/`error`; e uma caixa **Request ID ou
+  Trace ID** que filtra os logs e os traces daquela requisição. A latência por rota
+  mostra exemplares: clicar em um ponto abre o trace daquela amostra.
+- **View Show — Application Observability** (`view-show-observability`): alertas
+  disparando, frontend (Web Vitals e erros), memória da API e os workers de
+  ingestão e análise (que só têm séries quando rodam).
 
 O Grafana lê `grafana/provisioning/datasources/datasources.yml` a cada subida e
 sincroniza os três data sources. Eles ficam marcados como somente leitura: para
@@ -78,8 +90,9 @@ pela interface web são sobrescritas na próxima subida.
 As correlações entre os três já vêm configuradas:
 
 - **Trace para logs:** de um span no Tempo para as linhas do Loki com o mesmo `trace_id`.
-- **Log para trace:** o campo derivado `TraceID` transforma o `trace_id` da linha de log em link para o Tempo.
-- **Métrica para trace:** exemplares do Prometheus apontam para o trace correspondente.
+- **Log para trace:** os campos derivados `TraceID` e `TraceIDJson` transformam o `trace_id` da linha de log em link para o Tempo.
+- **Métrica para trace:** exemplares do histograma de latência apontam para o trace da amostra. Exigem `--enable-feature=exemplar-storage` no Prometheus e a API servindo OpenMetrics; antes nenhum dos dois existia e o salto nunca aparecia.
+- **Trace para métricas:** os botões *Chamadas por segundo* e *Latência p95* do span abrem as métricas derivadas dos traces (`traces_spanmetrics_*`).
 - **Mapa de serviços:** alimentado pelas métricas `traces_service_graph_*` que o `metrics_generator` do Tempo grava no Prometheus por remote write.
 
 ## Verificação rápida
@@ -161,8 +174,8 @@ aws ssm start-session \
 Enquanto a sessão estiver aberta, acesse <http://localhost:3002> com o usuário
 `admin` e a senha impressa pelo segundo comando. Os dashboards provisionados
 ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
-gerenciados e **View Show — Application Observability** cobre RED, Web Vitals,
-logs correlacionados e alertas da aplicação.
+gerenciados, **View Show — API (RED, logs e traces)** cobre a API (métricas por rota,
+dependências, traces e logs) e **View Show — Application Observability** cobre frontend, alertas e workers.
 
 Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
 
@@ -231,12 +244,69 @@ Na pilha local, os alvos de coleta ficam em
 pilha e a API em `host.docker.internal:3000`. Inicie a API para manter esse alvo
 saudável. Na AWS, o alvo `view-show-api` aponta para o ALB criado pelo Terraform.
 
-## Coletar as métricas da API
+## O que a API emite
 
-`apps/backend/api` já expõe `GET /metrics` no formato Prometheus quando
-`METRICS_ENABLED=true` (o padrão), e o alvo `view-show-api` já está habilitado.
-Para enviar traces da API rodando no host, aponte o exportador OTLP para
-`http://localhost:4318` (HTTP) ou `localhost:4317` (gRPC).
+| Sinal | Como sai | Configuração |
+| --- | --- | --- |
+| Métricas | `GET /metrics` em OpenMetrics (formato que carrega exemplares), coletado a cada 15 s | `METRICS_ENABLED` (padrão `true`) |
+| Traces | OTLP/HTTP direto ao Tempo (`:4318`), instrumentando HTTP, Express, AWS SDK e `fetch` | `OTEL_EXPORTER_OTLP_ENDPOINT`; vazio desliga |
+| Logs | JSON de uma linha em `stdout` (no Fargate, CloudWatch) **e** envio em lote ao Loki | `LOKI_PUSH_URL`; vazio desliga só o envio ao Loki |
+
+Os três usam a mesma identidade (`service_name`, `environment`, `service_version`),
+derivada de `OTEL_SERVICE_NAME`, `OTEL_DEPLOYMENT_ENVIRONMENT` e `OTEL_RESOURCE_ATTRIBUTES`.
+É essa igualdade que faz os saltos entre Loki e Tempo funcionarem. Variáveis completas em
+`apps/backend/api/.env.example`.
+
+**Logs.** Uma linha de acesso por requisição (`event=http.request.completed`) com nível
+conforme o status (2xx `info`, 4xx e lentas `warn`, 5xx `error`), `route` como template
+(nunca o path com IDs), `duration_ms` e `error_code` de negócio. `/health` e `/metrics`
+não geram linha. Falhas inesperadas geram uma segunda linha (`http.request.failed`) com
+tipo, mensagem e pilha em campos próprios. Eventos de domínio: `auth.login.succeeded` e
+`auth.login.failed` (com o motivo, sem o usuário digitado), `hypothesis.review.submitted`,
+`reanalysis.requested`, `argus.live_sync.updated`, `dataset.active.absent` (limitado a uma
+linha por 30 s, com `suppressed_count`) e `process.started`. Todo campo passa por redação
+(senhas, tokens, cookies, JWT, chaves AWS, assinaturas de URL e e-mails mascarados).
+
+**Traces.** O span `SERVER` se chama `GET /api/v1/incidents` (template da rota), carrega
+`viewshow.request_id`, `viewshow.dataset_version` e `viewshow.error_code`, e a query string
+sai redigida (`code`, `state`, tokens). Chamadas ao DynamoDB, SQS, S3, ECS e Cognito viram
+spans `CLIENT`. A reconciliação de importações roda em segundo plano e tem raiz própria
+(`imports.reconcile`). Sondas `/health` e `/metrics` não geram trace. A API devolve
+`X-Request-Id` e `X-Trace-Id` (expostos ao navegador via CORS) e aceita `traceparent`.
+
+**Métricas.** As de RED (`http_requests_total`, `http_request_duration_seconds` com exemplar
+de `trace_id`, `http_requests_failed_total`, `http_requests_in_flight`), Web Vitals do painel,
+runtime do Node (`view_show_*`), `auth_login_attempts_total{outcome}`,
+`view_show_build_info{version}` e a saúde do envio de logs (`log_shipping_*`).
+
+## Investigar uma requisição
+
+1. Parta de qualquer ponta: o `X-Request-Id`/`X-Trace-Id` da resposta, o `requestId` do
+   envelope de erro, um ponto do gráfico de latência (exemplar) ou uma linha de log.
+2. No dashboard da API, digite o ID em **Request ID ou Trace ID**: os painéis de baixo
+   mostram os logs e os traces daquela requisição.
+3. Do trace, o botão **Logs for this trace** abre o Loki filtrado; **Chamadas por segundo**
+   e **Latência p95** abrem as métricas derivadas dos traces. De uma linha de log, o campo
+   derivado **TraceIDJson** abre o trace.
+4. Sem o ID, use TraceQL no Explore: `{ span.viewshow.error_code = "DATA_UNAVAILABLE" }`,
+   `{ resource.service.name =~ ".*api" && duration > 1s }` ou
+   `{ span.viewshow.request_id = "<id>" }`.
+
+## Subir a API local e validar
+
+```bash
+docker compose -f apps/fullstack/docker-compose.observability.yml up -d
+bash apps/fullstack/observability/scripts/run-api-local.sh      # terminal 1 (Ctrl+C encerra)
+
+# terminal 2
+AUTH_COOKIE_SECRET=local-obs-auth-cookie-secret-32-bytes-minimum \
+  node apps/fullstack/observability/scripts/verify-api-observability.mjs
+```
+
+O script sobe um DynamoDB Local descartável com massa sintética (nada toca a AWS). O
+verificador gera requisições com IDs conhecidos e confere nos backends reais: níveis de log,
+nome do span, correlação nos dois sentidos, exemplar, ausência de segredos em log e trace e a
+execução sem erro de **toda** query de **todo** painel. Sai com código 1 se algo falhar.
 
 ## Coletar métricas dos workers Python
 
@@ -248,11 +318,27 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4320
 export OTEL_SERVICE_NAME=view-show-ingestion # ou view-show-agentic
 ```
 
-O Alloy preserva `service.name` como label `service_name`. Como esses dois
-diretórios ainda não contêm lógica de negócio, painéis e alertas permanecem sem
-séries até que um entrypoint real chame os hooks de observabilidade.
+O Alloy preserva `service.name` como label `service_name`. Os dois serviços ainda não
+exportam OTLP: a ingestão emite métricas EMF e logs JSON ao CloudWatch, e o worker de análise
+escreve eventos em `stdout`. Os painéis de worker só têm séries quando esses serviços chamam
+as fachadas OpenTelemetry já disponíveis.
 
 ## Limites da implantação
+
+- **Orçamento do `user_data` da EC2.** A EC2 recebe todas as configurações e dashboards
+  compactados no `user_data`, limitado a 16 KiB. Hoje o conjunto ocupa 16.315 B
+  (`aws/validate-user-data.sh` falha acima de 16.384). Qualquer dashboard, regra ou
+  configuração nova precisa caber: por isso o dashboard da API absorveu os painéis de API do
+  overview em vez de somar. Para crescer de verdade, publique os arquivos em um bucket e
+  baixe-os no boot.
+- **Coleta de `/metrics` na AWS.** O alvo `view-show-api` aponta para o ALB, que balanceia
+  entre as tasks: com mais de uma réplica, cada coleta cai em uma task diferente e os
+  contadores parecem oscilar. Para métricas por réplica, use descoberta de tasks ECS.
+- **Aviso do Tempo.** O Tempo 3.0 registra `ignoring unknown metrics-generator processor
+  local-blocks` a cada 10 s: ele mesmo reinjeta esse processador. É inofensivo.
+- **Amostragem.** Todo trace é gravado (`always_on`). Para reduzir volume, defina
+  `OTEL_TRACES_SAMPLER=parentbased_traceidratio` e `OTEL_TRACES_SAMPLER_ARG=0.1`; os
+  exemplares só são criados para traces amostrados.
 
 As configurações local e AWS são destinadas a desenvolvimento, demonstração e
 homologação, não a produção: Loki e Tempo rodam em modo monolítico gravando em
