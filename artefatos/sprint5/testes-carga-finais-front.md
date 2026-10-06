@@ -1,9 +1,5 @@
 # Testes de carga finais do frontend
 
-> **Data da execução:** 05/10/2026  
-> **Branch:** `feat/teste-carga-front`  
-> **Escopo:** frontend Next.js exportado estaticamente, experiência no navegador e chamadas da API geradas pelo painel.
-
 ## 1. Objetivo e resultado executivo
 
 Este artefato evolui os testes não funcionais da Sprint 3 para a versão atual do
