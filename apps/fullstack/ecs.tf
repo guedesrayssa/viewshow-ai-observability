@@ -109,8 +109,8 @@ resource "aws_ecs_task_definition" "api" {
         { name = "OTEL_SERVICE_NAME", value = local.nome_container },
         { name = "OTEL_DEPLOYMENT_ENVIRONMENT", value = "aws" },
         { name = "OTEL_RESOURCE_ATTRIBUTES", value = "deployment.environment=aws,service.version=${local.tag_imagem},cloud.region=${var.regiao}" },
-        { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
-        { name = "LOKI_PUSH_URL", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:3100/loki/api/v1/push" : "" },
+        { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada && var.observabilidade_api_exportacao_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4318" : "" },
+        { name = "LOKI_PUSH_URL", value = var.observabilidade_habilitada && var.observabilidade_api_exportacao_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:3100/loki/api/v1/push" : "" },
 
         // O painel chega pelo Amplify, que repassa /api, /auth e /health para
         // este ALB (ver amplify.tf). Do ponto de vista do navegador tudo sai da

@@ -80,7 +80,7 @@ function response(data: unknown, status = 200) {
 describe("ARGUS event and evidence resources", () => {
   it("appends a continuation page without losing or duplicating visible events", async () => {
     const { mergeEventPages } =
-      await import("@/app/(painel)/eventos/events-resource");
+      await import("@/app/(painel)/incidentes/_eventos/events-resource");
     const first = { id: "evt_1" } as never;
     const repeated = { id: "evt_1" } as never;
     const second = { id: "evt_2" } as never;
@@ -92,7 +92,7 @@ describe("ARGUS event and evidence resources", () => {
 
   it("keeps a requested event visible ahead of a full first page", async () => {
     const { mergeRequestedEvent } =
-      await import("@/app/(painel)/eventos/events-resource");
+      await import("@/app/(painel)/incidentes/_eventos/events-resource");
     const firstPage = Array.from({ length: 50 }, (_, index) => ({
       id: `evt_${index}`,
     })) as never[];
@@ -109,7 +109,7 @@ describe("ARGUS event and evidence resources", () => {
     const fetchMock = vi.fn(async () => response(event));
     vi.stubGlobal("fetch", fetchMock);
     const { fetchEventDetail } =
-      await import("@/app/(painel)/eventos/events-resource");
+      await import("@/app/(painel)/incidentes/_eventos/events-resource");
 
     const resource = await fetchEventDetail("inc_1", event.id);
 
@@ -128,7 +128,7 @@ describe("ARGUS event and evidence resources", () => {
     const fetchMock = vi.fn(async () => response(event));
     vi.stubGlobal("fetch", fetchMock);
     const { fetchEventDetail } =
-      await import("@/app/(painel)/eventos/events-resource");
+      await import("@/app/(painel)/incidentes/_eventos/events-resource");
 
     await fetchEventDetail("", event.id);
 
@@ -162,7 +162,7 @@ describe("ARGUS event and evidence resources", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const { fetchEvents } =
-      await import("@/app/(painel)/eventos/events-resource");
+      await import("@/app/(painel)/incidentes/_eventos/events-resource");
 
     const resource = await fetchEvents({
       incidentId: "",
@@ -246,7 +246,7 @@ describe("ARGUS event and evidence resources", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const { fetchEvents } =
-      await import("@/app/(painel)/eventos/events-resource");
+      await import("@/app/(painel)/incidentes/_eventos/events-resource");
 
     await fetchEvents({
       incidentId: "inc_1",
@@ -321,7 +321,7 @@ describe("ARGUS event and evidence resources", () => {
       ),
     );
     const { fetchEvidence } =
-      await import("@/app/(painel)/evidencias/evidence-resource");
+      await import("@/app/(painel)/incidentes/detalhe/evidence-resource");
 
     const resource = await fetchEvidence("inc_1");
 
@@ -335,12 +335,15 @@ describe("ARGUS event and evidence resources", () => {
           observedAt: event.occurredAt,
           qualityStatus: "verified",
           source: "signal_bucket",
-          summary: "Evento ARGUS correlacionado ao incidente",
+          relation: "context",
+          strength: "moderate",
+          summary: "source = video · 2 min antes do início",
         },
       ],
     });
-    expect(resource.data?.sources[0]?.detail).toContain("argus-explicit-v1");
-    expect(resource.data?.sources[0]?.detail).toContain(event.id);
+    const fields = resource.data?.sources[0]?.fields.map((field) => field.value);
+    expect(fields).toContain("argus-explicit-v1");
+    expect(fields).toContain(event.id);
   });
 
   it("never substitutes example events or evidence after a gateway failure", async () => {
@@ -362,9 +365,9 @@ describe("ARGUS event and evidence resources", () => {
       ),
     );
     const { fetchEvents } =
-      await import("@/app/(painel)/eventos/events-resource");
+      await import("@/app/(painel)/incidentes/_eventos/events-resource");
     const { fetchEvidence } =
-      await import("@/app/(painel)/evidencias/evidence-resource");
+      await import("@/app/(painel)/incidentes/detalhe/evidence-resource");
 
     const events = await fetchEvents({
       incidentId: "",

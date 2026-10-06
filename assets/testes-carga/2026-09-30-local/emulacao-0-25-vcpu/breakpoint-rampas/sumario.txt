@@ -1,0 +1,78 @@
+Carga da API consumida pelo frontend — modo breakpoint
+Taxa de chegada (iterações/s): base 1, pico 150; 18827 iterações, 18831 requisições, 51.2 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 748; timeouts do cliente (>8000 ms): 7864; iterações descartadas: 1302
+
+THRESHOLDS: 46 reprovados, 57 aprovados
+  ✗ front_api_contract_failed_rate{rota:argus_integration} rate<0.02
+  ✗ http_req_failed{rota:rum_beacon} rate<0.02
+  ✗ http_req_duration{rota:incidents_list} p(95)<2000
+  ✗ http_req_duration{rota:incidents_list} p(99)<5000
+  ✗ http_req_duration{rota:argus_integration} p(95)<2000
+  ✗ http_req_duration{rota:argus_integration} p(99)<5000
+  ✗ front_api_contract_failed_rate{rota:global_events} rate<0.02
+  ✗ http_req_failed{rota:incident_diagnosis} rate<0.02
+  ✗ http_req_failed{rota:monitoring_overview} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:monitoring_overview} rate<0.02
+  ✗ http_req_duration{rota:dashboard_overview} p(95)<2000
+  ✗ http_req_duration{rota:dashboard_overview} p(99)<5000
+  ✗ http_req_duration{rota:global_events} p(95)<2000
+  ✗ http_req_duration{rota:global_events} p(99)<5000
+  ✗ http_req_duration{rota:auth_session} p(95)<2000
+  ✗ http_req_duration{rota:auth_session} p(99)<5000
+  ✗ front_api_contract_failed_rate{rota:incident_diagnosis} rate<0.02
+  ✗ http_req_failed rate<0.02
+  ✗ http_req_duration{rota:incident_diagnosis} p(99)<5000
+  ✗ http_req_duration{rota:incident_diagnosis} p(95)<2000
+  ✗ http_req_duration{rota:incident_events} p(99)<5000
+  ✗ http_req_duration{rota:incident_events} p(95)<2000
+  ✗ http_req_duration{status:200} p(95)<2000
+  ✗ http_req_duration{rota:monitoring_overview} p(95)<2000
+  ✗ http_req_duration{rota:monitoring_overview} p(99)<5000
+  ✗ http_req_failed{rota:incidents_list} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incident_events} rate<0.02
+  ✗ checks rate>0.98
+  ✗ front_api_contract_failed_rate{rota:incidents_list} rate<0.02
+  ✗ http_req_failed{rota:global_events} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incidents_chart} rate<0.02
+  ✗ http_req_duration{rota:incidents_chart} p(95)<2000
+  ✗ http_req_duration{rota:incidents_chart} p(99)<5000
+  ✗ dropped_iterations count==0
+  ✗ http_req_failed{rota:incident_events} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:rum_beacon} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:dashboard_overview} rate<0.02
+  ✗ http_req_failed{rota:auth_session} rate<0.02
+  ✗ http_req_duration{rota:rum_beacon} p(95)<2000
+  ✗ http_req_duration{rota:rum_beacon} p(99)<5000
+  ✗ http_req_failed{rota:dashboard_overview} rate<0.02
+  ✗ http_req_failed{rota:incidents_chart} rate<0.02
+  ✗ front_api_contract_success_rate rate>0.98
+  ✗ front_api_client_timeout_total count==0
+  ✗ front_api_contract_failed_rate{rota:auth_session} rate<0.02
+  ✗ http_req_failed{rota:argus_integration} rate<0.02
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list        4486   42.73      57.27    2497    8000    8001      57.3
+incidents_chart       1520   39.93      60.07    2434    8000    8001      60.1
+dashboard_overview    3004   41.61      58.39    3197    8000    8001       0.0
+incident_diagnosis    3075   41.95      58.05    3998    8000    8001      58.0
+incident_events       1886   40.19      59.81    3898    8000    8000      59.8
+global_events         1825   41.42      58.58    3179    8000    8001      58.6
+monitoring_overview   1281   41.61      58.39    1667    8000    8001       0.0
+auth_session           757   42.93      57.07    1199    8000    8001       0.0
+argus_integration      200   40.50      59.50    1962    8000    8000       0.0
+rum_beacon             793   43.76      56.24    1204    8000    8000       0.0
+
+Por fase            req   falha%   p50ms   p95ms   p99ms
+s1_r10                 329    0.00      12      17      54
+s2_r25                1050    0.00      12      54     160
+s3_r50                2216    1.08     500    3283    8000
+s4_r75                3542   30.18    3140    8000    8001
+s5_r100               5043   51.62    7999    8000    8001
+s6_r150               6647   62.70    7999    8000    8001
+
+Observações:
+  - monitoring_overview: 748/1281 respostas 503 DATA_UNAVAILABLE
+  - incidents_list: 2569 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+
+Resumo detalhado: C:/Users/lcsmi/AppData/Local/Temp/claude/C--Users-lcsmi-OneDrive-Documentos-g05/28f0d8ea-0bf8-4421-add5-487c28ee90d9/scratchpad/results-emul-bp/resumo-front-api-breakpoint.json

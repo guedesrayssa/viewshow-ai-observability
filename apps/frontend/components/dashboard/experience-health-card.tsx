@@ -36,8 +36,13 @@ export type ExperienceHealthCardProps = {
   description: string;
   /** Escreve um valor da série, com a unidade. */
   formatValue: (value: number) => string;
-  timeRange: string;
-  onTimeRangeChange: (value: string) => void;
+  /**
+   * Seletor de período no próprio cartão. A Visão Geral não passa: o período
+   * já está na barra de filtros, e dois seletores para o mesmo valor só
+   * dividiam a atenção.
+   */
+  timeRange?: string;
+  onTimeRangeChange?: (value: string) => void;
 };
 
 export function ExperienceHealthCard({
@@ -69,12 +74,14 @@ export function ExperienceHealthCard({
               ? ""
               : ` · ${formatSignedPercent(versusBaseline)}`}
           </span>
-          <Select
-            aria-label="Período do gráfico"
-            value={timeRange}
-            onValueChange={onTimeRangeChange}
-            options={TIME_RANGE_OPTIONS}
-          />
+          {timeRange && onTimeRangeChange ? (
+            <Select
+              aria-label="Período do gráfico"
+              value={timeRange}
+              onValueChange={onTimeRangeChange}
+              options={TIME_RANGE_OPTIONS}
+            />
+          ) : null}
         </div>
       </div>
 

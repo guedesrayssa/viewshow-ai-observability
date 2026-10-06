@@ -2,6 +2,8 @@
 
 > Este documento apresenta os planos de teste revisados dos requisitos não funcionais do View Show, os resultados de carga e resiliência executados em ambiente local e em nuvem, e a verificação dos indicadores de observabilidade. Cada número remete a um arquivo de evidência versionado; configuração existente não é apresentada como medição executada.
 
+> **Nota de 01/10/2026.** Documento da Sprint 3 mantido como registro histórico do estado de 11/09/2026. A suíte atual da API e a análise de capacidade na AWS estão em [Testes de Carga da API](../sprint5/testes-de-carga-da-api.md). Uma conclusão deste documento deixou de valer no `develop`: as Seções 7.5 e 8.5 registram o RNF04 aprovado (37 de 37 checks, com as rotas de leitura exigindo sessão); hoje essas rotas respondem sem sessão e o `auth-check.js` reprova 14 de 37 checks.
+
 ## Sumário
 
 1. [Introdução](#1-introdução)

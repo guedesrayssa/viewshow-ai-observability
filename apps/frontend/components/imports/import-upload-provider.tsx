@@ -74,6 +74,13 @@ export type ImportUploadRunner = (
 
 type ProviderProps = {
   children: ReactNode;
+  /**
+   * Adia a primeira listagem até alguém usar `useImportUpload`. O provider
+   * fica no layout do painel para que um envio em andamento sobreviva à
+   * navegação, mas só a tela de Dados lê as importações: sem isto, toda tela
+   * do painel pedia `/api/v1/imports?limit=50` ao abrir.
+   */
+  lazy?: boolean;
   client?: ImportUploadClient;
   uploadFile?: ImportUploadRunner;
   pollIntervalMs?: number;
@@ -212,8 +219,12 @@ function localProgress(
   };
 }
 
+/** Pede ao provider a primeira listagem, no modo `lazy`. */
+const ImportLoadContext = createContext<(() => void) | null>(null);
+
 export function ImportUploadProvider({
   children,
+  lazy = false,
   client: injectedClient,
   uploadFile = uploadImportFile,
   pollIntervalMs = 5_000,
@@ -243,6 +254,8 @@ export function ImportUploadProvider({
   const [conflict, setConflict] = useState<ImportConflictFeedback | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadRequested, setLoadRequested] = useState(!lazy);
+  const requestLoad = useCallback(() => setLoadRequested(true), []);
 
   const mountedRef = useRef(true);
   const activeRef = useRef<ImportSnapshot | null>(null);
@@ -679,6 +692,7 @@ export function ImportUploadProvider({
   );
 
   useEffect(() => {
+    if (!loadRequested) return;
     const generation = bootstrapGenerationRef.current + 1;
     bootstrapGenerationRef.current = generation;
     mountedRef.current = true;
@@ -707,7 +721,7 @@ export function ImportUploadProvider({
       for (const controller of readControllers) controller.abort();
       readControllers.clear();
     };
-  }, [refresh]);
+  }, [loadRequested, refresh]);
 
   const activeImportId = activeImport?.importId;
   const activeImportState = activeImport?.state;
@@ -843,14 +857,21 @@ export function ImportUploadProvider({
   );
 
   return (
-    <ImportUploadContext.Provider value={value}>
-      {children}
-    </ImportUploadContext.Provider>
+    <ImportLoadContext.Provider value={requestLoad}>
+      <ImportUploadContext.Provider value={value}>
+        {children}
+      </ImportUploadContext.Provider>
+    </ImportLoadContext.Provider>
   );
 }
 
 export function useImportUpload(): ImportUploadContextValue {
   const context = useContext(ImportUploadContext);
+  const requestLoad = useContext(ImportLoadContext);
+  // Quem usa as importações é quem dispara a primeira listagem.
+  useEffect(() => {
+    requestLoad?.();
+  }, [requestLoad]);
   if (!context)
     throw new Error(
       "useImportUpload precisa estar dentro de <ImportUploadProvider>.",

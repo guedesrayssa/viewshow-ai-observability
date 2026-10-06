@@ -88,6 +88,7 @@ locals {
   ]
   ingestion_import_environment = [
     { name = "ARCHIVE_BUCKET_OWNER", value = data.aws_caller_identity.atual.account_id },
+    { name = "ANALYSIS_FACT_CATALOG_LOCATION", value = var.analysis_fact_catalog_location },
     { name = "INGESTION_DISK_BUDGET_BYTES", value = tostring(local.ingestion_snapshot_disk_budget_bytes) },
     { name = "IMPORT_HOT_MATERIALIZATION_ENABLED", value = tostring(var.import_hot_materialization_enabled) },
     { name = "ACTIVATE_CANDIDATE", value = "false" },

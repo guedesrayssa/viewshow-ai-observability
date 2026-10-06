@@ -1,28 +1,30 @@
 /**
  * page.tsx
- * Tela de Eventos do View Show.
+ * Endereço antigo da tela de Eventos.
  *
- * Permite inspecionar os eventos de telemetria correlacionados a uma
- * degradação e reconstruir seu contexto técnico, conforme a seção 5.5 do
- * entendimento de UX. Materializa principalmente a US-ENG-02 e a US-ENG-03.
+ * Com incidente, os eventos são a aba "Eventos correlacionados" do detalhe
+ * dele; sem, o feed global da seção Incidentes. Esta rota só redireciona,
+ * para que links antigos não quebrem.
  */
 
-import type { Metadata } from "next";
+"use client";
+
 import { Suspense } from "react";
 
-import { EventsView } from "@/app/(painel)/eventos/events-view";
+import { RouteRedirect } from "@/components/navigation/route-redirect";
 import { Skeleton } from "@/components/ui/skeleton";
+import { eventsFeedHref, incidentEventsHref } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "Eventos",
-  description:
-    "Eventos e sessões de telemetria do Globoplay, com o dado normalizado ligado à fonte original, sem perder o registro bruto.",
-};
+function resolve(params: URLSearchParams): string {
+  const incidentId = params.get("incidente");
+  const eventId = params.get("evento");
+  return incidentId ? incidentEventsHref(incidentId, eventId) : eventsFeedHref(eventId);
+}
 
-export default function EventosPage() {
+export default function LegacyEventsPage() {
   return (
     <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-      <EventsView />
+      <RouteRedirect resolve={resolve} />
     </Suspense>
   );
 }

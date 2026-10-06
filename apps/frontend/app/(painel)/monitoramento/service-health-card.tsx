@@ -70,7 +70,7 @@ export function ServiceHealthCard({
         <>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[30rem] border-separate border-spacing-y-1.5">
-              <thead className="text-left text-micro uppercase tracking-wide text-ink-subtle">
+              <thead className="text-left text-caption text-ink-subtle">
                 <tr>
                   <th scope="col" className="px-3 pb-1">
                     Serviço

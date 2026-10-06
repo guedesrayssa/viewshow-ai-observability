@@ -27,6 +27,11 @@ locals {
     "${arquivo}:${filesha256("${local.analysis_worker_dir}/${arquivo}")}\n"
   ]))
   analysis_worker_image_tag = substr(local.analysis_worker_image_hash, 0, 12)
+  analysis_worker_service_version = (
+    var.analysis_worker_image_uri != ""
+    ? substr(sha256(var.analysis_worker_image_uri), 0, 12)
+    : local.analysis_worker_image_tag
+  )
 
   // Sem imagem informada, o Terraform constrói e publica a do módulo.
   analysis_worker_builds_image = var.analysis_worker_habilitado && var.analysis_worker_image_uri == ""
@@ -34,7 +39,7 @@ locals {
   // O sufixo [0] só é avaliado quando o repositório existe.
   analysis_worker_image_uri = !var.analysis_worker_habilitado ? "" : (
     var.analysis_worker_image_uri != "" ? var.analysis_worker_image_uri :
-    "${aws_ecr_repository.analysis_worker[0].repository_url}:${local.analysis_worker_image_tag}"
+    "${data.aws_caller_identity.atual.account_id}.dkr.ecr.${var.regiao}.amazonaws.com/${var.deployment_namespace}-analysis-worker:${local.analysis_worker_image_tag}"
   )
 
   // Com arquivos locais, o Terraform publica os dois no bucket da ingestão em
@@ -148,17 +153,38 @@ resource "aws_cloudwatch_log_group" "analysis_worker" {
   retention_in_days = var.retencao_logs_dias
 }
 
+resource "aws_security_group_rule" "ollama_ssh_bridge" {
+  count                    = var.analysis_worker_habilitado && var.analysis_ssh_bridge_habilitado ? 1 : 0
+  type                     = "ingress"
+  description              = "Ollama via SSH reverso somente a partir do Security Group do servico ECS"
+  from_port                = 11434
+  to_port                  = 11434
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.bastion.id
+  source_security_group_id = aws_security_group.servico.id
+
+  lifecycle {
+    precondition {
+      condition     = var.analysis_ollama_base_url == "http://${aws_instance.bastion.private_ip}:11434"
+      error_message = "A ponte SSH exige o IP privado do bastion como endpoint Ollama."
+    }
+  }
+}
+
 resource "aws_ecs_task_definition" "analysis_worker" {
   count                    = var.analysis_worker_habilitado ? 1 : 0
   family                   = "${var.deployment_namespace}-analysis-worker"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "512"
-  memory                   = "1024"
-  execution_role_arn       = data.aws_iam_role.lab.arn
-  task_role_arn            = data.aws_iam_role.lab.arn
+  // O sidecar de teste do Ollama (ver analysis_ollama_sidecar_habilitado) não
+  // cabe no dimensionamento normal do worker; Fargate não tem GPU, então até
+  // um modelo pequeno em CPU pede mais CPU/memória do que o worker sozinho.
+  cpu                = var.analysis_ollama_sidecar_habilitado ? "4096" : "512"
+  memory             = var.analysis_ollama_sidecar_habilitado ? "10240" : "1024"
+  execution_role_arn = data.aws_iam_role.lab.arn
+  task_role_arn      = data.aws_iam_role.lab.arn
 
-  container_definitions = jsonencode([{
+  container_definitions = jsonencode(concat([merge({
     name      = "analysis-worker"
     image     = local.analysis_worker_image_uri
     essential = true
@@ -167,7 +193,7 @@ resource "aws_ecs_task_definition" "analysis_worker" {
     // máximo que o Fargate permite antes do SIGKILL.
     stopTimeout = 120
 
-    environment = [
+    environment = concat([
       { name = "NODE_ENV", value = "production" },
       { name = "AWS_REGION", value = var.regiao },
       { name = "OPERATIONAL_TABLE_NAME", value = aws_dynamodb_table.operacional.name },
@@ -179,7 +205,11 @@ resource "aws_ecs_task_definition" "analysis_worker" {
       { name = "LLM_PROVIDER", value = var.analysis_llm_provider },
       { name = "LLM_MODEL_ID", value = var.analysis_llm_model_id },
       { name = "OLLAMA_BASE_URL", value = var.analysis_ollama_base_url },
-    ]
+      { name = "OTEL_SERVICE_NAME", value = "view-show-agentic" },
+      { name = "OTEL_DEPLOYMENT_ENVIRONMENT", value = "aws" },
+      { name = "OTEL_SERVICE_VERSION", value = local.analysis_worker_service_version },
+      { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.observabilidade_habilitada ? "http://${aws_instance.observabilidade[0].private_ip}:4320" : "" },
+    ], var.analysis_llm_timeout_ms != "" ? [{ name = "LLM_TIMEOUT_MS", value = var.analysis_llm_timeout_ms }] : [])
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -189,7 +219,39 @@ resource "aws_ecs_task_definition" "analysis_worker" {
         "awslogs-stream-prefix" = "worker"
       }
     }
-  }])
+    }, var.analysis_ollama_sidecar_habilitado ? {
+    // Só inicia depois que o Ollama respondeu ao pull do modelo — sem isso
+    // a primeira análise chegaria a um Ollama de pé mas sem modelo.
+    dependsOn = [{ containerName = "ollama", condition = "HEALTHY" }]
+    } : {})],
+    // Container de teste, nunca o caminho de produção (ver a variável).
+    var.analysis_ollama_sidecar_habilitado ? [{
+      name       = "ollama"
+      image      = "ollama/ollama:latest"
+      essential  = true
+      entryPoint = ["sh", "-c"]
+      command    = ["ollama serve & sleep 5 && ollama pull ${var.analysis_llm_model_id} && wait"]
+
+      // O ECS recusa retries acima de 10; a janela de 10 min (startPeriod +
+      // retries*interval) cobre o pull de um modelo de poucos GB em CPU.
+      healthCheck = {
+        command     = ["CMD-SHELL", "ollama list | grep -q ${var.analysis_llm_model_id} || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 10
+        startPeriod = 300
+      }
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.analysis_worker[0].name
+          "awslogs-region"        = var.regiao
+          "awslogs-stream-prefix" = "ollama"
+        }
+      }
+    }] : []
+  ))
 }
 
 resource "aws_ecs_service" "analysis_worker" {
@@ -197,7 +259,7 @@ resource "aws_ecs_service" "analysis_worker" {
   name            = "${var.deployment_namespace}-analysis-worker"
   cluster         = aws_ecs_cluster.principal.id
   task_definition = aws_ecs_task_definition.analysis_worker[0].arn
-  desired_count   = 1
+  desired_count   = var.analysis_worker_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
