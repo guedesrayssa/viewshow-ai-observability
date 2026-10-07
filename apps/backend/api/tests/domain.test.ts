@@ -129,6 +129,14 @@ describe("domain values", () => {
     const diagnosis = toDiagnosisData({
       ...incident,
       diagnosisProjection: {
+        impact: {
+          affectedDevices: {
+            value: 3,
+            observedThrough: timestamp,
+            coverageRatio: 1,
+            source: "analysis-worker:frontend-demo:incident-start-bucket",
+          },
+        },
         buffering: {
           points: [{ timestamp, value: 3.2 }],
           marker: { timestamp, label: "Degradação" },
@@ -142,6 +150,8 @@ describe("domain values", () => {
 
     expect(diagnosis.charts.buffering?.points).toEqual([{ timestamp: "2026-01-01T00:00:00.000Z", value: 3.2 }]);
     expect(diagnosis.charts.concentrations).toEqual([{ label: "smart-tv", percentage: 68 }]);
+    expect(diagnosis.incident.impact.affectedDevices.value).toBe(3);
+    expect(diagnosis.incident.impact.affectedDevices.measurement.status).toBe("measured");
     expect(diagnosis.timeline).toHaveLength(1);
     expect(diagnosis.changes).toHaveLength(1);
     expect(diagnosis.dataQuality.status).toBe("sufficient");

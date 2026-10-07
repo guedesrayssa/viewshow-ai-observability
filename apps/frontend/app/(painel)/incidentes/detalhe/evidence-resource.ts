@@ -306,11 +306,18 @@ export async function requestReanalysis(
     if (response.ok) return { ok: true };
 
     reportRum("frontend_api_fetch_errors_total", 1);
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       return {
         ok: false,
         needsSignIn: true,
         message: "Sua sessão expirou. Entre novamente para pedir a reanálise.",
+      };
+    }
+    if (response.status === 403) {
+      return {
+        ok: false,
+        needsSignIn: false,
+        message: "Seu perfil não tem permissão para pedir a reanálise.",
       };
     }
     const body = (await response.json().catch(() => null)) as {
@@ -392,12 +399,19 @@ export async function reviewHypothesis(
       return { ok: true, status };
     }
     reportRum("frontend_api_fetch_errors_total", 1);
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       return {
         ok: false,
         needsSignIn: true,
         message:
           "Sua sessão expirou. Entre novamente para registrar a revisão.",
+      };
+    }
+    if (response.status === 403) {
+      return {
+        ok: false,
+        needsSignIn: false,
+        message: "Seu perfil não tem permissão para revisar hipóteses.",
       };
     }
     if (response.status === 409) {

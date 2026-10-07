@@ -189,4 +189,32 @@ describe("human review", () => {
       requests.some(({ url }) => url.includes("/api/v1/telemetry/rum")),
     ).toBe(true);
   });
+
+  it("does not report an authorization failure as an expired session", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://gateway.test");
+    vi.stubGlobal("fetch", vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return new Response(JSON.stringify({
+          error: { code: "FORBIDDEN", message: "O usuário não pode revisar hipóteses." },
+        }), { status: 403 });
+      }
+      return new Response(JSON.stringify({
+        data: {
+          incident: { id: "inc_1", title: "Incident", priority: "P1", status: "investigating", startedAt: "2026-01-01T00:00:00Z", impact: { affectedDevices: { value: 2, measurement: { status: "measured" } } }, primaryComponent: null },
+          diagnosis: { status: "ready", summary: "summary", primaryHypothesisId: "hyp_7", confidence: 0.8, hypotheses: [{ id: "hyp_7", statement: "Cause", component: null, probability: 0.8, rationale: null, review: { status: "pending", version: 0 } }] },
+          evidence: [],
+          charts: { buffering: null, concentrations: [] },
+        },
+        meta,
+      }), { status: 200 });
+    }));
+    const { fetchEvidence, reviewHypothesis } = await import("@/app/(painel)/incidentes/detalhe/evidence-resource");
+    await fetchEvidence("inc_1");
+
+    await expect(reviewHypothesis("inc_1", "confirmed")).resolves.toEqual({
+      ok: false,
+      needsSignIn: false,
+      message: "Seu perfil não tem permissão para revisar hipóteses.",
+    });
+  });
 });

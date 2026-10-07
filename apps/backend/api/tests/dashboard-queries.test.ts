@@ -59,6 +59,103 @@ const overviewData = {
   facets: {},
 } as const;
 
+const measurement = {
+  status: "measured" as const,
+  source: "argus",
+  coverageRatio: 1,
+  observedThrough: "2026-01-01T12:00:00.000Z",
+};
+
+const monitoringData = {
+  capabilities: {
+    sourceQuality: { status: "available" },
+    pipelineRuntime: {
+      status: "partial",
+      metrics: {
+        ingestionRate: "available",
+        processingLatencyP95: "partial",
+        queueDepth: "unavailable",
+        deadLetterQueue: "unavailable",
+      },
+      reason: "ANALYSIS_QUEUE_METRICS_UNAVAILABLE",
+    },
+    geographicMetrics: { status: "unavailable", granularity: "state" },
+    filtering: {
+      status: "partial",
+      supportedDimensions: ["source", "flowMetric"],
+      supportedFilterSets: [[], ["source"], ["flowMetric"]],
+    },
+  },
+  kpis: {
+    ingestionRate: {
+      value: 120,
+      unit: "events_per_minute",
+      status: "healthy",
+      measurement,
+    },
+    processingLatencyP95: {
+      value: 800,
+      unit: "ms",
+      status: "healthy",
+      measurement: { ...measurement, status: "estimated" },
+    },
+    queueDepth: {
+      value: null,
+      unit: "messages",
+      status: "unknown",
+      measurement: { ...measurement, status: "unknown" },
+    },
+    deadLetterQueue: {
+      value: null,
+      unit: "messages",
+      status: "unknown",
+      newInWindow: null,
+      measurement: { ...measurement, status: "unknown" },
+    },
+  },
+  flow: {
+    metric: "processing_latency",
+    unit: "ms",
+    bucketSeconds: 900,
+    measurement: { ...measurement, status: "estimated" },
+    target: null,
+    series: [
+      {
+        stage: "processing",
+        name: "Processamento",
+        points: [{ timestamp: "2026-01-01T12:00:00.000Z", value: 800 }],
+      },
+    ],
+    peak: {
+      timestamp: "2026-01-01T12:00:00.000Z",
+      stage: "processing",
+      value: 800,
+    },
+  },
+  sources: [
+    {
+      id: "argus",
+      name: "argus",
+      type: "batch",
+      workers: ["argus"],
+      lastRunAt: "2026-01-01T12:00:00.000Z",
+      lastSuccessfulRunAt: "2026-01-01T12:00:00.000Z",
+      observedThrough: "2026-01-01T12:00:00.000Z",
+      lagSeconds: 0,
+      state: "stable",
+      records: {
+        read: 100,
+        written: 100,
+        rejected: 0,
+        measurement,
+      },
+      coverage: { value: 1, unit: "ratio", measurement },
+    },
+  ],
+  geography: { granularity: "state", metrics: [], areas: [] },
+  facets: { sources: ["argus"] },
+} as const;
+
 function resolver(
   value: ActiveDatasetSnapshot | null = activeDataset,
 ): ActiveDatasetResolver & { readonly resolve: ReturnType<typeof vi.fn> } {
@@ -76,9 +173,12 @@ function repository(): DashboardReadRepository & {
       coverageRatio: 1,
       source: "argus:live_qoe_hourly",
     })),
-    latestMonitoring: vi.fn(async () => {
-      throw new Error("legacy monitoring read must stay disconnected");
-    }),
+    latestMonitoring: vi.fn(async () => ({
+      data: monitoringData,
+      observedThrough: "2026-01-01T12:00:00.000Z",
+      coverageRatio: 1,
+      source: "argus",
+    })),
   };
 }
 
@@ -155,7 +255,7 @@ describe("dashboard queries module", () => {
     },
   );
 
-  it("returns 503 for monitoring without using the legacy read", async () => {
+  it("returns the versioned monitoring projection with honest partial warnings", async () => {
     const storage = repository();
     const active = resolver();
     await expect(
@@ -163,8 +263,43 @@ describe("dashboard queries module", () => {
         window: "15m",
         flowMetric: "processing_latency",
       }),
-    ).rejects.toMatchObject({ status: 503, code: "DATA_UNAVAILABLE" });
+    ).resolves.toMatchObject({
+      data: monitoringData,
+      quality: {
+        partial: true,
+        warnings: [
+          expect.objectContaining({
+            code: "ANALYSIS_QUEUE_METRICS_UNAVAILABLE",
+          }),
+        ],
+      },
+    });
     expect(active.resolve).toHaveBeenCalledTimes(1);
+    expect(storage.latestMonitoring).toHaveBeenCalledWith(
+      activeDataset,
+      new Date("2026-01-01T11:45:00.000Z"),
+      now,
+      ["argus"],
+    );
+  });
+
+  it("rejects a monitoring source outside the configured allowlist", async () => {
+    const storage = repository();
+    await expect(
+      new DashboardQueries(
+        storage,
+        resolver(),
+        ["argus"],
+        () => now,
+      ).monitoring({
+        window: "15m",
+        source: "unknown",
+        flowMetric: "processing_latency",
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      code: "UNSUPPORTED_FILTER_COMBINATION",
+    });
     expect(storage.latestMonitoring).not.toHaveBeenCalled();
   });
 });

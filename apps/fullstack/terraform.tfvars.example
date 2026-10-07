@@ -15,6 +15,11 @@ scheduler_ingestao_habilitado = false
 live_sync_enabled            = false
 incremental_s3_enabled       = false
 analysis_worker_habilitado   = false
+# Com o worker habilitado e sem Bedrock/Ollama, `rules` publica diagnósticos
+# determinísticos ancorados nos fatos A′. O catálogo de fatos da ingestão
+# precisa usar seriesIds `ts_<sha256>` (veja scope-catalog.pilot.json).
+# analysis_llm_provider          = "rules"
+# analysis_fact_catalog_location = "s3://<bucket-da-ingestao>/analysis/catalogs/<sha256>.json"
 
 # AWS Academy alternative (learner-lab only; shared LabRole credentials).
 # eks_iam_mode = "learner-lab-existing"

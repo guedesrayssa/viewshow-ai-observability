@@ -52,7 +52,12 @@ export async function main(): Promise<void> {
     } } : {}) });
   const llm = instrumentLlmProvider(rawLlm, telemetry, { provider, modelId });
   const queue = new SqsAnalysisQueue(sqsClient, required("ANALYSIS_QUEUE_URL"), required("ANALYSIS_DLQ_URL"));
-  const store = new DynamoAnalysisStore(documentClient, required("OPERATIONAL_TABLE_NAME"), model.forecast.valueThreshold);
+  const store = new DynamoAnalysisStore(
+    documentClient,
+    required("OPERATIONAL_TABLE_NAME"),
+    model.forecast.valueThreshold,
+    scopes,
+  );
   const worker = new AnalysisWorker({ queue, store, reader: store, model, scopes, llm, telemetry: telemetry.event });
   let stopping = false; const concurrency=positive("WORKER_CONCURRENCY",2);
   shutdownTimeoutMs = positive("SHUTDOWN_TIMEOUT_MS", 110_000);

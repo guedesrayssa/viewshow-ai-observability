@@ -50,6 +50,13 @@ expostas ao frontend.
 Eventos exigem `?incidente=<id>` explícito. Revisão humana envia o ID de
 hipótese e `expectedVersion` e mostra conflito 409.
 
+O diagnóstico combina as evidências correlacionadas pela ingestão com os fatos
+A′ publicados pelo worker de análise; esses fatos preservam cobertura,
+proveniência e a relação com cada hipótese. O monitoramento consome somente a
+projeção versionada do dataset ativo. Métricas de fila ou DLQ ausentes continuam
+como não medidas, acompanhadas do aviso do gateway. O RUM mede o caminho da lista
+de incidentes até a rota atual `/incidentes/detalhe?incidente=...`.
+
 ## Rotas
 
 `/login`, `/criar-conta`, `/recuperar-senha`, `/visao-geral`, `/incidentes`,

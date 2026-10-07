@@ -9,12 +9,13 @@
  */
 
 import { createFakeProvider, type FakeProviderOptions } from "../adapters/llm/fake-provider.js";
+import { createGroundedRulesProvider } from "../adapters/llm/grounded-rules-provider.js";
 import { createOllamaProvider } from "../adapters/llm/ollama-provider.js";
 import { createBedrockProvider, type ConverseInput, type ConverseOutput } from "../adapters/llm/bedrock-provider.js";
 import type { LlmProvider } from "../ports/llm-provider.js";
 import { AnalysisError } from "../worker/types.js";
 
-export type LlmProviderKind = "bedrock" | "ollama" | "fake" | "none";
+export type LlmProviderKind = "bedrock" | "ollama" | "rules" | "fake" | "none";
 
 export interface LlmProviderConfig {
   readonly kind: LlmProviderKind;
@@ -81,6 +82,9 @@ export function createLlmProvider(config: LlmProviderConfig): LlmProvider {
         },
       };
     }
+
+    case "rules":
+      return createGroundedRulesProvider();
 
     case "fake": {
       if (config.environment !== "test") {

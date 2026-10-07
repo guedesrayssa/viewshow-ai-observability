@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { analysisRunId, parseAnalysisEvent, type WindowedEvent } from "../contracts/analysis-event.js";
 import type { LlmProvider } from "../ports/llm-provider.js";
-import { cleanObservations, hash as digest, prepareContext } from "./facts.js";
+import { cleanObservations, hash as digest, prepareContext, prepareDiagnosisProjection } from "./facts.js";
 import { infer, type ModelBundle } from "./models.js";
 import { interpret } from "./interpret.js";
 import { AnalysisError, type AnalysisQueue, type AnalysisScope, type AnalysisStore, type Delivery, type Lease, type ObservationReader, type ScopeCheckpoint, type Telemetry } from "./types.js";
@@ -24,6 +24,17 @@ export function isMaterial(rows: import("./types.js").Observation[], event: Wind
     .filter(row => row.metric === rule.metric && row.grainSeconds === event.payload.window.grainSeconds &&
       Date.parse(row.timestamp) >= start && Date.parse(row.timestamp) + row.grainSeconds * 1000 <= end && row.value !== null)
     .reduce((sum, row) => sum + row.value!, 0) >= rule.minimum);
+}
+
+/** Motivo público de uma reanálise que não chegou a um sinal diagnosticável. */
+export function ineligibleReason(checkpoint: ScopeCheckpoint, model: ModelBundle): string {
+  const { result, event } = checkpoint;
+  if (result.coverage !== 1) return "INCOMPLETE_COVERAGE";
+  if (event.eventType !== "QOE_FORECAST" &&
+    (result.historyDays < model.detection.minHistoryDays || result.historyPoints < model.detection.minHistoryPoints))
+    return "INSUFFICIENT_HISTORY";
+  if (result.reasons.includes("MATERIALITY_GATE_NOT_MET")) return "MATERIALITY_GATE_NOT_MET";
+  return "NO_ELEVATED_SIGNAL";
 }
 
 export class AnalysisWorker {
@@ -71,6 +82,8 @@ export class AnalysisWorker {
         });
       }, 60000);
       const resolved = event.eventType === "REANALYSIS_REQUESTED" ? await store.resolveIncident(event.payload.incidentId) : null;
+      if (resolved)
+        log("analysis_incident_resolved", { eventType, incidentId: resolved.incidentId, scopeId: resolved.scope.id, resolution: resolved.resolution });
       const windowed = event.eventType === "REANALYSIS_REQUESTED" ? resolved!.event : event;
       validateWindow(windowed);
       if (windowed.payload.datasetVersion !== this.deps.model.datasetVersion) throw new AnalysisError("MODEL_DATASET_MISMATCH", true);
@@ -79,6 +92,7 @@ export class AnalysisWorker {
       if (selection && selection.kind !== "global" && typeof selectedId !== "string") throw new AnalysisError("INVALID_SCOPE", true);
       const scopes = resolved ? [resolved.scope] : this.deps.scopes.filter(s => !selection || selection.kind === "global" || s.id === selectedId);
       if (!scopes.length) throw new AnalysisError("UNKNOWN_SCOPE", true);
+      let diagnoses = 0;
       for (const scope of scopes) {
         if (lost) throw new AnalysisError("LEASE_LOST");
         let checkpoint = await store.checkpoint(lease, scope.id);
@@ -95,6 +109,7 @@ export class AnalysisWorker {
           const elevated = eligible && material ? result.signals.filter(s => s.score > s.threshold.value).sort((a, b) => b.score / b.threshold.value - a.score / a.threshold.value)[0] : undefined;
           checkpoint = { event: windowed, scope, result,
             context: elevated ? prepareContext(rows, windowed.payload.datasetVersion, scope, elevated, windowed.payload.window.end, 3600, 50000, windowed.payload.window.grainSeconds) : null,
+            presentation: prepareDiagnosisProjection(rows, windowed, scope),
             incidentId: resolved?.incidentId ?? null,
             predictionId: windowed.eventType === "QOE_FORECAST" && result.signals.length ? `pred_${digest({ runId, scope: scope.id }).slice(0, 32)}` : null };
           await store.saveCheckpoint(lease, scope.id, checkpoint);
@@ -115,13 +130,26 @@ export class AnalysisWorker {
           }
           await store.saveCheckpoint(lease, scope.id, checkpoint);
         }
-        if (shouldDiagnose) await store.saveDiagnosis(lease, checkpoint);
+        // A reanálise pedida pelo operador sempre publica um resultado. Sem sinal
+        // elegível, o diagnóstico sai como falha explícita com o motivo e com a
+        // projeção de apresentação, em vez de a execução terminar sem nada visível.
+        const reanalysisWithoutSignal = resolved !== null && !checkpoint.context;
+        if (reanalysisWithoutSignal && !checkpoint.diagnosticFailure) {
+          checkpoint.diagnosticFailure = ineligibleReason(checkpoint, this.deps.model);
+          await store.saveCheckpoint(lease, scope.id, checkpoint);
+        }
+        if (shouldDiagnose || reanalysisWithoutSignal) {
+          await store.saveDiagnosis(lease, checkpoint);
+          diagnoses += 1;
+          if (checkpoint.diagnosticFailure)
+            log("analysis_diagnosis_unavailable", { eventType, scopeId: scope.id, incidentId: checkpoint.incidentId, reason: checkpoint.diagnosticFailure });
+        }
       }
       await stopHeartbeat();
       if (lost) throw new AnalysisError("LEASE_LOST");
       await store.finish(lease, "SUCCEEDED", now());
       await queue.acknowledge(delivery.receipt);
-      log("analysis_completed", { eventType, runId: lease.runId, scopes: scopes.length });
+      log("analysis_completed", { eventType, runId: lease.runId, scopes: scopes.length, diagnoses });
     } catch (error) {
       await stopHeartbeat();
       const code = error instanceof AnalysisError ? error.code : "DEPENDENCY_FAILURE";
