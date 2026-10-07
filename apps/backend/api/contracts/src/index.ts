@@ -851,10 +851,19 @@ export interface DiagnosisData {
   readonly evidence: readonly EvidenceDto[];
   readonly charts: {
     readonly buffering: {
-      readonly points: readonly { readonly timestamp: string; readonly value: number }[];
-      readonly marker: { readonly timestamp: string; readonly label: string } | null;
+      readonly points: readonly {
+        readonly timestamp: string;
+        readonly value: number;
+      }[];
+      readonly marker: {
+        readonly timestamp: string;
+        readonly label: string;
+      } | null;
     } | null;
-    readonly concentrations: readonly { readonly label: string; readonly percentage: number }[];
+    readonly concentrations: readonly {
+      readonly label: string;
+      readonly percentage: number;
+    }[];
     readonly concentrationNote: string;
   };
   readonly timeline: readonly {
@@ -1319,9 +1328,7 @@ export const diagnosisDataSchema = z
           .strict()
           .nullable(),
         concentrations: z.array(
-          z
-            .object({ label: z.string(), percentage: z.number() })
-            .strict(),
+          z.object({ label: z.string(), percentage: z.number() }).strict(),
         ),
         concentrationNote: z.string(),
       })

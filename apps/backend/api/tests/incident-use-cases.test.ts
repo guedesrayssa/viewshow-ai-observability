@@ -508,7 +508,11 @@ describe("incident, Event, and Evidence use cases", () => {
     const result = await useCases(storage).review(
       "inc_1",
       "run1_hyp1",
-      { status: "confirmed", note: "Confirmado com o time de rede", expectedVersion: 0 },
+      {
+        status: "confirmed",
+        note: "Confirmado com o time de rede",
+        expectedVersion: 0,
+      },
       "usr_1",
     );
 

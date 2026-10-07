@@ -200,7 +200,7 @@ function evidenceStrength(value: unknown): "strong" | "moderate" | "weak" {
 
 const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 
 function diagnosisPresentation(
@@ -208,7 +208,9 @@ function diagnosisPresentation(
 ): Pick<DiagnosisData, "charts" | "timeline" | "changes"> {
   const projection = record(item.diagnosisProjection);
   const buffering = record(projection?.buffering);
-  const points = (Array.isArray(buffering?.points) ? buffering.points : []).flatMap((entry) => {
+  const points = (
+    Array.isArray(buffering?.points) ? buffering.points : []
+  ).flatMap((entry) => {
     const point = record(entry);
     const timestamp = iso(point?.timestamp);
     const value = number(point?.value);
@@ -217,38 +219,76 @@ function diagnosisPresentation(
   const rawMarker = record(buffering?.marker);
   const markerTimestamp = iso(rawMarker?.timestamp);
   const markerLabel = text(rawMarker?.label);
-  const concentrations = (Array.isArray(projection?.concentrations) ? projection.concentrations : []).flatMap((entry) => {
+  const concentrations = (
+    Array.isArray(projection?.concentrations) ? projection.concentrations : []
+  ).flatMap((entry) => {
     const slice = record(entry);
     const label = text(slice?.label);
     const percentage = number(slice?.percentage);
     return label && percentage !== null && percentage >= 0 && percentage <= 100
-      ? [{ label, percentage }] : [];
+      ? [{ label, percentage }]
+      : [];
   });
-  const timeline = (Array.isArray(projection?.timeline) ? projection.timeline : []).flatMap((entry) => {
+  const timeline = (
+    Array.isArray(projection?.timeline) ? projection.timeline : []
+  ).flatMap((entry) => {
     const mark = record(entry);
     const timestamp = iso(mark?.timestamp);
     const label = text(mark?.label);
     const source = text(mark?.source);
     const tone = mark?.tone;
-    return timestamp && label && source && (tone === "info" || tone === "warning" || tone === "critical" || tone === "navy")
-      ? [{ timestamp, label, source, tone: tone as DiagnosisData["timeline"][number]["tone"] }] : [];
+    return timestamp &&
+      label &&
+      source &&
+      (tone === "info" ||
+        tone === "warning" ||
+        tone === "critical" ||
+        tone === "navy")
+      ? [
+          {
+            timestamp,
+            label,
+            source,
+            tone: tone as DiagnosisData["timeline"][number]["tone"],
+          },
+        ]
+      : [];
   });
-  const changes = (Array.isArray(projection?.changes) ? projection.changes : []).flatMap((entry) => {
+  const changes = (
+    Array.isArray(projection?.changes) ? projection.changes : []
+  ).flatMap((entry) => {
     const change = record(entry);
     const label = text(change?.label);
     const cause = text(change?.cause);
     const percentage = number(change?.percentage);
     const tone = change?.tone;
-    return label && cause && percentage !== null && (tone === "info" || tone === "warning" || tone === "critical")
-      ? [{ label, cause, percentage, tone: tone as DiagnosisData["changes"][number]["tone"] }] : [];
+    return label &&
+      cause &&
+      percentage !== null &&
+      (tone === "info" || tone === "warning" || tone === "critical")
+      ? [
+          {
+            label,
+            cause,
+            percentage,
+            tone: tone as DiagnosisData["changes"][number]["tone"],
+          },
+        ]
+      : [];
   });
   return {
     charts: {
-      buffering: points.length ? {
-        points,
-        marker: markerTimestamp && markerLabel && points.some((point) => point.timestamp === markerTimestamp)
-          ? { timestamp: markerTimestamp, label: markerLabel } : null,
-      } : null,
+      buffering: points.length
+        ? {
+            points,
+            marker:
+              markerTimestamp &&
+              markerLabel &&
+              points.some((point) => point.timestamp === markerTimestamp)
+                ? { timestamp: markerTimestamp, label: markerLabel }
+                : null,
+          }
+        : null,
       concentrations,
       concentrationNote: text(projection?.concentrationNote) ?? "",
     },
@@ -332,10 +372,17 @@ export function toDiagnosisData(
     timeline: presentation.timeline,
     changes: presentation.changes,
     dataQuality: {
-      status: evidence.length > 0 && presentation.charts.buffering ? "sufficient" : evidence.length > 0 ? "limited" : "insufficient",
+      status:
+        evidence.length > 0 && presentation.charts.buffering
+          ? "sufficient"
+          : evidence.length > 0
+            ? "limited"
+            : "insufficient",
       coverageRatio: number(incidentItem.coverageRatio),
       observedThrough: iso(incidentItem.observedThrough),
-      gaps: presentation.charts.buffering ? [] : ["INGESTION_PROJECTIONS_NOT_AVAILABLE"],
+      gaps: presentation.charts.buffering
+        ? []
+        : ["INGESTION_PROJECTIONS_NOT_AVAILABLE"],
     },
   };
 }

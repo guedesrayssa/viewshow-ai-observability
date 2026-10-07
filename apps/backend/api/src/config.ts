@@ -73,7 +73,11 @@ const schema = z
     // Limite dedicado para POST /auth/login, mais apertado que o geral: essa
     // rota é o alvo natural de força bruta/credential stuffing. O Cognito já
     // tem seu próprio throttling por usuário; este é por IP, na frente dele.
-    AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(10),
+    AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10),
   })
   .passthrough();
 

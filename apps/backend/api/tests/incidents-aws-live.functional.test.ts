@@ -40,7 +40,10 @@ type ErrorResponse = {
   readonly error: {
     readonly code: string;
     readonly message: string;
-    readonly fields?: readonly { readonly field: string; readonly message: string }[];
+    readonly fields?: readonly {
+      readonly field: string;
+      readonly message: string;
+    }[];
   };
 };
 
@@ -57,10 +60,13 @@ async function login(): Promise<string> {
     body: JSON.stringify({ username, password }),
   });
   if (response.status !== 200)
-    throw new Error(`login falhou: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `login falhou: ${response.status} ${await response.text()}`,
+    );
   const setCookie = response.headers.get("set-cookie");
   const match = setCookie?.match(/session=([^;]+)/);
-  if (!match) throw new Error(`login não devolveu cookie de sessão: ${setCookie}`);
+  if (!match)
+    throw new Error(`login não devolveu cookie de sessão: ${setCookie}`);
   return match[1];
 }
 
@@ -69,7 +75,8 @@ async function getIncidents(
   { withSession = true }: { withSession?: boolean } = {},
 ): Promise<{ status: number; body: IncidentsResponse | ErrorResponse }> {
   const url = new URL(`${baseUrl}/api/v1/incidents`);
-  for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+  for (const [key, value] of Object.entries(query))
+    url.searchParams.set(key, value);
   const response = await fetch(url, {
     headers: withSession ? { Cookie: `session=${sessionCookie}` } : {},
   });
@@ -121,7 +128,8 @@ describe.skipIf(!shouldRun)(
       const secondData = (second.body as IncidentsResponse).data;
 
       const firstIds = new Set(firstData.items.map((item) => item.id));
-      for (const item of secondData.items) expect(firstIds.has(item.id)).toBe(false);
+      for (const item of secondData.items)
+        expect(firstIds.has(item.id)).toBe(false);
     });
 
     it("CT-03: A2 — janela absoluta (from/to) sem window", async () => {
@@ -150,8 +158,13 @@ describe.skipIf(!shouldRun)(
       const data = (body as IncidentsResponse).data;
       expect(data.page.limit).toBe(50);
       for (const item of data.items) {
-        const scopeSummary = item.scopeSummary as { dimension: string; value: string }[];
-        const deviceType = scopeSummary.find((scope) => scope.dimension === "deviceType");
+        const scopeSummary = item.scopeSummary as {
+          dimension: string;
+          value: string;
+        }[];
+        const deviceType = scopeSummary.find(
+          (scope) => scope.dimension === "deviceType",
+        );
         expect(deviceType?.value).toBe("Mobile");
       }
     });
@@ -171,7 +184,10 @@ describe.skipIf(!shouldRun)(
     });
 
     it("CT-07: limit=100 (extremo superior válido)", async () => {
-      const { status, body } = await getIncidents({ window: "24h", limit: "100" });
+      const { status, body } = await getIncidents({
+        window: "24h",
+        limit: "100",
+      });
       expect(status).toBe(200);
       const data = (body as IncidentsResponse).data;
       expect(data.page.limit).toBe(100);
@@ -179,13 +195,19 @@ describe.skipIf(!shouldRun)(
     });
 
     it("CT-08: limit=101 (acima do máximo) é rejeitado", async () => {
-      const { status, body } = await getIncidents({ window: "1h", limit: "101" });
+      const { status, body } = await getIncidents({
+        window: "1h",
+        limit: "101",
+      });
       expect(status).toBe(400);
       expect((body as ErrorResponse).error.code).toBe("VALIDATION_ERROR");
     });
 
     it("CT-09: limit=abc (tipo inválido) é rejeitado", async () => {
-      const { status, body } = await getIncidents({ window: "1h", limit: "abc" });
+      const { status, body } = await getIncidents({
+        window: "1h",
+        limit: "abc",
+      });
       expect(status).toBe(400);
       expect((body as ErrorResponse).error.code).toBe("VALIDATION_ERROR");
     });

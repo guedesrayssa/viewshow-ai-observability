@@ -45,9 +45,19 @@ function quality(
           Math.round((Date.parse(window.to) - observed.getTime()) / 1000),
         )
       : null;
-  const stale = observed !== null && !Number.isNaN(observed.getTime()) && observed < new Date(window.from);
+  const stale =
+    observed !== null &&
+    !Number.isNaN(observed.getTime()) &&
+    observed < new Date(window.from);
   const qualityWarnings = stale
-    ? [{ code: "STALE_SNAPSHOT", message: "O último snapshot disponível é anterior à janela solicitada; os valores podem estar desatualizados." }, ...warnings]
+    ? [
+        {
+          code: "STALE_SNAPSHOT",
+          message:
+            "O último snapshot disponível é anterior à janela solicitada; os valores podem estar desatualizados.",
+        },
+        ...warnings,
+      ]
     : warnings;
   return {
     window,
