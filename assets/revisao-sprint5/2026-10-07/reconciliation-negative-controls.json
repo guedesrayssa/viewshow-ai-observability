@@ -1,0 +1,22 @@
+{
+  "scope": "document reconciliation; no application capacity verdict",
+  "checks": [
+    {
+      "name": "table matches raw evidence",
+      "passed": true
+    },
+    {
+      "name": "reject altered HTTP count",
+      "passed": true
+    },
+    {
+      "name": "reject false 100 percent checks claim",
+      "passed": true
+    },
+    {
+      "name": "reject suppressed failed-check counter",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

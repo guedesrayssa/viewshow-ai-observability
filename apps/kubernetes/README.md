@@ -93,6 +93,10 @@ Rollback durante a janela: suspenda CronJobs e os Deployments Kubernetes, revert
 
 ## Operação
 
+O [runbook de recuperação](RECUPERACAO.md) detalha probes, sinais de progresso,
+retenção/visibilidade das filas e restauração com troca de tabela/reconciliação.
+Ele distingue mecanismos existentes de validações ainda pendentes.
+
 ```bash
 kubectl -n view-show get deployments,pods,hpa,cronjobs,jobs
 kubectl -n view-show-imports get jobs,pods
@@ -137,6 +141,10 @@ O comando valida conta/cluster, objeto/version/metadata/size S3, exige CronJobs 
 - **`error saving credentials ... already exists in the keychain (-25299)` (macOS).** As duas imagens são publicadas em paralelo, e dois `docker login` simultâneos no mesmo registro do ECR colidem. Rode `docker logout <conta>.dkr.ecr.us-east-1.amazonaws.com`, siga o item anterior para a imagem que falhou e repita o `apply`.
 
 ## Validação e custo
+
+Para reproduzir a demonstração local da Sprint 5, use os arquivos em
+[`demo/manifests`](demo/manifests) e o ambiente [fullstack/demo](../fullstack/demo/README.md).
+Esses manifests apontam para endpoints locais e não devem ser aplicados no EKS.
 
 ```bash
 terraform -chdir=apps/fullstack fmt -check -recursive

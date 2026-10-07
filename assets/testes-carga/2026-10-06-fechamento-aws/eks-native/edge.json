@@ -1,0 +1,7 @@
+{
+  "loadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:239162056821:loadbalancer/app/view-show-rnf-eks/f516bfe65839e602",
+  "baseUrl": "http://view-show-rnf-eks-50088458.us-east-1.elb.amazonaws.com",
+  "securityGroupId": "sg-066a75e25e1596a57",
+  "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:239162056821:targetgroup/view-show-rnf-eks-api/89c25e2f28a86b80",
+  "networkScope": "dedicated ALB, HTTP, generator CIDR only; no Amplify/API Gateway migration"
+}

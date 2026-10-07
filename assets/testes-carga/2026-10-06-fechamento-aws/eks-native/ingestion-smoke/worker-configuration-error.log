@@ -1,0 +1,1 @@
+{"timestamp":"2026-10-07T02:04:05.754Z","level":"error","service_name":"view-show-ingestion","environment":"unknown","event":"ingestion.run.failed","message":"LOG_SERVICE_NAME must be view-show-ingestion","traceId":"trace-9c5c532aef2b479f9916fd568c49bf90","runId":"cli-759c22496ce449cb9039fdc54472d82d","command":"import-dump","stage":"FAILED","errorCode":"ConfigurationError"}

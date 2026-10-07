@@ -1,0 +1,35 @@
+[
+  {
+    "id": "demo-channel",
+    "source": "argus",
+    "entity": "Canal sint\u00e9tico",
+    "priority": "P2",
+    "detectorMetrics": [],
+    "series": [
+      {
+        "metric": "bufferratio_avg",
+        "unit": "ratio",
+        "seriesId": "demo-bufferratio_avg",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "sessions",
+        "unit": "count",
+        "seriesId": "demo-sessions",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "errors",
+        "unit": "count",
+        "seriesId": "demo-errors",
+        "grainSeconds": 3600
+      },
+      {
+        "metric": "startup_errors",
+        "unit": "count",
+        "seriesId": "demo-startup_errors",
+        "grainSeconds": 3600
+      }
+    ]
+  }
+]

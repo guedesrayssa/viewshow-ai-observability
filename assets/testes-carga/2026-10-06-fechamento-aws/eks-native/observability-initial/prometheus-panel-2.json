@@ -1,0 +1,10 @@
+{
+  "query": "sum(rate(http_requests_total{job=\"rnf-api-eks\"}[30s]))",
+  "start": "2026-10-07T01:59:00Z",
+  "end": "2026-10-07T02:01:00Z",
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": []
+  }
+}

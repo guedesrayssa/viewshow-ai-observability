@@ -1,0 +1,25 @@
+{
+  "name": "view-show-rnf-eks",
+  "arn": "arn:aws:eks:us-east-1:239162056821:cluster/view-show-rnf-eks",
+  "version": "1.35",
+  "status": "ACTIVE",
+  "createdAt": "2026-10-06 22:34:36.707000-03:00",
+  "resourcesVpcConfig": {
+    "subnetIds": [
+      "subnet-07105f364faaa389c",
+      "subnet-02da093a1c8e2e016"
+    ],
+    "securityGroupIds": [],
+    "clusterSecurityGroupId": "sg-0febd4db0261749b1",
+    "vpcId": "vpc-03c537123ea6cb09e",
+    "endpointPublicAccess": true,
+    "endpointPrivateAccess": true,
+    "publicAccessCidrs": [
+      "177.92.77.170/32"
+    ]
+  },
+  "accessConfig": {
+    "authenticationMode": "API_AND_CONFIG_MAP"
+  },
+  "health": null
+}

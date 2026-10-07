@@ -4,6 +4,20 @@ const names = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const sensitiveNames = /SECRET|PASSWORD/;
 const hash = (value) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
+/** CEL infers one map value type; heterogeneous JSON needs explicit dyn values. */
+export function celLiteral(value) {
+  if (Array.isArray(value)) return `[${value.map(celLiteral).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value);
+    const types = new Set(
+      entries.map(([, v]) =>
+        Array.isArray(v) ? "list" : v === null ? "null" : typeof v,
+      ),
+    );
+    return `{${entries.map(([key, v]) => `${JSON.stringify(key)}:${types.size > 1 ? `dyn(${celLiteral(v)})` : celLiteral(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
 export function secretSelector(value) {
   const match =
     /^(arn:[^:]+:secretsmanager:[^:]+:\d{12}:secret:[^:]+)(?::([^:]+)::)?$/.exec(
@@ -347,7 +361,7 @@ export async function render(config, resolveSecret) {
   );
   if (!renderedImportTemplate || !importWorker || !importMysql)
     throw new Error("Invalid import admission configuration.");
-  const cel = (value) => JSON.stringify(value);
+  const cel = celLiteral;
   const staticEnvChecks = (path, env) => {
     if (
       env.some((variable) =>
@@ -363,7 +377,7 @@ export async function render(config, resolveSecret) {
         return `${entry}.name == ${cel(variable.name)} && ${entry}.?value.orValue("") == ${cel(literalValue)} && ${
           variable.valueFrom === undefined
             ? `!has(${entry}.valueFrom)`
-            : `${entry}.valueFrom == ${cel(variable.valueFrom)}`
+            : `dyn(${entry}.valueFrom) == ${cel(variable.valueFrom)}`
         }`;
       })
       .join(" && ");
@@ -528,20 +542,20 @@ export async function render(config, resolveSecret) {
           },
           {
             // Admission converts typed Jobs to maps, omitting empty repeated fields.
-            expression: `object.spec.template.spec.containers.size() == 1 && object.spec.template.spec.containers[0].name == 'ingestion' && object.spec.template.spec.containers[0].image == ${cel(importWorker.image)} && object.spec.template.spec.containers[0].imagePullPolicy == ${cel(importWorker.imagePullPolicy)} && object.spec.template.spec.containers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.containers[0].args == ['import-dump', '--import-id', object.metadata.labels['view-show/import-id']] && object.spec.template.spec.containers[0].?envFrom.orValue([]).size() == 0 && ${workerEnv}.size() == ${importWorker.env.length + 2} && ${workerStaticEnvChecks} && ${importIdEnv}.name == "IMPORT_ID" && ${importIdEnv}.?value.orValue("") == object.metadata.labels['view-show/import-id'] && !has(${importIdEnv}.valueFrom) && ${pipelineEnv}.name == "IMPORT_PIPELINE_VERSION" && ${pipelineEnv}.?value.orValue("") == object.metadata.labels['view-show/pipeline'] && !has(${pipelineEnv}.valueFrom) && object.spec.template.spec.containers[0].volumeMounts == ${cel(importWorker.volumeMounts)} && !has(object.spec.template.spec.containers[0].lifecycle) && !has(object.spec.template.spec.containers[0].startupProbe) && !has(object.spec.template.spec.containers[0].readinessProbe) && !has(object.spec.template.spec.containers[0].livenessProbe)`,
+            expression: `object.spec.template.spec.containers.size() == 1 && object.spec.template.spec.containers[0].name == 'ingestion' && object.spec.template.spec.containers[0].image == ${cel(importWorker.image)} && object.spec.template.spec.containers[0].imagePullPolicy == ${cel(importWorker.imagePullPolicy)} && object.spec.template.spec.containers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.containers[0].args == ['import-dump', '--import-id', string(object.metadata.labels['view-show/import-id'])] && object.spec.template.spec.containers[0].?envFrom.orValue([]).size() == 0 && ${workerEnv}.size() == ${importWorker.env.length + 2} && ${workerStaticEnvChecks} && ${importIdEnv}.name == "IMPORT_ID" && ${importIdEnv}.?value.orValue("") == object.metadata.labels['view-show/import-id'] && !has(${importIdEnv}.valueFrom) && ${pipelineEnv}.name == "IMPORT_PIPELINE_VERSION" && ${pipelineEnv}.?value.orValue("") == object.metadata.labels['view-show/pipeline'] && !has(${pipelineEnv}.valueFrom) && dyn(object.spec.template.spec.containers[0].volumeMounts) == ${cel(importWorker.volumeMounts)} && !has(object.spec.template.spec.containers[0].lifecycle) && !has(object.spec.template.spec.containers[0].startupProbe) && !has(object.spec.template.spec.containers[0].readinessProbe) && !has(object.spec.template.spec.containers[0].livenessProbe)`,
             message: "Import worker container is invalid.",
           },
           {
             // Pin the probe invariants while accepting Kubernetes' harmless defaults.
-            expression: `object.spec.template.spec.initContainers.size() == 1 && object.spec.template.spec.initContainers[0].name == 'mysql-snapshot' && object.spec.template.spec.initContainers[0].image == ${cel(importMysql.image)} && object.spec.template.spec.initContainers[0].imagePullPolicy == ${cel(importMysql.imagePullPolicy)} && object.spec.template.spec.initContainers[0].restartPolicy == 'Always' && object.spec.template.spec.initContainers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.initContainers[0].args == ${cel(importMysql.args)} && object.spec.template.spec.initContainers[0].?envFrom.orValue([]).size() == 0 && ${mysqlEnv}.size() == ${importMysql.env.length} && ${mysqlStaticEnvChecks} && object.spec.template.spec.initContainers[0].volumeMounts == ${cel(importMysql.volumeMounts)} && object.spec.template.spec.initContainers[0].startupProbe.exec.command == ${cel(importMysql.startupProbe.exec.command)} && object.spec.template.spec.initContainers[0].startupProbe.periodSeconds == ${cel(importMysql.startupProbe.periodSeconds)} && object.spec.template.spec.initContainers[0].startupProbe.timeoutSeconds == ${cel(importMysql.startupProbe.timeoutSeconds)} && object.spec.template.spec.initContainers[0].startupProbe.failureThreshold == ${cel(importMysql.startupProbe.failureThreshold)} && object.spec.template.spec.initContainers[0].startupProbe.?successThreshold.orValue(1) == 1 && object.spec.template.spec.initContainers[0].startupProbe.?initialDelaySeconds.orValue(0) == 0 && !has(object.spec.template.spec.initContainers[0].startupProbe.httpGet) && !has(object.spec.template.spec.initContainers[0].startupProbe.tcpSocket) && !has(object.spec.template.spec.initContainers[0].startupProbe.grpc) && !has(object.spec.template.spec.initContainers[0].startupProbe.terminationGracePeriodSeconds) && !has(object.spec.template.spec.initContainers[0].lifecycle) && !has(object.spec.template.spec.initContainers[0].readinessProbe) && !has(object.spec.template.spec.initContainers[0].livenessProbe)`,
+            expression: `object.spec.template.spec.initContainers.size() == 1 && object.spec.template.spec.initContainers[0].name == 'mysql-snapshot' && object.spec.template.spec.initContainers[0].image == ${cel(importMysql.image)} && object.spec.template.spec.initContainers[0].imagePullPolicy == ${cel(importMysql.imagePullPolicy)} && object.spec.template.spec.initContainers[0].restartPolicy == 'Always' && object.spec.template.spec.initContainers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.initContainers[0].args == ${cel(importMysql.args)} && object.spec.template.spec.initContainers[0].?envFrom.orValue([]).size() == 0 && ${mysqlEnv}.size() == ${importMysql.env.length} && ${mysqlStaticEnvChecks} && dyn(object.spec.template.spec.initContainers[0].volumeMounts) == ${cel(importMysql.volumeMounts)} && object.spec.template.spec.initContainers[0].startupProbe.exec.command == ${cel(importMysql.startupProbe.exec.command)} && object.spec.template.spec.initContainers[0].startupProbe.periodSeconds == ${cel(importMysql.startupProbe.periodSeconds)} && object.spec.template.spec.initContainers[0].startupProbe.timeoutSeconds == ${cel(importMysql.startupProbe.timeoutSeconds)} && object.spec.template.spec.initContainers[0].startupProbe.failureThreshold == ${cel(importMysql.startupProbe.failureThreshold)} && object.spec.template.spec.initContainers[0].startupProbe.?successThreshold.orValue(1) == 1 && object.spec.template.spec.initContainers[0].startupProbe.?initialDelaySeconds.orValue(0) == 0 && !has(object.spec.template.spec.initContainers[0].startupProbe.httpGet) && !has(object.spec.template.spec.initContainers[0].startupProbe.tcpSocket) && !has(object.spec.template.spec.initContainers[0].startupProbe.grpc) && !has(object.spec.template.spec.initContainers[0].startupProbe.terminationGracePeriodSeconds) && !has(object.spec.template.spec.initContainers[0].lifecycle) && !has(object.spec.template.spec.initContainers[0].readinessProbe) && !has(object.spec.template.spec.initContainers[0].livenessProbe)`,
             message: "Import MySQL sidecar is invalid.",
           },
           {
-            expression: `object.spec.template.spec.volumes == ${cel(renderedImportTemplate.spec.volumes)}`,
+            expression: `dyn(object.spec.template.spec.volumes) == ${cel(renderedImportTemplate.spec.volumes)}`,
             message: "Import Job volumes are invalid.",
           },
           {
-            expression: `object.spec.template.spec.securityContext == ${cel(renderedImportTemplate.spec.securityContext)} && object.spec.template.spec.containers[0].securityContext == ${cel(importWorker.securityContext)} && object.spec.template.spec.initContainers[0].securityContext == ${cel(importMysql.securityContext)}`,
+            expression: `dyn(object.spec.template.spec.securityContext) == ${cel(renderedImportTemplate.spec.securityContext)} && dyn(object.spec.template.spec.containers[0].securityContext) == ${cel(importWorker.securityContext)} && dyn(object.spec.template.spec.initContainers[0].securityContext) == ${cel(importMysql.securityContext)}`,
             message: "Import Job security context is invalid.",
           },
         ],

@@ -1,5 +1,11 @@
 stages: [validate, test, deploy]
 
+rnf-documentation:
+  stage: validate
+  image: python:3.12.11-slim-bookworm
+  script:
+    - python3 apps/backend/api/loadtest/scripts/verify-rnf-artifact.py
+
 api:
   stage: test
   image: node:22.22.0-bookworm-slim
@@ -13,7 +19,8 @@ kubernetes-contracts:
   stage: test
   image: node:22.22.0-bookworm-slim
   script:
-    - node --test apps/kubernetes/tests/*.test.mjs apps/scripts/tests/*.test.mjs
+    - apt-get update && apt-get install -y --no-install-recommends python3
+    - node --test apps/kubernetes/tests/*.test.mjs apps/scripts/tests/*.test.mjs apps/backend/api/loadtest/tests/*.test.mjs
 
 terraform:
   stage: validate

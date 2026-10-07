@@ -22,6 +22,10 @@
 
 set -euo pipefail
 
+# macOS normalmente fornece python3, enquanto algumas distribuições mantêm python.
+PYTHON="${PYTHON:-$(command -v python3 || command -v python || true)}"
+[ -n "$PYTHON" ] || { echo "erro: Python 3 não encontrado" >&2; exit 2; }
+
 RAIZ="$(cd "$(dirname "$0")/../../../../.." && pwd)"
 TF_DIR="${TF_DIR:-$RAIZ/apps/fullstack}"
 REGIAO="${AWS_REGION:-us-east-1}"
@@ -40,7 +44,7 @@ runbook_json() {
 
 # rb messaging.incremental_queue_url → valor do runbook (listas saem separadas por vírgula)
 rb() {
-  runbook_json | python -c '
+  runbook_json | "$PYTHON" -c '
 import json, sys
 valor = json.load(sys.stdin)
 for parte in sys.argv[1].split("."):
@@ -102,7 +106,7 @@ cmd_agenda() {
   grupo="$(rb scheduler.group_name)"
   # update-schedule substitui a definição inteira: reenvia a atual trocando só o State.
   aws scheduler get-schedule --region "$REGIAO" --group-name "$grupo" --name "$nome" --output json |
-    python -c '
+    "$PYTHON" -c '
 import json, sys
 atual = json.load(sys.stdin)
 campos = ("Name", "GroupName", "Description", "ScheduleExpression", "ScheduleExpressionTimezone",
@@ -172,7 +176,7 @@ cmd_s3_negar() {
     printf '%s\n' "$bucket" > "$ESTADO.bucket"
     echo "bucket sem política; s3-restaurar vai removê-la"
   fi
-  python - "$ESTADO.politica-original.json" "$bucket" "$SID_NEGACAO" > "$ESTADO.politica-negada.json" <<'PY'
+  "$PYTHON" - "$ESTADO.politica-original.json" "$bucket" "$SID_NEGACAO" > "$ESTADO.politica-negada.json" <<'PY'
 import json, sys
 caminho, bucket, sid = sys.argv[1:]
 texto = open(caminho, encoding="utf-8").read().strip()
@@ -234,7 +238,7 @@ cmd_metricas_fila() {
   local fila dlq
   fila="$(nome_fila "$(rb messaging.incremental_queue_url)")"
   dlq="$(nome_fila "$(rb messaging.incremental_dlq_url)")"
-  python - "$fila" "$dlq" > "$ESTADO.consultas.json" <<'PY'
+  "$PYTHON" - "$fila" "$dlq" > "$ESTADO.consultas.json" <<'PY'
 import json, sys
 fila, dlq = sys.argv[1:]
 def consulta(ident, fila, metrica, estatistica="Maximum"):

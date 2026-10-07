@@ -1,9 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import { trace } from "@opentelemetry/api";
-import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { NodeSDK } from "@opentelemetry/sdk-node";
 import { z } from "zod";
+
+export * from "./observability/index.js";
 
 export const SCHEMA_VERSION = "1.0" as const;
 
@@ -1746,112 +1744,6 @@ export function validationError(error: z.ZodError): ServiceError {
       message: issue.message,
     })),
   );
-}
-
-let telemetrySdk: NodeSDK | null = null;
-
-export function startTelemetry(serviceName: string): void {
-  if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) return;
-  telemetrySdk = new NodeSDK({
-    serviceName: process.env.OTEL_SERVICE_NAME ?? serviceName,
-    traceExporter: new OTLPTraceExporter({
-      url: `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace(/\/$/, "")}/v1/traces`,
-    }),
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        "@opentelemetry/instrumentation-fs": { enabled: false },
-      }),
-    ],
-  });
-  telemetrySdk.start();
-}
-
-export async function stopTelemetry(): Promise<void> {
-  await telemetrySdk?.shutdown();
-  telemetrySdk = null;
-}
-
-export interface Logger {
-  info(message: string, fields?: Readonly<Record<string, unknown>>): void;
-  warn(message: string, fields?: Readonly<Record<string, unknown>>): void;
-  error(message: string, fields?: Readonly<Record<string, unknown>>): void;
-}
-
-const redactedKeys = new Set([
-  "authorization",
-  "cookie",
-  "password",
-  "token",
-  "secret",
-]);
-
-function redact(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redact);
-  if (value === null || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value).map(([key, child]) => [
-      key,
-      redactedKeys.has(key.toLowerCase()) ? "[REDACTED]" : redact(child),
-    ]),
-  );
-}
-
-function redactFields(
-  fields: Readonly<Record<string, unknown>>,
-): Record<string, unknown> {
-  return redact(fields) as Record<string, unknown>;
-}
-
-export function createLogger(serviceName: string): Logger {
-  const write = (
-    level: "info" | "warn" | "error",
-    message: string,
-    fields: Readonly<Record<string, unknown>> = {},
-  ): void => {
-    const spanContext = trace.getActiveSpan()?.spanContext();
-    const resolvedServiceName = process.env.OTEL_SERVICE_NAME ?? serviceName;
-    const line = JSON.stringify({
-      ...redactFields(fields),
-      timestamp: new Date().toISOString(),
-      level,
-      service_name: resolvedServiceName,
-      ...(spanContext?.traceId ? { trace_id: spanContext.traceId } : {}),
-      ...(spanContext?.spanId ? { span_id: spanContext.spanId } : {}),
-      message,
-    });
-    process.stdout.write(`${line}\n`);
-
-    const lokiPushUrl = process.env.LOKI_PUSH_URL;
-    if (lokiPushUrl) {
-      void fetch(lokiPushUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: AbortSignal.timeout(2_000),
-        body: JSON.stringify({
-          streams: [
-            {
-              stream: {
-                service_name: resolvedServiceName,
-                level,
-                environment:
-                  process.env.OTEL_DEPLOYMENT_ENVIRONMENT ??
-                  process.env.NODE_ENV ??
-                  "unknown",
-              },
-              values: [[`${Date.now()}000000`, line]],
-            },
-          ],
-        }),
-      }).catch(() => {
-        // Remote logging is best-effort; stdout remains the durable fallback.
-      });
-    }
-  };
-  return {
-    info: (message, fields) => write("info", message, fields),
-    warn: (message, fields) => write("warn", message, fields),
-    error: (message, fields) => write("error", message, fields),
-  };
 }
 
 export function requireInternalToken(

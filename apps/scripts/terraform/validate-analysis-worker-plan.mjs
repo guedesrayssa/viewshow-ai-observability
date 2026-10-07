@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { normalizePrivateOllamaBaseUrl } from "../ollama-url-policy.mjs";
 
 function fail(message) { throw new Error(message); }
@@ -709,7 +710,8 @@ export function validateAnalysisWorkerPlan(plan, mode, expectedCallerAccount = n
   return true;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// `file://${argv[1]}` never matches on Windows (`file:///C:/...`), which skipped the gate and exited 0.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const mode = process.argv[process.argv.indexOf("--mode") + 1];
     const expectedCallerAccount = process.env.VIEW_SHOW_EXPECTED_AWS_ACCOUNT;

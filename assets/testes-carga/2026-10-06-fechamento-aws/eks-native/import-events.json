@@ -1,0 +1,851 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:39Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5949",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:39Z",
+            "message": "Successfully assigned view-show-rnf-imports/import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b to ip-10-0-10-82.ec2.internal",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:39Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1cfbb1b1e042",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5953",
+                "uid": "0c292008-57c5-48d2-bcb7-0228d91e91fe"
+            },
+            "reason": "Scheduled",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:39Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:39Z",
+            "message": "Pulling image \"mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad\"",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:39Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1cfbd310a09b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5957",
+                "uid": "d69ec16d-45d5-47ef-be7b-fb2a8fc1d59c"
+            },
+            "reason": "Pulling",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:49Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:49Z",
+            "message": "Successfully pulled image \"mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad\" in 9.588s (9.588s including waiting). Image size: 235880218 bytes.",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:49Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1cfe0e942de9",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5998",
+                "uid": "d004880f-ac8c-4aec-b57e-da9df8a2bc2a"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:49Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:49Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:49Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1cfe0fd9b0ed",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6000",
+                "uid": "08adda72-e0fd-45f2-9c25-bc2b7edbc5c4"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:49Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:49Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:49Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1cfe1826cf2e",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6002",
+                "uid": "8e7eab78-a618-4f5a-a77f-93d3a0981f9d"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:54Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:54Z",
+            "message": "Startup probe failed: ",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:54Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1cff48b36a04",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6025",
+                "uid": "c0b20b5f-37cb-4952-a971-ca7d5b07cd4f"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:59Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{ingestion}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:59Z",
+            "message": "Pulling image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6\"",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:59Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1d007371e116",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6047",
+                "uid": "f811ddcc-222e-49f6-bb22-f6f5fa673ca7"
+            },
+            "reason": "Pulling",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:05Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{ingestion}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:04:05Z",
+            "message": "Successfully pulled image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6\" in 5.766s (5.766s including waiting). Image size: 140011335 bytes.",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:05Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1d01cb2f3ba6",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6072",
+                "uid": "b19226be-9c0f-480b-a9ef-b49ab7fcc981"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:05Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{ingestion}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:04:05Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:05Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1d01cc549164",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6073",
+                "uid": "8479649d-7a96-486a-9b71-509d2233b797"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:05Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{ingestion}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:04:05Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:05Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1d01d3a2d9b1",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6075",
+                "uid": "beb47cfc-936e-43ff-a5ce-a30fe5eade0d"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:08Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5950",
+                "uid": "0c2f3ee0-d3e7-4834-b5b4-2248a233604e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:04:08Z",
+            "message": "Stopping container mysql-snapshot",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:08Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b.18dc1d02815cf030",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6090",
+                "uid": "2ae09adc-46a3-4267-8e45-acde38ea4db7"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:03:39Z",
+            "involvedObject": {
+                "apiVersion": "batch/v1",
+                "kind": "Job",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5947",
+                "uid": "3b503bcb-9776-4565-8ddc-d1d6260d7fc7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:03:39Z",
+            "message": "Created pod: import-01m4a1k9pdkq98ahpq7yc4jse0-5n55b",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:03:39Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0.18dc1cfbb1319e6c",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "5952",
+                "uid": "498577a7-7722-4a8d-817a-2f313449f115"
+            },
+            "reason": "SuccessfulCreate",
+            "reportingComponent": "job-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "job-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:13Z",
+            "involvedObject": {
+                "apiVersion": "batch/v1",
+                "kind": "Job",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6118",
+                "uid": "3b503bcb-9776-4565-8ddc-d1d6260d7fc7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:04:13Z",
+            "message": "Job has reached the specified backoff limit",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:13Z",
+                "name": "import-01m4a1k9pdkq98ahpq7yc4jse0.18dc1d03b9098e26",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "6121",
+                "uid": "abc26b87-20ac-419e-8b2f-90a042722377"
+            },
+            "reason": "BackoffLimitExceeded",
+            "reportingComponent": "job-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "job-controller"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:14:21Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9331",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:14:21Z",
+            "message": "0/2 nodes are available: 2 Insufficient cpu. no new claims to deallocate, preemption: 0/2 nodes are available: 2 No preemption victims found for incoming pod.",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:14:21Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1d9130ea7f5b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9334",
+                "uid": "f2c99ff6-07d7-459c-97fb-631074cf91ea"
+            },
+            "reason": "FailedScheduling",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:14:31Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9335",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:14:31Z",
+            "message": "pod didn't trigger scale-up: 1 max node group size reached",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:14:31Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1d9386a1f1bf",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9377",
+                "uid": "e5ec8066-1615-4dd0-9562-a999c371519a"
+            },
+            "reason": "NotTriggerScaleUp",
+            "reportingComponent": "cluster-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "cluster-autoscaler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9335",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Successfully assigned view-show-rnf-imports/import-01m4a27ahfn0dzky3spw0rpat3-xq7cs to ip-10-0-10-82.ec2.internal",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db5863b3fd4",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9996",
+                "uid": "166dc1e4-9284-4e84-bb43-0839fc3fd77c"
+            },
+            "reason": "Scheduled",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Container image \"mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad\" already present on machine and can be accessed by the pod",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db5a5b26e47",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10005",
+                "uid": "9ed346fe-e888-4e38-8312-a26f0725ae73"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db5a695c509",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10006",
+                "uid": "b4f04528-34b4-4185-8947-c20a55495ad3"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db5ac82c174",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10008",
+                "uid": "d2be56db-4709-4408-b929-96f663ec8820"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:02Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:02Z",
+            "message": "Startup probe failed: ",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:02Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db6cacacd55",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10032",
+                "uid": "43cc5d72-57cc-45de-9fc3-3f89d0b92828"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:07Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{ingestion}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:07Z",
+            "message": "Container image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6\" already present on machine and can be accessed by the pod",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:07Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db7f46ae25b",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10051",
+                "uid": "d2a4fd84-082a-46a6-ab81-0f868c59e03c"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:07Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{ingestion}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:07Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:07Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db7f567c728",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10053",
+                "uid": "335b697c-5ef0-4c65-9836-7efa84dc302d"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:07Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{ingestion}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:07Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:07Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db7fc0916b4",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10054",
+                "uid": "b752213a-0688-46c3-8a04-a29dd633d152"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:10Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.initContainers{mysql-snapshot}",
+                "kind": "Pod",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9993",
+                "uid": "a71fe06e-a219-4fc1-b6d3-591cf6d507a3"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:10Z",
+            "message": "Stopping container mysql-snapshot",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:10Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3-xq7cs.18dc1db8a4fd1ffa",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10070",
+                "uid": "6b94ceac-c308-4254-9ad2-a74fb4eedc08"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:14:21Z",
+            "involvedObject": {
+                "apiVersion": "batch/v1",
+                "kind": "Job",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9330",
+                "uid": "e879dd7a-3428-4420-b70d-75cdf5f0bd1c"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:14:21Z",
+            "message": "Created pod: import-01m4a27ahfn0dzky3spw0rpat3-xq7cs",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:14:21Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3.18dc1d9130d01526",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "9333",
+                "uid": "06f10606-8939-4bcd-98d4-9e8b189df8aa"
+            },
+            "reason": "SuccessfulCreate",
+            "reportingComponent": "job-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "job-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:14Z",
+            "involvedObject": {
+                "apiVersion": "batch/v1",
+                "kind": "Job",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10093",
+                "uid": "e879dd7a-3428-4420-b70d-75cdf5f0bd1c"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:14Z",
+            "message": "Job has reached the specified backoff limit",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:14Z",
+                "name": "import-01m4a27ahfn0dzky3spw0rpat3.18dc1db9988f4ae2",
+                "namespace": "view-show-rnf-imports",
+                "resourceVersion": "10096",
+                "uid": "317f7c5c-9a6c-4fc5-b953-b7c270954b38"
+            },
+            "reason": "BackoffLimitExceeded",
+            "reportingComponent": "job-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "job-controller"
+            },
+            "type": "Warning"
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

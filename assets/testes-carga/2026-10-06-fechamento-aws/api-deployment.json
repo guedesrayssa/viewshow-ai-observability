@@ -1,0 +1,14 @@
+[
+    {
+        "definition": "arn:aws:ecs:us-east-1:239162056821:task-definition/view-show-iac-api-task:1",
+        "started": "2026-10-06T12:47:56.801000-03:00",
+        "status": "RUNNING",
+        "containers": [
+            {
+                "name": "view-show-iac-api",
+                "image": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api:ab0f99a3c385",
+                "digest": "sha256:b836c4cf66bc55f5a5902f5f24db4bddd555495eead8b4ad6cd43aa15953b6ee"
+            }
+        ]
+    }
+]

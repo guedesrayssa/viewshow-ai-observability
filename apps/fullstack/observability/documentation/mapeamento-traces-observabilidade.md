@@ -9,6 +9,17 @@
 &emsp; **Sinal Coberto:** Traces (destino: Grafana Tempo, portas `4317` OTLP/gRPC e `4318` OTLP/HTTP)  
 &emsp; **Documento Irmão:** [Mapeamento de Métricas](./mapeamento-metricas-observabilidade.md) e [Mapeamento de Logs](./mapeamento-logs-observabilidade.md)
 
+> [!NOTE]
+> **Atualização (out/2026).** Este mapeamento é normativo e foi escrito na Sprint 3, quando nenhuma
+> aplicação emitia spans. A seção 1.3 ("zero instrumentação") e o roteiro da seção 11 descrevem
+> esse estado e devem ser lidos como histórico: a API TypeScript já exporta traces ao Tempo com o
+> SDK OpenTelemetry. Diferenças em relação ao texto: o span SERVER usa o template da rota
+> (`GET /api/v1/incidents`), os spans de middleware do Express e de rede (`tcp.connect`) estão
+> desligados, sondas `/health` e `/metrics` não geram trace, e os atributos próprios são
+> `viewshow.request_id`, `viewshow.dataset_version` e `viewshow.error_code`. A query string é
+> redigida antes de sair (`code`, `state` e tokens). O estado implementado e o passo a passo estão
+> em [`observability/README.md`](../README.md).
+
 ---
 
 ## Sumário

@@ -1,0 +1,351 @@
+{
+  "account": "239162056821",
+  "sequential": true,
+  "target": "https://producao.d1svpthoa1rnkp.amplifyapp.com",
+  "auth": "synthetic signed session; Cognito login excluded",
+  "apiImage": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api:ab0f99a3c385",
+  "runs": [
+    {
+      "route": "visao-geral",
+      "profile": "desktop",
+      "repetition": 1,
+      "startedAt": "2026-10-06T23:33:22.983Z",
+      "finishedAt": "2026-10-06T23:33:35.711Z",
+      "file": "visao-geral-desktop-1.json",
+      "sha256": "89d734d926531e6eb5b6b4d2da4c2df1c7a5bda76873a31c16111e925d1d9b53",
+      "metrics": {
+        "first-contentful-paint": 265.16200000000003,
+        "largest-contentful-paint": 584.162,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0.01229883164784169
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/visao-geral/",
+      "score": 1,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "visao-geral",
+      "profile": "desktop",
+      "repetition": 2,
+      "startedAt": "2026-10-06T23:33:35.713Z",
+      "finishedAt": "2026-10-06T23:33:51.931Z",
+      "file": "visao-geral-desktop-2.json",
+      "sha256": "5f5850936227311d4d91323c417f29e7175f97d8f77ec0888c35fe3916c10226",
+      "metrics": {
+        "first-contentful-paint": 294.745,
+        "largest-contentful-paint": 534.745,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/visao-geral/",
+      "score": 0.9,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "visao-geral",
+      "profile": "desktop",
+      "repetition": 3,
+      "startedAt": "2026-10-06T23:33:51.934Z",
+      "finishedAt": "2026-10-06T23:34:08.557Z",
+      "file": "visao-geral-desktop-3.json",
+      "sha256": "2d868154f22953093d1e5b4cc207111e5f90bdf56d4e3d75d9113c28b78f966d",
+      "metrics": {
+        "first-contentful-paint": 337.291,
+        "largest-contentful-paint": 566.2909999999999,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0.06987612387998715
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/visao-geral/",
+      "score": 0.89,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "visao-geral",
+      "profile": "mobile",
+      "repetition": 1,
+      "startedAt": "2026-10-06T23:34:08.562Z",
+      "finishedAt": "2026-10-06T23:34:24.042Z",
+      "file": "visao-geral-mobile-1.json",
+      "sha256": "df6a5dde90a9baa7d1767e120a1e030384fd080873749eb113ee525f5c30782b",
+      "metrics": {
+        "first-contentful-paint": 1066.627,
+        "largest-contentful-paint": 2564.627,
+        "total-blocking-time": 26,
+        "cumulative-layout-shift": 0.07850497938346836
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/visao-geral/",
+      "score": 0.86,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "visao-geral",
+      "profile": "mobile",
+      "repetition": 2,
+      "startedAt": "2026-10-06T23:34:24.045Z",
+      "finishedAt": "2026-10-06T23:34:33.923Z",
+      "file": "visao-geral-mobile-2.json",
+      "sha256": "af616c8765bdc9979fdbf6af1c3467a1bc5cc7974a573fe369f988faecffbcc7",
+      "metrics": {
+        "first-contentful-paint": 773.621,
+        "largest-contentful-paint": 2567.621,
+        "total-blocking-time": 47,
+        "cumulative-layout-shift": 0.07850497938346836
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/visao-geral/",
+      "score": 0.96,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "visao-geral",
+      "profile": "mobile",
+      "repetition": 3,
+      "startedAt": "2026-10-06T23:34:33.925Z",
+      "finishedAt": "2026-10-06T23:34:49.875Z",
+      "file": "visao-geral-mobile-3.json",
+      "sha256": "07d96b9edb2dc34156f70bc136aa9d650abcb42cd6c5681a8feed476c566dcd5",
+      "metrics": {
+        "first-contentful-paint": 1067.576,
+        "largest-contentful-paint": 2566.576,
+        "total-blocking-time": 15,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/visao-geral/",
+      "score": 0.87,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "incidentes",
+      "profile": "desktop",
+      "repetition": 1,
+      "startedAt": "2026-10-06T23:34:49.878Z",
+      "finishedAt": "2026-10-06T23:35:06.493Z",
+      "file": "incidentes-desktop-1.json",
+      "sha256": "5f1c55cabd03ee5b5bbe83042c085dff4cf037971ae3aafc47df5ab15f198442",
+      "metrics": {
+        "first-contentful-paint": 301.76099999999997,
+        "largest-contentful-paint": 541.761,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/incidentes/",
+      "score": 0.9,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "incidentes",
+      "profile": "desktop",
+      "repetition": 2,
+      "startedAt": "2026-10-06T23:35:06.494Z",
+      "finishedAt": "2026-10-06T23:35:22.092Z",
+      "file": "incidentes-desktop-2.json",
+      "sha256": "d28e4db73b9d9418363c0d55b302432a062afd2b314ebb202455a83d07743d3a",
+      "metrics": {
+        "first-contentful-paint": 297.056,
+        "largest-contentful-paint": 537.056,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/incidentes/",
+      "score": 0.9,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "incidentes",
+      "profile": "desktop",
+      "repetition": 3,
+      "startedAt": "2026-10-06T23:35:22.100Z",
+      "finishedAt": "2026-10-06T23:35:38.139Z",
+      "file": "incidentes-desktop-3.json",
+      "sha256": "b16e36684078aa532665304cf07f9576eb88a85950639d4ef70c9183329d59f0",
+      "metrics": {
+        "first-contentful-paint": 306.217,
+        "largest-contentful-paint": 546.217,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/incidentes/",
+      "score": 0.9,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "incidentes",
+      "profile": "mobile",
+      "repetition": 1,
+      "startedAt": "2026-10-06T23:35:38.161Z",
+      "finishedAt": "2026-10-06T23:35:53.647Z",
+      "file": "incidentes-mobile-1.json",
+      "sha256": "cf2dcf182f311b40b11b09c5eb4a3cdb13953fc356a2e6a8bda030635c7b7bf6",
+      "metrics": {
+        "first-contentful-paint": 1062.328,
+        "largest-contentful-paint": 2561.328,
+        "total-blocking-time": 16,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/incidentes/",
+      "score": 0.87,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "incidentes",
+      "profile": "mobile",
+      "repetition": 2,
+      "startedAt": "2026-10-06T23:35:53.649Z",
+      "finishedAt": "2026-10-06T23:36:03.643Z",
+      "file": "incidentes-mobile-2.json",
+      "sha256": "1d932ca397a873e189e3f608d9c113229b4a20bdf9e20cd8e68f47625d49fcb1",
+      "metrics": {
+        "first-contentful-paint": 776.143,
+        "largest-contentful-paint": 2570.143,
+        "total-blocking-time": 53,
+        "cumulative-layout-shift": 0.01070309194365928
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/incidentes/",
+      "score": 0.97,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "incidentes",
+      "profile": "mobile",
+      "repetition": 3,
+      "startedAt": "2026-10-06T23:36:03.646Z",
+      "finishedAt": "2026-10-06T23:36:18.777Z",
+      "file": "incidentes-mobile-3.json",
+      "sha256": "33e9adec288fb8db9f1709a6caf8ab0b96111e3230732401b0b42a676a56bf3c",
+      "metrics": {
+        "first-contentful-paint": 1066.2069999999999,
+        "largest-contentful-paint": 2565.207,
+        "total-blocking-time": 14,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/incidentes/",
+      "score": 0.87,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "monitoramento",
+      "profile": "desktop",
+      "repetition": 1,
+      "startedAt": "2026-10-06T23:36:18.778Z",
+      "finishedAt": "2026-10-06T23:36:26.051Z",
+      "file": "monitoramento-desktop-1.json",
+      "sha256": "27806f98033c2ac63e038a103fb24e36073d808e2611d6085063d4078663bc6d",
+      "metrics": {
+        "first-contentful-paint": 224.6035,
+        "largest-contentful-paint": 469.6035,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0.00269433499693547
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/monitoramento/",
+      "score": 1,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "monitoramento",
+      "profile": "desktop",
+      "repetition": 2,
+      "startedAt": "2026-10-06T23:36:26.052Z",
+      "finishedAt": "2026-10-06T23:36:33.165Z",
+      "file": "monitoramento-desktop-2.json",
+      "sha256": "8eaf441fd633c399485913ef8274d11386b4a32f70b51c399b9b6253960e27f6",
+      "metrics": {
+        "first-contentful-paint": 215.778,
+        "largest-contentful-paint": 534.778,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0.00269433499693547
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/monitoramento/",
+      "score": 1,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "monitoramento",
+      "profile": "desktop",
+      "repetition": 3,
+      "startedAt": "2026-10-06T23:36:33.166Z",
+      "finishedAt": "2026-10-06T23:36:40.999Z",
+      "file": "monitoramento-desktop-3.json",
+      "sha256": "93d4a59b91b5a966c64377b0ca48cafa4aec66992f598dc30322490e469031a8",
+      "metrics": {
+        "first-contentful-paint": 224.1335,
+        "largest-contentful-paint": 544.1335,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0.00269433499693547
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/monitoramento/",
+      "score": 1,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "monitoramento",
+      "profile": "mobile",
+      "repetition": 1,
+      "startedAt": "2026-10-06T23:36:41.002Z",
+      "finishedAt": "2026-10-06T23:36:57.310Z",
+      "file": "monitoramento-mobile-1.json",
+      "sha256": "b1f02ba9e8defb410f371a7b7a7ac9dbc1f78a7419cc85ce450f1de94fab6b20",
+      "metrics": {
+        "first-contentful-paint": 1173.1,
+        "largest-contentful-paint": 2672.1,
+        "total-blocking-time": 14,
+        "cumulative-layout-shift": 0.01023051303641472
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/monitoramento/",
+      "score": 0.87,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "monitoramento",
+      "profile": "mobile",
+      "repetition": 2,
+      "startedAt": "2026-10-06T23:36:57.311Z",
+      "finishedAt": "2026-10-06T23:37:12.295Z",
+      "file": "monitoramento-mobile-2.json",
+      "sha256": "00fd1fdc238eb2eecef5b5a39e7127b1b8e29860de6cdd5101f6eb8d328d9434",
+      "metrics": {
+        "first-contentful-paint": 1068.388,
+        "largest-contentful-paint": 2567.388,
+        "total-blocking-time": 12,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/monitoramento/",
+      "score": 0.87,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    },
+    {
+      "route": "monitoramento",
+      "profile": "mobile",
+      "repetition": 3,
+      "startedAt": "2026-10-06T23:37:12.296Z",
+      "finishedAt": "2026-10-06T23:37:19.934Z",
+      "file": "monitoramento-mobile-3.json",
+      "sha256": "24e217ecc2e1876a3708b4bf3dd406fe13d0a308fd5c95590c29ecbf62741c88",
+      "metrics": {
+        "first-contentful-paint": 1067.8105,
+        "largest-contentful-paint": 1981.8105,
+        "total-blocking-time": 16,
+        "cumulative-layout-shift": 0
+      },
+      "finalUrl": "https://producao.d1svpthoa1rnkp.amplifyapp.com/monitoramento/",
+      "score": 0.99,
+      "lighthouseVersion": "13.5.0",
+      "warnings": []
+    }
+  ]
+}

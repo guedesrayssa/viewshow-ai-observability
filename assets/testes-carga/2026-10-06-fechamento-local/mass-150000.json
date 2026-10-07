@@ -1,0 +1,33 @@
+{
+  "compressedBytes": 846793,
+  "rowCount": 150000,
+  "rowsPerWindow": 150000,
+  "sha256": "a31921ab3f3ab2124db92a731aadadd35899b2989bd8af76bc36b6b2fa8f5cc3",
+  "snapshotExtractedOn": "2026-10-06",
+  "tableCounts": {
+    "apollo_run": 1,
+    "app_error": 1,
+    "app_error_model": 1,
+    "app_error_version": 1,
+    "ca_run": 1,
+    "cdn_vod_shadow": 1,
+    "collector_run": 1,
+    "device_hourly": 1,
+    "error_cat_hourly": 2,
+    "finding_status_log": 1,
+    "geo_hourly": 1,
+    "incidents": 1,
+    "live_active_15min": 1,
+    "live_error_attr_hourly": 1,
+    "live_event": 2,
+    "live_event_sde": 2,
+    "live_qoe_hourly": 1,
+    "nr_run": 1,
+    "player_hourly": 1,
+    "prom_run": 1,
+    "rpaas_run": 1,
+    "signal_bucket": 149974,
+    "signal_meta": 2
+  },
+  "variant": "fechamento"
+}

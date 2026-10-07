@@ -1,0 +1,270 @@
+{
+  "results": {
+    "A": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "1 -",
+            "refId": "A",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     failed_runs,\n\t\t}",
+              "executedQueryString": "REMOVE_EMPTY(SEARCH('Namespace=\"view-show/Ingestion\" MetricName=\"Runs\" \"command\"=\"import-dump\" \"status\"=\"FAILED\"', 'Sum', 300))"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "1 -",
+                  "command": "import-dump",
+                  "status": "FAILED"
+                },
+                "config": {
+                  "displayNameFromDS": "1 -",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22A%22%2C%22start%22%3A%222026-10-06T23%3A06%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A20%3A25Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%7B%22expression%22%3A%22REMOVE_EMPTY%28SEARCH%28%27Namespace%3D%5C%22view-show%2FIngestion%5C%22+MetricName%3D%5C%22Runs%5C%22+%5C%22command%5C%22%3D%5C%22import-dump%5C%22+%5C%22status%5C%22%3D%5C%22FAILED%5C%22%27%2C+%27Sum%27%2C+300%29%29%22%2C%22id%22%3A%22a%22%7D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "B": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "1 -",
+            "refId": "B",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     partial_runs,\n\t\t}",
+              "executedQueryString": "REMOVE_EMPTY(SEARCH('Namespace=\"view-show/Ingestion\" MetricName=\"Runs\" \"command\"=\"import-dump\" \"status\"=\"PARTIAL\"', 'Sum', 300))"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "1 -",
+                  "command": "import-dump",
+                  "status": "PARTIAL"
+                },
+                "config": {
+                  "displayNameFromDS": "1 -",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22B%22%2C%22start%22%3A%222026-10-06T23%3A06%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A20%3A25Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%7B%22expression%22%3A%22REMOVE_EMPTY%28SEARCH%28%27Namespace%3D%5C%22view-show%2FIngestion%5C%22+MetricName%3D%5C%22Runs%5C%22+%5C%22command%5C%22%3D%5C%22import-dump%5C%22+%5C%22status%5C%22%3D%5C%22PARTIAL%5C%22%27%2C+%27Sum%27%2C+300%29%29%22%2C%22id%22%3A%22a%22%7D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "C": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "1 -",
+            "refId": "C",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     rejected_records,\n\t\t}",
+              "executedQueryString": "REMOVE_EMPTY(SEARCH('Namespace=\"view-show/Ingestion\" MetricName=\"RecordsRejected\" \"command\"=\"import-dump\"', 'Sum', 300))"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "1 -",
+                  "command": "import-dump"
+                },
+                "config": {
+                  "displayNameFromDS": "1 -",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22C%22%2C%22start%22%3A%222026-10-06T23%3A06%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A20%3A25Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%7B%22expression%22%3A%22REMOVE_EMPTY%28SEARCH%28%27Namespace%3D%5C%22view-show%2FIngestion%5C%22+MetricName%3D%5C%22RecordsRejected%5C%22+%5C%22command%5C%22%3D%5C%22import-dump%5C%22%27%2C+%27Sum%27%2C+300%29%29%22%2C%22id%22%3A%22a%22%7D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "D": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "execuções com erro/s",
+            "refId": "D",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     error_rate,\n\t\t}",
+              "executedQueryString": "(SUM(failed_runs)+SUM(partial_runs))/300"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "execuções com erro/s"
+                },
+                "config": {
+                  "displayNameFromDS": "execuções com erro/s"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "E": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "registros rejeitados/s",
+            "refId": "E",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     rejection_rate,\n\t\t}",
+              "executedQueryString": "SUM(rejected_records)/300"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "registros rejeitados/s"
+                },
+                "config": {
+                  "displayNameFromDS": "registros rejeitados/s"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

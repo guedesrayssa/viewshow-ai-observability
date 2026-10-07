@@ -1,0 +1,110 @@
+{
+  "runs": 18,
+  "authenticationVerified": true,
+  "sequential": true,
+  "start": "2026-10-06T23:33:22.983Z",
+  "end": "2026-10-06T23:37:19.934Z",
+  "rows": [
+    {
+      "routeProfile": "visao-geral/desktop",
+      "samples": 3,
+      "p95NearestRank": {
+        "first-contentful-paint": 337.291,
+        "largest-contentful-paint": 584.162,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0.06987612387998715
+      },
+      "rnf07Passed": true,
+      "lcpDiagnosticPassed": true,
+      "apiStatuses": [
+        200,
+        202,
+        503
+      ]
+    },
+    {
+      "routeProfile": "visao-geral/mobile",
+      "samples": 3,
+      "p95NearestRank": {
+        "first-contentful-paint": 1067.576,
+        "largest-contentful-paint": 2567.621,
+        "total-blocking-time": 47,
+        "cumulative-layout-shift": 0.07850497938346836
+      },
+      "rnf07Passed": true,
+      "lcpDiagnosticPassed": false,
+      "apiStatuses": [
+        200,
+        202,
+        503
+      ]
+    },
+    {
+      "routeProfile": "incidentes/desktop",
+      "samples": 3,
+      "p95NearestRank": {
+        "first-contentful-paint": 306.217,
+        "largest-contentful-paint": 546.217,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0
+      },
+      "rnf07Passed": true,
+      "lcpDiagnosticPassed": true,
+      "apiStatuses": [
+        200,
+        202
+      ]
+    },
+    {
+      "routeProfile": "incidentes/mobile",
+      "samples": 3,
+      "p95NearestRank": {
+        "first-contentful-paint": 1066.2069999999999,
+        "largest-contentful-paint": 2570.143,
+        "total-blocking-time": 53,
+        "cumulative-layout-shift": 0.01070309194365928
+      },
+      "rnf07Passed": true,
+      "lcpDiagnosticPassed": false,
+      "apiStatuses": [
+        200,
+        202
+      ]
+    },
+    {
+      "routeProfile": "monitoramento/desktop",
+      "samples": 3,
+      "p95NearestRank": {
+        "first-contentful-paint": 224.6035,
+        "largest-contentful-paint": 544.1335,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0.00269433499693547
+      },
+      "rnf07Passed": true,
+      "lcpDiagnosticPassed": true,
+      "apiStatuses": [
+        200,
+        202,
+        503
+      ]
+    },
+    {
+      "routeProfile": "monitoramento/mobile",
+      "samples": 3,
+      "p95NearestRank": {
+        "first-contentful-paint": 1173.1,
+        "largest-contentful-paint": 2672.1,
+        "total-blocking-time": 16,
+        "cumulative-layout-shift": 0.01023051303641472
+      },
+      "rnf07Passed": true,
+      "lcpDiagnosticPassed": false,
+      "apiStatuses": [
+        200,
+        202,
+        503
+      ]
+    }
+  ],
+  "interpretation": "p95 of three samples is their maximum; FCP on deployed authenticated screens, not production population percentiles; Cognito login excluded"
+}

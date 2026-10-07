@@ -1,5 +1,7 @@
 # Testes de carga finais do frontend
 
+> **Complemento de fechamento:** a rodada local abaixo permanece válida no seu escopo. A entrega consolidada agora inclui [18 auditorias sequenciais de três telas autenticadas na AWS](../../assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/validation-summary.json), com sessão 200 e chamadas reais à API verificadas por relatório. Ver Seção 11.
+
 ## 1. Escopo e resultado
 
 Este artefato aprimora os testes da Sprint 3 em três planos: entrega estática,
@@ -187,3 +189,36 @@ mesmo se o pico reprovou.
 - [Recuperação nominal](../../assets/testes-carga/2026-10-06-frontend/static-load-recovery.json)
 - [Histórico](../../assets/testes-carga/2026-10-05-frontend/README.md)
 - [Sprint 3](../sprint3/testes-carga-inicial.md)
+
+## 11. Complemento AWS: páginas autenticadas e API real
+
+Em 06/10/2026, 23:33:22–23:37:19 UTC, foram executadas sequencialmente três
+auditorias por perfil (desktop/móvel) nas rotas Visão Geral, Incidentes e
+Monitoramento do Amplify. Cada relatório confirmou `GET /auth/session = 200`,
+permanência na rota protegida e chamadas `/api/v1/` reais. A sessão é de operador
+sintético, assinada em memória; login Cognito não foi exercitado. Cookies foram
+removidos dos relatórios antes da preservação.
+
+| Tela | FCP p95 desktop | FCP p95 móvel | LCP p95 móvel | TBT máximo móvel | CLS máximo móvel |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Visão Geral | 337 ms | 1.068 ms | 2.568 ms | 47 ms | 0,079 |
+| Incidentes | 306 ms | 1.066 ms | 2.570 ms | 53 ms | 0,011 |
+| Monitoramento | 225 ms | 1.173 ms | 2.672 ms | 16 ms | 0,010 |
+
+O FCP atende RNF07 nas três telas medidas. A referência diagnóstica LCP≤2,5 s
+reprova no móvel; isso não é ocultado pelo FCP aprovado. Com três amostras, o
+p95 nearest-rank é o máximo amostral. As auditorias detectaram 503 da API de
+monitoramento; carregar o estado de erro da tela não aprova sua funcionalidade.
+O host executava testes de componentes concomitantemente; nenhuma diferença
+frente ao loopback é atribuída a uma otimização do código.
+
+A imagem da API, a conta e a sequência estão em
+[executions.json](../../assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/executions.json).
+O deploy Amplify é manual e não publicou commit no job. O
+[fingerprint dos recursos servidos](../../assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/deployed-assets-fingerprint.json)
+identifica URLs, MIME, tamanho, ETag e SHA-256 dos JS/CSS observados nas auditorias;
+não é apresentado como SHA Git. O
+[resumo de validação](../../assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/validation-summary.json)
+confere hashes, sessão, rede, métricas finitas e os seis grupos de três amostras.
+A [entrega consolidada](../testes-carga-finais.md) relaciona essa extensão aos
+planos, observabilidade e decisões arquiteturais.

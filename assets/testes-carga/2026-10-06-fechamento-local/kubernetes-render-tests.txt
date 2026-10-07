@@ -1,0 +1,112 @@
+TAP version 13
+# Subtest: analysis worker honors the zero-to-one replica gate
+ok 1 - analysis worker honors the zero-to-one replica gate
+  ---
+  duration_ms: 1.616208
+  type: 'test'
+  ...
+# Subtest: analysis replica gate rejects missing, fractional and out-of-range counts
+ok 2 - analysis replica gate rejects missing, fractional and out-of-range counts
+  ---
+  duration_ms: 0.252791
+  type: 'test'
+  ...
+# Subtest: API-created import Jobs are constrained by a fail-closed admission policy
+ok 3 - API-created import Jobs are constrained by a fail-closed admission policy
+  ---
+  duration_ms: 0.6195
+  type: 'test'
+  ...
+# Subtest: API sync patches can only suspend or resume the exact CronJob
+ok 4 - API sync patches can only suspend or resume the exact CronJob
+  ---
+  duration_ms: 0.108083
+  type: 'test'
+  ...
+# Subtest: import admission pins exact rendered environment, mounts, volumes and security contexts
+ok 5 - import admission pins exact rendered environment, mounts, volumes and security contexts
+  ---
+  duration_ms: 0.162833
+  type: 'test'
+  ...
+# Subtest: import admission normalizes empty static env values without weakening identities or Secret references
+ok 6 - import admission normalizes empty static env values without weakening identities or Secret references
+  ---
+  duration_ms: 0.233417
+  type: 'test'
+  ...
+# Subtest: import admission rejects reserved dynamic names in either static env list
+ok 7 - import admission rejects reserved dynamic names in either static env list
+  ---
+  duration_ms: 0.657459
+  type: 'test'
+  ...
+# Subtest: import admission refuses a missing template or MySQL sidecar
+ok 8 - import admission refuses a missing template or MySQL sidecar
+  ---
+  duration_ms: 0.155416
+  type: 'test'
+  ...
+# Subtest: snapshot workers await MySQL and can complete independently of sidecar
+ok 9 - snapshot workers await MySQL and can complete independently of sidecar
+  ---
+  duration_ms: 0.169791
+  type: 'test'
+  ...
+# Subtest: api has probes, resources, ALB binding and autoscaling
+ok 10 - api has probes, resources, ALB binding and autoscaling
+  ---
+  duration_ms: 0.187416
+  type: 'test'
+  ...
+# Subtest: schedules preserve frequencies, remain suspended, and forbid overlap
+ok 11 - schedules preserve frequencies, remain suspended, and forbid overlap
+  ---
+  duration_ms: 0.071458
+  type: 'test'
+  ...
+# Subtest: API secret values never enter Pod plaintext env or ConfigMaps
+ok 12 - API secret values never enter Pod plaintext env or ConfigMaps
+  ---
+  duration_ms: 0.032667
+  type: 'test'
+  ...
+# Subtest: import RBAC is isolated to import namespace without secret access
+ok 13 - import RBAC is isolated to import namespace without secret access
+  ---
+  duration_ms: 0.026375
+  type: 'test'
+  ...
+# Subtest: Secrets Manager selectors are checked
+ok 14 - Secrets Manager selectors are checked
+  ---
+  duration_ms: 0.036417
+  type: 'test'
+  ...
+# Subtest: manual backfill pins snapshot, has independent secret and never activates
+ok 15 - manual backfill pins snapshot, has independent secret and never activates
+  ---
+  duration_ms: 0.434166
+  type: 'test'
+  ...
+# Subtest: missing live credentials are allowed only while the schedule is suspended
+ok 16 - missing live credentials are allowed only while the schedule is suspended
+  ---
+  duration_ms: 0.202875
+  type: 'test'
+  ...
+# Subtest: Academy uses node credentials while retaining Kubernetes service accounts/RBAC
+ok 17 - Academy uses node credentials while retaining Kubernetes service accounts/RBAC
+  ---
+  duration_ms: 0.134875
+  type: 'test'
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 83.326833

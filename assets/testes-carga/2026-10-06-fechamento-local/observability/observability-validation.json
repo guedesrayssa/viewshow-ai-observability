@@ -1,0 +1,88 @@
+{
+  "start": "2026-10-06T23:06:00Z",
+  "end": "2026-10-06T23:21:02.891Z",
+  "dashboardUid": "rnf-fechamento-local",
+  "checks": [
+    {
+      "panelId": 1,
+      "title": "API — latência p95",
+      "httpStatus": 200,
+      "samples": 138,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "title": "API — throughput",
+      "httpStatus": 200,
+      "samples": 138,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "title": "API — erros por segundo",
+      "httpStatus": 200,
+      "samples": 181,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 4,
+      "title": "API — CPU do processo (1 núcleo)",
+      "httpStatus": 200,
+      "samples": 138,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 5,
+      "title": "Ingestão local — latência p95 do lote",
+      "httpStatus": 200,
+      "samples": 141,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 6,
+      "title": "Ingestão local — eventos persistidos/s",
+      "httpStatus": 200,
+      "samples": 141,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 7,
+      "title": "Ingestão local — falhas/s",
+      "httpStatus": 200,
+      "samples": 141,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 8,
+      "title": "Ingestão local — CPU do processo (1 núcleo)",
+      "httpStatus": 200,
+      "samples": 141,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 9,
+      "title": "Ingestão local — backlog de eventos",
+      "httpStatus": 200,
+      "samples": 142,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 10,
+      "title": "Ingestão local — eventos oferecidos/s",
+      "httpStatus": 200,
+      "samples": 141,
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "passed": true
+}
