@@ -1,0 +1,43 @@
+stages: [validate, test, deploy]
+
+api:
+  stage: test
+  image: node:22.22.0-bookworm-slim
+  script:
+    - cd apps/backend/api
+    - npm ci --no-audit --no-fund
+    - npm run verify
+    - npm run test:ci-policy
+
+kubernetes-contracts:
+  stage: test
+  image: node:22.22.0-bookworm-slim
+  script:
+    - node --test apps/kubernetes/tests/*.test.mjs apps/scripts/tests/*.test.mjs
+
+terraform:
+  stage: validate
+  image:
+    name: hashicorp/terraform:1.14.7
+    entrypoint: [""]
+  script:
+    - terraform -chdir=apps/fullstack init -backend=false -input=false
+    - terraform -chdir=apps/fullstack fmt -check -recursive
+    - terraform -chdir=apps/fullstack validate
+    - terraform -chdir=apps/fullstack test
+
+# Opt-in shell runner with AWS credentials, Helm, kubectl, Node 22, Terraform
+# and the already-provisioned stack's state/backend. Never creates a cluster
+# or destroys ECS as part of an automatic push pipeline.
+kubernetes-deploy:
+  stage: deploy
+  tags: [kubernetes-deployer]
+  resource_group: view-show-kubernetes
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+    - when: never
+  script:
+    - node apps/kubernetes/deploy.mjs
+  environment:
+    name: kubernetes

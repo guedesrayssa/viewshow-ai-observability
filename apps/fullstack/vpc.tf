@@ -40,8 +40,9 @@ resource "aws_subnet" "publica" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name   = "${var.deployment_namespace}-public-${each.key}"
-    Camada = "publica"
+    Name                     = "${var.deployment_namespace}-public-${each.key}"
+    Camada                   = "publica"
+    "kubernetes.io/role/elb" = "1"
   }
 }
 
@@ -54,8 +55,9 @@ resource "aws_subnet" "privada" {
   map_public_ip_on_launch = false
 
   tags = {
-    Name   = "${var.deployment_namespace}-private-${each.key}"
-    Camada = "privada"
+    Name                              = "${var.deployment_namespace}-private-${each.key}"
+    Camada                            = "privada"
+    "kubernetes.io/role/internal-elb" = "1"
   }
 }
 

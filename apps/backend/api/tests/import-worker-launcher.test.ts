@@ -1,299 +1,131 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  DescribeTasksCommand,
-  RunTaskCommand,
-  type ECSClient,
-} from "@aws-sdk/client-ecs";
-import { EcsImportWorkerLauncher } from "../src/modules/imports/adapters/ecs-import-worker-launcher.js";
-
-const clusterArn = "arn:aws:ecs:sa-east-1:123456789012:cluster/argus-ingestion";
-const taskArn =
-  "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/0123456789abcdef0123456789abcdef";
-const importId = "imp_01K5BB9WQ6EJ5V6TVCMSK74NQ3";
-
-function setup() {
-  const send = vi.fn();
+import { KubernetesImportWorkerLauncher } from "../src/modules/imports/adapters/kubernetes-import-worker-launcher.ts";
+import { KubernetesApiError } from "../src/platform/kubernetes-client.ts";
+const id = "imp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const name = `import-${id.slice(4).toLowerCase()}`;
+const uid = "01234567-89ab-cdef-0123-456789abcdef";
+const config = {
+  namespace: "view-show-imports",
+  templateName: "ingestion-import",
+  containerName: "ingestion",
+};
+const spec = {
+  template: {
+    spec: {
+      serviceAccountName: "ingestion-import",
+      containers: [
+        {
+          name: "ingestion",
+          args: ["import-dump"],
+          env: [{ name: "AWS_REGION", value: "us-east-1" }],
+        },
+      ],
+      initContainers: [{ name: "mysql-snapshot", restartPolicy: "Always" }],
+    },
+  },
+  backoffLimit: 0,
+};
+function job(status = {}) {
   return {
-    send,
-    launcher: new EcsImportWorkerLauncher(
-      {
-        clusterArn,
-        taskDefinitionArn:
-          "arn:aws:ecs:sa-east-1:123456789012:task-definition/g05-ingestion-import:7",
-        subnetIds: ["subnet-private-a", "subnet-private-b"],
-        securityGroupId: "sg-import",
-        containerName: "ingestion",
+    metadata: {
+      name,
+      namespace: config.namespace,
+      uid,
+      labels: {
+        "app.kubernetes.io/name": "ingestion-import",
+        "view-show/import-id": id,
+        "view-show/pipeline": "canonical-v2",
       },
-      { send } as unknown as ECSClient,
-    ),
+    },
+    spec: structuredClone(spec),
+    status,
   };
 }
-
-describe("ECS import worker launcher", () => {
-  it("launches one private Fargate 1.4.0 task with an idempotent exact command", async () => {
-    const { launcher, send } = setup();
-    send.mockResolvedValue({
-      tasks: [{ taskArn, clusterArn }],
-      failures: [],
+const reference = `k8s://${config.namespace}/jobs/${name}/${uid}`;
+describe("Kubernetes import jobs", () => {
+  it("copies the trusted template and overrides only import arguments and identity", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ spec: { jobTemplate: { spec } } })
+      .mockResolvedValueOnce(job());
+    const launcher = new KubernetesImportWorkerLauncher(config, { request });
+    expect(await launcher.launch(id, "canonical-v2")).toEqual({
+      taskArn: reference,
     });
-
-    await expect(launcher.launch(importId, "canonical-v2")).resolves.toEqual({
-      taskArn,
+    const input = request.mock.calls[1]![2];
+    expect(input.spec.template.spec.containers[0]).toMatchObject({
+      args: ["import-dump", "--import-id", id],
+      env: [
+        { name: "AWS_REGION", value: "us-east-1" },
+        { name: "IMPORT_ID", value: id },
+        { name: "IMPORT_PIPELINE_VERSION", value: "canonical-v2" },
+      ],
     });
-    const command = send.mock.calls[0]![0] as RunTaskCommand;
-    expect(command).toBeInstanceOf(RunTaskCommand);
-    expect(command.input).toEqual({
-      cluster: clusterArn,
-      taskDefinition:
-        "arn:aws:ecs:sa-east-1:123456789012:task-definition/g05-ingestion-import:7",
-      count: 1,
-      launchType: "FARGATE",
-      platformVersion: "1.4.0",
-      clientToken: importId,
-      networkConfiguration: {
-        awsvpcConfiguration: {
-          subnets: ["subnet-private-a", "subnet-private-b"],
-          securityGroups: ["sg-import"],
-          assignPublicIp: "DISABLED",
-        },
-      },
-      overrides: {
-        containerOverrides: [
-          {
-            name: "ingestion",
-            command: ["import-dump", "--import-id", importId],
-            environment: [
-              { name: "IMPORT_ID", value: importId },
-              { name: "IMPORT_PIPELINE_VERSION", value: "canonical-v2" },
-            ],
-          },
-        ],
-      },
-    });
-  });
-
-  it.each([
-    { tasks: [], failures: [] },
-    {
-      tasks: [{ taskArn, clusterArn }],
-      failures: [{ arn: taskArn, reason: "capacity" }],
-    },
-    { tasks: [{ taskArn }, { taskArn, clusterArn }], failures: [] },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws:ecs:sa-east-1:999999999999:task/argus-ingestion/bad",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws-cn:ecs:sa-east-1:123456789012:task/argus-ingestion/0123456789abcdef0123456789abcdef",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws:ecs:us-east-1:123456789012:task/argus-ingestion/0123456789abcdef0123456789abcdef",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn: "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/not a valid task:id",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/0123456789abcdef0123456789abcde",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/0123456789abcdef0123456789abcdef0",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/0123456789abcdef0123456789abcde?",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn: "arn:aws:ecs:sa-east-1:123456789012:task/other-cluster/bad",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn: "arn:aws:ecs:sa-east-1:123456789012:task/legacy-id",
-          clusterArn,
-        },
-      ],
-      failures: [],
-    },
-    {
-      tasks: [
-        {
-          taskArn,
-          clusterArn:
-            "arn:aws:ecs:sa-east-1:123456789012:cluster/other-cluster",
-        },
-      ],
-      failures: [],
-    },
-  ])("rejects malformed or untrusted launch evidence: %#", async (response) => {
-    const { launcher, send } = setup();
-    send.mockResolvedValue(response);
-    await expect(launcher.launch(importId, "legacy-v1")).rejects.toThrow(
-      "ECS returned invalid import worker launch evidence.",
+    expect(input.spec.template.spec.initContainers).toEqual(
+      spec.template.spec.initContainers,
     );
+    expect(spec.template.spec.containers[0]!.args).toEqual(["import-dump"]);
   });
-
-  it.each([
-    ["PROVISIONING", "PENDING"],
-    ["PENDING", "PENDING"],
-    ["ACTIVATING", "PENDING"],
-    ["RUNNING", "RUNNING"],
-    ["DEACTIVATING", "RUNNING"],
-    ["STOPPING", "RUNNING"],
-    ["DEPROVISIONING", "RUNNING"],
-    ["STOPPED", "STOPPED"],
-  ] as const)(
-    "maps ECS %s to %s and uses the exact task identity",
-    async (lastStatus, state) => {
-      const { launcher, send } = setup();
-      send.mockResolvedValue({
-        tasks: [
-          {
-            taskArn,
-            clusterArn,
-            lastStatus,
-            containers: [{ name: "ingestion", exitCode: 17 }],
-          },
-        ],
-        failures: [],
-      });
-
-      await expect(launcher.status(taskArn)).resolves.toEqual({
-        state,
-        ...(lastStatus === "STOPPED" ? { exitCode: 17 } : {}),
-      });
-      const command = send.mock.calls[0]![0] as DescribeTasksCommand;
-      expect(command).toBeInstanceOf(DescribeTasksCommand);
-      expect(command.input).toEqual({ cluster: clusterArn, tasks: [taskArn] });
-    },
-  );
-
-  it("recognizes STOPPED without container or exit-code evidence", async () => {
-    const { launcher, send } = setup();
-    send.mockResolvedValue({
-      tasks: [{ taskArn, clusterArn, lastStatus: "STOPPED" }],
-      failures: [],
-    });
-    await expect(launcher.status(taskArn)).resolves.toEqual({
-      state: "STOPPED",
-    });
-  });
-
-  it.each([NaN, "17", 17.5, -1, 256])(
-    "rejects malformed main-container exit code %s",
-    async (exitCode) => {
-      const { launcher, send } = setup();
-      send.mockResolvedValue({
-        tasks: [
-          {
-            taskArn,
-            clusterArn,
-            lastStatus: "STOPPED",
-            containers: [{ name: "ingestion", exitCode }],
-          },
-        ],
-        failures: [],
-      });
-      await expect(launcher.status(taskArn)).rejects.toThrow(
-        "ECS returned invalid import worker status evidence.",
-      );
-    },
-  );
-
-  it.each([
-    { tasks: [], failures: [] },
-    { tasks: [{ taskArn, clusterArn, lastStatus: "UNKNOWN" }], failures: [] },
-    {
-      tasks: [{ taskArn, clusterArn, lastStatus: "STOPPED" }],
-      failures: [{ arn: taskArn, reason: "missing" }],
-    },
-    {
-      tasks: [
-        {
-          taskArn:
-            "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/other",
-          clusterArn,
-          lastStatus: "RUNNING",
-        },
-      ],
-      failures: [],
-    },
-  ])("rejects malformed status evidence: %#", async (response) => {
-    const { launcher, send } = setup();
-    send.mockResolvedValue(response);
-    await expect(launcher.status(taskArn)).rejects.toThrow(
-      "ECS returned invalid import worker status evidence.",
-    );
-  });
-
-  it("rejects a malformed task ARN before DescribeTasks", async () => {
-    const { launcher, send } = setup();
-    await expect(
-      launcher.status(
-        "arn:aws:ecs:sa-east-1:123456789012:task/argus-ingestion/not-valid",
+  it("reuses the same Job after a lost launch response", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ spec: { jobTemplate: { spec } } })
+      .mockRejectedValueOnce(new KubernetesApiError(409))
+      .mockResolvedValueOnce(job());
+    expect(
+      await new KubernetesImportWorkerLauncher(config, { request }).launch(
+        id,
+        "canonical-v2",
       ),
-    ).rejects.toThrow("ECS returned invalid import worker status evidence.");
-    expect(send).not.toHaveBeenCalled();
+    ).toEqual({ taskArn: reference });
+  });
+  it("rejects a conflicting job belonging to another import pipeline", async () => {
+    const existing = job();
+    existing.metadata.labels["view-show/pipeline"] = "legacy-v1";
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ spec: { jobTemplate: { spec } } })
+      .mockRejectedValueOnce(new KubernetesApiError(409))
+      .mockResolvedValueOnce(existing);
+    await expect(
+      new KubernetesImportWorkerLauncher(config, { request }).launch(
+        id,
+        "canonical-v2",
+      ),
+    ).rejects.toThrow("evidence");
+  });
+  it.each([
+    [{}, "PENDING", undefined],
+    [{ active: 1 }, "RUNNING", undefined],
+    [{ conditions: [{ type: "Complete", status: "True" }] }, "STOPPED", 0],
+    [{ conditions: [{ type: "Failed", status: "True" }] }, "STOPPED", 1],
+  ])("maps Kubernetes state %j", async (status, state, exitCode) => {
+    const launcher = new KubernetesImportWorkerLauncher(config, {
+      request: vi.fn().mockResolvedValue(job(status)),
+    });
+    expect(await launcher.status(reference)).toEqual({
+      state,
+      ...(exitCode === undefined ? {} : { exitCode }),
+    });
+  });
+  it("recognizes a deleted job while propagating authentication failures", async () => {
+    const request = vi
+      .fn()
+      .mockRejectedValueOnce(new KubernetesApiError(404))
+      .mockRejectedValueOnce(new KubernetesApiError(403));
+    const launcher = new KubernetesImportWorkerLauncher(config, { request });
+    expect(await launcher.status(reference)).toEqual({ state: "STOPPED" });
+    await expect(launcher.status(reference)).rejects.toThrow("403");
+  });
+  it("rejects namespace mismatch and replacement Jobs", async () => {
+    const existing = job();
+    existing.metadata.uid = "11234567-89ab-cdef-0123-456789abcdef";
+    const request = vi.fn().mockResolvedValue(existing);
+    const launcher = new KubernetesImportWorkerLauncher(config, { request });
+    await expect(
+      launcher.status(reference.replace("view-show-imports", "other")),
+    ).rejects.toThrow("reference");
+    expect(request).not.toHaveBeenCalled();
+    await expect(launcher.status(reference)).rejects.toThrow("UID");
   });
 });

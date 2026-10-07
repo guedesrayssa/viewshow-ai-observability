@@ -31,19 +31,19 @@ variable "branch_amplify" {
 }
 
 variable "cpu_task" {
-  description = "CPU da task Fargate, em unidades de 1024."
+  description = "CPU do Pod da API, em unidades de 1024."
   type        = string
   default     = "256"
 }
 
 variable "memoria_task" {
-  description = "Memória da task Fargate, em MiB."
+  description = "Memória do Pod da API, em MiB."
   type        = string
   default     = "512"
 }
 
 variable "quantidade_tasks" {
-  description = "Tasks simultâneas no serviço."
+  description = "Réplicas iniciais do Deployment da API."
   type        = number
   default     = 1
 
@@ -53,46 +53,46 @@ variable "quantidade_tasks" {
   }
 }
 
-variable "ecs_capacidade_minima" {
-  description = "Quantidade mínima de tasks mantida pelo ECS Service Auto Scaling."
+variable "api_replicas_minima" {
+  description = "Quantidade mínima de tasks mantida pelo HPA."
   type        = number
   default     = 1
 
   validation {
-    condition     = var.ecs_capacidade_minima >= 1 && var.ecs_capacidade_minima <= 4
-    error_message = "ecs_capacidade_minima deve ficar entre 1 e 4."
+    condition     = var.api_replicas_minima >= 1 && var.api_replicas_minima <= 4
+    error_message = "api_replicas_minima deve ficar entre 1 e 4."
   }
 }
 
-variable "ecs_capacidade_maxima" {
-  description = "Quantidade máxima de tasks permitida pelo ECS Service Auto Scaling."
+variable "api_replicas_maxima" {
+  description = "Quantidade máxima de tasks permitida pelo HPA."
   type        = number
   default     = 4
 
   validation {
-    condition     = var.ecs_capacidade_maxima >= 1 && var.ecs_capacidade_maxima <= 4
-    error_message = "ecs_capacidade_maxima deve ficar entre 1 e 4."
+    condition     = var.api_replicas_maxima >= 1 && var.api_replicas_maxima <= 4
+    error_message = "api_replicas_maxima deve ficar entre 1 e 4."
   }
 }
 
-variable "ecs_cpu_alvo" {
+variable "api_cpu_alvo" {
   description = "Percentual médio de CPU perseguido pela política target tracking."
   type        = number
   default     = 50
 
   validation {
-    condition     = var.ecs_cpu_alvo >= 1 && var.ecs_cpu_alvo <= 100
-    error_message = "ecs_cpu_alvo deve ficar entre 1 e 100."
+    condition     = var.api_cpu_alvo >= 1 && var.api_cpu_alvo <= 100
+    error_message = "api_cpu_alvo deve ficar entre 1 e 100."
   }
 }
 
-check "limites_escalonamento_ecs" {
+check "limites_escalonamento_api" {
   assert {
     condition = (
-      var.ecs_capacidade_minima <= var.quantidade_tasks &&
-      var.quantidade_tasks <= var.ecs_capacidade_maxima
+      var.api_replicas_minima <= var.quantidade_tasks &&
+      var.quantidade_tasks <= var.api_replicas_maxima
     )
-    error_message = "quantidade_tasks deve ficar entre as capacidades mínima e máxima do ECS."
+    error_message = "quantidade_tasks deve ficar entre as capacidades mínima e máxima do EKS."
   }
 }
 
@@ -109,14 +109,11 @@ variable "bedrock_habilitado" {
 }
 
 variable "analysis_worker_habilitado" {
-  description = "Cria o serviço do worker de análise, que consome a fila de análise da ingestão. Exige um modelo aprovado e o catálogo de séries (arquivos locais ou URIs s3://) e só é suportado no perfil learner-lab."
+  description = "Cria o serviço do worker de análise, que consome a fila de análise da ingestão. Exige um modelo aprovado e o catálogo de séries (arquivos locais ou URIs s3://) e usa uma role IRSA exclusiva."
   type        = bool
   default     = false
 
-  validation {
-    condition     = !var.analysis_worker_habilitado || var.ambiente == "learner-lab"
-    error_message = "O worker de análise ainda não tem roles de produção; habilite-o apenas com ambiente learner-lab."
-  }
+
 }
 
 variable "analysis_worker_desired_count" {
@@ -278,24 +275,9 @@ variable "analysis_ollama_sidecar_habilitado" {
 }
 
 variable "retencao_logs_dias" {
-  description = "Retenção do log group do ECS."
+  description = "Retenção do log group do EKS."
   type        = number
   default     = 7
-}
-
-variable "api_task_role_arn" {
-  description = "Task role preexistente da API. É obrigatória em production; o Learner Lab continua usando LabRole."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = var.api_task_role_arn == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.api_task_role_arn,
-    ))
-    error_message = "api_task_role_arn deve ser null ou um ARN IAM de role válido."
-  }
 }
 
 variable "observabilidade_habilitada" {

@@ -194,7 +194,7 @@ describe.skipIf(!shouldRun)("integração da aplicação implantada na AWS", () 
     sessionCookie = match?.[1] ?? "";
   }, 30_000);
 
-  it("IT-AWS-01: Amplify e API Gateway/ECS entregam o painel e o health check", async () => {
+  it("IT-AWS-01: Amplify e API Gateway/EKS entregam o painel e o health check", async () => {
     const [panel, health] = await Promise.all([
       fetch(`${panelUrl}/dados/importacoes/`),
       fetch(`${apiUrl}/health`),

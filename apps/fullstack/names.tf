@@ -4,8 +4,7 @@ locals {
   namespace_runtime_iac = "${var.deployment_namespace}-iac"
   nome_cluster          = "${local.namespace_runtime_iac}-cluster"
   nome_alb              = "${local.namespace_runtime_iac}-alb"
-  nome_servico          = "${local.namespace_runtime_iac}-api-service"
-  nome_task_definition  = "${local.namespace_runtime_iac}-api-task"
+  nome_servico          = "api"
   nome_container        = "${local.namespace_runtime_iac}-api"
   nome_repositorio_ecr  = "${local.namespace_runtime_iac}-api"
   nome_target_group     = "${local.namespace_runtime_iac}-api-tg"
@@ -17,6 +16,6 @@ locals {
   nome_bastion          = "${var.deployment_namespace}-bastion"
   nome_bucket_flow_logs = "${var.deployment_namespace}-${data.aws_caller_identity.atual.account_id}-vpc-flow-logs"
 
-  nome_log_group   = "/ecs/${local.nome_repositorio_ecr}"
+  nome_log_group   = "/aws/containerinsights/${local.nome_cluster}/application"
   nome_api_gateway = "${var.deployment_namespace}-api-service-tls"
 }
