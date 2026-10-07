@@ -1,0 +1,7 @@
+# Namespace da aplicação. Tudo o que está em k8s/ é criado dentro dele.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: view-show
+  labels:
+    app.kubernetes.io/part-of: view-show

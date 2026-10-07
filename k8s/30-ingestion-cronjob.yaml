@@ -1,0 +1,51 @@
+# Ingestão: CronJob que sincroniza os dados novos a cada 15 minutos (um Job por execução).
+#
+# Fica SUSPENSO no minikube, porque a sincronização lê o MySQL do ARGUS e escreve na AWS, e
+# nenhum dos dois existe aqui. Para disparar uma execução manual de teste:
+#   kubectl -n view-show create job --from=cronjob/ingestion-sync teste-1
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ingestion-sync
+  namespace: view-show
+  labels:
+    app: ingestion
+spec:
+  schedule: "*/15 * * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        metadata:
+          labels:
+            app: ingestion
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ingestion
+              image: view-show-ingestion:demo
+              imagePullPolicy: IfNotPresent
+              # O ENTRYPOINT da imagem é `python -m bootstrap`; `sync` é o comando de sincronização.
+              args: ["sync"]
+              env:
+                - name: AWS_REGION
+                  value: us-east-1
+                - name: OPERATIONAL_TABLE_NAME
+                  value: view-show-operacional
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]

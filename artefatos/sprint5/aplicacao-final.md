@@ -185,3 +185,7 @@ Os testes IT-AWS-01, 02 e 05 de [live-aws.integration.test.ts](../../apps/backen
 A configuração também foi verificada pelos testes de [render.test.mjs](../../apps/kubernetes/tests/render.test.mjs), [kubernetes.tftest.hcl](../../apps/fullstack/tests/kubernetes.tftest.hcl) e [validate-terraform-learner-update-plan.test.mjs](../../apps/scripts/tests/validate-terraform-learner-update-plan.test.mjs), além das verificações da API, políticas de CI, scripts Python, chart Helm e esquemas Kubernetes.
 
 A verificação abrangeu a API e um Job com acesso aos serviços de dados. O processamento de snapshot completo, o sync live e a análise não foram executados; o Worker e as agendas permaneceram desabilitados. Esses fluxos dependem de dados, credenciais e modelos aprovados pela equipe.
+
+## 7. Vídeo de demonstração
+
+O vídeo [View Show — aplicação final](https://youtu.be/ngVQchG-JEM) demonstra a execução da API em contêiner Docker, a orquestração dos contêineres com Kubernetes (implantação, autorrecuperação, escala, atualização contínua e rollback) e a execução dos componentes da aplicação (API, Worker de Análise e Ingestão) em contêineres que se comunicam pela fila e pela tabela operacional.
