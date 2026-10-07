@@ -389,7 +389,10 @@ idempotente. `sync` e `ingest-incremental` ainda não gravam esses fatos.
 `ANALYSIS_FORECAST_MODEL_NAME` e `ANALYSIS_FORECAST_MODEL_VERSION`, sempre em
 par, definem o modelo declarado nos eventos `QOE_FORECAST` e precisam coincidir
 com o bundle aprovado do worker; sem elas vale `qoe-random-forest` e
-`2026.09.1`. A regra de identidade e o formato do item estão em
+`2026.09.1`. Valor vazio equivale a variável ausente: o Terraform declara
+essas variáveis mesmo com o worker desligado (`analysis_fact_catalog_location`
+vazio desliga a gravação), e a ingestão não deve falhar na partida por isso;
+valores só com espaços continuam sendo recusados. A regra de identidade e o formato do item estão em
 `domain/analysis_facts.py`, e `tests/contracts/test_worker_contract.py` congela o
 que a ingestão grava e publica nos arquivos lidos pelo teste do worker.
 

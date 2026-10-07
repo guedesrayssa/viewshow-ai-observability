@@ -177,7 +177,7 @@ def count_query(
         raise ValueError("Athena table is not allowlisted")
     if re.fullmatch(r"[0-9a-f]{64}", aggregate_digest) is None:
         raise ValueError("aggregate_digest must be a lowercase SHA-256 digest")
-    generation_predicate = f' AND "$path" LIKE \'%/generation={aggregate_digest}/%\''
+    generation_predicate = f" AND \"$path\" LIKE '%/generation={aggregate_digest}/%'"
     return (
         f'SELECT COUNT(*) AS "row_count" FROM {_quoted(database)}.{_quoted(table)} '
         f"WHERE {_quoted('dataset_version')} = {_literal(dataset_version, 'dataset_version')} "

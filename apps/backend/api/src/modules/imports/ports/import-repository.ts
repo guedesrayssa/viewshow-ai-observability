@@ -1,8 +1,5 @@
 import type { ImportState } from "@view-show/contracts";
-import type {
-  ImportPipelineVersion,
-  ImportRecord,
-} from "../domain/import.js";
+import type { ImportPipelineVersion, ImportRecord } from "../domain/import.js";
 
 export interface ImportPatch {
   importId: string;

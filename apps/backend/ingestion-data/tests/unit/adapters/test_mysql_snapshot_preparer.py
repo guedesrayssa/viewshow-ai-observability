@@ -73,9 +73,7 @@ class FakeDatabase:
     def connect(self) -> FakeConnection:
         return FakeConnection(self)
 
-    def execute(
-        self, statement: str, parameters: tuple[object, ...]
-    ) -> list[Mapping[str, object]]:
+    def execute(self, statement: str, parameters: tuple[object, ...]) -> list[Mapping[str, object]]:
         self.statements.append((statement, parameters))
         if "INFORMATION_SCHEMA.STATISTICS" in statement:
             table = str(parameters[1])
@@ -146,8 +144,7 @@ def settings() -> MySqlConnectionSettings:
 
 def _divergent_descriptors(registry: DatasetRegistry):  # type: ignore[no-untyped-def]
     return tuple(
-        registry.require(name)
-        for name in ("signal_bucket", "finding_status_log", "live_event")
+        registry.require(name) for name in ("signal_bucket", "finding_status_log", "live_event")
     )
 
 
@@ -203,8 +200,7 @@ def test_prepare_accepts_primary_only_when_cursor_is_its_exact_prefix(
     assert evidence[0].index_name == "PRIMARY"
     assert evidence[0].created is False
     assert not any(
-        sql.startswith(("ALTER TABLE", "ANALYZE TABLE"))
-        for sql, _ in database.statements
+        sql.startswith(("ALTER TABLE", "ANALYZE TABLE")) for sql, _ in database.statements
     )
 
 

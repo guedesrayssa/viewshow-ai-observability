@@ -1172,8 +1172,7 @@ def valid_active_manifest(
         metadata["canonicalMarker"] = {
             "schemaVersion": canonical_schema_version,
             "objectKey": (
-                "canonical/schema_version=1.0/"
-                f"dataset_version={dataset_version}/manifest.json"
+                f"canonical/schema_version=1.0/dataset_version={dataset_version}/manifest.json"
             ),
             "aggregateDigest": "d" * 64,
             "documentSha256": "e" * 64,

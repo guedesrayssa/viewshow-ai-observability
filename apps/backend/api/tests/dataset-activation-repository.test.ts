@@ -34,11 +34,7 @@ function compareUnicode(left: string, right: string): number {
 }
 
 function canonicalJson(value: unknown): string {
-  if (
-    value === null ||
-    typeof value === "boolean" ||
-    typeof value === "string"
-  )
+  if (value === null || typeof value === "boolean" || typeof value === "string")
     return JSON.stringify(value);
   if (typeof value === "number") return String(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -243,7 +239,10 @@ describe("DynamoDB dataset activation", () => {
   });
 
   it.each([
-    ["missing marker", (metadata: Record<string, unknown>) => delete metadata.canonicalMarker],
+    [
+      "missing marker",
+      (metadata: Record<string, unknown>) => delete metadata.canonicalMarker,
+    ],
     [
       "compact Parquet evidence without canonical top-level evidence",
       (metadata: Record<string, unknown>) => {
@@ -296,7 +295,8 @@ describe("DynamoDB dataset activation", () => {
     [
       "mismatched marker counts",
       (metadata: Record<string, unknown>) => {
-        (metadata.canonicalMarker as Record<string, unknown>).partitionCount = 2;
+        (metadata.canonicalMarker as Record<string, unknown>).partitionCount =
+          2;
       },
     ],
   ])("rejects canonical candidate with %s", async (_name, mutate) => {

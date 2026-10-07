@@ -98,16 +98,15 @@ function object(value: unknown): Record<string, unknown> {
 }
 
 function nonNegativeInteger(value: unknown): number {
-  if (
-    typeof value !== "number" ||
-    !Number.isSafeInteger(value) ||
-    value < 0
-  )
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
     throw new DatasetActivationContractError();
   return value;
 }
 
-function exactKeys(value: Record<string, unknown>, expected: readonly string[]) {
+function exactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+) {
   return (
     JSON.stringify(Object.keys(value).sort()) ===
     JSON.stringify([...expected].sort())
@@ -150,10 +149,7 @@ function validateCanonicalEvidence(
     }
     return;
   }
-  if (
-    metadata.hotMaterialization !== "SKIPPED" ||
-    metadata.hotItemCount !== 0
-  )
+  if (metadata.hotMaterialization !== "SKIPPED" || metadata.hotItemCount !== 0)
     throw new DatasetActivationContractError();
 
   const marker = object(metadata.canonicalMarker);

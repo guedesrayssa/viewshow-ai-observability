@@ -1,0 +1,72 @@
+# CronJob local suspenso; execução manual sem habilitar sincronização AWS.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ingestion-sync
+  namespace: view-show
+  labels:
+    app: ingestion
+spec:
+  schedule: "*/15 * * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        metadata:
+          labels:
+            app: ingestion
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ingestion
+              image: view-show-ingestion:demo
+              imagePullPolicy: IfNotPresent
+              command: ["sh", "-c"]
+              args: ["python /demo/seed_outbox.py seed --sequence 2 && python -m bootstrap publish-outbox --limit 10"]
+              env:
+                - name: AWS_REGION
+                  value: us-east-1
+                - name: OPERATIONAL_TABLE_NAME
+                  value: view-show-demo
+                - name: AWS_DEFAULT_REGION
+                  value: us-east-1
+                - name: AWS_ENDPOINT_URL_DYNAMODB
+                  value: http://host.docker.internal:18004
+                - name: AWS_ENDPOINT_URL_SQS
+                  value: http://host.docker.internal:19324
+                - name: ANALYSIS_QUEUE_URL
+                  value: https://sqs.us-east-1.amazonaws.com/000000000000/view-show-analysis
+                - name: INGESTION_ENVIRONMENT
+                  value: local
+                - name: DEMO_MYSQL_HOST
+                  value: host.docker.internal
+                - name: DEMO_MYSQL_PORT
+                  value: "13306"
+              envFrom:
+                - secretRef:
+                    name: aws-credentials
+              volumeMounts:
+                - name: fixtures
+                  mountPath: /demo
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: fixtures
+              configMap:
+                name: demo-fixtures

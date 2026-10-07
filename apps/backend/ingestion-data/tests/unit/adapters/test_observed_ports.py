@@ -123,9 +123,7 @@ class Preparer(SnapshotPreparer):
     def __init__(self, result: tuple[QueryPlanEvidence, ...] | Exception) -> None:
         self.result = result
 
-    def prepare(
-        self, descriptors: tuple[DatasetDescriptor, ...]
-    ) -> tuple[QueryPlanEvidence, ...]:
+    def prepare(self, descriptors: tuple[DatasetDescriptor, ...]) -> tuple[QueryPlanEvidence, ...]:
         if isinstance(self.result, Exception):
             raise self.result
         return self.result
@@ -133,9 +131,7 @@ class Preparer(SnapshotPreparer):
 
 def test_snapshot_preparer_observer_measures_index_and_total_preflight_duration() -> None:
     descriptor = DatasetRegistry.load_argus_v2().require("signal_bucket")
-    evidence = QueryPlanEvidence(
-        "signal_bucket", "ix_ingestion_cursor", ("id",), True, "range", 7
-    )
+    evidence = QueryPlanEvidence("signal_bucket", "ix_ingestion_cursor", ("id",), True, "range", 7)
     metrics = RecordingMetrics()
     readings = iter((20.0, 20.5))
     preparer = ObservedSnapshotQueryPreparer(
@@ -582,9 +578,7 @@ def test_athena_failure_is_counted_without_custom_processed_bytes() -> None:
     observed = ObservedAthenaValidator(FailingAthena(error), metrics, command="backfill")
 
     with pytest.raises(RuntimeError) as raised:
-        observed.validate_legacy_partition(
-            "signal_bucket", "dsv", "year=2026/month=09/day=10", 2
-        )
+        observed.validate_legacy_partition("signal_bucket", "dsv", "year=2026/month=09/day=10", 2)
 
     assert raised.value is error
     assert metrics.values == [("AthenaFailures", 1, {"command": "backfill"})]

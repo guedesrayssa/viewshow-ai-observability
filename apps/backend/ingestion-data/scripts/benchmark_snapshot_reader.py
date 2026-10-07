@@ -395,7 +395,8 @@ def _utc_timestamp(value: object, field: str) -> str:
         parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
     except ValueError as error:
         raise BenchmarkReaderError(f"{field} must be a UTC timestamp") from error
-    if parsed.utcoffset() is None or parsed.utcoffset().total_seconds() != 0:
+    offset = parsed.utcoffset()
+    if offset is None or offset.total_seconds() != 0:
         raise BenchmarkReaderError(f"{field} must be a UTC timestamp")
     return value
 
@@ -542,9 +543,7 @@ def benchmark_snapshot_reader(
             restored_sha256 = _sha256_stream(snapshot_source)
             _assert_snapshot_identity(snapshot_source, snapshot_identity)
         except BenchmarkReaderError as error:
-            raise BenchmarkReaderError(
-                "snapshot changed while it was being restored"
-            ) from error
+            raise BenchmarkReaderError("snapshot changed while it was being restored") from error
         if restored_sha256 != snapshot_sha256:
             raise BenchmarkReaderError("snapshot changed while it was being restored")
 
@@ -589,7 +588,7 @@ def benchmark_snapshot_reader(
                 if previous_key is not None:
                     if key == previous_key:
                         duplicate_rows += 1
-                    elif cast(tuple[object, ...], key) < previous_key:
+                    elif key < previous_key:
                         raise BenchmarkReaderError(
                             f"reader returned an out-of-order key for {descriptor.table}"
                         )

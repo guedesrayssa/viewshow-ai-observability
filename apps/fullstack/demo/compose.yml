@@ -1,0 +1,72 @@
+name: view-show-sprint5-demo
+x-local: &local
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: local
+  AWS_SECRET_ACCESS_KEY: local
+  AWS_EC2_METADATA_DISABLED: "true"
+  AWS_ENDPOINT_URL_DYNAMODB: http://dynamodb:8000
+  AWS_ENDPOINT_URL_SQS: http://sqs:9324
+  OPERATIONAL_TABLE_NAME: view-show-demo
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:2.6.1@sha256:990211fe3cbb507c52512522b5e71538802f086393f5b0d009d03a18c8bc04a6
+    platform: linux/amd64
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    ports: ["127.0.0.1:18004:8000"]
+  sqs:
+    image: softwaremill/elasticmq-native:1.6.11
+    ports: ["127.0.0.1:19324:9324"]
+    volumes: ["./elasticmq.conf:/opt/elasticmq.conf:ro"]
+  mysql:
+    ports: ["127.0.0.1:13306:3306"]
+    image: mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad
+    environment:
+      MYSQL_ROOT_PASSWORD: local-demo-only
+      MYSQL_DATABASE: argus
+    volumes: ["../../backend/ingestion-data/contracts/argus/v2/db_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-plocal-demo-only"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  api:
+    image: view-show-api:demo
+    build: ../../backend/api
+    ports: ["127.0.0.1:13004:3000"]
+    environment:
+      <<: *local
+      IMPORT_BUCKET: view-show-demo-bucket
+      IMPORT_EXPECTED_BUCKET_OWNER: "000000000000"
+      IMPORT_KUBERNETES_NAMESPACE: view-show
+      IMPORT_KUBERNETES_TEMPLATE: ingestion-import
+      IMPORT_INGESTION_CONTAINER_NAME: ingestion
+      IMPORT_CURSOR_SECRET: local-demo-cursor-secret-0123456789012345
+      AUTH_COOKIE_SECRET: local-demo-cookie-secret-0123456789012345
+      CURSOR_SECRET: local-demo-incidents-secret-0123456789012345
+  worker:
+    image: view-show-worker:demo
+    build: ../../backend/agentic
+    environment:
+      <<: *local
+      NODE_ENV: test
+      ALLOW_UNAPPROVED_MODEL: "true"
+      LLM_PROVIDER: none
+      WORKER_CONCURRENCY: "1"
+      ANALYSIS_MODEL_LOCATION: /demo/model.json
+      ANALYSIS_SCOPE_CATALOG_LOCATION: /demo/scopes.json
+      ANALYSIS_QUEUE_URL: http://sqs:9324/000000000000/view-show-analysis
+      ANALYSIS_DLQ_URL: http://sqs:9324/000000000000/view-show-analysis-dlq
+    volumes: ["./fixtures:/demo:ro"]
+    stop_grace_period: 120s
+  ingestion:
+    image: view-show-ingestion:demo
+    build: ../../backend/ingestion-data
+    profiles: ["tools"]
+    environment:
+      <<: *local
+      ANALYSIS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/view-show-analysis
+      INGESTION_ENVIRONMENT: local
+      DEMO_MYSQL_HOST: mysql
+    volumes: ["./:/demo:ro"]
+    working_dir: /app

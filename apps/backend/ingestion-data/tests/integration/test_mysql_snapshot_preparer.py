@@ -87,9 +87,7 @@ def test_prepare_creates_one_compatible_index_for_an_incompatible_primary_key() 
             cursor.execute("RENAME TABLE `live_event` TO `live_event_preparer_fixture`")
             renamed = True
             cursor.execute("CREATE TABLE `live_event` LIKE `live_event_preparer_fixture`")
-            cursor.execute(
-                "INSERT INTO `live_event` SELECT * FROM `live_event_preparer_fixture`"
-            )
+            cursor.execute("INSERT INTO `live_event` SELECT * FROM `live_event_preparer_fixture`")
         preparer = MySqlSnapshotPreparer(registry, settings)
         first = preparer.prepare((descriptor,))
         second = preparer.prepare((descriptor,))
@@ -106,9 +104,7 @@ ORDER BY SEQ_IN_INDEX""",
         if renamed:
             with connection.cursor() as cursor:
                 cursor.execute("DROP TABLE IF EXISTS `live_event`")
-                cursor.execute(
-                    "RENAME TABLE `live_event_preparer_fixture` TO `live_event`"
-                )
+                cursor.execute("RENAME TABLE `live_event_preparer_fixture` TO `live_event`")
         connection.close()
 
     assert first[0].created is True

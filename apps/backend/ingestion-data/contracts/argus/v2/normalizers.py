@@ -472,11 +472,7 @@ def _validate_application_error_counts(row: Row) -> tuple[str, ...]:
         raise ValueError("errors cannot be negative")
     if devices is not None and devices < 0:
         raise ValueError("devices cannot be negative")
-    return (
-        (_SOURCE_COUNT_INCONSISTENCY,)
-        if devices is not None and devices > errors
-        else ()
-    )
+    return (_SOURCE_COUNT_INCONSISTENCY,) if devices is not None and devices > errors else ()
 
 
 def _validated_sde_id(value: object) -> str | None:

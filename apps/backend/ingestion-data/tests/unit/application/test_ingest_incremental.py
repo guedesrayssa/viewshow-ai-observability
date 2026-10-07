@@ -167,9 +167,7 @@ def _reference(batch: IncrementalBatchManifest) -> IncrementalBatchReference:
     )
 
 
-def _delivery(
-    batch: IncrementalBatchManifest, *, message_id: str = DELIVERY_ID
-) -> BatchDelivery:
+def _delivery(batch: IncrementalBatchManifest, *, message_id: str = DELIVERY_ID) -> BatchDelivery:
     return BatchDelivery(
         message_id,
         batch.batch_id,
@@ -298,8 +296,7 @@ def test_extra_column_is_preserved_raw_but_not_sent_to_normalizer() -> None:
     assert result.completed == 1
     assert dependencies.hot_sink.records
     assert all(
-        "nova_coluna" not in record.dimensions
-        for record in dependencies.hot_sink.records.values()
+        "nova_coluna" not in record.dimensions for record in dependencies.hot_sink.records.values()
     )
     assert dependencies.store.raw_rows[batch.batch_id][0]["nova_coluna"] == "preservada"
     assert dependencies.metrics.values["IncrementalBatches"] == 1
@@ -404,9 +401,10 @@ def test_hourly_manifest_executes_exact_manifest_window() -> None:
     assert len(dependencies.hot_sink.records) == 1
     record = next(iter(dependencies.hot_sink.records.values()))
     assert record.window == HOURLY_WINDOW
-    assert dependencies.commits.get_watermark(
-        _dataset_version(registry), "source:live_qoe_hourly"
-    ) == HOURLY_WINDOW.end
+    assert (
+        dependencies.commits.get_watermark(_dataset_version(registry), "source:live_qoe_hourly")
+        == HOURLY_WINDOW.end
+    )
     assert dependencies.store.read_calls == [
         (batch.batch_id, None, 1),
         (batch.batch_id, 1, 1),
@@ -781,9 +779,7 @@ def test_visibility_loss_aborts_manifest_error_and_finalization_paths(
         raise RuntimeError("write failed during visibility loss")
 
     wrap_sync = (
-        (lambda sync: cast(Sync, _GatedSync(sync, fail_write)))
-        if phase == "sync-error"
-        else None
+        (lambda sync: cast(Sync, _GatedSync(sync, fail_write))) if phase == "sync-error" else None
     )
     service = rebuild_service(dependencies, wrap_sync=wrap_sync, **FAST_HEARTBEAT)
     if phase == "manifest":

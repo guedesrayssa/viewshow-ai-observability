@@ -258,9 +258,7 @@ def test_connection_settings_reject_invalid_resilience_policy_values(
     field: str, value: int
 ) -> None:
     with pytest.raises(ValueError, match=field):
-        MySqlConnectionSettings(
-            "127.0.0.1", 3306, "ingestion", "secret", "argus", **{field: value}
-        )
+        MySqlConnectionSettings("127.0.0.1", 3306, "ingestion", "secret", "argus", **{field: value})
 
 
 def test_connection_settings_rejects_an_inverted_retry_window() -> None:

@@ -73,9 +73,7 @@ class IncrementalBatchObjectStore(ABC):
 
 class IncrementalBatchQueue(ABC):
     @abstractmethod
-    def send(
-        self, reference: IncrementalBatchReference, *, batch_id: str, dataset: str
-    ) -> None:
+    def send(self, reference: IncrementalBatchReference, *, batch_id: str, dataset: str) -> None:
         raise NotImplementedError
 
     @abstractmethod

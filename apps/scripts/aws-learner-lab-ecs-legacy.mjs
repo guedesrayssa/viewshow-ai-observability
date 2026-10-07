@@ -2173,28 +2173,52 @@ async function openAnalysisBridge(context) {
 
 function ensureVenv({ execute, log, root, platform, python, exists }) {
   const venv = venvPython(root, platform);
-  if (exists(venv)) return venv;
   const service = path.join(root, "apps", "backend", "ingestion-data");
-  log("Creating the ingestion virtual environment (first run only)");
-  const created = execute(python.command, [
-    ...python.prefixArgs,
-    "-m",
-    "venv",
-    path.join(service, ".venv"),
-  ]);
-  if (created.status !== 0) throw new Error(`could not create the virtual environment: ${created.stderr}`);
+  if (!exists(venv)) {
+    log("Creating the ingestion virtual environment (first run only)");
+    const created = execute(python.command, [
+      ...python.prefixArgs,
+      "-m",
+      "venv",
+      path.join(service, ".venv"),
+    ]);
+    if (created.status !== 0) throw new Error(`could not create the virtual environment: ${created.stderr}`);
+    const installed = execute(venv, [
+      "-m",
+      "pip",
+      "install",
+      "--quiet",
+      "-r",
+      path.join(service, "requirements.txt"),
+    ]);
+    if (installed.status !== 0) {
+      throw new Error(`could not install ingestion dependencies: ${installed.stderr}`);
+    }
+  }
+  ensureIngestionPackage({ execute, log, venv, service });
+  return venv;
+}
+
+// The ingestion scripts import the service packages (domain, adapters, ...), which are only
+// importable once the project itself is installed. A virtual environment created before this
+// check existed has the dependencies but not the project, so it is repaired here too.
+function ensureIngestionPackage({ execute, log, venv, service }) {
+  // -I keeps the current directory out of sys.path, so only an installed package counts.
+  const probe = execute(venv, ["-I", "-c", "import domain.snapshot_provenance"]);
+  if (probe.status === 0) return;
+  log("Installing the ingestion package into the virtual environment");
   const installed = execute(venv, [
     "-m",
     "pip",
     "install",
     "--quiet",
-    "-r",
-    path.join(service, "requirements.txt"),
+    "--no-deps",
+    "--editable",
+    service,
   ]);
   if (installed.status !== 0) {
-    throw new Error(`could not install ingestion dependencies: ${installed.stderr}`);
+    throw new Error(`could not install the ingestion package: ${installed.stderr}`);
   }
-  return venv;
 }
 
 function buildSnapshot({ execute, log, root, venv }) {

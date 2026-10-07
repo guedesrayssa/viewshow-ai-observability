@@ -120,9 +120,9 @@ def test_materialization_keeps_all_events_and_creates_evidence_only_for_accepted
     linked_event = next(
         item for item in global_events if item.payload["correlationStatus"] == "linked"
     )
-    assert linked_event.payload["correlations"][0]["incidentId"] == evidence[0].payload[
-        "incidentId"
-    ]
+    assert (
+        linked_event.payload["correlations"][0]["incidentId"] == evidence[0].payload["incidentId"]
+    )
     assert linked_event.payload["correlations"][0]["ruleVersion"] == "argus-explicit-v2"
     missing_time = next(
         item for item in global_events if item.payload["sourceDataset"] == "live_event_sde"

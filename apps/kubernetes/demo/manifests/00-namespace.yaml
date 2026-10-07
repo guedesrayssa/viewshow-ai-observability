@@ -1,0 +1,8 @@
+# Namespace da demonstração local. Os manifests deste diretório usam somente
+# dados sintéticos e não representam uma implantação AWS.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: view-show
+  labels:
+    app.kubernetes.io/part-of: view-show

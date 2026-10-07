@@ -117,8 +117,7 @@ class S3IncrementalSourceReader(SourceReader):
             if _SUPPORTED_PHYSICAL_TYPE.fullmatch(column.physical_type) is None:
                 differences.append(f"unsupported physical type for {column.name}")
         expected = {
-            column.name: (column.sql_type, column.nullable)
-            for column in descriptor.columns
+            column.name: (column.sql_type, column.nullable) for column in descriptor.columns
         }
         for name, contract in expected.items():
             actual = observed.get(name)
@@ -399,9 +398,7 @@ class IngestIncremental:
                 return self._retryable(batch)
             counts = {
                 "written": sum(source.records_written for source in result.sources.values()),
-                "unchanged": sum(
-                    source.records_unchanged for source in result.sources.values()
-                ),
+                "unchanged": sum(source.records_unchanged for source in result.sources.values()),
             }
             if batch.state is BatchState.INGESTING:
                 batch = self._batches.transition(

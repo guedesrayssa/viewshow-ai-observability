@@ -32,9 +32,7 @@ def test_raw_parquet_preserves_extra_columns_and_schema(tmp_path: Path) -> None:
     )
 
     table = pq.read_table(destination)
-    assert table.to_pylist() == [
-        {"bucket_ts": 1, "sinal": "alpha", "nova_coluna": "preservada"}
-    ]
+    assert table.to_pylist() == [{"bucket_ts": 1, "sinal": "alpha", "nova_coluna": "preservada"}]
     assert table.schema.field("bucket_ts").type == pa.int64()
     assert table.schema.metadata == {
         b"format": b"argus-raw-incremental",

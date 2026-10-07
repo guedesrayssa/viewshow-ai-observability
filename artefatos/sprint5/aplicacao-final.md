@@ -1,9 +1,13 @@
 # Aplicação final: implantação em Kubernetes
 
-**Vídeo da Sprint 5: em gravação.** O link público e a duração de 5 a 7 minutos
-ainda não foram entregues. O [arquivo de entrada da entrega](../aplicacao-final.md)
-concentra esse status. A documentação e as evidências históricas abaixo não
-substituem a demonstração obrigatória.
+**Vídeo da Sprint 5:** [Demonstração View Show](https://youtu.be/ngVQchG-JEM),
+6min18s, link não listado conferido em 07/10/2026. Trechos: Docker 0:24–1:20;
+Kubernetes, autorrecuperação, rollout e rollback 1:22–3:25; componentes em
+Compose 3:26–5:19; Pods/Job e DLQ 5:20–6:18.
+
+O vídeo usa Minikube/cluster local, ElasticMQ, DynamoDB Local e MySQL. A
+implantação AWS/EKS permanece documentada separadamente; os resultados de
+capacidade EKS continuam sendo os resultados medidos no relatório.
 
 ## 1. Arquitetura da aplicação
 
@@ -105,7 +109,7 @@ O MySQL utiliza uma imagem pronta, referenciada por digest na variável `imagem_
 Os manifests são gerados a partir das configurações Terraform e aplicados por um chart Helm. A Tabela 2 relaciona os arquivos desse processo aos recursos e componentes da Figura 1.
 
 | Arquivo | Recursos ou configuração produzida | Componente da Figura 1 |
-| --- | --- | --- |
+| --- | --- |
 | [fullstack/workloads.tf](../../apps/fullstack/workloads.tf) | Imagens, argumentos, CPU, memória, variáveis de ambiente e referências a segredos dos sete workloads. | API, ingestão e Worker |
 | [fullstack/kubernetes-outputs.tf](../../apps/fullstack/kubernetes-outputs.tf) | Outputs de configuração dos workloads, namespaces, roles, ALB e réplicas; comandos operacionais em `kubernetes_runbook`. | Integração da infraestrutura com o EKS |
 | [kubernetes/render.mjs](../../apps/kubernetes/render.mjs) | Namespace, ServiceAccount, Secret, Deployment, CronJob, Service, TargetGroupBinding, HPA, PDB, NetworkPolicy, Role e RoleBinding, incluindo configuração dos Pods e verificações de saúde. | Componentes internos ao EKS |
@@ -244,19 +248,25 @@ heartbeat e DLQ não garantem preservação indefinida.
 
 ## 8. Demonstração da Sprint 5 e evidências pendentes
 
-| Critério do vídeo | Mostrar durante a gravação | Evidência que falta anexar |
-| --- | --- | --- |
-| Docker — peso 2 | Build real; explicar os três Dockerfiles, digest, estágios, usuário, cópias, portas e .dockerignore; iniciar contêiner e mostrar logs/health | Link e timestamp do trecho; identidade das imagens construídas |
-| Kubernetes — peso 4 | Renderer/chart versionados, nós Ready, Pods/Deployments/Services/Jobs/CronJobs, requests/limits, probes e HPA com valores efetivos | Comandos e saídas do cluster selecionado na gravação |
-| Componentes executando — peso 4 | Login/painel → API → upload/Job com MySQL → READY → consulta; executar análise quando ela integra o escopo apresentado | Pós-condição no DynamoDB/S3 e logs correlacionados; não substituir execução por slide |
-| Resiliência | Provocar falha reversível no ambiente de demonstração, mostrar detecção e recuperação, com métricas antes/durante/depois | Timestamps da injeção/retirada/recuperação, parâmetros do mecanismo e estado final |
+| Critério do vídeo | Evidência conferida |
+| --- | --- |
+| Docker — peso 2 | 0:24–1:20: build, digest, estágios, usuário não-root, porta, healthcheck e `docker stats` |
+| Kubernetes — peso 4 | 1:22–3:25: manifests, duas réplicas, probes, Service, HPA, recriação de Pod, rollout bloqueado e rollback |
+| Componentes executando — peso 4 | 3:26–6:18: API, Worker, ingestão, fila, tabela operacional, Job concluído e resultado persistido |
+| Resiliência | 4:56–5:13: JSON inválido isolado na DLQ; 2:43–3:25: atualização defeituosa preservando a versão saudável |
 
 Docker constrói as imagens; os nós EKS usam containerd para executá-las. O
 frontend é hospedado no Amplify, conforme o diagrama; não será apresentado
 como contêiner que o repositório não implementa. Explicar essa decisão na
 apresentação e mostrar os componentes conteinerizados efetivamente usados.
-A duração total deve ficar entre 300 e 420 segundos e o link deve abrir sem
-solicitar acesso. Enquanto a gravação não for conferida, o status é pendente.
+A duração total é 6min18s e o link abre sem solicitar acesso. A demonstração
+local está separada dos resultados de capacidade medidos no EKS.
 
 A [matriz de revisão da Sprint 4](../apoio/revisao-feedback-sprint4.md)
 relaciona cada desconto à correção e distingue execução comprovada de plano.
+
+## 9. Reprodução da demonstração local
+
+O ambiente reprodutível da gravação está em [`apps/fullstack/demo`](../../apps/fullstack/demo/README.md).
+Os manifests específicos ficam em [`apps/kubernetes/demo/manifests`](../../apps/kubernetes/demo/manifests).
+Eles usam endpoints e dados sintéticos e não devem ser aplicados no EKS.

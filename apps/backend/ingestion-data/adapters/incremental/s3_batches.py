@@ -275,9 +275,7 @@ class S3IncrementalBatchStore(IncrementalBatchObjectStore):
         body = self._validate_local(encoded, columns)
         descriptor = self._registry.require(definition.source_dataset)
         known_columns = {column.name for column in descriptor.columns}
-        extra_columns = tuple(
-            column.name for column in columns if column.name not in known_columns
-        )
+        extra_columns = tuple(column.name for column in columns if column.name not in known_columns)
         base_key = _base_key(definition)
         data_key = f"{base_key}/data.parquet"
         manifest_key = f"{base_key}/manifest.json"
@@ -356,9 +354,10 @@ class S3IncrementalBatchStore(IncrementalBatchObjectStore):
         size = response.get("ContentLength")
         if type(size) is not int or size != len(body):
             raise ValueError("manifest size differs from the downloaded body")
-        if _decode_checksum(response.get("ChecksumSHA256"), "manifest") != hashlib.sha256(
-            body
-        ).hexdigest():
+        if (
+            _decode_checksum(response.get("ChecksumSHA256"), "manifest")
+            != hashlib.sha256(body).hexdigest()
+        ):
             raise ValueError("manifest checksum differs from the downloaded body")
         try:
             import json

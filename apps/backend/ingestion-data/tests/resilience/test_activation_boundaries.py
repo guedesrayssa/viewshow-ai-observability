@@ -106,10 +106,7 @@ def canonical_manifest(version: str, *, partition_count: int = 10_417) -> Candid
     metadata["hotItemCount"] = 0
     metadata["canonicalMarker"] = {
         "schemaVersion": "1.0",
-        "objectKey": (
-            "canonical/schema_version=1.0/"
-            f"dataset_version={version}/manifest.json"
-        ),
+        "objectKey": (f"canonical/schema_version=1.0/dataset_version={version}/manifest.json"),
         "aggregateDigest": "d" * 64,
         "documentSha256": "f" * 64,
         "datasetCount": 1,
@@ -158,9 +155,7 @@ def test_candidate_representation_union_rejects_marker_with_legacy_parquet_shape
     metadata = _canonical_metadata()
     validations = cast(dict[str, object], metadata["validations"])
     parquet = cast(dict[str, object], validations["parquetCatalog"])
-    parquet["datasets"] = {
-        "signal_bucket": {"partitionCount": 1, "catalogValidated": True}
-    }
+    parquet["datasets"] = {"signal_bucket": {"partitionCount": 1, "catalogValidated": True}}
 
     with pytest.raises(ValueError):
         validate_candidate_manifest(CandidateManifest("dsv_closed_union", metadata))
@@ -171,9 +166,7 @@ def test_candidate_representation_union_rejects_partial_v2_fields_as_legacy() ->
     del metadata["canonicalMarker"]
     validations = cast(dict[str, object], metadata["validations"])
     parquet = cast(dict[str, object], validations["parquetCatalog"])
-    parquet["datasets"] = {
-        "signal_bucket": {"partitionCount": 1, "catalogValidated": True}
-    }
+    parquet["datasets"] = {"signal_bucket": {"partitionCount": 1, "catalogValidated": True}}
 
     with pytest.raises(ValueError):
         validate_candidate_manifest(CandidateManifest("dsv_closed_union", metadata))

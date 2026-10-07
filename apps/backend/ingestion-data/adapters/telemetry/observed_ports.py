@@ -283,9 +283,7 @@ class ObservedSnapshotQueryPreparer(SnapshotPreparer):
         self._command = command
         self._monotonic = monotonic
 
-    def prepare(
-        self, descriptors: tuple[DatasetDescriptor, ...]
-    ) -> tuple[QueryPlanEvidence, ...]:
+    def prepare(self, descriptors: tuple[DatasetDescriptor, ...]) -> tuple[QueryPlanEvidence, ...]:
         try:
             started = self._monotonic()
         except BaseException:

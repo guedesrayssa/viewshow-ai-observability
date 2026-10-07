@@ -157,6 +157,9 @@ def test_empty_export_releases_lease_without_publishing_or_advancing(tmp_path: P
         service.execute(request(window=window()))
 
     assert dependencies.effects == ["lease.acquire", "lease.release"]
-    assert dependencies.commits.get_watermark(
-        _dataset_version(DatasetRegistry.load_argus_v2()), "export:signal_bucket"
-    ) is None
+    assert (
+        dependencies.commits.get_watermark(
+            _dataset_version(DatasetRegistry.load_argus_v2()), "export:signal_bucket"
+        )
+        is None
+    )

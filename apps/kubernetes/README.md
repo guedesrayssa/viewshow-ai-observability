@@ -19,7 +19,7 @@ Amplify, API Gateway HTTPS, ALB, Cognito, DynamoDB, S3 versionado, Athena, Glue,
 
 ## Pré-requisitos
 
-Use Terraform >= 1.9, Node 22, AWS CLI v2, Docker/buildx, kubectl compatível com Kubernetes 1.35 e Helm 3. A conta precisa permitir EKS, EC2, IAM/OIDC, políticas e access entries. **O perfil `learner-lab` controla defaults de dados.** O modo padrão `eks_iam_mode=managed` cria roles/IRSA e exige permissões IAM. No AWS Academy com criação de IAM bloqueada, use o modo explícito abaixo, que reutiliza recursos fornecidos pelo lab. Se o próprio EKS estiver proibido, será necessária outra conta autorizada.
+Use Terraform >= 1.9, Node 22 (o `.nvmrc` da raiz fixa a versão; com o nvm, rode `nvm use`), AWS CLI v2, Docker/buildx, kubectl compatível com Kubernetes 1.35 e Helm 3. A conta precisa permitir EKS, EC2, IAM/OIDC, políticas e access entries. **O perfil `learner-lab` controla defaults de dados.** O modo padrão `eks_iam_mode=managed` cria roles/IRSA e exige permissões IAM. No AWS Academy com criação de IAM bloqueada, use o modo explícito abaixo, que reutiliza recursos fornecidos pelo lab. Se o próprio EKS estiver proibido, será necessária outra conta autorizada.
 
 Os operadores precisam poder obter os segredos de snapshot/live no Secrets Manager. Se a observabilidade EC2 estiver habilitada, precisam também executar `ssm:SendCommand` com `AWS-RunShellScript` e consultar seu resultado nessa instância. O deploy atualiza o dashboard pelo SSM; o Grafana recarrega o arquivo automaticamente. A migração preserva a instância e seus volumes históricos; alterações futuras de cloud-init precisam de atualização operacional explícita. A role configurada em `eks_admin_role_arn` recebe acesso administrativo; informe um ARN IAM permanente, nunca um ARN STS de sessão. O endpoint privado fica ativo; o público aceita somente `eks_public_access_cidrs`.
 
@@ -119,7 +119,32 @@ node apps/kubernetes/run-job.mjs upload-result.json attempt-1
 
 O comando valida conta/cluster, objeto/version/metadata/size S3, exige CronJobs live suspensos e cria um Job com senha própria e `ACTIVATE_CANDIDATE=false`. Repetir a mesma tentativa reutiliza o Job; uma tentativa deliberadamente nova usa outro identificador. A senha fica em um Secret por Job, removido com ele após o TTL. A ativação permanece no fluxo administrativo já existente da aplicação. O antigo `run_task.py` e os comandos ECS `seed`, `update`, `all`, `destroy` e `import-canary` foram retirados; o benchmark local mantém seus dados/contratos, e o canário web usa o fluxo do painel.
 
+## Problemas conhecidos
+
+- **State de outra conta.** O Learner Lab pode entregar uma conta diferente a cada sessão. Veja a que conta o state local pertence e, se não for a atual, mova-o para fora do repositório antes do `plan`. Guarde-o: ele é necessário para desligar a stack antiga.
+
+  ```bash
+  grep -o ':[0-9]\{12\}:' apps/fullstack/terraform.tfstate | sort -u
+  mkdir -p ~/backup-terraform && mv apps/fullstack/terraform.tfstate* ~/backup-terraform/
+  ```
+- **Credenciais expiradas** (`ExpiredToken`, `InvalidClientTokenId`). As credenciais do lab duram cerca de 4 horas e mudam quando o lab é reiniciado. Em **AWS Details → AWS CLI → Show**, copie o bloco novo para `~/.aws/credentials` e repita o comando que estava rodando.
+- **Publicação de imagem interrompida.** As imagens da API e da ingestão são construídas e enviadas ao ECR por `terraform_data.imagem` e `terraform_data.ingestion_image`. Se a internet cair, ou se ocorrer o erro do keychain abaixo, o Terraform marca o recurso como falho e o plano seguinte passa a pedir a substituição dele, que o validador de plano de criação recusa. Publique a imagem à mão e limpe a marca. A `TAG` são os 12 primeiros caracteres do `triggers_replace` do recurso, e o `REPO_URL` é o `repository_url` do repositório ECR:
+
+  ```bash
+  terraform -chdir=apps/fullstack state show 'terraform_data.imagem'
+  terraform -chdir=apps/fullstack state show 'aws_ecr_repository.api'
+  REGIAO=us-east-1 REPO_URL=<repository_url> TAG=<12 primeiros caracteres> CONTEXTO="$PWD/apps/backend/api" node apps/fullstack/scripts/publicar-imagem.mjs
+  terraform -chdir=apps/fullstack untaint 'terraform_data.imagem'
+  ```
+
+  Para a imagem da ingestão, troque por `terraform_data.ingestion_image[0]`, `aws_ecr_repository.ingestion` e `CONTEXTO="$PWD/apps/backend/ingestion-data"`. Depois repita o `plan` e o `apply`.
+- **`error saving credentials ... already exists in the keychain (-25299)` (macOS).** As duas imagens são publicadas em paralelo, e dois `docker login` simultâneos no mesmo registro do ECR colidem. Rode `docker logout <conta>.dkr.ecr.us-east-1.amazonaws.com`, siga o item anterior para a imagem que falhou e repita o `apply`.
+
 ## Validação e custo
+
+Para reproduzir a demonstração local da Sprint 5, use os arquivos em
+[`demo/manifests`](demo/manifests) e o ambiente [fullstack/demo](../fullstack/demo/README.md).
+Esses manifests apontam para endpoints locais e não devem ser aplicados no EKS.
 
 ```bash
 terraform -chdir=apps/fullstack fmt -check -recursive
