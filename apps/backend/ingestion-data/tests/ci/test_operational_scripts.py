@@ -392,7 +392,9 @@ def _config() -> RunTaskConfig:
                         "snapshot_secret_arn": SNAPSHOT_SECRET_ARN,
                     },
                     "runtime": {
-                        "cluster_arn": f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster",
+                        "cluster_arn": (
+                            f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster"
+                        ),
                         "backfill_task_arn": BACKFILL_TASK_ARN,
                         "backfill_task_family": "view-show-ingestion-backfill",
                         "security_group_id": "sg-0123456789abcdef0",

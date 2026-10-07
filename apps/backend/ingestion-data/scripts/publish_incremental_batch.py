@@ -163,7 +163,7 @@ def publish_window(
         evidence.update({"rows": 0, "manifestKey": key, "manifestVersionId": POISON_VERSION_ID})
         if dry_run:
             return evidence
-        import boto3
+        import boto3  # type: ignore[import-untyped]
 
         bucket, _owner, queue_url = _settings()
         body = canonical_bytes(
@@ -232,7 +232,10 @@ def _parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--window-start",
         type=_parse_utc,
-        help="início da primeira janela, alinhado a 15 min (padrão: as N janelas terminam na última fechada)",
+        help=(
+            "início da primeira janela, alinhado a 15 min "
+            "(padrão: as N janelas terminam na última fechada)"
+        ),
     )
     parser.add_argument("--dry-run", action="store_true", help="só codifica e valida localmente")
     parser.add_argument("--output", type=Path, help="grava as evidências em JSON")
