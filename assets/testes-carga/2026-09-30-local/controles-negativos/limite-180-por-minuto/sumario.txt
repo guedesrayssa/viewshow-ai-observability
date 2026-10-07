@@ -1,0 +1,46 @@
+Carga da API consumida pelo frontend — modo soak
+Taxa de chegada (iterações/s): base 10, pico 10; 601 iterações, 605 requisições, 10.0 iter/s médios
+429 (limite de taxa do gerador): 404; 503: 11; timeouts do cliente (>8000 ms): 0; iterações descartadas: 0
+
+THRESHOLDS: 22 reprovados, 66 aprovados
+  ✗ http_req_failed{rota:global_events} rate<0.02
+  ✗ checks rate>0.999
+  ✗ front_api_contract_failed_rate{rota:incidents_chart} rate<0.02
+  ✗ http_req_failed{rota:incident_events} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:auth_session} rate<0.02
+  ✗ http_req_failed{rota:monitoring_overview} rate<0.02
+  ✗ front_api_rate_limited_total count==0
+  ✗ front_api_contract_success_rate rate>0.999
+  ✗ front_api_contract_failed_rate{rota:dashboard_overview} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incident_diagnosis} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incidents_list} rate<0.02
+  ✗ http_req_failed{rota:argus_integration} rate<0.02
+  ✗ http_req_failed{rota:incidents_chart} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incident_events} rate<0.02
+  ✗ http_req_failed{rota:incident_diagnosis} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:argus_integration} rate<0.02
+  ✗ http_req_failed{rota:auth_session} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:monitoring_overview} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:global_events} rate<0.02
+  ✗ http_req_failed rate<0.001
+  ✗ http_req_failed{rota:incidents_list} rate<0.02
+  ✗ http_req_failed{rota:dashboard_overview} rate<0.02
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list         148   72.97      27.03       1      10      13      27.0
+incidents_chart         53   64.15      35.85       1       9      11      35.8
+dashboard_overview      91   71.43      28.57       1      14      17       0.0
+incident_diagnosis      96   71.88      28.13       1      13      16      28.1
+incident_events         51   70.59      29.41       1      14      17      29.4
+global_events           68   60.29      39.71       1      10      10      39.7
+monitoring_overview     42   73.81      26.19       1       6       6       0.0
+auth_session            27   55.56      44.44       1       1       1       0.0
+argus_integration        6   83.33      16.67       1       5       5       0.0
+rum_beacon              19    0.00     100.00       1       3       9       0.0
+
+Observações:
+  - monitoring_overview: 11/42 respostas 503 DATA_UNAVAILABLE
+  - incidents_list: 40 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+
+Resumo detalhado: C:/Users/lcsmi/AppData/Local/Temp/claude/C--Users-lcsmi-OneDrive-Documentos-g05/28f0d8ea-0bf8-4421-add5-487c28ee90d9/scratchpad/results-neg-rl/resumo-front-api-soak.json

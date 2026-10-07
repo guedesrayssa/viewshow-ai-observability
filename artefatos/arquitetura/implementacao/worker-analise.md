@@ -283,8 +283,87 @@ O código e os testes locais não substituem a validação com as séries canôn
 
 1. confirmar, com o dump real importado no ambiente, que os fatos gravados pela ingestão (habilitada por `ANALYSIS_FACT_CATALOG_LOCATION`) cobrem as 150 séries do catálogo piloto; o código e os testes de contrato já reproduzem os identificadores, mas a configuração da tarefa de importação no Terraform ainda não os habilita;
 2. treinar e avaliar o bundle no corte temporal completo, registrar a decisão e aprová-lo;
-3. executar o teste já coberto em DynamoDB Local também com uma tabela temporária e SQS reais;
+3. ~~executar o teste já coberto em DynamoDB Local também com uma tabela temporária e SQS reais~~ — feito em 30/09/2026 contra a stack real do Learner Lab (SQS e DynamoDB de verdade, não DynamoDB Local), com dado sintético; ver seção seguinte para o resultado e para o que ainda falta;
 4. executar replay sem escrita de pelo menos uma semana, medir falsos positivos, falsos negativos, cobertura e custo;
 5. ativar primeiro um único worker e acompanhar DLQ, latência, calibração da previsão e revisões humanas.
 
 Essas etapas são condições de implantação, não partes simuladas pela implementação.
+
+## Execução real na AWS (30/09/2026) e bloqueio de provider de LLM
+
+Esta seção registra a primeira execução do worker contra a stack de verdade do Learner Lab (conta `080158589617`, região `us-east-1`), com detecção real, DynamoDB real e SQS real — não DynamoDB Local nem simulação. O objetivo original era produzir uma hipótese real via LLM; o resultado prático foi confirmar que a detecção, a correlação de incidente, a persistência e o modo `LLM_PROVIDER=none` funcionam de ponta a ponta, e que **nenhum provider de LLM disponível nesta conta produz diagnóstico válido hoje** — o que teria bloqueado quem fosse avaliar a aplicação sem este registro.
+
+### O que funcionou, com evidência real
+
+Um evento sintético `ANOMALY_DETECTION` foi publicado na fila real (`view-show-ingestion-analysis`) para o escopo `globo-sp1`, com sete dias de fatos sintéticos semeados via `build_fact()`/`SeriesIdentity` reais (`ingestion-data/domain/analysis_facts.py`), incluindo um desvio real em `bufferratio_avg` na janela `2026-09-20T11:15–12:15Z`. O worker, rodando como serviço ECS Fargate com `LLM_PROVIDER=none`, processou a mensagem e gravou, na tabela `view-show-iac-operacional`:
+
+- incidente `inc_9cea21d9310056413abb62cd41b5113c` (`itemType=incident`, `status=detected`), correlacionado corretamente a partir do sinal elevado (`bufferratio_avg`, score 59 contra limiar 4);
+- 11 evidências A′ (`EVIDENCE#fact:...`), uma por série do escopo na granularidade de 15 minutos;
+- diagnóstico registrado como `DIAGNOSIS#<runId>`, `status=failed`, `failureCode=LLM_DISABLED` — o comportamento correto e documentado para `LLM_PROVIDER=none` (§ "Operação e falhas" acima), não uma falha inesperada;
+- nenhuma `HYPOTHESIS#`, como esperado sem LLM.
+
+Log do worker: `{"event":"analysis_completed","runId":"7f0dacdf...","scopes":1}`, sem erro.
+
+**Achado colateral confirmado com dado real**: este incidente foi criado pelo próprio worker (`worker/aws.ts:correlate()`, ID determinístico por hash) e por isso **não aparece na projeção `DATASET#<dsv>#VIEW#INCIDENTS#ACTIVE/CURRENT`** que a API usa para listar incidentes (essa projeção é escrita pela ingestão, com outro espaço de IDs — confirmado consultando a tabela real: a projeção ativa do dataset do canário só lista `inc_nrjxccdltjky63icamhhslzm7a` e `inc_32rewksgztyriiuenlgj3drbpx`, nenhum dos quais é o incidente que o worker acabou de criar). Ou seja, hoje, **nenhum incidente aberto pelo worker aparece na tela de Incidentes nem é alcançável por `GET /diagnosis`** — só por leitura direta no DynamoDB ou pelos endpoints que usam `bundle()` (reanálise e revisão, que buscam pela GSI `trace-index` e não pela projeção). Isso não é um defeito desta rodada; é a mesma migração de unificação de IDs já registrada como em andamento (`worker-analise.md` linha ~105) e no plano de integração da API — só que agora com um incidente real e um ID real como prova.
+
+### Bloqueio real de provider de LLM
+
+Três caminhos foram tentados nesta conta para obter uma hipótese real via LLM; os três estão fechados, dois por política da própria conta, não por escolha de projeto:
+
+| Caminho | Resultado | Evidência |
+|---|---|---|
+| **Bedrock** | Bloqueado | Documentado desde antes desta rodada (`analysis_llm_provider` default `bedrock`, mas a conta do Learner Lab não dá acesso). |
+| **Túnel para uma máquina pessoal rodando Ollama** | Bloqueado pelo próprio assistente | Classificado como "External Ingress Tunnel" pelo modo automático do Claude Code — expor um dispositivo pessoal à internet para a AWS alcançá-lo é uma ação recusada por padrão, com ou sem consentimento do operador. |
+| **EC2 dedicada na mesma conta (com ou sem GPU)** | Bloqueado pela política da conta | `aws ec2 run-instances --dry-run` confirma negação explícita por `arn:aws:iam::080158589617:policy/Pvoclabs2` para qualquer tipo de instância acima de `t3.large` (8 GB, sem GPU) — testado com `g4dn.xlarge`, `g5.xlarge` (GPU) e `m5.2xlarge`/`t3.xlarge` (CPU maior), todos negados; `t3.micro` e `t3.large` são permitidos. Não há caminho de GPU nesta conta em nenhuma hipótese. |
+
+Restou o único caminho não bloqueado por política: Ollama como *sidecar* na própria tarefa Fargate do worker (mesmo container, `localhost:11434`, decisão já registrada em `analysis-worker.tf`/`variables.tf`). Mesmo aumentando a memória do Docker Desktop local de 7,47 GiB para 10,69 GiB (`.wslconfig`, `memory=11GB`) para testar os modelos antes de gastar um deploy, **nenhum dos seis modelos testados localmente contra o prompt real de `interpret()` produziu `{hypotheses, nextChecks}` válido**:
+
+| Modelo | Tamanho | Resultado |
+|---|---|---|
+| `llama3.2:3b` | 2.0 GB | Formato errado |
+| `qwen2.5:3b-instruct` | 1.9 GB | Formato errado |
+| `qwen2.5:7b-instruct` | 4.7 GB | Formato errado |
+| `gemma2:9b` | 5.4 GB | JSON válido, mas ecoou um fato do contexto em vez de `{hypotheses, nextChecks}` |
+| `qwen2.5:14b-instruct` | 9.0 GB | Atingiu o teto de 2500 tokens sem parar (`done_reason: length`); JSON truncado; alucinou valores numéricos que não existem nos dados reais |
+| `mistral-nemo:12b` | 7.1 GB | JSON válido, mas ecoou um fato do contexto (mesmo padrão do gemma2:9b) |
+
+O único modelo que o projeto validou seguindo o formato (`gemma4:12b`, ver `avaliacao-modelos.md`) rodou contra uma GPU L4 dedicada, fora desta conta — não está disponível aqui por nenhum dos três caminhos acima.
+
+### Consequência prática para quem for avaliar a aplicação
+
+Enquanto esses bloqueios existirem **nesta conta AWS Academy específica**, qualquer tentativa de ativar o worker com `analysis_llm_provider=ollama` (com ou sem *sidecar*) ou `bedrock` vai falhar ou não produzir diagnóstico utilizável — não por erro de código, mas por restrição de infraestrutura já testada e documentada aqui. A configuração que efetivamente funciona nesta conta, testada de ponta a ponta em 30/09/2026, é:
+
+```hcl
+analysis_worker_habilitado         = true
+analysis_llm_provider              = "none"
+analysis_ollama_sidecar_habilitado = false
+```
+
+Com isso, detecção, previsão, correlação de incidente e persistência são reais; só o diagnóstico A′ fica ausente (`failed`/`LLM_DISABLED`), de forma explícita e sem hipótese inventada — nunca um diagnóstico de aparência real produzido por um duplo ou por um provider fora de teste (§4.10 de `camada-agentica.md`).
+
+### Como verificar o pipeline sem hipótese
+
+Como o incidente aberto pelo worker não aparece na tela de Incidentes (ver achado acima), a verificação hoje é direta no DynamoDB e no CloudWatch, não pela UI:
+
+```bash
+# 1. Publicar um evento ANOMALY_DETECTION na fila real (payload.datasetVersion
+#    precisa bater com o datasetVersion do bundle aprovado e com séries já
+#    gravadas para o escopo e a janela escolhidos).
+aws sqs send-message --queue-url <ANALYSIS_QUEUE_URL> --message-body file://evento.json
+
+# 2. Acompanhar o worker processar (sem erro, "analysis_completed" no fim).
+aws logs tail /ecs/view-show-analysis-worker --since 5m --follow
+
+# 3. Achar o incidente pela view diária que o worker grava ao abrir um episódio.
+aws dynamodb query --table-name view-show-iac-operacional \
+  --key-condition-expression "pk = :pk" \
+  --expression-attribute-values '{":pk":{"S":"DATASET#<datasetVersion>#VIEW#INCIDENTS#DAY#<YYYYMMDD>"}}'
+
+# 4. Ler tudo que o worker gravou para esse incidente (incidente, evidências,
+#    diagnóstico) numa única query pela chave primária.
+aws dynamodb query --table-name view-show-iac-operacional \
+  --key-condition-expression "pk = :pk" \
+  --expression-attribute-values '{":pk":{"S":"DATASET#<datasetVersion>#INCIDENT#<incidentId>"}}'
+```
+
+O item `DIAGNOSIS#<runId>` confirma o resultado: `status=failed` e `failureCode=LLM_DISABLED` é sucesso do pipeline sem LLM, não uma falha a investigar. Qualquer outro `failureCode`, ou a ausência total do item `DIAGNOSIS#...`, indica que a mensagem não chegou a essa etapa — nesse caso, `aws logs tail` no passo 2 mostra em qual etapa anterior (contrato do evento, gate de qualidade, correlação) o processamento parou.

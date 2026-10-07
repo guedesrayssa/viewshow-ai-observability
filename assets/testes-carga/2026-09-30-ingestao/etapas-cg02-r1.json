@@ -1,0 +1,37 @@
+[
+ {
+  "t": "2026-09-30T10:18:36",
+  "stage": "STARTING",
+  "StageDurationMs": 136.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:18:39",
+  "stage": "RESTORING",
+  "StageDurationMs": 3341.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:18:40",
+  "stage": "VALIDATING",
+  "StageDurationMs": 768.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:28:41",
+  "stage": "INGESTING",
+  "StageDurationMs": 601182.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:46:30",
+  "stage": "PROJECTING",
+  "StageDurationMs": 1069063.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ }
+]

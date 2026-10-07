@@ -179,7 +179,7 @@ describe("human review", () => {
         meta,
       }), { status: 200 });
     }));
-    const { fetchEvidence, reviewHypothesis } = await import("@/app/(painel)/evidencias/evidence-resource");
+    const { fetchEvidence, reviewHypothesis } = await import("@/app/(painel)/incidentes/detalhe/evidence-resource");
     expect((await fetchEvidence("inc_1")).data?.hypothesis).not.toBeNull();
     const result = await reviewHypothesis("inc_1", "confirmed");
     expect(result).toMatchObject({ ok: false, needsSignIn: false });

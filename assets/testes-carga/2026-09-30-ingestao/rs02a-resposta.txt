@@ -1,0 +1,14 @@
+2026-09-30T19:51:50Z login: 200
+2026-09-30T19:51:51Z política antes: aws: [ERROR]: An error occurred (NoSuchBucketPolicy) when calling the GetBucketPolicy operation: The bucket policy does not exist
+2026-09-30T19:51:52Z alarmes antes: view-show-import-reconciliation-failures OK 2026-09-28T15:39:21.882000-03:00 view-show-import-worker-failures OK 2026-09-30T09:35:12.544000-03:00 
+2026-09-30T19:51:53Z upload em s3://view-show-ingestion-114388221188-us-east-1/staging/imports/ NEGADO — reverta com: /c/Users/Inteli/projetos/modulo7/g05/apps/backend/api/loadtest/k6/ingestao-falhas.sh s3-restaurar
+2026-09-30T19:52:04Z POST 1:
+{"error":{"code":"UPLOAD_PREPARATION_FAILED","message":"Não foi possível preparar o envio.","requestId":"req_aa230ff6b1e442c3af8959aca83ae287"}}
+HTTP 503 em 0.584267s
+2026-09-30T19:52:04Z POST 2 (vaga deve estar livre: 503 de novo, não 409):
+{"error":{"code":"UPLOAD_PREPARATION_FAILED","message":"Não foi possível preparar o envio.","requestId":"req_6c0e87e7132c4041bdf6509451bb0d6c"}}
+HTTP 503 em 0.493988s
+2026-09-30T19:52:06Z política do bucket view-show-ingestion-114388221188-us-east-1 restaurada
+2026-09-30T19:52:07Z política após restaurar: aws: [ERROR]: An error occurred (NoSuchBucketPolicy) when calling the GetBucketPolicy operation: The bucket policy does not exist
+2026-09-30T19:55:59Z alarmes depois: view-show-import-reconciliation-failures OK 2026-09-28T15:39:21.882000-03:00 view-show-import-worker-failures OK 2026-09-30T09:35:12.544000-03:00 
+2026-09-30T19:56:01Z FIM

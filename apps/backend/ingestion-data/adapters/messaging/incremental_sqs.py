@@ -26,6 +26,7 @@ class IncrementalSqsClient(Protocol):
     def send_message(self, **kwargs: object) -> Mapping[str, object]: ...
     def receive_message(self, **kwargs: object) -> Mapping[str, object]: ...
     def delete_message(self, **kwargs: object) -> Mapping[str, object]: ...
+    def change_message_visibility(self, **kwargs: object) -> Mapping[str, object]: ...
 
 
 def _text(value: object, field: str) -> str:
@@ -181,6 +182,19 @@ class SqsIncrementalBatchQueue(IncrementalBatchQueue):
         self._client.delete_message(
             QueueUrl=self._queue_url,
             ReceiptHandle=_text(delivery.receipt_handle, "receipt_handle"),
+        )
+
+    def extend_visibility(self, delivery: BatchDelivery, seconds: int) -> None:
+        if not isinstance(delivery, BatchDelivery):
+            raise TypeError("delivery must be a BatchDelivery")
+        if type(seconds) is not int:
+            raise TypeError("seconds must be an integer")
+        if seconds < 0 or seconds > 43_200:
+            raise ValueError("seconds must be between 0 and 43200")
+        self._client.change_message_visibility(
+            QueueUrl=self._queue_url,
+            ReceiptHandle=_text(delivery.receipt_handle, "receipt_handle"),
+            VisibilityTimeout=seconds,
         )
 
 

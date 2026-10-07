@@ -1,0 +1,48 @@
+Carga da API consumida pelo frontend — modo soak
+Taxa de chegada (iterações/s): base 10, pico 10; 600 iterações, 604 requisições, 10.0 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 431; timeouts do cliente (>8000 ms): 0; iterações descartadas: 0
+
+THRESHOLDS: 17 reprovados, 71 aprovados
+  ✗ http_req_failed{rota:dashboard_overview} rate<0.02
+  ✗ http_req_failed{rota:global_events} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incidents_chart} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:dashboard_overview} rate<0.02
+  ✗ http_req_failed{rota:argus_integration} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:argus_integration} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incident_diagnosis} rate<0.02
+  ✗ front_api_contract_success_rate rate>0.999
+  ✗ front_api_contract_failed_rate{rota:incidents_list} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:global_events} rate<0.02
+  ✗ http_req_failed{rota:incident_events} rate<0.02
+  ✗ http_req_failed rate<0.001
+  ✗ front_api_contract_failed_rate{rota:incident_events} rate<0.02
+  ✗ http_req_failed{rota:incident_diagnosis} rate<0.02
+  ✗ http_req_failed{rota:incidents_list} rate<0.02
+  ✗ checks rate>0.999
+  ✗ http_req_failed{rota:incidents_chart} rate<0.02
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list         146   76.71      23.29       2      10      81      23.3
+incidents_chart         44   65.91      34.09       3       9      10      34.1
+dashboard_overview     105   76.19      23.81       2      13      17       0.0
+incident_diagnosis     100   76.00      24.00       2      14      18      24.0
+incident_events         48   75.00      25.00       2      14      15      25.0
+global_events           60   88.33      11.67       2       9      83      11.7
+monitoring_overview     42    0.00     100.00       2       5     262       0.0
+auth_session            24    0.00     100.00       1       1       1       0.0
+argus_integration        5   60.00      40.00     102     202     220       0.0
+rum_beacon              26    0.00     100.00       1       1       2       0.0
+
+Observações:
+  - incidents_list: 112/146 respostas 503 DATA_UNAVAILABLE
+  - incidents_chart: 29/44 respostas 503 DATA_UNAVAILABLE
+  - dashboard_overview: 80/105 respostas 503 DATA_UNAVAILABLE
+  - incident_diagnosis: 76/100 respostas 503 DATA_UNAVAILABLE
+  - incident_events: 36/48 respostas 503 DATA_UNAVAILABLE
+  - global_events: 53/60 respostas 503 DATA_UNAVAILABLE
+  - monitoring_overview: 42/42 respostas 503 DATA_UNAVAILABLE — a rota não está sendo exercitada (sem projeção)
+  - argus_integration: 3/5 respostas 503 DATA_UNAVAILABLE
+  - incidents_list: 34 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+
+Resumo detalhado: C:/Users/lcsmi/AppData/Local/Temp/claude/C--Users-lcsmi-OneDrive-Documentos-g05/28f0d8ea-0bf8-4421-add5-487c28ee90d9/scratchpad/results-neg-new/resumo-front-api-soak.json

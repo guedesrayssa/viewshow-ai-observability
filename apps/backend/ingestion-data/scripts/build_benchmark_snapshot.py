@@ -93,7 +93,9 @@ def _read_text(path: Path, label: str) -> str:
         raise BenchmarkSnapshotError(f"{label} could not be read: {path}") from error
 
 
-def _synthetic_blocks(rows: int, variant: str) -> Iterator[str]:
+def _synthetic_blocks(rows: int, variant: str, rows_per_window: int | None) -> Iterator[str]:
+    # Sem ``rows_per_window``, cada linha ocupa um bucket de 15 min com a mesma entidade.
+    # Com ele, ``rows_per_window`` linhas compartilham o bucket, cada uma com entidade própria.
     remaining = rows
     offset = 0
     while remaining:
@@ -101,10 +103,16 @@ def _synthetic_blocks(rows: int, variant: str) -> Iterator[str]:
         yield "INSERT INTO signal_bucket (bts, source, entity, metric, value) VALUES\n"
         for block_offset in range(block_rows):
             index = offset + block_offset
-            bucket = _FIRST_SYNTHETIC_BUCKET_MS + index * 900_000
+            if rows_per_window is None:
+                bucket = _FIRST_SYNTHETIC_BUCKET_MS + index * 900_000
+                entity = f"benchmark-{variant}"
+            else:
+                window, position = divmod(index, rows_per_window)
+                bucket = _FIRST_SYNTHETIC_BUCKET_MS + window * 900_000
+                entity = f"benchmark-{variant}-{position:06d}"
             suffix = ";" if block_offset == block_rows - 1 else ","
             yield (
-                f"    ({bucket}, 'benchmark-{variant}', 'benchmark-{variant}', "
+                f"    ({bucket}, 'benchmark-{variant}', '{entity}', "
                 f"'row-count', {index + 1}.0){suffix}\n"
             )
         remaining -= block_rows
@@ -138,14 +146,20 @@ def _write_gzip_stream(output: Path, chunks: Iterator[str]) -> None:
             temporary_path.unlink(missing_ok=True)
 
 
-def _snapshot_chunks(schema: str, fixture: str, synthetic_rows: int, variant: str) -> Iterator[str]:
+def _snapshot_chunks(
+    schema: str,
+    fixture: str,
+    synthetic_rows: int,
+    variant: str,
+    rows_per_window: int | None,
+) -> Iterator[str]:
     yield schema.rstrip()
     yield "\n\n"
     yield fixture.strip()
     yield "\n"
     if synthetic_rows:
         yield "\n"
-        yield from _synthetic_blocks(synthetic_rows, variant)
+        yield from _synthetic_blocks(synthetic_rows, variant, rows_per_window)
 
 
 def _sha256(path: Path) -> tuple[str, int]:
@@ -186,6 +200,7 @@ def build_benchmark_snapshot(
     variant: str,
     output: Path,
     manifest: Path,
+    rows_per_window: int | None = None,
 ) -> dict[str, object]:
     """Write one deterministic gzip dump and its content-addressed manifest."""
     if isinstance(rows, bool) or not isinstance(rows, int) or rows <= 0:
@@ -194,6 +209,12 @@ def build_benchmark_snapshot(
         raise BenchmarkSnapshotError("snapshot_extracted_on must be a date")
     if not isinstance(variant, str) or _VARIANT.fullmatch(variant) is None:
         raise BenchmarkSnapshotError("variant must match [a-z0-9-]{1,40}")
+    if rows_per_window is not None and (
+        isinstance(rows_per_window, bool)
+        or not isinstance(rows_per_window, int)
+        or not 0 < rows_per_window <= 999_999
+    ):
+        raise BenchmarkSnapshotError("rows_per_window must be an integer between 1 and 999999")
     output = Path(output)
     manifest = Path(manifest)
     if not output.name.endswith(".sql.gz"):
@@ -219,7 +240,7 @@ def build_benchmark_snapshot(
 
     _write_gzip_stream(
         output,
-        _snapshot_chunks(schema, fixture, synthetic_rows, variant),
+        _snapshot_chunks(schema, fixture, synthetic_rows, variant, rows_per_window),
     )
     sha256, compressed_bytes = _sha256(output)
     document: dict[str, object] = {
@@ -230,6 +251,8 @@ def build_benchmark_snapshot(
         "tableCounts": table_counts,
         "variant": variant,
     }
+    if rows_per_window is not None:
+        document["rowsPerWindow"] = rows_per_window
     _write_manifest(manifest, document)
     return document
 
@@ -245,6 +268,7 @@ def _parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--variant", default="baseline")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--rows-per-window", type=int, default=None)
     return parser.parse_args(argv)
 
 
@@ -256,6 +280,7 @@ def main(argv: list[str] | None = None) -> int:
         variant=arguments.variant,
         output=arguments.output,
         manifest=arguments.manifest,
+        rows_per_window=arguments.rows_per_window,
     )
     sys.stdout.write(json.dumps(document, sort_keys=True) + "\n")
     return 0

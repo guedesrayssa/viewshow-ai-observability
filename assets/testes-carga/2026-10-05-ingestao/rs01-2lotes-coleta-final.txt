@@ -1,0 +1,16 @@
+# coleta final (manual, apos a falha do monitor) 2026-10-05T16:37:01Z
+ultima leitura do monitor: 2026-10-05T16:17:02Z fila visiveis=0 em_processamento=0 | dlq visiveis=0 em_processamento=0
+view-show-ingestion-incremental-batches.fifo 0	0
+view-show-ingestion-incremental-batches-dlq.fifo 0	0
+bat_45f768dcba2877f451db695c81688a3d30195e9314675d1d67bd6e94e8bc651a {"batchId": "bat_45f768dcba2877f451db695c81688a3d30195e9314675d1d67bd6e94e8bc651a", "counts": {"written": {"N": "150000"}, "unchanged": {"N": "0"}}, "createdAt": "2026-10-05T15:47:39.327Z", "manifestSha256": "4a05462258edb2f4a351d29454cbcc722814165420280555c64ce89c222555a9", "reference": {"bucket": {"S": "view-show-ingestion-145497513075-us-east-1"}, "key": {"S": "raw/argus/incremental/dataset=signal_bucket/window_start=20261005T150000000Z/batch_id=bat_45f768dcba2877f451db695c81688a3d30195e9314675d1d67bd6e94e8bc651a/manifest.json"}, "versionId": {"S": "oPkgktpsX6J6SJUjGyQuTk0xBo_zUDL5"}}, "state": "COMPLETED", "updatedAt": "2026-10-05T15:54:39.981Z", "version": "4"}
+bat_286f4cc37536a42ec3bc78c677b2fddf65685be2430129f8530fed756e5a6217 {"batchId": "bat_286f4cc37536a42ec3bc78c677b2fddf65685be2430129f8530fed756e5a6217", "counts": {"written": {"N": "150000"}, "unchanged": {"N": "0"}}, "createdAt": "2026-10-05T15:54:40.084Z", "manifestSha256": "ad95f13709a848ec1c126273760ebc7b3b6db3398aba0cc505d0186aacd00b05", "reference": {"key": {"S": "raw/argus/incremental/dataset=signal_bucket/window_start=20261005T151500000Z/batch_id=bat_286f4cc37536a42ec3bc78c677b2fddf65685be2430129f8530fed756e5a6217/manifest.json"}, "bucket": {"S": "view-show-ingestion-145497513075-us-east-1"}, "versionId": {"S": "sGc8jdu1QVAFIDA44J3FKFnAsKLN5naT"}}, "state": "COMPLETED", "updatedAt": "2026-10-05T16:01:50.812Z", "version": "4"}
+lease SYNC_GLOBAL: None
+lease argus: None
+contagem depois (286 paginas da consulta somadas):
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261005 300000
+TOTAL 300000
+contagem antes (do acumulo):
+contagem antes (publicado em 2026-10-05T15:38:48Z):
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261005 0
+TOTAL 0
+tasks em execucao (ingest): 0

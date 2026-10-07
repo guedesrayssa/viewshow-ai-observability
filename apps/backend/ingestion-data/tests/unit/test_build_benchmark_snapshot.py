@@ -14,7 +14,7 @@ import pytest
 
 from contracts.registry import DatasetRegistry
 from scripts.benchmark_snapshot_reader import restore_snapshot
-from scripts.build_benchmark_snapshot import build_benchmark_snapshot
+from scripts.build_benchmark_snapshot import BenchmarkSnapshotError, build_benchmark_snapshot
 from tests.integration.mysql_test_config import mysql_test_host, mysql_test_port
 
 
@@ -106,3 +106,42 @@ def test_benchmark_snapshot_caps_each_insert_at_1000_rows(tmp_path: Path) -> Non
 
     assert sizes[-3:] == (1_000, 1_000, 1)
     assert max(sizes) <= 1_000
+
+
+def _build_windowed(tmp_path: Path, *, rows: int, rows_per_window: int) -> tuple[Path, Path]:
+    output = tmp_path / "windowed" / "argus_dump.sql.gz"
+    manifest = tmp_path / "windowed" / "manifest.json"
+    build_benchmark_snapshot(
+        rows=rows,
+        snapshot_extracted_on=date(2026, 9, 1),
+        variant="baseline",
+        output=output,
+        manifest=manifest,
+        rows_per_window=rows_per_window,
+    )
+    return output, manifest
+
+
+def test_rows_per_window_shares_aligned_buckets_with_distinct_entities(tmp_path: Path) -> None:
+    output, manifest_path = _build_windowed(tmp_path, rows=2_030, rows_per_window=1_000)
+
+    with gzip.open(output, "rt", encoding="utf-8") as stream:
+        rows = re.findall(
+            r"^    \((\d+), 'benchmark-baseline', '([^']+)', 'row-count'",
+            stream.read(),
+            flags=re.MULTILINE,
+        )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    buckets = [int(bucket) for bucket, _ in rows]
+
+    assert manifest["rowsPerWindow"] == 1_000
+    assert all(bucket % 900_000 == 0 for bucket in buckets)
+    assert len(set(buckets)) == 3
+    assert buckets[0] == buckets[999] != buckets[1_000]
+    assert len(set(rows)) == len(rows)
+    assert rows[0][1] == rows[1_000][1] == "benchmark-baseline-000000"
+
+
+def test_rows_per_window_must_be_positive(tmp_path: Path) -> None:
+    with pytest.raises(BenchmarkSnapshotError):
+        _build_windowed(tmp_path, rows=1_003, rows_per_window=0)

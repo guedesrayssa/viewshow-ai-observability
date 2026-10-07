@@ -23,6 +23,7 @@ import {
   type ChartPeriodKey,
 } from "@/app/(painel)/incidentes/incidents-data";
 import { BarChart, type BarTone } from "@/components/charts/bar-chart";
+import { Unavailable } from "@/components/dashboard/unavailable";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,12 +44,25 @@ const LEVEL_META: Record<
 
 export type IncidentsChartProps = {
   buckets?: ChartBucket[];
-  period: ChartPeriodKey;
-  onPeriodChange: (period: ChartPeriodKey) => void;
+  /** Verdadeiro quando a leitura da série falhou (e não está só carregando). */
+  failed?: boolean;
+  /** Motivo da falha, vindo da leitura. */
+  message?: string;
+  /** Rótulo do período em vigor, quando o gráfico segue o filtro da tela. */
+  periodLabel?: string;
+  /**
+   * Seletor próprio do gráfico. A tela de Incidentes não passa: o gráfico
+   * segue o período da lista, para os dois não mostrarem recortes diferentes.
+   */
+  period?: ChartPeriodKey;
+  onPeriodChange?: (period: ChartPeriodKey) => void;
 };
 
 export function IncidentsChart({
   buckets,
+  failed = false,
+  message,
+  periodLabel,
   period,
   onPeriodChange,
 }: IncidentsChartProps) {
@@ -59,21 +73,33 @@ export function IncidentsChart({
           <CardTitle>Dispositivos por horário de início</CardTitle>
           <CardDescription className="mt-1">
             Soma dos dispositivos dos incidentes abertos em cada hora
+            {periodLabel ? ` · ${periodLabel.toLowerCase()}` : ""}
           </CardDescription>
         </div>
 
-        <Select
-          aria-label="Período do gráfico"
-          value={period}
-          onValueChange={(value) => onPeriodChange(value as ChartPeriodKey)}
-          options={(Object.keys(CHART_PERIOD_LABELS) as ChartPeriodKey[]).map(
-            (key) => ({ value: key, label: CHART_PERIOD_LABELS[key] }),
-          )}
-        />
+        {period && onPeriodChange ? (
+          <Select
+            aria-label="Período do gráfico"
+            value={period}
+            onValueChange={(value) => onPeriodChange(value as ChartPeriodKey)}
+            options={(Object.keys(CHART_PERIOD_LABELS) as ChartPeriodKey[]).map(
+              (key) => ({ value: key, label: CHART_PERIOD_LABELS[key] }),
+            )}
+          />
+        ) : null}
       </div>
 
-      {!buckets ? (
+      {failed ? (
+        <Unavailable title="Série indisponível" className="mt-5" minHeight={224}>
+          {message ?? "A série de impacto por horário não respondeu."}
+        </Unavailable>
+      ) : !buckets ? (
         <Skeleton className="mt-5 h-56 w-full" />
+      ) : buckets.length === 0 ? (
+        <Unavailable title="Sem série de impacto" className="mt-5" minHeight={224}>
+          A origem ainda não publica a contagem de dispositivos por horário para
+          este período.
+        </Unavailable>
       ) : (
         <BarChart
           className="mt-5"

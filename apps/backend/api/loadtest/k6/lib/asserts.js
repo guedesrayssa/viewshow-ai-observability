@@ -69,6 +69,72 @@ export function checkIncidentsSchema(res, rotulo) {
   });
 }
 
+const GATEWAY_META_KEYS = [
+  "requestId",
+  "schemaVersion",
+  "datasetVersion",
+  "generatedAt",
+  "window",
+  "partial",
+  "refreshAfterSeconds",
+  "freshness",
+  "warnings",
+];
+const DATASET_VERSION_PATTERN = /^dsv_[0-9a-f]{64}$/;
+
+/** Corpo JSON ou `null` quando o corpo não é JSON válido. */
+export function parseBody(res) {
+  try {
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+function hasExactKeys(value, keys) {
+  const actual = Object.keys(value);
+  return actual.length === keys.length && actual.every((k) => keys.includes(k));
+}
+
+/** Versão enxuta de `isGatewayEnvelope()` de
+ *  apps/frontend/lib/data/client.ts. O frontend trata como "resposta fora do
+ *  contrato" (e mostra o bloco como indisponível) qualquer 200 cujo `meta`
+ *  não tenha exatamente estas chaves — então um 200 sem envelope válido é, para
+ *  o usuário, uma falha, mesmo que o k6 visse "status 200". */
+export function isGatewayEnvelope(body) {
+  if (body === null || typeof body !== "object" || !("data" in body))
+    return false;
+  const meta = body.meta;
+  return (
+    meta !== null &&
+    typeof meta === "object" &&
+    !Array.isArray(meta) &&
+    hasExactKeys(meta, GATEWAY_META_KEYS) &&
+    typeof meta.requestId === "string" &&
+    meta.requestId.length > 0 &&
+    meta.schemaVersion === "1.0" &&
+    (meta.datasetVersion === null ||
+      DATASET_VERSION_PATTERN.test(meta.datasetVersion)) &&
+    typeof meta.generatedAt === "string" &&
+    !Number.isNaN(Date.parse(meta.generatedAt)) &&
+    (meta.window === null || typeof meta.window === "object") &&
+    typeof meta.partial === "boolean" &&
+    (meta.refreshAfterSeconds === null ||
+      (Number.isSafeInteger(meta.refreshAfterSeconds) &&
+        meta.refreshAfterSeconds > 0)) &&
+    Array.isArray(meta.freshness) &&
+    Array.isArray(meta.warnings)
+  );
+}
+
+/** O 200 traz o envelope `{data, meta}` que o frontend exige. */
+export function checkGatewayEnvelope(res, rotulo, body = parseBody(res)) {
+  return check(res, {
+    [`${rotulo}: envelope do gateway`]: (r) =>
+      r.status !== 200 || isGatewayEnvelope(body),
+  });
+}
+
 /** Sem duplicidade de id entre duas páginas obtidas com o mesmo cursor —
  *  o cenário G (paginação) é o único que exercita isso de ponta a ponta. */
 export function checkNoDuplicateIds(firstItems, secondItems, rotulo) {

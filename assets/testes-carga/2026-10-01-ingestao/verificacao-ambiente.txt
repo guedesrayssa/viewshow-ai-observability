@@ -1,0 +1,51 @@
+Verificação do ambiente antes da rodada de 2026-10-01 (somente leitura), ~02:06 UTC.
+
+ATENÇÃO: este arquivo NÃO é uma exportação bruta. É a transcrição literal das saídas
+dos comandos de leitura exibidas no terminal da sessão, gravada depois, porque os
+comandos não redirecionaram a saída para arquivo. Nenhum valor foi alterado; só o
+identificador do usuário no ARN do STS foi omitido.
+
+$ aws sts get-caller-identity --query Arn
+arn:aws:sts::114388221188:assumed-role/voclabs/<usuário do Learner Lab>
+
+$ aws ecs list-clusters --region us-east-1
+CLUSTERARNS	arn:aws:ecs:us-east-1:114388221188:cluster/view-show-iac-cluster
+
+$ aws scheduler list-schedules --query 'Schedules[].[GroupName,Name,State]'
+view-show-ingestion	view-show-ingestion-sync	DISABLED
+view-show-ingestion	view-show-ingestion-incremental-ingest	DISABLED
+view-show-ingestion	view-show-ingestion-incremental-export	DISABLED
+
+$ aws ecs list-tasks --cluster view-show-iac-cluster --desired-status RUNNING (+ describe-tasks)
+arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/74d463779d634619ad9b9be91aa60b90
+arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-iac-api-task:5	RUNNING	2026-09-28T15:45:00.433000-03:00
+
+$ aws ecs list-services --cluster view-show-iac-cluster
+SERVICEARNS	arn:aws:ecs:us-east-1:114388221188:service/view-show-iac-cluster/view-show-iac-api-service
+
+$ aws s3api get-bucket-policy --bucket view-show-ingestion-114388221188-us-east-1
+aws: [ERROR]: An error occurred (NoSuchBucketPolicy) when calling the GetBucketPolicy operation: The bucket policy does not exist
+
+$ aws sqs get-queue-attributes (ApproximateNumberOfMessages, ApproximateNumberOfMessagesNotVisible, VisibilityTimeout)
+view-show-ingestion-analysis 0	0	300
+view-show-ingestion-analysis-dlq 0	0	30
+view-show-ingestion-incremental-batches-dlq.fifo 1	0	300
+view-show-ingestion-incremental-batches.fifo 0	0	300
+view-show-ingestion-scheduler-dlq 0	0	30
+(a mensagem da DLQ incremental não foi lida, para não alterar o ApproximateReceiveCount;
+ a origem dela não foi confirmada)
+
+$ aws ecs describe-task-definition --task-definition view-show-ingestion-<família> --query '[family,revision,image]'
+view-show-ingestion-import	6	114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de
+view-show-ingestion-incremental-ingest	6	114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de
+view-show-ingestion-incremental-export	6	114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de
+view-show-ingestion-sync	6	114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de
+view-show-ingestion-backfill	6	114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de
+
+$ aws scheduler get-schedule --group-name view-show-ingestion --name <agenda> --query '[Name,State,ScheduleExpression,Target.EcsParameters.TaskDefinitionArn]'
+view-show-ingestion-incremental-ingest	DISABLED	rate(5 minutes)	arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-ingest:6
+view-show-ingestion-incremental-export	DISABLED	rate(15 minutes)	arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-export:6
+view-show-ingestion-sync	DISABLED	rate(15 minutes)	arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-sync:6
+
+$ date -u
+2026-10-01T02:06:27Z

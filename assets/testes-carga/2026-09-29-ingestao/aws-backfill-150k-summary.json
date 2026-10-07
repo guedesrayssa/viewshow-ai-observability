@@ -1,0 +1,63 @@
+{
+  "evidenceVersion": 1,
+  "environment": "learner-lab",
+  "awsRegion": "us-east-1",
+  "awsAccount": "751733022773",
+  "gitRevision": "47eccb9",
+  "scenario": {
+    "name": "observabilidade-150k",
+    "inputRecords": 150000,
+    "equivalence": "10000 registros/minuto durante 15 minutos",
+    "snapshotSha256": "21069cb588d937f5174275112c47d790a3eb18fa4648ac190a53cd6136feee15",
+    "activationRequested": false,
+    "parallelTasks": 1
+  },
+  "execution": {
+    "taskId": "895cf9b5a8c046f0a653935b84ad2a75",
+    "runId": "backfill-095005d410c9ac0589c73f1d41e319125dd1f5d0",
+    "startedAt": "2026-09-29T23:48:59.445Z",
+    "stopRequestedAt": "2026-09-30T02:54:49.238Z",
+    "stoppedAt": "2026-09-30T02:56:06.929Z",
+    "observedDurationSeconds": 11227.484,
+    "configuredClientTimeoutSeconds": 3600,
+    "stopCode": "UserInitiated",
+    "stoppedReason": "Benchmark observabilidade 150k excedeu limite controlado de 3600s",
+    "ingestionContainerExitCode": 137,
+    "durableStageAfterStop": "ARCHIVING",
+    "terminalApplicationStatusObserved": false
+  },
+  "reconciliation": {
+    "recordsRead": 150000,
+    "recordsWritten": 150000,
+    "recordsRejected": 0,
+    "recordsUnchanged": 0,
+    "balanced": true
+  },
+  "stages": {
+    "STARTING": { "durationMs": 175 },
+    "RESTORING": { "durationMs": 3276 },
+    "VALIDATING": { "durationMs": 342 },
+    "INGESTING": { "durationMs": 621536 },
+    "PROJECTING": { "durationMs": 1088407 },
+    "ARCHIVING": { "completed": false }
+  },
+  "indicators": {
+    "ingestionThroughputRecordsPerSecond": 241.3375,
+    "ingestionThroughputRecordsPerMinute": 14480.25,
+    "endToEndCompletedThroughputRecordsPerSecond": 0,
+    "cpuReservedUnits": 2048,
+    "cpuUtilizedAverageUnits": 678.3115312238108,
+    "cpuUtilizedMaximumUnits": 819.0068990071615,
+    "cpuAveragePercent": 33.1207,
+    "cpuMaximumPercent": 39.9906,
+    "latestObservedDiskBytes": 132368865,
+    "peakObservedDiskBytes": 132446153,
+    "failedRunMetricDatapoints": 0,
+    "stageFailureMetricDatapoints": 0
+  },
+  "result": {
+    "status": "FAILED_END_TO_END",
+    "reason": "A leitura e a escrita de 150 mil registros foram reconciliadas, mas a execução não concluiu ARCHIVING nem publicou estado terminal após mais de três horas.",
+    "observabilityGap": "Interrupção externa da task não publicou ingestion.run.failed, RunDurationMs ou Runs com status FAILED."
+  }
+}

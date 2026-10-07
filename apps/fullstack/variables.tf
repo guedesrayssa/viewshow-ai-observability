@@ -116,6 +116,22 @@ variable "analysis_worker_habilitado" {
 
 }
 
+variable "analysis_worker_desired_count" {
+  description = "Número de réplicas do worker; mantenha 0 até o gate de conectividade com o Ollama passar."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = contains([0, 1], var.analysis_worker_desired_count)
+    error_message = "Use 0 durante o gate ou 1 após a validação do Ollama."
+  }
+
+  validation {
+    condition     = var.analysis_worker_habilitado || var.analysis_worker_desired_count == 0
+    error_message = "Habilite o worker antes de solicitar uma réplica."
+  }
+}
+
 variable "analysis_worker_image_uri" {
   description = "Imagem imutável do worker. Vazia, o Terraform constrói e publica a imagem de apps/backend/agentic no ECR do Learner Lab durante o apply."
   type        = string
@@ -185,6 +201,15 @@ variable "analysis_model_sha256" {
   default     = ""
 }
 
+// Vazio por padrão: a ingestão não grava fatos por série (comportamento atual
+// em produção). Preenchida, a tarefa de importação passa a materializar os
+// fatos que o worker de análise lê, para as séries declaradas no catálogo.
+variable "analysis_fact_catalog_location" {
+  description = "URI s3:// do catálogo de séries (ANALYSIS_FACT_CATALOG_LOCATION) que a tarefa de importação usa para gravar fatos de análise. Vazio desliga a gravação."
+  type        = string
+  default     = ""
+}
+
 variable "analysis_llm_provider" {
   description = "Provider de interpretação A'. `none` desliga o LLM (o Learner Lab não tem Bedrock): a detecção e a previsão seguem e o diagnóstico é registrado como falha permanente, sem retentativas."
   type        = string
@@ -201,13 +226,51 @@ variable "analysis_llm_model_id" {
   default     = "anthropic.claude-3-haiku-20240307-v1:0"
 }
 
+// Padrão do worker é 120000 (120s) quando a variável não é informada — muito
+// pouco para inferência de LLM só em CPU (Fargate não tem GPU). Vazio mantém
+// esse padrão do código.
+variable "analysis_llm_timeout_ms" {
+  description = "Timeout da chamada ao provider de LLM, em milissegundos. Vazio usa o padrão do worker (120000)."
+  type        = string
+  default     = ""
+}
+
 variable "analysis_ollama_base_url" {
   description = "URL do Ollama quando esse provider for selecionado."
   type        = string
   default     = ""
+  sensitive   = true
   validation {
     condition     = var.analysis_llm_provider != "ollama" || length(var.analysis_ollama_base_url) > 0
     error_message = "Informe analysis_ollama_base_url para Ollama."
+  }
+}
+
+variable "analysis_ssh_bridge_habilitado" {
+  description = "Abre somente a porta 11434 do bastion para o Security Group do serviço ECS quando um túnel SSH reverso está em uso."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.analysis_ssh_bridge_habilitado || !var.analysis_worker_habilitado || var.analysis_llm_provider == "ollama"
+    error_message = "A ponte SSH requer provider Ollama quando o worker está habilitado."
+  }
+}
+
+// Sobe um Ollama efêmero como segundo container na mesma tarefa do worker,
+// só para exercitar o provider real de LLM sem depender do Bedrock (bloqueado
+// no Learner Lab) ou de expor uma máquina pessoal à internet. Nunca é o
+// caminho de produção — production continua exigindo bedrock ou none.
+variable "analysis_ollama_sidecar_habilitado" {
+  description = "Adiciona um container Ollama efêmero (mesma tarefa, localhost) para testes com o provider ollama. Aumenta cpu/memória da tarefa; exige analysis_llm_provider=ollama e analysis_ollama_base_url=http://localhost:11434."
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.analysis_ollama_sidecar_habilitado || (
+      var.analysis_worker_habilitado &&
+      var.analysis_llm_provider == "ollama" &&
+      var.analysis_ollama_base_url == "http://localhost:11434"
+    )
+    error_message = "analysis_ollama_sidecar_habilitado exige analysis_worker_habilitado=true, analysis_llm_provider=ollama e analysis_ollama_base_url=http://localhost:11434."
   }
 }
 
@@ -221,6 +284,12 @@ variable "observabilidade_habilitada" {
   description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki, Tempo e Alloy em uma EC2."
   type        = bool
   default     = false
+}
+
+variable "observabilidade_api_exportacao_habilitada" {
+  description = "Conecta a task da API aos endpoints privados da observabilidade. O rollout seguro a desliga apenas na fase que cria a EC2 e a religa quando o IP já é conhecido."
+  type        = bool
+  default     = true
 }
 
 variable "tipo_instancia_observabilidade" {

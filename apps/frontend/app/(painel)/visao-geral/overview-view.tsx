@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { ExportIcon } from "@/components/ui/icons";
 import { useResource } from "@/hooks/use-resource";
 import type { StatAccent } from "@/lib/dashboard-data";
+import { downloadCsv, exportFileName } from "@/lib/export";
 
 const REFRESH_MS = 30_000;
 const STAT_ACCENTS: StatAccent[] = ["info", "warning", "critical"];
@@ -59,6 +60,31 @@ export function OverviewView() {
   const data = overview.data;
   const loading = overview.status === "loading";
 
+  /** Indicadores e incidentes recentes do recorte, em um CSV só. */
+  function exportOverview() {
+    if (!data) return;
+    const rows = [
+      ...data.stats.map((stat) => ({
+        kind: "Indicador",
+        name: stat.label,
+        value: stat.value === null ? "não medido" : `${stat.value}${stat.unit ?? ""}`,
+        detail: stat.delta,
+      })),
+      ...data.incidents.map((incident) => ({
+        kind: "Incidente",
+        name: incident.title,
+        value: incident.sessions,
+        detail: `${incident.statusLabel} · ${incident.timeAgo}`,
+      })),
+    ];
+    downloadCsv(exportFileName(`visao-geral-${filters.timeRange}`), rows, [
+      { header: "Tipo", value: (row) => row.kind },
+      { header: "Nome", value: (row) => row.name },
+      { header: "Valor", value: (row) => row.value },
+      { header: "Detalhe", value: (row) => row.detail },
+    ]);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -76,7 +102,13 @@ export function OverviewView() {
           />
         }
         actions={
-          <Button variant="gradient" leadingIcon={<ExportIcon size={18} />}>
+          <Button
+            variant="gradient"
+            leadingIcon={<ExportIcon size={18} />}
+            disabled={!data}
+            onClick={exportOverview}
+            title="Exporta em CSV os indicadores e incidentes do recorte atual"
+          >
             Exportar
           </Button>
         }
@@ -129,8 +161,6 @@ export function OverviewView() {
               metricLabel="Erros por minuto"
               description="Eventos de erro observados por minuto, por intervalo"
               formatValue={formatErrorsPerMinute}
-              timeRange={filters.timeRange}
-              onTimeRangeChange={(timeRange) => onFilterChange({ timeRange })}
             />
           ) : loading ? (
             <ExperienceHealthCardSkeleton />

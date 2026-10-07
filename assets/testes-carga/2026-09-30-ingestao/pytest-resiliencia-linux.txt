@@ -1,0 +1,7 @@
+2026-09-30 (após a correção pk/sk) — python:3.12-slim, requirements-dev.txt
+pytest tests/resilience tests/unit/application/test_ingest_incremental.py tests/unit/adapters/test_incremental_batch_keys.py tests/unit/adapters/test_incremental_batch_repository.py -q
+146 passed in 52.00s
+
+2026-09-30 (após o log de causa no ingest-incremental) — python:3.12-slim, requirements-dev.txt
+mesmo comando
+148 passed in 29.56s

@@ -1,0 +1,5553 @@
+{
+  "validated_at": "2026-10-04T21:06:49Z",
+  "cloud_init": {
+    "exit_code": 0,
+    "done": true
+  },
+  "containers": [
+    {
+      "service": "alloy",
+      "state": "running",
+      "health": ""
+    },
+    {
+      "service": "grafana",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "service": "loki",
+      "state": "running",
+      "health": ""
+    },
+    {
+      "service": "prometheus",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "service": "tempo",
+      "state": "running",
+      "health": ""
+    }
+  ],
+  "grafana": {
+    "database": "ok",
+    "version": "13.2.1"
+  },
+  "dashboard": {
+    "uid": "view-show-ingestion",
+    "title": "View Show — Ingestão",
+    "http_status": 200,
+    "provisioned_file_present": true,
+    "provisioned_json_valid": true,
+    "provisioned_uid": "view-show-ingestion",
+    "panel_count": 8
+  },
+  "datasource": {
+    "uid": "cloudwatch",
+    "http_status": 200,
+    "status": "OK",
+    "message": "1. Successfully queried the CloudWatch metrics API.\n2. Successfully queried the CloudWatch logs API."
+  },
+  "window": {
+    "from": "2026-09-29T23:45:00Z",
+    "to": "2026-09-30T03:00:00Z",
+    "timezone": "UTC"
+  },
+  "operations": [
+    {
+      "command": "backfill",
+      "task_family": "view-show-ingestion-backfill"
+    },
+    {
+      "command": "sync",
+      "task_family": "view-show-ingestion-sync"
+    },
+    {
+      "command": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export"
+    },
+    {
+      "command": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest"
+    }
+  ],
+  "panel_queries": [
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 1,
+      "panel_title": "Latência — execução p95 e projeção máxima",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 2,
+      "result_refs": [
+        "A",
+        "B"
+      ],
+      "frame_count": 2,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RunDurationMs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 2,
+      "panel_title": "Throughput — registros/s",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "SUM(records_read)/300"
+        },
+        {
+          "ref_id": "D",
+          "expression": "SUM(records_written)/300"
+        }
+      ]
+    },
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 3,
+      "panel_title": "Erros por segundo",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "status": [
+              "FAILED"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "status": [
+              "PARTIAL"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "expression": "(SUM(failed_runs)+SUM(partial_runs))/300"
+        },
+        {
+          "ref_id": "E",
+          "expression": "SUM(rejected_records)/300"
+        }
+      ]
+    },
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 4,
+      "panel_title": "CPU da task — utilizada/reservada",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 3,
+      "result_refs": [
+        "A",
+        "B",
+        "C"
+      ],
+      "frame_count": 3,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "CpuUtilized",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "CpuReserved",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "100*cpu_used/cpu_reserved"
+        }
+      ]
+    },
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 5,
+      "panel_title": "Duração máxima por etapa",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "stage": [
+              "STARTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "stage": [
+              "RESTORING"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "stage": [
+              "VALIDATING"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "stage": [
+              "INGESTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 6,
+      "panel_title": "Freshness e idade das filas",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 62,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches.fifo"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "SourceLagSeconds",
+          "dimensions": {
+            "source_mode": [
+              "snapshot"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "IncrementalBatchLagSeconds",
+          "dimensions": {}
+        }
+      ]
+    },
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 7,
+      "panel_title": "Reconciliação, qualidade de dados e DLQs",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 8,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H"
+      ],
+      "frame_count": 8,
+      "numeric_value_count": 63,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsUnchanged",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "SchemaDrift",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "backfill"
+            ]
+          }
+        },
+        {
+          "ref_id": "F",
+          "metric": "IncrementalBatchQuarantined",
+          "dimensions": {}
+        },
+        {
+          "ref_id": "G",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis-dlq"
+            ]
+          }
+        },
+        {
+          "ref_id": "H",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches-dlq.fifo"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "backfill",
+      "task_family": "view-show-ingestion-backfill",
+      "panel_id": 8,
+      "panel_title": "Eventos operacionais da ingestão",
+      "window_kind": "post_creation_logs",
+      "http_status": 200,
+      "result_count": 1,
+      "result_refs": [
+        "A"
+      ],
+      "frame_count": 1,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "expression": "fields @timestamp, @message | filter @message like /ingestion.run./ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 1,
+      "panel_title": "Latência — execução p95 e projeção máxima",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 2,
+      "result_refs": [
+        "A",
+        "B"
+      ],
+      "frame_count": 2,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RunDurationMs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 2,
+      "panel_title": "Throughput — registros/s",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "SUM(records_read)/300"
+        },
+        {
+          "ref_id": "D",
+          "expression": "SUM(records_written)/300"
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 3,
+      "panel_title": "Erros por segundo",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "status": [
+              "FAILED"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "status": [
+              "PARTIAL"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "expression": "(SUM(failed_runs)+SUM(partial_runs))/300"
+        },
+        {
+          "ref_id": "E",
+          "expression": "SUM(rejected_records)/300"
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 4,
+      "panel_title": "CPU da task — utilizada/reservada",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 3,
+      "result_refs": [
+        "A",
+        "B",
+        "C"
+      ],
+      "frame_count": 3,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "CpuUtilized",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "CpuReserved",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "100*cpu_used/cpu_reserved"
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 5,
+      "panel_title": "Duração máxima por etapa",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "stage": [
+              "STARTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "stage": [
+              "RESTORING"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "stage": [
+              "VALIDATING"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "stage": [
+              "INGESTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "sync"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 6,
+      "panel_title": "Freshness e idade das filas",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 62,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches.fifo"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "SourceLagSeconds",
+          "dimensions": {
+            "source_mode": [
+              "snapshot"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "IncrementalBatchLagSeconds",
+          "dimensions": {}
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 7,
+      "panel_title": "Reconciliação, qualidade de dados e DLQs",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 8,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H"
+      ],
+      "frame_count": 8,
+      "numeric_value_count": 63,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsUnchanged",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "SchemaDrift",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "sync"
+            ]
+          }
+        },
+        {
+          "ref_id": "F",
+          "metric": "IncrementalBatchQuarantined",
+          "dimensions": {}
+        },
+        {
+          "ref_id": "G",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis-dlq"
+            ]
+          }
+        },
+        {
+          "ref_id": "H",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches-dlq.fifo"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "sync",
+      "task_family": "view-show-ingestion-sync",
+      "panel_id": 8,
+      "panel_title": "Eventos operacionais da ingestão",
+      "window_kind": "post_creation_logs",
+      "http_status": 200,
+      "result_count": 1,
+      "result_refs": [
+        "A"
+      ],
+      "frame_count": 1,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "expression": "fields @timestamp, @message | filter @message like /ingestion.run./ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 1,
+      "panel_title": "Latência — execução p95 e projeção máxima",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 2,
+      "result_refs": [
+        "A",
+        "B"
+      ],
+      "frame_count": 2,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RunDurationMs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 2,
+      "panel_title": "Throughput — registros/s",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "SUM(records_read)/300"
+        },
+        {
+          "ref_id": "D",
+          "expression": "SUM(records_written)/300"
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 3,
+      "panel_title": "Erros por segundo",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "status": [
+              "FAILED"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "status": [
+              "PARTIAL"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "expression": "(SUM(failed_runs)+SUM(partial_runs))/300"
+        },
+        {
+          "ref_id": "E",
+          "expression": "SUM(rejected_records)/300"
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 4,
+      "panel_title": "CPU da task — utilizada/reservada",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 3,
+      "result_refs": [
+        "A",
+        "B",
+        "C"
+      ],
+      "frame_count": 3,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "CpuUtilized",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-incremental-export"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "CpuReserved",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-incremental-export"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "100*cpu_used/cpu_reserved"
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 5,
+      "panel_title": "Duração máxima por etapa",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "stage": [
+              "STARTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "stage": [
+              "RESTORING"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "stage": [
+              "VALIDATING"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "stage": [
+              "INGESTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 6,
+      "panel_title": "Freshness e idade das filas",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 62,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches.fifo"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "SourceLagSeconds",
+          "dimensions": {
+            "source_mode": [
+              "snapshot"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "IncrementalBatchLagSeconds",
+          "dimensions": {}
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 7,
+      "panel_title": "Reconciliação, qualidade de dados e DLQs",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 8,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H"
+      ],
+      "frame_count": 8,
+      "numeric_value_count": 63,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsUnchanged",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "SchemaDrift",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "export-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "F",
+          "metric": "IncrementalBatchQuarantined",
+          "dimensions": {}
+        },
+        {
+          "ref_id": "G",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis-dlq"
+            ]
+          }
+        },
+        {
+          "ref_id": "H",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches-dlq.fifo"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "export-incremental",
+      "task_family": "view-show-ingestion-incremental-export",
+      "panel_id": 8,
+      "panel_title": "Eventos operacionais da ingestão",
+      "window_kind": "post_creation_logs",
+      "http_status": 200,
+      "result_count": 1,
+      "result_refs": [
+        "A"
+      ],
+      "frame_count": 1,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "expression": "fields @timestamp, @message | filter @message like /ingestion.run./ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 1,
+      "panel_title": "Latência — execução p95 e projeção máxima",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 2,
+      "result_refs": [
+        "A",
+        "B"
+      ],
+      "frame_count": 2,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RunDurationMs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 2,
+      "panel_title": "Throughput — registros/s",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "SUM(records_read)/300"
+        },
+        {
+          "ref_id": "D",
+          "expression": "SUM(records_written)/300"
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 3,
+      "panel_title": "Erros por segundo",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "status": [
+              "FAILED"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "Runs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "status": [
+              "PARTIAL"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "expression": "(SUM(failed_runs)+SUM(partial_runs))/300"
+        },
+        {
+          "ref_id": "E",
+          "expression": "SUM(rejected_records)/300"
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 4,
+      "panel_title": "CPU da task — utilizada/reservada",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 3,
+      "result_refs": [
+        "A",
+        "B",
+        "C"
+      ],
+      "frame_count": 3,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "CpuUtilized",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-incremental-ingest"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "CpuReserved",
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": [
+              "view-show-ingestion-incremental-ingest"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "expression": "100*cpu_used/cpu_reserved"
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 5,
+      "panel_title": "Duração máxima por etapa",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 5,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "frame_count": 5,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "stage": [
+              "STARTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "stage": [
+              "RESTORING"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "stage": [
+              "VALIDATING"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "stage": [
+              "INGESTING"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "StageDurationMs",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ],
+            "stage": [
+              "PROJECTING"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 6,
+      "panel_title": "Freshness e idade das filas",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 4,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "frame_count": 4,
+      "numeric_value_count": 62,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "ApproximateAgeOfOldestMessage",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches.fifo"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "SourceLagSeconds",
+          "dimensions": {
+            "source_mode": [
+              "snapshot"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "IncrementalBatchLagSeconds",
+          "dimensions": {}
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 7,
+      "panel_title": "Reconciliação, qualidade de dados e DLQs",
+      "window_kind": "historical_metrics",
+      "http_status": 200,
+      "result_count": 8,
+      "result_refs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H"
+      ],
+      "frame_count": 8,
+      "numeric_value_count": 63,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "metric": "RecordsRead",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "B",
+          "metric": "RecordsWritten",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "C",
+          "metric": "RecordsUnchanged",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "D",
+          "metric": "SchemaDrift",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "E",
+          "metric": "RecordsRejected",
+          "dimensions": {
+            "command": [
+              "ingest-incremental"
+            ]
+          }
+        },
+        {
+          "ref_id": "F",
+          "metric": "IncrementalBatchQuarantined",
+          "dimensions": {}
+        },
+        {
+          "ref_id": "G",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-analysis-dlq"
+            ]
+          }
+        },
+        {
+          "ref_id": "H",
+          "metric": "ApproximateNumberOfMessagesVisible",
+          "dimensions": {
+            "QueueName": [
+              "view-show-ingestion-incremental-batches-dlq.fifo"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "operation": "ingest-incremental",
+      "task_family": "view-show-ingestion-incremental-ingest",
+      "panel_id": 8,
+      "panel_title": "Eventos operacionais da ingestão",
+      "window_kind": "post_creation_logs",
+      "http_status": 200,
+      "result_count": 1,
+      "result_refs": [
+        "A"
+      ],
+      "frame_count": 1,
+      "numeric_value_count": 0,
+      "errors": [],
+      "accepted": true,
+      "queries": [
+        {
+          "ref_id": "A",
+          "expression": "fields @timestamp, @message | filter @message like /ingestion.run./ | sort @timestamp desc | limit 100"
+        }
+      ]
+    }
+  ],
+  "logs_window": {
+    "from": 1791147099471,
+    "to": 1791147999471,
+    "latest_group_creation": 1791145113338,
+    "from_utc": "2026-10-04T20:51:39.471Z",
+    "to_utc": "2026-10-04T21:06:39.471Z",
+    "latest_group_creation_utc": "2026-10-04T20:18:33.338Z"
+  },
+  "schema_version": 1,
+  "account_id": "992648496097",
+  "role": "voclabs",
+  "region": "us-east-1",
+  "instance_id": "i-02d8393487d67a0bf",
+  "state": {
+    "lineage": "d9249f2f-3d6c-d3e6-dd27-a4582eb79aae",
+    "serial": 450,
+    "sha256": "7f12778bd605d973cb6c4beec19b33ea1edf1395c2535f0ec47fd5a6441ff018"
+  },
+  "ssm_command_id": "66292f45-9784-4fe0-883c-76b39e62fe1a",
+  "source_commit": "5f993a5c11a1f49e8fbeb385145235d6a4f40b21",
+  "ec2_status_checks": "ok",
+  "ssm_ping": "Online",
+  "browser": {
+    "captured_at": "2026-10-04T21:08:32.155Z",
+    "transport": "AWS Systems Manager port forwarding",
+    "selector_checks": [
+      {
+        "command": "backfill",
+        "task_family": "view-show-ingestion-backfill",
+        "selected_label_visible": true,
+        "metric_panels": [
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 1,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RunDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 2,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "records_read",
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "records_written",
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "read_rate",
+                "expression": "SUM(records_read)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "write_rate",
+                "expression": "SUM(records_written)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 3,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "failed_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "status": [
+                    "FAILED"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "partial_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "status": [
+                    "PARTIAL"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "rejected_records",
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "error_rate",
+                "expression": "(SUM(failed_runs)+SUM(partial_runs))/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": "rejection_rate",
+                "expression": "SUM(rejected_records)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 4,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "cpu_used",
+                "expression": null,
+                "metric": "CpuUtilized",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "cpu_reserved",
+                "expression": null,
+                "metric": "CpuReserved",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "cpu_percent",
+                "expression": "100*cpu_used/cpu_reserved",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 5,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "STARTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "RESTORING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "VALIDATING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "INGESTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 6,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "SourceLagSeconds",
+                "dimensions": {
+                  "source_mode": [
+                    "snapshot"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchLagSeconds",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 7,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsUnchanged",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "SchemaDrift",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "F",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchQuarantined",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "G",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis-dlq"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "H",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches-dlq.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "F",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "G",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 32
+              },
+              {
+                "ref_id": "H",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              }
+            ],
+            "message": null
+          }
+        ],
+        "all_five_math_targets_executed": true,
+        "request_boundary_interpolation_valid": true
+      },
+      {
+        "command": "sync",
+        "task_family": "view-show-ingestion-sync",
+        "selected_label_visible": true,
+        "metric_panels": [
+          {
+            "operation": "sync",
+            "window_kind": "historical_metrics",
+            "panel_id": 1,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RunDurationMs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "sync",
+            "window_kind": "historical_metrics",
+            "panel_id": 2,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "records_read",
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "records_written",
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "read_rate",
+                "expression": "SUM(records_read)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "write_rate",
+                "expression": "SUM(records_written)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "sync",
+            "window_kind": "historical_metrics",
+            "panel_id": 3,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "failed_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "status": [
+                    "FAILED"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "partial_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "status": [
+                    "PARTIAL"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "rejected_records",
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "error_rate",
+                "expression": "(SUM(failed_runs)+SUM(partial_runs))/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": "rejection_rate",
+                "expression": "SUM(rejected_records)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "sync",
+            "window_kind": "historical_metrics",
+            "panel_id": 4,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "cpu_used",
+                "expression": null,
+                "metric": "CpuUtilized",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-sync"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "cpu_reserved",
+                "expression": null,
+                "metric": "CpuReserved",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-sync"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "cpu_percent",
+                "expression": "100*cpu_used/cpu_reserved",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "sync",
+            "window_kind": "historical_metrics",
+            "panel_id": 5,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "stage": [
+                    "STARTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "stage": [
+                    "RESTORING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "stage": [
+                    "VALIDATING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "stage": [
+                    "INGESTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "sync",
+            "window_kind": "historical_metrics",
+            "panel_id": 6,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "SourceLagSeconds",
+                "dimensions": {
+                  "source_mode": [
+                    "snapshot"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchLagSeconds",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null,
+            "reused_operation_independent_panel": true
+          },
+          {
+            "operation": "sync",
+            "window_kind": "historical_metrics",
+            "panel_id": 7,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsUnchanged",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "SchemaDrift",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "sync"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "F",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchQuarantined",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "G",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis-dlq"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "H",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches-dlq.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "F",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "G",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 32
+              },
+              {
+                "ref_id": "H",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              }
+            ],
+            "message": null
+          }
+        ],
+        "all_five_math_targets_executed": true,
+        "request_boundary_interpolation_valid": true
+      },
+      {
+        "command": "export-incremental",
+        "task_family": "view-show-ingestion-incremental-export",
+        "selected_label_visible": true,
+        "metric_panels": [
+          {
+            "operation": "export-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 1,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RunDurationMs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "export-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 2,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "records_read",
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "records_written",
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "read_rate",
+                "expression": "SUM(records_read)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "write_rate",
+                "expression": "SUM(records_written)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "export-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 3,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "failed_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "status": [
+                    "FAILED"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "partial_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "status": [
+                    "PARTIAL"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "rejected_records",
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "error_rate",
+                "expression": "(SUM(failed_runs)+SUM(partial_runs))/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": "rejection_rate",
+                "expression": "SUM(rejected_records)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "export-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 4,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "cpu_used",
+                "expression": null,
+                "metric": "CpuUtilized",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-incremental-export"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "cpu_reserved",
+                "expression": null,
+                "metric": "CpuReserved",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-incremental-export"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "cpu_percent",
+                "expression": "100*cpu_used/cpu_reserved",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "export-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 5,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "stage": [
+                    "STARTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "stage": [
+                    "RESTORING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "stage": [
+                    "VALIDATING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "stage": [
+                    "INGESTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "export-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 6,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "SourceLagSeconds",
+                "dimensions": {
+                  "source_mode": [
+                    "snapshot"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchLagSeconds",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null,
+            "reused_operation_independent_panel": true
+          },
+          {
+            "operation": "export-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 7,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsUnchanged",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "SchemaDrift",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "export-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "F",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchQuarantined",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "G",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis-dlq"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "H",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches-dlq.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "F",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "G",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 32
+              },
+              {
+                "ref_id": "H",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              }
+            ],
+            "message": null
+          }
+        ],
+        "all_five_math_targets_executed": true,
+        "request_boundary_interpolation_valid": true
+      },
+      {
+        "command": "ingest-incremental",
+        "task_family": "view-show-ingestion-incremental-ingest",
+        "selected_label_visible": true,
+        "metric_panels": [
+          {
+            "operation": "ingest-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 1,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RunDurationMs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "ingest-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 2,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "records_read",
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "records_written",
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "read_rate",
+                "expression": "SUM(records_read)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "write_rate",
+                "expression": "SUM(records_written)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "ingest-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 3,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "failed_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "status": [
+                    "FAILED"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "partial_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "status": [
+                    "PARTIAL"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "rejected_records",
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "error_rate",
+                "expression": "(SUM(failed_runs)+SUM(partial_runs))/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": "rejection_rate",
+                "expression": "SUM(rejected_records)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "ingest-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 4,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "cpu_used",
+                "expression": null,
+                "metric": "CpuUtilized",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-incremental-ingest"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "cpu_reserved",
+                "expression": null,
+                "metric": "CpuReserved",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-incremental-ingest"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "cpu_percent",
+                "expression": "100*cpu_used/cpu_reserved",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "ingest-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 5,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "stage": [
+                    "STARTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "stage": [
+                    "RESTORING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "stage": [
+                    "VALIDATING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "stage": [
+                    "INGESTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "ingest-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 6,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "SourceLagSeconds",
+                "dimensions": {
+                  "source_mode": [
+                    "snapshot"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchLagSeconds",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null,
+            "reused_operation_independent_panel": true
+          },
+          {
+            "operation": "ingest-incremental",
+            "window_kind": "historical_metrics",
+            "panel_id": 7,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsUnchanged",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "SchemaDrift",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "ingest-incremental"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "F",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchQuarantined",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "G",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis-dlq"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "H",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches-dlq.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "F",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "G",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 32
+              },
+              {
+                "ref_id": "H",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              }
+            ],
+            "message": null
+          }
+        ],
+        "all_five_math_targets_executed": true,
+        "request_boundary_interpolation_valid": true
+      },
+      {
+        "command": "backfill",
+        "task_family": "view-show-ingestion-backfill",
+        "selected_label_visible": true,
+        "metric_panels": [
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 1,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RunDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 2,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "records_read",
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "records_written",
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "read_rate",
+                "expression": "SUM(records_read)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "write_rate",
+                "expression": "SUM(records_written)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 3,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "failed_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "status": [
+                    "FAILED"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "partial_runs",
+                "expression": null,
+                "metric": "Runs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "status": [
+                    "PARTIAL"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "rejected_records",
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": "error_rate",
+                "expression": "(SUM(failed_runs)+SUM(partial_runs))/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": "rejection_rate",
+                "expression": "SUM(rejected_records)/300",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 4,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": "cpu_used",
+                "expression": null,
+                "metric": "CpuUtilized",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": "cpu_reserved",
+                "expression": null,
+                "metric": "CpuReserved",
+                "dimensions": {
+                  "ClusterName": [
+                    "view-show-iac-cluster"
+                  ],
+                  "TaskDefinitionFamily": [
+                    "view-show-ingestion-backfill"
+                  ]
+                },
+                "hide": true,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": "cpu_percent",
+                "expression": "100*cpu_used/cpu_reserved",
+                "metric": null,
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 1,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 5,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "STARTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "RESTORING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "VALIDATING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "INGESTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "StageDurationMs",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ],
+                  "stage": [
+                    "PROJECTING"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 6,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateAgeOfOldestMessage",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "SourceLagSeconds",
+                "dimensions": {
+                  "source_mode": [
+                    "snapshot"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchLagSeconds",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              }
+            ],
+            "message": null,
+            "reused_operation_independent_panel": true
+          },
+          {
+            "operation": "backfill",
+            "window_kind": "historical_metrics",
+            "panel_id": 7,
+            "http_status": 200,
+            "from": "1790725500000",
+            "to": "1790737200000",
+            "targets": [
+              {
+                "ref_id": "A",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRead",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "B",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsWritten",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "C",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsUnchanged",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "D",
+                "id": null,
+                "expression": null,
+                "metric": "SchemaDrift",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "E",
+                "id": null,
+                "expression": null,
+                "metric": "RecordsRejected",
+                "dimensions": {
+                  "command": [
+                    "backfill"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "F",
+                "id": null,
+                "expression": null,
+                "metric": "IncrementalBatchQuarantined",
+                "dimensions": {},
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "G",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-analysis-dlq"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              },
+              {
+                "ref_id": "H",
+                "id": null,
+                "expression": null,
+                "metric": "ApproximateNumberOfMessagesVisible",
+                "dimensions": {
+                  "QueueName": [
+                    "view-show-ingestion-incremental-batches-dlq.fifo"
+                  ]
+                },
+                "hide": false,
+                "metric_editor_mode": 0,
+                "metric_query_type": 0
+              }
+            ],
+            "results": [
+              {
+                "ref_id": "A",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "B",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "C",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "D",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "E",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "F",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 0
+              },
+              {
+                "ref_id": "G",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 32
+              },
+              {
+                "ref_id": "H",
+                "status": 200,
+                "error": null,
+                "frame_count": 1,
+                "numeric_value_count": 31
+              }
+            ],
+            "message": null
+          }
+        ],
+        "all_five_math_targets_executed": true,
+        "request_boundary_interpolation_valid": true
+      }
+    ],
+    "logs_checks": [
+      {
+        "operation": "backfill",
+        "window_kind": "post_creation_logs",
+        "panel_id": 8,
+        "captured_at": "2026-10-04T21:14:53.697Z",
+        "action": "StartQuery",
+        "http_status": 200,
+        "request_envelope": {
+          "from": "1791147099471",
+          "to": "1791147999471",
+          "from_utc": "2026-10-04T20:51:39.471Z",
+          "to_utc": "2026-10-04T21:06:39.471Z",
+          "applies_to_execution_window": true
+        },
+        "effective_window": {
+          "from": 1791147099471,
+          "to": 1791147999471,
+          "from_utc": "2026-10-04T20:51:39.471Z",
+          "to_utc": "2026-10-04T21:06:39.471Z",
+          "source": "StartQuery request envelope"
+        },
+        "query_id": "4958821f-e0cd-4f7a-a9e6-31c02e00d95b",
+        "response_query_id": "4958821f-e0cd-4f7a-a9e6-31c02e00d95b",
+        "target": {
+          "ref_id": "A",
+          "type": "logAction",
+          "subtype": "StartQuery",
+          "query_mode": "Logs",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "region": "us-east-1",
+          "query_string": "fields @timestamp, @message | filter @message like /ingestion.run./ | sort @timestamp desc | limit 100",
+          "log_groups": [
+            "/ecs/view-show-ingestion-backfill",
+            "/ecs/view-show-ingestion-sync",
+            "/ecs/view-show-ingestion-incremental-export",
+            "/ecs/view-show-ingestion-incremental-ingest"
+          ]
+        },
+        "results": [
+          {
+            "ref_id": "A",
+            "status": 200,
+            "error": null,
+            "frame_count": 1
+          }
+        ],
+        "message": null
+      },
+      {
+        "operation": "backfill",
+        "window_kind": "polling_existing_query",
+        "panel_id": 8,
+        "captured_at": "2026-10-04T21:14:54.032Z",
+        "action": "GetQueryResults",
+        "http_status": 200,
+        "request_envelope": {
+          "from": "1791126893795",
+          "to": "1791148493795",
+          "from_utc": "2026-10-04T15:14:53.795Z",
+          "to_utc": "2026-10-04T21:14:53.795Z",
+          "applies_to_execution_window": false
+        },
+        "effective_window": {
+          "from": 1791147099471,
+          "to": 1791147999471,
+          "from_utc": "2026-10-04T20:51:39.471Z",
+          "to_utc": "2026-10-04T21:06:39.471Z",
+          "source": "correlated StartQuery response query_id"
+        },
+        "query_id": "4958821f-e0cd-4f7a-a9e6-31c02e00d95b",
+        "target": {
+          "ref_id": "A",
+          "type": "logAction",
+          "subtype": "GetQueryResults",
+          "query_mode": "Logs",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "region": "us-east-1",
+          "query_id": "4958821f-e0cd-4f7a-a9e6-31c02e00d95b"
+        },
+        "results": [
+          {
+            "ref_id": "A",
+            "status": 200,
+            "error": null,
+            "frame_count": 1
+          }
+        ],
+        "message": null
+      }
+    ],
+    "screenshot": {
+      "path": "assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png",
+      "width": 1590,
+      "height": 710,
+      "scope": "First two metric rows (panels 1–6), historical benchmark window. Logs validated separately in a post-creation window.",
+      "sha256": "65bf812a216e561e3bf1a1909b13acab48f5c969a91f7fae18228a6a32e9b8d2"
+    },
+    "logs_evidence_review": {
+      "recaptured_at": "2026-10-04T21:14:54.140Z",
+      "method": "Focused actual Grafana Logs panel browser capture over existing SSM tunnel; StartQuery response ID correlated with GetQueryResults request ID.",
+      "classification": "StartQuery defines the executed window. GetQueryResults polls that existing query; its generic six-hour request envelope does not start a query or redefine its window.",
+      "prior_summary_resolution": "The previous summaries omitted action/query identity, so the old second record could not be conclusively classified from retained local evidence. Both summaries were replaced with this fresh unambiguous capture.",
+      "terminal_status_verification": {
+        "query_id": "4958821f-e0cd-4f7a-a9e6-31c02e00d95b",
+        "status": "Complete",
+        "method": "Read-only CloudWatch GetQueryResults for the same query ID, returning status only."
+      }
+    }
+  },
+  "acceptance_status": "validated",
+  "limitations": [
+    "Successful queries and sparse/no-data frames are not a performance measurement.",
+    "Historical benchmark predates recreated log groups; Logs use the recorded post-creation window."
+  ],
+  "evidence_paths": {
+    "json": "assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json",
+    "png": "assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png"
+  },
+  "verification": {
+    "schema_and_content": "passed",
+    "direct_api_browser_agreement": "passed",
+    "secret_scan": "passed",
+    "screenshot_visually_reviewed": true,
+    "terraform_state_unchanged": true
+  }
+}

@@ -107,23 +107,9 @@ export function ProfileCard() {
             )}
           </div>
         </div>
-
-        <div className="flex flex-col items-start gap-3 sm:items-end">
-          <div className="flex gap-8 text-right">
-            <div>
-              <p className="text-caption text-ink-subtle">Autenticação</p>
-              <p className="text-body-sm font-medium text-ink">
-                {profile.authMethod}
-              </p>
-            </div>
-            <div>
-              <p className="text-caption text-ink-subtle">Último acesso</p>
-              <p className="text-body-sm font-medium text-ink">
-                {profile.lastAccess}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Método de entrada e último acesso moram só em "Acesso e
+            segurança": repetidos aqui, a mesma informação aparecia duas
+            vezes na mesma tela. */}
       </div>
     </Card>
   );
