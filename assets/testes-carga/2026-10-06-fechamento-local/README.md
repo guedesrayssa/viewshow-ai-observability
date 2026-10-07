@@ -25,7 +25,7 @@ não são atribuídos ao ECS nem ao Amplify. [Análise consolidada](../../../art
 | `api-baseline/`, `api-load-137/` | primeira rodada válida de smoke e load com 2.500 incidentes | load: 44.098 requisições, zero falha inesperada, 103 chegadas descartadas; manter limites de interpretação por rota |
 | `api-battery/` | rodada com destino persistente, controle de indisponibilidade e recuperação no mesmo processo; soak 30 min | consultar brutos e exit codes individuais |
 | `observability/` | respostas por painel Grafana, séries Prometheus, targets e validação numérica | o gate exige amostras, status 200 e ausência de erro |
-| `grafana-local.png` | captura real do dashboard na janela UTC registrada | viewport do navegador; consultas completas estão nos JSON, sem fabricar imagem |
+| `grafana-local.jpg` | captura inicial JPEG (extensão corrigida, bytes preservados) | viewport do navegador; a coleta válida é `stream-validated/grafana-local.png` |
 
 O primeiro controle de reinício do destino foi invalidado porque o DynamoDB
 Local estava em memória e perdeu a massa. O leito foi corrigido para usar volume

@@ -1,0 +1,25 @@
+{
+  "sourcePaths": [
+    "2026-10-04-ingestao/etapas-cg05-150000.json",
+    "2026-10-04-ingestao/resumo-ingestao-cg05-150000.json"
+  ],
+  "scope": "one completed ECS run, concentrated 150000-event mass; not EKS timing",
+  "recordsWritten": 150000,
+  "stageSeconds": {
+    "INGESTING": 447.512,
+    "PROJECTING": 958.073,
+    "ARCHIVING": 778.185
+  },
+  "stageEventsPerMinute": {
+    "INGESTING": 20111.19254902662,
+    "PROJECTING": 9393.856209286767,
+    "ARCHIVING": 11565.373272422368
+  },
+  "formula": "sequential rate = 1 / sum(1 / stage rate); equivalent to count*60/sum(stageSeconds)",
+  "stageSequenceSeconds": 2183.77,
+  "stageSequenceEventsPerMinute": 4121.313141951762,
+  "k6ProcessingSeconds": 2275.212,
+  "k6EventsPerMinute": 3955.6753392650885,
+  "additionalObservedSeconds": 91.44200000000001,
+  "ingestingAndProjectingSeconds": 1405.585
+}

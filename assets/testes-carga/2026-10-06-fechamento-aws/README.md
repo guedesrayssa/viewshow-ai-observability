@@ -31,7 +31,7 @@ dois ambientes.
 | Caminho | Conteúdo e regra de interpretação |
 | --- | --- |
 | `source-baseline-eca9de4/` | arquivos Terraform ECS congelados antes da migração; permitem conferir configuração, fontes de alarmes e parâmetros originais |
-| `develop-update.json` | revisão nova, ausência de cluster EKS e distinção entre testes estáticos/locais e carga ECS |
+| `develop-update.json` | revisão nova, criação/limpeza do EKS dedicado e distinção entre medições locais, ECS e EKS |
 | `cg05-750000/metadata.json` | conta, região, URL, início/fim, recursos, imagem e exit code; início 06/10 23:10:21 UTC |
 | `cg05-750000/resumo-ingestao-cg05-750000.json` | métricas/checks/thresholds do cenário atual; somente existe após terminar a execução |
 | `observability/grafana-panel-*.json` | respostas reais do Grafana para cada query e janela; não inferir zero de frame vazio |
@@ -99,17 +99,23 @@ terminal deve ser documentada como falha operacional, não como disponibilidade.
 | Cenário | Resultado observado | Evidência |
 | --- | --- | --- |
 | API smoke + recovery | `/health` 200 antes da carga e smoke 200 após a recuperação | [`api-smoke/`](eks-native/api-smoke/) e [`api-recovery/`](eks-native/api-recovery/) |
-| API-137 | ~43 mil requisições; ~1.003 descartes/erros; 503/timeouts; HPA 1→4; reinícios por liveness | [`api-load-137/`](eks-native/api-load-137/) |
+| API-137 | 43.198 requisições; 1.003 chegadas descartadas; 93,990% de falha HTTP; 503/timeouts; HPA 1→4; reinícios por liveness | [`api-load-137/`](eks-native/api-load-137/) |
 | Ingestão válida, 1.000 | `READY`, 1.000 escritos, 0 rejeitados, 120,65 s | [`ingestion-valid/`](eks-native/ingestion-valid/) |
 | Nominal, 150.000 | multipart e `complete` aceitos; `PROCESSING` excedeu 900 s; `exitCode=99` | [`nominal-150000/`](eks-native/nominal-150000/) |
 | Admissão | 1 Job válido + 7 controles negativos aprovados em `dry-run=server` | [`admission-negative-controls.json`](eks-native/admission-negative-controls.json) |
 | Prometheus EKS | quatro painéis, 73 amostras numéricas por painel, `passed=true` | [`observability-load137-final/`](eks-native/observability-load137-final/) |
 
-O nominal de 150 mil não é convertido em aprovação. O worker permaneceu em
-`INGESTING/PROCESSING` além da janela e a investigação encontrou um ponteiro
-ACTIVE de fixture que não cumpria o contrato completo do repositório de
-manifestos. A entrada sintética foi removida condicionalmente da tabela EKS
-dedicada; a tabela ECS histórica permaneceu intocada. O cenário de 1.000 é a
-evidência positiva de caminho, e o de 150 mil é a evidência negativa de
-resiliência/capacidade que orienta a decisão de otimizar a etapa posterior à
-ingestão antes de aumentar recursos.
+O nominal de 150 mil excedeu 900 s em `PROCESSING`; o k6 encerrou com exit 99
+sem observar `READY`. A causa final/subetapa dominante não foi demonstrada.
+O erro do ACTIVE sintético pertence à tentativa anterior
+`ingestion-recovery-idle/`: ele foi removido às 02:26 UTC, antes do smoke válido
+de 02:28 e do nominal de 02:31, e não explica o timeout posterior.
+A tabela ECS histórica permaneceu intocada. O smoke de 1.000 confirma o caminho
+e o de 150 mil reprova o prazo para essa rodada. A análise quantitativa de
+PROJECTING/ARCHIVING usa as execuções ECS concluídas, sem transferir esses
+tempos para o EKS.
+
+A captura original do EKS conserva o denominador antigo de CPU, inadequado
+durante reinícios. Sua leitura histórica e a
+[visualização corrigida](../2026-10-07-revisao/README.md) estão identificadas
+no artefato principal.

@@ -1,0 +1,248 @@
+{
+  "uid": "rnf-retro-ingestao",
+  "title": "Ingestão ECS — 150 mil eventos, etapas sequenciais",
+  "description": "Dados CloudWatch preservados. Etapas são pontos agregados, sem interpolação de taxa. Rejeitados=0 é agregado do k6; não existe série completa de erros/s do worker.",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "utc",
+  "refresh": "",
+  "tags": [
+    "rnf",
+    "retrospectivo",
+    "dados-preservados"
+  ],
+  "time": {
+    "from": "2026-10-04T19:46:30Z",
+    "to": "2026-10-04T20:24:31Z"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Duração por etapa — amostra de fim, não p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_stage_seconds_ingesting",
+          "legendFormat": "{{stage}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "rnf_retro_stage_seconds_projecting",
+          "legendFormat": "{{stage}}",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "expr": "rnf_retro_stage_seconds_archiving",
+          "legendFormat": "{{stage}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:s",
+          "min": 0,
+          "custom": {
+            "showPoints": "always",
+            "lineWidth": 0,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Vazão média por etapa (eventos/min)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_stage_events_per_minute_ingesting",
+          "legendFormat": "{{stage}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "rnf_retro_stage_events_per_minute_projecting",
+          "legendFormat": "{{stage}}",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "expr": "rnf_retro_stage_events_per_minute_archiving",
+          "legendFormat": "{{stage}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:eventos/min",
+          "min": 0,
+          "custom": {
+            "showPoints": "always",
+            "lineWidth": 0,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "CPU / reserva da task de 2 vCPUs (%)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_ingestion_cpu_reserved_percent",
+          "legendFormat": "ingestion_cpu_reserved_percent",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Memória / reserva de 8 GiB (%)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_ingestion_memory_reserved_percent",
+          "legendFormat": "ingestion_memory_reserved_percent",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    }
+  ]
+}

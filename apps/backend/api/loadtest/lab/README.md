@@ -9,7 +9,7 @@ itens e permite testar recuperação sem restaurar a massa nem reiniciar a API.
 ## Arquivos e responsabilidades
 
 O inventário técnico completo está em
-[artefatos/testes-carga-finais.md](../../../../../artefatos/testes-carga-finais.md#7-inventário-individual-dos-arquivos-de-implementação).
+[anexo de arquivos](../../../../../artefatos/apoio/testes-carga-inventario.md).
 A configuração de coleta é declarativa. Os dashboards apontam para UIDs estáveis.
 `collect-evidence.mjs` reprova painel sem valores numéricos, mesmo com HTTP 200.
 
@@ -62,6 +62,11 @@ Abra [Grafana](http://127.0.0.1:13002) e [Prometheus](http://127.0.0.1:19090).
 Registre captura, janela UTC e query JSON correspondentes. Uma série zero de
 falhas é válida quando o contador foi efetivamente coletado; ausência de série
 não deve ser preenchida como zero para aprovar o painel.
+
+Para reabrir as séries preservadas sem repetir a carga, use a
+[stack grafana-retroativo](../grafana-retroativo/README.md), em porta 13003.
+Ela exibe os dados originais e registra as transformações; o replay não é
+um Prometheus de coleta nem uma nova execução AWS.
 
 ## AWS: conta existente e credenciais temporárias
 
@@ -127,7 +132,7 @@ observabilidade; registra SHA-256 das evidências, fontes entregues e PDF.
 Ele verifica a consistência da entrega, não aprovação de RNFs ou nota acadêmica.
 O builder requer ReportLab e fontes DejaVu; lê os brutos preservados e exporta
 `output/pdf/sintese-testes-nao-funcionais.pdf`. Após gerar, renderize e confira
-as quatro páginas. A síntese não substitui o inventário técnico no Markdown.
+as seis páginas da revisão. A síntese não substitui o inventário técnico no anexo Markdown.
 
 ## Encerramento
 
