@@ -227,8 +227,8 @@ e declara também a ingestão ARGUS 2.0 em tasks Fargate, com S3/Glue/Athena e
 SQS.
 
 Pré-requisitos para uma aplicação deliberada: **Terraform 1.7+**, **Docker**
-com o daemon ativo, **Node.js 22 + npm** e **AWS CLI**, além de uma sessão válida
-do AWS Academy. O estado legado pertence a outra conta e não pode ser adotado,
+com o daemon ativo, **Node.js 22 + npm** (o `.nvmrc` da raiz fixa a versão; com o nvm,
+rode `nvm use`) e **AWS CLI**, além de uma sessão válida do AWS Academy. O estado legado pertence a outra conta e não pode ser adotado,
 copiado, importado ou migrado para esta stack. A implantação isolada cria um
 novo estado local em `apps/fullstack`; preserve-o, pois ele é necessário para
 diagnóstico e para um teardown posterior explicitamente solicitado.

@@ -9,7 +9,7 @@ A stack cria a rede, API no ECS/Fargate, ALB, painel no Amplify, Cognito, Dynamo
 - Sessão ativa do AWS Academy na conta que receberá a stack, com a role `voclabs`;
 - key pair `vockey` em `us-east-1`;
 - Terraform `>= 1.7` e `< 2.0`;
-- Node.js 22 e npm;
+- Node.js 22 e npm (o `.nvmrc` da raiz fixa a versão; com o nvm, rode `nvm use`);
 - AWS CLI v2 configurada;
 - Docker em execução.
 
