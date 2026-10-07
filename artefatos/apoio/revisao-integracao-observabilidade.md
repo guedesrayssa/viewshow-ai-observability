@@ -2,6 +2,10 @@
 
 O MR !99 foi revisado junto da `develop` que já contém o MR !101
 (`28bd5c4`), reunindo a telemetria de produção e os testes de carga.
+O merge posterior `1b353cf` também foi incorporado; não trouxe diferenças
+de conteúdo para a versão verificada. A pipeline do GitLab apresentou falha
+sem jobs e sem erro YAML; o usuário autorizou seguir com o merge baseado nos
+checks locais descritos abaixo, sem alterar as regras de aprovação do projeto.
 As evidências históricas, os dashboards do laboratório, o Grafana retrospectivo
 e o PDF foram preservados. A integração de código não reatribui medições
 anteriores à imagem nova e não inclui novo provisionamento AWS.
