@@ -1,0 +1,7 @@
+[
+    {
+        "id": "8352a6db-7694-4fbf-b6fb-86b782a4c148",
+        "recebimentos": "6",
+        "corpo": "{\"batchId\":\"bat_f68597fce07b8ca9cb263e7e66c02503fe216c599c1ef00d55249c87d0f89c48\",\"contractVersion\":\"1.0\",\"manifest\":{\"bucket\":\"view-show-ingestion-114388221188-us-east-1\",\"key\":\"raw/argus/incremental/dataset=signal_bucket/window_start=20260930T200000000Z/batch_id=bat_f68597fce07b8ca9cb263e7e66c02503fe216c599c1ef00d55249c87d0f89c48/manifest.json\",\"versionId\":\"OXtLQEF0R.FVW1iEiX6q4Q8oJB8W7CGW\"},\"sourceDataset\":\"signal_bucket\"}"
+    }
+]

@@ -1,6 +1,7 @@
 import {
   createLogger,
   importTimestampSchema,
+  withSpan,
   type Logger,
 } from "@view-show/contracts";
 import {
@@ -75,22 +76,30 @@ export class ImportReconciler {
     this.clearIntervalFn = options.clearInterval ?? defaultClearInterval;
   }
 
+  /**
+   * Uma passada de reconciliação. Roda fora de qualquer requisição; sem este
+   * span cada chamada ao DynamoDB virava um trace raiz solto no Tempo.
+   */
   async reconcile(now = this.now()): Promise<void> {
-    const nowEpochSeconds = Math.floor(now.getTime() / 1_000);
-    const acquired = await this.repository.tryAcquireReconcileLease({
-      owner: this.options.owner,
-      nowEpochSeconds,
-      expiresAtEpochSeconds: nowEpochSeconds + LEASE_SECONDS,
-    });
-    if (!acquired) return;
+    await withSpan("imports.reconcile", {}, async (span) => {
+      const nowEpochSeconds = Math.floor(now.getTime() / 1_000);
+      const acquired = await this.repository.tryAcquireReconcileLease({
+        owner: this.options.owner,
+        nowEpochSeconds,
+        expiresAtEpochSeconds: nowEpochSeconds + LEASE_SECONDS,
+      });
+      span.setAttribute("viewshow.reconcile.lease_acquired", acquired);
+      if (!acquired) return;
 
-    try {
-      const active = await this.repository.getActive();
-      if (!active) return;
-      await this.reconcileActive(active, now);
-    } finally {
-      await this.repository.releaseReconcileLease(this.options.owner);
-    }
+      try {
+        const active = await this.repository.getActive();
+        span.setAttribute("viewshow.reconcile.has_active_import", !!active);
+        if (!active) return;
+        await this.reconcileActive(active, now);
+      } finally {
+        await this.repository.releaseReconcileLease(this.options.owner);
+      }
+    });
   }
 
   private async reconcileActive(

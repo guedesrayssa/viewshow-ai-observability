@@ -1,0 +1,126 @@
+{
+  "collectedAt": "2026-10-06T23:46:58.569Z",
+  "fingerprint": "468c8b8b4170e79349b734d95967034dc935a8019f999d45513f7a1e152b8528",
+  "resources": [
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/0cwqbhu63t9s0.js",
+      "bytes": 40204,
+      "contentType": "text/javascript",
+      "sha256": "6bf96f40a00f3c4e99d41e9af157d7295f7d209b7ecff37c7247e79933aeee91",
+      "etag": "W/\"7a0b6f12c8879a4e0842a41cfa4c36fa\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/0khzq205k-rr6.js",
+      "bytes": 37346,
+      "contentType": "text/javascript",
+      "sha256": "59ca74f13b43584663948fecc34cc915bed88095df40fc7bb06cda537f04be50",
+      "etag": "W/\"b9fd264d793fef2ba8e8470b76a95471\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/0peobff35alvm.js",
+      "bytes": 51543,
+      "contentType": "text/javascript",
+      "sha256": "3ca71d71262ad80a1df61fcb55aec80de6d847ab4fbc0de0958efb51c3fd085f",
+      "etag": "W/\"a709ecd8885ac9ba68acf45b7ad01ee6\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/1t_t2_s3tnfjt.js",
+      "bytes": 12776,
+      "contentType": "text/javascript",
+      "sha256": "8a92fb74be14e2716edf12b0bfd5ceba4b9976ffc443b006ddee487762e9aff9",
+      "etag": "W/\"c9905b5c5d9980b897e7b8d298fd5634\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/1y0deyxvft065.js",
+      "bytes": 24711,
+      "contentType": "text/javascript",
+      "sha256": "9a5ea177b1b168e4ec219f9d15bf5eec5107be42772a10508bac77c6c88e9f3b",
+      "etag": "W/\"f2f321ef8339137695c89375ab124c0b\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/275vq_kqikwfz.js",
+      "bytes": 18080,
+      "contentType": "text/javascript",
+      "sha256": "5cf636c5d85ae06f5a7a161b2e20ebc5196185c0167383fb76ce8637b41e8024",
+      "etag": "W/\"3ad6923aff83dbd56dfbc6d6f21c80ba\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/2bk9l0mmlkj3t.js",
+      "bytes": 41623,
+      "contentType": "text/javascript",
+      "sha256": "772b39f4bd8cbf4b579711a8e29545ea5755df521d944caca26a24823f03a481",
+      "etag": "W/\"fb0cf5e78dec3917c067bb29697d3ed7\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/2i51e627rllld.js",
+      "bytes": 31346,
+      "contentType": "text/javascript",
+      "sha256": "a4590375a64190f57d18b357bf576bf111bd5f02f3c93cad0f65fdf176689f46",
+      "etag": "W/\"15adc80f6aa4dfd89de91b6c1a9a284d\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/379jjp4d4yb-f.css",
+      "bytes": 54220,
+      "contentType": "text/css",
+      "sha256": "81b9211c7e31ccdc32a823622793b73308b181d4f0ab17f91bed0998191b1c66",
+      "etag": "W/\"2b3a0077190939b27e65a1f36913717a\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/3e4keds9ktjdu.js",
+      "bytes": 229156,
+      "contentType": "text/javascript",
+      "sha256": "7e242e7d64eed143f65ed4e01c9e4cca500c41b6d28215a49e167e1cc2682a34",
+      "etag": "W/\"5d85f00dbe00bd7135fea8bc08895edf\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/3llrmxrpljhp5.js",
+      "bytes": 34042,
+      "contentType": "text/javascript",
+      "sha256": "d0c2bfafdbef7334ecfd5e5a0a00168048d3345ef55fe0a2b8b8f478e51d8da2",
+      "etag": "W/\"bae19d619a20d73d61165d8b85e4eb8f\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/3mc6dra1m0098.js",
+      "bytes": 12653,
+      "contentType": "text/javascript",
+      "sha256": "d9840d6de414f19d28fbe08cc2ddd0aeb95cf379864950a506592a54f4996f31",
+      "etag": "W/\"9f6f05f461f138af73e3a1801bbd59b3\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/3wyffe99ksm1c.js",
+      "bytes": 22375,
+      "contentType": "text/javascript",
+      "sha256": "fd52a29d5e18654b6b12ce0a14f77fe3cdaa0469e45442bc57357470f3612362",
+      "etag": "W/\"0b9e9e6e328f1dfda689333f1acba8d8\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/3x7qaosccllt_.js",
+      "bytes": 155659,
+      "contentType": "text/javascript",
+      "sha256": "fd0f7f7c4d9c60d1de45d551d9ddf923036ae5c4dbccd612445c5943d8ce23b9",
+      "etag": "W/\"092dd3574cb967113978cbf99c971791\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/3z9n3bs6icszg.js",
+      "bytes": 60722,
+      "contentType": "text/javascript",
+      "sha256": "ae609aa1a37d9924fc5dfd585e136b2be9a9da1fb28c38c24776071632f5d5ac",
+      "etag": "W/\"88072bd7088ace9b7bfd39c2e1a8f4eb\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/44pq4ddybnyj0.js",
+      "bytes": 26149,
+      "contentType": "text/javascript",
+      "sha256": "8ccb77baa08775369c216279c8ab13d087a2e2708a2e6c461f9a4a64dc62fefd",
+      "etag": "W/\"b6e3bf6e572352b8d5f3b29ad767d4b1\""
+    },
+    {
+      "url": "https://producao.d1svpthoa1rnkp.amplifyapp.com/_next/static/chunks/turbopack-3vjpu0toytuxr.js",
+      "bytes": 9652,
+      "contentType": "text/javascript",
+      "sha256": "b29b27340084cace0964406d8a75824e86399454d0b64014f3119b99144fe383",
+      "etag": "W/\"25f8cffd2b98f9dd56af59218e4a0b35\""
+    }
+  ],
+  "scope": "resources observed across the 18 authenticated Lighthouse runs; identifies served bytes, not a Git revision"
+}

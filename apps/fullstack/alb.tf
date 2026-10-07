@@ -28,7 +28,7 @@ resource "aws_lb_target_group" "api" {
   protocol = "HTTP"
   vpc_id   = aws_vpc.principal.id
 
-  // "ip" e não "instance": Fargate com awsvpc registra ENIs, não instâncias.
+  // O AWS Load Balancer Controller registra os IPs dos Pods pelo TargetGroupBinding.
   target_type = "ip"
 
   health_check {

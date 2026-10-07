@@ -1,7 +1,7 @@
 # Backend operacional
 
 O backend operacional é uma única aplicação Node.js 22 com Express 5 e código
-fonte integralmente em TypeScript. Ela roda como um processo no ECS/Fargate e
+fonte integralmente em TypeScript. Ela roda como um processo no Kubernetes/EKS e
 expõe `/health`, `/metrics`, a superfície federada `/auth/session`,
 `/auth/login`, `/auth/callback` e `/auth/logout`, além de `/api/v1/*`.
 
@@ -26,11 +26,11 @@ módulos acontece em processo; não existem APIs HTTP internas, supervisor ou
 microsserviços aninhados. `api/contracts` concentra schemas, DTOs e o contrato
 OpenAPI público, sem regra de domínio.
 
-`ingestion-data/` e `agentic/` são limites reservados para componentes futuros
-descritos em `artefatos/arquitetura`; não fazem parte do build ou do runtime de
-negócio. Ambos já contêm pacotes de instrumentação OpenTelemetry em Python 3.13,
-com métricas, traces, logs estruturados e testes prontos para os entrypoints
-futuros.
+`ingestion-data/` e `agentic/` são processos separados da API operacional. A
+ingestão materializa as projeções versionadas consumidas pelo gateway; o worker
+agêntico consome SQS e persiste diagnósticos, hipóteses e fatos A′ que a API
+expõe ao frontend. Eles não entram no build do processo Express, mas compartilham
+os contratos do DynamoDB e a correlação observável da plataforma.
 
 ## Comandos
 

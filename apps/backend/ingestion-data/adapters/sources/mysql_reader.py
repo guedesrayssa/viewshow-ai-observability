@@ -290,9 +290,7 @@ def build_page_query(
         raise ValueError("selected_columns must not be empty")
     columns = ", ".join(quote_identifier(column) for column in selected)
     table = quote_identifier(descriptor.table)
-    index_hint = (
-        "" if forced_index is None else f" FORCE INDEX ({quote_identifier(forced_index)})"
-    )
+    index_hint = "" if forced_index is None else f" FORCE INDEX ({quote_identifier(forced_index)})"
     predicates: list[str] = []
     parameters: list[object] = []
 
@@ -315,13 +313,10 @@ def build_page_query(
         lexicographic_terms: list[str] = []
         for position, column in enumerate(cursor_columns):
             equalities = " AND ".join(
-                f"{quote_identifier(previous.name)} = %s"
-                for previous in cursor_columns[:position]
+                f"{quote_identifier(previous.name)} = %s" for previous in cursor_columns[:position]
             )
             greater = f"{quote_identifier(column.name)} > %s"
-            lexicographic_terms.append(
-                f"({equalities} AND {greater})" if equalities else greater
-            )
+            lexicographic_terms.append(f"({equalities} AND {greater})" if equalities else greater)
             parameters.extend(after[: position + 1])
         predicates.append(f"({' OR '.join(lexicographic_terms)})")
 

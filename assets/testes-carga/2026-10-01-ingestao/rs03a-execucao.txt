@@ -1,0 +1,205 @@
+2026-10-01T16:08:30Z RS-03(a) inicio; contagem antes:
+DATASET#dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c#FACT#TS#signal_bucket#20261001 150000
+TOTAL 150000
+{"variant": "valid", "batchId": "bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd", "windowStart": "2026-10-01T12:15:00.000Z", "windowEnd": "2026-10-01T12:30:00.000Z", "rows": 150000, "sizeBytes": 177781, "sha256": "8d2805cc4c5a8383893ed3556d60aab554b2bafc37e9d774f20affc1906631af", "schemaDifferences": [], "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T121500000Z/batch_id=bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd/manifest.json", "manifestVersionId": "EYsKftaSTx7XHavF9NyWyifE6hMcxDMA", "publishedAt": "2026-10-01T16:08:55.113Z", "dryRun": false}
+2026-10-01T16:08:59Z lote 1 (valid, 2026-10-01T12:15:00Z): 
+{"variant": "missing-column", "batchId": "bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a", "windowStart": "2026-10-01T12:30:00.000Z", "windowEnd": "2026-10-01T12:45:00.000Z", "rows": 150000, "sizeBytes": 58902, "sha256": "ddad0d76b36e80a4c4f9e4a631b1249173d9bd73a712e755b5d8c064b02bdc46", "schemaDifferences": ["missing required column value"], "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T123000000Z/batch_id=bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a/manifest.json", "manifestVersionId": ".EPDpl2gWgm16qjacFHMcoEAU4d9bRyS", "publishedAt": "2026-10-01T16:08:59.717Z", "dryRun": false}
+2026-10-01T16:09:03Z lote 2 (missing-column, 2026-10-01T12:30:00Z): 
+{"variant": "valid", "batchId": "bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90", "windowStart": "2026-10-01T12:45:00.000Z", "windowEnd": "2026-10-01T13:00:00.000Z", "rows": 150000, "sizeBytes": 177691, "sha256": "aea3775e460e7c91d5d234835fdfcdfb07ab56a5ff080c0ff8121860933041ab", "schemaDifferences": [], "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T124500000Z/batch_id=bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90/manifest.json", "manifestVersionId": "QyKvO0LHwO3yd94HEIrH0KVldLhuO_8C", "publishedAt": "2026-10-01T16:09:03.850Z", "dryRun": false}
+2026-10-01T16:09:08Z lote 3 (valid, 2026-10-01T12:45:00Z): 
+2026-10-01T16:09:08Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:09:13Z lote 1: rodar-ingestao (tentativa 1): arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/8da90fe88b9f4d44b576b0df8173e8f6
+2026-10-01T16:09:13Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:09:36Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:09:58Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:10:21Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:10:43Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:11:06Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:11:28Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:11:52Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:12:16Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:12:40Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:13:05Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:13:29Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:13:53Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:14:16Z batches.fifo vis=0 proc=3 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:14:40Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:15:04Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:15:28Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:15:52Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+   AUSENTE
+   AUSENTE
+   AUSENTE
+2026-10-01T16:16:38Z nota: o script perdeu os batchIds (saída do publicador é lista) e foi interrompido; a execução 8da90fe8 (16:09:40) recebeu as 3 mensagens de uma vez; lotes = lote1 valid bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd, lote2 missing-column bat_7263…, lote3 valid bat_63d7…
+2026-10-01T16:16:55Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"state": "INGESTING", "updatedAt": "2026-10-01T16:09:41.631Z", "version": "2"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a AUSENTE
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 AUSENTE
+2026-10-01T16:16:59Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:17:30Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"state": "INGESTING", "updatedAt": "2026-10-01T16:09:41.631Z", "version": "2"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a AUSENTE
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 AUSENTE
+2026-10-01T16:17:33Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:18:04Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:18:07Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:18:38Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:18:41Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:19:12Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:19:15Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:19:46Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:19:49Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:20:20Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:20:23Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:20:54Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:20:57Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:21:28Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:21:31Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:22:02Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:22:05Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:22:36Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:22:39Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:23:10Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:23:13Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:23:43Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:23:47Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:24:17Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:24:21Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:24:51Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:24:54Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:25:25Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:25:28Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:25:59Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"state": "INGESTING", "updatedAt": "2026-10-01T16:17:56.749Z", "version": "2"}
+2026-10-01T16:26:02Z 8da90fe88b9f4d44b576b0df8173e8f6 RUNNING 2026-10-01 13:09:40.371000-03:00 None None view-show-ingestion-incremental-ingest:5 
+2026-10-01T16:26:33Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"counts": {"unchanged": "0", "written": "150000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:26:14.523Z", "version": "4"}
+2026-10-01T16:26:50Z 2d20a838abdf4b7cb5089c2de9bb5fa8 STOPPED 2026-10-01 12:56:45.495000-03:00 2026-10-01 13:03:53.414000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:26:50Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+2026-10-01T16:26:50Z 8da90fe88b9f4d44b576b0df8173e8f6 STOPPED 2026-10-01 13:09:40.371000-03:00 2026-10-01 13:26:40.299000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:26:50Z b025042d7d4949d1b1ad90446d7d79dc STOPPED 2026-10-01 12:43:04.131000-03:00 2026-10-01 12:43:29.474000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:26:50Z c1ce0d1b4d534ad1b5a6be2220280f6a STOPPED 2026-10-01 13:08:05.537000-03:00 2026-10-01 13:08:31.049000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:26:50Z execução 8da90fe8 terminou com os 3 lotes em estado final; 3 mensagens seguiram visíveis (escrita > visibility_timeout). rodar-ingestao para confirmá-las: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/08c91f6829c5424ab13f53f9dadfc235
+2026-10-01T16:26:54Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"counts": {"unchanged": "0", "written": "150000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:26:14.523Z", "version": "4"}
+2026-10-01T16:27:11Z batches.fifo vis=3 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"counts": {"unchanged": "0", "written": "150000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:26:14.523Z", "version": "4"}
+2026-10-01T16:27:29Z batches.fifo vis=0 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"counts": {"unchanged": "0", "written": "150000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:26:14.523Z", "version": "4"}
+2026-10-01T16:27:32Z estado final:
+2026-10-01T16:27:32Z batches.fifo vis=0 proc=0 | dlq.fifo vis=0 proc=0
+  bat_8e2372c69675290d1d45c86f02033bb60391bdf6d54675b2cf848fc0504ffedd {"counts": {"written": "150000", "unchanged": "0"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:17:56.551Z", "version": "4"}
+  bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a {"counts": {"written": "0", "unchanged": "0"}, "state": "QUARANTINED", "updatedAt": "2026-10-01T16:17:56.682Z", "version": "2"}
+  bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90 {"counts": {"unchanged": "0", "written": "150000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:26:14.523Z", "version": "4"}
+contagem:
+DATASET#dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c#FACT#TS#signal_bucket#20261001 450000
+TOTAL 450000
+2026-10-01T16:28:43Z RS-03(a) fim
+lote 2 (missing-column): {'batchId': {'S': 'bat_7263acb9937f4e4a2718b5c37585b8b7210f24a28482572046f91d9537e9d02a'}, 'counts': {'M': {'written': {'N': '0'}, 'unchanged': {'N': '0'}}}, 'createdAt': {'S': '2026-10-01T16:17:56.670Z'}, 'errorCode': {'S': 'SCHEMA_INCOMPATIBLE'}, 'state': {'S': 'QUARANTINED'}, 'updatedAt': {'S': '2026-10-01T16:17:56.682Z'}, 'version': {'N': '2'}}
+alarme view-show-ingestion-incremental-batch-quarantined ALARM 2026-10-01 13:28:30.960000-03:00

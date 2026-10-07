@@ -1,14 +1,445 @@
 {
   "uid": "view-show-api",
-  "title": "View Show — API (RED)",
-  "schemaVersion": 39,
-  "version": 1,
+  "title": "View Show — API (RED, logs e traces)",
+  "tags": [
+    "view-show",
+    "api"
+  ],
+  "schemaVersion": 41,
+  "version": 2,
   "refresh": "15s",
-  "time": {"from": "now-1h", "to": "now"},
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Visão geral (workers e frontend)",
+      "type": "link",
+      "url": "/d/view-show-observability",
+      "icon": "dashboard"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "textbox",
+        "name": "id",
+        "label": "Request ID ou Trace ID",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      }
+    ]
+  },
   "panels": [
-    {"id": 1, "type": "timeseries", "title": "Latência p95 (HTTP 200)", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"view-show-api\",status_code=\"200\"}[5m])))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "s"}}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
-    {"id": 2, "type": "timeseries", "title": "Throughput (req/s)", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum(rate(http_requests_total{job=\"view-show-api\",status_code=\"200\"}[5m]))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "reqps"}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
-    {"id": 3, "type": "timeseries", "title": "Erros por segundo", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum(rate(http_requests_failed_total{job=\"view-show-api\"}[5m]))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "reqps"}}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}},
-    {"id": 4, "type": "timeseries", "title": "Uso de CPU do processo", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "100 * (rate(view_show_process_cpu_user_seconds_total{job=\"view-show-api\"}[5m]) + rate(view_show_process_cpu_system_seconds_total{job=\"view-show-api\"}[5m]))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "percent"}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}}
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Requisições/s",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"view-show-api\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Disponibilidade (sem 5xx)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "100 * (1 - sum(rate(http_requests_total{job=\"view-show-api\",status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"view-show-api\"}[5m])), 0.001))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 99.9
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Latência p95 (2xx)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"view-show-api\",status_code=~\"2..\"}[5m])))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Logins recusados (5 min)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(auth_login_attempts_total{job=\"view-show-api\",outcome=~\"invalid_credentials|blocked\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Taxa por rota",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_requests_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 30
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Latência p95 por rota (2xx) — clique no ponto para abrir o trace",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{job=\"view-show-api\",status_code=~\"2..\"}[5m])))",
+          "legendFormat": "{{route}}",
+          "refId": "A",
+          "exemplar": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Respostas por status",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum by (status_code) (rate(http_requests_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "{{status_code}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 30
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Saturação: CPU e event loop p99",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "100 * (rate(view_show_process_cpu_user_seconds_total{job=\"view-show-api\"}[5m]) + rate(view_show_process_cpu_system_seconds_total{job=\"view-show-api\"}[5m]))",
+          "legendFormat": "CPU %",
+          "refId": "A"
+        },
+        {
+          "expr": "view_show_nodejs_eventloop_lag_p99_seconds{job=\"view-show-api\"}",
+          "legendFormat": "event loop p99 (s)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "event loop p99 (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Dependências AWS: latência p95 (traces)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=~\".*api\",span_kind=\"SPAN_KIND_CLIENT\"}[5m])))",
+          "legendFormat": "{{span_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Traces lentos (> 1 s) ou com erro — clique para abrir",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "queryType": "traceql",
+          "query": "{ resource.service.name =~ \".*api\" && kind = server && (status = error || duration > 1s) }",
+          "limit": 20,
+          "tableType": "traces",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Logs warn/error",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "expr": "{service_name=~\".*api\", level=~\"warn|error\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "enableLogDetails": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      }
+    },
+    {
+      "id": 12,
+      "type": "logs",
+      "title": "Logs do ID informado acima",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "expr": "{service_name=~\".*api\"} |= \"$id\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "enableLogDetails": true,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true
+      }
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Traces do ID informado acima",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 37,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "queryType": "traceql",
+          "query": "{ span.viewshow.request_id = \"$id\" || trace:id = \"$id\" }",
+          "limit": 20,
+          "tableType": "traces",
+          "refId": "A"
+        }
+      ]
+    }
   ]
 }

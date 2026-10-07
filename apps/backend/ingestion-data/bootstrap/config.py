@@ -252,6 +252,28 @@ def _queue_url(value: str) -> str:
     return value
 
 
+def _optional_text_or_empty(environment: Mapping[str, str], name: str) -> str | None:
+    """Lê uma variável opcional tratando a string vazia como ausente.
+
+    O Terraform declara estas variáveis sempre, com valor vazio quando o recurso está desligado
+    ("vazio desliga"), então uma variável presente e vazia não pode derrubar a inicialização.
+    Qualquer outro valor continua passando pela validação estrita de ``_optional_text``.
+
+    Args:
+        environment: Variáveis de ambiente já normalizadas.
+        name: Nome da variável opcional.
+
+    Returns:
+        O texto validado, ou ``None`` quando a variável está ausente ou vazia.
+
+    Raises:
+        ConfigurationError: Se o valor não estiver vazio e violar ``_optional_text``.
+    """
+    if environment.get(name) == "":
+        return None
+    return _optional_text(environment, name)
+
+
 def _analysis_fact_catalog_location(value: str) -> str:
     """Valida a localização do catálogo de séries que a ingestão materializa para o worker.
 
@@ -289,8 +311,8 @@ def _forecast_model(values: Mapping[str, str]) -> ForecastModel:
     Raises:
         ConfigurationError: Se só uma das variáveis existir ou o valor for inválido.
     """
-    name = _optional_text(values, "ANALYSIS_FORECAST_MODEL_NAME")
-    version = _optional_text(values, "ANALYSIS_FORECAST_MODEL_VERSION")
+    name = _optional_text_or_empty(values, "ANALYSIS_FORECAST_MODEL_NAME")
+    version = _optional_text_or_empty(values, "ANALYSIS_FORECAST_MODEL_VERSION")
     if name is None and version is None:
         return DEFAULT_FORECAST_MODEL
     if name is None or version is None:
@@ -656,7 +678,7 @@ class Settings:
         queue_url = _optional_text(values, "ANALYSIS_QUEUE_URL")
         if queue_url is not None:
             _queue_url(queue_url)
-        fact_catalog = _optional_text(values, "ANALYSIS_FACT_CATALOG_LOCATION")
+        fact_catalog = _optional_text_or_empty(values, "ANALYSIS_FACT_CATALOG_LOCATION")
         if fact_catalog is not None:
             _analysis_fact_catalog_location(fact_catalog)
         incremental_bucket = _optional_text(values, "INCREMENTAL_BATCH_BUCKET")

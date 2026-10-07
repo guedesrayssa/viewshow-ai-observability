@@ -64,8 +64,30 @@ const provider = createLlmProvider({
 lança na inicialização.
 
 `none` desliga o LLM: o worker mantém a detecção e a previsão, e o diagnóstico é
-registrado como falha permanente `LLM_DISABLED`, sem retentativa nem DLQ. É o
-modo do Learner Lab, que não tem Bedrock.
+registrado como falha permanente `LLM_DISABLED`, sem retentativa nem DLQ.
+
+`rules` é a alternativa determinística para ambientes sem Bedrock/Ollama: escolhe
+apenas candidatos do catálogo A′ compatíveis com os fatos e passa pela mesma
+validação de `interpret()`. No EKS, configure `analysis_llm_provider = "rules"`.
+
+### Reanálise
+
+Uma reanálise pedida pelo operador sempre publica um diagnóstico. Sem sinal
+elegível, ele sai como falha com o motivo (`INCOMPLETE_COVERAGE`,
+`INSUFFICIENT_HISTORY`, `MATERIALITY_GATE_NOT_MET` ou `NO_ELEVATED_SIGNAL`) e
+mantém a projeção de apresentação. Os logs `analysis_incident_resolved`
+(`resolution` = `meta` ou `projection`) e `analysis_diagnosis_unavailable`, além
+de `diagnoses` em `analysis_completed`, mostram o que foi publicado.
+
+### Scripts de demonstração
+
+`scripts/seed-*.mjs` e `scripts/publish-demo-incident-to-active-view.mjs`
+gravam dados sintéticos na tabela operacional real e só rodam com
+`ALLOW_REMOTE_SEED=1` e destino explícito (`OPERATIONAL_TABLE_NAME`,
+`ANALYSIS_QUEUE_URL`, `INCIDENT_ID` ou `DATASET_VERSION`, conforme o script). Os
+`seriesId` vêm de `config/scope-catalog.*.json`, que seguem o formato
+`ts_<sha256>` exigido pela ingestão. O script `publish-demo-*` altera a projeção
+ativa de incidentes: use-o somente em uma stack de demonstração descartável.
 
 ### Avaliação com modelo real
 
@@ -83,6 +105,65 @@ Cinco casos: incidente claro, **injeção de prompt plantada na evidência**,
 evidência fraca, previsão preventiva e caso sem evidência. Resultado medido,
 recomendação de modelo e limitações em
 [`avaliacao-modelos.md`](../../../artefatos/arquitetura/implementacao/camada-agentica/avaliacao-modelos.md).
+
+### Teste de carga
+
+`scripts/load-llm.ts` exercita `investigate()` sob concorrência crescente
+(modelo fechado: C clientes, cada um dispara a próxima investigação quando a
+anterior volta), no mesmo formato do worker com `WORKER_CONCURRENCY`.
+
+```bash
+npm run load:llm                                                     # fake, linha de base
+LLM_PROVIDER=ollama LLM_MODEL_ID=llama3.1 STAGES=1,2,4 REQUESTS_PER_STAGE=20 npm run load:llm
+LLM_PROVIDER=bedrock LLM_MODEL_ID=<id> STAGES=1,2 REQUESTS_PER_STAGE=10 npm run load:llm   # custa dinheiro
+```
+
+Variáveis: `STAGES` (1,2,4,8,16), `REQUESTS_PER_STAGE` (50),
+`FAKE_LATENCY_MS` (800), `FAKE_JITTER_MS` (400), `FAKE_ERROR_RATE` (0),
+`LLM_TIMEOUT_MS` (120000), `LLM_MAX_TOKENS` (2500), `P95_MAX_MS` (sem limite),
+`ERROR_RATE_MAX` (0,05) e `OUT`. O resultado vai para `resultados-carga/`
+(ignorado pelo git). Uma rodada que vira evidência é gravada com
+`OUT=../../../assets/testes-carga/<data>-llm/resumo-<rotulo>.json` e ganha um
+`metadados-<rotulo>.json` ao lado. O processo sai com código 1 se algum
+estágio violar um limite. A estatística (`scripts/load-stats.ts`) tem teste
+próprio em `tests/load-stats.test.ts`.
+
+Resultados e limitações em
+[`testes-carga-llm.md`](../../../artefatos/arquitetura/implementacao/camada-agentica/testes-carga-llm.md).
+
+### Validação local de observabilidade do Ollama
+
+Suba a stack de observabilidade existente:
+
+```bash
+cd apps/fullstack
+docker compose -f docker-compose.observability.yml up -d
+```
+
+Em outro terminal, abra o túnel sem colocar a senha no histórico ou em arquivo:
+
+```bash
+read -r -p "SSH user: " OLLAMA_SSH_USER
+read -r -p "SSH host: " OLLAMA_SSH_HOST
+ssh -N -L 11434:127.0.0.1:11434 "${OLLAMA_SSH_USER}@${OLLAMA_SSH_HOST}"
+```
+
+Em um terceiro terminal, descubra o modelo exposto e execute os dois checks:
+
+```bash
+export OLLAMA_BASE_URL=http://127.0.0.1:11434
+export LLM_MODEL_ID="$(curl --fail --silent "$OLLAMA_BASE_URL/api/tags" | jq -er '.models[0].name')"
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4320
+export OTEL_SERVICE_NAME=view-show-agentic
+export OTEL_DEPLOYMENT_ENVIRONMENT=local
+export OTEL_SERVICE_VERSION=development
+cd apps/backend/agentic
+npm run check:ollama-connectivity
+npm run smoke:ollama-observability
+```
+
+Os comandos devem sair com código zero. O Grafana deve receber métricas `llm_*`
+e o Tempo deve exibir `llm.generate`; prompt e resposta nunca são impressos.
 
 ## Contrato de observabilidade (Python)
 

@@ -2,7 +2,7 @@
 //
 // O provisionamento local usa o Terraform para preparar a imagem. Esse trabalho
 // precisa acontecer pelo menos uma vez antes de criar o serviço,
-// senão o serviço ECS sobe apontando para uma imagem que não existe e as tasks
+// senão o serviço EKS sobe apontando para uma imagem que não existe e as tasks
 // ficam em CannotPullContainerError.
 
 resource "aws_ecr_repository" "api" {

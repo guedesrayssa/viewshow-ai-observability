@@ -22,6 +22,7 @@ class RecordingSqsClient:
         self.sent: list[dict[str, object]] = []
         self.received: list[dict[str, object]] = []
         self.deleted: list[dict[str, object]] = []
+        self.visibility_changes: list[dict[str, object]] = []
         self.messages = messages or []
 
     def send_message(self, **kwargs: object) -> dict[str, object]:
@@ -34,6 +35,10 @@ class RecordingSqsClient:
 
     def delete_message(self, **kwargs: object) -> dict[str, object]:
         self.deleted.append(dict(kwargs))
+        return {}
+
+    def change_message_visibility(self, **kwargs: object) -> dict[str, object]:
+        self.visibility_changes.append(dict(kwargs))
         return {}
 
 
@@ -148,6 +153,37 @@ def test_ack_deletes_only_the_matching_receipt() -> None:
             "ReceiptHandle": "receipt-1",
         }
     ]
+
+
+def test_extend_visibility_changes_only_the_matching_receipt() -> None:
+    client = RecordingSqsClient(
+        [{"MessageId": "message-1", "ReceiptHandle": "receipt-1", "Body": body()}]
+    )
+    adapter = queue(client)
+    delivery = adapter.receive(1)[0]
+
+    adapter.extend_visibility(delivery, 300)
+
+    assert client.visibility_changes == [
+        {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/incremental.fifo",
+            "ReceiptHandle": "receipt-1",
+            "VisibilityTimeout": 300,
+        }
+    ]
+
+
+@pytest.mark.parametrize("seconds", [-1, 43_201, True])
+def test_extend_visibility_rejects_seconds_outside_sqs_bounds(seconds: object) -> None:
+    client = RecordingSqsClient(
+        [{"MessageId": "message-1", "ReceiptHandle": "receipt-1", "Body": body()}]
+    )
+    adapter = queue(client)
+    delivery = adapter.receive(1)[0]
+
+    with pytest.raises((TypeError, ValueError), match="seconds"):
+        adapter.extend_visibility(delivery, seconds)  # type: ignore[arg-type]
+    assert client.visibility_changes == []
 
 
 @pytest.mark.parametrize("limit", [0, 11, True])

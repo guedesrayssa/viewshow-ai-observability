@@ -22,6 +22,39 @@ loki.source.docker "containers" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.containers.output
   labels     = { platform = "docker" }
+  forward_to = [loki.process.application_json.receiver]
+}
+
+// Logs JSON da API em contêiner: mesmos rótulos do envio direto; trace_id e
+// request_id ficam como metadado estruturado (nunca rótulo). Com a API assim,
+// deixe LOKI_PUSH_URL vazio para não duplicar linhas.
+loki.process "application_json" {
+  stage.match {
+    selector = "{platform=\"docker\"} |~ \"^[{]\""
+
+    stage.json {
+      expressions = {
+        app_service     = "service_name",
+        app_level       = "level",
+        app_environment = "environment",
+        trace_id        = "trace_id",
+        request_id      = "request_id",
+      }
+    }
+
+    stage.labels {
+      values = {
+        service_name = "app_service",
+        level        = "app_level",
+        environment  = "app_environment",
+      }
+    }
+
+    stage.structured_metadata {
+      values = { trace_id = "", request_id = "" }
+    }
+  }
+
   forward_to = [loki.write.default.receiver]
 }
 

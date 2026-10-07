@@ -98,6 +98,8 @@ export type IncidentStatus = Exclude<BadgeTone, "neutral" | "brand">;
 
 export type IncidentData = {
   id: string;
+  /** Detalhe do incidente. Ausente no conjunto de exemplo, que não tem detalhe. */
+  href?: string;
   title: string;
   sessions: string;
   timeAgo: string;
@@ -153,6 +155,7 @@ export const TIME_RANGE_OPTIONS: SelectOption[] = [
 ];
 
 export const DEVICE_OPTIONS: SelectOption[] = [
+  { value: "all", label: "Todos os dispositivos" },
   { value: "smart-tv", label: "Smart TV" },
   { value: "mobile", label: "Mobile" },
   { value: "web", label: "Web" },
@@ -160,6 +163,7 @@ export const DEVICE_OPTIONS: SelectOption[] = [
 ];
 
 export const REGION_OPTIONS: SelectOption[] = [
+  { value: "all", label: "Todas as regiões" },
   { value: "norte", label: "Norte" },
   { value: "nordeste", label: "Nordeste" },
   { value: "centro-oeste", label: "Centro-Oeste" },
@@ -168,6 +172,7 @@ export const REGION_OPTIONS: SelectOption[] = [
 ];
 
 export const APP_VERSION_OPTIONS: SelectOption[] = [
+  { value: "all", label: "Todas as versões" },
   { value: "4.2.1", label: "App 4.2.1" },
   { value: "4.2.0", label: "App 4.2.0" },
   { value: "4.1.5", label: "App 4.1.5" },

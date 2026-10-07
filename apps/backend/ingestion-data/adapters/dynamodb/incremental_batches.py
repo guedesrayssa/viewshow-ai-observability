@@ -61,7 +61,7 @@ def _batch_id(value: object) -> str:
 
 
 def _key(batch_id: str) -> dict[str, object]:
-    return _serialize({"PK": f"BATCH#{_batch_id(batch_id)}", "SK": "META"})
+    return _serialize({"pk": f"BATCH#{_batch_id(batch_id)}", "sk": "META"})
 
 
 def _utc_text(value: datetime) -> str:
@@ -148,16 +148,14 @@ class DynamoIncrementalBatchRepository(IncrementalBatchRepository):
             ConsistentRead=True,
         )
         item = decode_get_item(response)
-        if item is not None and (
-            item.get("PK") != f"BATCH#{batch_id}" or item.get("SK") != "META"
-        ):
+        if item is not None and (item.get("pk") != f"BATCH#{batch_id}" or item.get("sk") != "META"):
             raise IncrementalBatchRepositoryError("DynamoDB returned a different batch key")
         return item
 
     def _record(self, item: Mapping[str, object]) -> IncrementalBatchRecord:
         required = {
-            "PK",
-            "SK",
+            "pk",
+            "sk",
             "batchId",
             "manifestSha256",
             "reference",
@@ -169,7 +167,7 @@ class DynamoIncrementalBatchRepository(IncrementalBatchRepository):
         if not required.issubset(item) or set(item) - (required | {"counts", "errorCode"}):
             raise IncrementalBatchRepositoryError("DynamoDB batch item has an invalid shape")
         batch_id = _batch_id(item.get("batchId"))
-        if item.get("PK") != f"BATCH#{batch_id}" or item.get("SK") != "META":
+        if item.get("pk") != f"BATCH#{batch_id}" or item.get("sk") != "META":
             raise IncrementalBatchRepositoryError("DynamoDB batch item identity is inconsistent")
         digest = item.get("manifestSha256")
         if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
@@ -225,8 +223,8 @@ class DynamoIncrementalBatchRepository(IncrementalBatchRepository):
         reference_value = _reference_mapping(reference)
         now = self._now()
         item = {
-            "PK": f"BATCH#{batch_id}",
-            "SK": "META",
+            "pk": f"BATCH#{batch_id}",
+            "sk": "META",
             "batchId": batch_id,
             "manifestSha256": digest,
             "reference": reference_value,
@@ -239,7 +237,7 @@ class DynamoIncrementalBatchRepository(IncrementalBatchRepository):
             self._client.put_item(
                 TableName=self._table_name,
                 Item=_serialize(item),
-                ConditionExpression="attribute_not_exists(PK)",
+                ConditionExpression="attribute_not_exists(pk)",
             )
         except ClientError as error:
             if error.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
@@ -301,7 +299,7 @@ class DynamoIncrementalBatchRepository(IncrementalBatchRepository):
                 Key=_key(canonical_id),
                 UpdateExpression="SET " + ", ".join(expressions),
                 ConditionExpression=(
-                    "attribute_exists(PK) AND #state = :expectedState "
+                    "attribute_exists(pk) AND #state = :expectedState "
                     "AND #version = :expectedVersion"
                 ),
                 ExpressionAttributeNames=names,

@@ -83,7 +83,9 @@ def test_observe_schema_keeps_allowlisted_columns_and_supported_extras(
     """Dropping additive source columns would make a raw batch irrecoverable."""
     connection = RecordingConnection([_column_rows(_observed_columns())])
     reader = MySqlIncrementalExportSource(
-        registry, _settings(), connection_factory=lambda: connection  # type: ignore[arg-type]
+        registry,
+        _settings(),
+        connection_factory=lambda: connection,  # type: ignore[arg-type]
     )
 
     columns = reader.observe_schema(registry.require("live_active_15min"))
@@ -97,7 +99,9 @@ def test_read_page_selects_observed_columns_but_filters_with_known_window_and_cu
     """Selecting raw extras must not let them influence the trusted keyset predicate."""
     connection = RecordingConnection([_column_rows(_observed_columns()), ()])
     reader = MySqlIncrementalExportSource(
-        registry, _settings(), connection_factory=lambda: connection  # type: ignore[arg-type]
+        registry,
+        _settings(),
+        connection_factory=lambda: connection,  # type: ignore[arg-type]
     )
     descriptor = registry.require("live_active_15min")
     reader.observe_schema(descriptor)
@@ -125,7 +129,9 @@ def test_read_page_rejects_rows_that_do_not_match_the_observed_schema(
     row.pop("nova_coluna")
     connection = RecordingConnection([_column_rows(_observed_columns()), (row,)])
     reader = MySqlIncrementalExportSource(
-        registry, _settings(), connection_factory=lambda: connection  # type: ignore[arg-type]
+        registry,
+        _settings(),
+        connection_factory=lambda: connection,  # type: ignore[arg-type]
     )
     descriptor = registry.require("live_active_15min")
     reader.observe_schema(descriptor)

@@ -25,7 +25,12 @@ const conditional = (e: unknown) => e instanceof Error && e.name === "Conditiona
 
 /** All publications are fenced by the current run owner and unexpired lease. */
 export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
-  constructor(private client: DynamoDBDocumentClient, private table: string, private valueThreshold: number) {}
+  constructor(
+    private client: DynamoDBDocumentClient,
+    private table: string,
+    private valueThreshold: number,
+    private scopes: readonly AnalysisScope[] = [],
+  ) {}
   private async get(key: Item): Promise<Item | undefined> { return (await this.client.send(new GetCommand({ TableName: this.table, Key: key, ConsistentRead: true }))).Item; }
   private async query(pk: string, prefix: string): Promise<Item[]> {
     const items: Item[] = []; let cursor: Item | undefined;
@@ -69,10 +74,88 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
   }
   async checkpoint(lease: Lease, scopeId: string): Promise<ScopeCheckpoint | null> { return (await this.get({ pk: runKey(lease.runId).pk, sk: `SCOPE#${scopeId}` }))?.checkpoint ?? null; }
   async saveCheckpoint(lease: Lease, scopeId: string, checkpoint: ScopeCheckpoint): Promise<void> { await this.write(lease, [{ pk: runKey(lease.runId).pk, sk: `SCOPE#${scopeId}`, checkpoint }]); }
-  async resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string }> {
+  async resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string; resolution: "meta" | "projection" }> {
     const item = await this.get({ pk: `ANALYSIS#INCIDENT#${id}`, sk: "META" });
-    if (!item) throw new AnalysisError("INCIDENT_NOT_FOUND", true);
-    return { event: item.event, scope: item.scope, incidentId: id };
+    if (item) {
+      // O META registra o escopo usado quando o incidente nasceu. Preferir a
+      // versão atual do catálogo permite acrescentar projeções de apresentação
+      // sem manter cada incidente preso para sempre à configuração antiga.
+      const configuredScope = this.scopes.find((scope) => scope.id === item.scope?.id);
+      return { event: item.event, scope: configuredScope ?? item.scope, incidentId: id, resolution: "meta" };
+    }
+
+    // Incidentes materializados pela ingestão já existem na tela antes de o
+    // worker gravar qualquer item META/trace-index. Para a primeira reanálise,
+    // reconstrói o gatilho a partir do último sinal correlacionado e casa o
+    // escopo pelo catálogo implantado. Isso unifica o ID público e o analítico
+    // sem inventar uma segunda entidade de incidente.
+    const active = await this.get({ pk: "CONTROL#DATASET", sk: "ACTIVE" });
+    const datasetVersion = typeof active?.activeDatasetVersion === "string"
+      ? active.activeDatasetVersion
+      : null;
+    if (!datasetVersion) throw new AnalysisError("ACTIVE_DATASET_NOT_FOUND", true);
+    const events = await this.query(
+      `DATASET#${datasetVersion}#INCIDENT#${id}`,
+      "EVENT#",
+    );
+    const candidates = events.flatMap((candidate) => {
+      const payload = candidate.payload;
+      const dimensions = payload?.dimensions;
+      const window = payload?.window;
+      if (
+        candidate.entityType !== "INCIDENT_EVENT" ||
+        payload?.category !== "signal_observation" ||
+        !dimensions || typeof dimensions !== "object" ||
+        !window || typeof window !== "object" ||
+        typeof dimensions.metric !== "string" ||
+        typeof dimensions.source !== "string" ||
+        typeof dimensions.entity !== "string" ||
+        typeof window.start !== "string" ||
+        typeof window.end !== "string" ||
+        typeof window.grainSeconds !== "number"
+      ) return [];
+      const scope = this.scopes.find((configured) =>
+        configured.source === dimensions.source &&
+        configured.entity === dimensions.entity &&
+        configured.series.some((series) =>
+          series.metric === dimensions.metric &&
+          series.grainSeconds === window.grainSeconds
+        )
+      );
+      return scope ? [{ payload, window, scope }] : [];
+    }).sort((left, right) =>
+      Date.parse(right.window.end) - Date.parse(left.window.end)
+    );
+    const resolved = candidates[0];
+    if (!resolved) throw new AnalysisError("INCIDENT_SCOPE_NOT_FOUND", true);
+    const end = resolved.window.end as string;
+    const observedThrough = resolved.payload?.quality?.observedThrough;
+    const inputWatermark =
+      typeof observedThrough === "string" && Date.parse(observedThrough) >= Date.parse(end)
+        ? observedThrough
+        : end;
+    const fingerprint = hash({ datasetVersion, incidentId: id, window: resolved.window });
+    const event: WindowedEvent = {
+      eventId: `evt_reanalysis_${fingerprint.slice(0, 24)}`,
+      eventType: "ANOMALY_DETECTION",
+      schemaVersion: "1.0",
+      idempotencyKey: `incident:${id}:${end}`,
+      traceId: id,
+      occurredAt: end,
+      producedAt: end,
+      source: "incident-projection",
+      payload: {
+        window: {
+          start: resolved.window.start as string,
+          end,
+          grainSeconds: resolved.window.grainSeconds as number,
+        },
+        inputWatermark,
+        datasetVersion,
+        scope: { kind: "incident", dimensions: { scopeId: resolved.scope.id } },
+      },
+    };
+    return { event, scope: resolved.scope, incidentId: id, resolution: "projection" };
   }
   async correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<{ incidentId: string; isNew: boolean }> {
     const key = { pk: `DATASET#${event.payload.datasetVersion}#CORRELATION#${scope.id}`, sk: "META" };
@@ -119,7 +202,7 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
     const { incidentId, predictionId, event, context, diagnosis, diagnosticFailure } = checkpoint;
     const pk = incidentId ? incidentKey(event.payload.datasetVersion, incidentId).pk : `PREDICTION#${predictionId}`;
     const common = { ...(incidentId ? { trace_id: incidentId } : {}), analysisRunId: lease.runId, createdAt: event.producedAt };
-    const items: Item[] = [{ pk, sk: `DIAGNOSIS#${lease.runId}`, ...common, itemType: "diagnosis", status: diagnosis ? "ready" : "failed", diagnosis: diagnosis ?? null, failureCode: diagnosticFailure ?? null, contextHash: context?.hash }];
+    const items: Item[] = [{ pk, sk: `DIAGNOSIS#${lease.runId}`, ...common, itemType: "diagnosis", status: diagnosis ? "ready" : "failed", diagnosis: diagnosis ?? null, diagnosisProjection: checkpoint.presentation ?? null, publishedAt: new Date().toISOString(), failureCode: diagnosticFailure ?? null, contextHash: context?.hash }];
     for (const fact of context?.facts ?? []) items.push({ pk, sk: `EVIDENCE#${fact.id}`, ...common, itemType: "evidence", ...fact, description: fact.statement });
     for (const hypothesis of diagnosis?.hypotheses ?? []) {
       const id = `${lease.runId.slice(0, 16)}_${hypothesis.id}`;

@@ -1,0 +1,16 @@
+[
+  {
+    "variant": "missing-column",
+    "batchId": "bat_c4ae16ab0c72a22aecd8ef54e6a941eb40504f8fa317a025a10213916340ace5",
+    "windowStart": "2026-09-30T09:00:00.000Z",
+    "windowEnd": "2026-09-30T09:15:00.000Z",
+    "rows": 150000,
+    "sizeBytes": 58805,
+    "sha256": "bbb45f66b7384ee08f210da2c013646f8e0d2e7b716e7548444890913f50fe75",
+    "schemaDifferences": [
+      "missing required column value"
+    ],
+    "publishedAt": "2026-09-30T10:12:18.116Z",
+    "dryRun": true
+  }
+]

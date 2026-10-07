@@ -1788,3 +1788,48 @@ def test_projection_commands_resolve_the_fact_sink_only_with_a_catalog(
         runtime = build_container(settings, factories=factories).resolve(command)
 
         assert ("analysis_facts" in runtime.dependencies) is configured, command
+
+
+def test_analysis_worker_settings_treat_empty_values_as_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """O Terraform sempre declara estas variáveis; vazio significa desligado, não erro."""
+    settings = _settings(
+        monkeypatch,
+        **REBUILD_ENV,
+        ANALYSIS_FACT_CATALOG_LOCATION="",
+        ANALYSIS_FORECAST_MODEL_NAME="",
+        ANALYSIS_FORECAST_MODEL_VERSION="",
+    )
+
+    assert settings.analysis_fact_catalog_location is None
+    assert settings.analysis_forecast_model == DEFAULT_FORECAST_MODEL
+
+
+def test_analysis_worker_settings_still_reject_blank_whitespace_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with pytest.raises(ConfigurationError, match="ANALYSIS_FACT_CATALOG_LOCATION"):
+        _settings(monkeypatch, **REBUILD_ENV, ANALYSIS_FACT_CATALOG_LOCATION="  ")
+
+
+@pytest.mark.parametrize(
+    ("command", "environment"),
+    [
+        ("import-dump", IMPORT_ENV),
+        ("backfill", {**IMPORT_ENV, **SNAPSHOT_ENV}),
+    ],
+)
+def test_ecs_tasks_start_when_terraform_declares_the_analysis_variables_empty(
+    command: str, environment: dict[str, str]
+) -> None:
+    """Reproduz a falha de partida do backfill e da importação em stacks sem o worker."""
+    declared_by_terraform = {
+        **environment,
+        "ANALYSIS_FACT_CATALOG_LOCATION": "",
+    }
+
+    settings = Settings.from_env(declared_by_terraform, command=command)
+
+    assert settings.analysis_fact_catalog_location is None
+    assert settings.analysis_forecast_model == DEFAULT_FORECAST_MODEL

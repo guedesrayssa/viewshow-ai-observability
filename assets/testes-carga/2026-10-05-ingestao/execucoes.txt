@@ -1,0 +1,39 @@
+2026-10-05T14:09:05Z verificacao do ambiente (so leitura): sem importacao ativa (CONTROL#IMPORT/ACTIVE ausente); sem lease INGESTION#SOURCE#SYNC_GLOBAL nem INGESTION#SOURCE#argus; FIFO incremental e DLQ com 0 mensagens; so a task da API em execucao; agendas incrementais DISABLED
+2026-10-05T14:09Z+ (logo apos a verificacao acima; horario exato nao registrado) imp_01M44G3H9J6PWRQA70DQ2M2DQ3 (cg05-750000 de 2026-10-04) encontrada em READY / SUCCEEDED, 750000 lidos e 750000 escritos, updatedAt 2026-10-05T01:20:38.984Z
+2026-10-05T14:09Z-14:21Z (horario exato nao registrado) node apps/scripts/aws-learner-lab.mjs plan-update baseline: falhou antes do plano ("the protected Terraform state must be a regular, owned, non-symlink file"; process.getuid inexistente no Windows); nada aplicado
+2026-10-05T14:21:00Z backup do state: apps/fullstack/.terraform-artifacts/state-backups/terraform.tfstate.antes-deploy-achado9-20261005T142100Z (sha256 22ce9756...6d5a)
+2026-10-05T14:28:32Z imagem view-show-ingestion:8be4568def6e publicada (sha256:08474aaa...3615) por apps/fullstack/scripts/publicar-imagem.mjs, a partir do commit 1c0d9fa
+2026-10-05T14:32:07Z terraform apply -target (plano salvo deploy-plan-taskdefs-agendas.txt): 5 task definitions de ingestao :1 -> :2, 3 agendamentos para :2 (DISABLED), terraform_data.ingestion_image adotou a imagem ja publicada
+2026-10-05T14:32:17Z apply concluido: 6 added, 3 changed, 6 destroyed (a :1 de cada familia ficou INACTIVE)
+2026-10-05T14:35:21Z backup do state: apps/fullstack/.terraform-artifacts/state-backups/terraform.tfstate.antes-refresh-only-20261005T143521Z (sha256 b7db7fcd...474f)
+2026-10-05T14:43:46Z terraform apply -refresh-only (plano salvo deploy-plan-refresh-only.txt): so state e outputs; 0 added, 0 changed, 0 destroyed
+2026-10-05T14:43:49Z refresh-only concluido; ingestion_runbook com ingest_task_arn :2 e imagem sha256:08474aaa... (verificacao-pos-deploy.txt)
+2026-10-05T15:29:36Z pre-condicao do RS-01: senha do usuario de teste k6-ingestao@viewshow.test (user pool us-east-1_v7GzlS2Bs) redefinida como permanente por aws cognito-idp admin-set-user-password (status antes: RESET_REQUIRED; depois: CONFIRMED); senha aleatoria, fora do repositorio
+2026-10-05T15:29:49Z pre-condicao do RS-01: POST /api/v1/imports/imp_01M4478AZCSGHRCRYFT3ZP7AED/activate -> HTTP 200, datasetVersion dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965, activatedAt 2026-10-05T15:29:49.619Z, changed=true (nao havia CONTROL#DATASET/ACTIVE: stack recriada em 2026-10-04)
+2026-10-05T15:30Z  CONTROL#DATASET/ACTIVE confirmado (activeDatasetVersion dsv_81253140...9965); nenhuma task nova iniciada
+2026-10-05T15:38:39Z rs01-2lotes inicio (AWS_DEFAULT_REGION=us-east-1; --window-start 2026-10-05T15:00:00Z): agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-05T15:38:56Z rs01-2lotes publicacao concluida: bat_45f768dc... (janela 15:00Z) e bat_286f4cc3... (janela 15:15Z)
+2026-10-05T15:46:31Z rs01-2lotes agenda do ingest-incremental ENABLED (inicio da drenagem; prazo 1800 s ate 16:16:36Z)
+2026-10-05T15:47:39Z rs01-2lotes run aa381476 recebe as 2 mensagens; lote 1 INGESTING
+2026-10-05T15:52:43Z rs01-2lotes run concorrente bfc8aba7 termina sem receber mensagens (0/0/0)
+2026-10-05T15:54:39.981Z rs01-2lotes lote 1 COMPLETED (written 150000)
+2026-10-05T15:57:48Z rs01-2lotes run concorrente ab53dcfd termina sem receber mensagens (0/0/0)
+2026-10-05T16:01:50.812Z rs01-2lotes lote 2 COMPLETED (written 150000); run aa381476 SUCCEEDED com batchesCompleted 2, batchesRetryable 0, 851,8 s
+2026-10-05T16:02:42Z rs01-2lotes primeira leitura do monitor com fila 0/0 e DLQ 0/0 apos a drenagem
+2026-10-05T16:16:36Z (aprox., horario exato nao registrado) monitor do teste terminou com erro de sintaxe: o script foi editado durante a execucao; a agenda ficou ENABLED (falha do instrumento, nao do sistema)
+2026-10-05T16:36:10Z rs01-2lotes agenda do ingest-incremental DISABLED manualmente (reversao); runs vazios as 16:02, 16:07, 16:12, 16:17, 16:22, 16:27 e 16:32
+2026-10-05T16:37:01Z rs01-2lotes coleta final: fila e DLQ 0/0, leases ausentes, 0 tasks, 300000 eventos na particao 20261005 (antes: 0), 0 alertas no log
+2026-10-06T02:08Z verificacao (so leitura) antes da rodada de 3 lotes: agendas DISABLED, fila e DLQ 0/0, sem leases, so a task da API em execucao
+2026-10-06T02:32:24Z rs01-3lotes inicio (imagem 8be4568def6e): agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-06T02:32:46Z rs01-3lotes publicacao concluida: bat_995a3168... (01:45Z), bat_1ab61a48... (02:00Z), bat_e3855a1c... (02:15Z); particao 20261006 antes: 0
+2026-10-06T02:40:07Z rs01-3lotes agenda do ingest-incremental ENABLED (prazo 2700 s)
+2026-10-06T02:41:21Z rs01-3lotes run 179df344 recebe as 3 mensagens; lotes COMPLETED 02:48:24Z, 02:55:26Z, 03:02:21Z; run SUCCEEDED (batchesCompleted 3, batchesRetryable 0, 1259 s); runs concorrentes 02:46, 02:51, 02:56, 03:01 vazios
+2026-10-06T03:03:02Z rs01-3lotes DRENADO aos 1371 s; agenda DISABLED pelo script; 450000 eventos em 20261006; DLQ 0
+2026-10-06T03:56:52Z verificacao antes da rodada de 4 lotes: credenciais validas, agendas DISABLED, fila e DLQ 0/0, 0 tasks do ingest-incremental; --dry-run com --window-start 2026-10-06T00:00:00Z: os 4 batchId (bat_0f6dfbea..., bat_798dde97..., bat_0a7961c2..., bat_dae1da8c...) sem registro BATCH#
+2026-10-06T03:57:56Z rs01-4lotes inicio: agendas DISABLED, fila e DLQ 0/0, leases ausentes
+2026-10-06T03:58:19Z rs01-4lotes publicacao concluida (janelas 00:00Z, 00:15Z, 00:30Z, 00:45Z); particao 20261006 antes: 750000
+2026-10-06T04:07:32Z rs01-4lotes agenda do ingest-incremental ENABLED (prazo 3600 s)
+2026-10-06T04:08:43Z rs01-4lotes run baebbaf5 recebe as 4 mensagens; lotes COMPLETED 04:15:23Z, 04:21:59Z, 04:28:26Z, 04:35:00Z; run SUCCEEDED (batchesCompleted 4, batchesRetryable 0, 1578 s); runs concorrentes 04:13, 04:18, 04:23, 04:28, 04:33 vazios
+2026-10-06T04:35:41Z rs01-4lotes DRENADO aos 1685 s; agenda DISABLED pelo script; particao 20261006: 750000 -> 1350000 (+600000); DLQ 0
+2026-10-06T04:39:07Z rs01-4lotes FIM; coleta de logs, resumo dos runs, metricas SQS (ingestao-falhas.sh metricas-fila) e historico dos alarmes (rs01-alarmes.txt)
+2026-10-06 RS-01 Aprovado com 2, 3 e 4 lotes

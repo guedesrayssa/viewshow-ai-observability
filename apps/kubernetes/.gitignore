@@ -1,0 +1,6 @@
+values*.json
+values*.yaml
+rendered*.yaml
+*.tfstate*
+*.tfplan
+!chart/values.yaml

@@ -1,0 +1,3 @@
+Carga da API consumida pelo frontend — modo soak
+Taxa configurada: 10 req/s; rate limits: 0; indisponibilidades: 580; iterações descartadas: 0
+Resumo detalhado: C:/Users/lcsmi/AppData/Local/Temp/claude/C--Users-lcsmi-OneDrive-Documentos-g05/28f0d8ea-0bf8-4421-add5-487c28ee90d9/scratchpad/results-neg-orig/resumo-front-api-soak.json

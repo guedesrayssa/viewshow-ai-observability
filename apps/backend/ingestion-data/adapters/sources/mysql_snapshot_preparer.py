@@ -295,9 +295,7 @@ ORDER BY INDEX_NAME, SEQ_IN_INDEX""",
             raise ValueError("resumed cursor probe returned an unexpected shape")
         return True
 
-    def prepare(
-        self, descriptors: tuple[DatasetDescriptor, ...]
-    ) -> tuple[QueryPlanEvidence, ...]:
+    def prepare(self, descriptors: tuple[DatasetDescriptor, ...]) -> tuple[QueryPlanEvidence, ...]:
         if not isinstance(descriptors, tuple):
             raise TypeError("descriptors must be a tuple")
         approved = tuple(self._require_descriptor(descriptor) for descriptor in descriptors)

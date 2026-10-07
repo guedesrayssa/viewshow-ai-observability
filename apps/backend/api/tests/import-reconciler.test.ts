@@ -375,7 +375,10 @@ describe("import reconciler", () => {
     await retry.reconcile(now);
 
     expect(f.reservePipeline).toHaveBeenCalledTimes(1);
-    expect(f.launcher.launch).toHaveBeenLastCalledWith(importId, "canonical-v2");
+    expect(f.launcher.launch).toHaveBeenLastCalledWith(
+      importId,
+      "canonical-v2",
+    );
   });
 
   it("continues reconciling a legacy processing import without a pipeline version", async () => {

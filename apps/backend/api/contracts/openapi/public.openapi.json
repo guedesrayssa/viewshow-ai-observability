@@ -384,7 +384,7 @@
     "/api/v1/incidents/{incidentId}/reanalyze": {
       "post": {
         "operationId": "reanalyzeIncident",
-        "description": "Requests a manual reanalysis when a publisher is configured. The current deployment returns FEATURE_UNAVAILABLE.",
+        "description": "Requests a manual reanalysis for an incident in the active dataset when a publisher is configured.",
         "security": [{ "sessionCookie": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/IncidentId" },
@@ -1114,6 +1114,8 @@
           "eventId",
           "incidentId",
           "type",
+          "title",
+          "statement",
           "relation",
           "hypothesisIds",
           "strength",
@@ -1127,6 +1129,8 @@
           "eventId": { "type": "string", "pattern": "^evt_[a-z2-7]{26}$" },
           "incidentId": { "type": "string" },
           "type": { "type": "string" },
+          "title": { "type": ["string", "null"] },
+          "statement": { "type": ["string", "null"] },
           "relation": { "enum": ["supports", "contradicts", "context"] },
           "hypothesisIds": { "type": "array", "items": { "type": "string" } },
           "strength": { "enum": ["strong", "moderate", "weak"] },

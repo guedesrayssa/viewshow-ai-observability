@@ -17,6 +17,7 @@ import { CursorCodec } from "../src/modules/incidents/domain/cursor.js";
 import type {
   EventReadPage,
   IncidentRepository,
+  ReanalysisPublisherPort,
   ReviewWrite,
 } from "../src/modules/incidents/ports/incident-repository.js";
 
@@ -90,6 +91,8 @@ const evidence: EvidenceDto = {
   eventId: event.id,
   incidentId: "inc_1",
   type: "argus_event_correlation",
+  title: null,
+  statement: null,
   relation: "context",
   hypothesisIds: [],
   strength: "moderate",
@@ -102,6 +105,16 @@ const evidence: EvidenceDto = {
   },
   correlation: event.correlation.links[0]!,
   quality: { status: "verified", coverageRatio: 1, flags: [] },
+};
+
+const incidentPk = `DATASET#${datasetVersion}#INCIDENT#inc_1`;
+const incidentItem = {
+  pk: incidentPk,
+  sk: "META",
+  itemType: "incident",
+  id: "inc_1",
+  incidentId: "inc_1",
+  trace_id: "inc_1",
 };
 
 function activeResolver(
@@ -127,6 +140,10 @@ function repository(): IncidentRepository & {
   readonly listEvents: ReturnType<typeof vi.fn>;
   readonly getEvent: ReturnType<typeof vi.fn>;
   readonly listEvidence: ReturnType<typeof vi.fn>;
+  readonly listHypotheses: ReturnType<typeof vi.fn>;
+  readonly latestDiagnosis: ReturnType<typeof vi.fn>;
+  readonly bundle: ReturnType<typeof vi.fn>;
+  readonly writeReview: ReturnType<typeof vi.fn>;
 } {
   return {
     activeProjection: vi.fn(async () => ({
@@ -150,21 +167,27 @@ function repository(): IncidentRepository & {
     listEvents: vi.fn(async () => eventPage()),
     getEvent: vi.fn(async () => event),
     listEvidence: vi.fn(async () => [evidence]),
+    listHypotheses: vi.fn(async () => []),
+    latestDiagnosis: vi.fn(async () => null),
     listBetween: vi.fn(async () => {
       throw new Error("legacy incident list must stay disconnected");
     }),
-    bundle: vi.fn(async () => {
-      throw new Error("legacy incident detail must stay disconnected");
-    }),
-    writeReview: vi.fn(async (_write: ReviewWrite) => {
-      throw new Error("legacy incident review must stay disconnected");
-    }),
+    bundle: vi.fn(async () => ({ incident: incidentItem, children: [] })),
+    writeReview: vi.fn(async (write: ReviewWrite) => ({
+      ...write.key,
+      reviewStatus: write.status,
+      reviewNote: write.note,
+      reviewedBy: write.reviewerId,
+      reviewedAt: write.reviewedAt,
+      reviewVersion: write.expectedVersion + 1,
+    })),
   };
 }
 
 function useCases(
   storage: IncidentRepository,
   active: ActiveDatasetSnapshot = activeDataset,
+  reanalysis?: ReanalysisPublisherPort,
 ): IncidentUseCases {
   return new IncidentUseCases(
     storage,
@@ -172,6 +195,7 @@ function useCases(
     new CursorCodec("c".repeat(32)),
     new UnavailableReviewFeedbackPort(),
     () => now,
+    reanalysis,
   );
 }
 
@@ -381,6 +405,275 @@ describe("incident, Event, and Evidence use cases", () => {
     });
     expect(result.data.changes).toEqual([]);
     expect(result.data.dataQuality.status).toBe("sufficient");
+  });
+
+  it("surfaces hypotheses the worker wrote, ranked by probability, even when some have none", async () => {
+    const storage = repository();
+    const scored = {
+      pk: incidentPk,
+      sk: "HYPOTHESIS#run1_hyp1",
+      itemType: "hypothesis",
+      id: "run1_hyp1",
+      statement: "Possível degradação na CDN",
+      explanation: "Erros de CDN cresceram no mesmo intervalo.",
+      probability: 0.8,
+      reviewStatus: "pending",
+      createdAt: "2026-01-01T11:41:00.000Z",
+    };
+    const unscored = {
+      pk: incidentPk,
+      sk: "HYPOTHESIS#run1_hyp2",
+      itemType: "hypothesis",
+      id: "run1_hyp2",
+      statement: "Possível mudança na composição do tráfego",
+      explanation: "A exposição variou no mesmo intervalo.",
+      probability: null,
+      reviewStatus: "pending",
+      createdAt: "2026-01-01T11:41:00.000Z",
+    };
+    storage.listHypotheses.mockResolvedValueOnce([scored, unscored]);
+    vi.mocked(storage.latestDiagnosis).mockResolvedValueOnce({
+      pk: incidentPk,
+      sk: "DIAGNOSIS#run1",
+      itemType: "diagnosis",
+      status: "ready",
+      createdAt: "2026-01-01T11:41:05.000Z",
+      diagnosisProjection: {
+        impact: {
+          affectedDevices: {
+            value: 3,
+            observedThrough: "2026-01-01T11:45:00.000Z",
+            coverageRatio: 1,
+            source: "analysis-worker:frontend-demo:incident-start-bucket",
+          },
+        },
+        buffering: {
+          points: [
+            { timestamp: "2026-01-01T11:30:00.000Z", value: 0.8 },
+            { timestamp: "2026-01-01T11:45:00.000Z", value: 3.2 },
+          ],
+          marker: null,
+        },
+        concentrations: [
+          { label: "model-a", percentage: 75 },
+          { label: "model-b", percentage: 25 },
+        ],
+        concentrationNote: "Erros por modelo na última hora.",
+      },
+    });
+
+    const result = await useCases(storage).diagnosis("inc_1");
+
+    expect(result.data.diagnosis.status).toBe("ready");
+    expect(result.data.diagnosis.primaryHypothesisId).toBe("run1_hyp1");
+    expect(result.data.diagnosis.confidence).toBe(0.8);
+    expect(result.data.incident.impact.affectedDevices).toEqual({
+      value: 3,
+      unit: "devices",
+      measurement: {
+        status: "measured",
+        source: "analysis-worker:frontend-demo:incident-start-bucket",
+        coverageRatio: 1,
+        observedThrough: "2026-01-01T11:45:00.000Z",
+      },
+    });
+    expect(result.data.diagnosis.hypotheses).toMatchObject([
+      { id: "run1_hyp1", rank: 1, probability: 0.8 },
+      { id: "run1_hyp2", rank: 2, probability: null },
+    ]);
+    expect(result.data.charts).toEqual({
+      buffering: {
+        points: [
+          { timestamp: "2026-01-01T11:30:00.000Z", value: 0.8 },
+          { timestamp: "2026-01-01T11:45:00.000Z", value: 3.2 },
+        ],
+        marker: null,
+      },
+      concentrations: [
+        { label: "model-a", percentage: 75 },
+        { label: "model-b", percentage: 25 },
+      ],
+      concentrationNote: "Erros por modelo na última hora.",
+    });
+  });
+
+  it("links analytical facts to the worker hypotheses that cite them", async () => {
+    const storage = repository();
+    storage.listEvidence.mockResolvedValueOnce([
+      {
+        ...evidence,
+        id: "fact_1",
+        type: "analysis_fact",
+        title: "cdn_live_err_rate",
+        statement: "Erros de CDN cresceram no intervalo.",
+      },
+    ]);
+    storage.listHypotheses.mockResolvedValueOnce([
+      {
+        pk: incidentPk,
+        sk: "HYPOTHESIS#run1_hyp1",
+        itemType: "hypothesis",
+        id: "run1_hyp1",
+        statement: "Possível degradação na CDN",
+        supportingEvidenceIds: ["fact_1"],
+        contradictingEvidenceIds: [],
+        reviewStatus: "pending",
+      },
+    ]);
+
+    const result = await useCases(storage).diagnosis("inc_1");
+
+    expect(result.data.evidence).toEqual([
+      expect.objectContaining({
+        id: "fact_1",
+        relation: "supports",
+        hypothesisIds: ["run1_hyp1"],
+      }),
+    ]);
+  });
+
+  it("reports a failed diagnosis run distinctly from one never attempted", async () => {
+    const storage = repository();
+    vi.mocked(storage.latestDiagnosis).mockResolvedValueOnce({
+      pk: incidentPk,
+      sk: "DIAGNOSIS#run1",
+      itemType: "diagnosis",
+      status: "failed",
+      failureCode: "INVALID_LLM_JSON",
+      createdAt: "2026-01-01T11:41:05.000Z",
+    });
+
+    const result = await useCases(storage).diagnosis("inc_1");
+
+    expect(result.data.diagnosis.status).toBe("failed");
+    expect(result.data.diagnosis.hypotheses).toEqual([]);
+  });
+
+  it("reads analytical facts only from the latest diagnosis run", async () => {
+    const storage = repository();
+    vi.mocked(storage.latestDiagnosis).mockResolvedValueOnce({
+      pk: incidentPk,
+      sk: "DIAGNOSIS#run2",
+      itemType: "diagnosis",
+      analysisRunId: "run2",
+      status: "failed",
+      failureCode: "INSUFFICIENT_HISTORY",
+      createdAt: "2026-01-01T11:41:05.000Z",
+    });
+
+    const result = await useCases(storage).diagnosis("inc_1");
+
+    expect(storage.listEvidence).toHaveBeenCalledWith(
+      expect.anything(),
+      "inc_1",
+      "run2",
+    );
+    expect(result.data.diagnosis.status).toBe("failed");
+  });
+
+  it("publishes a manual reanalysis for a known incident and fails closed without a publisher", async () => {
+    const storage = repository();
+    const publisher: ReanalysisPublisherPort = {
+      publish: vi.fn(async () => "accepted" as const),
+    };
+
+    await useCases(storage, activeDataset, publisher).reanalyze(
+      "inc_1",
+      "idem_1",
+      "usr_1",
+    );
+
+    expect(publisher.publish).toHaveBeenCalledWith({
+      incidentId: "inc_1",
+      idempotencyKey: "idem_1",
+      requestedBy: "usr_1",
+      reason: "MANUAL_REQUEST",
+    });
+
+    await expect(
+      useCases(storage).reanalyze("inc_1", "idem_1", "usr_1"),
+    ).rejects.toMatchObject({ status: 503, code: "FEATURE_UNAVAILABLE" });
+  });
+
+  it("fails closed when reanalysis targets an incident missing from the operational store", async () => {
+    const storage = repository();
+    vi.mocked(storage.activeProjection).mockResolvedValueOnce({
+      observedThrough: "2026-01-01T11:45:00.000Z",
+      coverage: "complete",
+      incidents: [],
+    });
+
+    await expect(
+      useCases(storage).reanalyze("inc_missing", "idem_1", "usr_1"),
+    ).rejects.toMatchObject({ status: 404, code: "RESOURCE_NOT_FOUND" });
+  });
+
+  it("writes a hypothesis review in the active ingestion incident partition", async () => {
+    const storage = repository();
+
+    const result = await useCases(storage).review(
+      "inc_1",
+      "run1_hyp1",
+      {
+        status: "confirmed",
+        note: "Confirmado com o time de rede",
+        expectedVersion: 0,
+      },
+      "usr_1",
+    );
+
+    expect(storage.writeReview).toHaveBeenCalledWith({
+      key: { pk: incidentPk, sk: "HYPOTHESIS#run1_hyp1" },
+      expectedVersion: 0,
+      status: "confirmed",
+      note: "Confirmado com o time de rede",
+      reviewedAt: now.toISOString(),
+      reviewerId: "usr_1",
+    });
+    expect(result.data).toMatchObject({
+      incidentId: "inc_1",
+      hypothesisId: "run1_hyp1",
+      review: { status: "confirmed", version: 1 },
+    });
+    expect(storage.bundle).not.toHaveBeenCalled();
+  });
+
+  it("propagates a version conflict from a concurrent review", async () => {
+    const storage = repository();
+    vi.mocked(storage.writeReview).mockRejectedValueOnce(
+      Object.assign(new Error("conflict"), {
+        status: 409,
+        code: "REVIEW_VERSION_CONFLICT",
+      }),
+    );
+
+    await expect(
+      useCases(storage).review(
+        "inc_1",
+        "run1_hyp1",
+        { status: "confirmed", expectedVersion: 0 },
+        "usr_1",
+      ),
+    ).rejects.toMatchObject({ status: 409, code: "REVIEW_VERSION_CONFLICT" });
+  });
+
+  it("fails closed when reviewing an incident missing from the active projection", async () => {
+    const storage = repository();
+    vi.mocked(storage.activeProjection).mockResolvedValueOnce({
+      observedThrough: "2026-01-01T11:45:00.000Z",
+      coverage: "complete",
+      incidents: [],
+    });
+
+    await expect(
+      useCases(storage).review(
+        "inc_missing",
+        "run1_hyp1",
+        { status: "confirmed", expectedVersion: 0 },
+        "usr_1",
+      ),
+    ).rejects.toMatchObject({ status: 404, code: "RESOURCE_NOT_FOUND" });
+    expect(storage.writeReview).not.toHaveBeenCalled();
   });
 
   it("serves canonical and Incident-scoped Event detail", async () => {

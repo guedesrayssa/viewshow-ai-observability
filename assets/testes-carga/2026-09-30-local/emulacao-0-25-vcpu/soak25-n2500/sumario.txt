@@ -1,0 +1,37 @@
+Carga da API consumida pelo frontend — modo soak
+Taxa de chegada (iterações/s): base 25, pico 25; 2223 iterações, 2227 requisições, 22.5 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 61; timeouts do cliente (>8000 ms): 1445; iterações descartadas: 28
+
+THRESHOLDS: 47 reprovados, 41 aprovados
+  ✗ http_req_failed{rota:incidents_list} rate<0.02
+  ✗ front_api_contract_failed_rate{rota:incident_events} rate<0.02
+  ✗ http_req_duration{rota:rum_beacon} p(95)<2000
+  ✗ http_req_duration{rota:rum_beacon} p(99)<5000
+  ✗ front_api_contract_success_rate rate>0.999
+  ✗ dropped_iterations count==0
+  ✗ http_req_duration{rota:argus_integration} p(95)<2000
+  ✗ http_req_duration{rota:argus_integration} p(99)<5000
+  ✗ front_api_contract_failed_rate{rota:global_events} rate<0.02
+  ✗ http_req_failed{rota:incident_diagnosis} rate<0.02
+  ✗ http_req_failed{rota:rum_beacon} rate<0.02
+  ✗ http_req_duration{rota:monitoring_overview} p(95)<2000
+  … e mais 35 (lista completa no JSON)
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list         564   65.43      34.57    8000    8000    8000      34.6
+incidents_chart        175   61.14      38.86    8000    8000    8000      38.9
+dashboard_overview     330   66.36      33.64    8000    8000    8000       0.0
+incident_diagnosis     344   65.41      34.59    8000    8000    8000      34.6
+incident_events        218   69.27      30.73    8000    8000    8000      30.7
+global_events          232   68.53      31.47    8000    8000    8000      31.5
+monitoring_overview    153   60.13      39.87    8000    8000    8000       0.0
+auth_session            89   61.80      38.20    8000    8000    8000       0.0
+argus_integration       20   70.00      30.00    8000    8000    8000       0.0
+rum_beacon              98   55.10      44.90    8000    8000    8000       0.0
+
+Observações:
+  - monitoring_overview: 61/153 respostas 503 DATA_UNAVAILABLE
+  - incidents_list: 195 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+  - paginação de eventos por cursor não foi exercitada (nenhuma segunda página disponível)
+
+Resumo detalhado: C:/Users/lcsmi/AppData/Local/Temp/claude/C--Users-lcsmi-OneDrive-Documentos-g05/28f0d8ea-0bf8-4421-add5-487c28ee90d9/scratchpad/results-emul-n2500/resumo-front-api-soak.json

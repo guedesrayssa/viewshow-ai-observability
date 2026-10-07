@@ -1,0 +1,102 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [{"expr": "sum by (event_type, status) (rate(analysis_messages_total[5m]))", "legendFormat": "{{event_type}} / {{status}}", "refId": "A"}],
+      "title": "Analysis outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 0},
+      "id": 2,
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le, event_type) (rate(analysis_run_duration_seconds_bucket[5m])))", "legendFormat": "p50 {{event_type}}", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum by (le, event_type) (rate(analysis_run_duration_seconds_bucket[5m])))", "legendFormat": "p95 {{event_type}}", "refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum by (le, event_type) (rate(analysis_run_duration_seconds_bucket[5m])))", "legendFormat": "p99 {{event_type}}", "refId": "C"}
+      ],
+      "title": "Analysis duration p50/p95/p99",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+      "id": 3,
+      "targets": [{"expr": "sum by (provider, model_id, status) (rate(llm_requests_total[5m]))", "legendFormat": "{{provider}} / {{model_id}} / {{status}}", "refId": "A"}],
+      "title": "LLM request outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 8},
+      "id": 4,
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le, provider, model_id) (rate(llm_request_duration_seconds_bucket[5m])))", "legendFormat": "p50 {{provider}} / {{model_id}}", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum by (le, provider, model_id) (rate(llm_request_duration_seconds_bucket[5m])))", "legendFormat": "p95 {{provider}} / {{model_id}}", "refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum by (le, provider, model_id) (rate(llm_request_duration_seconds_bucket[5m])))", "legendFormat": "p99 {{provider}} / {{model_id}}", "refId": "C"}
+      ],
+      "title": "LLM latency p50/p95/p99",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "id": 5,
+      "targets": [{"expr": "sum by (model_id, token_type) (rate(llm_tokens_total[5m]))", "legendFormat": "{{model_id}} / {{token_type}}", "refId": "A"}],
+      "title": "Token rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "id": 6,
+      "targets": [{"expr": "sum by (model_id, stop_reason) (rate(llm_response_stop_total[5m]))", "legendFormat": "{{model_id}} / {{stop_reason}}", "refId": "A"}],
+      "title": "Stop reasons",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 24},
+      "id": 7,
+      "targets": [{"query": "{ resource.service.name = \"view-show-agentic\" }", "queryType": "traceql", "refId": "A"}],
+      "title": "Agentic traces",
+      "type": "traces"
+    },
+    {
+      "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 24},
+      "id": 8,
+      "options": {"enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
+      "targets": [{
+        "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
+        "expression": "fields @timestamp, event, eventType, code, terminal, @message | filter kubernetes.container_name = 'analysis-worker' | sort @timestamp desc | limit 200",
+        "logGroups": [{"arn": "arn:aws:logs:${aws_region}:${aws_account_id}:log-group:${analysis_worker_log_group}:*", "name": "${analysis_worker_log_group}"}],
+        "queryMode": "Logs",
+        "refId": "A",
+        "region": "${aws_region}"
+      }],
+      "title": "Agentic CloudWatch logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["view-show", "agentic", "llm", "aws"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "View Show — Agentic LLM Observability — AWS",
+  "uid": "view-show-agentic-aws",
+  "version": 1
+}

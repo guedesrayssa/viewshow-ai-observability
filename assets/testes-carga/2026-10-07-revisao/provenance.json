@@ -1,0 +1,207 @@
+{
+  "kind": "retrospective visualization, no new load test",
+  "sources": [
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-1.json",
+      "sha256": "8dcd159b4fea55346e154d3df1a02dd461fca27849e868fdfc6a4c47872be964"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-2.json",
+      "sha256": "dda6ba9d8c1b19ee5ac71f5d0e3d063139aa2be77fea82ea645609770a4657d6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-3.json",
+      "sha256": "28db0ac14e1458c12bd2a057a31302721b8dce1250f374ae654213064d60d97b"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-4.json",
+      "sha256": "3e065f3b8a1ec6683fb3a208be7b00e10206e3e59ec5cb94cc93c05c0893318e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-04-ingestao/etapas-cg05-150000.json",
+      "sha256": "1742888aa371abf35c0da300c4f016f778219820e68b7c8a551ddbb1cfa5f621"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-04-ingestao/resumo-ingestao-cg05-150000.json",
+      "sha256": "65348c6860270d0b284f1db3756714c360688a914dd3c4d92e9249b1ec516829"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-04-ingestao/cloudwatch-recursos-cg05-150000.json",
+      "sha256": "8f47243fa0e8acc79bf81d574767ae0b33439704598e7cd7c911d3b7f743f62a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-05-ingestao/sqs-rs01-3lotes.json",
+      "sha256": "8b41f4903de756a597d01c25743877d1696066b3fd1d24c2e4e9c833c99309cb"
+    }
+  ],
+  "series": {
+    "rnf_retro_api_p95_seconds": {
+      "unit": "s",
+      "origin": "2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-1.json",
+      "transformation": "identity: already computed PromQL: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"rnf-api-eks\"}[30s])))",
+      "metric": {
+        "__name__": "rnf_retro_api_p95_seconds"
+      },
+      "samples": 73
+    },
+    "rnf_retro_api_requests_per_second": {
+      "unit": "reqps",
+      "origin": "2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-2.json",
+      "transformation": "identity: already computed PromQL: sum(rate(http_requests_total{job=\"rnf-api-eks\"}[30s]))",
+      "metric": {
+        "__name__": "rnf_retro_api_requests_per_second"
+      },
+      "samples": 73
+    },
+    "rnf_retro_api_5xx_per_second": {
+      "unit": "suffix:erros/s",
+      "origin": "2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-3.json",
+      "transformation": "identity: already computed PromQL: sum(rate(http_requests_total{job=\"rnf-api-eks\",status_code=~\"5..\"}[30s]))",
+      "metric": {
+        "__name__": "rnf_retro_api_5xx_per_second"
+      },
+      "samples": 73
+    },
+    "rnf_retro_api_cpu_core_percent": {
+      "unit": "percent",
+      "origin": "2026-10-06-fechamento-aws/eks-native/observability-load137-final/prometheus-panel-4.json",
+      "transformation": "identity: already computed PromQL: 100*sum(rate(container_cpu_usage_seconds_total{job=\"rnf-kubelet-cadvisor\",namespace=\"view-show-rnf\",container=\"api\"}[30s]))",
+      "metric": {
+        "__name__": "rnf_retro_api_cpu_core_percent"
+      },
+      "samples": 73
+    },
+    "rnf_retro_stage_seconds_ingesting": {
+      "unit": "s",
+      "origin": "2026-10-04-ingestao/etapas-cg05-150000.json",
+      "transformation": "StageDurationMs / 1000; sample at emitted bucket",
+      "metric": {
+        "__name__": "rnf_retro_stage_seconds_ingesting",
+        "stage": "INGESTING"
+      },
+      "samples": 1
+    },
+    "rnf_retro_stage_events_per_minute_ingesting": {
+      "unit": "events/min",
+      "origin": "2026-10-04-ingestao/etapas-cg05-150000.json",
+      "transformation": "150000 * 60 / StageDurationSeconds; stage average, not instantaneous throughput",
+      "metric": {
+        "__name__": "rnf_retro_stage_events_per_minute_ingesting",
+        "stage": "INGESTING"
+      },
+      "samples": 1
+    },
+    "rnf_retro_stage_seconds_projecting": {
+      "unit": "s",
+      "origin": "2026-10-04-ingestao/etapas-cg05-150000.json",
+      "transformation": "StageDurationMs / 1000; sample at emitted bucket",
+      "metric": {
+        "__name__": "rnf_retro_stage_seconds_projecting",
+        "stage": "PROJECTING"
+      },
+      "samples": 1
+    },
+    "rnf_retro_stage_events_per_minute_projecting": {
+      "unit": "events/min",
+      "origin": "2026-10-04-ingestao/etapas-cg05-150000.json",
+      "transformation": "150000 * 60 / StageDurationSeconds; stage average, not instantaneous throughput",
+      "metric": {
+        "__name__": "rnf_retro_stage_events_per_minute_projecting",
+        "stage": "PROJECTING"
+      },
+      "samples": 1
+    },
+    "rnf_retro_stage_seconds_archiving": {
+      "unit": "s",
+      "origin": "2026-10-04-ingestao/etapas-cg05-150000.json",
+      "transformation": "StageDurationMs / 1000; sample at emitted bucket",
+      "metric": {
+        "__name__": "rnf_retro_stage_seconds_archiving",
+        "stage": "ARCHIVING"
+      },
+      "samples": 1
+    },
+    "rnf_retro_stage_events_per_minute_archiving": {
+      "unit": "events/min",
+      "origin": "2026-10-04-ingestao/etapas-cg05-150000.json",
+      "transformation": "150000 * 60 / StageDurationSeconds; stage average, not instantaneous throughput",
+      "metric": {
+        "__name__": "rnf_retro_stage_events_per_minute_archiving",
+        "stage": "ARCHIVING"
+      },
+      "samples": 1
+    },
+    "rnf_retro_ingestion_cpu_reserved_percent": {
+      "unit": "percent",
+      "origin": "2026-10-04-ingestao/cloudwatch-recursos-cg05-150000.json",
+      "transformation": "identity: preserved 100 * utilized / reserved at each matching timestamp",
+      "metric": {
+        "__name__": "rnf_retro_ingestion_cpu_reserved_percent"
+      },
+      "samples": 37
+    },
+    "rnf_retro_ingestion_memory_reserved_percent": {
+      "unit": "percent",
+      "origin": "2026-10-04-ingestao/cloudwatch-recursos-cg05-150000.json",
+      "transformation": "identity: preserved 100 * utilized / reserved at each matching timestamp",
+      "metric": {
+        "__name__": "rnf_retro_ingestion_memory_reserved_percent"
+      },
+      "samples": 37
+    },
+    "rnf_retro_fila_visiveis": {
+      "unit": "count",
+      "origin": "2026-10-05-ingestao/sqs-rs01-3lotes.json",
+      "transformation": "identity: preserve CloudWatch bucket value, convert timestamp to UTC; no rate or interpolation",
+      "metric": {
+        "__name__": "rnf_retro_fila_visiveis"
+      },
+      "samples": 35
+    },
+    "rnf_retro_fila_em_processamento": {
+      "unit": "count",
+      "origin": "2026-10-05-ingestao/sqs-rs01-3lotes.json",
+      "transformation": "identity: preserve CloudWatch bucket value, convert timestamp to UTC; no rate or interpolation",
+      "metric": {
+        "__name__": "rnf_retro_fila_em_processamento"
+      },
+      "samples": 35
+    },
+    "rnf_retro_fila_idade_mais_antiga": {
+      "unit": "s",
+      "origin": "2026-10-05-ingestao/sqs-rs01-3lotes.json",
+      "transformation": "identity: preserve CloudWatch bucket value, convert timestamp to UTC; no rate or interpolation",
+      "metric": {
+        "__name__": "rnf_retro_fila_idade_mais_antiga"
+      },
+      "samples": 35
+    },
+    "rnf_retro_fila_recebidas": {
+      "unit": "count",
+      "origin": "2026-10-05-ingestao/sqs-rs01-3lotes.json",
+      "transformation": "identity: preserve CloudWatch bucket value, convert timestamp to UTC; no rate or interpolation",
+      "metric": {
+        "__name__": "rnf_retro_fila_recebidas"
+      },
+      "samples": 35
+    },
+    "rnf_retro_fila_removidas": {
+      "unit": "count",
+      "origin": "2026-10-05-ingestao/sqs-rs01-3lotes.json",
+      "transformation": "identity: preserve CloudWatch bucket value, convert timestamp to UTC; no rate or interpolation",
+      "metric": {
+        "__name__": "rnf_retro_fila_removidas"
+      },
+      "samples": 35
+    },
+    "rnf_retro_dlq_visiveis": {
+      "unit": "count",
+      "origin": "2026-10-05-ingestao/sqs-rs01-3lotes.json",
+      "transformation": "identity: preserve CloudWatch bucket value, convert timestamp to UTC; no rate or interpolation",
+      "metric": {
+        "__name__": "rnf_retro_dlq_visiveis"
+      },
+      "samples": 35
+    }
+  }
+}

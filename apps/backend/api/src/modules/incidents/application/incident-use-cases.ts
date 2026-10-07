@@ -8,6 +8,7 @@ import {
   incidentsDataSchema,
   resolveWindow,
   type DiagnosisData,
+  type EvidenceDto,
   type EventDto,
   type EventsData,
   type EventsQuery,
@@ -25,6 +26,14 @@ import type {
   ActiveDatasetSnapshot,
 } from "../../datasets/ports/active-dataset-resolver.js";
 import type { CursorCodec } from "../domain/cursor.js";
+import {
+  diagnosisPresentation,
+  diagnosisAffectedDevices,
+  diagnosisStatusBlock,
+  hypothesisId,
+  rankedHypotheses,
+  type PhysicalItem,
+} from "../domain/incident.js";
 import type {
   ActiveIncidentProjection,
   EventPagePosition,
@@ -70,6 +79,47 @@ function dataUnavailable(message: string): never {
 
 function featureUnavailable(message: string): never {
   throw new ServiceError(503, "FEATURE_UNAVAILABLE", message);
+}
+
+function evidenceReferences(value: unknown): readonly string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function linkAnalysisEvidence(
+  evidence: readonly EvidenceDto[],
+  hypotheses: readonly PhysicalItem[],
+): readonly EvidenceDto[] {
+  return evidence.map((item) => {
+    if (item.type !== "analysis_fact") return item;
+    const supporting: string[] = [];
+    const contradicting: string[] = [];
+    for (const hypothesis of hypotheses) {
+      const id = hypothesisId(hypothesis);
+      if (
+        evidenceReferences(hypothesis.supportingEvidenceIds).includes(item.id)
+      )
+        supporting.push(id);
+      if (
+        evidenceReferences(hypothesis.contradictingEvidenceIds).includes(
+          item.id,
+        )
+      )
+        contradicting.push(id);
+    }
+    const hypothesisIds = [...new Set([...supporting, ...contradicting])];
+    return {
+      ...item,
+      hypothesisIds,
+      relation:
+        supporting.length > 0
+          ? "supports"
+          : contradicting.length > 0
+            ? "contradicts"
+            : "context",
+    };
+  });
 }
 
 function requireProjectionVersion(
@@ -274,7 +324,7 @@ export class IncidentUseCases {
     private readonly cursor: CursorCodec,
     _feedback: ReviewFeedbackPort,
     private readonly clock: () => Date = () => new Date(),
-    _reanalysis: ReanalysisPublisherPort = new UnavailableReanalysisPublisherPort(),
+    private readonly reanalysis: ReanalysisPublisherPort = new UnavailableReanalysisPublisherPort(),
   ) {}
 
   private async activeIncidents(
@@ -529,21 +579,37 @@ export class IncidentUseCases {
         "A projeção de Evidências ainda não foi publicada pela ingestão.",
       );
     const incident = (await this.requiredIncident(active, incidentId)).dto;
-    const evidence = await this.repository.listEvidence(active, incidentId);
+    const diagnosisItem = await this.repository.latestDiagnosis(
+      active,
+      incidentId,
+    );
+    const analysisRunId =
+      typeof diagnosisItem?.analysisRunId === "string"
+        ? diagnosisItem.analysisRunId
+        : undefined;
+    const [rawEvidence, hypotheses] = await Promise.all([
+      this.repository.listEvidence(active, incidentId, analysisRunId),
+      this.repository.listHypotheses(active, incidentId),
+    ]);
+    const evidence = linkAnalysisEvidence(rawEvidence, hypotheses);
+    const presentation = diagnosisPresentation(diagnosisItem ?? {});
+    const affectedDevices = diagnosisAffectedDevices(diagnosisItem ?? {});
+    const incidentWithImpact = affectedDevices
+      ? {
+          ...incident,
+          impact: { ...incident.impact, affectedDevices },
+        }
+      : incident;
     const data = diagnosisDataSchema.parse({
-      incident,
+      incident: incidentWithImpact,
       diagnosis: {
-        status: "not_started",
-        generatedAt: null,
-        summary: null,
-        primaryHypothesisId: null,
-        confidence: null,
-        hypotheses: [],
+        ...diagnosisStatusBlock(diagnosisItem, hypotheses),
+        hypotheses: rankedHypotheses(hypotheses, incident.primaryComponent),
       },
       evidence,
-      charts: { buffering: null, concentrations: [], concentrationNote: "" },
-      timeline: [],
-      changes: [],
+      charts: presentation.charts,
+      timeline: presentation.timeline,
+      changes: presentation.changes,
       dataQuality: {
         status: evidence.length > 0 ? "sufficient" : "limited",
         coverageRatio: status.coverage === "complete" ? 1 : null,
@@ -560,26 +626,72 @@ export class IncidentUseCases {
   }
 
   async reanalyze(
-    _incidentId: string,
-    _idempotencyKey: string,
-    _requestedBy: string,
+    incidentId: string,
+    idempotencyKey: string,
+    requestedBy: string,
   ): Promise<void> {
-    await requireActiveDataset(this.activeDataset);
-    return featureUnavailable(
-      "A reanálise manual não está disponível para o contrato físico ativo.",
-    );
+    const active = await requireActiveDataset(this.activeDataset);
+    // O incidente público nasce na projeção ativa da ingestão. Ele pode não
+    // ter um item META/trace-index do worker ainda — justamente a primeira
+    // reanálise é que cria os filhos analíticos. Validar pelo bundle tornava o
+    // botão inutilizável para todos os incidentes vindos da ingestão.
+    await this.requiredIncident(active, incidentId);
+    const outcome = await this.reanalysis.publish({
+      incidentId,
+      idempotencyKey,
+      requestedBy,
+      reason: "MANUAL_REQUEST",
+    });
+    if (outcome === "unavailable")
+      featureUnavailable(
+        "A reanálise manual não está disponível para o contrato físico ativo.",
+      );
   }
 
   async review(
-    _incidentId: string,
-    _selectedHypothesisId: string,
-    _body: ReviewBody,
-    _reviewerId: string,
+    incidentId: string,
+    selectedHypothesisId: string,
+    body: ReviewBody,
+    reviewerId: string,
   ): Promise<InternalResponse<ReviewData>> {
-    await requireActiveDataset(this.activeDataset);
-    return featureUnavailable(
-      "A revisão de hipóteses não está disponível para o contrato físico ativo.",
-    );
+    const active = await requireActiveDataset(this.activeDataset);
+    // Assim como a reanálise, a revisão parte do ID público materializado
+    // pela ingestão. Incidentes desse fluxo não possuem necessariamente um
+    // META no trace-index do worker, mas suas hipóteses vivem na partição
+    // canônica do dataset ativo.
+    await this.requiredIncident(active, incidentId);
+    const reviewedAt = this.clock().toISOString();
+    const updated = await this.repository.writeReview({
+      key: {
+        pk: `DATASET#${active.datasetVersion}#INCIDENT#${incidentId}`,
+        sk: `HYPOTHESIS#${selectedHypothesisId}`,
+      },
+      expectedVersion: body.expectedVersion,
+      status: body.status,
+      note: body.note ?? null,
+      reviewedAt,
+      reviewerId,
+    });
+    return {
+      data: {
+        incidentId,
+        hypothesisId: selectedHypothesisId,
+        review: {
+          status: body.status,
+          note: body.note ?? null,
+          reviewedAt,
+          version: Number(updated.reviewVersion),
+        },
+      },
+      datasetVersion: active.datasetVersion,
+      quality: {
+        window: null,
+        partial: false,
+        refreshAfterSeconds: null,
+        freshness: [],
+        warnings: [],
+      },
+    };
   }
 }
 

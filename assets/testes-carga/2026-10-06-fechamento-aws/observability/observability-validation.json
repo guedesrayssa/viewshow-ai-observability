@@ -1,0 +1,72 @@
+{
+  "start": "2026-10-06T23:06:00Z",
+  "end": "2026-10-06T23:20:25.605Z",
+  "dashboardUid": "rnf-fechamento-aws",
+  "checks": [
+    {
+      "panelId": 1,
+      "title": "API AWS — latência p95",
+      "httpStatus": 200,
+      "samples": 117,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "title": "API AWS — throughput",
+      "httpStatus": 200,
+      "samples": 118,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "title": "API AWS — erros por segundo",
+      "httpStatus": 200,
+      "samples": 174,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 4,
+      "title": "API AWS — CPU do processo (1 núcleo)",
+      "httpStatus": 200,
+      "samples": 118,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 5,
+      "title": "Worker AWS — Latência — execução p95 e projeção máxima",
+      "httpStatus": 200,
+      "samples": 0,
+      "errors": [],
+      "passed": false
+    },
+    {
+      "panelId": 6,
+      "title": "Worker AWS — Throughput — registros/s",
+      "httpStatus": 200,
+      "samples": 0,
+      "errors": [],
+      "passed": false
+    },
+    {
+      "panelId": 7,
+      "title": "Worker AWS — Erros por segundo",
+      "httpStatus": 200,
+      "samples": 0,
+      "errors": [],
+      "passed": false
+    },
+    {
+      "panelId": 8,
+      "title": "Worker AWS — CPU da task — utilizada/reservada",
+      "httpStatus": 200,
+      "samples": 6,
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "passed": false
+}

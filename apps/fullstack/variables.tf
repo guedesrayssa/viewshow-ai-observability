@@ -31,19 +31,19 @@ variable "branch_amplify" {
 }
 
 variable "cpu_task" {
-  description = "CPU da task Fargate, em unidades de 1024."
+  description = "CPU do Pod da API, em unidades de 1024."
   type        = string
   default     = "256"
 }
 
 variable "memoria_task" {
-  description = "Memória da task Fargate, em MiB."
+  description = "Memória do Pod da API, em MiB."
   type        = string
   default     = "512"
 }
 
 variable "quantidade_tasks" {
-  description = "Tasks simultâneas no serviço."
+  description = "Réplicas iniciais do Deployment da API."
   type        = number
   default     = 1
 
@@ -53,46 +53,46 @@ variable "quantidade_tasks" {
   }
 }
 
-variable "ecs_capacidade_minima" {
-  description = "Quantidade mínima de tasks mantida pelo ECS Service Auto Scaling."
+variable "api_replicas_minima" {
+  description = "Quantidade mínima de tasks mantida pelo HPA."
   type        = number
   default     = 1
 
   validation {
-    condition     = var.ecs_capacidade_minima >= 1 && var.ecs_capacidade_minima <= 4
-    error_message = "ecs_capacidade_minima deve ficar entre 1 e 4."
+    condition     = var.api_replicas_minima >= 1 && var.api_replicas_minima <= 4
+    error_message = "api_replicas_minima deve ficar entre 1 e 4."
   }
 }
 
-variable "ecs_capacidade_maxima" {
-  description = "Quantidade máxima de tasks permitida pelo ECS Service Auto Scaling."
+variable "api_replicas_maxima" {
+  description = "Quantidade máxima de tasks permitida pelo HPA."
   type        = number
   default     = 4
 
   validation {
-    condition     = var.ecs_capacidade_maxima >= 1 && var.ecs_capacidade_maxima <= 4
-    error_message = "ecs_capacidade_maxima deve ficar entre 1 e 4."
+    condition     = var.api_replicas_maxima >= 1 && var.api_replicas_maxima <= 4
+    error_message = "api_replicas_maxima deve ficar entre 1 e 4."
   }
 }
 
-variable "ecs_cpu_alvo" {
+variable "api_cpu_alvo" {
   description = "Percentual médio de CPU perseguido pela política target tracking."
   type        = number
   default     = 50
 
   validation {
-    condition     = var.ecs_cpu_alvo >= 1 && var.ecs_cpu_alvo <= 100
-    error_message = "ecs_cpu_alvo deve ficar entre 1 e 100."
+    condition     = var.api_cpu_alvo >= 1 && var.api_cpu_alvo <= 100
+    error_message = "api_cpu_alvo deve ficar entre 1 e 100."
   }
 }
 
-check "limites_escalonamento_ecs" {
+check "limites_escalonamento_api" {
   assert {
     condition = (
-      var.ecs_capacidade_minima <= var.quantidade_tasks &&
-      var.quantidade_tasks <= var.ecs_capacidade_maxima
+      var.api_replicas_minima <= var.quantidade_tasks &&
+      var.quantidade_tasks <= var.api_replicas_maxima
     )
-    error_message = "quantidade_tasks deve ficar entre as capacidades mínima e máxima do ECS."
+    error_message = "quantidade_tasks deve ficar entre as capacidades mínima e máxima do EKS."
   }
 }
 
@@ -109,13 +109,26 @@ variable "bedrock_habilitado" {
 }
 
 variable "analysis_worker_habilitado" {
-  description = "Cria o serviço do worker de análise, que consome a fila de análise da ingestão. Exige um modelo aprovado e o catálogo de séries (arquivos locais ou URIs s3://) e só é suportado no perfil learner-lab."
+  description = "Cria o serviço do worker de análise, que consome a fila de análise da ingestão. Exige um modelo aprovado e o catálogo de séries (arquivos locais ou URIs s3://) e usa uma role IRSA exclusiva."
   type        = bool
   default     = false
 
+
+}
+
+variable "analysis_worker_desired_count" {
+  description = "Número de réplicas do worker; mantenha 0 até o gate de conectividade com o Ollama passar."
+  type        = number
+  default     = 0
+
   validation {
-    condition     = !var.analysis_worker_habilitado || var.ambiente == "learner-lab"
-    error_message = "O worker de análise ainda não tem roles de produção; habilite-o apenas com ambiente learner-lab."
+    condition     = contains([0, 1], var.analysis_worker_desired_count)
+    error_message = "Use 0 durante o gate ou 1 após a validação do Ollama."
+  }
+
+  validation {
+    condition     = var.analysis_worker_habilitado || var.analysis_worker_desired_count == 0
+    error_message = "Habilite o worker antes de solicitar uma réplica."
   }
 }
 
@@ -188,13 +201,22 @@ variable "analysis_model_sha256" {
   default     = ""
 }
 
+// Vazio por padrão: a ingestão não grava fatos por série (comportamento atual
+// em produção). Preenchida, a tarefa de importação passa a materializar os
+// fatos que o worker de análise lê, para as séries declaradas no catálogo.
+variable "analysis_fact_catalog_location" {
+  description = "URI s3:// do catálogo de séries (ANALYSIS_FACT_CATALOG_LOCATION) que a tarefa de importação usa para gravar fatos de análise. Vazio desliga a gravação."
+  type        = string
+  default     = ""
+}
+
 variable "analysis_llm_provider" {
-  description = "Provider de interpretação A'. `none` desliga o LLM (o Learner Lab não tem Bedrock): a detecção e a previsão seguem e o diagnóstico é registrado como falha permanente, sem retentativas."
+  description = "Provider de interpretação A'. `rules` usa seleção determinística ancorada em fatos para ambientes sem LLM; `none` registra o diagnóstico como falha permanente."
   type        = string
   default     = "bedrock"
   validation {
-    condition     = contains(["bedrock", "ollama", "none"], var.analysis_llm_provider)
-    error_message = "Use bedrock, ollama ou none."
+    condition     = contains(["bedrock", "ollama", "rules", "none"], var.analysis_llm_provider)
+    error_message = "Use bedrock, ollama, rules ou none."
   }
 }
 
@@ -204,41 +226,70 @@ variable "analysis_llm_model_id" {
   default     = "anthropic.claude-3-haiku-20240307-v1:0"
 }
 
+// Padrão do worker é 120000 (120s) quando a variável não é informada — muito
+// pouco para inferência de LLM só em CPU (Fargate não tem GPU). Vazio mantém
+// esse padrão do código.
+variable "analysis_llm_timeout_ms" {
+  description = "Timeout da chamada ao provider de LLM, em milissegundos. Vazio usa o padrão do worker (120000)."
+  type        = string
+  default     = ""
+}
+
 variable "analysis_ollama_base_url" {
   description = "URL do Ollama quando esse provider for selecionado."
   type        = string
   default     = ""
+  sensitive   = true
   validation {
     condition     = var.analysis_llm_provider != "ollama" || length(var.analysis_ollama_base_url) > 0
     error_message = "Informe analysis_ollama_base_url para Ollama."
   }
 }
 
-variable "retencao_logs_dias" {
-  description = "Retenção do log group do ECS."
-  type        = number
-  default     = 7
+variable "analysis_ssh_bridge_habilitado" {
+  description = "Abre somente a porta 11434 do bastion para o Security Group do serviço ECS quando um túnel SSH reverso está em uso."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.analysis_ssh_bridge_habilitado || !var.analysis_worker_habilitado || var.analysis_llm_provider == "ollama"
+    error_message = "A ponte SSH requer provider Ollama quando o worker está habilitado."
+  }
 }
 
-variable "api_task_role_arn" {
-  description = "Task role preexistente da API. É obrigatória em production; o Learner Lab continua usando LabRole."
-  type        = string
-  default     = null
-  nullable    = true
-
+// Sobe um Ollama efêmero como segundo container na mesma tarefa do worker,
+// só para exercitar o provider real de LLM sem depender do Bedrock (bloqueado
+// no Learner Lab) ou de expor uma máquina pessoal à internet. Nunca é o
+// caminho de produção — production continua exigindo bedrock ou none.
+variable "analysis_ollama_sidecar_habilitado" {
+  description = "Adiciona um container Ollama efêmero (mesma tarefa, localhost) para testes com o provider ollama. Aumenta cpu/memória da tarefa; exige analysis_llm_provider=ollama e analysis_ollama_base_url=http://localhost:11434."
+  type        = bool
+  default     = false
   validation {
-    condition = var.api_task_role_arn == null || can(regex(
-      "^arn:[a-z0-9-]+:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}(/[A-Za-z0-9+=,.@_-]{1,64})*$",
-      var.api_task_role_arn,
-    ))
-    error_message = "api_task_role_arn deve ser null ou um ARN IAM de role válido."
+    condition = !var.analysis_ollama_sidecar_habilitado || (
+      var.analysis_worker_habilitado &&
+      var.analysis_llm_provider == "ollama" &&
+      var.analysis_ollama_base_url == "http://localhost:11434"
+    )
+    error_message = "analysis_ollama_sidecar_habilitado exige analysis_worker_habilitado=true, analysis_llm_provider=ollama e analysis_ollama_base_url=http://localhost:11434."
   }
+}
+
+variable "retencao_logs_dias" {
+  description = "Retenção do log group do EKS."
+  type        = number
+  default     = 7
 }
 
 variable "observabilidade_habilitada" {
   description = "Cria, somente quando explicitamente habilitada, a stack Grafana, Prometheus, Loki, Tempo e Alloy em uma EC2."
   type        = bool
   default     = false
+}
+
+variable "observabilidade_api_exportacao_habilitada" {
+  description = "Conecta a task da API aos endpoints privados da observabilidade. O rollout seguro a desliga apenas na fase que cria a EC2 e a religa quando o IP já é conhecido."
+  type        = bool
+  default     = true
 }
 
 variable "tipo_instancia_observabilidade" {

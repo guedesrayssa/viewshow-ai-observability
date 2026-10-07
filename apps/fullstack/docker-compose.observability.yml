@@ -64,6 +64,9 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=15d
       - --web.enable-lifecycle
+      # Sem esta feature os exemplares (trace_id nas amostras de latência) são
+      # descartados e o salto métrica -> trace do Grafana nunca aparece.
+      - --enable-feature=exemplar-storage
       # Recebe as métricas derivadas de traces que o Tempo envia por remote write.
       - --web.enable-remote-write-receiver
     volumes:

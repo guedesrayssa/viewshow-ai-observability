@@ -1,0 +1,1533 @@
+{
+    "MetricAlarms": [
+        {
+            "AlarmName": "TargetTracking-service/view-show-iac-cluster/view-show-iac-api-service-AlarmHigh-d8a5a5df-e851-4262-b3ec-2642e9690529",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:TargetTracking-service/view-show-iac-cluster/view-show-iac-api-service-AlarmHigh-d8a5a5df-e851-4262-b3ec-2642e9690529",
+            "AlarmDescription": "DO NOT EDIT OR DELETE. For TargetTrackingScaling policy arn:aws:autoscaling:us-east-1:114388221188:scalingPolicy:2d9c283e-bb53-4f90-8dec-ea0e9d4165bd:resource/ecs/service/view-show-iac-cluster/view-show-iac-api-service:policyName/view-show-iac-api-service-cpu-target:createdBy/788aee94-7445-43f6-a94a-e105fe9a23a2.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:45:04.274000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [
+                "arn:aws:autoscaling:us-east-1:114388221188:scalingPolicy:2d9c283e-bb53-4f90-8dec-ea0e9d4165bd:resource/ecs/service/view-show-iac-cluster/view-show-iac-api-service:policyName/view-show-iac-api-service-cpu-target:createdBy/788aee94-7445-43f6-a94a-e105fe9a23a2"
+            ],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: 1 datapoint [0.0 (28/09/26 18:44:00)] was not greater than the threshold (50.0).",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:47:54.795+0000\",\"startDate\":\"2026-09-28T18:44:00.000+0000\",\"unit\":\"Percent\",\"statistic\":\"Average\",\"period\":60,\"recentDatapoints\":[0.0],\"threshold\":50.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:44:00.000+0000\",\"sampleCount\":1.0,\"value\":0.0}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:47:54.797000-03:00",
+            "MetricName": "CPUUtilization",
+            "Namespace": "AWS/ECS",
+            "Statistic": "Average",
+            "Dimensions": [
+                {
+                    "Name": "ClusterName",
+                    "Value": "view-show-iac-cluster"
+                },
+                {
+                    "Name": "ServiceName",
+                    "Value": "view-show-iac-api-service"
+                }
+            ],
+            "Period": 60,
+            "Unit": "Percent",
+            "EvaluationPeriods": 3,
+            "Threshold": 50.0,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "StateTransitionedTimestamp": "2026-09-28T15:47:54.797000-03:00"
+        },
+        {
+            "AlarmName": "TargetTracking-service/view-show-iac-cluster/view-show-iac-api-service-AlarmLow-d1eec0dd-66e6-4a02-8e2c-c4b07ab33558",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:TargetTracking-service/view-show-iac-cluster/view-show-iac-api-service-AlarmLow-d1eec0dd-66e6-4a02-8e2c-c4b07ab33558",
+            "AlarmDescription": "DO NOT EDIT OR DELETE. For TargetTrackingScaling policy arn:aws:autoscaling:us-east-1:114388221188:scalingPolicy:2d9c283e-bb53-4f90-8dec-ea0e9d4165bd:resource/ecs/service/view-show-iac-cluster/view-show-iac-api-service:policyName/view-show-iac-api-service-cpu-target:createdBy/788aee94-7445-43f6-a94a-e105fe9a23a2.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:45:04.333000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [
+                "arn:aws:autoscaling:us-east-1:114388221188:scalingPolicy:2d9c283e-bb53-4f90-8dec-ea0e9d4165bd:resource/ecs/service/view-show-iac-cluster/view-show-iac-api-service:policyName/view-show-iac-api-service-cpu-target:createdBy/788aee94-7445-43f6-a94a-e105fe9a23a2"
+            ],
+            "InsufficientDataActions": [],
+            "StateValue": "ALARM",
+            "StateReason": "Threshold Crossed: 15 datapoints were less than the threshold (45.0). The most recent datapoints which crossed the threshold: [2.232360601425171 (28/09/26 18:58:00), 2.2611722151438394 (28/09/26 18:57:00), 3.037597179412842 (28/09/26 18:56:00), 2.29616371790568 (28/09/26 18:55:00), 2.2713846365610757 (28/09/26 18:54:00)].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T19:01:18.228+0000\",\"startDate\":\"2026-09-28T18:44:00.000+0000\",\"unit\":\"Percent\",\"statistic\":\"Average\",\"period\":60,\"recentDatapoints\":[0.0,16.04555292924245,2.2511794567108154,2.278675397237142,2.2880489826202393,2.262259006500244,2.2636799812316895,2.284858544667562,2.2791105111440024,2.2704949378967285,2.2713846365610757,2.29616371790568,3.037597179412842,2.2611722151438394,2.232360601425171],\"threshold\":45.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:58:00.000+0000\",\"sampleCount\":1.0,\"value\":2.232360601425171},{\"timestamp\":\"2026-09-28T18:57:00.000+0000\",\"sampleCount\":1.0,\"value\":2.2611722151438394},{\"timestamp\":\"2026-09-28T18:56:00.000+0000\",\"sampleCount\":1.0,\"value\":3.037597179412842},{\"timestamp\":\"2026-09-28T18:55:00.000+0000\",\"sampleCount\":1.0,\"value\":2.29616371790568},{\"timestamp\":\"2026-09-28T18:54:00.000+0000\",\"sampleCount\":1.0,\"value\":2.2713846365610757},{\"timestamp\":\"2026-09-28T18:53:00.000+0000\",\"sampleCount\":1.0,\"value\":2.2704949378967285},{\"timestamp\":\"2026-09-28T18:52:00.000+0000\",\"sampleCount\":1.0,\"value\":2.2791105111440024},{\"timestamp\":\"2026-09-28T18:51:00.000+0000\",\"sampleCount\":1.0,\"value\":2.284858544667562},{\"timestamp\":\"2026-09-28T18:50:00.000+0000\",\"sampleCount\":1.0,\"value\":2.2636799812316895},{\"timestamp\":\"2026-09-28T18:49:00.000+0000\",\"sampleCount\":1.0,\"value\":2.262259006500244},{\"timestamp\":\"2026-09-28T18:48:00.000+0000\",\"sampleCount\":1.0,\"value\":2.2880489826202393},{\"timestamp\":\"2026-09-28T18:47:00.000+0000\",\"sampleCount\":1.0,\"value\":2.278675397237142},{\"timestamp\":\"2026-09-28T18:46:00.000+0000\",\"sampleCount\":1.0,\"value\":2.2511794567108154},{\"timestamp\":\"2026-09-28T18:45:00.000+0000\",\"sampleCount\":1.0,\"value\":16.04555292924245},{\"timestamp\":\"2026-09-28T18:44:00.000+0000\",\"sampleCount\":1.0,\"value\":0.0}]}",
+            "StateUpdatedTimestamp": "2026-09-28T16:01:18.229000-03:00",
+            "MetricName": "CPUUtilization",
+            "Namespace": "AWS/ECS",
+            "Statistic": "Average",
+            "Dimensions": [
+                {
+                    "Name": "ClusterName",
+                    "Value": "view-show-iac-cluster"
+                },
+                {
+                    "Name": "ServiceName",
+                    "Value": "view-show-iac-api-service"
+                }
+            ],
+            "Period": 60,
+            "Unit": "Percent",
+            "EvaluationPeriods": 15,
+            "Threshold": 45.0,
+            "ComparisonOperator": "LessThanThreshold",
+            "StateTransitionedTimestamp": "2026-09-28T16:01:18.229000-03:00"
+        },
+        {
+            "AlarmName": "view-show-import-active-upload-age",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-import-active-upload-age",
+            "AlarmDescription": "Um upload ativo se aproxima da expiração de 24 horas.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:59.245000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:55.453+0000\",\"statistic\":\"Maximum\",\"period\":60,\"recentDatapoints\":[],\"threshold\":82800.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:37:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:55.456000-03:00",
+            "MetricName": "ImportActiveUploadAgeSeconds",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Maximum",
+            "Dimensions": [],
+            "Period": 60,
+            "EvaluationPeriods": 1,
+            "Threshold": 82800.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:55.456000-03:00"
+        },
+        {
+            "AlarmName": "view-show-import-reconciliation-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-import-reconciliation-failures",
+            "AlarmDescription": "O loop da API falhou ao reconciliar imports ativos.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:58.059000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:21.881+0000\",\"statistic\":\"Sum\",\"period\":60,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:38:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:21.882000-03:00",
+            "MetricName": "ImportReconciliationFailures",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [],
+            "Period": 60,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:21.882000-03:00"
+        },
+        {
+            "AlarmName": "view-show-import-worker-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-import-worker-failures",
+            "AlarmDescription": "O runtime EMF reportou uma execução import-dump com falha.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:59.665000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:12.543+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:12.544000-03:00",
+            "MetricName": "Runs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "status",
+                    "Value": "FAILED"
+                },
+                {
+                    "Name": "command",
+                    "Value": "import-dump"
+                },
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:12.544000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-analysis-dlq-depth",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-analysis-dlq-depth",
+            "AlarmDescription": "A DLQ da análise contém mensagens que exigem investigação.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:30.951000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:34.600+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:34.601000-03:00",
+            "MetricName": "ApproximateNumberOfMessagesVisible",
+            "Namespace": "AWS/SQS",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "QueueName",
+                    "Value": "view-show-ingestion-analysis-dlq"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:34.601000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-analysis-queue-backlog",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-analysis-queue-backlog",
+            "AlarmDescription": "A fila de análise possui mensagens visíveis aguardando consumo.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:56.798000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:54.834+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:54.835000-03:00",
+            "MetricName": "ApproximateNumberOfMessagesVisible",
+            "Namespace": "AWS/SQS",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "QueueName",
+                    "Value": "view-show-ingestion-analysis"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:54.835000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-analysis-queue-oldest-age",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-analysis-queue-oldest-age",
+            "AlarmDescription": "A mensagem mais antiga da fila de análise aguarda há pelo menos 15 minutos.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:56.847000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:49.465+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":900.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:49.467000-03:00",
+            "MetricName": "ApproximateAgeOfOldestMessage",
+            "Namespace": "AWS/SQS",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "QueueName",
+                    "Value": "view-show-ingestion-analysis"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 900.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:49.467000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-archiving-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-archiving-failures",
+            "AlarmDescription": "A transição persistida da etapa ARCHIVING terminou em PARTIAL ou FAILED.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:58.701000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:32.214+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:32.215000-03:00",
+            "MetricName": "StageFailures",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "backfill"
+                },
+                {
+                    "Name": "stage",
+                    "Value": "ARCHIVING"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:32.215000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-athena-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-athena-failures",
+            "AlarmDescription": "O boundary tipado da validação Athena reportou falha.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:57.003000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:48.497+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:48.498000-03:00",
+            "MetricName": "AthenaFailures",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "backfill"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:48.498000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-athena-processed-bytes",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-athena-processed-bytes",
+            "AlarmDescription": "Uma consulta consumiu ao menos 70% do corte de 1 GiB do workgroup.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:53:35.542000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:54:21.155+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":7.51619277E8,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:49:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:54:21.156000-03:00",
+            "MetricName": "ProcessedBytes",
+            "Namespace": "AWS/Athena",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "WorkGroup",
+                    "Value": "view-show-ingestion"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 751619277.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T14:54:21.156000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-backfill-cpu-utilization",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-backfill-cpu-utilization",
+            "AlarmDescription": "Container Insights reportou utilização de backfill-cpu igual ou superior a 70%.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:53:43.571000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:55:11.408+0000\",\"period\":300,\"recentDatapoints\":[],\"threshold\":70.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:50:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:55:11.410000-03:00",
+            "Dimensions": [],
+            "EvaluationPeriods": 1,
+            "Threshold": 70.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "Metrics": [
+                {
+                    "Id": "utilization",
+                    "Expression": "100 * used / reserved",
+                    "Label": "Utilização percentual de backfill-cpu",
+                    "ReturnData": true
+                },
+                {
+                    "Id": "used",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "CpuUtilized",
+                            "Dimensions": [
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                },
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-backfill"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "reserved",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "CpuReserved",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-backfill"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                }
+            ],
+            "StateTransitionedTimestamp": "2026-09-28T14:55:11.410000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-backfill-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-backfill-failures",
+            "AlarmDescription": "O runtime EMF reportou uma execução de backfill com falha.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:03.281000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:45.973+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:45.974000-03:00",
+            "MetricName": "Runs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "backfill"
+                },
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                },
+                {
+                    "Name": "status",
+                    "Value": "FAILED"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:45.974000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-backfill-memory-utilization",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-backfill-memory-utilization",
+            "AlarmDescription": "Container Insights reportou utilização de backfill-memory igual ou superior a 70%.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:53:42.907000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:55:17.855+0000\",\"period\":300,\"recentDatapoints\":[],\"threshold\":70.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:50:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:55:17.856000-03:00",
+            "Dimensions": [],
+            "EvaluationPeriods": 1,
+            "Threshold": 70.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "Metrics": [
+                {
+                    "Id": "used",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "MemoryUtilized",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-backfill"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "reserved",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "MemoryReserved",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-backfill"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "utilization",
+                    "Expression": "100 * used / reserved",
+                    "Label": "Utilização percentual de backfill-memory",
+                    "ReturnData": true
+                }
+            ],
+            "StateTransitionedTimestamp": "2026-09-28T14:55:17.856000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-backfill-partial",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-backfill-partial",
+            "AlarmDescription": "O runtime EMF reportou uma execução backfill parcial.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:02.719000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:42.525+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:42.526000-03:00",
+            "MetricName": "Runs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "backfill"
+                },
+                {
+                    "Name": "status",
+                    "Value": "PARTIAL"
+                },
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:42.526000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-backfill-schema-drift",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-backfill-schema-drift",
+            "AlarmDescription": "A validação tipada reportou schema incompatível na origem snapshot.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:59.254000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:52.263+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:52.264000-03:00",
+            "MetricName": "SchemaDrift",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                },
+                {
+                    "Name": "command",
+                    "Value": "backfill"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:52.264000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-backfill-storage-utilization",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-backfill-storage-utilization",
+            "AlarmDescription": "Container Insights reportou utilização de backfill-storage igual ou superior a 70%.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:53:43.720000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:54:32.444+0000\",\"period\":300,\"recentDatapoints\":[],\"threshold\":70.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:49:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:54:32.445000-03:00",
+            "Dimensions": [],
+            "EvaluationPeriods": 1,
+            "Threshold": 70.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "Metrics": [
+                {
+                    "Id": "reserved",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "EphemeralStorageReserved",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-backfill"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "utilization",
+                    "Expression": "100 * used / reserved",
+                    "Label": "Utilização percentual de backfill-storage",
+                    "ReturnData": true
+                },
+                {
+                    "Id": "used",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "EphemeralStorageUtilized",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-backfill"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                }
+            ],
+            "StateTransitionedTimestamp": "2026-09-28T14:54:32.445000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-canonical-archive-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-canonical-archive-failures",
+            "AlarmDescription": "O archive Parquet do import canônico reportou falha.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:04.825000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:17.632+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:17.633000-03:00",
+            "MetricName": "ArchiveFailures",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "import-dump"
+                },
+                {
+                    "Name": "component",
+                    "Value": "PARQUET"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:17.633000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-incremental-batch-quarantined",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-incremental-batch-quarantined",
+            "AlarmDescription": "O runtime incremental colocou ao menos um lote signal_bucket em quarentena.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:00.828000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:14.345+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:14.347000-03:00",
+            "MetricName": "IncrementalBatchQuarantined",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "dataset",
+                    "Value": "signal_bucket"
+                },
+                {
+                    "Name": "command",
+                    "Value": "ingest-incremental"
+                },
+                {
+                    "Name": "status",
+                    "Value": "QUARANTINED"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:14.347000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-incremental-dlq-depth",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-incremental-dlq-depth",
+            "AlarmDescription": "A DLQ FIFO incremental contém lotes que exigem investigação e redrive manual.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:31.362000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:25.636+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:25.637000-03:00",
+            "MetricName": "ApproximateNumberOfMessagesVisible",
+            "Namespace": "AWS/SQS",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "QueueName",
+                    "Value": "view-show-ingestion-incremental-batches-dlq.fifo"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:25.637000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-incremental-queue-backlog",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-incremental-queue-backlog",
+            "AlarmDescription": "A fila FIFO incremental possui lotes visíveis aguardando consumo.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:58.225000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:40:05.057+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:40:05.058000-03:00",
+            "MetricName": "ApproximateNumberOfMessagesVisible",
+            "Namespace": "AWS/SQS",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "QueueName",
+                    "Value": "view-show-ingestion-incremental-batches.fifo"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:40:05.058000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-incremental-queue-oldest-age",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-incremental-queue-oldest-age",
+            "AlarmDescription": "O lote mais antigo da fila incremental aguarda há pelo menos quinze minutos.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:58.641000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:40:32.794+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":900.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:40:32.794000-03:00",
+            "MetricName": "ApproximateAgeOfOldestMessage",
+            "Namespace": "AWS/SQS",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "QueueName",
+                    "Value": "view-show-ingestion-incremental-batches.fifo"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 900.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:40:32.794000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-incremental-watermark-lag",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-incremental-watermark-lag",
+            "AlarmDescription": "O watermark exportado de signal_bucket está atrasado em pelo menos trinta minutos.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:57.664000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:52.161+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1800.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:52.162000-03:00",
+            "MetricName": "IncrementalBatchLagSeconds",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "dataset",
+                    "Value": "signal_bucket"
+                },
+                {
+                    "Name": "command",
+                    "Value": "export-incremental"
+                },
+                {
+                    "Name": "status",
+                    "Value": "SUCCEEDED"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1800.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:52.162000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-mysql-page-duration",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-mysql-page-duration",
+            "AlarmDescription": "Uma página do dataset crítico excedeu cinco minutos no MySQL de snapshot.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:04.475000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:35.201+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":300000.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:35.203000-03:00",
+            "MetricName": "MySqlPageDurationMs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                },
+                {
+                    "Name": "command",
+                    "Value": "import-dump"
+                },
+                {
+                    "Name": "dataset",
+                    "Value": "signal_bucket"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 300000.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:35.203000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-mysql-preflight-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-mysql-preflight-failures",
+            "AlarmDescription": "O preflight de índices/EXPLAIN recusou o plano de paginação do snapshot.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:01.464000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:57.296+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:57.300000-03:00",
+            "MetricName": "MySqlPreflightFailures",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "import-dump"
+                },
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:57.300000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-mysql-retries",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-mysql-retries",
+            "AlarmDescription": "O import-dump precisou repetir páginas do dataset crítico após falha transitória do MySQL.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:59.306000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:36.044+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:36.046000-03:00",
+            "MetricName": "MySqlRetries",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "dataset",
+                    "Value": "signal_bucket"
+                },
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                },
+                {
+                    "Name": "command",
+                    "Value": "import-dump"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:36.046000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-outbox-oldest-age",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-outbox-oldest-age",
+            "AlarmDescription": "A observação eventual do GSI encontrou evento pendente há pelo menos 15 minutos.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:56.966000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:48.023+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":900.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:48.026000-03:00",
+            "MetricName": "OutboxOldestAgeSeconds",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Maximum",
+            "Dimensions": [],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 900.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:48.026000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-projecting-duration",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-projecting-duration",
+            "AlarmDescription": "A etapa PROJECTING do backfill excedeu a duração configurada.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:57.695000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:42.910+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":300000.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:42.911000-03:00",
+            "MetricName": "StageDurationMs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "stage",
+                    "Value": "PROJECTING"
+                },
+                {
+                    "Name": "command",
+                    "Value": "backfill"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 300000.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:42.911000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-projecting-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-projecting-failures",
+            "AlarmDescription": "A transição persistida da etapa PROJECTING terminou em PARTIAL ou FAILED.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:02.103000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:15.814+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:15.815000-03:00",
+            "MetricName": "StageFailures",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "backfill"
+                },
+                {
+                    "Name": "stage",
+                    "Value": "PROJECTING"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:15.815000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-rebuild-projections-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-rebuild-projections-failures",
+            "AlarmDescription": "O runtime EMF reportou uma execução de rebuild-projections com falha.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:03.874000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:29.231+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:29.232000-03:00",
+            "MetricName": "Runs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "status",
+                    "Value": "FAILED"
+                },
+                {
+                    "Name": "command",
+                    "Value": "rebuild-projections"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:29.232000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-scheduler-dlq-depth",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-scheduler-dlq-depth",
+            "AlarmDescription": "A DLQ do EventBridge Scheduler contém invocações não entregues.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:31.744000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:56.416+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:56.417000-03:00",
+            "MetricName": "ApproximateNumberOfMessagesVisible",
+            "Namespace": "AWS/SQS",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "QueueName",
+                    "Value": "view-show-ingestion-scheduler-dlq"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:56.417000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-scheduler-target-errors",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-scheduler-target-errors",
+            "AlarmDescription": "O EventBridge Scheduler não conseguiu iniciar a task ECS de sync.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:52:48.551000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:53:46.455+0000\",\"statistic\":\"Sum\",\"period\":900,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:38:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:53:46.457000-03:00",
+            "MetricName": "TargetErrorCount",
+            "Namespace": "AWS/Scheduler",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "ScheduleGroup",
+                    "Value": "view-show-ingestion"
+                }
+            ],
+            "Period": 900,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T14:53:46.457000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-snapshot-disk-critical",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-snapshot-disk-critical",
+            "AlarmDescription": "O pico local do import de snapshot atingiu 90% do orçamento de 64 GiB da aplicação.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:38:02.336000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:37.851+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":6.18475290624E10,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:33:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:37.899000-03:00",
+            "MetricName": "LocalDiskPeakBytes",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                },
+                {
+                    "Name": "command",
+                    "Value": "import-dump"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 61847529062.4,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:37.899000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-snapshot-disk-warning",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-snapshot-disk-warning",
+            "AlarmDescription": "O pico local do import de snapshot atingiu 80% do orçamento de 64 GiB da aplicação.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:57.899000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:33.306+0000\",\"statistic\":\"Maximum\",\"period\":300,\"recentDatapoints\":[],\"threshold\":5.49755813888E10,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:34:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:33.307000-03:00",
+            "MetricName": "LocalDiskPeakBytes",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Maximum",
+            "Dimensions": [
+                {
+                    "Name": "command",
+                    "Value": "import-dump"
+                },
+                {
+                    "Name": "source_mode",
+                    "Value": "snapshot"
+                }
+            ],
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 54975581388.8,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:33.307000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-sync-cpu-utilization",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-sync-cpu-utilization",
+            "AlarmDescription": "Container Insights reportou utilização de sync-cpu igual ou superior a 70%.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:53:43.105000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:54:24.098+0000\",\"period\":300,\"recentDatapoints\":[],\"threshold\":70.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:49:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:54:24.099000-03:00",
+            "Dimensions": [],
+            "EvaluationPeriods": 1,
+            "Threshold": 70.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "Metrics": [
+                {
+                    "Id": "used",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "CpuUtilized",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-sync"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "reserved",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "CpuReserved",
+                            "Dimensions": [
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                },
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-sync"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "utilization",
+                    "Expression": "100 * used / reserved",
+                    "Label": "Utilização percentual de sync-cpu",
+                    "ReturnData": true
+                }
+            ],
+            "StateTransitionedTimestamp": "2026-09-28T14:54:24.099000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-sync-failures",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-sync-failures",
+            "AlarmDescription": "O runtime EMF reportou uma execução de sync com falha.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:57.499000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:49.148+0000\",\"statistic\":\"Sum\",\"period\":900,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:23:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:49.149000-03:00",
+            "MetricName": "Runs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "source_mode",
+                    "Value": "live"
+                },
+                {
+                    "Name": "status",
+                    "Value": "FAILED"
+                },
+                {
+                    "Name": "command",
+                    "Value": "sync"
+                }
+            ],
+            "Period": 900,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:49.149000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-sync-memory-utilization",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-sync-memory-utilization",
+            "AlarmDescription": "Container Insights reportou utilização de sync-memory igual ou superior a 70%.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:53:43.096000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:54:35.857+0000\",\"period\":300,\"recentDatapoints\":[],\"threshold\":70.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:49:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:54:35.859000-03:00",
+            "Dimensions": [],
+            "EvaluationPeriods": 1,
+            "Threshold": 70.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "Metrics": [
+                {
+                    "Id": "used",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "MemoryUtilized",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-sync"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "reserved",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "MemoryReserved",
+                            "Dimensions": [
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                },
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-sync"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "utilization",
+                    "Expression": "100 * used / reserved",
+                    "Label": "Utilização percentual de sync-memory",
+                    "ReturnData": true
+                }
+            ],
+            "StateTransitionedTimestamp": "2026-09-28T14:54:35.859000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-sync-partial",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-sync-partial",
+            "AlarmDescription": "O runtime EMF reportou uma execução sync parcial.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:58.520000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:38:08.919+0000\",\"statistic\":\"Sum\",\"period\":900,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:23:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:38:08.920000-03:00",
+            "MetricName": "Runs",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "source_mode",
+                    "Value": "live"
+                },
+                {
+                    "Name": "command",
+                    "Value": "sync"
+                },
+                {
+                    "Name": "status",
+                    "Value": "PARTIAL"
+                }
+            ],
+            "Period": 900,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:38:08.920000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-sync-schema-drift",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-sync-schema-drift",
+            "AlarmDescription": "A validação tipada reportou schema incompatível na origem live.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T15:37:59.076000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T18:39:09.072+0000\",\"statistic\":\"Sum\",\"period\":900,\"recentDatapoints\":[],\"threshold\":1.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T18:24:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T15:39:09.073000-03:00",
+            "MetricName": "SchemaDrift",
+            "Namespace": "view-show/Ingestion",
+            "Statistic": "Sum",
+            "Dimensions": [
+                {
+                    "Name": "source_mode",
+                    "Value": "live"
+                },
+                {
+                    "Name": "command",
+                    "Value": "sync"
+                }
+            ],
+            "Period": 900,
+            "EvaluationPeriods": 1,
+            "Threshold": 1.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "StateTransitionedTimestamp": "2026-09-28T15:39:09.073000-03:00"
+        },
+        {
+            "AlarmName": "view-show-ingestion-sync-storage-utilization",
+            "AlarmArn": "arn:aws:cloudwatch:us-east-1:114388221188:alarm:view-show-ingestion-sync-storage-utilization",
+            "AlarmDescription": "Container Insights reportou utilização de sync-storage igual ou superior a 70%.",
+            "AlarmConfigurationUpdatedTimestamp": "2026-09-28T14:53:42.029000-03:00",
+            "ActionsEnabled": true,
+            "OKActions": [],
+            "AlarmActions": [],
+            "InsufficientDataActions": [],
+            "StateValue": "OK",
+            "StateReason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+            "StateReasonData": "{\"version\":\"1.0\",\"queryDate\":\"2026-09-28T17:55:00.363+0000\",\"period\":300,\"recentDatapoints\":[],\"threshold\":70.0,\"evaluatedDatapoints\":[{\"timestamp\":\"2026-09-28T17:50:00.000+0000\"}]}",
+            "StateUpdatedTimestamp": "2026-09-28T14:55:00.364000-03:00",
+            "Dimensions": [],
+            "EvaluationPeriods": 1,
+            "Threshold": 70.0,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching",
+            "Metrics": [
+                {
+                    "Id": "reserved",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "EphemeralStorageReserved",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-sync"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "used",
+                    "MetricStat": {
+                        "Metric": {
+                            "Namespace": "ECS/ContainerInsights",
+                            "MetricName": "EphemeralStorageUtilized",
+                            "Dimensions": [
+                                {
+                                    "Name": "TaskDefinitionFamily",
+                                    "Value": "view-show-ingestion-sync"
+                                },
+                                {
+                                    "Name": "ClusterName",
+                                    "Value": "view-show-iac-cluster"
+                                }
+                            ]
+                        },
+                        "Period": 300,
+                        "Stat": "Average"
+                    },
+                    "ReturnData": false
+                },
+                {
+                    "Id": "utilization",
+                    "Expression": "100 * used / reserved",
+                    "Label": "Utilização percentual de sync-storage",
+                    "ReturnData": true
+                }
+            ],
+            "StateTransitionedTimestamp": "2026-09-28T14:55:00.364000-03:00"
+        }
+    ],
+    "CompositeAlarms": [],
+    "LogAlarms": []
+}

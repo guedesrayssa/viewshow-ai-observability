@@ -68,9 +68,7 @@ def canonical_set(*, object_sha: str = "a" * 64, coverage: str = "COMPLETE") -> 
     finalized = tuple(
         replace(
             item,
-            partitions=(
-                replace(item.partitions[0], objects=(object_with_key,)),
-            ),
+            partitions=(replace(item.partitions[0], objects=(object_with_key,)),),
         )
         if item.dataset == "app_error"
         else item
@@ -217,9 +215,7 @@ def test_aggregate_digest_changes_for_every_logical_evidence_class() -> None:
         app_error,
         source_row_count=9,
         accepted_row_count=8,
-        partitions=(
-            replace(partition, row_count=8, objects=(replace(item, row_count=8),)),
-        ),
+        partitions=(replace(partition, row_count=8, objects=(replace(item, row_count=8),)),),
     )
     rejected_count_mutation = replace(
         app_error,
@@ -227,12 +223,8 @@ def test_aggregate_digest_changes_for_every_logical_evidence_class() -> None:
         rejected_row_count=2,
     )
     digests = {name: digest(value) for name, value in mutations.items()}
-    digests["accepted-partition-object-counts"] = digest(
-        count_mutation, totals=(9, 8, 1)
-    )
-    digests["source-rejected-counts"] = digest(
-        rejected_count_mutation, totals=(9, 7, 2)
-    )
+    digests["accepted-partition-object-counts"] = digest(count_mutation, totals=(9, 8, 1))
+    digests["source-rejected-counts"] = digest(rejected_count_mutation, totals=(9, 7, 2))
 
     assert len(set(digests.values()) | {original.aggregate_digest}) == len(digests) + 1
     with pytest.raises(ValueError, match="aggregate"):

@@ -174,9 +174,8 @@ Os cinco gráficos do painel saem de dois componentes em `components/charts/`:
 | Gráfico da tela | Componente base | Arquivo |
 | --- | --- | --- |
 | Saúde da experiência (Visão Geral) | `TimeSeriesChart` | `components/dashboard/experience-health-card.tsx` |
-| Buffering após a 4.2.1 (Evidências) | `TimeSeriesChart` | `app/(painel)/evidencias/buffering-chart.tsx` |
-| Volume temporal dos eventos (Eventos) | `TimeSeriesChart` | `app/(painel)/eventos/events-chart.tsx` |
-| Fluxo de processamento (Monitoramento) | `TimeSeriesChart` | `app/(painel)/monitoramento/processing-flow-chart.tsx` |
+| Taxa de travamento (Diagnóstico do incidente) | `TimeSeriesChart` | `app/(painel)/incidentes/detalhe/buffering-chart.tsx` |
+| Volume temporal dos eventos (Eventos do incidente e feed) | `TimeSeriesChart` | `app/(painel)/incidentes/_eventos/events-chart.tsx` |
 | Dispositivos afetados por horário (Incidentes) | `BarChart` | `app/(painel)/incidentes/incidents-chart.tsx` |
 
 O mapa de concentração (`geographic-map.tsx`) é um SVG próprio.

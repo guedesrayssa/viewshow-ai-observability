@@ -1,0 +1,16 @@
+{
+  "rotulo": "fake-erro-injetado",
+  "comando": "FAKE_ERROR_RATE=0.1 npm run load:llm",
+  "inicio_utc": "2026-09-29T20:27:30Z",
+  "fim_utc": "2026-09-29T20:28:26Z",
+  "duracao_s": 56,
+  "exit_code": 1,
+  "node": "v22.22.2",
+  "commit": "92f2cd10329d83d31a684da4b562cbd8794e3ba1",
+  "ambiente": {
+    "host": "Linux 6.17.0-14-generic x64, gerador e camada de LLM no mesmo processo",
+    "provider": "fake (latência simulada 800±400 ms)",
+    "rede": "nenhuma"
+  },
+  "stdout_final": "Carga da camada de LLM\n  provider: fake   modelo: fake-deterministic\n  estágios: 1, 2, 4, 8, 16   requisições/estágio: 50\n\n  C=  1  n=50     1.68 req/s  p50=719ms p95=1198ms p99=1198ms max=1198ms  llm-p95=1198ms  falha=8.0%  {\"ready\":30,\"pending\":16,\"failed\":4}\n         motivos: NO_EVIDENCE=16 PROVIDER_ERROR=4\n  C=  2  n=50     3.71 req/s  p50=627ms p95=1131ms p99=1175ms max=1175ms  llm-p95=1173ms  falha=6.0%  {\"ready\":31,\"pending\":16,\"failed\":3}\n         motivos: NO_EVIDENCE=16 PROVIDER_ERROR=3\n  C=  4  n=50     7.77 req/s  p50=581ms p95=1082ms p99=1169ms max=1169ms  llm-p95=1146ms  falha=4.0%  {\"pending\":16,\"ready\":32,\"failed\":2}\n         motivos: NO_EVIDENCE=16 PROVIDER_ERROR=2\n  C=  8  n=50    13.18 req/s  p50=604ms p95=1105ms p99=1196ms max=1196ms  llm-p95=1165ms  falha=14.0%  {\"pending\":16,\"ready\":27,\"failed\":7}\n         motivos: NO_EVIDENCE=16 PROVIDER_ERROR=7\n  C= 16  n=50    22.88 req/s  p50=540ms p95=1103ms p99=1146ms max=1146ms  llm-p95=1116ms  falha=4.0%  {\"pending\":16,\"ready\":32,\"failed\":2}\n         motivos: NO_EVIDENCE=16 PROVIDER_ERROR=2\n\n  resultado: ../../../assets/testes-carga/2026-09-29-llm/resumo-fake-erro-injetado.json\n\n  ✗ limites violados:\n    · C=1: taxa de falha 0.08 > 0.05\n    · C=2: taxa de falha 0.06 > 0.05\n    · C=8: taxa de falha 0.14 > 0.05"
+}

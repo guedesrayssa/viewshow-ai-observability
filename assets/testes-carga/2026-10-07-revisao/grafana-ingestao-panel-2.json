@@ -1,0 +1,178 @@
+{
+  "results": {
+    "A": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "refId": "A",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                1
+              ],
+              "custom": {
+                "calculatedMinStep": 5000,
+                "resultType": "matrix"
+              },
+              "executedQueryString": "Expr: rnf_retro_stage_events_per_minute_ingesting\nStep: 5s"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                },
+                "config": {
+                  "interval": 5000
+                }
+              },
+              {
+                "name": "rnf_retro_stage_events_per_minute_ingesting",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "__name__": "rnf_retro_stage_events_per_minute_ingesting",
+                  "stage": "INGESTING"
+                },
+                "config": {
+                  "displayNameFromDS": "INGESTING"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [
+                1791143700000
+              ],
+              [
+                20111.19254902662
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    "B": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "refId": "B",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                1
+              ],
+              "custom": {
+                "calculatedMinStep": 5000,
+                "resultType": "matrix"
+              },
+              "executedQueryString": "Expr: rnf_retro_stage_events_per_minute_projecting\nStep: 5s"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                },
+                "config": {
+                  "interval": 5000
+                }
+              },
+              {
+                "name": "rnf_retro_stage_events_per_minute_projecting",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "__name__": "rnf_retro_stage_events_per_minute_projecting",
+                  "stage": "PROJECTING"
+                },
+                "config": {
+                  "displayNameFromDS": "PROJECTING"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [
+                1791144660000
+              ],
+              [
+                9393.856209286767
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    "C": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "refId": "C",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                1
+              ],
+              "custom": {
+                "calculatedMinStep": 5000,
+                "resultType": "matrix"
+              },
+              "executedQueryString": "Expr: rnf_retro_stage_events_per_minute_archiving\nStep: 5s"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                },
+                "config": {
+                  "interval": 5000
+                }
+              },
+              {
+                "name": "rnf_retro_stage_events_per_minute_archiving",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "__name__": "rnf_retro_stage_events_per_minute_archiving",
+                  "stage": "ARCHIVING"
+                },
+                "config": {
+                  "displayNameFromDS": "ARCHIVING"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [
+                1791145440000
+              ],
+              [
+                11565.373272422368
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

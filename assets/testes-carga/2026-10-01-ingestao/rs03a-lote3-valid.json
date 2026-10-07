@@ -1,0 +1,16 @@
+[
+  {
+    "variant": "valid",
+    "batchId": "bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90",
+    "windowStart": "2026-10-01T12:45:00.000Z",
+    "windowEnd": "2026-10-01T13:00:00.000Z",
+    "rows": 150000,
+    "sizeBytes": 177691,
+    "sha256": "aea3775e460e7c91d5d234835fdfcdfb07ab56a5ff080c0ff8121860933041ab",
+    "schemaDifferences": [],
+    "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T124500000Z/batch_id=bat_63d744d3ab32b741eac2fe6ced26403323336bfb3b9ebf99f107321440a60c90/manifest.json",
+    "manifestVersionId": "QyKvO0LHwO3yd94HEIrH0KVldLhuO_8C",
+    "publishedAt": "2026-10-01T16:09:03.850Z",
+    "dryRun": false
+  }
+]

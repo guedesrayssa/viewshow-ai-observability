@@ -1,0 +1,83 @@
+{
+    "data": {
+        "items": [
+            {
+                "importId": "imp_01M3RWQ11YCNGTGJPV8JN00V24",
+                "requestedBy": "74c83438-1011-701e-e6bd-5412596d2f18",
+                "author": {
+                    "id": "74c83438-1011-701e-e6bd-5412596d2f18",
+                    "name": null,
+                    "email": "carga-sprint5@viewshow.test"
+                },
+                "canManageUpload": false,
+                "fileName": "argus_dump.sql.gz",
+                "sizeBytes": 11548,
+                "snapshotExtractedOn": "2026-09-30",
+                "createdAt": "2026-09-30T10:10:41.854Z",
+                "updatedAt": "2026-09-30T10:13:21.577Z",
+                "state": "READY",
+                "version": 140,
+                "progress": {
+                    "kind": "stage",
+                    "stage": "SUCCEEDED",
+                    "stageStartedAt": "2026-09-30T10:13:21.469Z",
+                    "heartbeatAt": "2026-09-30T10:13:21.469Z",
+                    "recordsRead": 1000,
+                    "recordsWritten": 1000,
+                    "recordsRejected": 0,
+                    "recordsTotal": 1000,
+                    "currentDataset": null,
+                    "datasetsCompleted": 23,
+                    "datasetsTotal": 23
+                },
+                "candidateVersion": "dsv_af5774690ec0b0a198692bb0f6c4c693ffd5bd664cc68e7f79818b15b1363749",
+                "error": null
+            },
+            {
+                "importId": "imp_01M3MP8T58XAG5KWNEDYZ8XDK6",
+                "requestedBy": "54a8a4e8-3021-708e-3fef-5cbca7c73be4",
+                "author": {
+                    "id": "54a8a4e8-3021-708e-3fef-5cbca7c73be4",
+                    "name": null,
+                    "email": "raiane@gmail.com"
+                },
+                "canManageUpload": false,
+                "fileName": "argus_dump.sql.gz",
+                "sizeBytes": 11619,
+                "snapshotExtractedOn": "2026-09-28",
+                "createdAt": "2026-09-28T19:01:06.856Z",
+                "updatedAt": "2026-09-28T19:04:45.198Z",
+                "state": "READY",
+                "version": 140,
+                "progress": {
+                    "kind": "stage",
+                    "stage": "SUCCEEDED",
+                    "stageStartedAt": "2026-09-28T19:04:45.084Z",
+                    "heartbeatAt": "2026-09-28T19:04:45.084Z",
+                    "recordsRead": 786,
+                    "recordsWritten": 786,
+                    "recordsRejected": 0,
+                    "recordsTotal": 786,
+                    "currentDataset": null,
+                    "datasetsCompleted": 23,
+                    "datasetsTotal": 23
+                },
+                "candidateVersion": "dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c",
+                "error": null
+            }
+        ],
+        "cursor": null,
+        "activeDatasetVersion": "dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c"
+    },
+    "meta": {
+        "requestId": "req_1aee0ef4a49f4bf1bde2bde69f102ff1",
+        "schemaVersion": "1.0",
+        "datasetVersion": null,
+        "generatedAt": "2026-09-30T10:15:18.367Z",
+        "window": null,
+        "partial": false,
+        "refreshAfterSeconds": null,
+        "freshness": [],
+        "warnings": []
+    }
+}

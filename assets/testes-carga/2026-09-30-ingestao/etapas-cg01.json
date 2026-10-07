@@ -1,0 +1,58 @@
+[
+ {
+  "t": "2026-09-30T10:11:38",
+  "stage": "STARTING",
+  "StageDurationMs": 130.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:11:39",
+  "stage": "RESTORING",
+  "StageDurationMs": 1347.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:11:39",
+  "stage": "VALIDATING",
+  "StageDurationMs": 564.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:11:47",
+  "stage": "INGESTING",
+  "StageDurationMs": 7393.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:11:56",
+  "stage": "PROJECTING",
+  "StageDurationMs": 8825.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:13:21",
+  "stage": "ARCHIVING",
+  "StageDurationMs": 84951.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:13:21",
+  "stage": "ACTIVATING",
+  "StageDurationMs": 225.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ },
+ {
+  "t": "2026-09-30T10:13:21",
+  "stage": "PUBLISHING",
+  "StageDurationMs": 206.0,
+  "StageFailures": null,
+  "command": "import-dump"
+ }
+]

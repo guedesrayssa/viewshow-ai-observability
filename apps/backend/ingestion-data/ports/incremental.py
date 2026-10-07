@@ -73,9 +73,7 @@ class IncrementalBatchObjectStore(ABC):
 
 class IncrementalBatchQueue(ABC):
     @abstractmethod
-    def send(
-        self, reference: IncrementalBatchReference, *, batch_id: str, dataset: str
-    ) -> None:
+    def send(self, reference: IncrementalBatchReference, *, batch_id: str, dataset: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -84,6 +82,11 @@ class IncrementalBatchQueue(ABC):
 
     @abstractmethod
     def ack(self, delivery: BatchDelivery) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def extend_visibility(self, delivery: BatchDelivery, seconds: int) -> None:
+        """Mantém a entrega invisível por ``seconds`` a partir de agora."""
         raise NotImplementedError
 
 

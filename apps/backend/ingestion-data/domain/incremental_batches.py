@@ -116,8 +116,16 @@ class IncrementalBatchManifest:
         _closed_mapping(
             payload,
             {
-                "contractVersion", "batchId", "sourceSystem", "sourceDataset", "window",
-                "revision", "data", "schema", "rowCount", "exporterVersion",
+                "contractVersion",
+                "batchId",
+                "sourceSystem",
+                "sourceDataset",
+                "window",
+                "revision",
+                "data",
+                "schema",
+                "rowCount",
+                "exporterVersion",
             },
             "manifest",
         )

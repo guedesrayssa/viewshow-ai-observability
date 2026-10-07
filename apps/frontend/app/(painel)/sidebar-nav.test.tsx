@@ -12,19 +12,50 @@ describe("sidebar navigation", () => {
     route.pathname = "/visao-geral/";
   });
 
-  it("insere Dados antes de Configurações e move o início do grupo", () => {
-    expect(NAV_ITEMS.slice(-3).map((item) => item.label)).toEqual([
+  it("deixa a investigação em Incidentes e agrupa o operacional", () => {
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual([
+      "Visão Geral",
+      "Incidentes",
       "Monitoramento",
       "Dados",
       "Configurações",
     ]);
+    expect(
+      NAV_ITEMS.find((item) => item.label === "Monitoramento"),
+    ).toMatchObject({ href: "/monitoramento", startsGroup: true });
     expect(NAV_ITEMS.find((item) => item.label === "Dados")).toMatchObject({
       href: "/dados/importacoes",
-      startsGroup: true,
     });
     expect(
-      NAV_ITEMS.find((item) => item.label === "Configurações")?.startsGroup,
+      NAV_ITEMS.find((item) => item.label === "Dados")?.startsGroup,
     ).toBeUndefined();
+    // A conta pessoal fica num grupo à parte do operacional.
+    expect(
+      NAV_ITEMS.find((item) => item.label === "Configurações"),
+    ).toMatchObject({ href: "/configuracoes", startsGroup: true });
+  });
+
+  it("não oferece Evidências nem Eventos como itens soltos", () => {
+    const labels = NAV_ITEMS.map((item) => item.label);
+    expect(labels).not.toContain("Evidências");
+    expect(labels).not.toContain("Eventos");
+  });
+
+  it("marca Incidentes nas abas do detalhe e no feed de eventos", () => {
+    for (const path of [
+      "/incidentes/detalhe/",
+      "/incidentes/detalhe/eventos/",
+      "/incidentes/detalhe/linha-do-tempo/",
+      "/incidentes/feed-eventos/",
+    ]) {
+      route.pathname = path;
+      const { unmount } = render(<SidebarNav />);
+      expect(screen.getByRole("link", { name: "Incidentes" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      unmount();
+    }
   });
 
   it("marca Dados como página atual e mantém rótulo no modo recolhido", () => {

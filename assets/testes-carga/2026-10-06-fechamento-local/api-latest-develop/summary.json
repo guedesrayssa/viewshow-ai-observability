@@ -1,0 +1,55 @@
+{
+  "scope": "API d5339f3 on host; dedicated persistent DynamoDB Local; 2 minute complement is not the historical 30 minute soak",
+  "profiles": [
+    {
+      "profile": "api-soak-50",
+      "requests": 6005,
+      "unexpectedFailureRate": 0,
+      "p95SuccessfulMs": 43.64859999999999,
+      "droppedIterations": 0,
+      "exitCode": 0,
+      "startedAt": "2026-10-07T01:35:08Z",
+      "finishedAt": "2026-10-07T01:37:09Z"
+    },
+    {
+      "profile": "api-dynamodb-indisponivel",
+      "requests": 4,
+      "unexpectedFailureRate": 0.75,
+      "p95SuccessfulMs": 2.205,
+      "droppedIterations": 0,
+      "exitCode": 107,
+      "startedAt": "2026-10-07T01:34:31Z",
+      "finishedAt": "2026-10-07T01:34:32Z"
+    },
+    {
+      "profile": "api-recuperacao",
+      "requests": 35,
+      "unexpectedFailureRate": 0,
+      "p95SuccessfulMs": 185.92779999999988,
+      "droppedIterations": 0,
+      "exitCode": 0,
+      "startedAt": "2026-10-07T01:34:37Z",
+      "finishedAt": "2026-10-07T01:35:08Z"
+    },
+    {
+      "profile": "api-baseline",
+      "requests": 34,
+      "unexpectedFailureRate": 0,
+      "p95SuccessfulMs": 80.79794999999996,
+      "droppedIterations": 0,
+      "exitCode": 0,
+      "startedAt": "2026-10-07T01:28:14Z",
+      "finishedAt": "2026-10-07T01:28:45Z"
+    },
+    {
+      "profile": "api-load-137",
+      "requests": 44159,
+      "unexpectedFailureRate": 0,
+      "p95SuccessfulMs": 465.24949999999995,
+      "droppedIterations": 42,
+      "exitCode": 99,
+      "startedAt": "2026-10-07T01:28:45Z",
+      "finishedAt": "2026-10-07T01:34:30Z"
+    }
+  ]
+}

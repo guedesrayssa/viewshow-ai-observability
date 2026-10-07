@@ -1,0 +1,1197 @@
+{
+  "implementationFilesChecked": 50,
+  "localLinksChecked": 32,
+  "evidenceFiles": 196,
+  "problems": [],
+  "hashes": [
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/README.md",
+      "bytes": 5386,
+      "sha256": "bf3690b98dc2e077961aa4bc07f3d0ab0a62978ff9cf42657574ef07a5c51b12"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/api-deployment.json",
+      "bytes": 512,
+      "sha256": "5f6650b1718e11aa5b66c69fb9d092a8a41b9e436a5566e91fc5009b44b8e367"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/cg05-750000/analysis-summary.json",
+      "bytes": 930,
+      "sha256": "43ee0c12d27255b555e0e4bca2af41a683b989481964a96a4ae95717904c64aa"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/cg05-750000/execution.txt",
+      "bytes": 716640,
+      "sha256": "4caeb59bb265f5c74676e9c497771dcfd325f739ea17ea553a3a7b397d94093b"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/cg05-750000/metadata.json",
+      "bytes": 750,
+      "sha256": "2ef26740e93ca970a35fdcc440212be64bb6b7fc0d679aab32a98d8978e7d6be"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/cg05-750000/resumo-ingestao-cg05-750000.json",
+      "bytes": 7553,
+      "sha256": "6902b1b560cd03366b941ece0bde85e2caa84b1611f476ef03dacac1f3204b0a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/cloudwatch-750k-and-recovery.json",
+      "bytes": 37449,
+      "sha256": "b879a78a80b781454fe9820fae9fead7fdddff1515fb344c79635983b36909ce"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/grafana-ingestion-aws.png",
+      "bytes": 84964,
+      "sha256": "e225f59e3d851c2a193d0fcb37368715ee6823def962b8ba7cf6f15b7c4e19bf"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/grafana-panel-1.png",
+      "bytes": 20823,
+      "sha256": "46f21d1b2315792da048527d34e88b226bafc3d7124c16e63bab9590f9d42bf5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/grafana-panel-2.png",
+      "bytes": 23972,
+      "sha256": "f55371cece95a5170c6aeb8a280ce6d71309592c25b809369843a5d5b00c5ce6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/grafana-panel-3.png",
+      "bytes": 19453,
+      "sha256": "90d9994121cbccbd6408b452bd764d662457f4ee90d9096c13b2b5fa2954f7d0"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/grafana-panel-4.png",
+      "bytes": 18677,
+      "sha256": "ec981f76531041988ea0e4d7456b3cb74be45ae2137d7a374c3aa86e4ae9f381"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/independent-count-750000.json",
+      "bytes": 7107,
+      "sha256": "2c93fbe1ef4b75e36103eedc1aec44fcb0d1ef273baeac05b1c26c65fd9df48e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/deployed-assets-fingerprint.json",
+      "bytes": 5619,
+      "sha256": "4026137d9aa4b894e9e8b9e14e113fe582bb14b879dc5d7ca5e00c0b08f02487"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/executions.json",
+      "bytes": 12454,
+      "sha256": "c4c0956bd47ff9e2476f5fb787218db855f64e676d420431e48618f394474316"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/incidentes-desktop-1.json",
+      "bytes": 244547,
+      "sha256": "5f1c55cabd03ee5b5bbe83042c085dff4cf037971ae3aafc47df5ab15f198442"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/incidentes-desktop-2.json",
+      "bytes": 244241,
+      "sha256": "d28e4db73b9d9418363c0d55b302432a062afd2b314ebb202455a83d07743d3a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/incidentes-desktop-3.json",
+      "bytes": 245372,
+      "sha256": "b16e36684078aa532665304cf07f9576eb88a85950639d4ef70c9183329d59f0"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/incidentes-mobile-1.json",
+      "bytes": 228436,
+      "sha256": "cf2dcf182f311b40b11b09c5eb4a3cdb13953fc356a2e6a8bda030635c7b7bf6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/incidentes-mobile-2.json",
+      "bytes": 310993,
+      "sha256": "1d932ca397a873e189e3f608d9c113229b4a20bdf9e20cd8e68f47625d49fcb1"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/incidentes-mobile-3.json",
+      "bytes": 228433,
+      "sha256": "33e9adec288fb8db9f1709a6caf8ab0b96111e3230732401b0b42a676a56bf3c"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/monitoramento-desktop-1.json",
+      "bytes": 260987,
+      "sha256": "27806f98033c2ac63e038a103fb24e36073d808e2611d6085063d4078663bc6d"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/monitoramento-desktop-2.json",
+      "bytes": 262649,
+      "sha256": "8eaf441fd633c399485913ef8274d11386b4a32f70b51c399b9b6253960e27f6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/monitoramento-desktop-3.json",
+      "bytes": 262029,
+      "sha256": "93d4a59b91b5a966c64377b0ca48cafa4aec66992f598dc30322490e469031a8"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/monitoramento-mobile-1.json",
+      "bytes": 218189,
+      "sha256": "b1f02ba9e8defb410f371a7b7a7ac9dbc1f78a7419cc85ce450f1de94fab6b20"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/monitoramento-mobile-2.json",
+      "bytes": 214731,
+      "sha256": "00fd1fdc238eb2eecef5b5a39e7127b1b8e29860de6cdd5101f6eb8d328d9434"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/monitoramento-mobile-3.json",
+      "bytes": 249333,
+      "sha256": "24e217ecc2e1876a3708b4bf3dd406fe13d0a308fd5c95590c29ecbf62741c88"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/validation-summary.json",
+      "bytes": 2829,
+      "sha256": "3a65c3293a6acc1e37f07d41433bcc72be9a983e1ff43bdf4c057f841496911a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/visao-geral-desktop-1.json",
+      "bytes": 304263,
+      "sha256": "89d734d926531e6eb5b6b4d2da4c2df1c7a5bda76873a31c16111e925d1d9b53"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/visao-geral-desktop-2.json",
+      "bytes": 251289,
+      "sha256": "5f5850936227311d4d91323c417f29e7175f97d8f77ec0888c35fe3916c10226"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/visao-geral-desktop-3.json",
+      "bytes": 256886,
+      "sha256": "2d868154f22953093d1e5b4cc207111e5f90bdf56d4e3d75d9113c28b78f966d"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/visao-geral-mobile-1.json",
+      "bytes": 247770,
+      "sha256": "df6a5dde90a9baa7d1767e120a1e030384fd080873749eb113ee525f5c30782b"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/visao-geral-mobile-2.json",
+      "bytes": 360151,
+      "sha256": "af616c8765bdc9979fdbf6af1c3467a1bc5cc7974a573fe369f988faecffbcc7"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/lighthouse-authenticated/visao-geral-mobile-3.json",
+      "bytes": 243202,
+      "sha256": "07d96b9edb2dc34156f70bc136aa9d650abcb42cd6c5681a8feed476c566dcd5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/r1/metadata.json",
+      "bytes": 783,
+      "sha256": "0327a5564c3fba3d78c083de803652dfa420faba2d871063c8a3a12036a53e1e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/r1/outcome.json",
+      "bytes": 1720,
+      "sha256": "eab44fc21f7a520ec22f43170777bddd3d5664a56f8ee4f86ddcd3c6b24de9c3"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/r1/progress.json",
+      "bytes": 592,
+      "sha256": "1823017bc9c390b59384755f6372deb0c1985005288d509a4feb7de473624e42"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/r1/resumo-ingestao-nominal-r1.json",
+      "bytes": 7584,
+      "sha256": "5156c3d9e4a0f077ae500d22b39cef429087bd320153fec2d7dc1bca4b77023c"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/r2/metadata.json",
+      "bytes": 703,
+      "sha256": "fb65350af50b9a4cccc570b9c9950485c7e91c6cc54976e881bccc5e43a931dd"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/r2/progress.json",
+      "bytes": 592,
+      "sha256": "9cfe5a32bb9e7071b86dee8ef8bb4fb83a74aa1436b4d9dac2384e589bf54323"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/summary.json",
+      "bytes": 1828,
+      "sha256": "9dab404c78da23a6a36268399683430345407c4b6d9ca5e90ac432c14d2f1ef3"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-1.json",
+      "bytes": 8081,
+      "sha256": "2dae609b07941d74340c4ee2c0707289a4a9585653de0131225a5e63e07f1644"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-2.json",
+      "bytes": 8556,
+      "sha256": "7db6f94b9cad92931a46704db3164bb2b574e1a6fa0cffc01e9a25f3ab09efe7"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-3.json",
+      "bytes": 10068,
+      "sha256": "65b3f71bd54553fa37606af7da0497a046394548c95d052b94a901ff4d2b267f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-4.json",
+      "bytes": 9399,
+      "sha256": "a63cea55ac7038652f9f464c8e62870c2e0405d8d526fb792e42c94f53f97ea5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-5.json",
+      "bytes": 4314,
+      "sha256": "a18f848a482ba382a1b7b40a18006458edbbb25f8660ff3cded80d0da4f244de"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-6.json",
+      "bytes": 6648,
+      "sha256": "e396e9e019a2598e34e34d52e395ada44d7fb8ba109be37b625aa93882a7fc74"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-7.json",
+      "bytes": 9049,
+      "sha256": "94fb7a46c693787c759fab889106f11317cb5336b81ebfdb427811d03177039d"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/grafana-panel-8.json",
+      "bytes": 5783,
+      "sha256": "ce78ba9f031de696e81e9d57863413bcb281c7d0cdc7f39b0b6334c2fd47f180"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/observability-validation.json",
+      "bytes": 1569,
+      "sha256": "8906617fed5c3398a49f12415e52d2c1fafe6a26cc0ba9534ce9202329000100"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/prometheus-panel-1.json",
+      "bytes": 8667,
+      "sha256": "abcc432657b0a732209d24232467a05ec69326ccdd8847924fcdffec40bf1091"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/prometheus-panel-2.json",
+      "bytes": 9302,
+      "sha256": "cd1f236045bce5b85070f63865c88e3626623ddf9f038cc6915a888ad9c4f176"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/prometheus-panel-3.json",
+      "bytes": 11647,
+      "sha256": "286fe6cc3e63bfbc084aa2bbb5ec7406c1cb068539f4e92e6ae0c50b65752e24"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/prometheus-panel-4.json",
+      "bytes": 10104,
+      "sha256": "f7f86ec06f4096916368855608962165340c617e85285b27e3da7113130e6408"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability/prometheus-targets.json",
+      "bytes": 3186,
+      "sha256": "9b8b28bd6dd0826712d33c3bea16a97f9024726ba881837648d98378bd95f2c5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/grafana-panel-1.json",
+      "bytes": 22872,
+      "sha256": "0936b7be4d6c7711bbb2beac084279536bf58b5c5156fde5c011e9bc51db3bff"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/grafana-panel-2.json",
+      "bytes": 24704,
+      "sha256": "242c72423691bc26ae33684702b0a71b1ae77662b22845b3aaaf5277b3567038"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/grafana-panel-3.json",
+      "bytes": 20329,
+      "sha256": "ae3241f2cf8374319fbd9fdb0e1711e4336457c26362c5245280ce62672d08d1"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/grafana-panel-4.json",
+      "bytes": 6716,
+      "sha256": "72a77c8d710433a5a1c2035b93e5e2feb3cdfab16218d9c13fb25743bd0394c6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/observability-validation.json",
+      "bytes": 1312,
+      "sha256": "d6589d414c4ea8d487bb13de3df9beef554d7198e068bd6c290bcc202801e29f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/prometheus-panel-1.json",
+      "bytes": 27339,
+      "sha256": "b547757fb03ae067d50e66c600c5d0c6fbe205b026085a2b1ed5fab1bd3add05"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/prometheus-panel-2.json",
+      "bytes": 29331,
+      "sha256": "0fa92a1f0dceec4c870d4757f15231738af07df67347cc91b9992e8a4d142148"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/prometheus-panel-3.json",
+      "bytes": 24949,
+      "sha256": "2e71d8d25150a959abca626dcb15783be3f9ad14318ae40972413e23de7f244e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/prometheus-targets.json",
+      "bytes": 3187,
+      "sha256": "d4c5de3e9074581f50790c97fe535885b982b24de51662983b2c792beb0ebc8f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/recovery-1000/mass.json",
+      "bytes": 792,
+      "sha256": "f6943fc438eb1a3611666b02f6ef9238f7357854d178d8a748a60b798640e88a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/recovery-1000/metadata.json",
+      "bytes": 782,
+      "sha256": "e359834db46cb15481057e57c6a92383360e8bdd204684f83e81cc8a3a5e1dc6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/recovery-1000/resumo-ingestao-recovery-1000.json",
+      "bytes": 7419,
+      "sha256": "60a40e07ab9feb772f0e32c39b08316deac96fcadfa7192bca1bb1ec16a785f1"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/recovery-1000/worker-log.json",
+      "bytes": 5087,
+      "sha256": "659db28c244c36d234eac2f9271f7a81dba8bb0aea59526364900cccfc724b92"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/recovery-after-lease/metadata.json",
+      "bytes": 788,
+      "sha256": "1af868909e646ceea04c4cd2279f3b6e4d2ec1aa1da75f6c19a85ee453184e30"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/recovery-after-lease/resumo-ingestao-recovery-after-lease.json",
+      "bytes": 8946,
+      "sha256": "da712ffd68f8eac610c4bcfde07471733819f1e7cf9b452ced9cfc3f2f078d85"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/timeout-operacional/alarm-history.json",
+      "bytes": 1289,
+      "sha256": "ed61dd3c5693c5c1760cbc6fd39379de611d48b0137f006206f6245a5b7f8f21"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/timeout-operacional/alert-analysis.json",
+      "bytes": 481,
+      "sha256": "e5c6df8d855330d7000608e84503279847e582b95492689c4555290354b51f1e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/timeout-operacional/imports-after-stop.json",
+      "bytes": 273,
+      "sha256": "07d7f2dab30654f48362bda2b0f059c7c8dc020fbd6f5019e088814099917251"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/timeout-operacional/imports-before-stop.json",
+      "bytes": 273,
+      "sha256": "07d7f2dab30654f48362bda2b0f059c7c8dc020fbd6f5019e088814099917251"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/timeout-operacional/stop-requested-at.txt",
+      "bytes": 21,
+      "sha256": "0c9dddcb1cdfb049aba01c63d48053fea9a3c1f35cd6ae5dd679e529e629afad"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/timeout-operacional/stop-task.json",
+      "bytes": 268,
+      "sha256": "9ba3ee38330adb877a953389c895b07ac3e948e6abb7c3f2e5ffe69ac521d72c"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-aws/timeout-operacional/task-after-stop.json",
+      "bytes": 670,
+      "sha256": "e45cae8b72378c039d23634ef3d971b7bb758d0cf7ef6b0f3045da115c077885"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/README.md",
+      "bytes": 7666,
+      "sha256": "c1e4abf3e9f20dde85f1b5f6452dda30b0a3d112a0a630dfec38d7f211788a51"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-baseline/end.txt",
+      "bytes": 21,
+      "sha256": "dbf2ff557eaf3f46a0a03bd9a4f11625f778d729892dd3fb36b8e7a64ab18641"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-baseline/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-baseline/k6.txt",
+      "bytes": 5999,
+      "sha256": "c7f5433f836c36283c2accbd40eb2183b4fafe8fe41c455c826284f5b55e5287"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-baseline/resumo-front-api-smoke.json",
+      "bytes": 38293,
+      "sha256": "d60a179be3298a130ad996631921af1bbe4510005e448a43ea5caae69451701d"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-baseline/start.txt",
+      "bytes": 21,
+      "sha256": "8726e995028abe59acd1d6463c1326ca08109ad3c713991d9141dcd37b814100"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-baseline/end.txt",
+      "bytes": 21,
+      "sha256": "d014708051c9bc3c4df2bb8f5878d6f3b30d68649585eee1e68fddec66a3a385"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-baseline/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-baseline/k6.txt",
+      "bytes": 6010,
+      "sha256": "e37df9b230739befda8573ff9c9bc505559ed7990381b6d1fa66cb31aa7e2395"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-baseline/resumo-front-api-smoke.json",
+      "bytes": 38399,
+      "sha256": "ee851cfbe713adfbe64ffc191f2d97c096bbad6596f1ccca477e26ce7e4b0cd3"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-baseline/start.txt",
+      "bytes": 21,
+      "sha256": "c89d8c885ad132e89dcca90282de3bba8f3e995b0ffccf1a2659d653720e68f9"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-build.txt",
+      "bytes": 65,
+      "sha256": "12017917f4bd82b020207ee0e00619bbc137e49efdd20305caf786ee3794a66f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-dynamodb-indisponivel/end.txt",
+      "bytes": 21,
+      "sha256": "0660fbe3fc4b8eb052ae5312dea92b517cc94eae2e7ba857b08e4fba77d10d5a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-dynamodb-indisponivel/exit-code.txt",
+      "bytes": 4,
+      "sha256": "bcea5d7d8b256f1bda5f90a3ede41899e94b89fccb4e4d2786073b5bfaa0002a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-dynamodb-indisponivel/k6.txt",
+      "bytes": 1680,
+      "sha256": "d6896d5c2e7dd9f6622fe34d5fa46b4f55bc7b2988eea852d21556d5433126a3"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-dynamodb-indisponivel/resumo-front-api-smoke.json",
+      "bytes": 28249,
+      "sha256": "8005aba8a73da184f417c40b1341c0b1f1204f2c538c9c19e39af89c18c82eda"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-dynamodb-indisponivel/start.txt",
+      "bytes": 21,
+      "sha256": "856b5454457326f66f1a88870457465826822367f1a0a867045bc1ae90f9ecae"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-load-137/end.txt",
+      "bytes": 21,
+      "sha256": "194442aea39be65411d091301e460a015f0fbcf259b2575c448f70fdcb8a0bfc"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-load-137/exit-code.txt",
+      "bytes": 3,
+      "sha256": "7e332bcee418f7d700927c946d36341f0651d6d90997b58d3d5441dec96b2e74"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-load-137/k6.txt",
+      "bytes": 3923063,
+      "sha256": "4fee38a3c6e8f05efb52dab1bd60f7e758a9f815f7e78655f7462fc095165f90"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-load-137/resumo-front-api-load.json",
+      "bytes": 42433,
+      "sha256": "d933ffd88838be633c4ab07130cc3cee1b75da98ecfb33e57dcbb518ac399af0"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-load-137/start.txt",
+      "bytes": 21,
+      "sha256": "d014708051c9bc3c4df2bb8f5878d6f3b30d68649585eee1e68fddec66a3a385"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-recuperacao/end.txt",
+      "bytes": 21,
+      "sha256": "9b7bccaddb6e8f2fadc9588a0dc5f8f71e1df174fe3ecbf1eb14c0f5488b3224"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-recuperacao/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-recuperacao/k6.txt",
+      "bytes": 6010,
+      "sha256": "8028354f17c81e1d48f814cb66b85b3b545c38163bf3c4b4221e78527b4b00c0"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-recuperacao/resumo-front-api-smoke.json",
+      "bytes": 38351,
+      "sha256": "0244faee8e7a4003683bf2e28511ef4268243a510d36713e951bb505d98e4f7d"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-recuperacao/start.txt",
+      "bytes": 21,
+      "sha256": "afb644affad24b69853ebc3777b07f15cb1221888c7e6852a2925d63cd8ed924"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-runtime.log.gz",
+      "bytes": 1521570,
+      "sha256": "aa231d91133770fb8919d9268ebaf6ecf4f039e0fcf5afe148db537a4319135a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-runtime.log.sha256",
+      "bytes": 82,
+      "sha256": "c3eaddad1fb40539b525f68626bf52848a29ad223a660f8250630fdc4248cfc0"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-seed.txt",
+      "bytes": 943,
+      "sha256": "feeb6df4cea6bdcf7efeece6a5cd22556e35d514603736a6b629bd5ca98441d5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-soak-50/end.txt",
+      "bytes": 21,
+      "sha256": "c1474c7178567c3015ef6f028e32a96acce75631fb9662092a425c83a3271137"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-soak-50/exit-code.txt",
+      "bytes": 3,
+      "sha256": "7e332bcee418f7d700927c946d36341f0651d6d90997b58d3d5441dec96b2e74"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-soak-50/k6.txt",
+      "bytes": 276294,
+      "sha256": "4ff2523f96ab4d9317bb85ff9e7d6b21d4525184f776d351d773f3c46f87e13c"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-soak-50/resumo-front-api-soak.json",
+      "bytes": 44995,
+      "sha256": "bb451cdf36b80accfa1338d75ee92c4676c667039d56c1ee48c1632297a0f0e9"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/api-soak-50/start.txt",
+      "bytes": 21,
+      "sha256": "9b7bccaddb6e8f2fadc9588a0dc5f8f71e1df174fe3ecbf1eb14c0f5488b3224"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-battery/summary.json",
+      "bytes": 7704,
+      "sha256": "5b55cd5b8a9e961811ba2fb444d3209cf1ea7802a0b17cddb6bb4bb9b6515cab"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-build.txt",
+      "bytes": 65,
+      "sha256": "12017917f4bd82b020207ee0e00619bbc137e49efdd20305caf786ee3794a66f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-load-137/end.txt",
+      "bytes": 21,
+      "sha256": "39993729d899a5d363400b947c996871ccdedd3672e9ff97b4ee09bc4523307a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-load-137/exit-code.txt",
+      "bytes": 3,
+      "sha256": "7e332bcee418f7d700927c946d36341f0651d6d90997b58d3d5441dec96b2e74"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-load-137/k6.txt",
+      "bytes": 52465,
+      "sha256": "dcb93478fcdfbfb4da83b82d945e1c6e6e75f7aa6720298698845f9c026463c0"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-load-137/resumo-front-api-load.json",
+      "bytes": 41933,
+      "sha256": "074a5379e2c5a68af23ff94002110782b79cb1d69450b28de663d4df126ef4e8"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-load-137/start.txt",
+      "bytes": 21,
+      "sha256": "dbf2ff557eaf3f46a0a03bd9a4f11625f778d729892dd3fb36b8e7a64ab18641"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-runtime.log.gz",
+      "bytes": 580132,
+      "sha256": "112d3a9d2c27a749db238260474fa7ab0115b29420e7ad2c3a795a61f9388972"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-runtime.log.sha256",
+      "bytes": 82,
+      "sha256": "953ad5f4d25dad9ab435aa50570f845f66a894e745daada2665df34da587e824"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-seed.txt",
+      "bytes": 943,
+      "sha256": "feeb6df4cea6bdcf7efeece6a5cd22556e35d514603736a6b629bd5ca98441d5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-smoke-1/end.txt",
+      "bytes": 21,
+      "sha256": "dbf2ff557eaf3f46a0a03bd9a4f11625f778d729892dd3fb36b8e7a64ab18641"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-smoke-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-smoke-1/k6.txt",
+      "bytes": 5999,
+      "sha256": "c7f5433f836c36283c2accbd40eb2183b4fafe8fe41c455c826284f5b55e5287"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-smoke-1/resumo-front-api-smoke.json",
+      "bytes": 38293,
+      "sha256": "d60a179be3298a130ad996631921af1bbe4510005e448a43ea5caae69451701d"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/api-smoke-1/start.txt",
+      "bytes": 21,
+      "sha256": "8726e995028abe59acd1d6463c1326ca08109ad3c713991d9141dcd37b814100"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/environment.json",
+      "bytes": 635,
+      "sha256": "4260212f6e5a08ca8753e9b6040ab1729fcd22275197702cc0e1e4dc3a2a5ebe"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/grafana-local.png",
+      "bytes": 32742,
+      "sha256": "979a028978a31ed528c77b31adb19788f67012b6fdecdc38b69d90e2eaf46a88"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/mass-150000.json",
+      "bytes": 796,
+      "sha256": "a1c6393ff69ab76aa030c373b0a361d30806471948abc6662ed08f785d49963e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/mass-300000.json",
+      "bytes": 797,
+      "sha256": "a4dac108ddff5e9ac7f20efb228098cd5f867d67693719bf28b44eb7815af41a"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/mass-750000.json",
+      "bytes": 797,
+      "sha256": "74144e32a1d8e3bb4b6cb15ea989978bf4afbb3dc2873d0084a8e5c10f218f7e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/multidataset-contention.json",
+      "bytes": 778,
+      "sha256": "ce5659768e043eae3f8e06c57fd8d3d0c05947b22c98d1a1015fe68a6acc4dda"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/node-tests.txt",
+      "bytes": 3938,
+      "sha256": "681da70708702f0383503d83ef53291783aa22f1aa5b62ed6f34d22943b181fe"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-1.json",
+      "bytes": 10734,
+      "sha256": "e1165fce4e633c267848a75799df8019b1094683818fed9ddbbed3d4796b53c6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-10.json",
+      "bytes": 10844,
+      "sha256": "3d5b37cd9e54764dad8b1417d9653dfcd4ae954ac05e0d61ff0811fb3a9e4bf2"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-2.json",
+      "bytes": 9734,
+      "sha256": "ea56100d689f5094d494ec68bc934134cd1972822ed0f3875edbca3821960fcd"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-3.json",
+      "bytes": 11603,
+      "sha256": "a283470508d355f60be50476cd421169c3dbbd420230476e0615877e492db220"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-4.json",
+      "bytes": 10395,
+      "sha256": "033da79bd003800aedcb2995e8903edbac32a123bb901b84f87d3d1d45b59751"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-5.json",
+      "bytes": 10321,
+      "sha256": "461d8a5de70a1e242dc143b151009e538e6b05d9b8dc28022ab15a50bb97c823"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-6.json",
+      "bytes": 10847,
+      "sha256": "1ac5a2b325767d6e16293753a51abe3f9d7ba94adcc19cb3169c35da5b765c38"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-7.json",
+      "bytes": 8481,
+      "sha256": "b017e228671739af5d9295ffec822fb1bbff7e77e0e6795038e083b89f7a85b5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-8.json",
+      "bytes": 10682,
+      "sha256": "3c7fc15e4ca846a84bb62374022d815d479c668411019f5f483090f9e1a583c4"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/grafana-panel-9.json",
+      "bytes": 8650,
+      "sha256": "a254bdd78a9d47cb0d2a8ea798a65aea2004c27c2ad076b155592324279a6eba"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/observability-validation.json",
+      "bytes": 1888,
+      "sha256": "492d38c4e5fbea62d963674a1bcea4667436532172a15e1ff387825fd1842e69"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-1.json",
+      "bytes": 11777,
+      "sha256": "58d7c6d7186262c9d85155f2dc770c2223ee3fdce8d3e542eaae945d68b4a14e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-10.json",
+      "bytes": 11889,
+      "sha256": "92549d3432d2ec219ce343a8dbe7565ceea20c56514530f79b3e46738fb7b08d"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-2.json",
+      "bytes": 10780,
+      "sha256": "0f659fbb25e4d963b3f3557766300bed193b20bc3cb06c5ebb162cdecda26055"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-3.json",
+      "bytes": 13287,
+      "sha256": "49855a1e3e127e153474d275f936fb954419c4a7811815bc5dcea1ed18ff899b"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-4.json",
+      "bytes": 11400,
+      "sha256": "58f6dfd9919c50f45003c4fe33cabfb5f565b678c8df8db44e439c273fcde84e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-5.json",
+      "bytes": 11389,
+      "sha256": "85f558bff406f29ab14676c53956b8c627ef5f8a5ae5b113235c5a211cd01279"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-6.json",
+      "bytes": 11891,
+      "sha256": "e70e965ee44d58e35f2de497d7e8ae67c7ca9129f1bba069241c0524cc5156c5"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-7.json",
+      "bytes": 9538,
+      "sha256": "0c71aad571e641fc2d1b8c8158bebef37e65900788123e329252ef608e89165c"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-8.json",
+      "bytes": 11720,
+      "sha256": "6dadfa1f9105ef122b50d43bc589a538738be2dcdd7539c73cbfbf2bdfc268af"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-panel-9.json",
+      "bytes": 9691,
+      "sha256": "f23669aabe2fb59c6036a9598addfac89f090df10c94667be956491e222a59f6"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/observability/prometheus-targets.json",
+      "bytes": 3188,
+      "sha256": "a117d626524a9d17fb4db45dfdb15686be92fad057ff6bb4a58a802e4d5cb8f8"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/pytest-multidataset.xml",
+      "bytes": 425,
+      "sha256": "ba869546c12f019578223abe6e6d3db78ef127fa8a17e3138a39eba0227fc6b1"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/pytest-resilience.xml",
+      "bytes": 26697,
+      "sha256": "30d8c8785c18cfc751da0088dd3fc704e2c4699e88beb61c5b5902d8f2c1d7a2"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/pytest-snapshot-generator.xml",
+      "bytes": 830,
+      "sha256": "4fbc21f9d79d7f927ad5195ff68fa4b0a4725147ceecd7b98d7061b25eca2521"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/reader-150000.json",
+      "bytes": 434,
+      "sha256": "9f1f5c2e0c829dc7ab98b198a2c66266cef6fe5f4eee051e203365b248536b69"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/reader-300000.json",
+      "bytes": 436,
+      "sha256": "fe8d6e2049ebc3d0fb714297f7276bdb958bfa372afa25c2bc7a16786968e782"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/reader-750000.json",
+      "bytes": 435,
+      "sha256": "d4c0562f01298800afba58da474a9513d11c4c7c6c2a8aee8ee9eb1a341d1aec"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-initial-invalid/execution.txt",
+      "bytes": 30899,
+      "sha256": "03a08043524a8c013af5d13314544f322ff9d9c556e628bf130ce1c61305b1e9"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-initial-invalid/metrics-at-verification.prom",
+      "bytes": 844,
+      "sha256": "f5911d75f04a2468c43173966b43ddf6a3e90b924228708cb660594636a19fcf"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-initial-invalid/stream-progress.json",
+      "bytes": 204,
+      "sha256": "0c5d485026b486ac2e17858da30de8267e6a7ae81793706e1230f0102f26e93c"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-progress.json",
+      "bytes": 204,
+      "sha256": "0c5d485026b486ac2e17858da30de8267e6a7ae81793706e1230f0102f26e93c"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/emulator-verification-failure.txt",
+      "bytes": 1413,
+      "sha256": "948cf5fed7f4e320a207482247b156ca4c71c38b2c6bbe39cebd56103c227ac3"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/execution.txt",
+      "bytes": 31812,
+      "sha256": "4b62243f4000f53b8329c2bcf831668edab6632bdb28a65db79d51af28a0cefa"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/grafana-local.png",
+      "bytes": 161918,
+      "sha256": "b7cb55058a475b60c64ab812052e41cea79ec823e7e7d22b6de1026d90684935"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/launch.json",
+      "bytes": 475,
+      "sha256": "871b425b64a357e1ab72fd69c603a374af9169398eb8e719ce2c2edea09d0130"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-1.json",
+      "bytes": 13305,
+      "sha256": "e369dc9edfd868075bab0eb4cc8a0c65be7c1980ff6ae195538b365cb5446617"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-10.json",
+      "bytes": 13453,
+      "sha256": "b7171bec7c3e79a37cca8b757a5f2f21068f6295b999627e18a6e12f1d36f0e8"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-2.json",
+      "bytes": 11999,
+      "sha256": "5776cc4efaa0c976d43c181181b0c35e6917cdfbb2ed9f97372e452bb8faf52f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-3.json",
+      "bytes": 12400,
+      "sha256": "7fce31e83db157098ddbf00a77f2a136b6de2fbb350661b4da4b4f09daf86270"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-4.json",
+      "bytes": 13593,
+      "sha256": "d7f297968e845bb83984ec20a72a60c726962581d665828f5b86f5525cd5d04e"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-5.json",
+      "bytes": 12994,
+      "sha256": "0ffbdfb1937726f12f4bfc891112d4c43f0ba82d32e89157f82fe03e90d54177"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-6.json",
+      "bytes": 13428,
+      "sha256": "9ecdabe5e33767c6690c48f43d2567ad94aefe7ba99e55498107475ffdbda7be"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-7.json",
+      "bytes": 10431,
+      "sha256": "aa79b97bf588c6fa3208b4e03f63a386afdfc3615ecc35247fa3791d13579b24"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-8.json",
+      "bytes": 13225,
+      "sha256": "60ba2d1e5b3a0f42fee3e0e8f8338f878486c6b391be8105dc3d901f1dcac749"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/grafana-panel-9.json",
+      "bytes": 10595,
+      "sha256": "79a2bc50c397f46bd492c81c3419bfc3f65a5ec8a21be2b44dce303729b76e77"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/observability-validation.json",
+      "bytes": 3194,
+      "sha256": "506164c1a2bf695f54fa81615ee8a7133efc0860702d2697212d1ed08d63db9f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-1.json",
+      "bytes": 14921,
+      "sha256": "5352d4cdbf1915d8fd10f700b8a00f8be5aa844e4191bdef37b8d4a2c594ed08"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-10.json",
+      "bytes": 15005,
+      "sha256": "8d3dcfa671fb928f62ee7f0b63b58e39383e8e908f88da1089f4ab4129ac5272"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-2.json",
+      "bytes": 13619,
+      "sha256": "fb2272a6a2955018c579bbebdc250324537ed24410fdcd4d01375d571b13d068"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-3.json",
+      "bytes": 14014,
+      "sha256": "1265492ebcd226b6feaa08becd15d4db9eaf3c5c2868a0e543578f817d3f5054"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-4.json",
+      "bytes": 15173,
+      "sha256": "7d5caeeea3e27e7dc626d3b43100c0137e7e0786f73780ec0fc554abaeb78c36"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-5.json",
+      "bytes": 14431,
+      "sha256": "6e913813695fc2bb99c092e639af05b17826453c9b4574c0af1d5d1465012766"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-6.json",
+      "bytes": 14989,
+      "sha256": "4b528f65209d4a54a7194ddb11cd020cd0f096dc7a6e3db00ff71f344abb0547"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-7.json",
+      "bytes": 12004,
+      "sha256": "f64a9388f41094b76653f946a307cede564b04ef56f9d64613b4dd35c5589ec0"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-8.json",
+      "bytes": 14821,
+      "sha256": "e330d052fd0b9faedbabeefc4ccee1550d3b502e370fcc6bd9032e2089f7aa49"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-panel-9.json",
+      "bytes": 12202,
+      "sha256": "5dc889c9f4b516b2a08cb07dff082ca4b56613fb1b507c8ccf9a9ad775cd4e1f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/observability/prometheus-targets.json",
+      "bytes": 3410,
+      "sha256": "06b81fca8973e764ec2bd4e0e9c9bf6530c48eb6037f766bba48be914b099ea3"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/stream-progress.json",
+      "bytes": 200,
+      "sha256": "54139f08013ffdd61f84b94cdf2d065e74dd725905ba8eb20bf8cbbaa754f7aa"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/stream-samples.json",
+      "bytes": 35023,
+      "sha256": "66c011fcbad205c3bd0927010e5c06b53e379c3655e8cfed25afe766aa15388f"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/stream-validated/stream-summary.json",
+      "bytes": 1243,
+      "sha256": "b7f57b17e6a5e73c08d8c1faf55bd6356c8c0d8ea09a5197255ac0769103b2cd"
+    },
+    {
+      "path": "assets/testes-carga/2026-10-06-fechamento-local/timeout-mysql.json",
+      "bytes": 768,
+      "sha256": "7c4f93e8ac0e7fa961d740933d2c7b185308a006670df6fd6fb5081b98d3a7ef"
+    }
+  ],
+  "deliverySourceHashes": [
+    {
+      "path": "apps/backend/agentic/.dockerignore",
+      "sha256": "4e85de9a3797417904aa4e3f90601b03c7da63cb62e5eb6afe11042660a83d23"
+    },
+    {
+      "path": "apps/backend/agentic/Dockerfile",
+      "sha256": "06888e9d2279040ab6b35788f2fd2520a20b296c4b47ed71c4e566c359ef6b82"
+    },
+    {
+      "path": "apps/backend/api/.dockerignore",
+      "sha256": "73dce048fc2ad2413f596a3179616bccde4cc0a8e121a2bce5e03cdb62448e95"
+    },
+    {
+      "path": "apps/backend/api/Dockerfile",
+      "sha256": "ad0d4043daf7cb7adbaa5e9c56614fc603d3106616435f22656eee1a724fcef8"
+    },
+    {
+      "path": "apps/backend/api/loadtest/k6/front-api.js",
+      "sha256": "8cba4e4104ba87e0991bb20db5f2ee85229c3283fdbd4bb6281af7202c8ca3af"
+    },
+    {
+      "path": "apps/backend/api/loadtest/k6/ingestao-batch.js",
+      "sha256": "5e74b53c6b2207a076dcd98d01f9ff8cc74750b2dcb647693dc8831f0e378a92"
+    },
+    {
+      "path": "apps/backend/api/loadtest/k6/lib/session.js",
+      "sha256": "63386749982d8b0b63f8e60b386ccdaaa2fcc6ac62beeaf9363a681ebd794b83"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/capacity-contract.mjs",
+      "sha256": "713605833ec92bfd91d1295d0d8e3c7e61731ca291918adf91797f9053f54a79"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/collect-aws-metrics.py",
+      "sha256": "1b3b66804bd311f56f8166fec574ab5700ee0bb3f916c7032e9117655fbc00cd"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/collect-evidence.mjs",
+      "sha256": "dfe1550e2ef9881e69aeb04a6bf132deda9e7e3ddc4cbed85c199a0fa0993baf"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/compose.yml",
+      "sha256": "332c448e7eb7675eee2a6946c25a29da27b4120787979e2fa9af62df04e8b899"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/fingerprint-frontend.mjs",
+      "sha256": "bd124acc4d92992a970d4528dd8c358ee0381210e684aea4416243e4a4246f6b"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/lighthouse-authenticated.mjs",
+      "sha256": "cdbd5d46e0067423a4036e056570fa58a99109a31d327b6c6e082b869b8424d6"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/observability-contract.mjs",
+      "sha256": "fff0ec88348b86a46e00b01f19b452b12bd8b21e7f5750efcc6f5beb607a3656"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/prometheus.yml",
+      "sha256": "596809b9d2dc87fe02b36c172c7a08e7befa54adf5245328b5f23a727dacb5a8"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/provision-cloudwatch.mjs",
+      "sha256": "78a44241a955983607bf00b3c9284bd96f1a97e55c7cb4f3abcdbf954edd5ebe"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/provisioning/dashboards/lab.yml",
+      "sha256": "7394662bc3d3a18896dcf1d84240f64586b0d06348dea9bed715607534fccbe6"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/provisioning/dashboards/rnf-aws.json",
+      "sha256": "e4e4a7aadcfba13ab88a13cb176dc4322993249cc54cf82700b5279ba44f8a5e"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/provisioning/dashboards/rnf-ingestion-aws.json",
+      "sha256": "321c34c80530d3a133bcc77c68232d75b04a8bb28c614decc46a0ee51448f1f6"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/provisioning/dashboards/rnf-local.json",
+      "sha256": "52ad5db0190e941756fa32caa60eecc0b76623354cb1d5e9067e4bcfd5ad49b6"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/provisioning/datasources/lab.yml",
+      "sha256": "238bcf9fc0b4175d39638408e85e2c790f5f89dfd68c54a520c82f290b44a614"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/run-aws-evidence.mjs",
+      "sha256": "c67c13059f98ccb7e1662d5da015e613d7dd37321cca246e02b9059cdf8086b3"
+    },
+    {
+      "path": "apps/backend/api/loadtest/lab/run-nominal-repetitions.mjs",
+      "sha256": "847ff1269e0e90ed2ccdcbfa99d276f46760cbbd12008d4fe01c4537eab09ca2"
+    },
+    {
+      "path": "apps/backend/api/loadtest/scripts/verify-rnf-artifact.py",
+      "sha256": "ae8c7628774deb96e1470b272ae7b3150a4ca8ea9e19a47056d31f5cb2ddbf9d"
+    },
+    {
+      "path": "apps/backend/ingestion-data/.dockerignore",
+      "sha256": "d7db947895823daedd7e0a82771a13e81c09f73d73fc15e3dca202f005018c18"
+    },
+    {
+      "path": "apps/backend/ingestion-data/Dockerfile",
+      "sha256": "cb64196cb4258576a26c52ecde6be9a75a09acce0cf0d3112405df80253b81a8"
+    },
+    {
+      "path": "apps/backend/ingestion-data/adapters/telemetry/cloudwatch_metrics.py",
+      "sha256": "41d85296b1946221a6f9e46c13dea174fa740e1e02440d188ecde764e73c5a69"
+    },
+    {
+      "path": "apps/backend/ingestion-data/application/visibility_heartbeat.py",
+      "sha256": "86581e70f5237817076eccd361faa1cd24c784c922f84cd407bb2a9d08dbfc80"
+    },
+    {
+      "path": "apps/backend/ingestion-data/docker-compose.test.yml",
+      "sha256": "92ac126e21f249771f254c4071197b1e3232542371b2e611a17685d7853bc3e9"
+    },
+    {
+      "path": "apps/backend/ingestion-data/scripts/benchmark_snapshot_reader.py",
+      "sha256": "f883c8442d1d065330e8ce06716dcf759f7a7935393ca935c05c12c80ea510db"
+    },
+    {
+      "path": "apps/backend/ingestion-data/scripts/build_benchmark_snapshot.py",
+      "sha256": "08fcc4286c2af972824eccd84f6eb890ad1f4f12d6e39af1ba4887f4d967e69f"
+    },
+    {
+      "path": "apps/backend/ingestion-data/scripts/publish_incremental_batch.py",
+      "sha256": "7a44235a64196a8768de23e954af52ac01308b62a8fa2fb296a75d111d00417d"
+    },
+    {
+      "path": "apps/backend/ingestion-data/scripts/rnf_local_evidence.py",
+      "sha256": "2b8e57b4c27d28e9c132d2c064098406df3b9596375f3e8d5a3e13f3b33507c5"
+    },
+    {
+      "path": "apps/backend/ingestion-data/scripts/verify_rnf_aws_count.py",
+      "sha256": "d91ef14caf3ee8500bfed5395b73fa3cf7ef6e769100bb287925703bcc307763"
+    },
+    {
+      "path": "apps/backend/ingestion-data/scripts/verify_rnf_stream.py",
+      "sha256": "a8376d9c87b93a99453cdc9bda5f74d8b62f9dfab8b0e4d2627700f4545b4dfb"
+    },
+    {
+      "path": "apps/backend/ingestion-data/tests/resilience/test_multidataset_fifo_contention.py",
+      "sha256": "62c8292f0f7cd3c5dcf2f21ccc7106c25f1b44c426b76faacce65372fbedd453"
+    },
+    {
+      "path": "apps/fullstack/alb.tf",
+      "sha256": "6bffb1702db7ee84c7f9a245dee698b7b67f5ff2c28442219b4f65c9447fa3f8"
+    },
+    {
+      "path": "apps/fullstack/apigateway.tf",
+      "sha256": "0c47826770c623d3280e67a4050e706e2ea98bbd361dfcd43ec97e59fe6f0f42"
+    },
+    {
+      "path": "apps/fullstack/autoscaling.tf",
+      "sha256": "6be88dec4dbc6a9b8be68e0f072f4eeedd78d495ed6d93abbbe734c21729f761"
+    },
+    {
+      "path": "apps/fullstack/ecs.tf",
+      "sha256": "c44076ff0a1de25996ab66f5cc9fcd734f43a29547d2d67864064743b2878cef"
+    },
+    {
+      "path": "apps/fullstack/ingestion-ecs.tf",
+      "sha256": "5197a9984b2512e3ad55f1cd6f483866e9a1d6addb86574240d9c23056b8c1e3"
+    },
+    {
+      "path": "apps/fullstack/ingestion-messaging.tf",
+      "sha256": "183922f884b8654dddd30418344ddeeab6989ad70a2dbd1d8a32f54884aa0052"
+    },
+    {
+      "path": "apps/fullstack/ingestion-observability.tf",
+      "sha256": "6d46c22789fe3ca3ab56dec9633dee0e2fb2978449304606ba406f8e7c28b13f"
+    },
+    {
+      "path": "apps/fullstack/ingestion-scheduler.tf",
+      "sha256": "2310a0c5686d01ccca7d61b90ae8d703495f35a61b6eb37213c31f47f12a6c6f"
+    },
+    {
+      "path": "apps/fullstack/observability-aws.tf",
+      "sha256": "47d5b1ffc5b346aa419a3df20dcd313dd273e12dddf120753dcd41ace46ab0c2"
+    },
+    {
+      "path": "apps/fullstack/observability/aws/user-data.sh.tftpl",
+      "sha256": "07e8bb733cb9faded4f5898665814f201138064f92434f8dd2c7a0b22169dfe8"
+    },
+    {
+      "path": "apps/fullstack/observability/aws/view-show-ingestion.json.tftpl",
+      "sha256": "d4127962acad7af07ebeb56b40c6be55ac5cae728732c60fe8cc32e3fd5febd5"
+    },
+    {
+      "path": "apps/fullstack/observability/grafana/provisioning/datasources/datasources.yml",
+      "sha256": "37369d924b01dae31c2223e13a0370af1503ba067cdb3fbad85f4b9a0e899a5b"
+    },
+    {
+      "path": "apps/fullstack/observability/prometheus/prometheus.yml",
+      "sha256": "58bec8a90f27d8b5ef623fa795319b5d472e5ad17d34f7480a4546296db4c5aa"
+    },
+    {
+      "path": "apps/fullstack/observability/prometheus/rules/view-show.yml",
+      "sha256": "fdfad319253d375490df78bf01125428ad45b64b83ead216ffe1d1ef21aba455"
+    }
+  ],
+  "outputHashes": [
+    {
+      "path": "output/pdf/sintese-testes-nao-funcionais.pdf",
+      "sha256": "cb47e86d60723582112b681ed7f309b0f55cd7653afa260e5f685de7b1cbbcdc"
+    }
+  ],
+  "passed": true
+}

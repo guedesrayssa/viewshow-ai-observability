@@ -1,0 +1,53 @@
+{
+  "data": {
+    "importId": "imp_01M3RX2BWCE9VGQEN76KYRWTWW",
+    "requestedBy": "74c83438-1011-701e-e6bd-5412596d2f18",
+    "author": {
+      "id": "74c83438-1011-701e-e6bd-5412596d2f18",
+      "name": null,
+      "email": "carga-sprint5@viewshow.test"
+    },
+    "canManageUpload": false,
+    "fileName": "argus_dump.sql.gz",
+    "sizeBytes": 917703,
+    "snapshotExtractedOn": "2026-09-30",
+    "createdAt": "2026-09-30T10:16:53.388Z",
+    "updatedAt": "2026-09-30T11:16:53.063Z",
+    "state": "FAILED",
+    "version": 533,
+    "progress": {
+      "kind": "stage",
+      "stage": "ARCHIVING",
+      "stageStartedAt": "2026-09-30T10:46:30.857Z",
+      "heartbeatAt": "2026-09-30T11:15:14.843Z",
+      "recordsRead": 150000,
+      "recordsWritten": 150000,
+      "recordsRejected": 0,
+      "recordsTotal": 150000,
+      "currentDataset": null,
+      "datasetsCompleted": 23,
+      "datasetsTotal": 23
+    },
+    "candidateVersion": null,
+    "error": {
+      "code": "WORKER_STOPPED",
+      "message": "Não foi possível concluir a importação.",
+      "requestId": "req_import_01M3RX2BWCE9VGQEN76KYRWTWW",
+      "stage": null,
+      "retryable": true,
+      "attempt": 1,
+      "maxAttempts": null
+    }
+  },
+  "meta": {
+    "requestId": "req_77f99ca2f17c403d885366c575b2a355",
+    "schemaVersion": "1.0",
+    "datasetVersion": null,
+    "generatedAt": "2026-09-30T11:19:59.792Z",
+    "window": null,
+    "partial": false,
+    "refreshAfterSeconds": null,
+    "freshness": [],
+    "warnings": []
+  }
+}

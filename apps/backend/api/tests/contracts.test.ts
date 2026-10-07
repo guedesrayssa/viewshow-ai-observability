@@ -284,6 +284,8 @@ describe("versioned contracts", () => {
       eventId: event.id,
       incidentId: "inc_known",
       type: "argus_event_correlation",
+      title: null,
+      statement: null,
       relation: "context",
       hypothesisIds: [],
       strength: "moderate",
@@ -1475,7 +1477,9 @@ describe("versioned contracts", () => {
       get: expect.any(Object),
       patch: expect.any(Object),
     });
-    expect(document.components.schemas.AuthenticatedSession?.properties?.user).toMatchObject({
+    expect(
+      document.components.schemas.AuthenticatedSession?.properties?.user,
+    ).toMatchObject({
       required: expect.arrayContaining(["role", "issuedAt"]),
     });
     const passwordLogin = document.paths["/auth/login"] as {
@@ -1487,7 +1491,10 @@ describe("versioned contracts", () => {
                 schema?: {
                   allOf?: Array<{
                     properties?: {
-                      data?: { required?: readonly string[]; properties?: Record<string, unknown> };
+                      data?: {
+                        required?: readonly string[];
+                        properties?: Record<string, unknown>;
+                      };
                     };
                   }>;
                 };
@@ -1497,10 +1504,10 @@ describe("versioned contracts", () => {
         };
       };
     };
-    const loginData = passwordLogin.post?.responses?.["200"]?.content?.["application/json"]?.schema?.allOf?.[1]?.properties?.data;
-    expect(loginData?.required).toEqual(
-      expect.arrayContaining(["user"]),
-    );
+    const loginData =
+      passwordLogin.post?.responses?.["200"]?.content?.["application/json"]
+        ?.schema?.allOf?.[1]?.properties?.data;
+    expect(loginData?.required).toEqual(expect.arrayContaining(["user"]));
     expect(loginData?.properties).not.toHaveProperty("token");
     expect(loginData?.properties).not.toHaveProperty("tokenType");
     expect(loginData?.properties).not.toHaveProperty("expiresInSeconds");

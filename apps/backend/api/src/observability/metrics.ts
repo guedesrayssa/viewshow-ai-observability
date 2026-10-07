@@ -1,15 +1,36 @@
 import type { RequestHandler } from "express";
-import type { RumTelemetry } from "@view-show/contracts";
+import { TraceFlags, trace } from "@opentelemetry/api";
+import {
+  getLogTransportStats,
+  resolveServiceMetadata,
+  type RumTelemetry,
+} from "@view-show/contracts";
 import {
   Counter,
   Gauge,
   Histogram,
   Registry,
   collectDefaultMetrics,
+  type OpenMetricsContentType,
 } from "prom-client";
 
+/** Resultado de uma tentativa de login por senha (cardinalidade fechada). */
+const LOGIN_OUTCOMES = [
+  "success",
+  "invalid_credentials",
+  "blocked",
+  "rate_limited",
+  "unavailable",
+  "error",
+] as const;
+export type LoginOutcome = (typeof LOGIN_OUTCOMES)[number];
+
 export class Metrics {
-  readonly registry = new Registry();
+  /**
+   * Formato OpenMetrics: é o único que carrega exemplares. O Prometheus
+   * negocia o formato pelo cabeçalho `Accept`, então a coleta segue igual.
+   */
+  readonly registry = Metrics.createRegistry();
   private readonly requests = new Counter({
     name: "http_requests_total",
     help: "Total HTTP requests",
@@ -25,6 +46,8 @@ export class Metrics {
     // sobrecarga (as rodadas em ECS Fargate mediram p95 entre 17 s e 43 s),
     // e o painel de latência do Grafana passava a mentir em platô.
     buckets: [0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5, 10, 15, 20, 30, 45, 60],
+    // Cada amostra amostrada guarda o trace_id: do pico no gráfico ao trace.
+    enableExemplars: true,
     registers: [this.registry],
   });
   private readonly failed = new Counter({
@@ -50,6 +73,18 @@ export class Metrics {
     name: "hypothesis_review_submissions_total",
     help: "Submitted operator verdicts for incident hypotheses",
     labelNames: ["service_name", "verdict"],
+    registers: [this.registry],
+  });
+  private readonly loginAttempts = new Counter({
+    name: "auth_login_attempts_total",
+    help: "Password login attempts by outcome (brute force signal, RNF04)",
+    labelNames: ["service_name", "outcome"],
+    registers: [this.registry],
+  });
+  private readonly buildInfo = new Gauge({
+    name: "view_show_build_info",
+    help: "Running build; always 1. Correlate latency and errors with deploys",
+    labelNames: ["service_name", "version", "environment"],
     registers: [this.registry],
   });
   private readonly rumHistograms: ReadonlyMap<string, Histogram<string>> =
@@ -116,8 +151,82 @@ export class Metrics {
     ),
   );
 
+  private static createRegistry(): Registry<OpenMetricsContentType> {
+    const registry = new Registry<OpenMetricsContentType>();
+    registry.setContentType(Registry.OPENMETRICS_CONTENT_TYPE);
+    return registry;
+  }
+
   constructor(private readonly serviceName: string) {
     collectDefaultMetrics({ register: this.registry, prefix: "view_show_" });
+    const metadata = resolveServiceMetadata(serviceName);
+    this.buildInfo.set(
+      {
+        service_name: serviceName,
+        version: metadata.version,
+        environment: metadata.environment,
+      },
+      1,
+    );
+    // Séries em zero desde o início: sem amostra o Prometheus não tem série, e
+    // o painel mostraria "No data" em vez de 0.
+    for (const outcome of LOGIN_OUTCOMES)
+      this.loginAttempts.inc({ service_name: serviceName, outcome }, 0);
+    this.registerLogShippingMetrics();
+  }
+
+  /**
+   * A saúde do envio de logs ao Loki é uma métrica: sem ela, uma falha do
+   * transporte (best-effort por desenho) seria invisível justo quando se
+   * precisa dos logs.
+   */
+  private registerLogShippingMetrics(): void {
+    const labels = { service_name: this.serviceName };
+    const delta = (read: () => number) => {
+      let last = 0;
+      return (counter: Counter<"service_name">) => {
+        const current = read();
+        if (current > last) counter.inc(labels, current - last);
+        last = current;
+      };
+    };
+    const track = (name: string, help: string, read: () => number): void => {
+      const update = delta(read);
+      const counter = new Counter({
+        name,
+        help,
+        labelNames: ["service_name"],
+        registers: [this.registry],
+        collect() {
+          update(this);
+        },
+      });
+      counter.inc(labels, 0);
+    };
+    track(
+      "log_shipping_pushed_lines_total",
+      "Log lines delivered to Loki",
+      () => getLogTransportStats().pushedLines,
+    );
+    track(
+      "log_shipping_failures_total",
+      "Failed Loki push requests (stdout remains the durable log)",
+      () => getLogTransportStats().failures,
+    );
+    track(
+      "log_shipping_dropped_lines_total",
+      "Log lines dropped before reaching Loki (failure or full buffer)",
+      () => getLogTransportStats().droppedLines,
+    );
+    new Gauge({
+      name: "log_shipping_buffered_lines",
+      help: "Log lines waiting to be pushed to Loki",
+      labelNames: ["service_name"],
+      registers: [this.registry],
+      collect() {
+        this.set(labels, getLogTransportStats().bufferedLines);
+      },
+    });
   }
 
   middleware(): RequestHandler {
@@ -140,10 +249,29 @@ export class Metrics {
         };
         this.requests.inc(labels);
         if (response.statusCode >= 400) this.failed.inc(labels);
-        this.duration.observe(
+        const seconds =
+          Number(process.hrtime.bigint() - started) / 1_000_000_000;
+        const span = trace.getActiveSpan()?.spanContext();
+        const sampled =
+          span !== undefined &&
+          trace.isSpanContextValid(span) &&
+          (span.traceFlags & TraceFlags.SAMPLED) !== 0;
+        // Com enableExemplars o prom-client exige a forma objeto em todo
+        // observe(); a chamada posicional lança TypeError dentro do handler.
+        this.duration.observe({
           labels,
-          Number(process.hrtime.bigint() - started) / 1_000_000_000,
-        );
+          value: seconds,
+          // A tipagem do prom-client exige que o exemplar use os labels da
+          // métrica; no OpenMetrics ele tem rótulos próprios (trace_id).
+          ...(sampled
+            ? {
+                exemplarLabels: {
+                  trace_id: span.traceId,
+                  span_id: span.spanId,
+                } as never,
+              }
+            : {}),
+        });
         const contentLength = Number(response.getHeader("content-length"));
         if (Number.isFinite(contentLength))
           this.responseSize.observe(
@@ -184,5 +312,9 @@ export class Metrics {
       service_name: this.serviceName,
       verdict,
     });
+  }
+
+  observeLogin(outcome: LoginOutcome): void {
+    this.loginAttempts.inc({ service_name: this.serviceName, outcome });
   }
 }

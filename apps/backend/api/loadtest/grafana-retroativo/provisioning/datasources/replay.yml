@@ -1,0 +1,13 @@
+apiVersion: 1
+datasources:
+  - name: Dados preservados — visualização retrospectiva
+    uid: rnf-retro
+    type: prometheus
+    access: proxy
+    url: http://replay:8080
+    isDefault: true
+    jsonData:
+      httpMethod: GET
+      timeInterval: 5s
+      prometheusType: Prometheus
+      prometheusVersion: 3.0.0

@@ -1,0 +1,17 @@
+{{- range .Values.resources }}
+{{- $resource := deepCopy . }}
+{{- if and (eq .kind "CronJob") (eq .metadata.name "ingestion-sync") }}
+{{- $existing := lookup "batch/v1" "CronJob" .metadata.namespace .metadata.name }}
+{{- if $existing }}
+{{- $_ := set $resource.spec "suspend" $existing.spec.suspend }}
+{{- end }}
+{{- end }}
+{{- if and (eq .kind "Deployment") (eq .metadata.name "api") }}
+{{- $existing := lookup "apps/v1" "Deployment" .metadata.namespace .metadata.name }}
+{{- if $existing }}
+{{- $_ := set $resource.spec "replicas" $existing.spec.replicas }}
+{{- end }}
+{{- end }}
+---
+{{ toYaml $resource }}
+{{- end }}

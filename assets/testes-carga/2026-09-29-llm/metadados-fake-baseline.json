@@ -1,0 +1,16 @@
+{
+  "rotulo": "fake-baseline",
+  "comando": "npm run load:llm",
+  "inicio_utc": "2026-09-29T20:26:36Z",
+  "fim_utc": "2026-09-29T20:27:30Z",
+  "duracao_s": 54,
+  "exit_code": 0,
+  "node": "v22.22.2",
+  "commit": "92f2cd10329d83d31a684da4b562cbd8794e3ba1",
+  "ambiente": {
+    "host": "Linux 6.17.0-14-generic x64, gerador e camada de LLM no mesmo processo",
+    "provider": "fake (latência simulada 800±400 ms)",
+    "rede": "nenhuma"
+  },
+  "stdout_final": "Carga da camada de LLM\n  provider: fake   modelo: fake-deterministic\n  estágios: 1, 2, 4, 8, 16   requisições/estágio: 50\n\n  C=  1  n=50     1.87 req/s  p50=584ms p95=1159ms p99=1190ms max=1190ms  llm-p95=1164ms  falha=0.0%  {\"ready\":34,\"pending\":16}\n         motivos: NO_EVIDENCE=16\n  C=  2  n=50     3.57 req/s  p50=630ms p95=1184ms p99=1199ms max=1199ms  llm-p95=1199ms  falha=0.0%  {\"ready\":34,\"pending\":16}\n         motivos: NO_EVIDENCE=16\n  C=  4  n=50     6.76 req/s  p50=564ms p95=1180ms p99=1200ms max=1200ms  llm-p95=1194ms  falha=0.0%  {\"pending\":16,\"ready\":34}\n         motivos: NO_EVIDENCE=16\n  C=  8  n=50    12.94 req/s  p50=574ms p95=1101ms p99=1163ms max=1163ms  llm-p95=1116ms  falha=0.0%  {\"pending\":16,\"ready\":34}\n         motivos: NO_EVIDENCE=16\n  C= 16  n=50    24.03 req/s  p50=528ms p95=1162ms p99=1177ms max=1177ms  llm-p95=1171ms  falha=0.0%  {\"pending\":16,\"ready\":34}\n         motivos: NO_EVIDENCE=16\n\n  resultado: ../../../assets/testes-carga/2026-09-29-llm/resumo-fake-baseline.json\n  ✓ todos os estágios dentro dos limites"
+}

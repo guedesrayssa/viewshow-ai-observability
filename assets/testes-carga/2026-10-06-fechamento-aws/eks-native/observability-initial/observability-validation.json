@@ -1,0 +1,68 @@
+{
+  "start": "2026-10-07T01:59:00Z",
+  "end": "2026-10-07T02:01:00Z",
+  "dashboardUid": "rnf-eks-native",
+  "checks": [
+    {
+      "panelId": 1,
+      "title": "Latência API p95 (s)",
+      "httpStatus": 200,
+      "samples": 0,
+      "displayedQueries": [
+        {
+          "refId": "A",
+          "samples": 0,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": false
+    },
+    {
+      "panelId": 2,
+      "title": "Throughput API (req/s)",
+      "httpStatus": 200,
+      "samples": 0,
+      "displayedQueries": [
+        {
+          "refId": "A",
+          "samples": 0,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": false
+    },
+    {
+      "panelId": 3,
+      "title": "Erros API (5xx/s)",
+      "httpStatus": 200,
+      "samples": 0,
+      "displayedQueries": [
+        {
+          "refId": "A",
+          "samples": 0,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": false
+    },
+    {
+      "panelId": 4,
+      "title": "CPU API / limites dos Pods (%)",
+      "httpStatus": 200,
+      "samples": 23,
+      "displayedQueries": [
+        {
+          "refId": "A",
+          "samples": 23,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "passed": false
+}

@@ -47,6 +47,33 @@ groups:
         annotations:
           summary: Frontend LCP p95 is in the poor range
           runbook: apps/fullstack/observability/docs/runbooks/frontend-web-vitals.md
+      - alert: ViewShowApiLoginFailuresHigh
+        expr: sum(increase(auth_login_attempts_total{job="view-show-api",outcome=~"invalid_credentials|blocked"}[1m])) > 20
+        for: 1m
+        labels:
+          severity: warning
+          service: view-show-api
+        annotations:
+          summary: More than 20 rejected logins per minute (RNF04)
+          runbook: apps/fullstack/observability/docs/runbooks/api-login-failures.md
+      - alert: ViewShowApiEventLoopLag
+        expr: max(view_show_nodejs_eventloop_lag_p99_seconds{job="view-show-api"}) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: view-show-api
+        annotations:
+          summary: Node.js event loop p99 lag is above 500 ms (CPU saturation)
+          runbook: apps/fullstack/observability/docs/runbooks/api-event-loop-lag.md
+      - alert: ViewShowApiLogShippingFailing
+        expr: sum(increase(log_shipping_dropped_lines_total{job="view-show-api"}[10m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: view-show-api
+        annotations:
+          summary: API log lines are not reaching Loki; stdout still has them
+          runbook: apps/fullstack/observability/docs/runbooks/api-log-shipping.md
   - name: view-show-workers
     rules:
       - alert: ViewShowIngestionRunSlow
@@ -82,4 +109,17 @@ groups:
           service: view-show-agentic
         annotations:
           summary: Analysis worker dead-letter queue contains messages
+          runbook: apps/fullstack/observability/docs/runbooks/agentic-high-failure-rate.md
+      - alert: ViewShowLlmHighFailureRate
+        expr: |
+          sum(rate(llm_requests_total{status="failure"}[10m]))
+          /
+          clamp_min(sum(rate(llm_requests_total[10m])), 0.001)
+          > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          service: view-show-agentic
+        annotations:
+          summary: LLM request failure ratio is above five percent
           runbook: apps/fullstack/observability/docs/runbooks/agentic-high-failure-rate.md

@@ -1,0 +1,255 @@
+{
+  "account": "239162056821",
+  "region": "us-east-1",
+  "candidateVersionDerivedFromSnapshot": "dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1",
+  "table": "view-show-iac-operacional",
+  "dumpSha256": "cc77912c859201baef6670b983944196b55f0c180502c566a3485e5286eded3e",
+  "expectedTotal": 150000,
+  "observedTotal": 150000,
+  "datasets": [
+    {
+      "dataset": "signal_bucket",
+      "expected": 149974,
+      "observed": 149974,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260829",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260830",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260831",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260901",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260902",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260903",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260904",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260905",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260906",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260907",
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#signal_bucket#20260908"
+      ],
+      "requests": 160,
+      "passed": true
+    },
+    {
+      "dataset": "live_active_15min",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#live_active_15min#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "live_qoe_hourly",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#live_qoe_hourly#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "player_hourly",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#player_hourly#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "device_hourly",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#device_hourly#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "geo_hourly",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#geo_hourly#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "live_error_attr_hourly",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#live_error_attr_hourly#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "error_cat_hourly",
+      "expected": 2,
+      "observed": 2,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#error_cat_hourly#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "incidents",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INCIDENT#TS#incidents#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "signal_meta",
+      "expected": 2,
+      "observed": 2,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INGESTION#SOURCE#signal_meta#20261006"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "collector_run",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INGESTION#SOURCE#collector_run#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "apollo_run",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INGESTION#SOURCE#apollo_run#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "ca_run",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INGESTION#SOURCE#ca_run#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "nr_run",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INGESTION#SOURCE#nr_run#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "prom_run",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INGESTION#SOURCE#prom_run#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "rpaas_run",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#INGESTION#SOURCE#rpaas_run#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "app_error",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#app_error#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "app_error_model",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#app_error_model#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "app_error_version",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#app_error_version#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "cdn_vod_shadow",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#FACT#TS#cdn_vod_shadow#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "finding_status_log",
+      "expected": 1,
+      "observed": 1,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#CONTEXT#TS#finding_status_log#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "live_event_sde",
+      "expected": 2,
+      "observed": 2,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#CONTEXT#TS#live_event_sde#20261006"
+      ],
+      "requests": 1,
+      "passed": true
+    },
+    {
+      "dataset": "live_event",
+      "expected": 2,
+      "observed": 2,
+      "partitions": [
+        "DATASET#dsv_93d5dc86801bbed9b1c5324fa18cb5708def523640ce401d9bc86849d8e71ae1#CONTEXT#TS#live_event#20260829"
+      ],
+      "requests": 1,
+      "passed": true
+    }
+  ],
+  "durationSeconds": 29.30166199998348,
+  "verifiedAt": "2026-10-07T01:50:12.691827+00:00",
+  "scope": "all 23 hot fact datasets; excludes projection/archive completion; limited to the synthetic generator single-day layout for the large signal dataset",
+  "passed": true
+}

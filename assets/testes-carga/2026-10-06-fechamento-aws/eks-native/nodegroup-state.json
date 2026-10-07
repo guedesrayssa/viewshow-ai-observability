@@ -1,0 +1,41 @@
+{
+  "nodegroupName": "rnf-workloads",
+  "nodegroupArn": "arn:aws:eks:us-east-1:239162056821:nodegroup/view-show-rnf-eks/rnf-workloads/7ad08a05-5bc6-90d8-48d5-5c58c1da437f",
+  "clusterName": "view-show-rnf-eks",
+  "version": "1.35",
+  "releaseVersion": "1.35.8-20260930",
+  "createdAt": "2026-10-06 22:46:50.767000-03:00",
+  "modifiedAt": "2026-10-06 22:46:50.767000-03:00",
+  "status": "CREATING",
+  "capacityType": "ON_DEMAND",
+  "scalingConfig": {
+    "minSize": 2,
+    "maxSize": 2,
+    "desiredSize": 2
+  },
+  "instanceTypes": [
+    "i3.large"
+  ],
+  "subnets": [
+    "subnet-02da093a1c8e2e016",
+    "subnet-07105f364faaa389c"
+  ],
+  "amiType": "AL2023_x86_64_STANDARD",
+  "nodeRole": "arn:aws:iam::239162056821:role/LabRole",
+  "health": {
+    "issues": []
+  },
+  "updateConfig": {
+    "maxUnavailable": 1
+  },
+  "launchTemplate": {
+    "name": "view-show-rnf-eks",
+    "version": "1",
+    "id": "lt-0b84fd196526adac8"
+  },
+  "tags": {
+    "Owner": "g05-artifact",
+    "Purpose": "rnf-synthetic-tests",
+    "Projeto": "view-show"
+  }
+}

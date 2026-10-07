@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -158,6 +159,8 @@ const storedEvidencePayloadSchema = z
     correlationId: z.string().min(1),
     ruleVersion: z.string().min(1),
     type: z.string().min(1),
+    title: z.string().min(1).nullable().optional(),
+    statement: z.string().min(1).nullable().optional(),
     relation: z.enum(["supports", "contradicts", "context"]),
     strength: z.enum(["strong", "moderate", "weak"]),
     timeDistanceSeconds: z.number().int(),
@@ -169,6 +172,30 @@ const storedEvidencePayloadSchema = z
     observedThrough: timestampSchema.nullable(),
     coverage: z.enum(["COMPLETE", "PARTIAL", "UNAVAILABLE"]),
     qualityFlags: z.array(z.string()),
+  })
+  .passthrough();
+
+const workerEvidenceFactSchema = z
+  .object({
+    itemType: z.literal("evidence"),
+    id: z.string().min(1),
+    scopeId: z.string().min(1),
+    metric: z.string().min(1),
+    unit: z.string().min(1),
+    method: z.enum(["mean", "ratio-of-sums"]),
+    start: timestampSchema,
+    split: timestampSchema,
+    end: timestampSchema,
+    reference: z.number().nullable(),
+    current: z.number().nullable(),
+    referenceCount: z.number().int().nonnegative(),
+    currentCount: z.number().int().nonnegative(),
+    expectedPoints: z.number().int().positive(),
+    direction: z.enum(["increase", "decrease", "stable", "unavailable"]),
+    sourceIds: z.array(z.string().min(1)),
+    statement: z.string().min(1),
+    analysisRunId: z.string().min(1),
+    createdAt: timestampSchema,
   })
   .passthrough();
 
@@ -260,6 +287,8 @@ function evidenceDto(value: unknown, datasetVersion: string): EvidenceDto {
     eventId: payload.eventId,
     incidentId: payload.incidentId,
     type: payload.type,
+    title: payload.title ?? null,
+    statement: payload.statement ?? null,
     relation: payload.relation,
     hypothesisIds: payload.hypothesisIds,
     strength: payload.strength,
@@ -287,6 +316,92 @@ function evidenceDto(value: unknown, datasetVersion: string): EvidenceDto {
             : "partial",
       coverageRatio: payload.coverage === "COMPLETE" ? 1 : null,
       flags: payload.qualityFlags,
+    },
+  });
+}
+
+const BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
+
+function stableEventId(value: string): string {
+  const digest = createHash("sha256").update(value).digest();
+  let buffer = 0;
+  let bits = 0;
+  let encoded = "";
+  for (const byte of digest) {
+    buffer = (buffer << 8) | byte;
+    bits += 8;
+    while (bits >= 5 && encoded.length < 26) {
+      encoded += BASE32_ALPHABET[(buffer >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+    if (encoded.length === 26) break;
+  }
+  return `evt_${encoded}`;
+}
+
+function workerEvidenceDto(value: unknown, incidentId: string): EvidenceDto {
+  const parsed = workerEvidenceFactSchema.safeParse(value);
+  if (!parsed.success)
+    throw new ServiceError(
+      503,
+      "DATA_UNAVAILABLE",
+      "O diagnóstico ativo contém uma evidência analítica inválida.",
+    );
+  const fact = parsed.data;
+  const coverageRatio = Math.min(
+    1,
+    fact.referenceCount / fact.expectedPoints,
+    fact.currentCount / fact.expectedPoints,
+  );
+  const flags = [
+    ...(coverageRatio < 1 ? ["ANALYSIS_FACT_PARTIAL_COVERAGE"] : []),
+    ...(fact.reference === null || fact.current === null
+      ? ["ANALYSIS_FACT_VALUE_UNAVAILABLE"]
+      : []),
+  ];
+  return evidenceDtoSchema.parse({
+    id: fact.id,
+    eventId: stableEventId(`${incidentId}:${fact.id}`),
+    incidentId,
+    type: "analysis_fact",
+    title: fact.metric,
+    statement: fact.statement,
+    relation: "context",
+    hypothesisIds: [],
+    strength:
+      flags.length > 0
+        ? "weak"
+        : fact.direction === "stable"
+          ? "moderate"
+          : "strong",
+    observedAt: fact.end,
+    source: {
+      type: "analysis_worker",
+      name: "Análise automatizada",
+      dataset: "analysis_context",
+      recordId: fact.id,
+    },
+    correlation: {
+      correlationId: `cor_${createHash("sha256")
+        .update(`${incidentId}:${fact.id}`)
+        .digest("hex")
+        .slice(0, 24)}`,
+      incidentId,
+      ruleVersion: "analysis-fact-v1",
+      timeDistanceSeconds: 0,
+      matchedFields: [
+        { eventField: "metric", incidentField: "metric", value: fact.metric },
+        {
+          eventField: "scopeId",
+          incidentField: "scopeId",
+          value: fact.scopeId,
+        },
+      ],
+    },
+    quality: {
+      status: flags.length === 0 ? "verified" : "partial",
+      coverageRatio,
+      flags,
     },
   });
 }
@@ -606,6 +721,7 @@ export class DynamoIncidentRepository implements IncidentRepository {
   async listEvidence(
     active: ActiveDatasetSnapshot,
     incidentId: string,
+    analysisRunId?: string,
   ): Promise<readonly EvidenceDto[]> {
     const items = await this.queryAll({
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
@@ -615,7 +731,64 @@ export class DynamoIncidentRepository implements IncidentRepository {
       },
       ScanIndexForward: false,
     });
-    return items.map((item) => evidenceDto(item, active.datasetVersion));
+    return items.flatMap((item) => {
+      if (item.entityType === "EVIDENCE")
+        return [evidenceDto(item, active.datasetVersion)];
+      if (item.itemType === "evidence") {
+        // Fatos A′ de execuções anteriores continuam gravados, mas o diagnóstico
+        // exibido cita só os da execução mais recente.
+        if (analysisRunId !== undefined && item.analysisRunId !== analysisRunId)
+          return [];
+        return [workerEvidenceDto(item, incidentId)];
+      }
+      return [];
+    });
+  }
+
+  async listHypotheses(
+    active: ActiveDatasetSnapshot,
+    incidentId: string,
+  ): Promise<readonly PhysicalItem[]> {
+    return this.queryAll({
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `DATASET#${active.datasetVersion}#INCIDENT#${incidentId}`,
+        ":prefix": "HYPOTHESIS#",
+      },
+    });
+  }
+
+  async latestDiagnosis(
+    active: ActiveDatasetSnapshot,
+    incidentId: string,
+  ): Promise<PhysicalItem | null> {
+    const items = await this.queryAll({
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `DATASET#${active.datasetVersion}#INCIDENT#${incidentId}`,
+        ":prefix": "DIAGNOSIS#",
+      },
+    });
+    return (
+      [...items].sort((left, right) => {
+        const leftPublishedAt =
+          typeof left.publishedAt === "string"
+            ? left.publishedAt
+            : typeof left.createdAt === "string"
+              ? left.createdAt
+              : "";
+        const rightPublishedAt =
+          typeof right.publishedAt === "string"
+            ? right.publishedAt
+            : typeof right.createdAt === "string"
+              ? right.createdAt
+              : "";
+        return (
+          rightPublishedAt.localeCompare(leftPublishedAt) ||
+          String(right.sk ?? "").localeCompare(String(left.sk ?? ""))
+        );
+      })[0] ?? null
+    );
   }
 
   private async queryAll(

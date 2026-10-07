@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "loadtest:static": "node loadtest/static.mjs",
+    "loadtest:lighthouse": "node loadtest/lighthouse.mjs",
+    "loadtest:battery": "node loadtest/battery.mjs",
+    "test:loadtest": "node --test loadtest/*.test.mjs"
   },
   "dependencies": {
     "next": "16.3.1",
@@ -26,9 +30,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.7.0",
+    "autocannon": "8.0.0",
+    "chrome-launcher": "1.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "jsdom": "^25.0.1",
+    "lighthouse": "13.5.0",
+    "serve": "14.2.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^2.1.9"

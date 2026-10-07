@@ -1,0 +1,212 @@
+{
+  "results": {
+    "A": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "1 -",
+            "refId": "A",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     records_read,\n\t\t}",
+              "executedQueryString": "REMOVE_EMPTY(SEARCH('Namespace=\"view-show/Ingestion\" MetricName=\"RecordsRead\" \"command\"=\"import-dump\"', 'Sum', 300))"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "1 -",
+                  "command": "import-dump"
+                },
+                "config": {
+                  "displayNameFromDS": "1 -",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22A%22%2C%22start%22%3A%222026-10-06T23%3A06%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A20%3A25Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%7B%22expression%22%3A%22REMOVE_EMPTY%28SEARCH%28%27Namespace%3D%5C%22view-show%2FIngestion%5C%22+MetricName%3D%5C%22RecordsRead%5C%22+%5C%22command%5C%22%3D%5C%22import-dump%5C%22%27%2C+%27Sum%27%2C+300%29%29%22%2C%22id%22%3A%22a%22%7D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "B": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "1 -",
+            "refId": "B",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     records_written,\n\t\t}",
+              "executedQueryString": "REMOVE_EMPTY(SEARCH('Namespace=\"view-show/Ingestion\" MetricName=\"RecordsWritten\" \"command\"=\"import-dump\"', 'Sum', 300))"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "1 -",
+                  "command": "import-dump"
+                },
+                "config": {
+                  "displayNameFromDS": "1 -",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22B%22%2C%22start%22%3A%222026-10-06T23%3A06%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A20%3A25Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%7B%22expression%22%3A%22REMOVE_EMPTY%28SEARCH%28%27Namespace%3D%5C%22view-show%2FIngestion%5C%22+MetricName%3D%5C%22RecordsWritten%5C%22+%5C%22command%5C%22%3D%5C%22import-dump%5C%22%27%2C+%27Sum%27%2C+300%29%29%22%2C%22id%22%3A%22a%22%7D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "C": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "lidos/s",
+            "refId": "C",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     read_rate,\n\t\t}",
+              "executedQueryString": "SUM(records_read)/300"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "lidos/s"
+                },
+                "config": {
+                  "displayNameFromDS": "lidos/s"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "D": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "escritos/s",
+            "refId": "D",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     write_rate,\n\t\t}",
+              "executedQueryString": "SUM(records_written)/300"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "escritos/s"
+                },
+                "config": {
+                  "displayNameFromDS": "escritos/s"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

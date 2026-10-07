@@ -1,0 +1,167 @@
+{
+  "checks": [
+    {
+      "panelId": 1,
+      "refId": "A",
+      "expression": "rnf_retro_api_p95_seconds",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "refId": "A",
+      "expression": "rnf_retro_api_requests_per_second",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "refId": "A",
+      "expression": "rnf_retro_api_5xx_per_second",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 4,
+      "refId": "A",
+      "expression": "rnf_retro_api_cpu_core_percent",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 1,
+      "refId": "A",
+      "expression": "rnf_retro_stage_seconds_ingesting",
+      "httpStatus": 200,
+      "samples": 1,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 1,
+      "refId": "B",
+      "expression": "rnf_retro_stage_seconds_projecting",
+      "httpStatus": 200,
+      "samples": 1,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 1,
+      "refId": "C",
+      "expression": "rnf_retro_stage_seconds_archiving",
+      "httpStatus": 200,
+      "samples": 1,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "refId": "A",
+      "expression": "rnf_retro_stage_events_per_minute_ingesting",
+      "httpStatus": 200,
+      "samples": 1,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "refId": "B",
+      "expression": "rnf_retro_stage_events_per_minute_projecting",
+      "httpStatus": 200,
+      "samples": 1,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "refId": "C",
+      "expression": "rnf_retro_stage_events_per_minute_archiving",
+      "httpStatus": 200,
+      "samples": 1,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "refId": "A",
+      "expression": "rnf_retro_ingestion_cpu_reserved_percent",
+      "httpStatus": 200,
+      "samples": 37,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 4,
+      "refId": "A",
+      "expression": "rnf_retro_ingestion_memory_reserved_percent",
+      "httpStatus": 200,
+      "samples": 37,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 1,
+      "refId": "A",
+      "expression": "rnf_retro_fila_visiveis",
+      "httpStatus": 200,
+      "samples": 35,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 1,
+      "refId": "B",
+      "expression": "rnf_retro_fila_em_processamento",
+      "httpStatus": 200,
+      "samples": 35,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "refId": "A",
+      "expression": "rnf_retro_fila_idade_mais_antiga",
+      "httpStatus": 200,
+      "samples": 35,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "refId": "A",
+      "expression": "rnf_retro_fila_recebidas",
+      "httpStatus": 200,
+      "samples": 35,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "refId": "B",
+      "expression": "rnf_retro_fila_removidas",
+      "httpStatus": 200,
+      "samples": 35,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 4,
+      "refId": "A",
+      "expression": "rnf_retro_dlq_visiveis",
+      "httpStatus": 200,
+      "samples": 35,
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "passed": true
+}

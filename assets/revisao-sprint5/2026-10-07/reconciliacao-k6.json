@@ -1,0 +1,311 @@
+{
+  "scope": "existing evidence; no new load execution",
+  "rows": [
+    {
+      "label": "Sprint 4 / ECS / Nível 2",
+      "source": "assets/testes-funcionais/2026-09-21/resumo-nivel2.json",
+      "sha256": "a9900ba1b88cc88a2ae6ae29a3c77aba17eb872dc63dbede4ea48e8041e707af",
+      "requests": 9564,
+      "checksPassed": 17729,
+      "checksFailed": 16140,
+      "checksRate": 0.5234580294664738,
+      "httpFailureRate": 0.8437892095357591,
+      "p95AllMs": 60000.227935,
+      "p95Http200Ms": 27368.00239499996,
+      "droppedIterations": 18307,
+      "failedChecks": [
+        {
+          "name": "diagnostico: 200",
+          "passes": 201,
+          "fails": 1183
+        },
+        {
+          "name": "diagnostico: X-Request-Id ecoado",
+          "passes": 201,
+          "fails": 1183
+        },
+        {
+          "name": "leve: 200",
+          "passes": 296,
+          "fails": 1615
+        },
+        {
+          "name": "leve: X-Request-Id ecoado",
+          "passes": 296,
+          "fails": 1615
+        },
+        {
+          "name": "pesada: 200",
+          "passes": 426,
+          "fails": 2380
+        },
+        {
+          "name": "pesada: X-Request-Id ecoado",
+          "passes": 426,
+          "fails": 2380
+        },
+        {
+          "name": "monitoring: 200",
+          "passes": 134,
+          "fails": 683
+        },
+        {
+          "name": "monitoring: X-Request-Id ecoado",
+          "passes": 134,
+          "fails": 683
+        },
+        {
+          "name": "events: 200",
+          "passes": 152,
+          "fails": 768
+        },
+        {
+          "name": "events: X-Request-Id ecoado",
+          "passes": 152,
+          "fails": 768
+        },
+        {
+          "name": "paginacao: pagina 1",
+          "passes": 90,
+          "fails": 611
+        },
+        {
+          "name": "paginacao_p1: X-Request-Id ecoado",
+          "passes": 90,
+          "fails": 611
+        },
+        {
+          "name": "overview: 200",
+          "passes": 153,
+          "fails": 782
+        },
+        {
+          "name": "overview: X-Request-Id ecoado",
+          "passes": 153,
+          "fails": 782
+        },
+        {
+          "name": "paginacao: pagina 2, cursor",
+          "passes": 41,
+          "fails": 48
+        },
+        {
+          "name": "paginacao_p2: X-Request-Id ecoado",
+          "passes": 41,
+          "fails": 48
+        }
+      ]
+    },
+    {
+      "label": "Sprint 4 / ECS / Nível 3",
+      "source": "assets/testes-funcionais/2026-09-21/resumo-nivel3.json",
+      "sha256": "5a32f8a78e9afa1c288b6487f3c2d757eb22682649025c9b6774b65b01346a61",
+      "requests": 4874,
+      "checksPassed": 17343,
+      "checksFailed": 378,
+      "checksRate": 0.97866937531742,
+      "httpFailureRate": 0.024825605252359457,
+      "p95AllMs": 57152.151715,
+      "p95Http200Ms": null,
+      "droppedIterations": 19077,
+      "failedChecks": [
+        {
+          "name": "events: 200",
+          "passes": 420,
+          "fails": 8
+        },
+        {
+          "name": "events: X-Request-Id ecoado",
+          "passes": 420,
+          "fails": 8
+        },
+        {
+          "name": "diagnostico: 200",
+          "passes": 684,
+          "fails": 23
+        },
+        {
+          "name": "diagnostico: X-Request-Id ecoado",
+          "passes": 684,
+          "fails": 23
+        },
+        {
+          "name": "overview: 200",
+          "passes": 447,
+          "fails": 4
+        },
+        {
+          "name": "overview: X-Request-Id ecoado",
+          "passes": 447,
+          "fails": 4
+        },
+        {
+          "name": "pesada: 200",
+          "passes": 1375,
+          "fails": 48
+        },
+        {
+          "name": "pesada: X-Request-Id ecoado",
+          "passes": 1375,
+          "fails": 48
+        },
+        {
+          "name": "paginacao: pagina 1",
+          "passes": 303,
+          "fails": 5
+        },
+        {
+          "name": "paginacao_p1: X-Request-Id ecoado",
+          "passes": 303,
+          "fails": 5
+        },
+        {
+          "name": "paginacao: pagina 2, cursor",
+          "passes": 297,
+          "fails": 6
+        },
+        {
+          "name": "paginacao_p2: X-Request-Id ecoado",
+          "passes": 297,
+          "fails": 6
+        },
+        {
+          "name": "leve: 200",
+          "passes": 858,
+          "fails": 26
+        },
+        {
+          "name": "leve: X-Request-Id ecoado",
+          "passes": 858,
+          "fails": 26
+        },
+        {
+          "name": "monitoring: 200",
+          "passes": 232,
+          "fails": 137
+        },
+        {
+          "name": "monitoring: X-Request-Id ecoado",
+          "passes": 368,
+          "fails": 1
+        }
+      ]
+    },
+    {
+      "label": "Sprint 5 / EKS / API-137",
+      "source": "assets/testes-carga/2026-10-06-fechamento-aws/eks-native/api-load-137/resumo-front-api-load.json",
+      "sha256": "f20fd7fc9e9c30242370ff42e70d2c34450dbac1d58d8acc391ad228a495553d",
+      "requests": 43198,
+      "checksPassed": 7013,
+      "checksFailed": 82918,
+      "checksRate": 0.07798200842868422,
+      "httpFailureRate": 0.9399046252141303,
+      "p95AllMs": 8000.51415,
+      "p95Http200Ms": 7078.56535,
+      "droppedIterations": 1003,
+      "failedChecks": [
+        {
+          "name": "dashboard_overview: resposta de contrato",
+          "passes": 221,
+          "fails": 6744
+        },
+        {
+          "name": "dashboard_overview: X-Request-Id ecoado",
+          "passes": 221,
+          "fails": 6744
+        },
+        {
+          "name": "monitoring_overview: resposta de contrato",
+          "passes": 156,
+          "fails": 2886
+        },
+        {
+          "name": "monitoring_overview: X-Request-Id ecoado",
+          "passes": 156,
+          "fails": 2886
+        },
+        {
+          "name": "incidents_chart: resposta de contrato",
+          "passes": 140,
+          "fails": 3253
+        },
+        {
+          "name": "incidents_chart: X-Request-Id ecoado",
+          "passes": 140,
+          "fails": 3253
+        },
+        {
+          "name": "incident_events: resposta de contrato",
+          "passes": 195,
+          "fails": 4239
+        },
+        {
+          "name": "incident_events: X-Request-Id ecoado",
+          "passes": 195,
+          "fails": 4239
+        },
+        {
+          "name": "incidents_list: resposta de contrato",
+          "passes": 423,
+          "fails": 9953
+        },
+        {
+          "name": "incidents_list: X-Request-Id ecoado",
+          "passes": 423,
+          "fails": 9953
+        },
+        {
+          "name": "incident_diagnosis: resposta de contrato",
+          "passes": 220,
+          "fails": 6530
+        },
+        {
+          "name": "incident_diagnosis: X-Request-Id ecoado",
+          "passes": 220,
+          "fails": 6530
+        },
+        {
+          "name": "global_events: resposta de contrato",
+          "passes": 195,
+          "fails": 4160
+        },
+        {
+          "name": "global_events: X-Request-Id ecoado",
+          "passes": 195,
+          "fails": 4160
+        },
+        {
+          "name": "argus_integration: resposta de contrato",
+          "passes": 13,
+          "fails": 396
+        },
+        {
+          "name": "argus_integration: X-Request-Id ecoado",
+          "passes": 13,
+          "fails": 396
+        },
+        {
+          "name": "rum_beacon: resposta de contrato",
+          "passes": 89,
+          "fails": 1648
+        },
+        {
+          "name": "rum_beacon: X-Request-Id ecoado",
+          "passes": 89,
+          "fails": 1648
+        },
+        {
+          "name": "auth_session: resposta de contrato",
+          "passes": 83,
+          "fails": 1650
+        },
+        {
+          "name": "auth_session: X-Request-Id ecoado",
+          "passes": 83,
+          "fails": 1650
+        }
+      ]
+    }
+  ],
+  "documentsMatch": true
+}

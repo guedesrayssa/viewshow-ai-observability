@@ -56,29 +56,3 @@ resource "aws_security_group" "servico" {
     Projeto = "view-show"
   }
 }
-
-// Tasks de ingestão não recebem tráfego externo ou de serviços internos: a
-// comunicação do sidecar MySQL ocorre no namespace localhost da própria task.
-resource "aws_security_group" "ingestion" {
-  name        = "${local.ingestion_name_prefix}-sg"
-  description = "Tasks da ingestao sem trafego de entrada"
-  vpc_id      = local.ingestion_vpc_id
-
-  // O atributo explícito evita que o provider trate ingress como computed e
-  // mantém qualquer regra de entrada removida da configuração.
-  ingress = []
-
-  egress {
-    description = "Saida para ECR, AWS APIs, MySQL live e logs"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Projeto    = "view-show"
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-  }
-}

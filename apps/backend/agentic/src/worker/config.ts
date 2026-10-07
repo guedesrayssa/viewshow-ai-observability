@@ -28,6 +28,40 @@ export function validateScopes(raw: unknown): AnalysisScope[] {
       typeof rule.minimum !== "number" || !Number.isFinite(rule.minimum) || rule.minimum < 0))) throw new AnalysisError("INVALID_MATERIALITY_RULE", true);
     if (value.episodeWindowSeconds !== undefined && (!Number.isInteger(value.episodeWindowSeconds) || Number(value.episodeWindowSeconds) < 900 || Number(value.episodeWindowSeconds) > 21600))
       throw new AnalysisError("INVALID_EPISODE_WINDOW", true);
+    if (value.presentation !== undefined) {
+      if (!object(value.presentation)) throw new AnalysisError("INVALID_PRESENTATION_CONFIG", true);
+      const presentation = value.presentation;
+      const bufferingMetric = presentation.bufferingMetric;
+      if (bufferingMetric !== undefined && (typeof bufferingMetric !== "string" || !seriesValues.some(series =>
+        object(series) && series.metric === bufferingMetric && series.grainSeconds === 900)))
+        throw new AnalysisError("INVALID_PRESENTATION_BUFFERING_METRIC", true);
+      if (presentation.bufferingScale !== undefined &&
+        (typeof presentation.bufferingScale !== "number" || !Number.isFinite(presentation.bufferingScale) || presentation.bufferingScale <= 0))
+        throw new AnalysisError("INVALID_PRESENTATION_BUFFERING_SCALE", true);
+      const affectedDevicesMetric = presentation.affectedDevicesMetric;
+      if (affectedDevicesMetric !== undefined && (typeof affectedDevicesMetric !== "string" || !seriesValues.some(series =>
+        object(series) && series.metric === affectedDevicesMetric && series.grainSeconds === 900)))
+        throw new AnalysisError("INVALID_PRESENTATION_AFFECTED_DEVICES_METRIC", true);
+      if (presentation.concentrations !== undefined) {
+        if (!Array.isArray(presentation.concentrations) || !presentation.concentrations.length || presentation.concentrations.length > 12)
+          throw new AnalysisError("INVALID_PRESENTATION_CONCENTRATIONS", true);
+        const metrics = new Set<string>();
+        const labels = new Set<string>();
+        for (const concentration of presentation.concentrations) {
+          if (!object(concentration) || typeof concentration.metric !== "string" ||
+            typeof concentration.label !== "string" || !concentration.label.trim() ||
+            metrics.has(concentration.metric) || labels.has(concentration.label) ||
+            !seriesValues.some(series => object(series) && series.metric === concentration.metric && series.grainSeconds === 900))
+            throw new AnalysisError("INVALID_PRESENTATION_CONCENTRATIONS", true);
+          metrics.add(concentration.metric); labels.add(concentration.label);
+        }
+      }
+      if (presentation.concentrationNote !== undefined &&
+        (typeof presentation.concentrationNote !== "string" || presentation.concentrationNote.length > 240))
+        throw new AnalysisError("INVALID_PRESENTATION_CONCENTRATION_NOTE", true);
+      if (bufferingMetric === undefined && affectedDevicesMetric === undefined && presentation.concentrations === undefined)
+        throw new AnalysisError("EMPTY_PRESENTATION_CONFIG", true);
+    }
     return value as unknown as AnalysisScope;
   });
 }

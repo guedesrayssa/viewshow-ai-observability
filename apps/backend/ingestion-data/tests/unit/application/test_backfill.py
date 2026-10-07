@@ -317,11 +317,7 @@ def build_backfill(
         canonical_sets=canonical_sets,
         canonical_source_factory=canonical_source_factory,
         **({"activity_reporter": activity_reporter} if activity_reporter is not None else {}),
-        **(
-            {"disk_usage_reporter": disk_usage_reporter}
-            if disk_usage_reporter is not None
-            else {}
-        ),
+        **({"disk_usage_reporter": disk_usage_reporter} if disk_usage_reporter is not None else {}),
     )
     request = BackfillRequest(
         run_id="run-1",
@@ -442,9 +438,7 @@ def test_legacy_and_canonical_same_dump_use_disjoint_versions_and_replay_safely(
     canonical_retry = harness.service.execute(
         replace(canonical_request, run_id="run-canonical-retry")
     )
-    legacy_retry = harness.service.execute(
-        replace(harness.request, run_id="run-legacy-retry")
-    )
+    legacy_retry = harness.service.execute(replace(harness.request, run_id="run-legacy-retry"))
 
     assert canonical_retry.dataset_version == canonical_version
     assert legacy_retry.dataset_version == legacy_version
@@ -639,9 +633,7 @@ def test_canonical_pipeline_encodes_each_object_only_once(tmp_path: Path) -> Non
     assert result.stage is RunStage.SUCCEEDED
     assert marker is not None
     expected_objects = sum(
-        len(partition.objects)
-        for dataset in marker.datasets
-        for partition in dataset.partitions
+        len(partition.objects) for dataset in marker.datasets for partition in dataset.partitions
     )
     assert encode_calls == expected_objects
 
@@ -856,8 +848,7 @@ def test_canonical_candidate_persists_projection_counts_and_replays_them(
     marker = candidate.metadata["canonicalMarker"]
     assert isinstance(marker, Mapping)
     assert marker["objectKey"] == (
-        "canonical/schema_version=1.0/"
-        f"dataset_version={harness.canonical_version}/manifest.json"
+        f"canonical/schema_version=1.0/dataset_version={harness.canonical_version}/manifest.json"
     )
     assert marker["datasetCount"] == len(harness.registry.names())
     assert marker["partitionCount"] == len(harness.registry.names())

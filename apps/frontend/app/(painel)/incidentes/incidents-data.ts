@@ -12,12 +12,21 @@ import type { BadgeTone } from "@/components/ui/badge";
 export type Urgency = "P1" | "P2" | "P3" | "P4";
 
 export type Incident = {
+  /** Identificador interno, usado nas rotas e nas chamadas à API. */
   id: string;
+  /** Código legível (`INC-E2E-0044`); cai para o id quando não há número. */
+  code: string;
   urgency: Urgency;
+  /** Título da origem; vazio quando só repete o código. */
   title: string;
+  /** Estado da investigação, como a API publica (`investigating`...). */
+  status: string;
   segment: string;
   devices: number | null;
+  /** Início já formatado com o dia ("Hoje, 19:00"). */
   startedAt: string;
+  /** Início em ISO, para exportação e ordenação. */
+  startedAtIso: string;
   startedMinutesAgo: number;
   component: string;
   deviceType: string;
@@ -61,8 +70,11 @@ export const DEVICE_COUNT_CLASSES: Partial<Record<Urgency, string>> = {
 export const INCIDENTS: Incident[] = [
   {
     id: "falhas-reproducao-tvs-lg",
+    code: "INC-4821",
     urgency: "P1",
     title: "Falhas de reprodução em TVs LG",
+    status: "investigating",
+    startedAtIso: "",
     segment: "12,4 mil sessões · Nordeste · webOS 6.0",
     devices: 8420,
     startedAt: "09:18",
@@ -74,8 +86,11 @@ export const INCIDENTS: Incident[] = [
   },
   {
     id: "timeout-cdn-nordeste",
+    code: "INC-4822",
     urgency: "P2",
     title: "Timeout de CDN no Nordeste",
+    status: "detected",
+    startedAtIso: "",
     segment: "3,2 mil sessões · POP Recife · Fastly",
     devices: 2150,
     startedAt: "08:52",
@@ -87,8 +102,11 @@ export const INCIDENTS: Incident[] = [
   },
   {
     id: "licencas-drm-tvs-samsung",
+    code: "INC-4823",
     urgency: "P3",
     title: "Licenças DRM expiradas em TVs Samsung",
+    status: "confirmed",
+    startedAtIso: "",
     segment: "1,1 mil sessões · Tizen 7 · conteúdo VOD",
     devices: 824,
     startedAt: "08:36",
@@ -100,8 +118,11 @@ export const INCIDENTS: Incident[] = [
   },
   {
     id: "tokens-autenticacao-invalidos",
+    code: "INC-4824",
     urgency: "P4",
     title: "Tokens de autenticação inválidos",
+    status: "resolved",
+    startedAtIso: "",
     segment: "430 sessões · múltiplas plataformas",
     devices: 390,
     startedAt: "07:58",
@@ -123,16 +144,68 @@ export const APP_VERSIONS = Array.from(
   new Set(INCIDENTS.map((incident) => incident.appVersion)),
 );
 
-export type PeriodKey = "30" | "60" | "360" | "1440";
+/**
+ * Períodos da lista. "Todo o período" existe porque a Visão Geral lista
+ * incidentes abertos há mais de 24 horas: sem ele, o "Ver todos" levava a uma
+ * lista em que esses incidentes não apareciam.
+ */
+export type PeriodKey = "30" | "60" | "360" | "1440" | "older" | "all";
+
+/**
+ * Períodos oferecidos na tela (e aceitos na URL). As janelas curtas saíram:
+ * contadas a partir de agora, esvaziavam a lista sempre que o dado mais
+ * recente tinha mais de meia hora, e pareciam indicar que não havia
+ * incidentes.
+ */
+export const PERIOD_KEYS: PeriodKey[] = ["1440", "older", "all"];
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
   "30": "Últimos 30 min",
   "60": "Última hora",
   "360": "Últimas 6 horas",
   "1440": "Últimas 24 horas",
+  older: "Mais de 24 horas",
+  all: "Todo o período",
 };
 
+/**
+ * Se um incidente aberto há `minutesAgo` minutos entra no período. As janelas
+ * relativas também vão à API (`window=24h`); este recorte na tela é o que faz
+ * "mais de 24 horas", que não tem janela na API e é lido com `window=all`.
+ */
+export function withinPeriod(minutesAgo: number, period: PeriodKey | string): boolean {
+  if (period === "1440") return minutesAgo <= 1440;
+  if (period === "older") return minutesAgo > 1440;
+  if (period === "360") return minutesAgo <= 360;
+  if (period === "60") return minutesAgo <= 60;
+  if (period === "30") return minutesAgo <= 30;
+  return true;
+}
+
+/**
+ * A lista abre em todo o período, como a Visão Geral. Com "últimas 24 horas"
+ * como padrão, o item Incidentes da navegação mostrava menos incidentes que o
+ * "Ver todos" da Visão Geral — e, com um dataset histórico, nenhum, porque as
+ * janelas relativas contam a partir de agora.
+ */
+export const DEFAULT_PERIOD: PeriodKey = "all";
+
+/** Filtros que a API de incidentes aceita além do período. */
+export const PRIORITY_FILTERS: Urgency[] = ["P1", "P2", "P3", "P4"];
+
+export const STATUS_FILTERS = [
+  "detected",
+  "investigating",
+  "confirmed",
+  "resolved",
+  "closed",
+] as const;
+
+export type StatusFilter = (typeof STATUS_FILTERS)[number];
+
 export type SortKey = "urgency" | "devices" | "recent";
+
+export const SORT_KEYS: SortKey[] = ["urgency", "devices", "recent"];
 
 export const SORT_LABELS: Record<SortKey, string> = {
   urgency: "Ordenar: maior urgência",
@@ -147,12 +220,18 @@ export function sortIncidents(
 ): Incident[] {
   const sorted = [...incidents];
 
+  // Empates caem para o mais recente: é o que a pessoa de plantão olha antes.
+  const byRecent = (a: Incident, b: Incident) =>
+    a.startedMinutesAgo - b.startedMinutesAgo;
+
   if (sort === "devices") {
-    sorted.sort((a, b) => (b.devices ?? -1) - (a.devices ?? -1));
+    sorted.sort(
+      (a, b) => (b.devices ?? -1) - (a.devices ?? -1) || byRecent(a, b),
+    );
   } else if (sort === "recent") {
-    sorted.sort((a, b) => a.startedMinutesAgo - b.startedMinutesAgo);
+    sorted.sort(byRecent);
   } else {
-    sorted.sort((a, b) => a.urgency.localeCompare(b.urgency));
+    sorted.sort((a, b) => a.urgency.localeCompare(b.urgency) || byRecent(a, b));
   }
 
   return sorted;

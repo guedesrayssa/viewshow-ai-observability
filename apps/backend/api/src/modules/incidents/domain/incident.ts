@@ -200,15 +200,17 @@ function evidenceStrength(value: unknown): "strong" | "moderate" | "weak" {
 
 const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 
-function diagnosisPresentation(
+export function diagnosisPresentation(
   item: PhysicalItem,
 ): Pick<DiagnosisData, "charts" | "timeline" | "changes"> {
   const projection = record(item.diagnosisProjection);
   const buffering = record(projection?.buffering);
-  const points = (Array.isArray(buffering?.points) ? buffering.points : []).flatMap((entry) => {
+  const points = (
+    Array.isArray(buffering?.points) ? buffering.points : []
+  ).flatMap((entry) => {
     const point = record(entry);
     const timestamp = iso(point?.timestamp);
     const value = number(point?.value);
@@ -217,43 +219,113 @@ function diagnosisPresentation(
   const rawMarker = record(buffering?.marker);
   const markerTimestamp = iso(rawMarker?.timestamp);
   const markerLabel = text(rawMarker?.label);
-  const concentrations = (Array.isArray(projection?.concentrations) ? projection.concentrations : []).flatMap((entry) => {
+  const concentrations = (
+    Array.isArray(projection?.concentrations) ? projection.concentrations : []
+  ).flatMap((entry) => {
     const slice = record(entry);
     const label = text(slice?.label);
     const percentage = number(slice?.percentage);
     return label && percentage !== null && percentage >= 0 && percentage <= 100
-      ? [{ label, percentage }] : [];
+      ? [{ label, percentage }]
+      : [];
   });
-  const timeline = (Array.isArray(projection?.timeline) ? projection.timeline : []).flatMap((entry) => {
+  const timeline = (
+    Array.isArray(projection?.timeline) ? projection.timeline : []
+  ).flatMap((entry) => {
     const mark = record(entry);
     const timestamp = iso(mark?.timestamp);
     const label = text(mark?.label);
     const source = text(mark?.source);
     const tone = mark?.tone;
-    return timestamp && label && source && (tone === "info" || tone === "warning" || tone === "critical" || tone === "navy")
-      ? [{ timestamp, label, source, tone: tone as DiagnosisData["timeline"][number]["tone"] }] : [];
+    return timestamp &&
+      label &&
+      source &&
+      (tone === "info" ||
+        tone === "warning" ||
+        tone === "critical" ||
+        tone === "navy")
+      ? [
+          {
+            timestamp,
+            label,
+            source,
+            tone: tone as DiagnosisData["timeline"][number]["tone"],
+          },
+        ]
+      : [];
   });
-  const changes = (Array.isArray(projection?.changes) ? projection.changes : []).flatMap((entry) => {
+  const changes = (
+    Array.isArray(projection?.changes) ? projection.changes : []
+  ).flatMap((entry) => {
     const change = record(entry);
     const label = text(change?.label);
     const cause = text(change?.cause);
     const percentage = number(change?.percentage);
     const tone = change?.tone;
-    return label && cause && percentage !== null && (tone === "info" || tone === "warning" || tone === "critical")
-      ? [{ label, cause, percentage, tone: tone as DiagnosisData["changes"][number]["tone"] }] : [];
+    return label &&
+      cause &&
+      percentage !== null &&
+      (tone === "info" || tone === "warning" || tone === "critical")
+      ? [
+          {
+            label,
+            cause,
+            percentage,
+            tone: tone as DiagnosisData["changes"][number]["tone"],
+          },
+        ]
+      : [];
   });
   return {
     charts: {
-      buffering: points.length ? {
-        points,
-        marker: markerTimestamp && markerLabel && points.some((point) => point.timestamp === markerTimestamp)
-          ? { timestamp: markerTimestamp, label: markerLabel } : null,
-      } : null,
+      buffering: points.length
+        ? {
+            points,
+            marker:
+              markerTimestamp &&
+              markerLabel &&
+              points.some((point) => point.timestamp === markerTimestamp)
+                ? { timestamp: markerTimestamp, label: markerLabel }
+                : null,
+          }
+        : null,
       concentrations,
       concentrationNote: text(projection?.concentrationNote) ?? "",
     },
     timeline,
     changes,
+  };
+}
+
+export function diagnosisAffectedDevices(
+  item: PhysicalItem,
+): IncidentDto["impact"]["affectedDevices"] | null {
+  const projection = record(item.diagnosisProjection);
+  const impact = record(projection?.impact);
+  const affectedDevices = record(impact?.affectedDevices);
+  const value = number(affectedDevices?.value);
+  const observedThrough = iso(affectedDevices?.observedThrough);
+  const coverageRatio = number(affectedDevices?.coverageRatio);
+  const source = text(affectedDevices?.source);
+  if (
+    value === null ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    observedThrough === null ||
+    coverageRatio === null ||
+    coverageRatio < 0 ||
+    coverageRatio > 1 ||
+    source === null
+  ) return null;
+  return {
+    value,
+    unit: "devices",
+    measurement: {
+      status: "measured",
+      source,
+      coverageRatio,
+      observedThrough,
+    },
   };
 }
 
@@ -265,35 +337,20 @@ export function toDiagnosisData(
   const hypotheses = children.filter(
     (item) =>
       itemKind(item) === "hypothesis" &&
-      text(item.statement ?? item.text) !== null &&
-      number(item.probability ?? item.score) !== null,
+      text(item.statement ?? item.text) !== null,
   );
   const evidence = children.filter(
     (item) =>
       itemKind(item) === "evidence" &&
       text(item.statement ?? item.description) !== null,
   );
-  const incident = toIncidentDto(incidentItem, hypotheses, now);
-  const ranked = [...hypotheses]
-    .sort(
-      (left, right) =>
-        (number(right.probability ?? right.score) ?? 0) -
-        (number(left.probability ?? left.score) ?? 0),
-    )
-    .map((item, index) => ({
-      id: hypothesisId(item),
-      rank: index + 1,
-      statement: text(item.statement ?? item.text) as string,
-      component: incident.primaryComponent,
-      probability: number(item.probability ?? item.score) as number,
-      rationale: text(item.rationale),
-      review: {
-        status: reviewStatus(item.reviewStatus),
-        note: text(item.reviewNote),
-        reviewedAt: iso(item.reviewedAt),
-        version: number(item.reviewVersion ?? item.version) ?? 0,
-      },
-    }));
+  const baseIncident = toIncidentDto(incidentItem, hypotheses, now);
+  const affectedDevices = diagnosisAffectedDevices(incidentItem);
+  const incident = affectedDevices ? {
+    ...baseIncident,
+    impact: { ...baseIncident.impact, affectedDevices },
+  } : baseIncident;
+  const ranked = rankedHypotheses(hypotheses, incident.primaryComponent);
   const latest = latestHypothesis(hypotheses);
   const presentation = diagnosisPresentation(incidentItem);
   return {
@@ -352,10 +409,77 @@ export function toDiagnosisData(
     timeline: presentation.timeline,
     changes: presentation.changes,
     dataQuality: {
-      status: evidence.length > 0 && presentation.charts.buffering ? "sufficient" : evidence.length > 0 ? "limited" : "insufficient",
+      status:
+        evidence.length > 0 && presentation.charts.buffering
+          ? "sufficient"
+          : evidence.length > 0
+            ? "limited"
+            : "insufficient",
       coverageRatio: number(incidentItem.coverageRatio),
       observedThrough: iso(incidentItem.observedThrough),
-      gaps: presentation.charts.buffering ? [] : ["INGESTION_PROJECTIONS_NOT_AVAILABLE"],
+      gaps: presentation.charts.buffering
+        ? []
+        : ["INGESTION_PROJECTIONS_NOT_AVAILABLE"],
     },
+  };
+}
+
+/**
+ * Ranks hypothesis items by probability when present; ties (including the
+ * common case where the worker never scores a hypothesis) keep read order.
+ */
+export function rankedHypotheses(
+  hypotheses: readonly PhysicalItem[],
+  component: IncidentDto["primaryComponent"],
+): DiagnosisData["diagnosis"]["hypotheses"] {
+  return [...hypotheses]
+    .sort(
+      (left, right) =>
+        (number(right.probability ?? right.score) ?? 0) -
+        (number(left.probability ?? left.score) ?? 0),
+    )
+    .map((item, index) => ({
+      id: hypothesisId(item),
+      rank: index + 1,
+      statement: text(item.statement ?? item.text) as string,
+      component,
+      probability: number(item.probability ?? item.score),
+      rationale: text(item.rationale),
+      review: {
+        status: reviewStatus(item.reviewStatus),
+        note: text(item.reviewNote),
+        reviewedAt: iso(item.reviewedAt),
+        version: number(item.reviewVersion ?? item.version) ?? 0,
+      },
+    }));
+}
+
+/**
+ * A run that produced a `DIAGNOSIS#` item but zero hypotheses (the model found
+ * no supported candidate) is still `ready`, distinct from `not_started` (no
+ * run attempted) and `failed` (the run errored — see `worker/orchestrator.ts`).
+ */
+export function diagnosisStatusBlock(
+  diagnosisItem: PhysicalItem | null,
+  hypotheses: readonly PhysicalItem[],
+): Pick<
+  DiagnosisData["diagnosis"],
+  "status" | "generatedAt" | "summary" | "primaryHypothesisId" | "confidence"
+> {
+  if (!diagnosisItem)
+    return {
+      status: "not_started",
+      generatedAt: null,
+      summary: null,
+      primaryHypothesisId: null,
+      confidence: null,
+    };
+  const latest = latestHypothesis(hypotheses);
+  return {
+    status: diagnosisItem.status === "failed" ? "failed" : "ready",
+    generatedAt: iso(diagnosisItem.publishedAt ?? diagnosisItem.createdAt),
+    summary: latest ? text(latest.summary ?? latest.explanation) : null,
+    primaryHypothesisId: latest ? hypothesisId(latest) : null,
+    confidence: latest ? number(latest.probability ?? latest.score) : null,
   };
 }
