@@ -51,7 +51,7 @@ resource "aws_cognito_user_pool" "principal" {
   }
 }
 
-// Cliente confidencial, usado só pelo backend em Fargate. Como nunca chega ao
+// Cliente confidencial, usado só pelo backend em Kubernetes. Como nunca chega ao
 // navegador, pode ter secret — e por ter secret, o backend precisa enviar
 // SECRET_HASH em cada InitiateAuth (ver cognito-password-authenticator.ts).
 resource "aws_cognito_user_pool_client" "backend" {
@@ -106,17 +106,17 @@ resource "aws_cognito_user_pool_domain" "principal" {
 }
 
 output "cognito_user_pool_id" {
-  description = "ID do User Pool. Vai para COGNITO_USER_POOL_ID na task ECS."
+  description = "ID do User Pool. Vai para COGNITO_USER_POOL_ID na task EKS."
   value       = aws_cognito_user_pool.principal.id
 }
 
 output "cognito_client_id" {
-  description = "ID do cliente confidencial do backend. Vai para COGNITO_CLIENT_ID na task ECS."
+  description = "ID do cliente confidencial do backend. Vai para COGNITO_CLIENT_ID na task EKS."
   value       = aws_cognito_user_pool_client.backend.id
 }
 
 output "cognito_client_secret" {
-  description = "Segredo do cliente do backend. Vai para COGNITO_CLIENT_SECRET na task ECS."
+  description = "Segredo do cliente do backend. Vai para COGNITO_CLIENT_SECRET na task EKS."
   value       = aws_cognito_user_pool_client.backend.client_secret
   sensitive   = true
 }

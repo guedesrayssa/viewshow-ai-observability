@@ -1,0 +1,159 @@
+agenda ingest (view-show-ingestion-incremental-ingest): ENABLED
+2026-09-30T20:23:58Z view-show-ingestion-incremental-batches.fifo visíveis=2 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 AUSENTE
+bat_f68597fce07b AUSENTE
+2026-09-30T20:24:38Z view-show-ingestion-incremental-batches.fifo visíveis=2 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+2026-09-30T20:24:42Z task 4fd5b971549d40628ef08dfd95e46f5d: PROVISIONING chronos-schedule/view-show-ingestion arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-ingest:6 None
+bat_b4a10049fde8 AUSENTE
+bat_f68597fce07b AUSENTE
+2026-09-30T20:25:19Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:25:58Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:26:36Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:27:15Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:27:53Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:28:32Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:29:10Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:29:50Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+2026-09-30T20:29:54Z task 56253002b0f3471f8ea96bb11943751a: RUNNING chronos-schedule/view-show-ingestion arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-ingest:6 sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:25:00.578Z", "version": "2"}
+bat_f68597fce07b AUSENTE
+2026-09-30T20:30:32Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.626Z", "version": "3"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:31:11Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.626Z", "version": "3"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:31:50Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.626Z", "version": "3"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:32:30Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.626Z", "version": "3"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:33:10Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.626Z", "version": "3"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:33:49Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.626Z", "version": "3"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:34:30Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+2026-09-30T20:34:34Z task fbd89158e28547aaaf3ce61db153a5eb: PROVISIONING chronos-schedule/view-show-ingestion arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-ingest:6 None
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.626Z", "version": "3"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:35:10Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:35:00.566Z", "version": "5"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:35:49Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:35:00.566Z", "version": "5"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:36:27Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:35:00.566Z", "version": "5"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:37:11Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:35:00.566Z", "version": "5"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:37:57Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:35:00.566Z", "version": "5"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:38:36Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=2 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"createdAt": "2026-09-30T20:25:00.553Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:35:00.566Z", "version": "5"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:30:00.791Z", "version": "3"}
+2026-09-30T20:39:15Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "INGESTING", "updatedAt": "2026-09-30T20:38:52.848Z", "version": "5"}
+2026-09-30T20:39:54Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+2026-09-30T20:39:58Z task f93d4d8182c745db9afba4b8a6605cfc: RUNNING chronos-schedule/view-show-ingestion arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-ingest:6 sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:40:35Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:41:15Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:41:54Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:42:32Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:43:11Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:43:49Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:44:28Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:40:00.641Z", "version": "6"}
+2026-09-30T20:45:07Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:45:45Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:46:24Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:47:03Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:47:41Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:48:20Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:48:59Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:49:40Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=1 view-show-ingestion-incremental-batches-dlq.fifo visíveis=0 em processamento=0 
+2026-09-30T20:49:45Z task 7e0bc075fa914019bee160ab559342d9: PENDING chronos-schedule/view-show-ingestion arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-ingest:6 None
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:50:21Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=1 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:51:01Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=1 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:51:42Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=1 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:52:20Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=1 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:53:00Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=1 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+2026-09-30T20:53:38Z view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=1 em processamento=0 
+bat_b4a10049fde8 {"counts": {"written": "0", "unchanged": "150000"}, "createdAt": "2026-09-30T20:25:00.553Z", "state": "COMPLETED", "updatedAt": "2026-09-30T20:38:52.661Z", "version": "7"}
+bat_f68597fce07b {"createdAt": "2026-09-30T20:30:00.679Z", "state": "RETRYABLE_FAILED", "updatedAt": "2026-09-30T20:45:00.857Z", "version": "9"}
+agenda ingest (view-show-ingestion-incremental-ingest): DISABLED
+2026-09-30T20:55:56Z interrompido no limite (1800 s após religar a agenda); coleta manual a seguir
+2026-09-30T20:55:56Z agendas: view-show-ingestion-sync:DISABLED view-show-ingestion-incremental-ingest:DISABLED view-show-ingestion-incremental-export:DISABLED 
+2026-09-30T20:55:57Z tasks ingest em execução: 
+2026-09-30T20:55:58Z task 4fd5b971549d40628ef08dfd95e46f5d: 2026-09-30T17:24:59.082000-03:00 2026-09-30T17:33:25.566000-03:00 1 sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de 
+2026-09-30T20:55:59Z task 56253002b0f3471f8ea96bb11943751a: 2026-09-30T17:29:56.867000-03:00 2026-09-30T17:30:25.670000-03:00 0 sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de 
+2026-09-30T20:56:00Z task fbd89158e28547aaaf3ce61db153a5eb: 2026-09-30T17:34:51.222000-03:00 2026-09-30T17:47:07.934000-03:00 1 sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de 
+2026-09-30T20:56:02Z task f93d4d8182c745db9afba4b8a6605cfc: 2026-09-30T17:39:51.274000-03:00 2026-09-30T17:40:24.492000-03:00 0 sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de 
+2026-09-30T20:56:12Z contagem depois:
+DATASET#dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c#FACT#TS#signal_bucket#20260930 300000
+TOTAL 300000
+2026-09-30T20:56:56Z RESULTADO itens=300000 esperados=300000 lotes COMPLETED=1/2 (lote 2 RETRYABLE_FAILED, mensagem na DLQ) drenagem: não concluída em 1800 s
+2026-09-30T20:56:56Z fim: view-show-ingestion-incremental-batches.fifo visíveis=0 em processamento=0 view-show-ingestion-incremental-batches-dlq.fifo visíveis=1 em processamento=0  | view-show-ingestion-incremental-dlq-depth ALARM 2026-09-30T17:52:12.972000-03:00 view-show-ingestion-incremental-queue-backlog OK 2026-09-30T17:31:53.742000-03:00 view-show-ingestion-incremental-queue-oldest-age OK 2026-09-30T17:56:43.956000-03:00 
+2026-09-30T20:57:03Z linhas _log_failure: 2
+2026-09-30T20:57:03Z FIM

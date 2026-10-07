@@ -461,6 +461,8 @@ class FakeIncrementalBatchQueue(IncrementalBatchQueue):
         self.deliveries: list[BatchDelivery] = []
         self.acked: tuple[str, ...] = ()
         self.ack_failures_remaining = 0
+        self.extensions: list[tuple[str, int]] = []
+        self.extension_failure: Exception | None = None
 
     def enqueue(self, delivery: BatchDelivery) -> None:
         self.deliveries.append(delivery)
@@ -495,6 +497,11 @@ class FakeIncrementalBatchQueue(IncrementalBatchQueue):
             raise RuntimeError("planned queue ack failure")
         if delivery.message_id not in self.acked:
             self.acked += (delivery.message_id,)
+
+    def extend_visibility(self, delivery: BatchDelivery, seconds: int) -> None:
+        if self.extension_failure is not None:
+            raise self.extension_failure
+        self.extensions.append((delivery.message_id, seconds))
 
 
 class FakeIncrementalBatchRepository(IncrementalBatchRepository):

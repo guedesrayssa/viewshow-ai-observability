@@ -1,7 +1,7 @@
 # Backend operacional
 
 O backend operacional é uma única aplicação Node.js 22 com Express 5 e código
-fonte integralmente em TypeScript. Ela roda como um processo no ECS/Fargate e
+fonte integralmente em TypeScript. Ela roda como um processo no Kubernetes/EKS e
 expõe `/health`, `/metrics`, a superfície federada `/auth/session`,
 `/auth/login`, `/auth/callback` e `/auth/logout`, além de `/api/v1/*`.
 

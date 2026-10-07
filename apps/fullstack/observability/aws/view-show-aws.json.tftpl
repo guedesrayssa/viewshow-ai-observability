@@ -11,10 +11,10 @@
       "id": 1,
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "ServiceName": "${service_name}"}, "metricName": "CPUUtilization", "namespace": "AWS/ECS", "period": "60", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Average"},
-        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "ServiceName": "${service_name}"}, "metricName": "MemoryUtilization", "namespace": "AWS/ECS", "period": "60", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Average"}
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "Namespace": "${namespace}", "PodName": "api"}, "metricName": "pod_cpu_utilization_over_pod_limit", "namespace": "ContainerInsights", "period": "60", "queryMode": "Metrics", "refId": "A", "region": "${aws_region}", "statistic": "Average"},
+        {"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}, "dimensions": {"ClusterName": "${cluster_name}", "Namespace": "${namespace}", "PodName": "api"}, "metricName": "pod_memory_utilization_over_pod_limit", "namespace": "ContainerInsights", "period": "60", "queryMode": "Metrics", "refId": "B", "region": "${aws_region}", "statistic": "Average"}
       ],
-      "title": "ECS — CPU e memória",
+      "title": "EKS — CPU e memória",
       "type": "timeseries"
     },
     {

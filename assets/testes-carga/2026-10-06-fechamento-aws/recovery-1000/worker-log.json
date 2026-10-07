@@ -1,0 +1,56 @@
+{
+    "events": [
+        {
+            "timestamp": 1791333642911,
+            "message": "{\"timestamp\":\"2026-10-07T00:40:42.910Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.started\",\"message\":\"ingestion.run.started\",\"traceId\":\"trace-8b88495f93684c4b8b762f339a424f9e\",\"runId\":\"import-dump-8ae78fddf3ed4e1d831da44bdc944a08\",\"command\":\"import-dump\",\"stage\":\"STARTING\"}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643383,
+            "message": "{\"_aws\":{\"Timestamp\":1791333643383,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"source_mode\"]],\"Metrics\":[{\"Name\":\"LocalDiskCurrentBytes\",\"Unit\":\"Bytes\"}]}]},\"command\":\"import-dump\",\"source_mode\":\"snapshot\",\"LocalDiskCurrentBytes\":0.0}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643383,
+            "message": "{\"_aws\":{\"Timestamp\":1791333643383,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"source_mode\"]],\"Metrics\":[{\"Name\":\"LocalDiskPeakBytes\",\"Unit\":\"Bytes\"}]}]},\"command\":\"import-dump\",\"source_mode\":\"snapshot\",\"LocalDiskPeakBytes\":0.0}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643444,
+            "message": "{\"_aws\":{\"Timestamp\":1791333643444,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"source_mode\"]],\"Metrics\":[{\"Name\":\"LocalDiskCurrentBytes\",\"Unit\":\"Bytes\"}]}]},\"command\":\"import-dump\",\"source_mode\":\"snapshot\",\"LocalDiskCurrentBytes\":0.0}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643444,
+            "message": "{\"_aws\":{\"Timestamp\":1791333643444,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"source_mode\"]],\"Metrics\":[{\"Name\":\"LocalDiskPeakBytes\",\"Unit\":\"Bytes\"}]}]},\"command\":\"import-dump\",\"source_mode\":\"snapshot\",\"LocalDiskPeakBytes\":0.0}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643481,
+            "message": "{\"timestamp\":\"2026-10-07T00:40:43.480Z\",\"level\":\"error\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.failed\",\"message\":\"Não foi possível concluir a importação.\",\"traceId\":\"trace-8b88495f93684c4b8b762f339a424f9e\",\"runId\":\"import-dump-8ae78fddf3ed4e1d831da44bdc944a08\",\"command\":\"import-dump\",\"stage\":\"FAILED\",\"durationMs\":569.8907720000079,\"errorCode\":\"INTERNAL_ERROR\",\"requestId\":\"req_import_01M49WSN1E8748HJCYAR1RNZ2W\",\"causeType\":\"LeaseBusy\"}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643481,
+            "message": "{\"timestamp\":\"2026-10-07T00:40:43.481Z\",\"level\":\"info\",\"service_name\":\"view-show-ingestion\",\"environment\":\"learner-lab\",\"event\":\"ingestion.run.finished\",\"message\":\"Não foi possível concluir a importação.\",\"traceId\":\"trace-8b88495f93684c4b8b762f339a424f9e\",\"runId\":\"import-dump-8ae78fddf3ed4e1d831da44bdc944a08\",\"command\":\"import-dump\",\"stage\":\"FAILED\",\"durationMs\":569.8907720000079,\"errorCode\":\"INTERNAL_ERROR\",\"requestId\":\"req_import_01M49WSN1E8748HJCYAR1RNZ2W\",\"causeType\":\"LeaseBusy\",\"status\":\"FAILED\"}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643481,
+            "message": "{\"_aws\":{\"Timestamp\":1791333643481,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"source_mode\",\"status\"]],\"Metrics\":[{\"Name\":\"Runs\",\"Unit\":\"Count\"}]}]},\"command\":\"import-dump\",\"source_mode\":\"snapshot\",\"status\":\"FAILED\",\"Runs\":1}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643481,
+            "message": "{\"_aws\":{\"Timestamp\":1791333643481,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[\"command\",\"source_mode\",\"status\"]],\"Metrics\":[{\"Name\":\"RunDurationMs\",\"Unit\":\"Milliseconds\"}]}]},\"command\":\"import-dump\",\"source_mode\":\"snapshot\",\"status\":\"FAILED\",\"RunDurationMs\":569.8907720000079}",
+            "ingestionTime": 1791333646745
+        },
+        {
+            "timestamp": 1791333643489,
+            "message": "{\"_aws\":{\"Timestamp\":1791333643489,\"CloudWatchMetrics\":[{\"Namespace\":\"view-show/Ingestion\",\"Dimensions\":[[]],\"Metrics\":[{\"Name\":\"OutboxPendingCount\",\"Unit\":\"Count\"}]}]},\"OutboxPendingCount\":0}",
+            "ingestionTime": 1791333646745
+        }
+    ],
+    "nextForwardToken": "f/39948075149003683803434347041270436088289329674540548105/s",
+    "nextBackwardToken": "b/39948075136113853078683646865462790926698576724083867648/s"
+}

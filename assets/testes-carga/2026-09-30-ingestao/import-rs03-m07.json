@@ -1,0 +1,43 @@
+{
+  "data": {
+    "importId": "imp_01M3S40B0C0GQGJ7C1Y921DHKZ",
+    "requestedBy": "74c83438-1011-701e-e6bd-5412596d2f18",
+    "author": {
+      "id": "74c83438-1011-701e-e6bd-5412596d2f18",
+      "name": null,
+      "email": "carga-sprint5@viewshow.test"
+    },
+    "canManageUpload": false,
+    "fileName": "argus_dump.sql.gz",
+    "sizeBytes": 5774,
+    "snapshotExtractedOn": "2026-09-30",
+    "createdAt": "2026-09-30T12:18:06.988Z",
+    "updatedAt": "2026-09-30T12:19:37.112Z",
+    "state": "FAILED",
+    "version": 8,
+    "progress": {
+      "kind": "none"
+    },
+    "candidateVersion": null,
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Não foi possível concluir a importação.",
+      "requestId": "req_import_01M3S40B0C0GQGJ7C1Y921DHKZ",
+      "stage": "VALIDATING",
+      "retryable": false,
+      "attempt": 1,
+      "maxAttempts": null
+    }
+  },
+  "meta": {
+    "requestId": "req_81ac8fdbe6cb4b52b32e84441e716e47",
+    "schemaVersion": "1.0",
+    "datasetVersion": null,
+    "generatedAt": "2026-09-30T12:21:14.953Z",
+    "window": null,
+    "partial": false,
+    "refreshAfterSeconds": null,
+    "freshness": [],
+    "warnings": []
+  }
+}

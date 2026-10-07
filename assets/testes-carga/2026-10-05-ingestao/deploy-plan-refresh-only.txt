@@ -1,0 +1,1378 @@
+terraform_data.build_painel: Refreshing state... [id=3e3686b2-98fb-2f7e-a170-4d763c4f4180]
+random_password.cursor_secret: Refreshing state... [id=none]
+random_password.auth_cookie_secret: Refreshing state... [id=none]
+data.archive_file.painel: Reading...
+data.archive_file.painel: Read complete after 0s [id=3fc0aca733a5a041252aa255ef77edecb24fc069]
+aws_cloudwatch_log_group.ingestion_sync: Refreshing state... [id=/ecs/view-show-ingestion-sync]
+aws_vpc.principal: Refreshing state... [id=vpc-0083b163a6f508a36]
+aws_cloudwatch_log_group.api: Refreshing state... [id=/ecs/view-show-iac-api]
+aws_cloudwatch_metric_alarm.ingestion_athena_failures: Refreshing state... [id=view-show-ingestion-athena-failures]
+aws_cloudwatch_metric_alarm.ingestion_partial_runs["sync"]: Refreshing state... [id=view-show-ingestion-sync-partial]
+aws_cloudwatch_metric_alarm.ingestion_schema_drift["backfill"]: Refreshing state... [id=view-show-ingestion-backfill-schema-drift]
+aws_ecs_cluster.principal: Refreshing state... [id=arn:aws:ecs:us-east-1:145497513075:cluster/view-show-iac-cluster]
+aws_cloudwatch_metric_alarm.ingestion_partial_runs["backfill"]: Refreshing state... [id=view-show-ingestion-backfill-partial]
+aws_scheduler_schedule_group.ingestion: Refreshing state... [id=view-show-ingestion]
+aws_sqs_queue.incremental_batches_dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches-dlq.fifo]
+aws_cloudwatch_metric_alarm.ingestion_schema_drift["sync"]: Refreshing state... [id=view-show-ingestion-sync-schema-drift]
+aws_ecr_repository.api: Refreshing state... [id=view-show-iac-api]
+aws_sqs_queue.analysis_dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis-dlq]
+aws_cloudwatch_log_group.ingestion_backfill: Refreshing state... [id=/ecs/view-show-ingestion-backfill]
+aws_sqs_queue.ingestion_scheduler_dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-scheduler-dlq]
+aws_cloudwatch_metric_alarm.import_reconciliation_failures: Refreshing state... [id=view-show-import-reconciliation-failures]
+data.aws_caller_identity.atual: Reading...
+aws_cloudwatch_log_group.ingestion_incremental_export: Refreshing state... [id=/ecs/view-show-ingestion-incremental-export]
+aws_cloudwatch_metric_alarm.ingestion_stage_failures["projecting"]: Refreshing state... [id=view-show-ingestion-projecting-failures]
+data.aws_caller_identity.atual: Read complete after 1s [id=145497513075]
+aws_cloudwatch_metric_alarm.ingestion_stage_failures["archiving"]: Refreshing state... [id=view-show-ingestion-archiving-failures]
+aws_secretsmanager_secret.snapshot_mysql[0]: Refreshing state... [id=arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/snapshot-mysql-UaMal8]
+aws_cloudwatch_metric_alarm.ingestion_backfill_failures: Refreshing state... [id=view-show-ingestion-backfill-failures]
+aws_dynamodb_table.operacional: Refreshing state... [id=view-show-iac-operacional]
+aws_apigatewayv2_api.tls: Refreshing state... [id=hk4ooeetbi]
+aws_cloudwatch_metric_alarm.import_active_upload_age: Refreshing state... [id=view-show-import-active-upload-age]
+aws_cloudwatch_metric_alarm.incremental_batch_quarantined: Refreshing state... [id=view-show-ingestion-incremental-batch-quarantined]
+data.aws_availability_zones.disponiveis: Reading...
+aws_cloudwatch_metric_alarm.ingestion_projecting_duration: Refreshing state... [id=view-show-ingestion-projecting-duration]
+aws_cloudwatch_log_group.ingestion_incremental_ingest: Refreshing state... [id=/ecs/view-show-ingestion-incremental-ingest]
+aws_cloudwatch_metric_alarm.ingestion_outbox_oldest_age: Refreshing state... [id=view-show-ingestion-outbox-oldest-age]
+data.aws_iam_instance_profile.lab: Reading...
+data.aws_availability_zones.disponiveis: Read complete after 0s [id=us-east-1]
+data.aws_region.atual: Reading...
+data.aws_region.atual: Read complete after 0s [id=us-east-1]
+aws_cloudwatch_metric_alarm.ingestion_mysql_preflight_failures: Refreshing state... [id=view-show-ingestion-mysql-preflight-failures]
+data.aws_iam_role.lab: Reading...
+aws_cloudwatch_metric_alarm.ingestion_rebuild_projections_failures: Refreshing state... [id=view-show-ingestion-rebuild-projections-failures]
+aws_cloudwatch_metric_alarm.ingestion_sync_failures: Refreshing state... [id=view-show-ingestion-sync-failures]
+aws_cognito_user_pool.principal: Refreshing state... [id=us-east-1_v7GzlS2Bs]
+aws_cloudwatch_metric_alarm.import_worker_failures: Refreshing state... [id=view-show-import-worker-failures]
+aws_cloudwatch_metric_alarm.ingestion_canonical_archive_failures: Refreshing state... [id=view-show-ingestion-canonical-archive-failures]
+aws_cloudwatch_metric_alarm.ingestion_disk_usage_critical: Refreshing state... [id=view-show-ingestion-snapshot-disk-critical]
+aws_cloudwatch_metric_alarm.ingestion_mysql_page_duration: Refreshing state... [id=view-show-ingestion-mysql-page-duration]
+aws_cloudwatch_metric_alarm.ingestion_mysql_retries: Refreshing state... [id=view-show-ingestion-mysql-retries]
+aws_cloudwatch_metric_alarm.ingestion_disk_usage_warning: Refreshing state... [id=view-show-ingestion-snapshot-disk-warning]
+data.aws_partition.current: Reading...
+data.aws_partition.current: Read complete after 0s [id=aws]
+aws_secretsmanager_secret.live_mysql[0]: Refreshing state... [id=arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD]
+aws_glue_catalog_database.ingestion: Refreshing state... [id=145497513075:view_show_ingestion]
+data.aws_iam_instance_profile.lab: Read complete after 1s [id=AIPASDYCT3RZRNIFKHPSY]
+data.aws_iam_role.lab: Read complete after 1s [id=LabRole]
+data.aws_ssm_parameter.amazon_linux_2023: Reading...
+aws_ecr_repository.ingestion: Refreshing state... [id=view-show-ingestion]
+aws_dynamodb_table.golden_set: Refreshing state... [id=view-show-iac-golden-set]
+aws_cloudwatch_metric_alarm.incremental_watermark_lag: Refreshing state... [id=view-show-ingestion-incremental-watermark-lag]
+aws_ecs_cluster_capacity_providers.principal: Refreshing state... [id=view-show-iac-cluster]
+aws_cloudwatch_metric_alarm.scheduler_target_errors: Refreshing state... [id=view-show-ingestion-scheduler-target-errors]
+aws_sqs_queue.incremental_batches: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches.fifo]
+aws_cloudwatch_metric_alarm.incremental_dlq_depth: Refreshing state... [id=view-show-ingestion-incremental-dlq-depth]
+aws_cloudwatch_log_metric_filter.import_active_upload_age: Refreshing state... [id=view-show-import-active-upload-age]
+aws_cloudwatch_log_metric_filter.import_reconciliation_failures: Refreshing state... [id=view-show-import-reconciliation-failures]
+terraform_data.imagem: Refreshing state... [id=f493615d-af52-a038-c926-24e6f5e9a764]
+aws_cloudwatch_metric_alarm.scheduler_dlq_depth: Refreshing state... [id=view-show-ingestion-scheduler-dlq-depth]
+aws_sqs_queue.analysis: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis]
+aws_cloudwatch_metric_alarm.analysis_dlq_depth: Refreshing state... [id=view-show-ingestion-analysis-dlq-depth]
+aws_apigatewayv2_stage.default: Refreshing state... [id=$default]
+aws_route_table.publica: Refreshing state... [id=rtb-02016ed594b08003b]
+aws_internet_gateway.principal: Refreshing state... [id=igw-0c42e0a54ea4e0301]
+aws_security_group.bastion: Refreshing state... [id=sg-064b7d4b5ca02290b]
+data.aws_ssm_parameter.amazon_linux_2023: Read complete after 0s [id=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64]
+aws_security_group.alb: Refreshing state... [id=sg-0e3f2a539d2019976]
+aws_route_table.privada: Refreshing state... [id=rtb-012523ea7ddffd332]
+aws_lb_target_group.api: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:145497513075:targetgroup/view-show-iac-api-tg/30c186e7b7ddd7ac]
+terraform_data.ingestion_image[0]: Refreshing state... [id=72872ec0-16ed-2ef9-19de-cf4ff3eff7cb]
+terraform_data.flow_logs_bucket: Refreshing state... [id=ddd8eceb-a95c-0b46-bf66-8bd7501daee8]
+aws_cloudwatch_metric_alarm.incremental_queue_oldest_age: Refreshing state... [id=view-show-ingestion-incremental-queue-oldest-age]
+aws_sqs_queue_redrive_allow_policy.incremental_batches_dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches-dlq.fifo]
+aws_cloudwatch_metric_alarm.incremental_queue_backlog: Refreshing state... [id=view-show-ingestion-incremental-queue-backlog]
+aws_subnet.publica["a"]: Refreshing state... [id=subnet-0cec1e8e1a3cfd3b2]
+aws_subnet.publica["b"]: Refreshing state... [id=subnet-037380d23e4347389]
+aws_subnet.privada["a"]: Refreshing state... [id=subnet-0bc7fa505aecf28a7]
+aws_subnet.privada["b"]: Refreshing state... [id=subnet-08138d250abe09959]
+aws_cognito_user_pool_domain.principal: Refreshing state... [id=view-show-145497513075-iac-auth]
+aws_security_group.ingestion: Refreshing state... [id=sg-0e502bb53fa34b583]
+aws_cognito_user_pool_client.backend: Refreshing state... [id=2hq7jgtsomdjavi636jlrn8ogh]
+data.aws_ecr_image.ingestion[0]: Reading...
+aws_s3_bucket_server_side_encryption_configuration.flow_logs: Refreshing state... [id=view-show-145497513075-vpc-flow-logs]
+aws_s3_bucket_ownership_controls.flow_logs: Refreshing state... [id=view-show-145497513075-vpc-flow-logs]
+aws_s3_bucket_public_access_block.flow_logs: Refreshing state... [id=view-show-145497513075-vpc-flow-logs]
+aws_eip.nat: Refreshing state... [id=eipalloc-0fc2cc8732831169c]
+aws_s3_bucket_lifecycle_configuration.flow_logs: Refreshing state... [id=view-show-145497513075-vpc-flow-logs]
+aws_route.publica_internet: Refreshing state... [id=r-rtb-02016ed594b08003b1080289494]
+aws_cloudwatch_metric_alarm.analysis_queue_oldest_age: Refreshing state... [id=view-show-ingestion-analysis-queue-oldest-age]
+aws_cloudwatch_metric_alarm.analysis_queue_backlog: Refreshing state... [id=view-show-ingestion-analysis-queue-backlog]
+data.aws_ecr_image.ingestion[0]: Read complete after 0s [id=sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615]
+aws_security_group.servico: Refreshing state... [id=sg-06650e2fd22cdac71]
+aws_vpc_endpoint.s3: Refreshing state... [id=vpce-0ac203c1cc674791f]
+terraform_data.ingestion_guardrails: Refreshing state... [id=a49b275f-85a2-cfd0-bd99-18f850a1c6b0]
+aws_vpc_endpoint.dynamodb: Refreshing state... [id=vpce-0131465e841025b94]
+aws_route_table_association.publica["a"]: Refreshing state... [id=rtbassoc-02bb54cc96868e6fc]
+aws_instance.bastion: Refreshing state... [id=i-0dbc4cedf800ead98]
+aws_route_table_association.publica["b"]: Refreshing state... [id=rtbassoc-02678b39ad4baabf1]
+aws_lb.principal: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:145497513075:loadbalancer/app/view-show-iac-alb/1224798f70f43563]
+aws_route_table_association.privada["a"]: Refreshing state... [id=rtbassoc-0e287260e7f0c0af4]
+aws_route_table_association.privada["b"]: Refreshing state... [id=rtbassoc-087594dd7598c85fb]
+aws_amplify_app.painel: Refreshing state... [id=di2pd1m9dnag1]
+aws_s3_bucket_policy.flow_logs: Refreshing state... [id=view-show-145497513075-vpc-flow-logs]
+aws_nat_gateway.principal: Refreshing state... [id=nat-0b6a4c4b92ba2f582]
+aws_ecs_task_definition.ingestion_incremental_export: Refreshing state... [id=view-show-ingestion-incremental-export]
+aws_ecs_task_definition.ingestion_sync: Refreshing state... [id=view-show-ingestion-sync]
+aws_ecs_task_definition.ingestion_incremental_ingest: Refreshing state... [id=view-show-ingestion-incremental-ingest]
+aws_flow_log.vpc: Refreshing state... [id=fl-0d505aed0490740b6]
+aws_scheduler_schedule.ingestion_incremental_export: Refreshing state... [id=view-show-ingestion/view-show-ingestion-incremental-export]
+aws_route.privada_internet: Refreshing state... [id=r-rtb-012523ea7ddffd3321080289494]
+aws_amplify_branch.principal: Refreshing state... [id=di2pd1m9dnag1/producao]
+aws_scheduler_schedule.ingestion_sync: Refreshing state... [id=view-show-ingestion/view-show-ingestion-sync]
+aws_scheduler_schedule.ingestion_incremental_ingest: Refreshing state... [id=view-show-ingestion/view-show-ingestion-incremental-ingest]
+terraform_data.painel: Refreshing state... [id=4f676a47-c1a1-41f3-f578-6e33a1a93d26]
+terraform_data.ingestion_bucket_learner_lab[0]: Refreshing state... [id=5b6020bd-90d5-3bc4-849e-5cffed4f5adc]
+aws_apigatewayv2_integration.alb: Refreshing state... [id=1dkf9b4]
+aws_s3_bucket_versioning.ingestion: Refreshing state... [id=view-show-ingestion-145497513075-us-east-1]
+aws_s3_bucket_server_side_encryption_configuration.ingestion: Refreshing state... [id=view-show-ingestion-145497513075-us-east-1]
+aws_lb_listener.http: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:145497513075:listener/app/view-show-iac-alb/1224798f70f43563/5db95e8d686aa3a4]
+aws_s3_bucket_public_access_block.ingestion: Refreshing state... [id=view-show-ingestion-145497513075-us-east-1]
+aws_ecs_task_definition.api: Refreshing state... [id=view-show-iac-api-task]
+aws_apigatewayv2_route.proxy: Refreshing state... [id=yatww96]
+aws_athena_workgroup.ingestion: Refreshing state... [id=view-show-ingestion]
+aws_ecs_service.api: Refreshing state... [id=arn:aws:ecs:us-east-1:145497513075:service/view-show-iac-cluster/view-show-iac-api-service]
+aws_appautoscaling_target.api: Refreshing state... [id=service/view-show-iac-cluster/view-show-iac-api-service]
+aws_ecs_task_definition.ingestion_import: Refreshing state... [id=view-show-ingestion-import]
+aws_cloudwatch_metric_alarm.ingestion_athena_processed_bytes: Refreshing state... [id=view-show-ingestion-athena-processed-bytes]
+aws_ecs_task_definition.ingestion_backfill: Refreshing state... [id=view-show-ingestion-backfill]
+aws_cloudwatch_dashboard.ingestion: Refreshing state... [id=view-show-ingestion]
+aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-storage"]: Refreshing state... [id=view-show-ingestion-backfill-storage-utilization]
+aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-cpu"]: Refreshing state... [id=view-show-ingestion-sync-cpu-utilization]
+aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-memory"]: Refreshing state... [id=view-show-ingestion-sync-memory-utilization]
+aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-cpu"]: Refreshing state... [id=view-show-ingestion-backfill-cpu-utilization]
+aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-storage"]: Refreshing state... [id=view-show-ingestion-sync-storage-utilization]
+aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-memory"]: Refreshing state... [id=view-show-ingestion-backfill-memory-utilization]
+aws_appautoscaling_policy.cpu_api: Refreshing state... [id=view-show-iac-api-service-cpu-target]
+aws_s3_bucket_lifecycle_configuration.ingestion: Refreshing state... [id=view-show-ingestion-145497513075-us-east-1]
+
+Note: Objects have changed outside of Terraform
+
+Terraform detected the following changes made outside of Terraform since the
+last "terraform apply" which may have affected this plan:
+
+  # aws_apigatewayv2_integration.alb has changed
+  ~ resource "aws_apigatewayv2_integration" "alb" {
+        id                                        = "1dkf9b4"
+      + request_parameters                        = {}
+      + request_templates                         = {}
+        # (15 unchanged attributes hidden)
+    }
+
+  # aws_apigatewayv2_route.proxy has changed
+  ~ resource "aws_apigatewayv2_route" "proxy" {
+      + authorization_scopes                = []
+        id                                  = "yatww96"
+      + request_models                      = {}
+        # (9 unchanged attributes hidden)
+    }
+
+  # aws_appautoscaling_target.api has changed
+  ~ resource "aws_appautoscaling_target" "api" {
+        id                 = "service/view-show-iac-cluster/view-show-iac-api-service"
+      + tags               = {}
+        # (8 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+
+  # aws_cloudwatch_log_metric_filter.import_active_upload_age has changed
+  ~ resource "aws_cloudwatch_log_metric_filter" "import_active_upload_age" {
+        id             = "view-show-import-active-upload-age"
+        name           = "view-show-import-active-upload-age"
+        # (2 unchanged attributes hidden)
+
+      ~ metric_transformation {
+          + dimensions    = {}
+            name          = "ImportActiveUploadAgeSeconds"
+            # (4 unchanged attributes hidden)
+        }
+    }
+
+  # aws_cloudwatch_log_metric_filter.import_reconciliation_failures has changed
+  ~ resource "aws_cloudwatch_log_metric_filter" "import_reconciliation_failures" {
+        id             = "view-show-import-reconciliation-failures"
+        name           = "view-show-import-reconciliation-failures"
+        # (2 unchanged attributes hidden)
+
+      ~ metric_transformation {
+          + dimensions    = {}
+            name          = "ImportReconciliationFailures"
+            # (4 unchanged attributes hidden)
+        }
+    }
+
+  # aws_cloudwatch_metric_alarm.analysis_dlq_depth has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "analysis_dlq_depth" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-analysis-dlq-depth"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.analysis_queue_backlog has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "analysis_queue_backlog" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-analysis-queue-backlog"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.analysis_queue_oldest_age has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "analysis_queue_oldest_age" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-analysis-queue-oldest-age"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.import_active_upload_age has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "import_active_upload_age" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-import-active-upload-age"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+      + tags                                  = {}
+        # (18 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.import_reconciliation_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "import_reconciliation_failures" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-import-reconciliation-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+      + tags                                  = {}
+        # (18 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.import_worker_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "import_worker_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-import-worker-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+      + tags                                  = {}
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.incremental_batch_quarantined has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "incremental_batch_quarantined" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-incremental-batch-quarantined"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.incremental_dlq_depth has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "incremental_dlq_depth" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-incremental-dlq-depth"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.incremental_queue_backlog has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "incremental_queue_backlog" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-incremental-queue-backlog"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.incremental_queue_oldest_age has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "incremental_queue_oldest_age" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-incremental-queue-oldest-age"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.incremental_watermark_lag has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "incremental_watermark_lag" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-incremental-watermark-lag"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_athena_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_athena_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-athena-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_athena_processed_bytes has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_athena_processed_bytes" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-athena-processed-bytes"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_backfill_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_backfill_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-backfill-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_canonical_archive_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_canonical_archive_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-canonical-archive-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_disk_usage_critical has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_disk_usage_critical" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-snapshot-disk-critical"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_disk_usage_warning has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_disk_usage_warning" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-snapshot-disk-warning"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_mysql_page_duration has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_mysql_page_duration" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-mysql-page-duration"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+      + tags                                  = {}
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_mysql_preflight_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_mysql_preflight_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-mysql-preflight-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+      + tags                                  = {}
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_mysql_retries has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_mysql_retries" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-mysql-retries"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+      + tags                                  = {}
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_outbox_oldest_age has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_outbox_oldest_age" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-ingestion-outbox-oldest-age"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (18 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_partial_runs["backfill"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_partial_runs" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-backfill-partial"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_partial_runs["sync"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_partial_runs" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-sync-partial"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_projecting_duration has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_projecting_duration" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-projecting-duration"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_rebuild_projections_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_rebuild_projections_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-rebuild-projections-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-cpu"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_resource_utilization" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-ingestion-backfill-cpu-utilization"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (18 unchanged attributes hidden)
+
+      - metric_query {
+          - id          = "reserved" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                } -> null
+              - metric_name = "CpuReserved" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - id          = "used" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                } -> null
+              - metric_name = "CpuUtilized" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - expression  = "100 * used / reserved" -> null
+          - id          = "utilization" -> null
+          - label       = "Utilização percentual de backfill-cpu" -> null
+          - return_data = true -> null
+            # (1 unchanged attribute hidden)
+        }
+      + metric_query {
+          + id          = "reserved"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                }
+              + metric_name = "CpuReserved"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + id          = "used"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                }
+              + metric_name = "CpuUtilized"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + expression  = "100 * used / reserved"
+          + id          = "utilization"
+          + label       = "Utilização percentual de backfill-cpu"
+          + period      = 0
+          + return_data = true
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-memory"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_resource_utilization" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-ingestion-backfill-memory-utilization"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (18 unchanged attributes hidden)
+
+      - metric_query {
+          - id          = "reserved" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                } -> null
+              - metric_name = "MemoryReserved" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - id          = "used" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                } -> null
+              - metric_name = "MemoryUtilized" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - expression  = "100 * used / reserved" -> null
+          - id          = "utilization" -> null
+          - label       = "Utilização percentual de backfill-memory" -> null
+          - return_data = true -> null
+            # (1 unchanged attribute hidden)
+        }
+      + metric_query {
+          + id          = "reserved"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                }
+              + metric_name = "MemoryReserved"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + id          = "used"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                }
+              + metric_name = "MemoryUtilized"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + expression  = "100 * used / reserved"
+          + id          = "utilization"
+          + label       = "Utilização percentual de backfill-memory"
+          + period      = 0
+          + return_data = true
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_resource_utilization["backfill-storage"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_resource_utilization" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-ingestion-backfill-storage-utilization"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (18 unchanged attributes hidden)
+
+      - metric_query {
+          - id          = "reserved" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                } -> null
+              - metric_name = "EphemeralStorageReserved" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - id          = "used" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                } -> null
+              - metric_name = "EphemeralStorageUtilized" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - expression  = "100 * used / reserved" -> null
+          - id          = "utilization" -> null
+          - label       = "Utilização percentual de backfill-storage" -> null
+          - return_data = true -> null
+            # (1 unchanged attribute hidden)
+        }
+      + metric_query {
+          + id          = "reserved"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                }
+              + metric_name = "EphemeralStorageReserved"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + id          = "used"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-backfill"
+                }
+              + metric_name = "EphemeralStorageUtilized"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + expression  = "100 * used / reserved"
+          + id          = "utilization"
+          + label       = "Utilização percentual de backfill-storage"
+          + period      = 0
+          + return_data = true
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-cpu"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_resource_utilization" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-ingestion-sync-cpu-utilization"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (18 unchanged attributes hidden)
+
+      - metric_query {
+          - id          = "reserved" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                } -> null
+              - metric_name = "CpuReserved" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - id          = "used" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                } -> null
+              - metric_name = "CpuUtilized" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - expression  = "100 * used / reserved" -> null
+          - id          = "utilization" -> null
+          - label       = "Utilização percentual de sync-cpu" -> null
+          - return_data = true -> null
+            # (1 unchanged attribute hidden)
+        }
+      + metric_query {
+          + id          = "reserved"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                }
+              + metric_name = "CpuReserved"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + id          = "used"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                }
+              + metric_name = "CpuUtilized"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + expression  = "100 * used / reserved"
+          + id          = "utilization"
+          + label       = "Utilização percentual de sync-cpu"
+          + period      = 0
+          + return_data = true
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-memory"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_resource_utilization" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-ingestion-sync-memory-utilization"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (18 unchanged attributes hidden)
+
+      - metric_query {
+          - id          = "reserved" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                } -> null
+              - metric_name = "MemoryReserved" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - id          = "used" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                } -> null
+              - metric_name = "MemoryUtilized" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - expression  = "100 * used / reserved" -> null
+          - id          = "utilization" -> null
+          - label       = "Utilização percentual de sync-memory" -> null
+          - return_data = true -> null
+            # (1 unchanged attribute hidden)
+        }
+      + metric_query {
+          + id          = "reserved"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                }
+              + metric_name = "MemoryReserved"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + id          = "used"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                }
+              + metric_name = "MemoryUtilized"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + expression  = "100 * used / reserved"
+          + id          = "utilization"
+          + label       = "Utilização percentual de sync-memory"
+          + period      = 0
+          + return_data = true
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_resource_utilization["sync-storage"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_resource_utilization" {
+      + alarm_actions                         = []
+      + dimensions                            = {}
+        id                                    = "view-show-ingestion-sync-storage-utilization"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (18 unchanged attributes hidden)
+
+      - metric_query {
+          - id          = "reserved" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                } -> null
+              - metric_name = "EphemeralStorageReserved" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - id          = "used" -> null
+          - return_data = false -> null
+            # (3 unchanged attributes hidden)
+
+          - metric {
+              - dimensions  = {
+                  - "ClusterName"          = "view-show-iac-cluster"
+                  - "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                } -> null
+              - metric_name = "EphemeralStorageUtilized" -> null
+              - namespace   = "ECS/ContainerInsights" -> null
+              - period      = 300 -> null
+              - stat        = "Average" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      - metric_query {
+          - expression  = "100 * used / reserved" -> null
+          - id          = "utilization" -> null
+          - label       = "Utilização percentual de sync-storage" -> null
+          - return_data = true -> null
+            # (1 unchanged attribute hidden)
+        }
+      + metric_query {
+          + id          = "reserved"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                }
+              + metric_name = "EphemeralStorageReserved"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + id          = "used"
+          + period      = 0
+          + return_data = false
+            # (3 unchanged attributes hidden)
+
+          + metric {
+              + dimensions  = {
+                  + "ClusterName"          = "view-show-iac-cluster"
+                  + "TaskDefinitionFamily" = "view-show-ingestion-sync"
+                }
+              + metric_name = "EphemeralStorageUtilized"
+              + namespace   = "ECS/ContainerInsights"
+              + period      = 300
+              + stat        = "Average"
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + metric_query {
+          + expression  = "100 * used / reserved"
+          + id          = "utilization"
+          + label       = "Utilização percentual de sync-storage"
+          + period      = 0
+          + return_data = true
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_schema_drift["backfill"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_schema_drift" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-backfill-schema-drift"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_schema_drift["sync"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_schema_drift" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-sync-schema-drift"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_stage_failures["archiving"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_stage_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-archiving-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_stage_failures["projecting"] has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_stage_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-projecting-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.ingestion_sync_failures has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "ingestion_sync_failures" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-sync-failures"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.scheduler_dlq_depth has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "scheduler_dlq_depth" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-scheduler-dlq-depth"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_metric_alarm.scheduler_target_errors has changed
+  ~ resource "aws_cloudwatch_metric_alarm" "scheduler_target_errors" {
+      + alarm_actions                         = []
+        id                                    = "view-show-ingestion-scheduler-target-errors"
+      + insufficient_data_actions             = []
+      + ok_actions                            = []
+        tags                                  = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+        }
+        # (19 unchanged attributes hidden)
+    }
+
+  # aws_cognito_user_pool.principal has changed
+  ~ resource "aws_cognito_user_pool" "principal" {
+      + domain                     = "view-show-145497513075-iac-auth"
+      ~ estimated_number_of_users  = 0 -> 1
+        id                         = "us-east-1_v7GzlS2Bs"
+        name                       = "view-show-user-pool"
+        tags                       = {
+            "Projeto" = "view-show"
+        }
+        # (15 unchanged attributes hidden)
+
+        # (6 unchanged blocks hidden)
+    }
+
+  # aws_eip.nat has changed
+  ~ resource "aws_eip" "nat" {
+      + association_id           = "eipassoc-0ae314d0916002ecf"
+        id                       = "eipalloc-0fc2cc8732831169c"
+      + network_interface        = "eni-06646461f430ca4bb"
+      + private_dns              = "ip-10-0-0-184.ec2.internal"
+      + private_ip               = "10.0.0.184"
+        tags                     = {
+            "Name" = "view-show-nat-eip"
+        }
+        # (14 unchanged attributes hidden)
+    }
+
+  # aws_instance.bastion has changed
+  ~ resource "aws_instance" "bastion" {
+        id                                   = "i-0dbc4cedf800ead98"
+      ~ public_dns                           = "ec2-54-162-76-194.compute-1.amazonaws.com" -> "ec2-3-86-70-75.compute-1.amazonaws.com"
+      ~ public_ip                            = "54.162.76.194" -> "3.86.70.75"
+        tags                                 = {
+            "Camada" = "administracao"
+            "Name"   = "view-show-bastion"
+        }
+        # (37 unchanged attributes hidden)
+
+        # (8 unchanged blocks hidden)
+    }
+
+  # aws_lb_listener.http has changed
+  ~ resource "aws_lb_listener" "http" {
+        id                                                                  = "arn:aws:elasticloadbalancing:us-east-1:145497513075:listener/app/view-show-iac-alb/1224798f70f43563/5db95e8d686aa3a4"
+      + tags                                                                = {}
+        # (17 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+
+  # aws_lb_target_group.api has changed
+  ~ resource "aws_lb_target_group" "api" {
+        id                                 = "arn:aws:elasticloadbalancing:us-east-1:145497513075:targetgroup/view-show-iac-api-tg/30c186e7b7ddd7ac"
+      ~ load_balancer_arns                 = [
+          + "arn:aws:elasticloadbalancing:us-east-1:145497513075:loadbalancer/app/view-show-iac-alb/1224798f70f43563",
+        ]
+        name                               = "view-show-iac-api-tg"
+        tags                               = {
+            "Projeto" = "view-show"
+        }
+        # (17 unchanged attributes hidden)
+
+        # (5 unchanged blocks hidden)
+    }
+
+  # aws_nat_gateway.principal has changed
+  ~ resource "aws_nat_gateway" "principal" {
+        id                                 = "nat-0b6a4c4b92ba2f582"
+      + secondary_allocation_ids           = []
+        tags                               = {
+            "Name" = "view-show-nat"
+        }
+        # (10 unchanged attributes hidden)
+    }
+
+  # aws_route_table.privada has changed
+  ~ resource "aws_route_table" "privada" {
+        id               = "rtb-012523ea7ddffd332"
+      ~ route            = [
+          + {
+              + cidr_block                 = "0.0.0.0/0"
+              + nat_gateway_id             = "nat-0b6a4c4b92ba2f582"
+                # (11 unchanged attributes hidden)
+            },
+        ]
+        tags             = {
+            "Name" = "view-show-private-rt"
+        }
+        # (5 unchanged attributes hidden)
+    }
+
+  # aws_route_table.publica has changed
+  ~ resource "aws_route_table" "publica" {
+        id               = "rtb-02016ed594b08003b"
+      ~ route            = [
+          + {
+              + cidr_block                 = "0.0.0.0/0"
+              + gateway_id                 = "igw-0c42e0a54ea4e0301"
+                # (11 unchanged attributes hidden)
+            },
+        ]
+        tags             = {
+            "Name" = "view-show-public-rt"
+        }
+        # (5 unchanged attributes hidden)
+    }
+
+  # aws_s3_bucket_server_side_encryption_configuration.flow_logs has changed
+  ~ resource "aws_s3_bucket_server_side_encryption_configuration" "flow_logs" {
+        id                    = "view-show-145497513075-vpc-flow-logs"
+        # (2 unchanged attributes hidden)
+
+      - rule {
+          - apply_server_side_encryption_by_default {
+              - sse_algorithm     = "AES256" -> null
+                # (1 unchanged attribute hidden)
+            }
+        }
+      + rule {
+          + bucket_key_enabled = false
+
+          + apply_server_side_encryption_by_default {
+              + sse_algorithm     = "AES256"
+                # (1 unchanged attribute hidden)
+            }
+        }
+    }
+
+
+This is a refresh-only plan, so Terraform will not take any actions to undo
+these. If you were expecting these changes then you can apply this plan to
+record the updated values in the Terraform state without changing any remote
+objects.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Changes to Outputs:
+  ~ bastion_acesso                        = {
+      ~ ip_publico   = "54.162.76.194" -> "3.86.70.75"
+        # (3 unchanged attributes hidden)
+    }
+  ~ ingestion_runbook                     = {
+      ~ image                = {
+          ~ immutable_uri  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35" -> "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615"
+            # (1 unchanged attribute hidden)
+        }
+      ~ imports              = {
+          ~ task_definition_arn          = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:1" -> "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:2"
+            # (18 unchanged attributes hidden)
+        }
+      ~ incremental          = {
+          ~ export_task_arn            = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-export:1" -> "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-export:2"
+          ~ ingest_task_arn            = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:1" -> "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2"
+            # (17 unchanged attributes hidden)
+        }
+      ~ runtime              = {
+          ~ backfill_task_arn    = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-backfill:1" -> "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-backfill:2"
+          ~ import_task_arn      = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:1" -> "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:2"
+          ~ sync_task_arn        = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-sync:1" -> "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-sync:2"
+            # (11 unchanged attributes hidden)
+        }
+        # (7 unchanged attributes hidden)
+    }
+
+You can apply this plan to save these new output values to the Terraform
+state, without changing any real infrastructure.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to: .terraform-artifacts/refresh-only.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply ".terraform-artifacts/refresh-only.tfplan"

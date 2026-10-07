@@ -1,0 +1,12 @@
+
+tests\unit\application\test_ingest_incremental.py:572: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/resilience/test_incremental_ingest_resume.py::test_crash_after_hot_write_replays_without_duplicate_fact_or_event
+FAILED tests/unit/application/test_ingest_incremental.py::test_extra_column_is_preserved_raw_but_not_sent_to_normalizer
+FAILED tests/unit/application/test_ingest_incremental.py::test_hourly_manifest_executes_exact_manifest_window
+FAILED tests/unit/application/test_ingest_incremental.py::test_metric_publisher_failure_does_not_change_batch_lifecycle_or_ack
+FAILED tests/unit/application/test_ingest_incremental.py::test_completed_duplicate_is_acked_without_rewriting_hot_facts
+FAILED tests/unit/application/test_ingest_incremental.py::test_failed_sync_is_retryable_and_does_not_ack
+FAILED tests/unit/application/test_ingest_incremental.py::test_incremental_fact_is_written_only_to_the_active_dataset_representation[legacy-v1]
+FAILED tests/unit/application/test_ingest_incremental.py::test_incremental_fact_is_written_only_to_the_active_dataset_representation[canonical-v2]
+8 failed, 123 passed in 28.08s

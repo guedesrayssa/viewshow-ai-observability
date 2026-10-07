@@ -1,0 +1,29 @@
+cg01 inicio=2026-09-30T10:10:38Z fim=2026-09-30T10:13:22Z exit=0
+rs01 inicio=2026-09-30T11:01:03Z
+rs01 publicado=2026-09-30T11:01:11Z
+rs06 inicio=2026-09-30T11:01:16Z fim=2026-09-30T11:05:19Z exit=0
+rs02b injecao=2026-09-30T11:14:44Z (parar-tasks import durante ARCHIVING do cg02-r1)
+cg02-r1 inicio=2026-09-30T10:16:50Z fim=2026-09-30T11:16:56Z exit=99
+rs01 drenagem-inicio=2026-09-30T11:20:18Z
+rs05-via-rs01 inicio=2026-09-30T12:10:14Z (reentregas dos 2 lotes até a DLQ)
+rs02a injecao=2026-09-30T12:10:37Z
+rs02a reversao=2026-09-30T12:10:51Z
+rs02a(2) injecao=2026-09-30T12:14:45Z
+rs02a(2) reversao=2026-09-30T12:15:03Z (delete-bucket-policy; estado original sem política)
+rs02a-recuperacao inicio=2026-09-30T12:15:30Z fim=2026-09-30T12:18:03Z exit=99
+rs03-m07 inicio=2026-09-30T12:18:04Z fim=2026-09-30T12:19:40Z exit=99
+cg04 inicio=2026-09-30T12:19:40Z fim=2026-09-30T12:24:58Z exit=0
+rs02c inicio=2026-09-30T12:27:00Z fim=2026-09-30T12:27:35Z exit=99
+rs02c import-final: imp_01M3S4GPTEBD4SMYVB9GRSH1E2 READY 2026-09-30T12:29:33.090Z
+rs05 dlq=2026-09-30T12:35:03Z (2 mensagens na DLQ)
+2026-09-30T16:03:57Z limpeza: DLQ incremental esvaziada (2 mensagens da rodada anterior, autorizado)
+2026-09-30T19:02:52Z cg02-r2 coleta: recursos/ddb/etapas/athena gravados (cloudwatch-*-cg02-r2.json, etapas-cg02-r2.json, athena-cg02-r2.json)
+2026-09-30T19:45:13Z deploy: terraform apply -target (5 task definitions rev. 6, 3 agendamentos, imagem view-show-ingestion:52b405d7ae76 sha256:2d409c86…) com pk/sk e log de causa; bastion fora do escopo (desvio do lab)
+2026-09-30T19:51:53Z rs02a injecao (s3-negar)
+2026-09-30T19:52:06Z rs02a reversao (s3-restaurar)
+rs02a-recuperacao inicio=2026-09-30T19:52:10Z fim=2026-09-30T19:54:59Z exit=0
+2026-09-30T20:16:48Z rs01 inicio (publicacao de 2 lotes M-05, consumidor desligado)
+2026-09-30T20:16:58Z rs01 publicado
+2026-09-30T20:23:54Z rs01 drenagem-inicio (agenda ingest ligada)
+2026-09-30T20:54:20Z rs01 agenda ingest desligada (trap)
+2026-09-30T20:57:03Z rs01 fim (interrompido no limite de 1800 s; coleta manual)

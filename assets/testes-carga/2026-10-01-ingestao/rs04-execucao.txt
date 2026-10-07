@@ -1,0 +1,201 @@
+2026-10-01T15:36:36Z RS-04 inicio; imagem fix-0939869a (ingest:5)
+{"variant": "valid", "batchId": "bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9", "windowStart": "2026-10-01T12:00:00.000Z", "windowEnd": "2026-10-01T12:15:00.000Z", "rows": 150000, "sizeBytes": 177783, "sha256": "49d0bf9662a2b2e4b7df6cb089906bd1ba2eee9ef3e92c8f897afd6452f0135e", "schemaDifferences": [], "manifestKey": "raw/argus/incremental/dataset=signal_bucket/window_start=20261001T120000000Z/batch_id=bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9/manifest.json", "manifestVersionId": "jvJUmxrOQbLW6.OtKR1sCKLVEsw1vIgF", "publishedAt": "2026-10-01T15:36:36.381Z", "dryRun": false}
+2026-10-01T15:36:42Z lote bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 publicado
+2026-10-01T15:36:42Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 AUSENTE
+2026-10-01T15:36:47Z rodar-ingestao #1: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/3cd0d821402941d49da9ddf6381b3dba
+2026-10-01T15:36:48Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 AUSENTE
+2026-10-01T15:37:00Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 AUSENTE
+2026-10-01T15:37:12Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:37:14Z lote em INGESTING; aguardando 120 s antes de interromper
+2026-10-01T15:39:15Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:39:17Z parar-tasks ingest:
+arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/3cd0d821402941d49da9ddf6381b3dba	RUNNING
+2026-10-01T15:39:21Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:39:25Z 3cd0d821402941d49da9ddf6381b3dba RUNNING 2026-10-01 12:37:11.070000-03:00 None None view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=1
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:39:47Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:39:51Z 3cd0d821402941d49da9ddf6381b3dba RUNNING 2026-10-01 12:37:11.070000-03:00 None None view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=1
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:40:16Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:40:19Z 3cd0d821402941d49da9ddf6381b3dba DEPROVISIONING 2026-10-01 12:37:11.070000-03:00 None 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=1
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:40:43Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:40:45Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=1
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:41:07Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:41:11Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=1
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:41:33Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:41:36Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=1
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:41:58Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:42:02Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=0 em processamento=1
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:42:25Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:42:28Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+view-show-ingestion-incremental-batches.fifo                 visíveis=1 em processamento=0
+view-show-ingestion-incremental-batches-dlq.fifo             visíveis=0 em processamento=0
+2026-10-01T15:42:33Z mensagem visível de novo 192 s após a parada
+2
+2026-10-01T15:42:37Z rodar-ingestao #2: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/b025042d7d4949d1b1ad90446d7d79dc
+2026-10-01T15:42:38Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:43:00Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:37:12.228Z", "version": "2"}
+2026-10-01T15:43:22Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:43:45Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:44:07Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:44:29Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:44:52Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:45:14Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:45:37Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:45:59Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:46:22Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:46:44Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:47:07Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:47:29Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:47:51Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:48:14Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:48:36Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:48:59Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:49:21Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:49:44Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:50:06Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:50:28Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:50:50Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:51:12Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:51:34Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:51:57Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:52:19Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:52:41Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:53:03Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:53:25Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:53:47Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:54:09Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:54:32Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:54:54Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:55:17Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:55:39Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:56:01Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:56:17Z execução #2 terminou em 371 ms com RETRYABLE_FAILED (sync sem o lease argus, que a task interrompida segurava até expirar ~5 min após 15:39:17); mensagem voltou visível
+2026-10-01T15:56:17Z rodar-ingestao #3 (manual, após expirar o lease): arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/2d20a838abdf4b7cb5089c2de9bb5fa8
+2026-10-01T15:56:24Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "RETRYABLE_FAILED", "updatedAt": "2026-10-01T15:43:05.085Z", "version": "3"}
+2026-10-01T15:56:46Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:57:08Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:57:31Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:57:53Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:58:15Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:58:37Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:58:59Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:59:22Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T15:59:44Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:00:07Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:00:29Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:00:52Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:01:14Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:01:36Z batches.fifo vis=0 proc=1 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:01:59Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:02:21Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:02:44Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:03:06Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"state": "INGESTING", "updatedAt": "2026-10-01T15:56:46.738Z", "version": "5"}
+2026-10-01T16:03:28Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"counts": {"unchanged": "53000", "written": "97000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:03:27.546Z", "version": "7"}
+2026-10-01T16:04:00Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"counts": {"unchanged": "53000", "written": "97000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:03:27.546Z", "version": "7"}
+2026-10-01T16:04:02Z contagem:
+DATASET#dsv_f58aa0f8a04cb13a6d2d6ee568552c182e9f3e5abc0953ff1bd424c43711af3c#FACT#TS#signal_bucket#20261001 150000
+TOTAL 150000
+2026-10-01T16:04:27Z 2d20a838abdf4b7cb5089c2de9bb5fa8 STOPPED 2026-10-01 12:56:45.495000-03:00 2026-10-01 13:03:53.414000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:04:27Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+2026-10-01T16:04:27Z b025042d7d4949d1b1ad90446d7d79dc STOPPED 2026-10-01 12:43:04.131000-03:00 2026-10-01 12:43:29.474000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:04:27Z RS-04 fim
+2026-10-01T16:07:27Z pós-teste: mensagem do lote COMPLETED continuou na fila (escrita > visibility_timeout); rodar-ingestao #4 para confirmá-la: arn:aws:ecs:us-east-1:080158589617:task/view-show-iac-cluster/c1ce0d1b4d534ad1b5a6be2220280f6a
+2026-10-01T16:07:30Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"counts": {"unchanged": "53000", "written": "97000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:03:27.546Z", "version": "7"}
+2026-10-01T16:07:47Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"counts": {"unchanged": "53000", "written": "97000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:03:27.546Z", "version": "7"}
+2026-10-01T16:08:05Z batches.fifo vis=1 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"counts": {"unchanged": "53000", "written": "97000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:03:27.546Z", "version": "7"}
+2026-10-01T16:08:22Z batches.fifo vis=0 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"counts": {"unchanged": "53000", "written": "97000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:03:27.546Z", "version": "7"}
+2026-10-01T16:08:24Z fila após #4:
+2026-10-01T16:08:24Z batches.fifo vis=0 proc=0 | dlq.fifo vis=0 proc=0
+  bat_2e26a42ff60f8f2188bf44a1b2b673f56ef7311e12ccdb18046e0adff930a2e9 {"counts": {"unchanged": "53000", "written": "97000"}, "state": "COMPLETED", "updatedAt": "2026-10-01T16:03:27.546Z", "version": "7"}
+2026-10-01T16:08:27Z 2d20a838abdf4b7cb5089c2de9bb5fa8 STOPPED 2026-10-01 12:56:45.495000-03:00 2026-10-01 13:03:53.414000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:08:27Z 3cd0d821402941d49da9ddf6381b3dba STOPPED 2026-10-01 12:37:11.070000-03:00 2026-10-01 12:40:31.213000-03:00 137 view-show-ingestion-incremental-ingest:5 teste de resiliência da Sprint 5
+2026-10-01T16:08:27Z b025042d7d4949d1b1ad90446d7d79dc STOPPED 2026-10-01 12:43:04.131000-03:00 2026-10-01 12:43:29.474000-03:00 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited
+2026-10-01T16:08:27Z c1ce0d1b4d534ad1b5a6be2220280f6a DEPROVISIONING 2026-10-01 13:08:05.537000-03:00 None 0 view-show-ingestion-incremental-ingest:5 Essential container in task exited

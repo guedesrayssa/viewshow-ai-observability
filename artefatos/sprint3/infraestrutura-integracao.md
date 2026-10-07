@@ -137,7 +137,7 @@ terraform apply \
   .terraform-artifacts/view-show.tfplan
 ```
 
-&emsp;Os comandos `chmod` e `umask` restringem os artefatos em Linux/macOS. No Windows, recomenda-se a CLI oficial em um worktree privado do usuário, pois o plano herda a ACL do diretório. Os argumentos `-backend=false` e `-input=false` evitam, respectivamente, a configuração de um backend remoto e as solicitações interativas. O argumento `-out` registra o plano em um arquivo binário, que é inspecionado pelo gate antes de ser fornecido ao `terraform apply`. O gate aceita somente o conjunto conhecido de criações; qualquer alteração, substituição, remoção, importação ou endereço inesperado interrompe o procedimento.
+&emsp;Os comandos `chmod` e `umask` restringem os artefatos em Linux/macOS. No Windows, a CLI aplica uma ACL privada ao diretório de artefatos (`icacls`), e o worktree deve estar em uma pasta privada do usuário. Os argumentos `-backend=false` e `-input=false` evitam, respectivamente, a configuração de um backend remoto e as solicitações interativas. O argumento `-out` registra o plano em um arquivo binário, que é inspecionado pelo gate antes de ser fornecido ao `terraform apply`. O gate aceita somente o conjunto conhecido de criações; qualquer alteração, substituição, remoção, importação ou endereço inesperado interrompe o procedimento.
 
 &emsp;O `apply` executa scripts locais para construir e publicar a imagem da API, compilar e publicar o frontend e gerenciar o bucket dos Flow Logs. Por isso, Docker, Node.js e AWS CLI precisam permanecer disponíveis durante toda a execução.
 
@@ -245,8 +245,16 @@ plano, nada é aplicado: revise o state e o plano, renove credenciais quando
 necessário e corrija a divergência antes de repetir a etapa. Não apague ou
 importe recursos manualmente para forçar a passagem.
 
-&emsp;No Windows, a CLI não trata `chmod` como equivalente a uma ACL privada; o
-worktree deve permanecer em uma pasta de acesso restrito ao usuário.
+&emsp;No Windows, `chmod` não se aplica, então a CLI restringe os artefatos de
+`apps/fullstack/.terraform-artifacts` com uma ACL (`icacls`) que concede acesso
+apenas ao usuário atual. Os comandos que aplicam planos protegidos (`update`,
+`analysis-*` e a primeira criação do `grafana`) não usam o descritor herdado do
+Linux e do macOS: o Terraform lê o plano por caminho enquanto um processo
+auxiliar o mantém aberto com `FileShare.Read`, de modo que ninguém consegue
+alterá-lo, apagá-lo ou substituí-lo entre a validação e o `apply`. Se o bloqueio
+não puder ser obtido ou liberado, o comando falha e o artefato é retido. Fora de
+`.terraform-artifacts` (por exemplo `terraform.tfstate`) vale a ACL herdada, por
+isso o worktree deve permanecer em uma pasta de acesso restrito ao usuário.
 
 &emsp;`seed` relê o output `ingestion_runbook`, envia o mesmo conteúdo para a
 chave derivada do SHA-256, registra no resultado a data de extração conhecida

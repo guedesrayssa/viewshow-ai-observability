@@ -1,0 +1,9 @@
+{
+  "startedFromBaseCommit": "eca9de4350e4b546db378082186afc366ffb087f",
+  "executedHarnessSha256": "39259310fc889fd00e7bb27263f269b8f84c93027709100d8ad1b73ce411e604",
+  "dynamodbEndpoint": "http://127.0.0.1:18003",
+  "storage": "persistent SQLite volume, JVM maximum heap 512 MiB",
+  "producerRateEventsPerMinute": 10000,
+  "durationMinutes": 15,
+  "verification": "independent strongly consistent query of complete physical key sets; replay with a fresh idempotency key"
+}

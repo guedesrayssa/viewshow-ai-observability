@@ -1,0 +1,13 @@
+RS-01 / caminho incremental — causa raiz da falha (2026-09-30 ~11:25 UTC)
+
+1. Task ingest-incremental 128a48cf85324b089f9c04e462506251 (11:20:44Z) terminou exit 0 em 390 ms:
+   batchesCompleted=0, batchesRetryable=2, run status SUCCEEDED; nenhum log com a causa.
+2. load_manifest reproduzido localmente com o mesmo adaptador (S3IncrementalBatchStore): OK para os 2 lotes.
+3. claim reproduzido localmente com DynamoIncrementalBatchRepository contra view-show-iac-operacional:
+   botocore.exceptions.ClientError: An error occurred (ValidationException) when calling the PutItem operation:
+   One or more parameter values were invalid: Missing the key pk in the item
+4. adapters/dynamodb/incremental_batches.py grava "PK"/"SK" (maiúsculas, linhas 64 e 228);
+   apps/fullstack/dynamodb.tf define hash_key = "pk", range_key = "sk" (minúsculas).
+5. Único teste do repositório (tests/unit/adapters/test_incremental_batch_repository.py) usa cliente fake sem KeySchema.
+6. application/ingest_incremental.py:_process trata qualquer exceção do claim como retentável (except Exception → _retryable(None)),
+   sem log → a mensagem volta após visibility_timeout e vai para a DLQ após maxReceiveCount=5.

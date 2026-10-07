@@ -7,7 +7,7 @@ from pathlib import Path
 import pathspec
 
 SERVICE_ROOT = Path(__file__).parents[2]
-TERRAFORM_INGESTION = SERVICE_ROOT.parents[1] / "fullstack" / "ingestion-ecs.tf"
+TERRAFORM_INGESTION = SERVICE_ROOT.parents[1] / "fullstack" / "ingestion-runtime.tf"
 
 ARTIFACT_PATHS = (
     "adapters/.git/config",
@@ -53,7 +53,7 @@ RUNTIME_PATHS = (
     "contracts/argus/v2/README.md",
     "domain/spooler.py",
     "domain/sqlite_codec.py",
-    "scripts/run_task.py",
+    "scripts/upload_snapshot.py",
 )
 
 

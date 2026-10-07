@@ -80,7 +80,7 @@
       "options": {"enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
       "targets": [{
         "datasource": {"type": "cloudwatch", "uid": "cloudwatch"},
-        "expression": "fields @timestamp, event, eventType, code, terminal, @message | sort @timestamp desc | limit 200",
+        "expression": "fields @timestamp, event, eventType, code, terminal, @message | filter kubernetes.container_name = 'analysis-worker' | sort @timestamp desc | limit 200",
         "logGroups": [{"arn": "arn:aws:logs:${aws_region}:${aws_account_id}:log-group:${analysis_worker_log_group}:*", "name": "${analysis_worker_log_group}"}],
         "queryMode": "Logs",
         "refId": "A",

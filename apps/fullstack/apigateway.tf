@@ -13,7 +13,7 @@
 // proxy do Amplify provavelmente o rejeitaria na validação.
 //
 // Ele não substitui nada da arquitetura entregue: o painel continua no Amplify,
-// a API continua em Fargate atrás do ALB. Isto é um degrau de TLS entre os
+// a API continua em Kubernetes atrás do ALB. Isto é um degrau de TLS entre os
 // dois, e é o que torna o login possível — sem ele, o navegador bloqueia por
 // conteúdo misto uma página HTTPS chamando uma API em HTTP.
 

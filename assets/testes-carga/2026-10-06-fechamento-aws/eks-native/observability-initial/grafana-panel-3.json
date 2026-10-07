@@ -1,0 +1,28 @@
+{
+  "results": {
+    "A": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "refId": "A",
+            "meta": {
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": {
+                "calculatedMinStep": 5000
+              },
+              "executedQueryString": "Expr: sum(rate(http_requests_total{job=\"rnf-api-eks\",status_code=~\"5..\"}[30s]))\nStep: 5s"
+            },
+            "fields": []
+          },
+          "data": {
+            "values": []
+          }
+        }
+      ]
+    }
+  }
+}

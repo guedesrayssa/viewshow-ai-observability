@@ -10,12 +10,8 @@ const environment = {
   IMPORT_CURSOR_SECRET: "x".repeat(32),
   AWS_REGION: "us-east-1",
   OPERATIONAL_TABLE_NAME: "operational",
-  IMPORT_INGESTION_CLUSTER_ARN:
-    "arn:aws:ecs:us-east-1:123456789012:cluster/argus-ingestion",
-  IMPORT_INGESTION_TASK_DEFINITION_ARN:
-    "arn:aws:ecs:us-east-1:123456789012:task-definition/g05-ingestion-import:7",
-  IMPORT_INGESTION_SUBNET_IDS: " subnet-private-a,subnet-private-b ",
-  IMPORT_INGESTION_SECURITY_GROUP_ID: "sg-import",
+  IMPORT_KUBERNETES_NAMESPACE: "view-show-imports",
+  IMPORT_KUBERNETES_TEMPLATE: "ingestion-import",
   IMPORT_INGESTION_CONTAINER_NAME: "ingestion",
 };
 describe("imports configuration", () => {
@@ -25,12 +21,8 @@ describe("imports configuration", () => {
       expectedBucketOwner: "123456789012",
       cursorSecret: "x".repeat(32),
       ingestion: {
-        clusterArn:
-          "arn:aws:ecs:us-east-1:123456789012:cluster/argus-ingestion",
-        taskDefinitionArn:
-          "arn:aws:ecs:us-east-1:123456789012:task-definition/g05-ingestion-import:7",
-        subnetIds: ["subnet-private-a", "subnet-private-b"],
-        securityGroupId: "sg-import",
+        namespace: "view-show-imports",
+        templateName: "ingestion-import",
         containerName: "ingestion",
       },
     });
@@ -38,26 +30,13 @@ describe("imports configuration", () => {
       { IMPORT_BUCKET: "" },
       { IMPORT_EXPECTED_BUCKET_OWNER: "bad" },
       { IMPORT_CURSOR_SECRET: "short" },
-      { IMPORT_INGESTION_CLUSTER_ARN: "" },
-      { IMPORT_INGESTION_TASK_DEFINITION_ARN: "" },
-      { IMPORT_INGESTION_SUBNET_IDS: "" },
-      { IMPORT_INGESTION_SUBNET_IDS: "subnet-a,,subnet-b" },
-      { IMPORT_INGESTION_SECURITY_GROUP_ID: "" },
+      { IMPORT_KUBERNETES_NAMESPACE: "" },
+      { IMPORT_KUBERNETES_NAMESPACE: "../other" },
+      { IMPORT_KUBERNETES_TEMPLATE: "" },
       { IMPORT_INGESTION_CONTAINER_NAME: "" },
     ]) {
       expect(() => loadImportConfig({ ...environment, ...changes })).toThrow();
     }
-  });
-  it("accepts a stable task definition family ARN for staged rollouts", () => {
-    const taskDefinitionArn =
-      "arn:aws:ecs:us-east-1:123456789012:task-definition/g05-ingestion-import";
-
-    expect(
-      loadImportConfig({
-        ...environment,
-        IMPORT_INGESTION_TASK_DEFINITION_ARN: taskDefinitionArn,
-      }).ingestion.taskDefinitionArn,
-    ).toBe(taskDefinitionArn);
   });
   it("builds a functional module with injected ports", async () => {
     const f = importFixture();

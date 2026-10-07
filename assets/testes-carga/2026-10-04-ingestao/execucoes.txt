@@ -1,0 +1,8 @@
+2026-10-04T19:46:30Z cg05-150000 inicio
+2026-10-04T20:24:19Z cg05-150000 worker SUCCEEDED (150000 lidos/escritos, 0 rejeitados)
+2026-10-04T20:24:31Z cg05-150000 fim (k6 exit 99: thresholds de vazão e duração reprovados; checks 7/7)
+2026-10-04T20:45:37Z cg05-300000 inicio
+2026-10-04T21:57:53Z cg05-300000 worker SUCCEEDED (300000 lidos/escritos, 0 rejeitados)
+2026-10-04T21:57:57Z cg05-300000 fim (k6 exit 99: thresholds de vazão e duração reprovados; checks 7/7)
+2026-10-04T22:21:11Z cg05-750000 inicio
+2026-10-04T23:10:23Z cg05-750000 interrompido (k6: error waiting for container: unexpected EOF; Docker Desktop parou; importId não registrado; estado do job na AWS não observado)

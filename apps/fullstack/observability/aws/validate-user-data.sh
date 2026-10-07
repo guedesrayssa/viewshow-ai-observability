@@ -25,12 +25,13 @@ trap 'rm -rf -- "${RENDER_WORK_DIR}"' EXIT HUP INT TERM
 sed \
   -e "s|\${account_id}|$(escape_sed_replacement "${RENDER_AWS_ACCOUNT_ID}")|g" \
   -e "s|\${aws_region}|$(escape_sed_replacement "${RENDER_AWS_REGION}")|g" \
-  -e 's|${cluster_name}|data-ingestion-cluster|g' \
+  -e 's|${cluster_name}|view-show-iac-cluster|g' \
+  -e 's|${namespace}|view-show|g' \
   -e 's|${service_name}|monitoracao-api-service|g' \
   -e 's|${load_balancer}|data-ingestion-alb|g' \
   -e 's|${target_group}|monitoracao-api-tg|g' \
   -e 's|${operational_table}|monitoracao-operacional|g' \
-  -e 's|${log_group}|/ecs/monitoracao-api|g' \
+  -e 's|${log_group}|/aws/containerinsights/view-show-iac-cluster/application|g' \
   "${SCRIPT_DIR}/view-show-aws.json.tftpl" >"${RENDER_WORK_DIR}/view-show-aws.json"
 
 sed \
@@ -38,18 +39,13 @@ sed \
   -e "s|\${aws_region}|$(escape_sed_replacement "${RENDER_AWS_REGION}")|g" \
   -e 's|${metrics_namespace}|view-show/Ingestion|g' \
   -e 's|${cluster_name}|view-show-iac-cluster|g' \
-  -e 's|${backfill_task_family}|view-show-ingestion-backfill|g' \
-  -e 's|${sync_task_family}|view-show-ingestion-sync|g' \
-  -e 's|${incremental_export_task_family}|view-show-ingestion-incremental-export|g' \
-  -e 's|${incremental_ingest_task_family}|view-show-ingestion-incremental-ingest|g' \
+  -e 's|${namespace}|view-show|g' \
+  -e 's|${imports_namespace}|view-show-imports|g' \
   -e 's|${analysis_queue}|view-show-ingestion-analysis|g' \
   -e 's|${analysis_dlq}|view-show-ingestion-analysis-dlq|g' \
   -e 's|${incremental_queue}|view-show-ingestion-incremental-batches.fifo|g' \
   -e 's|${incremental_dlq}|view-show-ingestion-incremental-batches-dlq.fifo|g' \
-  -e 's|${backfill_log_group}|/ecs/view-show-ingestion-backfill|g' \
-  -e 's|${sync_log_group}|/ecs/view-show-ingestion-sync|g' \
-  -e 's|${incremental_export_log_group}|/ecs/view-show-ingestion-incremental-export|g' \
-  -e 's|${incremental_ingest_log_group}|/ecs/view-show-ingestion-incremental-ingest|g' \
+  -e 's|${log_group}|/aws/containerinsights/view-show-iac-cluster/application|g' \
   -e 's/$${/${/g' \
   "${SCRIPT_DIR}/view-show-ingestion.json.tftpl" \
   >"${RENDER_WORK_DIR}/view-show-ingestion.json"
@@ -57,14 +53,14 @@ sed \
 sed \
   -e "s|\${aws_account_id}|$(escape_sed_replacement "${RENDER_AWS_ACCOUNT_ID}")|g" \
   -e "s|\${aws_region}|$(escape_sed_replacement "${RENDER_AWS_REGION}")|g" \
-  -e 's|${analysis_worker_log_group}|/ecs/view-show-analysis-worker|g' \
+  -e 's|${analysis_worker_log_group}|/aws/containerinsights/view-show-iac-cluster/application|g' \
   "${SCRIPT_DIR}/view-show-agentic-aws.json.tftpl" >"${RENDER_WORK_DIR}/view-show-agentic-aws.json"
 
 grep -Fq '"uid": "view-show-agentic-aws"' "${RENDER_WORK_DIR}/view-show-agentic-aws.json" || {
   echo "Dashboard Agentic AWS renderizado sem o UID esperado." >&2
   exit 1
 }
-grep -Fq '/ecs/view-show-analysis-worker' "${RENDER_WORK_DIR}/view-show-agentic-aws.json" || {
+grep -Fq '/aws/containerinsights/view-show-iac-cluster/application' "${RENDER_WORK_DIR}/view-show-agentic-aws.json" || {
   echo "Dashboard Agentic AWS renderizado sem o log group do worker." >&2
   exit 1
 }

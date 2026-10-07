@@ -1,0 +1,50 @@
+[
+ {
+  "t": "2026-10-04T19:47:00Z",
+  "stage": "RESTORING",
+  "command": "import-dump",
+  "StageDurationMs": 3020.0
+ },
+ {
+  "t": "2026-10-04T19:47:00Z",
+  "stage": "STARTING",
+  "command": "import-dump",
+  "StageDurationMs": 122.0
+ },
+ {
+  "t": "2026-10-04T19:47:00Z",
+  "stage": "VALIDATING",
+  "command": "import-dump",
+  "StageDurationMs": 627.0
+ },
+ {
+  "t": "2026-10-04T19:55:00Z",
+  "stage": "INGESTING",
+  "command": "import-dump",
+  "StageDurationMs": 447512.0
+ },
+ {
+  "t": "2026-10-04T20:11:00Z",
+  "stage": "PROJECTING",
+  "command": "import-dump",
+  "StageDurationMs": 958073.0
+ },
+ {
+  "t": "2026-10-04T20:24:00Z",
+  "stage": "ARCHIVING",
+  "command": "import-dump",
+  "StageDurationMs": 778185.0
+ },
+ {
+  "t": "2026-10-04T20:24:00Z",
+  "stage": "ACTIVATING",
+  "command": "import-dump",
+  "StageDurationMs": 207.0
+ },
+ {
+  "t": "2026-10-04T20:24:00Z",
+  "stage": "PUBLISHING",
+  "command": "import-dump",
+  "StageDurationMs": 208.0
+ }
+]

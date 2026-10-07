@@ -1,3 +1,5 @@
+> Arquitetura atual desta branch: [Kubernetes/EKS](kubernetes.md). As descrições ECS das sprints anteriores são registros históricos; para implantação use o [runbook](../../apps/kubernetes/README.md).
+
 # Arquitetura do View Show
 
 - **Status:** fonte oficial para desenvolvimento

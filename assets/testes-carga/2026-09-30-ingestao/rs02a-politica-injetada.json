@@ -1,0 +1,1 @@
+{"Version":"2012-10-17","Statement":[{"Sid":"CargaSprint5NegaUploadImportacao","Effect":"Deny","Principal":"*","Action":"s3:PutObject","Resource":"arn:aws:s3:::view-show-ingestion-114388221188-us-east-1/staging/imports/*"}]}

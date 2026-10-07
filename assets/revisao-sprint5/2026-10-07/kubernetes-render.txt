@@ -1,0 +1,25 @@
+✔ analysis worker honors the zero-to-one replica gate (1.039708ms)
+✔ analysis replica gate rejects missing, fractional and out-of-range counts (0.246042ms)
+✔ API-created import Jobs are constrained by a fail-closed admission policy (0.655333ms)
+✔ API sync patches can only suspend or resume the exact CronJob (0.123708ms)
+✔ import admission pins exact rendered environment, mounts, volumes and security contexts (0.169042ms)
+✔ import admission normalizes empty static env values without weakening identities or Secret references (0.236375ms)
+✔ import admission rejects reserved dynamic names in either static env list (0.434541ms)
+✔ import admission refuses a missing template or MySQL sidecar (0.206042ms)
+✔ snapshot workers await MySQL and can complete independently of sidecar (0.053958ms)
+✔ api has probes, resources, ALB binding and autoscaling (0.084834ms)
+✔ schedules preserve frequencies, remain suspended, and forbid overlap (0.059042ms)
+✔ API secret values never enter Pod plaintext env or ConfigMaps (0.043208ms)
+✔ import RBAC is isolated to import namespace without secret access (0.03725ms)
+✔ Secrets Manager selectors are checked (0.040458ms)
+✔ manual backfill pins snapshot, has independent secret and never activates (0.483959ms)
+✔ missing live credentials are allowed only while the schedule is suspended (0.226542ms)
+✔ Academy uses node credentials while retaining Kubernetes service accounts/RBAC (0.15475ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 93.443917

@@ -34,6 +34,13 @@ Módulo 7, Engenharia de Software — Inteli
 
 ---
 
+## Testes não funcionais finais
+
+A [entrega consolidada de carga, resiliência e observabilidade](artefatos/testes-carga-finais.md)
+relaciona os três critérios de avaliação aos planos, arquivos de implementação,
+resultados e indicadores. O [índice de evidências](assets/testes-carga/README.md)
+identifica cada ambiente, período e limitação, preservando os resultados históricos.
+
 ## Descrição do projeto
 
 As plataformas de monitoração de mercado pressupõem protocolos modernos e um parque
@@ -217,85 +224,11 @@ a API voltar sozinha, no mesmo endereço, bastando iniciar a instância na sess�
 
 ---
 
-## Provisionamento automatizado (Terraform, Learner Lab individual)
+## Provisionamento automatizado (Terraform e Kubernetes)
 
-Além do runbook manual acima — que sobe a stack da Sprint 1 (`apps/basica`) —
-o diretório [`apps/fullstack`](apps/fullstack) centraliza a IaC da stack AWS
-atual (VPC dedicada, painel Next.js no Amplify, API privada em ECS Fargate com
-autoescalonamento, ALB, bastion, Flow Logs, Cognito, DynamoDB e observabilidade)
-e declara também a ingestão ARGUS 2.0 em tasks Fargate, com S3/Glue/Athena e
-SQS.
+A arquitetura atual usa EKS: API e worker de análise em Deployments, ingestões em Jobs/CronJobs, escalonamento por HPA e Cluster Autoscaler. Amplify, API Gateway, ALB e serviços de dados continuam na AWS.
 
-Pré-requisitos para uma aplicação deliberada: **Terraform 1.7+**, **Docker**
-com o daemon ativo, **Node.js 22 + npm** e **AWS CLI**, além de uma sessão válida
-do AWS Academy. O estado legado pertence a outra conta e não pode ser adotado,
-copiado, importado ou migrado para esta stack. A implantação isolada cria um
-novo estado local em `apps/fullstack`; preserve-o, pois ele é necessário para
-diagnóstico e para um teardown posterior explicitamente solicitado.
-
-Na raiz do repositório, com Docker em execução e a sessão do AWS Academy ativa,
-o provisionamento completo é feito por um único comando:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs setup
-```
-
-O comando usa o profile `default`; aceite outro com `--profile <nome>`. Ele pede
-o e-mail e a senha do usuário inicial, mostra a conta e o escopo, aceita uma
-confirmação simples `s/N`, aplica exatamente o plano aceito pelo gate create-only,
-confirma o usuário no Cognito e imprime os links do painel e da API. Ele também
-cria, quando ausente, a senha aleatória de operação interna do serviço de
-ingestão no Secrets Manager e confirma a versão `AWSCURRENT`; esse valor não
-aparece em argumentos, logs ou state. `--yes` pula somente a confirmação.
-
-Comandos locais mais usados:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs check    # valida pré-requisitos sem alterar a AWS
-node apps/scripts/aws-learner-lab.mjs deploy   # aplica a infraestrutura sem criar novo usuário
-node apps/scripts/aws-learner-lab.mjs destroy  # remove a stack após confirmação explícita
-```
-
-O repositório não executa pipeline automático em merges; esses comandos devem
-ser executados manualmente quando uma alteração de infraestrutura for desejada.
-
-Para diagnóstico ou operação avançada, o fluxo manual equivalente continua
-aplicando somente o plano salvo e validado:
-
-```bash
-aws sts get-caller-identity --profile default --region us-east-1
-terraform -chdir=apps/fullstack init -backend=false -input=false
-mkdir -p apps/fullstack/.terraform-artifacts
-terraform -chdir=apps/fullstack plan \
-  -input=false \
-  -out=.terraform-artifacts/view-show.tfplan
-terraform -chdir=apps/fullstack show -json \
-  .terraform-artifacts/view-show.tfplan | \
-  node apps/scripts/terraform/validate-create-plan.mjs
-terraform -chdir=apps/fullstack apply \
-  -input=false \
-  .terraform-artifacts/view-show.tfplan
-```
-
-O runtime atual autentica diretamente no Cognito por usuário e senha e mantém
-sessão assinada; a federação Cognito ↔ SSO corporativo continua como arquitetura
-alvo. A integração da API com as projeções versionadas pelo manifesto `ACTIVE`
-ainda não pode ser declarada completa.
-
-Já houve um ciclo anterior de `apply` e `destroy` no Learner Lab. Os recursos
-gerenciados foram removidos e o bucket compatível da ingestão, com seus objetos,
-foi preservado como previsto. Um novo plano integrado e a prova com o dump
-reduzido continuam pendentes.
-
-Detalhes de pré-requisitos, preservação segura do estado local, arquitetura e
-[como encontrar o link do deploy depois de fechar o
-terminal](artefatos/sprint3/infraestrutura-integracao.md#44-como-encontrar-o-link-do-deploy)
-estão em
-[`infraestrutura-integracao.md`](artefatos/sprint3/infraestrutura-integracao.md).
-Os comandos do snapshot, da task ECS e a recuperação operacional ficam no
-[runbook da ingestão](apps/backend/ingestion-data/README.md).
-
----
+O [runbook Kubernetes](apps/kubernetes/README.md) descreve os pré-requisitos, o deploy em duas etapas, a migração de uma stack ECS existente e o rollback. A configuração de infraestrutura está em [apps/fullstack](apps/fullstack/README.md).
 
 ## Documentação adicional
 

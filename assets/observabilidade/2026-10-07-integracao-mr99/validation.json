@@ -1,0 +1,73 @@
+{
+  "validatedAt": "2026-10-07T04:19:55.986Z",
+  "sourceBranch": "feat/melhoras-observabilidade-backend",
+  "sourceBase": "58f527883f7196e6222fa6783434bac875b2868e",
+  "integratedDevelop": "28bd5c4a56e96b24c48f8ea5574e625ad38221e1",
+  "scope": "working merge, source hashes below; local isolated LGTM, DynamoDB Local and Linux CI image; no new AWS deployment or capacity claim",
+  "checks": {
+    "api": {
+      "passed": 592,
+      "skipped": 23
+    },
+    "agentic": {
+      "passed": 164,
+      "skipped": 2
+    },
+    "nodeLinux": {
+      "passed": 352,
+      "skipped": 3
+    },
+    "apiCiPolicyLinux": {
+      "passed": 41
+    },
+    "terraformMocked": {
+      "passed": 7
+    },
+    "lgtm": {
+      "passed": 34,
+      "total": 34,
+      "grafanaQueries": 41
+    },
+    "rnfAudit": {
+      "implementationFiles": 95,
+      "localLinks": 102,
+      "evidenceFiles": 362,
+      "problems": 0
+    },
+    "cloudInitGzipBytes": 15809
+  },
+  "sourceHashes": [
+    {
+      "path": "apps/backend/api/contracts/src/observability/logger.ts",
+      "sha256": "c9444f1e5e998ffb03ef3079d0b7e19f72208f707c41f7288e90887d6bb87e60"
+    },
+    {
+      "path": "apps/backend/api/contracts/src/observability/telemetry.ts",
+      "sha256": "a5271e74e5566cadd0c2c18b59dc634c092b6138e9dc2341ea502564cbc40a49"
+    },
+    {
+      "path": "apps/backend/api/src/observability/metrics.ts",
+      "sha256": "77e8b16a6e977630f2d4e92512a177cd57c4e6c0391ed7bdacdb4aaac617f333"
+    },
+    {
+      "path": "apps/fullstack/observability/aws/view-show-ingestion.json.tftpl",
+      "sha256": "6f47b56996f5814b099ac7c78ee17e6b2f052b61d8de7b24e3a86b4c707ebb3d"
+    },
+    {
+      "path": "apps/fullstack/observability/aws/view-show-agentic-aws.json.tftpl",
+      "sha256": "53379334cb78c9d4a7f4ddf79d9b1f9f3a4b3c89fe00e32243c5c3f90db0df7a"
+    },
+    {
+      "path": "apps/fullstack/observability-aws.tf",
+      "sha256": "b140665b60fd485a79ca5c92a9d788afaa4509cd519c529a6dee98ec5b1901da"
+    },
+    {
+      "path": "apps/fullstack/outputs.tf",
+      "sha256": "6f2848e0bbe0b88ad5c0601e4afe0940987a61b08b047efdbf16b2088b0ba2bf"
+    },
+    {
+      "path": "apps/scripts/aws-learner-lab-ecs-legacy.mjs",
+      "sha256": "9ed4d33b410407469282f67f40e05bdc6e47467a908e6094425a8511b7d47b77"
+    }
+  ]
+}

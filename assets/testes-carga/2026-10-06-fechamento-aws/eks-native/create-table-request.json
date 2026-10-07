@@ -1,0 +1,84 @@
+{
+  "TableName": "view-show-rnf-eks",
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "outboxStatePk",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "outboxStateSk",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "pk",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "sk",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "trace_id",
+      "AttributeType": "S"
+    }
+  ],
+  "KeySchema": [
+    {
+      "AttributeName": "pk",
+      "KeyType": "HASH"
+    },
+    {
+      "AttributeName": "sk",
+      "KeyType": "RANGE"
+    }
+  ],
+  "BillingMode": "PAY_PER_REQUEST",
+  "Tags": [
+    {
+      "Key": "Projeto",
+      "Value": "view-show"
+    },
+    {
+      "Key": "Purpose",
+      "Value": "rnf-synthetic-tests"
+    },
+    {
+      "Key": "Owner",
+      "Value": "g05-artifact"
+    }
+  ],
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "outbox-pending-index",
+      "KeySchema": [
+        {
+          "AttributeName": "outboxStatePk",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "outboxStateSk",
+          "KeyType": "RANGE"
+        }
+      ],
+      "Projection": {
+        "ProjectionType": "ALL"
+      }
+    },
+    {
+      "IndexName": "trace-index",
+      "KeySchema": [
+        {
+          "AttributeName": "trace_id",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "sk",
+          "KeyType": "RANGE"
+        }
+      ],
+      "Projection": {
+        "ProjectionType": "ALL"
+      }
+    }
+  ]
+}

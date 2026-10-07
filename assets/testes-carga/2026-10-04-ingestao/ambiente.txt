@@ -1,0 +1,36 @@
+# Ambiente — rodada CG-05 de 2026-10-04 (coletado 2026-10-04T19:47:55Z)
+{
+    "conta": "145497513075"
+}
+commit: d7f56de (branch feat/testes-ingestao; gerador com --rows-per-window, alteração local)
+{
+    "familia": "view-show-ingestion-import",
+    "revisao": 1,
+    "cpu": "2048",
+    "memoria": "8192",
+    "storage": 200,
+    "imagem": "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+}
+[
+    {
+        "name": "containerInsights",
+        "value": "enabled"
+    }
+]
+{
+    "billing": "PAY_PER_REQUEST"
+}
+[
+    {
+        "nome": "view-show-ingestion-sync",
+        "estado": "DISABLED"
+    },
+    {
+        "nome": "view-show-ingestion-incremental-ingest",
+        "estado": "DISABLED"
+    },
+    {
+        "nome": "view-show-ingestion-incremental-export",
+        "estado": "DISABLED"
+    }
+]
