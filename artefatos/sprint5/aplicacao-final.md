@@ -1,5 +1,10 @@
 # Aplicação final: implantação em Kubernetes
 
+**Vídeo da Sprint 5: em gravação.** O link público e a duração de 5 a 7 minutos
+ainda não foram entregues. O [arquivo de entrada da entrega](../aplicacao-final.md)
+concentra esse status. A documentação e as evidências históricas abaixo não
+substituem a demonstração obrigatória.
+
 ## 1. Arquitetura da aplicação
 
 Na quinta sprint, a execução do View Show foi migrada do ECS/Fargate para o Amazon Elastic Kubernetes Service (EKS) 1.35. Os serviços passaram a utilizar Deployments e Jobs, e os agendamentos do EventBridge Scheduler foram substituídos por CronJobs. Os serviços de autenticação, armazenamento e comunicação assíncrona foram preservados.
@@ -48,17 +53,38 @@ O arquivo [apps/backend/api/Dockerfile](../../apps/backend/api/Dockerfile) utili
 
 O segundo estágio recebe os manifestos, `node_modules`, `dist` e os contratos compilados. A instalação de `dumb-init` permite encaminhar sinais ao processo principal. O contêiner executa como usuário `node`, com `ENTRYPOINT ["dumb-init", "--"]` e `CMD ["node", "dist/index.js"]`. A porta declarada é `3000`, e a verificação de saúde consulta `/health` por HTTP.
 
+Os dois estágios separam o compilador TypeScript e as dependências de build do
+runtime, reduzindo o conteúdo da imagem final. npm ci respeita o lockfile;
+prune remove ferramentas de desenvolvimento. O usuário node reduz privilégios,
+e dumb-init encaminha os sinais de encerramento para o processo da API. O
+HEALTHCHECK Docker ajuda na execução local; no EKS, as probes são declaradas
+explicitamente no manifest e não são herdadas do Dockerfile.
+
 ### 2.2. Ingestão de dados
 
 O arquivo [apps/backend/ingestion-data/Dockerfile](../../apps/backend/ingestion-data/Dockerfile) utiliza um único estágio, baseado em `python:3.12.11-slim-bookworm`, também fixado por digest. São instalados `default-mysql-client=1.1.0` e os pacotes de `requirements.txt`, com versões e hashes verificados. Entre as dependências estão boto3, PyMySQL, PyArrow e jsonschema. A imagem recebe os diretórios `domain`, `application`, `ports`, `adapters`, `bootstrap`, `contracts` e `scripts`.
 
 A execução utiliza o usuário `ingestion`, de UID `10001`, e o comando `ENTRYPOINT ["python", "-m", "bootstrap"]`. O argumento padrão `CMD ["--help"]` é substituído conforme a operação, como importação, backfill ou sincronização. O componente não publica porta HTTP e utiliza `/tmp/ingestion` como diretório de trabalho temporário.
 
+O único estágio Python reflete um runtime que não precisa da compilação
+TypeScript usada pelos serviços Node. O cliente MySQL atende os comandos de
+restauração do snapshot; hashes dos requisitos protegem a integridade dos
+pacotes instalados. O usuário dedicado e o espaço temporário limitam as áreas
+graváveis do workload Kubernetes. Como é um processo batch, ausência de porta
+HTTP é intencional; sucesso deve ser conferido pelo estado do Job e do run.
+
 ### 2.3. Worker de Análise
 
-O arquivo [apps/backend/agentic/Dockerfile](../../apps/backend/agentic/Dockerfile) possui dois estágios baseados em `node:20-bookworm-slim`. Diferentemente das bases anteriores, essa referência utiliza tag, sem digest fixado. O estágio de construção copia os manifestos e o lockfile, instala os pacotes com `npm ci`, acrescenta `tsconfig.json` e `src`, compila o código e remove as dependências de desenvolvimento. Os SDKs AWS utilizados permitem acesso a SQS, S3, DynamoDB e Bedrock.
+O arquivo [apps/backend/agentic/Dockerfile](../../apps/backend/agentic/Dockerfile) possui dois estágios baseados em `node:20-bookworm-slim`. Build e runtime agora fixam a mesma base pelo digest multi-plataforma `sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0`, consultado no registro Docker. Essa correção exige construir e publicar uma nova imagem; não altera retroativamente os digests das execuções AWS já preservadas. O estágio de construção copia os manifestos e o lockfile, instala os pacotes com `npm ci`, acrescenta `tsconfig.json` e `src`, compila o código e remove as dependências de desenvolvimento. Os SDKs AWS utilizados permitem acesso a SQS, S3, DynamoDB e Bedrock.
 
 O estágio de execução recebe os manifestos, `node_modules` e `dist`, utiliza o usuário `node` e inicia o processo com `CMD ["node", "dist/src/bootstrap/analysis-worker.js"]`. Não há `ENTRYPOINT` próprio nem porta publicada. Os modelos e catálogos são obtidos pela configuração e pelo S3, sem serem incorporados à imagem.
+
+O worker também separa compilação de execução e remove dependências de
+desenvolvimento. Modelos e catálogos ficam fora da imagem para permitir uma
+versão de modelo independente do binário; o bootstrap valida o SHA do modelo.
+A diferença de versão Node em relação à API pertence aos módulos existentes;
+a revisão fixa a base atual do worker, sem alegar atualização de todos os
+componentes nem execução AWS de uma imagem ainda não publicada.
 
 ### 2.4. Contextos de construção e imagem MySQL
 
@@ -184,4 +210,53 @@ Os testes IT-AWS-01, 02 e 05 de [live-aws.integration.test.ts](../../apps/backen
 
 A configuração também foi verificada pelos testes de [render.test.mjs](../../apps/kubernetes/tests/render.test.mjs), [kubernetes.tftest.hcl](../../apps/fullstack/tests/kubernetes.tftest.hcl) e [validate-terraform-learner-update-plan.test.mjs](../../apps/scripts/tests/validate-terraform-learner-update-plan.test.mjs), além das verificações da API, políticas de CI, scripts Python, chart Helm e esquemas Kubernetes.
 
-A verificação abrangeu a API e um Job com acesso aos serviços de dados. O processamento de snapshot completo, o sync live e a análise não foram executados; o Worker e as agendas permaneceram desabilitados. Esses fluxos dependem de dados, credenciais e modelos aprovados pela equipe.
+Na verificação de 1º de outubro, a execução abrangeu a API e um Job com acesso aos serviços de dados; snapshot completo, sync live e análise não foram executados, e o Worker e as agendas permaneceram desabilitados. No fechamento posterior, um EKS dedicado concluiu uma importação sintética de 1.000 eventos em READY, mas o nominal de 150 mil excedeu 900 s. A API a 137 req/s apresentou 93,99% de falhas HTTP e reinícios por liveness. O [índice AWS](../../assets/testes-carga/2026-10-06-fechamento-aws/README.md) registra as imagens e a remoção somente do cluster dedicado de teste. A [integração posterior de telemetria](../apoio/revisao-integracao-observabilidade.md) passou localmente, sem nova carga AWS da imagem integrada. Não foi demonstrado o fluxo completo com análise/sync da revisão final; os resultados anteriores não são aprovação end-to-end.
+
+
+## 7. Resiliência e recuperação operacional
+
+O [runbook de recuperação](../../apps/kubernetes/RECUPERACAO.md) explicita
+endpoint/comando, período, timeout, limiar de falha e ação de cada probe;
+checkpoints e progresso do worker; retenção/visibilidade/renovação SQS;
+pausa, reconciliação e retomada dos consumidores; e restauração de dados com
+seleção do ponto consistente, nova tabela DynamoDB, referências/IAM,
+reconciliação S3/Glue/Athena e validação antes da troca.
+
+| Verificação | Endpoint/comando | Período / timeout | Falhas / sucessos | Efeito |
+| --- | --- | --- | --- | --- |
+| Startup API | GET /health:3000 | 3 s / 1 s (default) | 30 / 1 | Reinício se não inicializa |
+| Readiness API | GET /health:3000 | 5 s / 3 s | 3 / 1 (defaults) | Retirada dos endpoints |
+| Liveness API | GET /health:3000 | 15 s / 3 s | 3 / 1 (defaults) | Reinício do contêiner |
+| Startup MySQL | mysqladmin ping | 5 s / 3 s | 60 / 1 | Libera início do worker |
+| Progresso análise | Checkpoint por escopo, SUCCEEDED e ack | Heartbeat lease/SQS 60 s; lease 300 s | Sem probe de progresso | Checkpoint comprova avanço; heartbeat comprova posse |
+
+As probes de startup/readiness/liveness da API ainda compartilham /health.
+Readiness retira o Pod do balanceamento; liveness reinicia o processo. O teste
+EKS mostra que esse desenho não evitou colapso sob saturação. O heartbeat do
+worker renova posse/visibilidade, mas não comprova avanço do processamento;
+a configuração atual não implementa watchdog de falta de progresso.
+
+PITR não está habilitado pela IaC atual. O runbook exige backup anterior
+verificado ou reconstrução de candidata a partir de fontes íntegras; não há
+ensaio de desastre nem RPO/RTO medido. Nas filas, a retenção default é de
+14 dias, visibilidade de 300 s e maxReceiveCount=5. Mensagens podem expirar;
+heartbeat e DLQ não garantem preservação indefinida.
+
+## 8. Demonstração da Sprint 5 e evidências pendentes
+
+| Critério do vídeo | Mostrar durante a gravação | Evidência que falta anexar |
+| --- | --- | --- |
+| Docker — peso 2 | Build real; explicar os três Dockerfiles, digest, estágios, usuário, cópias, portas e .dockerignore; iniciar contêiner e mostrar logs/health | Link e timestamp do trecho; identidade das imagens construídas |
+| Kubernetes — peso 4 | Renderer/chart versionados, nós Ready, Pods/Deployments/Services/Jobs/CronJobs, requests/limits, probes e HPA com valores efetivos | Comandos e saídas do cluster selecionado na gravação |
+| Componentes executando — peso 4 | Login/painel → API → upload/Job com MySQL → READY → consulta; executar análise quando ela integra o escopo apresentado | Pós-condição no DynamoDB/S3 e logs correlacionados; não substituir execução por slide |
+| Resiliência | Provocar falha reversível no ambiente de demonstração, mostrar detecção e recuperação, com métricas antes/durante/depois | Timestamps da injeção/retirada/recuperação, parâmetros do mecanismo e estado final |
+
+Docker constrói as imagens; os nós EKS usam containerd para executá-las. O
+frontend é hospedado no Amplify, conforme o diagrama; não será apresentado
+como contêiner que o repositório não implementa. Explicar essa decisão na
+apresentação e mostrar os componentes conteinerizados efetivamente usados.
+A duração total deve ficar entre 300 e 420 segundos e o link deve abrir sem
+solicitar acesso. Enquanto a gravação não for conferida, o status é pendente.
+
+A [matriz de revisão da Sprint 4](../apoio/revisao-feedback-sprint4.md)
+relaciona cada desconto à correção e distingue execução comprovada de plano.

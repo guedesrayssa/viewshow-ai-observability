@@ -1,0 +1,57 @@
+{
+  "extractedOn": "2026-10-07",
+  "scope": "review feedback supplied by user; not execution evidence",
+  "reports": [
+    {
+      "fileName": "G5-Sprint4-AplicacaoConteinerizada.docx",
+      "sha256": "44bafa677387f39933963cf3a532cb103071bfd0f81df61a345fd3b798a3c7e5",
+      "paragraphs": [
+        "G05 · View Show",
+        "Nota final: 8,3",
+        "(1) Código com container Docker: 1,8/2,0. Há um Dockerfile por componente (API, ingestão e worker de análise), com build multi-stage nos de Node e usuário sem privilégio. O de ingestão fixa a base por digest e instala dependências com verificação de hash, o que é um cuidado de segurança acima da média. O vídeo mostra a imagem no ECR e o fluxo de build. Ficou abaixo do máximo porque os Dockerfiles aparecem em slides, sem explicação das escolhas, e o padrão não é o mesmo entre eles: o worker não fixa a base por digest.",
+        "(2) Implantação com Kubernetes: 3,0/4,0. O Kubernetes aparece só como proposta: o diagrama de implantação com EKS e um slide de migração de ECS para EKS. O próprio artefato diz que os componentes \"poderiam ser descritos\" por Deployment, Service, CronJob e Ingress. No vídeo não aparecem manifests, cluster local nem nenhum comando de Kubernetes. Não descontei por não ter subido o EKS, mas o artefato não explica por que isso não foi feito. E faltou o mínimo esperado mesmo sem AWS: manifests versionados e, de preferência, um cluster local rodando.",
+        "(3) Execução dos componentes em contêineres: 3,5/4,0. Os contêineres rodam de verdade na AWS, em ECS Fargate: o vídeo mostra a chamada pelo API Gateway até o ALB e o ECS respondendo 200, a imagem no ECR e os logs da API e da ingestão chegando ao CloudWatch em tempo real. É uma execução real em nuvem, o que conta a favor. A resiliência (probes, escala, DLQ e retorno de versão) aparece só falada, sem nenhuma falha provocada.",
+        "Item",
+        "Pontos",
+        "Código com container Docker",
+        "1,8/2,0",
+        "Implantação com Kubernetes",
+        "2,8/4,0",
+        "Execução dos componentes em contêineres",
+        "3,4/4,0",
+        "Organização",
+        "-",
+        "Final",
+        "8,3/10,0"
+      ],
+      "embeddedCommentPartPresent": false
+    },
+    {
+      "fileName": "G5-Sprint4-ArquiteturaFinal.docx",
+      "sha256": "a81d4f1285da1522e4e83d7755e43fa4cab51d66c86f2f54667b692168de78ea",
+      "paragraphs": [
+        "G05 · View Show",
+        "Nota final: 6,0",
+        "Fala Galela! A entrega apresenta o cenário distribuído com EKS Fargate, separa API, ingestão e Worker e explica suas relações com os serviços de dados, identidade e mensageria. O plano contempla replicação da API, reentrega de mensagens, idempotência e degradação controlada quando o Bedrock está indisponível. Também informa que o EKS é uma proposta documental e que a implantação utilizada pelo projeto permanece em ECS.No item 1, a nota foi 2,0/2,0. As descrições dos diagramas identificam os componentes, suas responsabilidades e os principais fluxos. O documento explica a execução serverless dos Pods, a separação entre estado e processamento e as dependências externas. Não houve desconto pela ausência de implantação do EKS, pois sua execução não foi exigida expressamente no enunciado.No item 2, a nota foi 2,0/5,0. O desconto de 3,0 decorre da documentação incompleta dos arquivos solicitados, dividido em três pontos.Foram descontados 1,5 pela ausência de enumeração e explicação dos arquivos Docker. A seção 4.3 informa publicação no ECR e identificação por digest, mas o documento não identifica os Dockerfiles da API, da ingestão e do Worker nem explica imagens base, dependências, etapas de build, arquivos copiados, comandos de inicialização, usuários e portas. Também não identifica os filtros de contexto de build. Descrever o destino das imagens não atende, por si, à documentação dos arquivos que as produzem.Foram descontados 1,0 pelo detalhamento insuficiente dos manifests Kubernetes. A seção 4.1 lista dez nomes de arquivos, e as seções seguintes explicam parte de suas funções, mas não apresentam uma correspondência individual entre arquivo, recursos declarados, configurações relevantes e componente do diagrama. Faltam, por exemplo, a configuração do CronJob, os comandos dos workloads, os seletores do Service, as regras do Ingress e os parâmetros do ScaledObject e de sua autenticação no KEDA. A lista permite compreender a organização proposta, mas não o conteúdo técnico de cada arquivo.Foram descontados 0,5 pela falta de identificação dos arquivos responsáveis pelas configurações complementares. As seções 4.2 e 6 atribuem ao Terraform a criação de identidades e Secrets Kubernetes e preveem instalação de controllers e observabilidade. Entretanto, não enumeram os arquivos Terraform, scripts ou valores Helm que realizariam essas operações. Assim, não é possível relacionar essas partes da configuração aos arquivos correspondentes apenas pela entrega.No item 3, a nota foi 2,0/3,0. O plano cobre os quatro temas solicitados, mas permanece predominantemente conceitual. O desconto de 1,0 está dividido nos seguintes pontos.Foram descontados 0,4 pela contingência de corrupção ou exclusão de dados, na seção 8.4. A orientação de restaurar um ponto consistente e reprocessar janelas não explica como selecionar esse ponto, restaurar o DynamoDB, atualizar as referências da aplicação e reconciliar a tabela restaurada com os objetos históricos e as mensagens pendentes. A restauração pontual do DynamoDB cria outra tabela; portanto, a troca de destino e a validação precisam fazer parte do procedimento.Foram descontados 0,3 pela ausência de configuração concreta dos mecanismos de reinicialização, na seção 8.3. O texto diferencia corretamente startup, readiness e liveness, mas não define endpoints ou comandos, períodos, timeouts e limiares de falha. Para o Worker, também não especifica qual sinal comprova progresso do processamento. Sem esses parâmetros, a documentação não permite determinar como um travamento seria detectado e tratado.Foram descontados 0,3 pela recuperação incompleta de mensagens durante indisponibilidades prolongadas. As seções 8.1 e 8.4 afirmam a preservação do trabalho na SQS, mas não documentam retenção da fila e da DLQ, timeout de visibilidade, renovação durante análises longas ou critérios para interromper e retomar consumidores. A mensagem não permanece indefinidamente até o sucesso: ela também pode expirar pela retenção. Esses limites precisam orientar a contingência e o reprocessamento.Abs. Godoi"
+      ],
+      "embeddedCommentPartPresent": false
+    },
+    {
+      "fileName": "G5-Sprint4-Testes.docx",
+      "sha256": "3bbd04973d3e51f86a8bd092f198c451f2572bd019729fcbc0e856aecafa1dd6",
+      "paragraphs": [
+        "G05 — 8,5",
+        "Integração real com AWS e rastreabilidade do caso de uso são destaques. Há divergências entre o relatório de carga e os dados brutos e por lacunas na análise do valor limite.",
+        "Unitários [FOI MAIS LONGE]: Quatro testes Vitest bem especificados, cada um com caso válido e de erro; sendo que a saída em 2026-09-17/resultado-vitest-unitarios.txt confere. Ponto a corrigir: o UT04 está duplicado (mesmo it em duas linhas de contracts.test.ts).",
+        "Integração [CHEGOU LÁ]: IT-AWS-01 a 05 são integrações reais contra Cognito, API, DynamoDB e S3, com correlação requestId/importId, conferência direta no banco/S3 e limpeza ao final. Já IT-UPLOAD-01 a 03 simulam o cliente HTTP (vi.fn): são testes de componente da UI, não integração entre camadas.",
+        "Caso de uso / análise do valor limite [CHEGOU LÁ]: UC-09 com rastreabilidade completa: fluxo básico, alternativos 1a e 4a, exceções 3a, 3b, 4b, 4c e 5a, e pós-condições. Análise do valor limite bem definido no limite superior (5 GiB e 10 GiB, com −1 e +1), mas faltou o limite inferior +1 (2 bytes), o ZIP de 0 byte e o nome com 250 caracteres. As pós-condições são verificadas sobre ports em memória, não no banco real.",
+        "Carga [CHEGOU LÁ]: k6 em três níveis progressivos, critérios definidos antes e comparados com p50/p95/p99 e taxa de erro, reprovações analisadas (CPU saturada, autoscaling que não escalou). No entanto, os números não batem com o JSON: o documento diz cerca de 30 mil requisições no Nível 2, mas resumo-nivel2.json registra 9.564; afirma checks a 100%, mas o JSON mostra 52% no Nível 2 e 97,9% no Nível 3 (378 falhas), sem explicação.",
+        "Para melhorar",
+        "Corrigir os números do Nível 2 e explicar as falhas de checks registradas no JSON.",
+        "Completar a análise do valor limite no limite inferior (2 bytes), testar o ZIP de 0 byte e o nome com 250 caracteres; verificar ao menos uma pós-condição no DynamoDB real.",
+        "Usar backend real nos IT-UPLOAD ou reclassificá-los como testes de componente; remover o UT04 duplicado."
+      ],
+      "embeddedCommentPartPresent": false
+    }
+  ]
+}

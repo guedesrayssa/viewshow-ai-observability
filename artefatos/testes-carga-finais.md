@@ -57,8 +57,10 @@ pela revisão e imagem medidas; a integração não é uma nova rodada de capaci
 | RNF14 — consultas | p95 <2 s a 137 req/s | Chegada aberta, latência por rota e chegadas descartadas pelo gerador |
 | RNF15 — alertas | Alarme em ≤30 s após a condição de falha | Timestamps da condição e da transição para `ALARM` |
 
-Os demais RNFs constam na [matriz da Sprint 3](sprint3/testes-carga-inicial.md#4-requisitos-não-funcionais-e-planos-de-teste-revisados).
-Retenção, cobertura de código e qualidade da IA requerem testes próprios.
+Os RNFs preservam seus identificadores da Sprint 3. A matriz histórica é
+referência do plano original; seus estados e descrições de código não são
+transferidos automaticamente para a Sprint 5. Retenção, cobertura de código
+e qualidade da IA requerem testes próprios.
 Os planos específicos estão nos relatórios de [ingestão](sprint5/testes-carga-ingestao.md),
 [API](sprint5/testes-de-carga-da-api.md) e [frontend](sprint5/testes-carga-finais-front.md).
 
@@ -95,6 +97,31 @@ A rodada complementar de 750 mil conservou no bruto um threshold legado de
 900 s, mais rigoroso; a análise aplica também o orçamento de 4.500 s e publica
 o desvio. Encerrar a observação ao exceder o prazo não significa que o servidor
 possua cancelamento automático.
+
+### 2.3 Cobertura e situação dos quinze RNFs na Sprint 5
+
+| RNF | Cobertura nesta entrega | Situação sustentada pelas evidências |
+| --- | --- | --- |
+| 01 — capacidade/integridade | Batch AWS e componente contínuo local | Capacidade end-to-end reprovada; integridade local aprovada, contagens AWS com escopo declarado |
+| 02 — frescor | CG-03 incremental | Bloqueado: avanço até dado consultável não comprovado |
+| 03 — resiliência | RS-01 a RS-06 e CT-02/03 | Parcial: drenagem/reentrega comprovadas; contenção entre grupos e contrapressão reprovadas |
+| 04 — autorização | Sessão sintética na carga; teste Cognito separado | Não aprovar login, domínio corporativo ou emissão de sessão a partir da carga sintética; IT-AWS-02 é evidência funcional histórica |
+| 05 — retenção hot/cold | Configuração DynamoDB TTL e S3/Glue/Athena existente | Inspeção de implementação, sem ensaio de expiração/recuperação nesta bateria; a ausência de camada cold descrita na Sprint 3 é histórica |
+| 06 — contêineres independentes | Três Dockerfiles e inventário de builds | Implementação presente; nova fixação do digest do worker não muda imagens das rodadas históricas |
+| 07 — FCP frontend | 18 auditorias Lighthouse autenticadas | Atende FCP nas amostras; não inferir percentil de produção a partir de três repetições por tela/perfil |
+| 08 — F1 da causa raiz | Fora da bateria de carga | Sem novo veredito; exige golden set rotulado, holdout e matriz de confusão |
+| 09 — disponibilidade | Falhas HTTP, contrato, timeouts e descartes | Reprovado na carga EKS; soak local não prova disponibilidade mensal nem o ensaio de 12 h do plano histórico |
+| 10 — causa raiz em até cinco cliques | Fora da bateria de carga | Sem novo veredito; exige sessão guiada com operador e registro da tarefa |
+| 11 — normalização multi-schema | Normalização real no componente CT-01 | Integridade da massa medida; não cobre toda a matriz Smart TV/iOS/Android/Web e protocolos legados |
+| 12 — cobertura ≥70% | Suítes executadas separadamente | Quantidade de testes passando não é percentual de cobertura; sem novo aceite de cobertura nesta bateria |
+| 13 — contexto do modelo ≤5 h | Fora da bateria HTTP/ingestão | Sem novo veredito; exige inspeção dos timestamps efetivamente enviados ao modelo |
+| 14 — p95 de consulta <2 s a 137/s | API-137 local/EKS | Reprovado no EKS, inclusive quando se mede somente HTTP 200 |
+| 15 — alerta ≤30 s | Falhas e transição de alarmes | Parcial: uma amostra atende; filas e morte do worker não têm cobertura uniforme comprovada |
+
+O [registro dos apontamentos da Sprint 4](apoio/revisao-feedback-sprint4.md)
+separa correções de arquivo, evidências existentes e execuções ainda pendentes.
+Resultados de componente com dependências simuladas são classificados como
+tais; apenas a conferência no backend real sustenta uma integração entre camadas.
 
 ## 3. Catálogo de falhas e recuperação
 
@@ -160,7 +187,7 @@ não sabemos a duração final. O veredito abaixo se aplica ao escopo da rodada.
 | Três massas novas de 150 mil/900 s | ECS, fechamento | 3/3 excederam o prazo em PROJECTING; 150 mil escritos por rodada, 0 rejeitados | **Reprovado nas três** — [repetições](../assets/testes-carga/2026-10-06-fechamento-aws/nominal-repetitions/README.md) |
 | Smoke de ingestão | EKS, imagem `899883cf…` | 1.000 escritos, 0 rejeitados, `READY` em 120,648 s | **Aprovado no smoke** — [k6](../assets/testes-carga/2026-10-06-fechamento-aws/eks-native/ingestion-valid/resumo-ingestao-eks-ingestion-valid.json) |
 | Nominal 150 mil/900 s | EKS, mesma imagem | Upload/complete aceitos; `PROCESSING` após 904,60 s de polling; exit 99 | **Reprovado/censurado** — [k6](../assets/testes-carga/2026-10-06-fechamento-aws/eks-native/nominal-150000/resumo-ingestao-eks-nominal-150000.json) |
-| p95 <2 s a 137/s — RNF14 | EKS | 43.198 requisições; p95 geral 8.000,51 ms; 93,990% de falhas HTTP; 1.003 chegadas descartadas | **Reprovado** — [k6](../assets/testes-carga/2026-10-06-fechamento-aws/eks-native/api-load-137/resumo-front-api-load.json) |
+| p95 <2 s a 137/s — RNF14 | EKS | 43.198 requisições; p95 HTTP 200=7.078,57 ms e geral=8.000,51 ms; 93,990% de falhas HTTP; 1.003 chegadas descartadas | **Reprovado**, também no percentil de respostas úteis — [k6](../assets/testes-carga/2026-10-06-fechamento-aws/eks-native/api-load-137/resumo-front-api-load.json) |
 | Contrato HTTP após saturação | EKS | 35 requisições; 0 falhas inesperadas; p95 geral 658,74 ms; rota de monitoramento conserva 1×503 esperado | **Recuperação do contrato aprovada** — [smoke](../assets/testes-carga/2026-10-06-fechamento-aws/eks-native/api-recovery/resumo-front-api-smoke.json) |
 | Falhas <0,1%; sem timeout/descarte | Local, soak 50/s por 30 min | 89.928 requisições; 0,0801% falha inesperada; p95 200=90,941 ms; 76 descartes | **Parcial:** fração de falhas atende; thresholds estritos reprovam — [bateria](../assets/testes-carga/2026-10-06-fechamento-local/api-battery/summary.json) |
 | Frescor ≤120 s — RNF02 | ECS incremental | Nenhuma amostra de avanço; manifesto e projeção não atualizados pelo caminho incremental | **Bloqueado** — [manifesto](../assets/testes-carga/2026-10-01-ingestao/cg03/manifesto-active.json) |
@@ -259,6 +286,32 @@ não evitou 29.292 respostas sem status HTTP (status 0 no k6), 12.323 respostas
 atrasados → retirada de capacidade do balanceamento → liveness reinicia
 processos → mais timeout/5xx. São evidências compatíveis com o mecanismo ECS;
 o teste EKS não mediu o mesmo intervalo de 45 s nem toda a causa interna de CPU.
+
+### 4.5 Reconciliação de números e falhas de checks
+
+A tabela seguinte é gerada diretamente dos JSON pelo
+[reconciliador](../apps/backend/api/loadtest/scripts/reconcile-evidence.py).
+A linha EKS é a carga da Sprint 5. A reconciliação dos números históricos
+fica na matriz de revisão, sem alterar o relatório da Sprint 4. Contagens
+de checks são avaliações de predicados, não quantidade de requisições:
+uma resposta pode alimentar vários checks.
+
+<!-- BEGIN K6 RECONCILIATION -->
+| Ambiente / rodada | Requisições HTTP | Checks aprovados / total | Checks falhos | Falha HTTP | p95 geral / HTTP 200 (ms) | Chegadas descartadas |
+| --- | ---: | ---: | ---: | ---: | --- | ---: |
+| [Sprint 5 / EKS / API-137](../assets/testes-carga/2026-10-06-fechamento-aws/eks-native/api-load-137/resumo-front-api-load.json) | 43.198 | 7.013/89.931 (7,80%) | 82.918 | 93,99% | 8.000,51 / 7.078,57 | 1.003 |
+<!-- END K6 RECONCILIATION -->
+
+Checks condicionais ao status 200 podem passar sem validar uma resposta
+não-200; zero falhas nesse subconjunto não aprova globalmente o contrato ou a
+integridade. O [detalhamento reconciliado](../assets/revisao-sprint5/2026-10-07/reconciliacao-k6.json)
+preserva nomes, contadores e hashes, sem reescrever os brutos.
+
+Na API-137 EKS, 41.459 checks de contrato e 41.459 de eco falharam.
+O p95 HTTP 200 de 7.078,57 ms já excede os 2.000 ms; o p95 geral de 8.000,51 ms
+inclui respostas que esgotam o timeout. Não usar o percentil global como se
+fosse o de respostas úteis, nem o throughput de tentativas como vazão útil.
+O contador HTTP 200 registra 1.494 respostas, com taxa média de 4,216 req/s.
 
 ## 5. Observabilidade: cobertura e leitura dos gráficos
 
@@ -362,6 +415,29 @@ O estado final é 450 mil fatos e três lotes confirmados. Contadores SQS são
 aproximados e coletados por bucket; os tempos da seção 4 usam também logs
 e estados de lote, não apenas a posição visual de uma curva.
 
+### 5.4 Telemetria após a integração e aceite de uma nova rodada
+
+A [integração de observabilidade de 07/10](apoio/revisao-integracao-observabilidade.md)
+verificou localmente 34 checks de métricas/logs/traces e 41 queries. Essa prova
+é separada da capacidade EKS medida antes da integração. Não foi executada uma
+nova carga AWS da revisão integrada; os dashboards de produção adaptados a EKS
+ainda precisam de validação contra a implantação correspondente.
+
+Para a próxima rodada, guardar na mesma pasta: commit do runner, digest por
+componente, recursos efetivos dos Pods, massa/hash, conta/região, começo/fim UTC,
+summary k6, queries/frames e PNG do Grafana. O painel de capacidade deve combinar
+p95/p99, req/s úteis, 5xx/s, CPU, réplicas desejadas/prontas e reinícios na mesma
+janela. Eventos dos Pods e HPA explicam mudanças; não substituem amostras de CPU.
+Separar os 503 de monitoramento dos demais erros e preservar também os timeouts
+do cliente e os 5xx do balanceador que não chegam ao contador da API.
+
+O aceite visual exige valores numéricos em todas as quatro métricas e ausência
+de erros de datasource. O [verificador de telemetria](../apps/fullstack/observability/scripts/verify-api-observability.mjs)
+confere correlação e queries; o coletor do laboratório confere séries/capturas.
+Nenhum deles aprova o SLA de desempenho só porque a coleta funciona. Medir
+t_falha → t_alerta e t_retirada_da_falha → contrato nominal estável por 60 s;
+quando não há timestamp inicial ou final, publicar tempo como não medido.
+
 ## 6. Impacto nas decisões de arquitetura
 
 | Evidência | Decisão e justificativa | Estado da decisão / próxima validação |
@@ -382,6 +458,21 @@ Os sete controles negativos de admissão estão em
 A configuração de HPA mede CPU, enquanto a fila ainda não escala automaticamente
 o worker por profundidade. Não há KEDA no runtime atual.
 
+### 6.1 Fechamento do ciclo de melhoria na revisão final
+
+| Prioridade | Mudança a validar | Comparação e critério de encerramento |
+| --- | --- | --- |
+| 1 — API | Reduzir trabalho por consulta, limitar concorrência e separar a decisão de reinício da prontidão | Repetir API-137 com 2.500 incidentes, gerador dimensionado e mesma mistura; p95 HTTP 200 <2 s global/por rota, falha <0,1%, zero descarte e probes sem reinícios causados pela saturação |
+| 2 — ingestão | Instrumentar subetapas EKS e reduzir trabalho de projeção/arquivamento | Três dumps novos de 150 mil, ≤900 s até READY e recontagem independente sem perdas/duplicatas; registrar tempos por subetapa e recursos |
+| 3 — filas | Evitar consumir tentativas por posse global ocupada; preservar heartbeat | Dois grupos reais, backlog de 2/3/4 lotes e reentrega após interrupção; zero válido na DLQ, contagem/distintos equivalentes à massa |
+| 4 — entrada pública e alertas | Corrigir identificação do cliente e cobertura da morte do worker | RS-06 pelo caminho público: 429 esperado e zero 5xx/importações extras; falhas de fila/worker com condição→alarme ≤30 s |
+| 5 — frescor | Publicar watermark da última janela consultável | CG-03 com lote real e marcador lido pela API; captura→consulta ≤120 s |
+
+Esses itens são planos de encerramento, não correções já medidas. Um antes/depois
+só é comparável com massa, imagens, recursos, mistura, localização do gerador e
+limites declarados. Capacidade nominal não será aprovada por smoke de 1.000 eventos,
+por uma tabela recontada antes de READY ou por uma execução local.
+
 ## 7. Reprodução, apresentação e rastreabilidade
 
 O [laboratório de coleta](../apps/backend/api/loadtest/lab/README.md) descreve
@@ -396,6 +487,18 @@ python3 apps/backend/api/loadtest/grafana-retroativo/build.py
 docker compose -f apps/backend/api/loadtest/grafana-retroativo/compose.yml up -d
 # Abrir http://127.0.0.1:13003
 ```
+
+Antes de publicar o relatório, conferir as tabelas derivadas dos brutos:
+
+```bash
+python3 apps/backend/api/loadtest/scripts/reconcile-evidence.py --check
+python3 apps/backend/api/loadtest/scripts/verify-rnf-artifact.py
+```
+
+As correções da Sprint 4, o status do vídeo e o runbook de contingência estão
+na [matriz de revisão](apoio/revisao-feedback-sprint4.md) e na
+[aplicação final](aplicacao-final.md). O arquivo principal da aplicação fica
+disponível diretamente em artefatos, com referência ao detalhamento da Sprint 5.
 
 O [README retrospectivo](../apps/backend/api/loadtest/grafana-retroativo/README.md)
 informa portas, usuário local, dashboards, limites e comando de renderização.

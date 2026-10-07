@@ -120,6 +120,19 @@ média de conclusão ou percentil de duração end-to-end com essas observaçõe
 
 ## Integridade e síntese executiva
 
+O reconciliador confere tabelas publicadas contra contadores globais/individuais
+dos resumos k6, incluindo falhas de checks. Não altera os JSON nem interpreta
+checks condicionais como aprovação integral. Depois de uma revisão intencional,
+use --write para atualizar somente os blocos derivados, e confira --check:
+
+```bash
+python3 apps/backend/api/loadtest/scripts/reconcile-evidence.py --check
+```
+
+O CI executa verify-rnf-artifact.py, que também chama essa reconciliação,
+confere a base imutável do worker da entrega atual. Esse gate verifica
+consistência de documentação/código; não aprova capacidade nem substitui vídeo.
+
 ```bash
 python3 apps/backend/api/loadtest/scripts/verify-rnf-artifact.py \
   --output assets/testes-carga/<data>-fechamento-local/artifact-audit.json

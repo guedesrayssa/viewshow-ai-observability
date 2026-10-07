@@ -1,5 +1,12 @@
 # Testes de Carga da API
 
+> Este relatório preserva a linha de base ECS medida em 01/10/2026.
+> Expressões como configuração atual se referem à configuração daquela rodada.
+> O resultado nativo EKS e o estado da revisão final da Sprint 5 estão no
+> [artefato consolidado](../testes-carga-finais.md). A migração não reatribui
+> resultados ECS às imagens e recursos Kubernetes.
+
+
 > Este documento registra o método, os resultados e a análise dos testes de carga da API de backend (`apps/backend/api`) na AWS: onde a configuração atual satura, por quê, e se ela atende os requisitos de disponibilidade (RNF09) e de latência de consulta (RNF14). Os brutos estão em `assets/testes-carga/`; como executar a suíte está no README de `apps/backend/api/loadtest/`.
 
 ## Sumário
