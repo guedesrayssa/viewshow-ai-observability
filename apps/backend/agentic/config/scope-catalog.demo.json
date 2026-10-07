@@ -1,0 +1,18 @@
+[
+  {
+    "id": "canal-e2e-demo-agentico",
+    "source": "synthetic-demo",
+    "entity": "Canal E2E — demonstração agêntica",
+    "priority": "P2",
+    "detectorMetrics": ["bufferratio_avg"],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_demo_agentic_bufferratio_15m",
+        "unit": "ratio",
+        "grainSeconds": 900
+      }
+    ]
+  }
+]

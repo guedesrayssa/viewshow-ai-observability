@@ -214,12 +214,12 @@ variable "analysis_fact_catalog_location" {
 }
 
 variable "analysis_llm_provider" {
-  description = "Provider de interpretação A'. `none` desliga o LLM (o Learner Lab não tem Bedrock): a detecção e a previsão seguem e o diagnóstico é registrado como falha permanente, sem retentativas."
+  description = "Provider de interpretação A'. `rules` usa seleção determinística ancorada em fatos para ambientes sem LLM; `none` registra o diagnóstico como falha permanente."
   type        = string
   default     = "bedrock"
   validation {
-    condition     = contains(["bedrock", "ollama", "none"], var.analysis_llm_provider)
-    error_message = "Use bedrock, ollama ou none."
+    condition     = contains(["bedrock", "ollama", "rules", "none"], var.analysis_llm_provider)
+    error_message = "Use bedrock, ollama, rules ou none."
   }
 }
 

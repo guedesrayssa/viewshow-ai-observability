@@ -32,6 +32,27 @@ vi.mock("@aws-sdk/client-dynamodb", async (importOriginal) => {
 });
 
 describe("DynamoDB adapters", () => {
+  it("selects the latest diagnosis by publication time", async () => {
+    const send = vi.fn().mockResolvedValueOnce({
+      Items: [
+        { pk: "incident", sk: "DIAGNOSIS#new", createdAt: "2026-01-01T00:00:00.000Z", publishedAt: "2026-01-02T00:00:00.000Z" },
+        { pk: "incident", sk: "DIAGNOSIS#old", createdAt: "2026-01-01T00:00:00.000Z", publishedAt: "2026-01-01T12:00:00.000Z" },
+      ],
+    });
+    const client = { send } as unknown as DynamoDBDocumentClient;
+    const repository = new DynamoIncidentRepository("us-east-1", "table", client);
+
+    const result = await repository.latestDiagnosis({
+      datasetVersion: `dsv_${"a".repeat(64)}`,
+      formulaVersions: {},
+      projectionVersions: {},
+      availableIntervals: {},
+      hotFrom: {},
+    }, "inc_1");
+
+    expect(result?.sk).toBe("DIAGNOSIS#new");
+  });
+
   it("passes an explicit local endpoint from each module factory to the SDK client", () => {
     dynamoClientInputs.length = 0;
     const endpoint = "http://127.0.0.1:18000";
@@ -207,7 +228,21 @@ describe("DynamoDB adapters", () => {
           projectionVersion: "1.0",
           materializationRevision: `pmr_${"b".repeat(64)}`,
           requiredArchives: [],
-          payload: { observedThrough: "2026-09-09T12:00:00.000Z", sources: [] },
+          payload: {
+            projectionVersion: "1.0",
+            formulaVersion: "1.0",
+            inputWatermarks: {
+              collector_run: "2026-09-09T12:00:00.000Z",
+            },
+            observedThrough: "2026-09-09T12:00:00.000Z",
+            coverage: "complete",
+            qualityFlags: [],
+            source: "argus",
+            observedAt: "2026-09-09T12:00:00.000Z",
+            finishedAt: "2026-09-09T12:00:48.000Z",
+            rowsProcessed: 2_400,
+            durationSeconds: 48,
+          },
           payloadFingerprint: "c".repeat(64),
         },
       ],
@@ -231,10 +266,28 @@ describe("DynamoDB adapters", () => {
       ["argus"],
     );
 
-    expect(result).toEqual({
-      data: { observedThrough: "2026-09-09T12:00:00.000Z", sources: [] },
+    expect(result).toMatchObject({
+      data: {
+        kpis: {
+          ingestionRate: { value: 3_000, unit: "events_per_minute" },
+          processingLatencyP95: { value: null, unit: "ms" },
+          queueDepth: { value: null },
+          deadLetterQueue: { value: null },
+        },
+        sources: [
+          expect.objectContaining({
+            id: "argus",
+            state: "stable",
+            records: expect.objectContaining({
+              read: 2_400,
+              written: 2_400,
+              rejected: 0,
+            }),
+          }),
+        ],
+      },
       observedThrough: "2026-09-09T12:00:00.000Z",
-      coverageRatio: null,
+      coverageRatio: 1,
       source: "argus",
     });
     expect(send).toHaveBeenCalledTimes(1);
@@ -509,16 +562,30 @@ describe("DynamoDB adapters", () => {
       },
     };
     // The analysis worker writes its own flat A′ facts under the same
-    // `EVIDENCE#` prefix (`itemType: "evidence"`, no ingestion envelope) —
-    // listEvidence must skip it rather than fail the whole page on it.
+    // `EVIDENCE#` prefix (`itemType: "evidence"`, no ingestion envelope).
+    // The public adapter must expose the fact without leaking physical keys.
     const workerFactItem = {
       pk: `DATASET#${datasetVersion}#INCIDENT#inc_1`,
       sk: "EVIDENCE#fact_1",
       itemType: "evidence",
       id: "fact_1",
+      scopeId: "canal-globoplay",
       metric: "cdn_live_err_rate",
+      unit: "ratio",
+      method: "mean",
+      start: "2026-01-01T10:00:00.000Z",
+      split: "2026-01-01T11:00:00.000Z",
+      end: "2026-01-01T12:00:00.000Z",
+      reference: 0.01,
+      current: 0.08,
+      referenceCount: 4,
+      currentCount: 4,
+      expectedPoints: 4,
       direction: "increase",
+      sourceIds: ["fact_source_1"],
       statement: "Erros de CDN cresceram no intervalo.",
+      analysisRunId: "run_1",
+      createdAt: "2026-01-01T12:00:01.000Z",
     };
     const send = vi
       .fn()
@@ -594,6 +661,18 @@ describe("DynamoDB adapters", () => {
         eventId,
         correlation: expect.objectContaining({
           ruleVersion: "argus-explicit-v1",
+        }),
+      }),
+      expect.objectContaining({
+        id: "fact_1",
+        type: "analysis_fact",
+        title: "cdn_live_err_rate",
+        statement: "Erros de CDN cresceram no intervalo.",
+        relation: "context",
+        source: expect.objectContaining({ type: "analysis_worker" }),
+        quality: expect.objectContaining({
+          status: "verified",
+          coverageRatio: 1,
         }),
       }),
     ]);

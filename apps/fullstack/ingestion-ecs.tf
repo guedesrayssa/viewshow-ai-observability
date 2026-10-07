@@ -86,9 +86,11 @@ locals {
     { name = "LOG_SERVICE_NAME", value = local.ingestion_log_service_name },
     { name = "ARCHIVE_WORKDIR", value = "/tmp/ingestion" },
   ]
-  ingestion_import_environment = [
+  ingestion_import_environment = concat([
     { name = "ARCHIVE_BUCKET_OWNER", value = data.aws_caller_identity.atual.account_id },
+    ], var.analysis_fact_catalog_location != "" ? [
     { name = "ANALYSIS_FACT_CATALOG_LOCATION", value = var.analysis_fact_catalog_location },
+    ] : [], [
     { name = "INGESTION_DISK_BUDGET_BYTES", value = tostring(local.ingestion_snapshot_disk_budget_bytes) },
     { name = "IMPORT_HOT_MATERIALIZATION_ENABLED", value = tostring(var.import_hot_materialization_enabled) },
     { name = "ACTIVATE_CANDIDATE", value = "false" },
@@ -101,7 +103,7 @@ locals {
     { name = "MYSQL_QUERY_RETRY_BASE_MS", value = "250" },
     { name = "MYSQL_QUERY_RETRY_MAX_MS", value = "4000" },
     { name = "MYSQL_SNAPSHOT_PREPARE_ENABLED", value = tostring(var.ingestion_snapshot_prepare_enabled) },
-  ]
+  ])
   ingestion_snapshot_mysql_command = [
     "mysqld",
     "--character-set-server=utf8mb4",

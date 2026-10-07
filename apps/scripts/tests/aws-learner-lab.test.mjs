@@ -23,9 +23,16 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Integration-style tests for the repository-level Learner Lab command.
-import { isExactConfirmation, runLearnerLab, validateOllamaBaseUrl } from "../aws-learner-lab.mjs";
+import {
+  isExactConfirmation,
+  runLearnerLab,
+  validateOllamaBaseUrl,
+} from "../aws-learner-lab.mjs";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../..",
+);
 const ORIGINAL_ROOT = ROOT;
 const SAFE_PLAN_VARIABLES = {
   deployment_namespace: "view-show",
@@ -172,11 +179,13 @@ function testEnvironment({
   let planReadCount = 0;
   let activeImportReadCount = 0;
   let cognitoUserCreated = cognitoUserExists;
+  let cognitoEngineerGroupCreated = false;
   let snapshotSecretVersionCreated = snapshotSecretHasCurrentVersion;
   let analysisTaskStarted = false;
   const execute = (command, args, options = {}) => {
     calls.push({ command, args, options });
-    if (missing.includes(command)) return { status: 127, stdout: "", stderr: "not found" };
+    if (missing.includes(command))
+      return { status: 127, stdout: "", stderr: "not found" };
     if (command === "terraform" && args.includes("version")) {
       return {
         status: 0,
@@ -184,7 +193,11 @@ function testEnvironment({
         stderr: "",
       };
     }
-    if (command === "terraform" && args.includes("workspace") && args.includes("show")) {
+    if (
+      command === "terraform" &&
+      args.includes("workspace") &&
+      args.includes("show")
+    ) {
       return { status: 0, stdout: `${terraformWorkspace}\n`, stderr: "" };
     }
     if (command === "node" && args[0] === "--version") {
@@ -219,15 +232,26 @@ function testEnvironment({
         stderr: awsCliVersionStream === "stderr" ? `${awsCliVersion}\n` : "",
       };
     }
-    if (["python3.12", "python3", "python", "py"].includes(command) && args.at(-1) === "--version") {
+    if (
+      ["python3.12", "python3", "python", "py"].includes(command) &&
+      args.at(-1) === "--version"
+    ) {
       const invocation = [command, ...args.slice(0, -1)].join(" ");
       const version = pythonCommandVersions[invocation] ?? pythonVersion;
       return { status: 0, stdout: `${version}\n`, stderr: "" };
     }
-    if (command.includes(".venv") && args[0] === "--version" && venvVersion !== null) {
+    if (
+      command.includes(".venv") &&
+      args[0] === "--version" &&
+      venvVersion !== null
+    ) {
       return { status: 0, stdout: `${venvVersion}\n`, stderr: "" };
     }
-    if (command === "aws" && args[0] === "ec2" && args[1] === "describe-key-pairs") {
+    if (
+      command === "aws" &&
+      args[0] === "ec2" &&
+      args[1] === "describe-key-pairs"
+    ) {
       return keyPairExists
         ? {
             status: 0,
@@ -236,7 +260,11 @@ function testEnvironment({
           }
         : { status: 255, stdout: "", stderr: "InvalidKeyPair.NotFound" };
     }
-    if (command === "aws" && args[0] === "ec2" && args[1] === "describe-instances") {
+    if (
+      command === "aws" &&
+      args[0] === "ec2" &&
+      args[1] === "describe-instances"
+    ) {
       return { status: 0, stdout: `${bastionPrivateIp}\n`, stderr: "" };
     }
     if (command === "aws" && args[0] === "ec2") {
@@ -247,7 +275,11 @@ function testEnvironment({
     if (command === "aws" && args[0] === "sts") {
       return {
         status: 0,
-        stdout: JSON.stringify({ Account: "111122223333", Arn: identityArn, UserId: "test" }),
+        stdout: JSON.stringify({
+          Account: "111122223333",
+          Arn: identityArn,
+          UserId: "test",
+        }),
         stderr: "",
       };
     }
@@ -277,16 +309,27 @@ function testEnvironment({
       snapshotSecretVersionCreated = true;
       return { status: 0, stdout: "", stderr: "" };
     }
-    if (command === "aws" && args[0] === "cognito-idp" && args[1] === "admin-get-user") {
+    if (
+      command === "aws" &&
+      args[0] === "cognito-idp" &&
+      args[1] === "admin-get-user"
+    ) {
       return cognitoUserCreated
         ? {
             status: 0,
-            stdout: JSON.stringify({ Username: "admin@example.com", UserStatus: "CONFIRMED" }),
+            stdout: JSON.stringify({
+              Username: "admin@example.com",
+              UserStatus: "CONFIRMED",
+            }),
             stderr: "",
           }
         : { status: 254, stdout: "", stderr: "UserNotFoundException" };
     }
-    if (command === "aws" && args[0] === "cognito-idp" && args[1] === "admin-create-user") {
+    if (
+      command === "aws" &&
+      args[0] === "cognito-idp" &&
+      args[1] === "admin-create-user"
+    ) {
       cognitoUserCreated = true;
       return { status: 0, stdout: "", stderr: "" };
     }
@@ -294,6 +337,30 @@ function testEnvironment({
       command === "aws" &&
       args[0] === "cognito-idp" &&
       args[1] === "admin-set-user-password"
+    ) {
+      return { status: 0, stdout: "", stderr: "" };
+    }
+    if (
+      command === "aws" &&
+      args[0] === "cognito-idp" &&
+      args[1] === "get-group"
+    ) {
+      return cognitoEngineerGroupCreated
+        ? { status: 0, stdout: JSON.stringify({ Group: { GroupName: "engineer" } }), stderr: "" }
+        : { status: 254, stdout: "", stderr: "ResourceNotFoundException" };
+    }
+    if (
+      command === "aws" &&
+      args[0] === "cognito-idp" &&
+      args[1] === "create-group"
+    ) {
+      cognitoEngineerGroupCreated = true;
+      return { status: 0, stdout: "", stderr: "" };
+    }
+    if (
+      command === "aws" &&
+      args[0] === "cognito-idp" &&
+      args[1] === "admin-add-user-to-group"
     ) {
       return { status: 0, stdout: "", stderr: "" };
     }
@@ -306,64 +373,97 @@ function testEnvironment({
         status: 0,
         stdout: JSON.stringify({
           failures: analysisTaskFailures,
-          tasks: analysisTaskFailures.length === 0
-            ? [{ taskArn: "arn:aws:ecs:us-east-1:111122223333:task/view-show/analysis-task-1" }]
-            : [],
+          tasks:
+            analysisTaskFailures.length === 0
+              ? [
+                  {
+                    taskArn:
+                      "arn:aws:ecs:us-east-1:111122223333:task/view-show/analysis-task-1",
+                  },
+                ]
+              : [],
         }),
         stderr: "",
       };
     }
-    if (command === "aws" && args[0] === "ecs" && args[1] === "describe-services") {
+    if (
+      command === "aws" &&
+      args[0] === "ecs" &&
+      args[1] === "describe-services"
+    ) {
       return {
         status: 0,
         stdout: JSON.stringify({
           failures: [],
-          services: [{
-            serviceName: "view-show-analysis-worker",
-            clusterArn: "arn:aws:ecs:us-east-1:111122223333:cluster/view-show-iac-cluster",
-            taskDefinition: "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-analysis-worker:1",
-            desiredCount: analysisDesiredCount,
-            launchType: "FARGATE",
-            status: "ACTIVE",
-            networkConfiguration: {
-              awsvpcConfiguration: {
-                subnets: ["subnet-aaa111", "subnet-bbb222"],
-                securityGroups: ["sg-abc123"],
-                assignPublicIp: "DISABLED",
+          services: [
+            {
+              serviceName: "view-show-analysis-worker",
+              clusterArn:
+                "arn:aws:ecs:us-east-1:111122223333:cluster/view-show-iac-cluster",
+              taskDefinition:
+                "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-analysis-worker:1",
+              desiredCount: analysisDesiredCount,
+              launchType: "FARGATE",
+              status: "ACTIVE",
+              networkConfiguration: {
+                awsvpcConfiguration: {
+                  subnets: ["subnet-aaa111", "subnet-bbb222"],
+                  securityGroups: ["sg-abc123"],
+                  assignPublicIp: "DISABLED",
+                },
               },
+              ...analysisServiceOverrides,
             },
-            ...analysisServiceOverrides,
-          }],
+          ],
         }),
         stderr: "",
       };
     }
-    if (command === "aws" && args[0] === "ecs" && args[1] === "describe-task-definition") {
+    if (
+      command === "aws" &&
+      args[0] === "ecs" &&
+      args[1] === "describe-task-definition"
+    ) {
       return {
         status: 0,
         stdout: JSON.stringify({
           taskDefinition: {
-            containerDefinitions: [{
-              name: "analysis-worker",
-              environment: [{ name: "OLLAMA_BASE_URL", value: OLLAMA_URL }],
-            }],
+            containerDefinitions: [
+              {
+                name: "analysis-worker",
+                environment: [{ name: "OLLAMA_BASE_URL", value: OLLAMA_URL }],
+              },
+            ],
           },
         }),
         stderr: "",
       };
     }
-    if (command === "aws" && args[0] === "ecs" && args[1] === "describe-tasks") {
+    if (
+      command === "aws" &&
+      args[0] === "ecs" &&
+      args[1] === "describe-tasks"
+    ) {
       if (analysisTaskStarted) {
         return {
           status: 0,
           stdout: JSON.stringify({
             failures: [],
-            tasks: [{
-              taskArn: "arn:aws:ecs:us-east-1:111122223333:task/view-show/analysis-task-1",
-              lastStatus: "STOPPED",
-              stopCode: analysisTaskStopCode,
-              containers: [{ name: "analysis-worker", lastStatus: "STOPPED", exitCode: analysisTaskExitCode }],
-            }],
+            tasks: [
+              {
+                taskArn:
+                  "arn:aws:ecs:us-east-1:111122223333:task/view-show/analysis-task-1",
+                lastStatus: "STOPPED",
+                stopCode: analysisTaskStopCode,
+                containers: [
+                  {
+                    name: "analysis-worker",
+                    lastStatus: "STOPPED",
+                    exitCode: analysisTaskExitCode,
+                  },
+                ],
+              },
+            ],
           }),
           stderr: "",
         };
@@ -374,11 +474,20 @@ function testEnvironment({
           failures: [],
           tasks: [
             {
-              taskArn: "arn:aws:ecs:us-east-1:111122223333:task/view-show/task-1",
+              taskArn:
+                "arn:aws:ecs:us-east-1:111122223333:task/view-show/task-1",
               lastStatus: "STOPPED",
               containers: [
-                { name: "ingestion", lastStatus: "STOPPED", exitCode: taskExitCode },
-                { name: "mysql-snapshot", lastStatus: "STOPPED", exitCode: taskExitCode },
+                {
+                  name: "ingestion",
+                  lastStatus: "STOPPED",
+                  exitCode: taskExitCode,
+                },
+                {
+                  name: "mysql-snapshot",
+                  lastStatus: "STOPPED",
+                  exitCode: taskExitCode,
+                },
               ],
             },
           ],
@@ -393,7 +502,9 @@ function testEnvironment({
       args.join(" ").includes("CONTROL#IMPORT")
     ) {
       const currentActiveImportId = Array.isArray(activeImportIds)
-        ? activeImportIds[Math.min(activeImportReadCount, activeImportIds.length - 1)]
+        ? activeImportIds[
+            Math.min(activeImportReadCount, activeImportIds.length - 1)
+          ]
         : activeImportId;
       activeImportReadCount += 1;
       return {
@@ -420,9 +531,10 @@ function testEnvironment({
         analysisCanaryReads += 1;
         return {
           status: 0,
-          stdout: analysisCanaryReads <= analysisCanaryInitialEmptyReads
-            ? ""
-            : JSON.stringify({ Item: { state: { S: analysisCanaryState } } }),
+          stdout:
+            analysisCanaryReads <= analysisCanaryInitialEmptyReads
+              ? ""
+              : JSON.stringify({ Item: { state: { S: analysisCanaryState } } }),
           stderr: "",
         };
       }
@@ -443,27 +555,39 @@ function testEnvironment({
       return { status: 0, stdout: "Server Version: 29\n", stderr: "" };
     }
     if (command === "aws" && args[0] === "sqs" && args[1] === "send-message") {
-      return { status: 0, stdout: JSON.stringify({ MessageId: "message-canary-1" }), stderr: "" };
+      return {
+        status: 0,
+        stdout: JSON.stringify({ MessageId: "message-canary-1" }),
+        stderr: "",
+      };
     }
     if (command === "aws" && args[0] === "ssm" && args[1] === "send-command") {
       return {
         status: 0,
-        stdout: JSON.stringify({ Command: { CommandId: "command-grafana-health" } }),
+        stdout: JSON.stringify({
+          Command: { CommandId: "command-grafana-health" },
+        }),
         stderr: "",
       };
     }
     if (command === "aws" && args[0] === "ssm" && args[1] === "wait") {
       return { status: 0, stdout: "", stderr: "" };
     }
-    if (command === "aws" && args[0] === "ssm" && args[1] === "get-command-invocation") {
+    if (
+      command === "aws" &&
+      args[0] === "ssm" &&
+      args[1] === "get-command-invocation"
+    ) {
       return {
         status: 0,
         stdout: JSON.stringify({
           Status: grafanaHealthStatus,
-          StandardOutputContent: grafanaHealthStatus === "Success"
-            ? "GRAFANA_READY CLOUDWATCH_READY DASHBOARDS=view-show-ingestion,view-show-agentic-aws\n"
-            : "",
-          StandardErrorContent: grafanaHealthStatus === "Success" ? "" : "health check failed",
+          StandardOutputContent:
+            grafanaHealthStatus === "Success"
+              ? "GRAFANA_READY CLOUDWATCH_READY DASHBOARDS=view-show-ingestion,view-show-agentic-aws\n"
+              : "",
+          StandardErrorContent:
+            grafanaHealthStatus === "Success" ? "" : "health check failed",
         }),
         stderr: "",
       };
@@ -473,7 +597,11 @@ function testEnvironment({
         return { status: 0, stdout: JSON.stringify(grafanaAccess), stderr: "" };
       }
       if (args.at(-1) === "observabilidade_instancia_id") {
-        return { status: 0, stdout: `${observabilityInstanceId}\n`, stderr: "" };
+        return {
+          status: 0,
+          stdout: `${observabilityInstanceId}\n`,
+          stderr: "",
+        };
       }
       if (args.at(-1) === "grafana_senha") {
         return { status: 0, stdout: `${grafanaPassword}\n`, stderr: "" };
@@ -486,12 +614,14 @@ function testEnvironment({
           return {
             status: 1,
             stdout: "",
-            stderr: 'Error: Output "observabilidade_otlp_workers_endpoint" not found',
+            stderr:
+              'Error: Output "observabilidade_otlp_workers_endpoint" not found',
           };
         }
-        const endpoint = observabilityEndpoint === null && applied
-          ? "http://10.0.10.5:4320"
-          : observabilityEndpoint;
+        const endpoint =
+          observabilityEndpoint === null && applied
+            ? "http://10.0.10.5:4320"
+            : observabilityEndpoint;
         return { status: 0, stdout: JSON.stringify(endpoint), stderr: "" };
       }
       if (args.at(-1) === "analysis_worker_operacao") {
@@ -499,14 +629,16 @@ function testEnvironment({
           status: 0,
           stdout: JSON.stringify({
             cluster_name: "view-show-iac-cluster",
-            task_definition: "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-analysis-worker:1",
+            task_definition:
+              "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-analysis-worker:1",
             task_family: "view-show-analysis-worker",
             container_name: "analysis-worker",
             subnet_ids: ["subnet-aaa111", "subnet-bbb222"],
             security_group_id: "sg-abc123",
             assign_public_ip: false,
             log_group: "/ecs/view-show-analysis-worker",
-            analysis_queue_url: "https://sqs.us-east-1.amazonaws.com/111122223333/view-show-ingestion-analysis",
+            analysis_queue_url:
+              "https://sqs.us-east-1.amazonaws.com/111122223333/view-show-ingestion-analysis",
             operational_table: "view-show-iac-operacional",
             desired_count: analysisDesiredCount,
             ...analysisOperationOverrides,
@@ -530,7 +662,11 @@ function testEnvironment({
         return {
           status: 0,
           stdout: JSON.stringify({
-            painel_url: { sensitive: false, type: "string", value: "https://example.test" },
+            painel_url: {
+              sensitive: false,
+              type: "string",
+              value: "https://example.test",
+            },
             api_url_https: {
               sensitive: false,
               type: "string",
@@ -550,7 +686,9 @@ function testEnvironment({
               sensitive: false,
               type: "object",
               value: {
-                storage: { bucket: "view-show-ingestion-111122223333-us-east-1" },
+                storage: {
+                  bucket: "view-show-ingestion-111122223333-us-east-1",
+                },
                 runtime: {
                   cluster_arn:
                     "arn:aws:ecs:us-east-1:111122223333:cluster/view-show-cluster",
@@ -577,7 +715,8 @@ function testEnvironment({
               "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-ingestion-import:8",
           },
           runtime: {
-            cluster_arn: "arn:aws:ecs:us-east-1:111122223333:cluster/view-show-cluster",
+            cluster_arn:
+              "arn:aws:ecs:us-east-1:111122223333:cluster/view-show-cluster",
             backfill_task_arn:
               "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-ingestion-backfill:8",
             import_task_arn:
@@ -609,7 +748,11 @@ function testEnvironment({
         stderr: "",
       };
     }
-    if (command === "terraform" && args.includes("state") && args.includes("pull")) {
+    if (
+      command === "terraform" &&
+      args.includes("state") &&
+      args.includes("pull")
+    ) {
       return {
         status: 0,
         stdout: JSON.stringify({
@@ -619,7 +762,11 @@ function testEnvironment({
         stderr: "",
       };
     }
-    if (command === "terraform" && args.includes("show") && args.includes("-json")) {
+    if (
+      command === "terraform" &&
+      args.includes("show") &&
+      args.includes("-json")
+    ) {
       const isSavedPlan = args.some(
         (item) =>
           String(item).endsWith(".tfplan") ||
@@ -658,7 +805,9 @@ function testEnvironment({
       };
     }
     if (command === "terraform" && args.includes("plan")) {
-      const output = args.find((item) => String(item).startsWith("-out="))?.slice(5);
+      const output = args
+        .find((item) => String(item).startsWith("-out="))
+        ?.slice(5);
       if (output) {
         artifactEntries.set(output, {
           uid: 1000,
@@ -696,7 +845,8 @@ function testEnvironment({
       platform,
       execute,
       log: (line) => logs.push(String(line)),
-      exists: (target) => (String(target).includes(".venv") ? venvExists : true),
+      exists: (target) =>
+        String(target).includes(".venv") ? venvExists : true,
       readDirectory: () => localTerraformFiles,
       makeDirectory: (directory, options) => {
         directories.push({ directory, options });
@@ -734,13 +884,15 @@ function testEnvironment({
         String(target) === path.join(root, ".git")
           ? gitMetadataStat
           : (stateStat ?? defaultStateStat),
-      readFile: (target) => String(target).endsWith("analysis-worker.json") && analysisManifest !== null
-        ? JSON.stringify(analysisManifest)
-        : stateFileText ??
-          JSON.stringify({
-            lineage: stateLineage,
-            serial: applied ? postApplyStateSerial : localStateSerial,
-          }),
+      readFile: (target) =>
+        String(target).endsWith("analysis-worker.json") &&
+        analysisManifest !== null
+          ? JSON.stringify(analysisManifest)
+          : (stateFileText ??
+            JSON.stringify({
+              lineage: stateLineage,
+              serial: applied ? postApplyStateSerial : localStateSerial,
+            })),
       readPlanFile: () => {
         planReadCount += 1;
         return planReadCount > 1 && replacementPlanBytes !== null
@@ -776,7 +928,8 @@ function testEnvironment({
         descriptorTargets.set(descriptor, target);
         return descriptor;
       },
-      inspectPlanFile: (descriptor) => artifactEntries.get(descriptorTargets.get(descriptor)),
+      inspectPlanFile: (descriptor) =>
+        artifactEntries.get(descriptorTargets.get(descriptor)),
       closePlanFile: (descriptor) => {
         if (closePlanError) throw closePlanError;
         closedPlanDescriptors.push(descriptor);
@@ -792,7 +945,9 @@ function testEnvironment({
       removeArtifactDirectory: (target) => {
         assert.equal(artifactEntries.get(target)?.isDirectory(), true);
         assert.equal(
-          [...artifactEntries.keys()].some((entry) => path.dirname(entry) === target),
+          [...artifactEntries.keys()].some(
+            (entry) => path.dirname(entry) === target,
+          ),
           false,
         );
         removedArtifactDirectories.push(target);
@@ -814,7 +969,9 @@ function testEnvironment({
       openBackupPath: (target, flags, mode) => {
         const descriptor = 80 + backupDescriptors.length;
         let logicalTarget = target;
-        const anchored = String(target).match(/^\/(?:proc\/self|dev)\/fd\/(\d+)\/(.+)$/);
+        const anchored = String(target).match(
+          /^\/(?:proc\/self|dev)\/fd\/(\d+)\/(.+)$/,
+        );
         if (anchored) {
           const directory = backupDescriptorTargets.get(Number(anchored[1]));
           if (directory === undefined) throw new Error("EBADF");
@@ -848,7 +1005,9 @@ function testEnvironment({
       },
       inspectBackupFile: (descriptor) => {
         const target = backupDescriptorTargets.get(descriptor);
-        if (target === path.join(root, "apps", "fullstack", "terraform.tfstate")) {
+        if (
+          target === path.join(root, "apps", "fullstack", "terraform.tfstate")
+        ) {
           return stateStat ?? defaultStateStat;
         }
         return artifactEntries.get(target);
@@ -980,7 +1139,10 @@ function postApplyState(preset) {
     },
   });
   const snapshotEnvironment = [
-    { name: "PAGE_SIZE", value: String(UPDATE_PRESETS[preset].ingestion_snapshot_page_size) },
+    {
+      name: "PAGE_SIZE",
+      value: String(UPDATE_PRESETS[preset].ingestion_snapshot_page_size),
+    },
     {
       name: "MYSQL_SNAPSHOT_PREPARE_ENABLED",
       value: String(UPDATE_PRESETS[preset].ingestion_snapshot_prepare_enabled),
@@ -1051,13 +1213,19 @@ function postApplyState(preset) {
             [
               {
                 name: "IMPORT_CANONICAL_FIRST_ENABLED",
-                value: String(UPDATE_PRESETS[preset].import_canonical_first_enabled),
+                value: String(
+                  UPDATE_PRESETS[preset].import_canonical_first_enabled,
+                ),
               },
               ...(UPDATE_PRESETS[preset].rate_limit_por_minuto
-                ? [{
-                    name: "RATE_LIMIT_PER_MINUTE",
-                    value: String(UPDATE_PRESETS[preset].rate_limit_por_minuto),
-                  }]
+                ? [
+                    {
+                      name: "RATE_LIMIT_PER_MINUTE",
+                      value: String(
+                        UPDATE_PRESETS[preset].rate_limit_por_minuto,
+                      ),
+                    },
+                  ]
                 : []),
             ],
             API_IMAGE,
@@ -1071,7 +1239,11 @@ function postApplyState(preset) {
             INGESTION_IMAGE,
             [
               { name: "tmp-owner", image: INGESTION_IMAGE, environment: [] },
-              { name: "mysql-snapshot", image: MYSQL_SNAPSHOT_IMAGE, environment: [] },
+              {
+                name: "mysql-snapshot",
+                image: MYSQL_SNAPSHOT_IMAGE,
+                environment: [],
+              },
             ],
           ),
           task(
@@ -1081,7 +1253,11 @@ function postApplyState(preset) {
             INGESTION_IMAGE,
             [
               { name: "tmp-owner", image: INGESTION_IMAGE, environment: [] },
-              { name: "mysql-snapshot", image: MYSQL_SNAPSHOT_IMAGE, environment: [] },
+              {
+                name: "mysql-snapshot",
+                image: MYSQL_SNAPSHOT_IMAGE,
+                environment: [],
+              },
             ],
           ),
           task(
@@ -1206,7 +1382,9 @@ function updatePlanJsonFromState(
                   Object.entries({
                     ...resource.values,
                     image_digest: null,
-                  }).filter(([name]) => !(ecrOmitsDigest && name === "image_digest")),
+                  }).filter(
+                    ([name]) => !(ecrOmitsDigest && name === "image_digest"),
+                  ),
                 )
               : resource.type === "terraform_data"
                 ? { ...resource.values, triggers_replace: [ingestionHash] }
@@ -1271,7 +1449,10 @@ test("help commands print usage and perform no infrastructure work", async () =>
     assert.equal(result.status, 0, String(step));
     assert.deepEqual(a.calls, [], String(step));
     assert.match(a.logs.join("\n"), /usage:.*aws-learner-lab\.mjs/i);
-    assert.match(a.logs.join("\n"), /check.*build-snapshot.*deploy.*seed.*evidence.*all/is);
+    assert.match(
+      a.logs.join("\n"),
+      /check.*build-snapshot.*deploy.*seed.*evidence.*all/is,
+    );
   }
 });
 
@@ -1284,24 +1465,34 @@ test("grafana starts a private SSM tunnel from validated Terraform outputs on ev
     assert.equal(result.status, 0, platform);
     assert.ok(a.logs.includes("Grafana URL: http://localhost:3002"), platform);
     assert.ok(a.logs.includes("Grafana user: admin"), platform);
-    assert.ok(a.logs.includes("Grafana password: TestGrafanaPassword123"), platform);
-    const tunnel = a.calls.find(
-      (call) => call.command === "aws" && call.args[0] === "ssm" && call.args[1] === "start-session",
+    assert.ok(
+      a.logs.includes("Grafana password: TestGrafanaPassword123"),
+      platform,
     );
-    assert.deepEqual(tunnel?.args, [
-      "ssm",
-      "start-session",
-      "--target",
-      "i-0123456789abcdef0",
-      "--document-name",
-      "AWS-StartPortForwardingSession",
-      "--parameters",
-      "portNumber=3000,localPortNumber=3002",
-      "--region",
-      "us-east-1",
-      "--profile",
-      "default",
-    ], platform);
+    const tunnel = a.calls.find(
+      (call) =>
+        call.command === "aws" &&
+        call.args[0] === "ssm" &&
+        call.args[1] === "start-session",
+    );
+    assert.deepEqual(
+      tunnel?.args,
+      [
+        "ssm",
+        "start-session",
+        "--target",
+        "i-0123456789abcdef0",
+        "--document-name",
+        "AWS-StartPortForwardingSession",
+        "--parameters",
+        "portNumber=3000,localPortNumber=3002",
+        "--region",
+        "us-east-1",
+        "--profile",
+        "default",
+      ],
+      platform,
+    );
     assert.equal(tunnel?.options.stdio, "inherit", platform);
   }
 });
@@ -1342,9 +1533,11 @@ test("grafana provisions missing observability before opening the tunnel", async
   );
   assert.equal(plans.length, 1);
   assert.ok(plans[0].args.includes("-var=observabilidade_habilitada=true"));
-  assert.ok(a.calls.some(
-    (call) => call.command === "terraform" && call.args.includes("apply"),
-  ));
+  assert.ok(
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
+  );
   assert.deepEqual(confirmations, ["PROVISION GRAFANA 111122223333"]);
   assert.ok(a.logs.includes("Infraestrutura: CREATED"));
 });
@@ -1356,7 +1549,9 @@ test("grafana reuses healthy observability without planning", async () => {
 
   assert.equal(result.status, 0, a.logs.join("\n"));
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
   assert.ok(a.logs.includes("Infraestrutura: EXISTING"));
@@ -1372,7 +1567,9 @@ test("grafana reports optional Ollama and prints password only in a TTY", async 
     0,
     interactive.logs.join("\n"),
   );
-  assert.ok(interactive.logs.includes("Grafana password: TestGrafanaPassword123"));
+  assert.ok(
+    interactive.logs.includes("Grafana password: TestGrafanaPassword123"),
+  );
   assert.ok(interactive.logs.includes("Ollama/LLM: NOT_CONFIGURED"));
 
   const configured = testEnvironment({
@@ -1414,14 +1611,21 @@ test("grafana never replaces an existing unhealthy instance", async () => {
 
   assert.equal(result.status, 1);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
-  assert.match(a.logs.join("\n"), /did not become healthy|health check failed/i);
+  assert.match(
+    a.logs.join("\n"),
+    /did not become healthy|health check failed/i,
+  );
 });
 
 test("analysis-bridge opens the private Ollama bridge without touching ECS on every supported OS", async () => {
@@ -1432,11 +1636,12 @@ test("analysis-bridge opens the private Ollama bridge without touching ECS on ev
     const result = await runLearnerLab({
       ...a.options,
       step: "analysis-bridge",
-      readInput: async (prompt) => ({
-        "Ollama SSH user: ": "student",
-        "Ollama SSH host: ": "10.8.8.10",
-        "Bastion key file: ": "/tmp/vockey.pem",
-      })[prompt],
+      readInput: async (prompt) =>
+        ({
+          "Ollama SSH user: ": "student",
+          "Ollama SSH host: ": "10.8.8.10",
+          "Bastion key file: ": "/tmp/vockey.pem",
+        })[prompt],
       spawnProcess: (command, args, options) => {
         spawned.push({ command, args, options });
         const child = new EventEmitter();
@@ -1450,10 +1655,21 @@ test("analysis-bridge opens the private Ollama bridge without touching ECS on ev
     });
 
     assert.equal(result.status, 0, a.logs.join("\n"));
-    assert.deepEqual(spawned.map((entry) => entry.command), ["ssh", "aws", "ssh"], platform);
-    assert.equal(a.calls.some((call) => call.args[0] === "ecs"), false, platform);
+    assert.deepEqual(
+      spawned.map((entry) => entry.command),
+      ["ssh", "aws", "ssh"],
+      platform,
+    );
+    assert.equal(
+      a.calls.some((call) => call.args[0] === "ecs"),
+      false,
+      platform,
+    );
     assert.equal(killed.length, 3, platform);
-    assert.ok(a.logs.some((line) => line.includes("Ollama bridge ready")), platform);
+    assert.ok(
+      a.logs.some((line) => line.includes("Ollama bridge ready")),
+      platform,
+    );
   }
 });
 
@@ -1482,8 +1698,10 @@ test("setup deploys with the selected profile, creates a confirmed user and prin
   );
   assert.ok(awsCalls.length > 0);
   assert.ok(
-    awsCalls.every((call) =>
-      call.args.includes("--profile") && call.args[call.args.indexOf("--profile") + 1] === "team-profile"
+    awsCalls.every(
+      (call) =>
+        call.args.includes("--profile") &&
+        call.args[call.args.indexOf("--profile") + 1] === "team-profile",
     ),
   );
   assert.ok(
@@ -1502,9 +1720,22 @@ test("setup deploys with the selected profile, creates a confirmed user and prin
         call.args[1] === "admin-set-user-password",
     ),
   );
+  assert.ok(
+    a.calls.some(
+      (call) =>
+        call.command === "aws" &&
+        call.args[0] === "cognito-idp" &&
+        call.args[1] === "admin-add-user-to-group" &&
+        call.args.includes("engineer"),
+    ),
+  );
   const terraformCalls = a.calls.filter((call) => call.command === "terraform");
   assert.ok(terraformCalls.length > 0);
-  assert.ok(terraformCalls.every((call) => call.options.env?.AWS_PROFILE === "team-profile"));
+  assert.ok(
+    terraformCalls.every(
+      (call) => call.options.env?.AWS_PROFILE === "team-profile",
+    ),
+  );
   assert.equal(
     terraformCalls.some(
       (call) => call.args.includes("output") && call.args.at(-1) === "-json",
@@ -1513,7 +1744,10 @@ test("setup deploys with the selected profile, creates a confirmed user and prin
     "setup must not read every Terraform output because that includes sensitive values",
   );
   const observableText = JSON.stringify({ calls: a.calls, logs: a.logs });
-  assert.doesNotMatch(observableText, new RegExp(password.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(
+    observableText,
+    new RegExp(password.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
   const output = a.logs.join("\n");
   assert.match(output, /view-show-fullstack/);
   assert.match(output, /https:\/\/example\.test/);
@@ -1543,22 +1777,26 @@ test("setup --yes skips confirmation but still provisions the initial Cognito us
   assert.equal(confirmationCount, 0);
   assert.ok(
     a.calls.some(
-      (call) => call.command === "aws" && call.args[1] === "admin-set-user-password",
+      (call) =>
+        call.command === "aws" && call.args[1] === "admin-set-user-password",
     ),
   );
 });
 
 test("deploy creates and verifies the internal ingestion credential when its secret has no current version", async () => {
   const a = testEnvironment();
-  const internalCredential = "internal-ingestion-credential-that-must-never-be-logged";
-  const encodedCredential = Buffer.from(internalCredential).toString("base64url");
+  const internalCredential =
+    "internal-ingestion-credential-that-must-never-be-logged";
+  const encodedCredential =
+    Buffer.from(internalCredential).toString("base64url");
   const sensitiveWrites = [];
   let randomBytesCall = 0;
 
   const result = await runLearnerLab({
     ...a.options,
     step: "deploy",
-    makeSensitiveTemporaryDirectory: () => path.join(os.tmpdir(), "view-show-test-ingestion"),
+    makeSensitiveTemporaryDirectory: () =>
+      path.join(os.tmpdir(), "view-show-test-ingestion"),
     writeSensitiveFile: (target, contents, options) =>
       sensitiveWrites.push({ target, contents: String(contents), options }),
     removeSensitiveFile: () => {},
@@ -1566,7 +1804,9 @@ test("deploy creates and verifies the internal ingestion credential when its sec
     generateRandomBytes: () => {
       randomBytesCall += 1;
       return Buffer.from(
-        randomBytesCall === 1 ? internalCredential : "independent-idempotency-token",
+        randomBytesCall === 1
+          ? internalCredential
+          : "independent-idempotency-token",
       );
     },
   });
@@ -1585,7 +1825,11 @@ test("deploy creates and verifies the internal ingestion credential when its sec
       call.args[0] === "secretsmanager" &&
       call.args[1] === "list-secret-version-ids",
   );
-  assert.equal(listCalls.length, 2, "the secret must be verified both before and after creation");
+  assert.equal(
+    listCalls.length,
+    2,
+    "the secret must be verified both before and after creation",
+  );
   const write = a.calls.find(
     (call) =>
       call.command === "aws" &&
@@ -1627,14 +1871,18 @@ test("deploy fails closed when the internal ingestion credential cannot be creat
   const result = await runLearnerLab({
     ...a.options,
     step: "deploy",
-    makeSensitiveTemporaryDirectory: () => path.join(os.tmpdir(), "view-show-test-ingestion"),
+    makeSensitiveTemporaryDirectory: () =>
+      path.join(os.tmpdir(), "view-show-test-ingestion"),
     writeSensitiveFile: () => {},
     removeSensitiveFile: () => {},
     removeSensitiveDirectory: () => {},
   });
 
   assert.equal(result.status, 1);
-  assert.match(a.logs.join("\n"), /could not create the internal ingestion credential/i);
+  assert.match(
+    a.logs.join("\n"),
+    /could not create the internal ingestion credential/i,
+  );
 });
 
 test("setup retry updates an existing Cognito user without creating a duplicate", async () => {
@@ -1657,10 +1905,14 @@ test("setup retry updates an existing Cognito user without creating a duplicate"
   );
   assert.ok(
     a.calls.some(
-      (call) => call.command === "aws" && call.args[1] === "admin-set-user-password",
+      (call) =>
+        call.command === "aws" && call.args[1] === "admin-set-user-password",
     ),
   );
-  assert.match(a.logs.join("\n"), /admin@example\.com \(CONFIRMED\)/);
+  assert.match(
+    a.logs.join("\n"),
+    /admin@example\.com \(CONFIRMED, engineer\)/,
+  );
 });
 
 test("setup fails closed when the temporary password file cannot be removed", async () => {
@@ -1673,7 +1925,8 @@ test("setup fails closed when the temporary password file cannot be removed", as
     extraArguments: ["--yes"],
     readInput: async () => "admin@example.com",
     readSecret: async () => "SafePassword123!",
-    makeSensitiveTemporaryDirectory: () => path.join(os.tmpdir(), "view-show-test-secret"),
+    makeSensitiveTemporaryDirectory: () =>
+      path.join(os.tmpdir(), "view-show-test-secret"),
     writeSensitiveFile: () => {},
     removeSensitiveFile: () => {
       throw new Error("locked");
@@ -1683,11 +1936,18 @@ test("setup fails closed when the temporary password file cannot be removed", as
 
   assert.equal(result.status, 1);
   assert.equal(removedDirectories.length, 1);
-  assert.match(a.logs.join("\n"), /temporary Cognito password file could not be removed/i);
+  assert.match(
+    a.logs.join("\n"),
+    /temporary Cognito password file could not be removed/i,
+  );
 });
 
 test("setup rejects invalid flags before prompts or external calls", async () => {
-  for (const extraArguments of [["--profile"], ["--unknown"], ["--profile", "nora"]]) {
+  for (const extraArguments of [
+    ["--profile"],
+    ["--unknown"],
+    ["--profile", "nora"],
+  ]) {
     const a = testEnvironment();
     let promptCount = 0;
     const result = await runLearnerLab({
@@ -1724,9 +1984,14 @@ test("destroy plans the full Learner Lab stack and applies only after exact conf
   });
 
   assert.equal(result.status, 0, a.logs.join("\n"));
-  assert.deepEqual(confirmations, ["DESTROY view-show-fullstack in account 111122223333"]);
+  assert.deepEqual(confirmations, [
+    "DESTROY view-show-fullstack in account 111122223333",
+  ]);
   const plan = a.calls.find(
-    (call) => call.command === "terraform" && call.args.includes("plan") && call.args.includes("-destroy"),
+    (call) =>
+      call.command === "terraform" &&
+      call.args.includes("plan") &&
+      call.args.includes("-destroy"),
   );
   assert.ok(plan, "destroy must create a saved Terraform destroy plan");
   assert.ok(plan.args.includes("-var=force_destroy_bucket_ingestao=true"));
@@ -1736,11 +2001,19 @@ test("destroy plans the full Learner Lab stack and applies only after exact conf
   );
   assert.ok(apply, "destroy must apply the confirmed saved destroy plan");
   assert.ok(a.calls.indexOf(plan) < a.calls.indexOf(apply));
-  assert.equal(a.calls.some((call) => call.command === "docker"), false);
-  assert.equal(a.calls.some((call) => call.command === "npm"), false);
+  assert.equal(
+    a.calls.some((call) => call.command === "docker"),
+    false,
+  );
+  assert.equal(
+    a.calls.some((call) => call.command === "npm"),
+    false,
+  );
   assert.equal(
     a.calls.some(
-      (call) => call.command === "aws" && call.args.slice(0, 2).join(" ") === "ec2 describe-key-pairs",
+      (call) =>
+        call.command === "aws" &&
+        call.args.slice(0, 2).join(" ") === "ec2 describe-key-pairs",
     ),
     false,
   );
@@ -1758,11 +2031,16 @@ test("destroy never applies when the destructive confirmation is refused", async
   assert.equal(result.status, 1);
   assert.ok(
     a.calls.some(
-      (call) => call.command === "terraform" && call.args.includes("plan") && call.args.includes("-destroy"),
+      (call) =>
+        call.command === "terraform" &&
+        call.args.includes("plan") &&
+        call.args.includes("-destroy"),
     ),
   );
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -1812,7 +2090,9 @@ test("a missing prerequisite stops before any mutating Terraform or AWS call", a
 
   assert.notEqual(result.status, 0);
   const mutatingCalls = a.calls.filter(
-    (c) => c.command === "terraform" && c.args.some((x) => x === "apply" || x === "plan"),
+    (c) =>
+      c.command === "terraform" &&
+      c.args.some((x) => x === "apply" || x === "plan"),
   );
   assert.deepEqual(mutatingCalls, []);
   assert.ok(a.logs.join("\n").includes("docker"));
@@ -1838,9 +2118,14 @@ test("the workflow never passes --activate to run_task", async () => {
   await runLearnerLab(a.options);
 
   for (const call of a.calls) {
-    assert.ok(!call.args.includes("--activate"), "the script must never activate a dataset");
+    assert.ok(
+      !call.args.includes("--activate"),
+      "the script must never activate a dataset",
+    );
   }
-  const runTask = a.calls.find((c) => c.args.some((x) => String(x).includes("run_task")));
+  const runTask = a.calls.find((c) =>
+    c.args.some((x) => String(x).includes("run_task")),
+  );
   assert.ok(runTask, "the complete workflow must launch the backfill");
   assert.ok(runTask.args.includes("--no-activate"));
 });
@@ -1867,8 +2152,10 @@ test("the Windows platform uses the Windows virtual-environment executable", asy
   await runLearnerLab(windows.options);
 
   // Inspect the virtual-environment interpreter, not the system interpreter.
-  const unixPath = unix.calls.find((c) => c.command.includes(".venv"))?.command ?? "";
-  const windowsPath = windows.calls.find((c) => c.command.includes(".venv"))?.command ?? "";
+  const unixPath =
+    unix.calls.find((c) => c.command.includes(".venv"))?.command ?? "";
+  const windowsPath =
+    windows.calls.find((c) => c.command.includes(".venv"))?.command ?? "";
 
   assert.ok(unixPath.includes(path.join(".venv", "bin")), unixPath);
   assert.ok(windowsPath.includes(path.join(".venv", "Scripts")), windowsPath);
@@ -1883,7 +2170,9 @@ test("terraform apply runs only after the create-only gate accepts the plan", as
   const gate = indices.find(({ c }) =>
     c.args.some((x) => String(x).includes("validate-create-plan")),
   );
-  const apply = indices.find(({ c }) => c.command === "terraform" && c.args.includes("apply"));
+  const apply = indices.find(
+    ({ c }) => c.command === "terraform" && c.args.includes("apply"),
+  );
   assert.ok(gate, "the create-only gate must run");
   assert.ok(apply, "terraform apply must run");
   assert.ok(gate.i < apply.i, "the gate must run before apply");
@@ -1903,7 +2192,9 @@ test("deploy prints the operational summary and stops when confirmation is refus
   });
 
   assert.equal(result.status, 1);
-  assert.deepEqual(confirmations, ["Deploy view-show-fullstack in account 111122223333?"]);
+  assert.deepEqual(confirmations, [
+    "Deploy view-show-fullstack in account 111122223333?",
+  ]);
   assert.equal(
     a.calls.some((c) => c.command === "terraform" && c.args.includes("apply")),
     false,
@@ -1944,13 +2235,18 @@ test("deploy seeds the Scheduler disabled without a live-sync Terraform variable
   assert.ok(plan.args.includes("-var=quantidade_tasks=1"));
   assert.ok(plan.args.includes("-var=ingestion_backfill_cpu=2048"));
   assert.ok(plan.args.includes("-var=ingestion_backfill_memoria=8192"));
-  assert.ok(plan.args.includes("-var=ingestion_backfill_ephemeral_storage_gib=200"));
+  assert.ok(
+    plan.args.includes("-var=ingestion_backfill_ephemeral_storage_gib=200"),
+  );
   assert.ok(plan.args.includes("-var=ingestion_sync_cpu=1024"));
   assert.ok(plan.args.includes("-var=ingestion_sync_memoria=2048"));
 });
 
 test("an installed interpreter is rejected when it is not Python 3.12", async () => {
-  const a = testEnvironment({ pythonVersion: "Python 3.13.2", venvVersion: "Python 3.13.2" });
+  const a = testEnvironment({
+    pythonVersion: "Python 3.13.2",
+    venvVersion: "Python 3.13.2",
+  });
 
   const result = await runLearnerLab(a.options);
 
@@ -1963,34 +2259,45 @@ test("an installed interpreter is rejected when it is not Python 3.12", async ()
 });
 
 test("an existing Python 3.12 venv is accepted when system Python differs", async () => {
-  const a = testEnvironment({ pythonVersion: "Python 3.13.2", venvVersion: "Python 3.12.11" });
+  const a = testEnvironment({
+    pythonVersion: "Python 3.13.2",
+    venvVersion: "Python 3.12.11",
+  });
 
   const result = await runLearnerLab({ ...a.options, step: "build-snapshot" });
 
   assert.equal(result.status, 0);
   assert.ok(
     a.calls.some(
-      (c) => c.command.includes(".venv") && c.args.some((x) => String(x).includes("build_reduced_snapshot.py")),
+      (c) =>
+        c.command.includes(".venv") &&
+        c.args.some((x) => String(x).includes("build_reduced_snapshot.py")),
     ),
   );
 });
 
 test("an existing venv with the wrong Python version is never used silently", async () => {
-  const a = testEnvironment({ pythonVersion: "Python 3.12.11", venvVersion: "Python 3.13.2" });
+  const a = testEnvironment({
+    pythonVersion: "Python 3.12.11",
+    venvVersion: "Python 3.13.2",
+  });
 
   const result = await runLearnerLab({ ...a.options, step: "build-snapshot" });
 
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /python 3\.12/i);
   assert.equal(
-    a.calls.some((c) => c.args.some((x) => String(x).includes("build_reduced_snapshot.py"))),
+    a.calls.some((c) =>
+      c.args.some((x) => String(x).includes("build_reduced_snapshot.py")),
+    ),
     false,
   );
 });
 
 test("credentials outside the Learner Lab voclabs role are rejected", async () => {
   const a = testEnvironment({
-    identityArn: "arn:aws:sts::111122223333:assumed-role/Administrator/local-user",
+    identityArn:
+      "arn:aws:sts::111122223333:assumed-role/Administrator/local-user",
   });
 
   const result = await runLearnerLab(a.options);
@@ -2009,7 +2316,10 @@ test("build-snapshot stays local and does not require Terraform, Docker or AWS",
   const result = await runLearnerLab({ ...a.options, step: "build-snapshot" });
 
   assert.equal(result.status, 0);
-  assert.equal(a.calls.some((c) => ["terraform", "docker", "aws"].includes(c.command)), false);
+  assert.equal(
+    a.calls.some((c) => ["terraform", "docker", "aws"].includes(c.command)),
+    false,
+  );
   assert.ok(
     a.calls.some((c) =>
       c.args.some((x) => String(x).includes("build_reduced_snapshot.py")),
@@ -2019,35 +2329,51 @@ test("build-snapshot stays local and does not require Terraform, Docker or AWS",
 
 test("English commands route to their intended operations", async () => {
   const cases = [
-    ["check", (calls) => calls.some((c) => c.command === "aws" && c.args[0] === "sts")],
+    [
+      "check",
+      (calls) => calls.some((c) => c.command === "aws" && c.args[0] === "sts"),
+    ],
     [
       "build-snapshot",
       (calls) =>
         calls.some((c) =>
-          c.args.some((value) => String(value).includes("build_reduced_snapshot.py")),
+          c.args.some((value) =>
+            String(value).includes("build_reduced_snapshot.py"),
+          ),
         ),
     ],
     [
       "deploy",
-      (calls) => calls.some((c) => c.command === "terraform" && c.args.includes("apply")),
+      (calls) =>
+        calls.some(
+          (c) => c.command === "terraform" && c.args.includes("apply"),
+        ),
     ],
     [
       "seed",
       (calls) =>
-        calls.some((c) => c.args.some((value) => String(value).includes("run_task.py"))),
+        calls.some((c) =>
+          c.args.some((value) => String(value).includes("run_task.py")),
+        ),
     ],
     [
       "evidence",
       (calls) =>
         calls.some(
-          (c) => c.command === "aws" && c.args.slice(0, 2).join(" ") === "dynamodb scan",
+          (c) =>
+            c.command === "aws" &&
+            c.args.slice(0, 2).join(" ") === "dynamodb scan",
         ),
     ],
     [
       "all",
       (calls) =>
-        calls.some((c) => c.command === "terraform" && c.args.includes("apply")) &&
-        calls.some((c) => c.args.some((value) => String(value).includes("run_task.py"))),
+        calls.some(
+          (c) => c.command === "terraform" && c.args.includes("apply"),
+        ) &&
+        calls.some((c) =>
+          c.args.some((value) => String(value).includes("run_task.py")),
+        ),
     ],
   ];
 
@@ -2061,7 +2387,14 @@ test("English commands route to their intended operations", async () => {
 });
 
 test("Portuguese command names are rejected instead of maintaining two public interfaces", async () => {
-  for (const step of ["verificar", "gerar", "provisionar", "semear", "evidencias", "tudo"]) {
+  for (const step of [
+    "verificar",
+    "gerar",
+    "provisionar",
+    "semear",
+    "evidencias",
+    "tudo",
+  ]) {
     const a = testEnvironment();
 
     const result = await runLearnerLab({ ...a.options, step });
@@ -2096,17 +2429,25 @@ test("all completes only after ECS polling observes STOPPED and the durable run 
     c.args.some((x) => String(x).includes("run_task.py")),
   );
   const describeIndex = a.calls.findIndex(
-    (c) => c.command === "aws" && c.args.slice(0, 2).join(" ") === "ecs describe-tasks",
+    (c) =>
+      c.command === "aws" &&
+      c.args.slice(0, 2).join(" ") === "ecs describe-tasks",
   );
   const durableRunIndex = a.calls.findIndex(
-    (c) => c.command === "aws" && c.args.slice(0, 2).join(" ") === "dynamodb get-item",
+    (c) =>
+      c.command === "aws" &&
+      c.args.slice(0, 2).join(" ") === "dynamodb get-item",
   );
   assert.ok(
-    runTaskIndex >= 0 && describeIndex > runTaskIndex && durableRunIndex > describeIndex,
+    runTaskIndex >= 0 &&
+      describeIndex > runTaskIndex &&
+      durableRunIndex > describeIndex,
   );
   assert.equal(
     a.calls.some(
-      (c) => c.command === "aws" && c.args.slice(0, 3).join(" ") === "ecs wait tasks-stopped",
+      (c) =>
+        c.command === "aws" &&
+        c.args.slice(0, 3).join(" ") === "ecs wait tasks-stopped",
     ),
     false,
   );
@@ -2162,7 +2503,14 @@ test("configured seed validates locally and passes exact snapshot provenance and
     call.args.some((value) => String(value).includes("upload_snapshot.py")),
   );
   assert.deepEqual(upload.args, [
-    path.join(ROOT, "apps", "backend", "ingestion-data", "scripts", "upload_snapshot.py"),
+    path.join(
+      ROOT,
+      "apps",
+      "backend",
+      "ingestion-data",
+      "scripts",
+      "upload_snapshot.py",
+    ),
     snapshot,
     "--bucket",
     "view-show-ingestion-111122223333-us-east-1",
@@ -2184,7 +2532,14 @@ test("configured seed validates locally and passes exact snapshot provenance and
     call.args.some((value) => String(value).includes("run_task.py")),
   );
   assert.deepEqual(launched.args, [
-    path.join(ROOT, "apps", "backend", "ingestion-data", "scripts", "run_task.py"),
+    path.join(
+      ROOT,
+      "apps",
+      "backend",
+      "ingestion-data",
+      "scripts",
+      "run_task.py",
+    ),
     "--terraform-output",
     path.join(
       ROOT,
@@ -2217,17 +2572,23 @@ test("configured seed rejects incomplete, unknown, malformed and unsafe inputs b
     [[...configuredSeedArguments(), "--unknown", "value"], /unknown/i, {}],
     [configuredSeedArguments("/tmp/argus.sql"), /\.sql\.gz/i, {}],
     [
-      configuredSeedArguments().map((value) => (value === "2026-09-01" ? "2026-02-30" : value)),
+      configuredSeedArguments().map((value) =>
+        value === "2026-09-01" ? "2026-02-30" : value,
+      ),
       /date|extracted/i,
       {},
     ],
     [
-      configuredSeedArguments().map((value) => (value === "phase1-100k" ? "Phase_1" : value)),
+      configuredSeedArguments().map((value) =>
+        value === "phase1-100k" ? "Phase_1" : value,
+      ),
       /label/i,
       {},
     ],
     [
-      configuredSeedArguments().map((value) => (value === "21600" ? "59" : value)),
+      configuredSeedArguments().map((value) =>
+        value === "21600" ? "59" : value,
+      ),
       /timeout/i,
       {},
     ],
@@ -2239,7 +2600,11 @@ test("configured seed rejects incomplete, unknown, malformed and unsafe inputs b
     [
       configuredSeedArguments(),
       /readable|read/i,
-      { accessFile: () => { throw new Error("EACCES"); } },
+      {
+        accessFile: () => {
+          throw new Error("EACCES");
+        },
+      },
     ],
   ];
 
@@ -2255,7 +2620,10 @@ test("configured seed rejects incomplete, unknown, malformed and unsafe inputs b
 
     assert.notEqual(result.status, 0);
     assert.match(a.logs.join("\n"), expectedMessage);
-    assert.equal(a.calls.some((call) => call.command === "aws"), false);
+    assert.equal(
+      a.calls.some((call) => call.command === "aws"),
+      false,
+    );
   }
 });
 
@@ -2271,7 +2639,10 @@ test("seed polling sleeps fifteen seconds and supports long running tasks", asyn
     accessFile: () => {},
     execute: (command, args, options) => {
       const base = originalExecute(command, args, options);
-      if (command === "aws" && args.slice(0, 2).join(" ") === "ecs describe-tasks") {
+      if (
+        command === "aws" &&
+        args.slice(0, 2).join(" ") === "ecs describe-tasks"
+      ) {
         return taskDescription(statuses.shift());
       }
       return base;
@@ -2302,7 +2673,10 @@ test("seed timeout uses a monotonic deadline and returns the live task without s
     accessFile: () => {},
     execute: (command, args, options) => {
       const base = originalExecute(command, args, options);
-      if (command === "aws" && args.slice(0, 2).join(" ") === "ecs describe-tasks") {
+      if (
+        command === "aws" &&
+        args.slice(0, 2).join(" ") === "ecs describe-tasks"
+      ) {
         return taskDescription("RUNNING");
       }
       return base;
@@ -2319,12 +2693,19 @@ test("seed timeout uses a monotonic deadline and returns the live task without s
   );
   assert.deepEqual(sleeps, []);
   assert.equal(
-    a.calls.some((call) => call.command === "aws" && call.args[0] === "ecs" && call.args[1] === "stop-task"),
+    a.calls.some(
+      (call) =>
+        call.command === "aws" &&
+        call.args[0] === "ecs" &&
+        call.args[1] === "stop-task",
+    ),
     false,
   );
   assert.equal(
     a.calls.some(
-      (call) => call.command === "aws" && call.args.slice(0, 2).join(" ") === "dynamodb get-item",
+      (call) =>
+        call.command === "aws" &&
+        call.args.slice(0, 2).join(" ") === "dynamodb get-item",
     ),
     false,
   );
@@ -2365,7 +2746,9 @@ test("preflight enforces the documented Terraform, Node and AWS CLI versions", a
     assert.equal(result.status, 1);
     assert.match(a.logs.join("\n"), expectedMessage);
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("plan"),
+      ),
       false,
     );
   }
@@ -2382,13 +2765,18 @@ test("unsupported Node version reports the detected version and how to select No
   assert.match(output, /nvm install 22/);
   assert.match(output, /nvm use 22/);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
 });
 
 test("preflight accepts the lower supported Terraform and Node boundaries", async () => {
-  const a = testEnvironment({ terraformVersion: "1.7.0", nodeVersion: "v22.0.0" });
+  const a = testEnvironment({
+    terraformVersion: "1.7.0",
+    nodeVersion: "v22.0.0",
+  });
 
   const result = await runLearnerLab({ ...a.options, step: "check" });
 
@@ -2418,7 +2806,9 @@ test("malformed tool versions fail closed before Terraform planning", async () =
 
     assert.equal(result.status, 1, JSON.stringify(configuration));
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("plan"),
+      ),
       false,
     );
   }
@@ -2432,7 +2822,9 @@ test("deploy requires npm before Terraform can create a plan", async () => {
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /npm/i);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
 });
@@ -2445,7 +2837,9 @@ test("deploy verifies the vockey key pair before Terraform can create a plan", a
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /vockey/i);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
 });
@@ -2458,7 +2852,9 @@ test("an empty key-pair response is rejected even when AWS exits successfully", 
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /vockey/i);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
 });
@@ -2480,7 +2876,9 @@ test("deploy rejects hidden Terraform overrides without printing their values", 
   assert.match(output, /TF_CLI_ARGS_plan/);
   assert.doesNotMatch(output, new RegExp(secretValue));
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("init")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("init"),
+    ),
     false,
   );
 });
@@ -2510,7 +2908,11 @@ test("deploy rejects automatically loaded local Terraform variable files", async
     const result = await runLearnerLab({ ...a.options, step: "deploy" });
 
     assert.equal(result.status, 1, filename);
-    assert.match(a.logs.join("\n"), new RegExp(filename.replaceAll(".", "\\.")), filename);
+    assert.match(
+      a.logs.join("\n"),
+      new RegExp(filename.replaceAll(".", "\\.")),
+      filename,
+    );
     assert.equal(a.calls.length, 0, filename);
   }
 });
@@ -2537,7 +2939,9 @@ test("deploy requires the default Terraform workspace before planning", async ()
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /workspace.*default/i);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
 });
@@ -2550,7 +2954,9 @@ test("seed refuses to read outputs from a non-default Terraform workspace", asyn
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /workspace.*default/i);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("output")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("output"),
+    ),
     false,
   );
 });
@@ -2569,10 +2975,15 @@ test("a saved plan outside the safe Learner Lab profile never reaches confirmati
   });
 
   assert.equal(result.status, 1);
-  assert.match(a.logs.join("\n"), /safe Learner Lab profile.*quantidade_tasks/i);
+  assert.match(
+    a.logs.join("\n"),
+    /safe Learner Lab profile.*quantidade_tasks/i,
+  );
   assert.equal(confirmations, 0);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -2593,7 +3004,9 @@ test("a rejected create-only gate prevents confirmation and apply", async () => 
   assert.equal(result.status, 1);
   assert.equal(confirmations, 0);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -2605,7 +3018,10 @@ test("POSIX runs tighten permissions even when artifact paths already exist", as
 
   assert.equal(result.status, 0);
   assert.deepEqual(a.permissions, [
-    { target: path.join(ROOT, "apps", "fullstack", ".terraform-artifacts"), mode: 0o700 },
+    {
+      target: path.join(ROOT, "apps", "fullstack", ".terraform-artifacts"),
+      mode: 0o700,
+    },
     {
       target: path.join(
         ROOT,
@@ -2623,10 +3039,22 @@ test("POSIX runs tighten permissions even when artifact paths already exist", as
 
 test("confirmation text must match exactly", () => {
   assert.equal(isExactConfirmation("APPLY view-show", "APPLY view-show"), true);
-  assert.equal(isExactConfirmation(" APPLY view-show", "APPLY view-show"), false);
-  assert.equal(isExactConfirmation("APPLY view-show ", "APPLY view-show"), false);
-  assert.equal(isExactConfirmation("APPLY view-show\n", "APPLY view-show"), false);
-  assert.equal(isExactConfirmation("apply view-show", "APPLY view-show"), false);
+  assert.equal(
+    isExactConfirmation(" APPLY view-show", "APPLY view-show"),
+    false,
+  );
+  assert.equal(
+    isExactConfirmation("APPLY view-show ", "APPLY view-show"),
+    false,
+  );
+  assert.equal(
+    isExactConfirmation("APPLY view-show\n", "APPLY view-show"),
+    false,
+  );
+  assert.equal(
+    isExactConfirmation("apply view-show", "APPLY view-show"),
+    false,
+  );
 });
 
 test("POSIX discovery prefers an explicit Python 3.12 executable", async () => {
@@ -2641,7 +3069,9 @@ test("POSIX discovery prefers an explicit Python 3.12 executable", async () => {
   assert.equal(result.status, 0);
   assert.equal(
     a.calls.some(
-      (call) => call.command === "python3.12" && call.args.slice(0, 2).join(" ") === "-m venv",
+      (call) =>
+        call.command === "python3.12" &&
+        call.args.slice(0, 2).join(" ") === "-m venv",
     ),
     true,
   );
@@ -2661,7 +3091,8 @@ test("Windows discovery uses the Python 3.12 launcher selector", async () => {
   assert.equal(
     a.calls.some(
       (call) =>
-        call.command === "py" && call.args.slice(0, 3).join(" ") === "-3.12 -m venv",
+        call.command === "py" &&
+        call.args.slice(0, 3).join(" ") === "-3.12 -m venv",
     ),
     true,
   );
@@ -2681,7 +3112,9 @@ test("permission hardening failure stops before Terraform apply", async () => {
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /chmod denied/);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -2742,7 +3175,9 @@ test("update presets are hardcoded and the validated saved plan is the only appl
     });
 
     assert.equal(result.status, 0, `${preset}: ${a.logs.join("\n")}`);
-    assert.deepEqual(confirmations, [`UPDATE view-show 111122223333 ${preset}`]);
+    assert.deepEqual(confirmations, [
+      `UPDATE view-show 111122223333 ${preset}`,
+    ]);
     const plan = a.calls.find(
       (call) => call.command === "terraform" && call.args.includes("plan"),
     );
@@ -2767,7 +3202,11 @@ test("update presets are hardcoded and the validated saved plan is the only appl
         `-var=import_hot_materialization_enabled=${expected.import_hot_materialization_enabled}`,
       ),
     );
-    assert.ok(plan.args.includes("-var=import_canonical_first_production_approved=false"));
+    assert.ok(
+      plan.args.includes(
+        "-var=import_canonical_first_production_approved=false",
+      ),
+    );
     const gate = a.calls.find(
       (call) =>
         call.command === "node" &&
@@ -2787,7 +3226,9 @@ test("update presets are hardcoded and the validated saved plan is the only appl
         call.args.includes("show") &&
         call.args.some((arg) => String(arg).includes("/proc/self/fd/")),
     );
-    const planPath = plan.args.find((arg) => String(arg).startsWith("-out=")).slice(5);
+    const planPath = plan.args
+      .find((arg) => String(arg).startsWith("-out="))
+      .slice(5);
     assert.notEqual(planPath, apply.args.at(-1));
     assert.equal(show.args.at(-1), "/proc/self/fd/3");
     assert.equal(apply.args.at(-1), "/proc/self/fd/3");
@@ -2819,7 +3260,9 @@ test("plan-update uses the protected plan reference supported by each POSIX oper
     const plan = a.calls.find(
       (call) => call.command === "terraform" && call.args.includes("plan"),
     );
-    const planPath = plan.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
+    const planPath = plan.args
+      .find((argument) => String(argument).startsWith("-out="))
+      .slice(5);
     const shown = a.calls.find(
       (call) =>
         call.command === "terraform" &&
@@ -2849,7 +3292,9 @@ test("plan-update validates a saved plan but never confirms, backs up, or applie
   assert.equal(confirmations, 0);
   assert.deepEqual(a.copies, []);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -2866,13 +3311,20 @@ test("two update plans for the same preset use distinct private artifacts", asyn
   }
 
   const planPaths = a.calls
-    .filter((call) => call.command === "terraform" && call.args.includes("plan"))
-    .map((call) => call.args.find((arg) => String(arg).startsWith("-out=")).slice(5));
+    .filter(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    )
+    .map((call) =>
+      call.args.find((arg) => String(arg).startsWith("-out=")).slice(5),
+    );
   assert.equal(new Set(planPaths).size, 2);
   assert.equal(a.temporaryDirectories.length, 2);
   assert.deepEqual(a.closedPlanDescriptors, a.planDescriptors);
   for (const planPath of planPaths) {
-    assert.match(planPath, /[/\\]\.terraform-artifacts[/\\]update-phase1-5000-/);
+    assert.match(
+      planPath,
+      /[/\\]\.terraform-artifacts[/\\]update-phase1-5000-/,
+    );
     assert.doesNotMatch(planPath, /[/\\]\.artifacts[/\\]/);
   }
 });
@@ -2892,7 +3344,9 @@ test("update rejects a plan whose bytes change after validation and never applie
     assert.equal(result.status, 1, platform);
     assert.match(a.logs.join("\n"), /integrity|changed/i, platform);
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("apply"),
+      ),
       false,
       platform,
     );
@@ -2918,7 +3372,10 @@ test("Windows update fails closed before Terraform can show or apply a saved pla
     ),
     false,
   );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
+  assert.match(
+    a.logs.join("\n"),
+    /unsupported platform for protected Terraform plans/i,
+  );
 });
 
 test("update never applies a plan whose filesystem identity is unavailable", async () => {
@@ -2938,7 +3395,9 @@ test("update never applies a plan whose filesystem identity is unavailable", asy
 
   assert.equal(result.status, 1);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -2976,8 +3435,9 @@ test("exclusive update artifacts are removed after success, cancellation, and er
 
     assert.equal(result.status, scenario.expectedStatus, scenario.label);
     assert.equal(
-      [...a.artifactEntries.keys()].filter((entry) => entry.includes("update-phase1-5000-"))
-        .length,
+      [...a.artifactEntries.keys()].filter((entry) =>
+        entry.includes("update-phase1-5000-"),
+      ).length,
       0,
       scenario.label,
     );
@@ -3084,8 +3544,9 @@ test("descriptor close failure retains the private plan and directory", async ()
   assert.deepEqual(a.removedArtifactFiles, []);
   assert.deepEqual(a.removedArtifactDirectories, []);
   assert.equal(
-    [...a.artifactEntries.keys()].filter((entry) => entry.includes("update-phase1-5000-"))
-      .length,
+    [...a.artifactEntries.keys()].filter((entry) =>
+      entry.includes("update-phase1-5000-"),
+    ).length,
     2,
   );
   assert.match(a.logs.join("\n"), /close.*plan|descriptor/i);
@@ -3127,7 +3588,10 @@ test("a close failure preserves a primary gate error and retains the artifact", 
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /gate rejected.*unexpected address/i);
   assert.match(a.logs.join("\n"), /close failed.*artifact retained/i);
-  assert.doesNotMatch(a.logs.join("\n"), /could not close the validated Terraform plan/i);
+  assert.doesNotMatch(
+    a.logs.join("\n"),
+    /could not close the validated Terraform plan/i,
+  );
   assert.deepEqual(a.removedArtifactFiles, []);
   assert.deepEqual(a.removedArtifactDirectories, []);
 });
@@ -3137,7 +3601,10 @@ test("creation failure never removes a substituted directory without its origina
   const inspect = a.options.inspectArtifactPath;
   let directoryInspections = 0;
   a.options.inspectArtifactPath = (target) => {
-    if (String(target).includes("update-phase1-5000-") && !String(target).endsWith(".tfplan")) {
+    if (
+      String(target).includes("update-phase1-5000-") &&
+      !String(target).endsWith(".tfplan")
+    ) {
       directoryInspections += 1;
       if (directoryInspections === 1) {
         const metadata = inspect(target);
@@ -3178,7 +3645,8 @@ test("cleanup refuses replaced plan or directory identities", async () => {
       ) {
         targetInspections += 1;
         const metadata = inspect(target);
-        if (targetInspections > 1) return { ...metadata, ino: metadata.ino + 1000 };
+        if (targetInspections > 1)
+          return { ...metadata, ino: metadata.ino + 1000 };
         return metadata;
       }
       return inspect(target);
@@ -3267,7 +3735,11 @@ test("update rejects unknown presets and extra arguments before any tool call", 
     { preset: "phase1-5000", extraArguments: ["-var=quantidade_tasks=4"] },
   ]) {
     const a = updateEnvironment();
-    const result = await runLearnerLab({ ...a.options, step: "update", ...options });
+    const result = await runLearnerLab({
+      ...a.options,
+      step: "update",
+      ...options,
+    });
 
     assert.notEqual(result.status, 0);
     assert.deepEqual(a.calls, []);
@@ -3276,12 +3748,32 @@ test("update rejects unknown presets and extra arguments before any tool call", 
 
 test("protected update commands require the primary checkout and configured region", async () => {
   const invalidEnvironments = [
-    { AWS_PROFILE: "default", AWS_DEFAULT_PROFILE: "other-profile", AWS_REGION: "us-east-1" },
+    {
+      AWS_PROFILE: "default",
+      AWS_DEFAULT_PROFILE: "other-profile",
+      AWS_REGION: "us-east-1",
+    },
     { AWS_PROFILE: "default", AWS_REGION: "sa-east-1" },
-    { AWS_PROFILE: "default", AWS_REGION: "us-east-1", AWS_ACCESS_KEY_ID: "secret" },
-    { AWS_PROFILE: "default", AWS_REGION: "us-east-1", AWS_SECRET_ACCESS_KEY: "secret" },
-    { AWS_PROFILE: "default", AWS_REGION: "us-east-1", AWS_SESSION_TOKEN: "secret" },
-    { AWS_PROFILE: "default", AWS_REGION: "us-east-1", AWS_CONFIG_FILE: "/tmp/config" },
+    {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      AWS_ACCESS_KEY_ID: "secret",
+    },
+    {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      AWS_SECRET_ACCESS_KEY: "secret",
+    },
+    {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      AWS_SESSION_TOKEN: "secret",
+    },
+    {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      AWS_CONFIG_FILE: "/tmp/config",
+    },
     {
       AWS_PROFILE: "default",
       AWS_REGION: "us-east-1",
@@ -3313,7 +3805,10 @@ test("protected update commands require the primary checkout and configured regi
 });
 
 test("protected commands accept the primary checkout at a portable path", async () => {
-  const a = testEnvironment({ root: "/workspace/view-show", gitCheckout: "main" });
+  const a = testEnvironment({
+    root: "/workspace/view-show",
+    gitCheckout: "main",
+  });
 
   const result = await runLearnerLab({
     ...a.options,
@@ -3330,7 +3825,9 @@ test("protected commands accept an omitted AWS_REGION and pin the canonical regi
   const result = await runLearnerLab({ ...a.options, step: "check" });
 
   assert.equal(result.status, 0, a.logs.join("\n"));
-  for (const call of a.calls.filter((call) => call.command === "aws" && call.args[0] !== "--version")) {
+  for (const call of a.calls.filter(
+    (call) => call.command === "aws" && call.args[0] !== "--version",
+  )) {
     assert.equal(call.args.includes("--region"), true);
     assert.equal(call.args[call.args.indexOf("--region") + 1], "us-east-1");
   }
@@ -3411,7 +3908,8 @@ test("local state must be a regular owned non-symlink with valid lineage and ser
     {
       label: "non-positive serial",
       mutate: (options) => {
-        options.readFile = () => JSON.stringify({ lineage: "lineage-1", serial: 0 });
+        options.readFile = () =>
+          JSON.stringify({ lineage: "lineage-1", serial: 0 });
       },
     },
   ];
@@ -3426,7 +3924,9 @@ test("local state must be a regular owned non-symlink with valid lineage and ser
     });
     assert.equal(result.status, 1, label);
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("init")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("init"),
+      ),
       false,
       label,
     );
@@ -3436,7 +3936,10 @@ test("local state must be a regular owned non-symlink with valid lineage and ser
 test("remote state lineage and serial plus runbook owner must match before planning", async () => {
   for (const configuration of [
     { remoteStateSerial: 6 },
-    { stateLineage: "lineage-1", stateFileText: JSON.stringify({ lineage: "other", serial: 7 }) },
+    {
+      stateLineage: "lineage-1",
+      stateFileText: JSON.stringify({ lineage: "other", serial: 7 }),
+    },
     { runbookOwner: "999999999999" },
   ]) {
     const a = updateEnvironment(configuration);
@@ -3447,7 +3950,9 @@ test("remote state lineage and serial plus runbook owner must match before plann
     });
     assert.equal(result.status, 1, JSON.stringify(configuration));
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("plan"),
+      ),
       false,
     );
   }
@@ -3464,18 +3969,28 @@ test("an active import aborts before planning and logs only its public import id
 
   assert.equal(result.status, 1);
   const getItem = a.calls.find(
-    (call) => call.command === "aws" && call.args.slice(0, 2).join(" ") === "dynamodb get-item",
+    (call) =>
+      call.command === "aws" &&
+      call.args.slice(0, 2).join(" ") === "dynamodb get-item",
   );
   assert.ok(getItem);
   assert.ok(getItem.args.includes("--consistent-read"));
-  assert.deepEqual(JSON.parse(getItem.args[getItem.args.indexOf("--key") + 1]), {
-    pk: { S: "CONTROL#IMPORT" },
-    sk: { S: "ACTIVE" },
-  });
+  assert.deepEqual(
+    JSON.parse(getItem.args[getItem.args.indexOf("--key") + 1]),
+    {
+      pk: { S: "CONTROL#IMPORT" },
+      sk: { S: "ACTIVE" },
+    },
+  );
   assert.match(a.logs.join("\n"), new RegExp(importId));
-  assert.doesNotMatch(a.logs.join("\n"), /privateSnapshotKey|must-not-be-printed/);
+  assert.doesNotMatch(
+    a.logs.join("\n"),
+    /privateSnapshotKey|must-not-be-printed/,
+  );
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
     false,
   );
 });
@@ -3516,9 +4031,14 @@ test("an import that starts after confirmation prevents update apply", async () 
 
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), new RegExp(importId));
-  assert.doesNotMatch(a.logs.join("\n"), /privateSnapshotKey|must-not-be-printed/);
+  assert.doesNotMatch(
+    a.logs.join("\n"),
+    /privateSnapshotKey|must-not-be-printed/,
+  );
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -3566,8 +4086,8 @@ test("update backs up state privately before apply and revalidates state and out
   const sourceOpen = a.backupOpens.find(({ logicalTarget }) =>
     logicalTarget.endsWith(`${path.sep}terraform.tfstate`),
   );
-  const directoryOpen = a.backupOpens.find(
-    ({ logicalTarget }) => logicalTarget.endsWith(`${path.sep}state-backups`),
+  const directoryOpen = a.backupOpens.find(({ logicalTarget }) =>
+    logicalTarget.endsWith(`${path.sep}state-backups`),
   );
   const destinationOpen = a.backupOpens.find(({ logicalTarget }) =>
     logicalTarget.includes("terraform.tfstate.2026-09-21T12-34-56-789Z"),
@@ -3575,11 +4095,17 @@ test("update backs up state privately before apply and revalidates state and out
   assert.ok(sourceOpen.flags & fsConstants.O_NOFOLLOW);
   assert.ok(directoryOpen.flags & fsConstants.O_NOFOLLOW);
   assert.ok(directoryOpen.flags & fsConstants.O_DIRECTORY);
-  assert.match(destinationOpen.target, /^\/proc\/self\/fd\/\d+\/terraform\.tfstate\./);
+  assert.match(
+    destinationOpen.target,
+    /^\/proc\/self\/fd\/\d+\/terraform\.tfstate\./,
+  );
   assert.ok(destinationOpen.flags & fsConstants.O_EXCL);
   assert.ok(destinationOpen.flags & fsConstants.O_NOFOLLOW);
   assert.equal(destinationOpen.mode, 0o600);
-  assert.deepEqual(a.closedBackupDescriptors.sort(), a.backupDescriptors.sort());
+  assert.deepEqual(
+    a.closedBackupDescriptors.sort(),
+    a.backupDescriptors.sort(),
+  );
   const applyIndex = a.calls.findIndex(
     (call) => call.command === "terraform" && call.args.includes("apply"),
   );
@@ -3614,11 +4140,16 @@ test("update creates its protected state backup through a Linux directory descri
   const destinationOpen = a.backupOpens.find(
     ({ flags }) => (flags & fsConstants.O_CREAT) !== 0,
   );
-  assert.match(destinationOpen.target, /^\/proc\/self\/fd\/\d+\/terraform\.tfstate\./);
+  assert.match(
+    destinationOpen.target,
+    /^\/proc\/self\/fd\/\d+\/terraform\.tfstate\./,
+  );
   assert.ok(destinationOpen.flags & fsConstants.O_EXCL);
   assert.equal(a.backupWrites.length, 1);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     true,
   );
 });
@@ -3640,10 +4171,15 @@ test("update fails closed when the macOS protected state backup helper fails", a
   assert.equal(result.status, 1, a.logs.join("\n"));
   assert.equal(a.backupWrites.length, 0);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
-  assert.match(a.logs.join("\n"), /secure Terraform state backup could not be created/i);
+  assert.match(
+    a.logs.join("\n"),
+    /secure Terraform state backup could not be created/i,
+  );
 });
 
 test("update rejects untrusted or replaced backup paths before copy and apply", async () => {
@@ -3703,7 +4239,8 @@ test("update rejects untrusted or replaced backup paths before copy and apply", 
 
   for (const scenario of cases) {
     const a = updateEnvironment();
-    if (scenario.destination) a.artifactEntries.set(backupPath, scenario.destination);
+    if (scenario.destination)
+      a.artifactEntries.set(backupPath, scenario.destination);
     if (scenario.mutate) {
       const inspect = a.options.inspectArtifactPath;
       let inspections = 0;
@@ -3711,7 +4248,8 @@ test("update rejects untrusted or replaced backup paths before copy and apply", 
         const metadata = inspect(target);
         if (target !== backupDirectory) return metadata;
         inspections += 1;
-        if (scenario.label === "parent replaced" && inspections === 1) return metadata;
+        if (scenario.label === "parent replaced" && inspections === 1)
+          return metadata;
         return scenario.mutate(a, metadata);
       };
     }
@@ -3725,7 +4263,9 @@ test("update rejects untrusted or replaced backup paths before copy and apply", 
     assert.equal(result.status, 1, scenario.label);
     assert.deepEqual(a.copies, [], scenario.label);
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("apply"),
+      ),
       false,
       scenario.label,
     );
@@ -3733,7 +4273,12 @@ test("update rejects untrusted or replaced backup paths before copy and apply", 
 });
 
 test("update rejects descriptor-time source or directory substitution without writing or applying", async () => {
-  const statePath = path.join(ORIGINAL_ROOT, "apps", "fullstack", "terraform.tfstate");
+  const statePath = path.join(
+    ORIGINAL_ROOT,
+    "apps",
+    "fullstack",
+    "terraform.tfstate",
+  );
   const backupDirectory = path.join(
     ORIGINAL_ROOT,
     "apps",
@@ -3773,7 +4318,9 @@ test("update rejects descriptor-time source or directory substitution without wr
     assert.deepEqual(a.backupWrites, [], race);
     assert.deepEqual(a.copies, [], race);
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("apply"),
+      ),
       false,
       race,
     );
@@ -3796,7 +4343,8 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
   const mutations = [
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_import",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_import",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].image = "mysql:8.4";
@@ -3804,7 +4352,8 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
     },
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_sync",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_sync",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].environment.find(
@@ -3815,7 +4364,8 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
     (state) => {
       const task = state.values.root_module.resources.find(
         (resource) =>
-          resource.address === "aws_ecs_task_definition.ingestion_incremental_export",
+          resource.address ===
+          "aws_ecs_task_definition.ingestion_incremental_export",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].environment.find(
@@ -3826,7 +4376,8 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
     (state) => {
       const task = state.values.root_module.resources.find(
         (resource) =>
-          resource.address === "aws_ecs_task_definition.ingestion_incremental_ingest",
+          resource.address ===
+          "aws_ecs_task_definition.ingestion_incremental_ingest",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].environment.find(
@@ -3840,48 +4391,53 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
       "aws_ecs_task_definition.ingestion_sync",
       "aws_ecs_task_definition.ingestion_incremental_export",
       "aws_ecs_task_definition.ingestion_incremental_ingest",
-    ].map(
-      (address) => (state) => {
-        const task = state.values.root_module.resources.find(
-          (resource) => resource.address === address,
-        );
-        task.values.ephemeral_storage[0].size_in_gib = 199;
-      },
-    ),
+    ].map((address) => (state) => {
+      const task = state.values.root_module.resources.find(
+        (resource) => resource.address === address,
+      );
+      task.values.ephemeral_storage[0].size_in_gib = 199;
+    }),
     (state) => {
       const task = state.values.root_module.resources.find(
         (resource) => resource.address === "aws_ecs_task_definition.api",
       );
       const containers = JSON.parse(task.values.container_definitions);
-      containers[0].image = "111122223333.dkr.ecr.us-east-1.amazonaws.com/view-show-api:latest";
+      containers[0].image =
+        "111122223333.dkr.ecr.us-east-1.amazonaws.com/view-show-api:latest";
       task.values.container_definitions = JSON.stringify(containers);
     },
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_import",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_import",
       );
       const containers = JSON.parse(task.values.container_definitions);
-      containers.find((container) => container.name === "mysql-snapshot").image =
+      containers.find(
+        (container) => container.name === "mysql-snapshot",
+      ).image =
         "mysql@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
       task.values.container_definitions = JSON.stringify(containers);
     },
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_import",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_import",
       );
       task.values.arn =
         "arn:aws:ecs:us-east-1:111122223333:task-definition/view-show-ingestion-import";
     },
     (state) => {
       const schedule = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_scheduler_schedule.ingestion_sync",
+        (resource) =>
+          resource.address === "aws_scheduler_schedule.ingestion_sync",
       );
       schedule.values.target[0].ecs_parameters[0].task_definition_arn =
         "arn:aws:ecs:us-east-1:111122223333:task-definition/stale:1";
     },
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_import",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_import",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].environment.find(
@@ -3901,7 +4457,8 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
     },
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_import",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_import",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].environment.find(
@@ -3911,7 +4468,8 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
     },
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_backfill",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_backfill",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].environment.find(
@@ -3921,7 +4479,8 @@ test("post-apply verification rejects mutable images, unversioned tasks, stale s
     },
     (state) => {
       const task = state.values.root_module.resources.find(
-        (resource) => resource.address === "aws_ecs_task_definition.ingestion_import",
+        (resource) =>
+          resource.address === "aws_ecs_task_definition.ingestion_import",
       );
       const containers = JSON.parse(task.values.container_definitions);
       containers[0].environment.find(
@@ -3962,13 +4521,17 @@ test("post-apply verification rejects a well-formed worker digest that differs f
   });
 
   assert.equal(result.status, 1);
-  assert.match(a.logs.join("\n"), /unknown|container|image|reference|digest|diverged/i);
+  assert.match(
+    a.logs.join("\n"),
+    /unknown|container|image|reference|digest|diverged/i,
+  );
 });
 
 test("update rejects a validated plan that changes the fixed MySQL snapshot digest", async () => {
   const planState = postApplyState("phase1-5000");
   const task = planState.values.root_module.resources.find(
-    (resource) => resource.address === "aws_ecs_task_definition.ingestion_import",
+    (resource) =>
+      resource.address === "aws_ecs_task_definition.ingestion_import",
   );
   const containers = JSON.parse(task.values.container_definitions);
   containers.find((container) => container.name === "mysql-snapshot").image =
@@ -3985,7 +4548,9 @@ test("update rejects a validated plan that changes the fixed MySQL snapshot dige
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /mysql|digest|image/i);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -4010,7 +4575,9 @@ test("Terraform-native unknown planned container JSON is rejected before apply",
 
   assert.equal(result.status, 1, a.logs.join("\n"));
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -4091,7 +4658,10 @@ test("unknown planned images reject a uniform digest that diverges from ECR reso
   });
 
   assert.equal(result.status, 1);
-  assert.match(a.logs.join("\n"), /unknown|container|image|reference|digest|diverged/i);
+  assert.match(
+    a.logs.join("\n"),
+    /unknown|container|image|reference|digest|diverged/i,
+  );
 });
 
 test("post-apply ECR resolution must keep the repository and content tag from the plan", async () => {
@@ -4132,7 +4702,9 @@ test("a well-formed planned ECR tag must equal the Terraform image source hash p
 
   assert.equal(result.status, 1);
   assert.equal(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
     false,
   );
 });
@@ -4205,7 +4777,9 @@ test("unknown image markers must use the exact boolean leaves from Terraform", a
 
     assert.equal(result.status, 1, JSON.stringify(configuration));
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("apply"),
+      ),
       false,
       JSON.stringify(configuration),
     );
@@ -4217,7 +4791,12 @@ test("a null planned ingestion output is unknown only with its exact boolean mar
 
   for (const { label, marker, present = true, expectedStatus } of [
     { label: "exact boolean marker", marker: true, expectedStatus: 0 },
-    { label: "missing marker", marker: true, present: false, expectedStatus: 1 },
+    {
+      label: "missing marker",
+      marker: true,
+      present: false,
+      expectedStatus: 1,
+    },
     { label: "false marker", marker: false, expectedStatus: 1 },
     { label: "string marker", marker: "true", expectedStatus: 1 },
   ]) {
@@ -4302,13 +4881,18 @@ function canarySignedUploadUrl(
     pathName = `/imports/${CANARY_IMPORT_ID}/part-${partNumber}`,
   } = {},
 ) {
-  const credential = encodeURIComponent(`AKIAEXAMPLE/20260922/${region}/s3/aws4_request`);
+  const credential = encodeURIComponent(
+    `AKIAEXAMPLE/20260922/${region}/s3/aws4_request`,
+  );
   return `https://${host}${pathName}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=${credential}&X-Amz-Signature=${"a".repeat(64)}`;
 }
 
 function fakeResponse(status, payload, responseHeaders = {}) {
   const headers = new Map(
-    Object.entries(responseHeaders).map(([name, value]) => [name.toLowerCase(), value]),
+    Object.entries(responseHeaders).map(([name, value]) => [
+      name.toLowerCase(),
+      value,
+    ]),
   );
   return {
     ok: status >= 200 && status < 300,
@@ -4430,7 +5014,9 @@ function importCanaryEnvironment({
     }
     if (serialized.includes("INGESTION#RUN#")) {
       const currentRunStage =
-        confirmations.length > 0 && afterConfirmationStage !== null ? afterConfirmationStage : runStage;
+        confirmations.length > 0 && afterConfirmationStage !== null
+          ? afterConfirmationStage
+          : runStage;
       return {
         Item: {
           pk: { S: `INGESTION#RUN#${CANARY_RUN_ID}` },
@@ -4443,7 +5029,9 @@ function importCanaryEnvironment({
     if (serialized.includes("IMPORT#")) {
       const failed = stopCalls > 0 && persistFailed;
       const currentImportStage =
-        confirmations.length > 0 && afterConfirmationStage !== null ? afterConfirmationStage : importStage;
+        confirmations.length > 0 && afterConfirmationStage !== null
+          ? afterConfirmationStage
+          : importStage;
       return {
         Item: {
           pk: { S: "IMPORTS" },
@@ -4486,7 +5074,11 @@ function importCanaryEnvironment({
         stderr: "",
       };
     }
-    if (command === "aws" && args[0] === "ecs" && args[1] === "describe-tasks") {
+    if (
+      command === "aws" &&
+      args[0] === "ecs" &&
+      args[1] === "describe-tasks"
+    ) {
       if (confirmations.length > 0 && stopCalls === 0) {
         clock += postConfirmationRevalidationAdvanceSeconds;
       }
@@ -4506,10 +5098,13 @@ function importCanaryEnvironment({
                     name: taskContainerName,
                     command: taskCommand,
                     environment: [
-                      ...Array.from({ length: importIdentityOverrideCount }, () => ({
-                        name: "IMPORT_ID",
-                        value: CANARY_IMPORT_ID,
-                      })),
+                      ...Array.from(
+                        { length: importIdentityOverrideCount },
+                        () => ({
+                          name: "IMPORT_ID",
+                          value: CANARY_IMPORT_ID,
+                        }),
+                      ),
                       ...Array.from({ length: pipelineOverrideCount }, () => ({
                         name: "IMPORT_PIPELINE_VERSION",
                         value: pipelineOverride,
@@ -4565,9 +5160,13 @@ function importCanaryEnvironment({
       );
     };
     if (parsed.pathname === "/auth/login") {
-      return fakeResponse(200, { data: { token: "must-not-persist" } }, {
-        "set-cookie": "session=private-cookie; Path=/; HttpOnly; Secure",
-      });
+      return fakeResponse(
+        200,
+        { data: { token: "must-not-persist" } },
+        {
+          "set-cookie": "session=private-cookie; Path=/; HttpOnly; Secure",
+        },
+      );
     }
     if (parsed.pathname === "/api/v1/imports" && options.method === "POST") {
       return redirected("start") ?? fakeResponse(201, { data: startSnapshot });
@@ -4605,7 +5204,10 @@ function importCanaryEnvironment({
       });
     }
     if (parsed.pathname.endsWith("/complete")) {
-      return redirected("complete") ?? fakeResponse(202, { data: canarySnapshot("UPLOADED", "STARTING") });
+      return (
+        redirected("complete") ??
+        fakeResponse(202, { data: canarySnapshot("UPLOADED", "STARTING") })
+      );
     }
     if (parsed.pathname === `/api/v1/imports/${CANARY_IMPORT_ID}`) {
       const redirect = redirected("poll");
@@ -4614,7 +5216,9 @@ function importCanaryEnvironment({
       statusIndex += 1;
       return fakeResponse(200, { data: current });
     }
-    throw new Error(`unexpected HTTP request: ${options.method ?? "GET"} ${url}`);
+    throw new Error(
+      `unexpected HTTP request: ${options.method ?? "GET"} ${url}`,
+    );
   };
   const extraArguments = [
     "--snapshot",
@@ -4675,7 +5279,8 @@ function importCanaryEnvironment({
         sha256: "f".repeat(64),
         parts,
       }),
-      readSnapshotPart: (_inspection, part) => Buffer.from(`part-${part.partNumber}`),
+      readSnapshotPart: (_inspection, part) =>
+        Buffer.from(`part-${part.partNumber}`),
       closeSnapshot: (inspection) => closedSnapshots.push(inspection),
       writeCanaryEvidence: (_context, configuration, contents) => {
         evidenceWrites.push({
@@ -4776,7 +5381,9 @@ test("import-canary rejects unsafe local inputs and missing TTY before external 
 });
 
 test("import-canary rejects real final and parent snapshot symlinks before external calls", async (t) => {
-  const temporary = mkdtempSync(path.join(os.tmpdir(), "argus-canary-snapshot-"));
+  const temporary = mkdtempSync(
+    path.join(os.tmpdir(), "argus-canary-snapshot-"),
+  );
   t.after(() => rmSync(temporary, { recursive: true, force: true }));
   const physical = path.join(temporary, "physical");
   mkdirSync(physical);
@@ -4789,7 +5396,10 @@ test("import-canary rejects real final and parent snapshot symlinks before exter
   const finalLink = path.join(finalLinkDirectory, "argus_dump.sql.gz");
   symlinkSync(physicalSnapshot, finalLink, "file");
 
-  for (const snapshot of [path.join(linkedParent, "argus_dump.sql.gz"), finalLink]) {
+  for (const snapshot of [
+    path.join(linkedParent, "argus_dump.sql.gz"),
+    finalLink,
+  ]) {
     const calls = [];
     const result = await runLearnerLab({
       step: "import-canary",
@@ -4840,7 +5450,8 @@ test("import-canary locks snapshot identity before external calls and never reop
           isDirectory: () => true,
           isSymbolicLink: () => false,
         }
-      : String(target) === path.join(ROOT, "apps", "fullstack", "terraform.tfstate")
+      : String(target) ===
+          path.join(ROOT, "apps", "fullstack", "terraform.tfstate")
         ? {
             uid: process.getuid(),
             dev: 1,
@@ -4850,7 +5461,7 @@ test("import-canary locks snapshot identity before external calls and never reop
             isDirectory: () => false,
             isSymbolicLink: () => false,
           }
-      : lstatSync(target);
+        : lstatSync(target);
   a.options.accessFile = undefined;
   const originalInspection = a.options.inspectSnapshot;
   let inspected = false;
@@ -4862,7 +5473,11 @@ test("import-canary locks snapshot identity before external calls and never reop
   const originalExecute = a.options.execute;
   let swapped = false;
   a.options.execute = (...args) => {
-    assert.equal(inspected, true, "snapshot must be locked before the first external command");
+    assert.equal(
+      inspected,
+      true,
+      "snapshot must be locked before the first external command",
+    );
     if (!swapped) {
       renameSync(snapshot, displaced);
       writeFileSync(snapshot, "replacement-path-bytes", { mode: 0o600 });
@@ -4873,7 +5488,9 @@ test("import-canary locks snapshot identity before external calls and never reop
   a.options.readSnapshotPart = (inspection, part) => {
     assert.equal(inspection.descriptor, 73);
     assert.equal(readFileSync(snapshot, "utf8"), "replacement-path-bytes");
-    return Buffer.from(`part-${part.partNumber}-${originalBytes.toString("hex")}`);
+    return Buffer.from(
+      `part-${part.partNumber}-${originalBytes.toString("hex")}`,
+    );
   };
 
   const result = await runLearnerLab(a.options);
@@ -4923,7 +5540,10 @@ test("import-canary resumes 16 MiB multipart upload with concurrency three and s
   const result = await runLearnerLab(a.options);
 
   assert.equal(result.status, 0);
-  assert.deepEqual(a.uploadedParts.sort((left, right) => left - right), [2, 3, 4]);
+  assert.deepEqual(
+    a.uploadedParts.sort((left, right) => left - right),
+    [2, 3, 4],
+  );
   assert.equal(a.maximumActiveUploads, 3);
   assert.equal(a.stopCalls, 0);
   assert.equal(a.evidenceWrites.length, 1);
@@ -4937,15 +5557,22 @@ test("import-canary resumes 16 MiB multipart upload with concurrency three and s
   assert.equal(evidence.faultInjected, false);
   assert.equal(evidence.partSizeBytes, CANARY_PART_SIZE);
   assert.equal(evidence.resumedParts, 1);
-  assert.doesNotMatch(a.evidenceWrites[0].contents, /password|cookie|token|signature|super-private/i);
+  assert.doesNotMatch(
+    a.evidenceWrites[0].contents,
+    /password|cookie|token|signature|super-private/i,
+  );
   assert.equal(
     a.requests.some((request) => request.url.endsWith("/activate")),
     false,
   );
-  const signedUploads = a.requests.filter((request) => request.options.method === "PUT");
+  const signedUploads = a.requests.filter(
+    (request) => request.options.method === "PUT",
+  );
   assert.equal(
     signedUploads.every((request) =>
-      Object.keys(request.options.headers).every((name) => name.toLowerCase() !== "cookie"),
+      Object.keys(request.options.headers).every(
+        (name) => name.toLowerCase() !== "cookie",
+      ),
     ),
     true,
   );
@@ -5058,19 +5685,31 @@ test("import-canary never reports an already-active READY candidate as inactive"
 
 for (const scenario of ["symlink", "hardlink", "existing"]) {
   test(`import-canary atomically replaces a real ${scenario} evidence entry without overwriting its victim`, async (t) => {
-    const temporary = mkdtempSync(path.join(os.tmpdir(), `argus-canary-evidence-${scenario}-`));
+    const temporary = mkdtempSync(
+      path.join(os.tmpdir(), `argus-canary-evidence-${scenario}-`),
+    );
     t.after(() => rmSync(temporary, { recursive: true, force: true }));
-    const artifactDirectory = path.join(temporary, ".artifacts", "argus-import-canary");
+    const artifactDirectory = path.join(
+      temporary,
+      ".artifacts",
+      "argus-import-canary",
+    );
     mkdirSync(artifactDirectory, { recursive: true, mode: 0o700 });
-    const target = path.join(artifactDirectory, "import-canary-phase2-canary.json");
+    const target = path.join(
+      artifactDirectory,
+      "import-canary-phase2-canary.json",
+    );
     const victim = path.join(temporary, "victim.txt");
     writeFileSync(victim, "victim-must-remain-unchanged", { mode: 0o640 });
     if (scenario === "symlink") symlinkSync(victim, target, "file");
     if (scenario === "hardlink") linkSync(victim, target);
-    if (scenario === "existing") writeFileSync(target, "stale-evidence", { mode: 0o644 });
-    const originalTargetInode = scenario === "existing" ? statSync(target).ino : null;
+    if (scenario === "existing")
+      writeFileSync(target, "stale-evidence", { mode: 0o644 });
+    const originalTargetInode =
+      scenario === "existing" ? statSync(target).ino : null;
     const a = importCanaryEnvironment({ root: temporary });
-    a.options.realpath = (candidate) => (candidate === temporary ? ORIGINAL_ROOT : realpathSync(candidate));
+    a.options.realpath = (candidate) =>
+      candidate === temporary ? ORIGINAL_ROOT : realpathSync(candidate);
     a.options.makeDirectory = mkdirSync;
     a.options.writeFile = writeFileSync;
     a.options.changeMode = (candidate, mode) => {
@@ -5098,7 +5737,8 @@ for (const scenario of ["symlink", "hardlink", "existing"]) {
       assert.equal(directoryMetadata.nlink >= 1, true);
       assert.equal(directoryMetadata.mode & 0o777, 0o700);
     }
-    if (originalTargetInode !== null) assert.notEqual(metadata.ino, originalTargetInode);
+    if (originalTargetInode !== null)
+      assert.notEqual(metadata.ino, originalTargetInode);
     const evidence = JSON.parse(readFileSync(target, "utf8"));
     assert.equal(evidence.importId, CANARY_IMPORT_ID);
     assert.deepEqual(readdirSync(artifactDirectory), [path.basename(target)]);
@@ -5106,14 +5746,24 @@ for (const scenario of ["symlink", "hardlink", "existing"]) {
 }
 
 test("import-canary removes its exclusive evidence temporary file when publication fails", async (t) => {
-  const temporary = mkdtempSync(path.join(os.tmpdir(), "argus-canary-evidence-failure-"));
+  const temporary = mkdtempSync(
+    path.join(os.tmpdir(), "argus-canary-evidence-failure-"),
+  );
   t.after(() => rmSync(temporary, { recursive: true, force: true }));
-  const artifactDirectory = path.join(temporary, ".artifacts", "argus-import-canary");
+  const artifactDirectory = path.join(
+    temporary,
+    ".artifacts",
+    "argus-import-canary",
+  );
   mkdirSync(artifactDirectory, { recursive: true, mode: 0o700 });
-  const target = path.join(artifactDirectory, "import-canary-phase2-canary.json");
+  const target = path.join(
+    artifactDirectory,
+    "import-canary-phase2-canary.json",
+  );
   mkdirSync(target, { mode: 0o700 });
   const a = importCanaryEnvironment({ root: temporary });
-  a.options.realpath = (candidate) => (candidate === temporary ? ORIGINAL_ROOT : realpathSync(candidate));
+  a.options.realpath = (candidate) =>
+    candidate === temporary ? ORIGINAL_ROOT : realpathSync(candidate);
   a.options.makeDirectory = mkdirSync;
   a.options.writeFile = writeFileSync;
   a.options.changeMode = (candidate, mode) => {
@@ -5179,15 +5829,18 @@ test("import-canary aborts if the evidence parent is swapped before publication"
 for (const scenario of [
   {
     label: "a non-S3 host",
-    signedUrlForPart: (partNumber) => canarySignedUploadUrl(partNumber, { host: "attacker.example" }),
+    signedUrlForPart: (partNumber) =>
+      canarySignedUploadUrl(partNumber, { host: "attacker.example" }),
   },
   {
     label: "a divergent bucket",
-    signedUrlForPart: (partNumber) => canarySignedUploadUrl(partNumber, { bucket: "other-private-bucket" }),
+    signedUrlForPart: (partNumber) =>
+      canarySignedUploadUrl(partNumber, { bucket: "other-private-bucket" }),
   },
   {
     label: "a divergent region",
-    signedUrlForPart: (partNumber) => canarySignedUploadUrl(partNumber, { region: "eu-west-1" }),
+    signedUrlForPart: (partNumber) =>
+      canarySignedUploadUrl(partNumber, { region: "eu-west-1" }),
   },
   {
     label: "a divergent path-style bucket",
@@ -5227,14 +5880,18 @@ for (const scenario of [
   test(`import-canary rejects a cross-origin ${scenario.status} from authenticated ${scenario.operation}`, async () => {
     const a = importCanaryEnvironment({
       redirectAt: scenario,
-      ...(scenario.startSnapshot === undefined ? {} : { startSnapshot: scenario.startSnapshot }),
+      ...(scenario.startSnapshot === undefined
+        ? {}
+        : { startSnapshot: scenario.startSnapshot }),
     });
 
     const result = await runLearnerLab(a.options);
 
     assert.equal(result.status, 1);
     assert.equal(
-      a.requests.some((request) => new URL(request.url).origin === "https://attacker.example"),
+      a.requests.some(
+        (request) => new URL(request.url).origin === "https://attacker.example",
+      ),
       false,
     );
     assert.equal(
@@ -5282,7 +5939,10 @@ for (const scenario of [
     assert.equal(
       a.requests.some((request) => {
         const parsed = new URL(request.url);
-        return parsed.pathname.endsWith("/parts") || parsed.pathname.endsWith("/complete");
+        return (
+          parsed.pathname.endsWith("/parts") ||
+          parsed.pathname.endsWith("/complete")
+        );
       }),
       false,
     );
@@ -5303,7 +5963,9 @@ for (const divergent of [
 
     assert.equal(result.status, 1);
     assert.equal(
-      a.requests.some((request) => new URL(request.url).pathname.endsWith("/parts")),
+      a.requests.some((request) =>
+        new URL(request.url).pathname.endsWith("/parts"),
+      ),
       false,
     );
   });
@@ -5320,7 +5982,10 @@ test("import-canary timeout never stops a task without stop-at-stage", async () 
   assert.equal(a.stopCalls, 0);
   assert.equal(
     a.externalCalls.some(
-      (call) => call.command === "aws" && call.args[0] === "ecs" && call.args[1] === "stop-task",
+      (call) =>
+        call.command === "aws" &&
+        call.args[0] === "ecs" &&
+        call.args[1] === "stop-task",
     ),
     false,
   );
@@ -5483,7 +6148,10 @@ test("import-canary stops its exact task once and waits for retryable FAILED plu
   assert.equal(evidence.candidateActivated, false);
   assert.equal(
     a.externalCalls.some(
-      (call) => call.command === "aws" && call.args[0] === "ecs" && call.args[1] === "list-tasks",
+      (call) =>
+        call.command === "aws" &&
+        call.args[0] === "ecs" &&
+        call.args[1] === "list-tasks",
     ),
     false,
   );
@@ -5521,16 +6189,27 @@ const ANALYSIS_ARGUMENTS = [
   "--analysis-catalog",
   ANALYSIS_CATALOG,
 ];
+const ANALYSIS_CATALOG_SHA256 = createHash("sha256")
+  .update(JSON.stringify([{ id: "canal-a" }]))
+  .digest("hex");
+const ANALYSIS_FACT_CATALOG_LOCATION =
+  `s3://view-show-ingestion-111122223333-us-east-1/analysis/catalogs/` +
+  `${ANALYSIS_CATALOG_SHA256}.json`;
 const ANALYSIS_PLAN_VARIABLES = {
   analysis_worker_habilitado: true,
   analysis_worker_desired_count: 0,
   analysis_llm_provider: "none",
   analysis_model_file: ANALYSIS_MODEL,
   analysis_scope_catalog_file: ANALYSIS_CATALOG,
+  analysis_fact_catalog_location: ANALYSIS_FACT_CATALOG_LOCATION,
 };
 const OLLAMA_MODEL_ID = "qwen2.5:7b";
 const OLLAMA_URL = "http://10.20.30.40:11434";
-const OLLAMA_ARGUMENTS = [...ANALYSIS_ARGUMENTS, "--analysis-model-id", OLLAMA_MODEL_ID];
+const OLLAMA_ARGUMENTS = [
+  ...ANALYSIS_ARGUMENTS,
+  "--analysis-model-id",
+  OLLAMA_MODEL_ID,
+];
 const OLLAMA_PLAN_VARIABLES = {
   ...ANALYSIS_PLAN_VARIABLES,
   analysis_llm_provider: "ollama",
@@ -5585,6 +6264,7 @@ test("deploy with the analysis worker validates the files and passes the worker 
     "-var=analysis_llm_provider=none",
     `-var=analysis_model_file=${ANALYSIS_MODEL}`,
     `-var=analysis_scope_catalog_file=${ANALYSIS_CATALOG}`,
+    `-var=analysis_fact_catalog_location=${ANALYSIS_FACT_CATALOG_LOCATION}`,
   ]) {
     assert.ok(plan.args.includes(variable), variable);
   }
@@ -5593,8 +6273,37 @@ test("deploy with the analysis worker validates the files and passes the worker 
     /Analysis:\s+worker PREPARED, provider none, replicas 0 \(model approved-model\.json, catalog scope-catalog\.pilot\.json\)/,
   );
   assert.ok(
-    a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
   );
+});
+
+test("update preserves the prepared analysis worker and enables fact materialization", async () => {
+  const a = updateEnvironment({ preset: "baseline" });
+
+  const result = await runLearnerLab({
+    ...a.options,
+    ...analysisFiles(a),
+    step: "plan-update",
+    preset: "baseline",
+    extraArguments: ANALYSIS_ARGUMENTS,
+  });
+
+  assert.equal(result.status, 0, a.logs.join("\n"));
+  const plan = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
+  for (const variable of [
+    "-var=analysis_worker_habilitado=true",
+    "-var=analysis_worker_desired_count=0",
+    "-var=analysis_llm_provider=none",
+    `-var=analysis_model_file=${ANALYSIS_MODEL}`,
+    `-var=analysis_scope_catalog_file=${ANALYSIS_CATALOG}`,
+    `-var=analysis_fact_catalog_location=${ANALYSIS_FACT_CATALOG_LOCATION}`,
+  ]) {
+    assert.ok(plan.args.includes(variable), variable);
+  }
 });
 
 test("deploy without the flags keeps the analysis worker disabled and out of the plan variables", async () => {
@@ -5631,7 +6340,10 @@ test("setup with the analysis worker prints where to follow its logs", async () 
 
   assert.equal(result.status, 0, a.logs.join("\n"));
   const output = a.logs.join("\n");
-  assert.match(output, /Analysis:\s+view-show-analysis-worker \(LLM disabled\)/);
+  assert.match(
+    output,
+    /Analysis:\s+view-show-analysis-worker \(LLM disabled\)/,
+  );
   assert.match(
     output,
     /aws logs tail \/ecs\/view-show-analysis-worker --follow --region us-east-1/,
@@ -5640,8 +6352,14 @@ test("setup with the analysis worker prints where to follow its logs", async () 
 
 test("analysis worker flags are rejected before prompts or external calls when incomplete or unsafe", async () => {
   const cases = [
-    { name: "model without catalog", args: ["--analysis-model", ANALYSIS_MODEL] },
-    { name: "catalog without model", args: ["--analysis-catalog", ANALYSIS_CATALOG] },
+    {
+      name: "model without catalog",
+      args: ["--analysis-model", ANALYSIS_MODEL],
+    },
+    {
+      name: "catalog without model",
+      args: ["--analysis-catalog", ANALYSIS_CATALOG],
+    },
     { name: "missing value", args: ["--analysis-model"] },
     {
       name: "flag used as a value",
@@ -5663,15 +6381,31 @@ test("analysis worker flags are rejected before prompts or external calls when i
       files: { model: { approved: false } },
       message: /approved bundle/,
     },
-    { name: "model that is not an object", files: { model: [] }, message: /approved bundle/ },
-    { name: "empty catalog", files: { catalog: [] }, message: /1 to 32 scopes/ },
-    { name: "catalog that is not an array", files: { catalog: {} }, message: /1 to 32 scopes/ },
+    {
+      name: "model that is not an object",
+      files: { model: [] },
+      message: /approved bundle/,
+    },
+    {
+      name: "empty catalog",
+      files: { catalog: [] },
+      message: /1 to 32 scopes/,
+    },
+    {
+      name: "catalog that is not an array",
+      files: { catalog: {} },
+      message: /1 to 32 scopes/,
+    },
     {
       name: "symbolic link",
       files: { symlink: true },
       message: /regular non-symlink file/,
     },
-    { name: "invalid JSON", files: { invalidJson: true }, message: /valid JSON file/ },
+    {
+      name: "invalid JSON",
+      files: { invalidJson: true },
+      message: /valid JSON file/,
+    },
   ];
 
   for (const step of ["setup", "deploy"]) {
@@ -5705,7 +6439,11 @@ test("deploy does not accept the setup-only options", async () => {
   for (const extraArguments of [["--profile", "team-profile"], ["--yes"]]) {
     const a = testEnvironment();
 
-    const result = await runLearnerLab({ ...a.options, step: "deploy", extraArguments });
+    const result = await runLearnerLab({
+      ...a.options,
+      step: "deploy",
+      extraArguments,
+    });
 
     assert.equal(result.status, 2, extraArguments.join(" "));
     assert.deepEqual(a.calls, [], extraArguments.join(" "));
@@ -5723,15 +6461,23 @@ test("deploy refuses to apply a plan whose analysis worker variables diverge fro
     },
     {
       name: "plan points to a different model file",
-      overrides: { ...ANALYSIS_PLAN_VARIABLES, analysis_model_file: "/tmp/other.json" },
+      overrides: {
+        ...ANALYSIS_PLAN_VARIABLES,
+        analysis_model_file: "/tmp/other.json",
+      },
       options: { extraArguments: ANALYSIS_ARGUMENTS },
-      message: /does not match the requested analysis worker: analysis_model_file/,
+      message:
+        /does not match the requested analysis worker: analysis_model_file/,
     },
     {
       name: "plan enables an LLM provider",
-      overrides: { ...ANALYSIS_PLAN_VARIABLES, analysis_llm_provider: "bedrock" },
+      overrides: {
+        ...ANALYSIS_PLAN_VARIABLES,
+        analysis_llm_provider: "bedrock",
+      },
       options: { extraArguments: ANALYSIS_ARGUMENTS },
-      message: /does not match the requested analysis worker: analysis_llm_provider/,
+      message:
+        /does not match the requested analysis worker: analysis_llm_provider/,
     },
   ]) {
     const a = testEnvironment({ planVariableOverrides: overrides });
@@ -5746,7 +6492,9 @@ test("deploy refuses to apply a plan whose analysis worker variables diverge fro
     assert.equal(result.status, 1, name);
     assert.match(a.logs.join("\n"), message, name);
     assert.equal(
-      a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")),
+      a.calls.some(
+        (call) => call.command === "terraform" && call.args.includes("apply"),
+      ),
       false,
       name,
     );
@@ -5770,15 +6518,25 @@ test("Ollama URL validation rejects credentials, URL decorations and local endpo
     "http://10.20.30.40:11434/api",
     "http://[2001:4860:4860::8888]:11434",
   ]) {
-    assert.throws(() => validateOllamaBaseUrl(value), /VIEW_SHOW_OLLAMA_BASE_URL/);
+    assert.throws(
+      () => validateOllamaBaseUrl(value),
+      /VIEW_SHOW_OLLAMA_BASE_URL/,
+    );
   }
 });
 
 test("analysis-check rejects a redirected operational Terraform output", async () => {
-  const a = testEnvironment({ analysisOperationOverrides: { cluster_name: "attacker-cluster" } });
+  const a = testEnvironment({
+    analysisOperationOverrides: { cluster_name: "attacker-cluster" },
+  });
   const result = await runLearnerLab({ ...a.options, step: "analysis-check" });
   assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "aws" && call.args[1] === "run-task"), false);
+  assert.equal(
+    a.calls.some(
+      (call) => call.command === "aws" && call.args[1] === "run-task",
+    ),
+    false,
+  );
   assert.match(a.logs.join("\n"), /analysis_worker_operacao/);
 });
 
@@ -5796,13 +6554,22 @@ test("analysis-check rejects an ECS service that diverges from the tested operat
   });
   const result = await runLearnerLab({ ...a.options, step: "analysis-check" });
   assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "aws" && call.args[1] === "run-task"), false);
+  assert.equal(
+    a.calls.some(
+      (call) => call.command === "aws" && call.args[1] === "run-task",
+    ),
+    false,
+  );
   assert.match(a.logs.join("\n"), /ECS service/);
 });
 
 test("analysis-prepare keeps the Ollama endpoint out of arguments, logs and its atomic manifest", async () => {
   const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
     planVariableOverrides: OLLAMA_PLAN_VARIABLES,
   });
   const written = new Map();
@@ -5812,7 +6579,8 @@ test("analysis-prepare keeps the Ollama endpoint out of arguments, logs and its 
     ...analysisFiles(a),
     step: "analysis-prepare",
     extraArguments: OLLAMA_ARGUMENTS,
-    writeFile: (target, value, options) => written.set(String(target), { value: String(value), options }),
+    writeFile: (target, value, options) =>
+      written.set(String(target), { value: String(value), options }),
     renameFile: (source, target) => {
       renames.push({ source: String(source), target: String(target) });
       written.set(String(target), written.get(String(source)));
@@ -5821,35 +6589,59 @@ test("analysis-prepare keeps the Ollama endpoint out of arguments, logs and its 
   });
 
   assert.equal(result.status, 0, a.logs.join("\n"));
-  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
+  const plan = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
   for (const variable of [
     "-var=analysis_worker_habilitado=true",
     "-var=analysis_worker_desired_count=0",
     "-var=analysis_llm_provider=ollama",
     "-var=observabilidade_habilitada=true",
     `-var=analysis_llm_model_id=${OLLAMA_MODEL_ID}`,
-  ]) assert.ok(plan.args.includes(variable), variable);
+  ])
+    assert.ok(plan.args.includes(variable), variable);
   assert.equal(plan.options.env.TF_VAR_analysis_ollama_base_url, OLLAMA_URL);
-  const planPath = plan.args.find((argument) => String(argument).startsWith("-out="))?.slice(5);
+  const planPath = plan.args
+    .find((argument) => String(argument).startsWith("-out="))
+    ?.slice(5);
   assert.match(planPath, /\.terraform-artifacts\/update-analysis-prepare-/);
-  const shown = a.calls.find((call) =>
-    call.command === "terraform" && call.args.includes("show") && call.args.includes("/proc/self/fd/3")
+  const shown = a.calls.find(
+    (call) =>
+      call.command === "terraform" &&
+      call.args.includes("show") &&
+      call.args.includes("/proc/self/fd/3"),
   );
-  const applied = a.calls.find((call) => call.command === "terraform" && call.args.includes("apply"));
-  const gate = a.calls.find((call) =>
-    call.command === "node" && call.args.some((argument) => String(argument).includes("validate-analysis-worker-plan"))
+  const applied = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("apply"),
+  );
+  const gate = a.calls.find(
+    (call) =>
+      call.command === "node" &&
+      call.args.some((argument) =>
+        String(argument).includes("validate-analysis-worker-plan"),
+      ),
   );
   assert.ok(shown.args.includes("/proc/self/fd/3"));
   assert.ok(applied.args.includes("/proc/self/fd/3"));
   assert.equal(gate.options.env.VIEW_SHOW_EXPECTED_AWS_ACCOUNT, "111122223333");
-  assert.ok(a.calls.findIndex((call) => call === applied) < a.calls.findIndex((call) =>
-    call.command === "terraform" && call.args.at(-1) === "analysis_worker_operacao"
-  ));
+  assert.ok(
+    a.calls.findIndex((call) => call === applied) <
+      a.calls.findIndex(
+        (call) =>
+          call.command === "terraform" &&
+          call.args.at(-1) === "analysis_worker_operacao",
+      ),
+  );
   assert.equal(a.closedPlanDescriptors.length, 1);
   assert.deepEqual(a.removedArtifactFiles, [planPath]);
   assert.equal(a.removedArtifactDirectories.length, 1);
   assert.ok(a.artifactLifecycle[0].startsWith("close:"));
-  assert.equal(a.calls.some((call) => call.args.some((argument) => String(argument).includes(OLLAMA_URL))), false);
+  assert.equal(
+    a.calls.some((call) =>
+      call.args.some((argument) => String(argument).includes(OLLAMA_URL)),
+    ),
+    false,
+  );
   assert.doesNotMatch(a.logs.join("\n"), /10\.20\.30\.40/);
   assert.equal(renames.length, 1);
   const manifest = written.get(renames[0].target);
@@ -5887,7 +6679,9 @@ test("analysis-prepare uses the protected plan reference supported by each POSIX
     const plan = a.calls.find(
       (call) => call.command === "terraform" && call.args.includes("plan"),
     );
-    const planPath = plan.args.find((argument) => String(argument).startsWith("-out=")).slice(5);
+    const planPath = plan.args
+      .find((argument) => String(argument).startsWith("-out="))
+      .slice(5);
     const shown = a.calls.find(
       (call) =>
         call.command === "terraform" &&
@@ -5934,12 +6728,19 @@ test("Windows analysis plan fails closed before Terraform can show or apply it",
     ),
     false,
   );
-  assert.match(a.logs.join("\n"), /unsupported platform for protected Terraform plans/i);
+  assert.match(
+    a.logs.join("\n"),
+    /unsupported platform for protected Terraform plans/i,
+  );
 });
 
 test("analysis-prepare --ssh-bridge persists the bridge for activation and deactivation", async () => {
   const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
     planVariableOverrides: OLLAMA_PLAN_VARIABLES,
   });
   const written = new Map();
@@ -5949,35 +6750,75 @@ test("analysis-prepare --ssh-bridge persists the bridge for activation and deact
     step: "analysis-prepare",
     extraArguments: [...OLLAMA_ARGUMENTS, "--ssh-bridge"],
     writeFile: (target, value) => written.set(String(target), String(value)),
-    renameFile: (source, target) => written.set(String(target), written.get(String(source))),
+    renameFile: (source, target) =>
+      written.set(String(target), written.get(String(source))),
   });
   assert.equal(result.status, 0, a.logs.join("\n"));
-  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
+  const plan = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
   assert.equal(plan.options.env.TF_VAR_analysis_ssh_bridge_habilitado, "true");
-  const manifest = JSON.parse(written.get(path.join(ROOT, "apps", "fullstack", ".terraform-artifacts", "analysis-worker.json")));
+  const manifest = JSON.parse(
+    written.get(
+      path.join(
+        ROOT,
+        "apps",
+        "fullstack",
+        ".terraform-artifacts",
+        "analysis-worker.json",
+      ),
+    ),
+  );
   assert.equal(manifest.sshBridge, true);
   assert.equal(Object.hasOwn(manifest, "ollamaBaseUrl"), false);
 
   const b = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
   });
-  const reader = (aContext) => (target, encoding) => String(target).endsWith("analysis-worker.json")
-    ? JSON.stringify(manifest)
-    : analysisManifestReader(aContext)(target, encoding);
-  const activated = await runLearnerLab({ ...b.options, step: "analysis-activate", readFile: reader(b) });
+  const reader = (aContext) => (target, encoding) =>
+    String(target).endsWith("analysis-worker.json")
+      ? JSON.stringify(manifest)
+      : analysisManifestReader(aContext)(target, encoding);
+  const activated = await runLearnerLab({
+    ...b.options,
+    step: "analysis-activate",
+    readFile: reader(b),
+  });
   assert.equal(activated.status, 0, b.logs.join("\n"));
-  assert.equal(b.calls.find((call) => call.command === "terraform" && call.args.includes("plan")).options.env.TF_VAR_analysis_ssh_bridge_habilitado, "true");
+  assert.equal(
+    b.calls.find(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ).options.env.TF_VAR_analysis_ssh_bridge_habilitado,
+    "true",
+  );
 
   const c = testEnvironment({ analysisDesiredCount: 1 });
-  const deactivated = await runLearnerLab({ ...c.options, step: "analysis-deactivate", readFile: reader(c) });
+  const deactivated = await runLearnerLab({
+    ...c.options,
+    step: "analysis-deactivate",
+    readFile: reader(c),
+  });
   assert.equal(deactivated.status, 0, c.logs.join("\n"));
-  assert.equal(c.calls.find((call) => call.command === "terraform" && call.args.includes("plan")).options.env.TF_VAR_analysis_ssh_bridge_habilitado, "true");
+  assert.equal(
+    c.calls.find(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ).options.env.TF_VAR_analysis_ssh_bridge_habilitado,
+    "true",
+  );
 });
 
 test("analysis-prepare provisions missing observability before planning a fully known worker task", async () => {
   const a = testEnvironment({
     observabilityEndpoint: null,
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
     planVariableOverrides: OLLAMA_PLAN_VARIABLES,
   });
   const result = await runLearnerLab({
@@ -5987,23 +6828,41 @@ test("analysis-prepare provisions missing observability before planning a fully 
     extraArguments: OLLAMA_ARGUMENTS,
   });
   assert.equal(result.status, 0, a.logs.join("\n"));
-  const plans = a.calls.filter((call) => call.command === "terraform" && call.args.includes("plan"));
+  const plans = a.calls.filter(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
   assert.equal(plans.length, 2);
   for (const plan of plans) {
-    assert.equal(plan.args.some((argument) => argument === "-var=grafana_cidr_acesso=null"), false);
-    assert.equal(plan.args.some((argument) => argument === "-var=bastion_admin_cidr=null"), false);
+    assert.equal(
+      plan.args.some(
+        (argument) => argument === "-var=grafana_cidr_acesso=null",
+      ),
+      false,
+    );
+    assert.equal(
+      plan.args.some((argument) => argument === "-var=bastion_admin_cidr=null"),
+      false,
+    );
   }
   assert.ok(plans[0].args.includes("-var=observabilidade_habilitada=true"));
   assert.ok(plans[0].args.includes("-var=analysis_llm_provider=none"));
   assert.ok(plans[0].args.includes("-var=analysis_worker_habilitado=false"));
-  assert.ok(plans[0].args.includes("-var=observabilidade_api_exportacao_habilitada=false"));
+  assert.ok(
+    plans[0].args.includes(
+      "-var=observabilidade_api_exportacao_habilitada=false",
+    ),
+  );
   assert.equal(plans[0].options.env.TF_VAR_analysis_ollama_base_url, undefined);
   assert.ok(plans[1].args.includes("-var=analysis_llm_provider=ollama"));
 });
 
 test("deploy accepts explicit Ollama configuration for a new zero-replica stack", async () => {
   const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
     planVariableOverrides: OLLAMA_PLAN_VARIABLES,
   });
   const result = await runLearnerLab({
@@ -6013,14 +6872,27 @@ test("deploy accepts explicit Ollama configuration for a new zero-replica stack"
     extraArguments: OLLAMA_ARGUMENTS,
   });
   assert.equal(result.status, 0, a.logs.join("\n"));
-  assert.match(a.logs.join("\n"), /worker PREPARED, provider ollama, replicas 0/);
+  assert.match(
+    a.logs.join("\n"),
+    /worker PREPARED, provider ollama, replicas 0/,
+  );
 });
 
 function analysisManifestReader(a, { datasetVersion = "dsv-canary-1" } = {}) {
-  const manifestPath = path.join(ROOT, "apps", "fullstack", ".terraform-artifacts", "analysis-worker.json");
+  const manifestPath = path.join(
+    ROOT,
+    "apps",
+    "fullstack",
+    ".terraform-artifacts",
+    "analysis-worker.json",
+  );
   return (target, encoding) => {
     if (String(target) === manifestPath) {
-      return JSON.stringify({ model: ANALYSIS_MODEL, catalog: ANALYSIS_CATALOG, modelId: OLLAMA_MODEL_ID });
+      return JSON.stringify({
+        model: ANALYSIS_MODEL,
+        catalog: ANALYSIS_CATALOG,
+        modelId: OLLAMA_MODEL_ID,
+      });
     }
     if (String(target) === ANALYSIS_MODEL) {
       return JSON.stringify({ approved: true, datasetVersion });
@@ -6037,19 +6909,37 @@ test("analysis-check and analysis-smoke run the expected one-off private ECS com
     const a = testEnvironment();
     const result = await runLearnerLab({ ...a.options, step });
     assert.equal(result.status, 0, `${step}: ${a.logs.join("\n")}`);
-    const run = a.calls.find((call) => call.command === "aws" && call.args[0] === "ecs" && call.args[1] === "run-task");
+    const run = a.calls.find(
+      (call) =>
+        call.command === "aws" &&
+        call.args[0] === "ecs" &&
+        call.args[1] === "run-task",
+    );
     assert.ok(run);
     assert.match(run.args.join(" "), /assignPublicIp=DISABLED/);
-    assert.match(run.args.join(" "), new RegExp(entrypoint.replaceAll(".", "\\.")));
-    assert.ok(a.calls.some((call) => call.command === "aws" && call.args[1] === "wait"));
-    assert.ok(a.calls.some((call) => call.command === "aws" && call.args[1] === "describe-tasks"));
+    assert.match(
+      run.args.join(" "),
+      new RegExp(entrypoint.replaceAll(".", "\\.")),
+    );
+    assert.ok(
+      a.calls.some((call) => call.command === "aws" && call.args[1] === "wait"),
+    );
+    assert.ok(
+      a.calls.some(
+        (call) => call.command === "aws" && call.args[1] === "describe-tasks",
+      ),
+    );
   }
 });
 
 test("a failed analysis connectivity task prevents activation planning and apply", async () => {
   const a = testEnvironment({
     analysisTaskExitCode: 7,
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
   });
   const result = await runLearnerLab({
     ...a.options,
@@ -6057,14 +6947,28 @@ test("a failed analysis connectivity task prevents activation planning and apply
     readFile: analysisManifestReader(a),
   });
   assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")), false);
-  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("apply")), false);
+  assert.equal(
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
+    false,
+  );
+  assert.equal(
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("apply"),
+    ),
+    false,
+  );
 });
 
 test("analysis activation rejects a stopped task without the expected ECS stop code", async () => {
   const a = testEnvironment({
     analysisTaskStopCode: "TaskFailedToStart",
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
   });
   const result = await runLearnerLab({
     ...a.options,
@@ -6072,12 +6976,21 @@ test("analysis activation rejects a stopped task without the expected ECS stop c
     readFile: analysisManifestReader(a),
   });
   assert.equal(result.status, 1);
-  assert.equal(a.calls.some((call) => call.command === "terraform" && call.args.includes("plan")), false);
+  assert.equal(
+    a.calls.some(
+      (call) => call.command === "terraform" && call.args.includes("plan"),
+    ),
+    false,
+  );
 });
 
 test("analysis-activate checks connectivity before its exact rollout plan", async () => {
   const a = testEnvironment({
-    environment: { AWS_PROFILE: "default", AWS_REGION: "us-east-1", VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL },
+    environment: {
+      AWS_PROFILE: "default",
+      AWS_REGION: "us-east-1",
+      VIEW_SHOW_OLLAMA_BASE_URL: OLLAMA_URL,
+    },
   });
   const result = await runLearnerLab({
     ...a.options,
@@ -6085,8 +6998,12 @@ test("analysis-activate checks connectivity before its exact rollout plan", asyn
     readFile: analysisManifestReader(a),
   });
   assert.equal(result.status, 0, a.logs.join("\n"));
-  const runIndex = a.calls.findIndex((call) => call.command === "aws" && call.args[1] === "run-task");
-  const planIndex = a.calls.findIndex((call) => call.command === "terraform" && call.args.includes("plan"));
+  const runIndex = a.calls.findIndex(
+    (call) => call.command === "aws" && call.args[1] === "run-task",
+  );
+  const planIndex = a.calls.findIndex(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
   assert.ok(runIndex >= 0 && planIndex > runIndex);
   const plan = a.calls[planIndex];
   assert.ok(plan.args.includes("-var=analysis_worker_desired_count=1"));
@@ -6103,16 +7020,31 @@ test("analysis-deactivate creates a 1-to-0 plan without a connectivity task", as
     readFile: analysisManifestReader(a),
   });
   assert.equal(result.status, 0, a.logs.join("\n"));
-  assert.equal(a.calls.some((call) => call.command === "aws" && call.args[1] === "run-task"), false);
-  assert.ok(a.calls.some((call) => call.command === "aws" && call.args[1] === "describe-task-definition"));
-  const plan = a.calls.find((call) => call.command === "terraform" && call.args.includes("plan"));
+  assert.equal(
+    a.calls.some(
+      (call) => call.command === "aws" && call.args[1] === "run-task",
+    ),
+    false,
+  );
+  assert.ok(
+    a.calls.some(
+      (call) =>
+        call.command === "aws" && call.args[1] === "describe-task-definition",
+    ),
+  );
+  const plan = a.calls.find(
+    (call) => call.command === "terraform" && call.args.includes("plan"),
+  );
   assert.ok(plan.args.includes("-var=analysis_worker_desired_count=0"));
   assert.equal(plan.options.env.TF_VAR_analysis_ollama_base_url, OLLAMA_URL);
 });
 
 test("analysis-canary publishes one aligned global event and requires SUCCEEDED", async () => {
   const datasetVersion = "dsv-canary-2026";
-  const a = testEnvironment({ analysisDesiredCount: 1, analysisCanaryInitialEmptyReads: 1 });
+  const a = testEnvironment({
+    analysisDesiredCount: 1,
+    analysisCanaryInitialEmptyReads: 1,
+  });
   const result = await runLearnerLab({
     ...a.options,
     step: "analysis-canary",
@@ -6120,23 +7052,45 @@ test("analysis-canary publishes one aligned global event and requires SUCCEEDED"
     generateRandomBytes: () => Buffer.alloc(16, 0xab),
   });
   assert.equal(result.status, 0, a.logs.join("\n"));
-  const publish = a.calls.find((call) => call.command === "aws" && call.args[0] === "sqs");
+  const publish = a.calls.find(
+    (call) => call.command === "aws" && call.args[0] === "sqs",
+  );
   assert.ok(publish);
   assert.ok(!publish.args.includes("file:///dev/stdin"));
   assert.equal(publish.options.input, undefined);
-  const event = JSON.parse(publish.args[publish.args.indexOf("--message-body") + 1]);
-  const stateRead = a.calls.find((call) => call.command === "aws" &&
-    call.args.slice(0, 2).join(" ") === "dynamodb get-item" && call.args.join(" ").includes("ANALYSIS#RUN#"));
-  const stateKey = JSON.parse(stateRead.args[stateRead.args.indexOf("--key") + 1]);
+  const event = JSON.parse(
+    publish.args[publish.args.indexOf("--message-body") + 1],
+  );
+  const stateRead = a.calls.find(
+    (call) =>
+      call.command === "aws" &&
+      call.args.slice(0, 2).join(" ") === "dynamodb get-item" &&
+      call.args.join(" ").includes("ANALYSIS#RUN#"),
+  );
+  const stateKey = JSON.parse(
+    stateRead.args[stateRead.args.indexOf("--key") + 1],
+  );
   const expectedRunId = createHash("sha256")
-    .update(JSON.stringify(`${event.eventType}${event.idempotencyKey}`)).digest("hex");
+    .update(JSON.stringify(`${event.eventType}${event.idempotencyKey}`))
+    .digest("hex");
   assert.equal(stateKey.pk.S, `ANALYSIS#RUN#${expectedRunId}`);
   assert.equal(event.eventType, "ANOMALY_DETECTION");
   assert.equal(event.payload.datasetVersion, datasetVersion);
   assert.equal(event.payload.scope, undefined);
-  assert.equal(Date.parse(event.payload.window.end) - Date.parse(event.payload.window.start), 15 * 60 * 1_000);
+  assert.equal(
+    Date.parse(event.payload.window.end) -
+      Date.parse(event.payload.window.start),
+    15 * 60 * 1_000,
+  );
   assert.equal(Date.parse(event.payload.window.end) % (15 * 60 * 1_000), 0);
   assert.match(a.logs.join("\n"), /Analysis state: SUCCEEDED/);
-  assert.equal(a.calls.filter((call) => call.command === "aws" && call.args.slice(0, 2).join(" ") === "dynamodb get-item").length, 2);
+  assert.equal(
+    a.calls.filter(
+      (call) =>
+        call.command === "aws" &&
+        call.args.slice(0, 2).join(" ") === "dynamodb get-item",
+    ).length,
+    2,
+  );
   assert.doesNotMatch(a.logs.join("\n"), new RegExp(datasetVersion));
 });

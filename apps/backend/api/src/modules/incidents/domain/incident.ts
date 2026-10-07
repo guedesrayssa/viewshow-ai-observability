@@ -203,7 +203,7 @@ const record = (value: unknown): Record<string, unknown> | null =>
     ? value as Record<string, unknown>
     : null;
 
-function diagnosisPresentation(
+export function diagnosisPresentation(
   item: PhysicalItem,
 ): Pick<DiagnosisData, "charts" | "timeline" | "changes"> {
   const projection = record(item.diagnosisProjection);
@@ -257,6 +257,38 @@ function diagnosisPresentation(
   };
 }
 
+export function diagnosisAffectedDevices(
+  item: PhysicalItem,
+): IncidentDto["impact"]["affectedDevices"] | null {
+  const projection = record(item.diagnosisProjection);
+  const impact = record(projection?.impact);
+  const affectedDevices = record(impact?.affectedDevices);
+  const value = number(affectedDevices?.value);
+  const observedThrough = iso(affectedDevices?.observedThrough);
+  const coverageRatio = number(affectedDevices?.coverageRatio);
+  const source = text(affectedDevices?.source);
+  if (
+    value === null ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    observedThrough === null ||
+    coverageRatio === null ||
+    coverageRatio < 0 ||
+    coverageRatio > 1 ||
+    source === null
+  ) return null;
+  return {
+    value,
+    unit: "devices",
+    measurement: {
+      status: "measured",
+      source,
+      coverageRatio,
+      observedThrough,
+    },
+  };
+}
+
 export function toDiagnosisData(
   incidentItem: PhysicalItem,
   children: readonly PhysicalItem[],
@@ -272,7 +304,12 @@ export function toDiagnosisData(
       itemKind(item) === "evidence" &&
       text(item.statement ?? item.description) !== null,
   );
-  const incident = toIncidentDto(incidentItem, hypotheses, now);
+  const baseIncident = toIncidentDto(incidentItem, hypotheses, now);
+  const affectedDevices = diagnosisAffectedDevices(incidentItem);
+  const incident = affectedDevices ? {
+    ...baseIncident,
+    impact: { ...baseIncident.impact, affectedDevices },
+  } : baseIncident;
   const ranked = rankedHypotheses(hypotheses, incident.primaryComponent);
   const latest = latestHypothesis(hypotheses);
   const presentation = diagnosisPresentation(incidentItem);
@@ -393,7 +430,7 @@ export function diagnosisStatusBlock(
   const latest = latestHypothesis(hypotheses);
   return {
     status: diagnosisItem.status === "failed" ? "failed" : "ready",
-    generatedAt: iso(diagnosisItem.createdAt),
+    generatedAt: iso(diagnosisItem.publishedAt ?? diagnosisItem.createdAt),
     summary: latest ? text(latest.summary ?? latest.explanation) : null,
     primaryHypothesisId: latest ? hypothesisId(latest) : null,
     confidence: latest ? number(latest.probability ?? latest.score) : null,

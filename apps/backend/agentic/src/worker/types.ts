@@ -10,6 +10,13 @@ export interface AnalysisScope {
   series: SeriesDefinition[]; detectorMetrics: string[];
   materiality?: { metric: string; minimum: number }[];
   episodeWindowSeconds?: number;
+  presentation?: {
+    bufferingMetric?: string;
+    bufferingScale?: number;
+    affectedDevicesMetric?: string;
+    concentrations?: { metric: string; label: string }[];
+    concentrationNote?: string;
+  };
 }
 export interface Observation {
   id: string; datasetVersion: string; scopeId: string; metric: string; unit: string;
@@ -34,6 +41,22 @@ export interface Interpretation {
   nextChecks: { question: string; requiredData: string[]; available: boolean }[];
   reasons: string[]; model: string | null; provider: string | null; promptVersion: string;
 }
+export interface DiagnosisProjection {
+  impact: {
+    affectedDevices: {
+      value: number;
+      observedThrough: string;
+      coverageRatio: number;
+      source: string;
+    } | null;
+  };
+  buffering: {
+    points: { timestamp: string; value: number }[];
+    marker: null;
+  } | null;
+  concentrations: { label: string; percentage: number }[];
+  concentrationNote: string;
+}
 export interface ModelResult {
   signals: MlSignal[]; reasons: string[]; historyDays: number; historyPoints: number;
   coverage: number; modelVersion: string;
@@ -41,6 +64,7 @@ export interface ModelResult {
 export interface ScopeCheckpoint {
   event: WindowedEvent; scope: AnalysisScope; result: ModelResult;
   context: PreparedContext | null; incidentId: string | null; predictionId: string | null;
+  presentation?: DiagnosisProjection | null;
   diagnosis?: Interpretation; diagnosticFailure?: string;
   episodeStarted?: boolean;
 }

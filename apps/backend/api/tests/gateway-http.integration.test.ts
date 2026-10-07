@@ -1620,20 +1620,19 @@ describe("api monolith over HTTP", () => {
       buildApp({
         incidents: {
           ...emptyIncidentRepository,
-          async bundle(incidentId) {
+          async activeProjection() {
             return {
-              incident:
-                incidentId === "inc_known"
-                  ? {
-                      itemType: "incident",
-                      id: "inc_known",
-                      title: "Known incident",
-                      priority: "P1",
-                      status: "investigating",
-                      startedAt: "2026-01-01T12:00:00Z",
-                    }
-                  : null,
-              children: [],
+              observedThrough: "2026-01-01T12:15:00.000Z",
+              coverage: "complete" as const,
+              incidents: [
+                {
+                  incidentId: "inc_known",
+                  number: "INC-001",
+                  openedAt: "2026-01-01T12:00:00.000Z",
+                  state: "investigating",
+                  priority: "P1" as const,
+                },
+              ],
             };
           },
         },
@@ -1718,7 +1717,7 @@ describe("api monolith over HTTP", () => {
           headers,
         })
       ).status,
-    ).toBe(503);
+    ).toBe(404);
     const unavailable = await fetch(
       `${url}/api/v1/incidents/inc_known/reanalyze`,
       { method: "POST", headers },

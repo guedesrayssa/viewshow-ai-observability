@@ -5,7 +5,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../..",
+);
 const VALIDATOR = path.join(
   ROOT,
   "apps",
@@ -35,6 +38,7 @@ const BASE_VARIABLES = Object.freeze({
   ingestion_sync_cpu: "1024",
   ingestion_sync_memoria: "2048",
   scheduler_ingestao_habilitado: "false",
+  rate_limit_por_minuto: "180",
   force_destroy_bucket_ingestao: "true",
   force_delete_ecr_ingestao: "true",
   import_canonical_first_production_approved: "false",
@@ -190,6 +194,10 @@ function protectedEnvironment(address, preset) {
         name: "IMPORT_CANONICAL_FIRST_ENABLED",
         value: String(selected.import_canonical_first_enabled),
       },
+      {
+        name: "RATE_LIMIT_PER_MINUTE",
+        value: BASE_VARIABLES.rate_limit_por_minuto,
+      },
     ];
   }
   const diskBudgets = {
@@ -207,7 +215,10 @@ function protectedEnvironment(address, preset) {
     address === "aws_ecs_task_definition.ingestion_import"
   ) {
     environment.push(
-      { name: "PAGE_SIZE", value: String(selected.ingestion_snapshot_page_size) },
+      {
+        name: "PAGE_SIZE",
+        value: String(selected.ingestion_snapshot_page_size),
+      },
       {
         name: "MYSQL_SNAPSHOT_PREPARE_ENABLED",
         value: String(selected.ingestion_snapshot_prepare_enabled),
@@ -223,12 +234,16 @@ function protectedEnvironment(address, preset) {
 
 function taskDefinitionChange(address, preset, actions = ["update"]) {
   const change = resourceChange(address, actions);
-  const primaryName = address === "aws_ecs_task_definition.api" ? "view-show-api" : "ingestion";
+  const primaryName =
+    address === "aws_ecs_task_definition.api"
+      ? "view-show-iac-api"
+      : "ingestion";
   change.change.after = {
     container_definitions: JSON.stringify([
       {
         name: primaryName,
-        image: "example.invalid/image@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        image:
+          "example.invalid/image@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         environment: protectedEnvironment(address, preset),
       },
     ]),
@@ -272,7 +287,9 @@ function configureUnknownTask(planDocument, address, references) {
 }
 
 function lifecycleMigrationChange() {
-  const change = resourceChange("aws_s3_bucket_lifecycle_configuration.ingestion");
+  const change = resourceChange(
+    "aws_s3_bucket_lifecycle_configuration.ingestion",
+  );
   const shared = {
     bucket: "view-show-ingestion-111122223333-us-east-1",
     expected_bucket_owner: null,
@@ -335,7 +352,12 @@ function validate(payload, preset = "phase1-5000", extraArgs = []) {
 test("the seven hardcoded presets accept only their exact rollout flags and page size", () => {
   for (const preset of Object.keys(PRESETS)) {
     const result = validate(
-      plan(preset, [taskDefinitionChange("aws_ecs_task_definition.ingestion_import", preset)]),
+      plan(preset, [
+        taskDefinitionChange(
+          "aws_ecs_task_definition.ingestion_import",
+          preset,
+        ),
+      ]),
       preset,
     );
 
@@ -353,10 +375,14 @@ test("a missing or changed base/preset variable fails closed without exposing va
     plan("phase1-5000", [], { import_canonical_first_enabled: true }),
     plan("phase2-5000", [], { import_canonical_first_enabled: false }),
     plan("phase2-5000", [], { import_hot_materialization_enabled: true }),
-    plan("phase2-5000", [], { import_canonical_first_production_approved: true }),
+    plan("phase2-5000", [], {
+      import_canonical_first_production_approved: true,
+    }),
   ];
   delete cases[0].variables.regiao;
-  cases.push(plan("phase1-5000", [], { imagem_ingestao: secret, ambiente: secret }));
+  cases.push(
+    plan("phase1-5000", [], { imagem_ingestao: secret, ambiente: secret }),
+  );
 
   for (const candidate of cases) {
     const result = validate(candidate);
@@ -407,9 +433,17 @@ test("only the documented stateless update allowlist can change", () => {
 test("phase1 rollback presets preserve phase2 storage and alarms while disabling only canonical-first", () => {
   const preserved = [
     safeLifecycleNoOpChange(),
-    resourceChange("aws_cloudwatch_metric_alarm.ingestion_disk_usage_warning", ["no-op"]),
-    resourceChange("aws_cloudwatch_metric_alarm.ingestion_disk_usage_critical", ["no-op"]),
-    resourceChange("aws_cloudwatch_metric_alarm.ingestion_canonical_archive_failures", ["no-op"]),
+    resourceChange("aws_cloudwatch_metric_alarm.ingestion_disk_usage_warning", [
+      "no-op",
+    ]),
+    resourceChange(
+      "aws_cloudwatch_metric_alarm.ingestion_disk_usage_critical",
+      ["no-op"],
+    ),
+    resourceChange(
+      "aws_cloudwatch_metric_alarm.ingestion_canonical_archive_failures",
+      ["no-op"],
+    ),
     taskDefinitionChange("aws_ecs_task_definition.api", "phase1-10000"),
   ];
   const result = validate(plan("phase1-10000", preserved), "phase1-10000");
@@ -478,10 +512,7 @@ test("the lifecycle allowlist accepts only the exact migration to scoped cleanup
   for (const mutate of mutations) {
     const change = lifecycleMigrationChange();
     mutate(change);
-    const result = validate(
-      plan("phase2-10000", [change]),
-      "phase2-10000",
-    );
+    const result = validate(plan("phase2-10000", [change]), "phase2-10000");
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /lifecycle|additive|rule|unknown/i);
   }
@@ -489,10 +520,7 @@ test("the lifecycle allowlist accepts only the exact migration to scoped cleanup
   for (const actions of [["create"], ["delete"], ["delete", "create"]]) {
     const change = lifecycleMigrationChange();
     change.change.actions = actions;
-    const result = validate(
-      plan("phase2-10000", [change]),
-      "phase2-10000",
-    );
+    const result = validate(plan("phase2-10000", [change]), "phase2-10000");
     assert.notEqual(result.status, 0, String(actions));
   }
 
@@ -538,7 +566,10 @@ test("no-op managed resources and read-only data sources outside the allowlist r
     change: { actions: ["read"], before: null, after: {} },
   };
   const result = validate(
-    plan("baseline", [resourceChange("aws_s3_bucket.ingestion", ["no-op"]), dataRead]),
+    plan("baseline", [
+      resourceChange("aws_s3_bucket.ingestion", ["no-op"]),
+      dataRead,
+    ]),
     "baseline",
   );
 
@@ -558,13 +589,19 @@ test("stateful, identity, network and hosting resources fail closed when changed
   ]) {
     const result = validate(plan("phase1-5000", [resourceChange(address)]));
     assert.notEqual(result.status, 0, address);
-    assert.match(result.stderr, /unexpected address|outside.*allowlist/i, address);
+    assert.match(
+      result.stderr,
+      /unexpected address|outside.*allowlist/i,
+      address,
+    );
   }
 });
 
 test("an isolated delete is always rejected", () => {
   const result = validate(
-    plan("phase1-5000", [resourceChange("aws_ecs_task_definition.ingestion_import", ["delete"])]),
+    plan("phase1-5000", [
+      resourceChange("aws_ecs_task_definition.ingestion_import", ["delete"]),
+    ]),
   );
 
   assert.notEqual(result.status, 0);
@@ -572,7 +609,10 @@ test("an isolated delete is always rejected", () => {
 });
 
 test("replacement is limited to terraform_data and task definitions in either action order", () => {
-  for (const actions of [["delete", "create"], ["create", "delete"]]) {
+  for (const actions of [
+    ["delete", "create"],
+    ["create", "delete"],
+  ]) {
     for (const address of [
       "terraform_data.ingestion_image[0]",
       "aws_ecs_task_definition.ingestion_import",
@@ -581,7 +621,11 @@ test("replacement is limited to terraform_data and task definitions in either ac
         ? taskDefinitionChange(address, "phase1-5000", actions)
         : resourceChange(address, actions);
       const accepted = validate(plan("phase1-5000", [acceptedChange]));
-      assert.equal(accepted.status, 0, `${address} ${actions}: ${accepted.stderr}`);
+      assert.equal(
+        accepted.status,
+        0,
+        `${address} ${actions}: ${accepted.stderr}`,
+      );
     }
 
     const rejected = validate(
@@ -603,7 +647,10 @@ test("task definitions fail closed on changed budgets, flags, storage, duplicate
     "aws_ecs_task_definition.ingestion_incremental_ingest",
   ];
   const accepted = validate(
-    plan(preset, taskAddresses.map((address) => taskDefinitionChange(address, preset))),
+    plan(
+      preset,
+      taskAddresses.map((address) => taskDefinitionChange(address, preset)),
+    ),
     preset,
   );
   assert.equal(accepted.status, 0, accepted.stderr);
@@ -634,7 +681,9 @@ test("task definitions fail closed on changed budgets, flags, storage, duplicate
       change.change.after_unknown = { container_definitions: true };
     },
     (change) => {
-      change.change.after_unknown = { ephemeral_storage: [{ size_in_gib: true }] };
+      change.change.after_unknown = {
+        ephemeral_storage: [{ size_in_gib: true }],
+      };
     },
   ];
   for (const mutate of mutations) {
@@ -651,17 +700,24 @@ test("task definitions fail closed on changed budgets, flags, storage, duplicate
   for (const [address, environmentName] of [
     ["aws_ecs_task_definition.api", "IMPORT_CANONICAL_FIRST_ENABLED"],
     ["aws_ecs_task_definition.ingestion_backfill", "PAGE_SIZE"],
-    ["aws_ecs_task_definition.ingestion_import", "MYSQL_SNAPSHOT_PREPARE_ENABLED"],
-    ["aws_ecs_task_definition.ingestion_import", "IMPORT_HOT_MATERIALIZATION_ENABLED"],
+    [
+      "aws_ecs_task_definition.ingestion_import",
+      "MYSQL_SNAPSHOT_PREPARE_ENABLED",
+    ],
+    [
+      "aws_ecs_task_definition.ingestion_import",
+      "IMPORT_HOT_MATERIALIZATION_ENABLED",
+    ],
   ]) {
     const change = taskDefinitionChange(address, preset);
     const containers = JSON.parse(change.change.after.container_definitions);
-    containers[0].environment.find((item) => item.name === environmentName).value = "malicious";
+    containers[0].environment.find(
+      (item) => item.name === environmentName,
+    ).value = "malicious";
     change.change.after.container_definitions = JSON.stringify(containers);
     const result = validate(plan(preset, [change]), preset);
     assert.notEqual(result.status, 0, `${address}: ${environmentName}`);
   }
-
 
   for (const address of [
     "aws_ecs_task_definition.ingestion_backfill",
@@ -747,9 +803,10 @@ test("Terraform-native unknown container JSON is rejected before apply", () => {
     assert.notEqual(validate(missingAnchor, preset).status, 0, address);
 
     const malformedMarker = structuredClone(acceptedPlan);
-    malformedMarker.resource_changes[0].change.after_unknown.container_definitions = {
-      nested: true,
-    };
+    malformedMarker.resource_changes[0].change.after_unknown.container_definitions =
+      {
+        nested: true,
+      };
     assert.notEqual(validate(malformedMarker, preset).status, 0, address);
   }
 });
@@ -785,7 +842,10 @@ test("unknown presets, extra arguments, malformed JSON and incomplete plans fail
   assert.notEqual(validate(plan("baseline"), "custom").status, 0);
   assert.notEqual(validate(plan("baseline"), "baseline", ["extra"]).status, 0);
   assert.notEqual(validate("not json", "baseline").status, 0);
-  assert.notEqual(validate({ variables: variablesFor("baseline") }, "baseline").status, 0);
+  assert.notEqual(
+    validate({ variables: variablesFor("baseline") }, "baseline").status,
+    0,
+  );
 });
 
 test("malformed plan input never echoes its contents", () => {
@@ -806,6 +866,68 @@ test("unsupported format versions and unknown top-level categories fail closed",
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /format_version|top-level|category/i);
   }
+});
+
+test("known read-only AWS drift is accepted without widening resource changes", () => {
+  const drift = (address, before, after) => ({
+    address,
+    change: {
+      actions: ["update"],
+      before,
+      after,
+      after_unknown: {},
+      before_sensitive: {},
+      after_sensitive: {},
+    },
+  });
+  const encryptionRule = (bucketKeyEnabled) => [
+    {
+      apply_server_side_encryption_by_default: [
+        { kms_master_key_id: "", sse_algorithm: "AES256" },
+      ],
+      bucket_key_enabled: bucketKeyEnabled,
+    },
+  ];
+  const candidate = plan("baseline");
+  candidate.resource_drift = [
+    drift(
+      "aws_cognito_user_pool.principal",
+      { id: "pool", estimated_number_of_users: 0 },
+      { id: "pool", estimated_number_of_users: 1 },
+    ),
+    drift(
+      "aws_ecs_service.analysis_worker[0]",
+      { id: "service", tags: null },
+      { id: "service", tags: {} },
+    ),
+    drift(
+      "aws_ecs_task_definition.analysis_worker[0]",
+      { id: "task", tags: null },
+      { id: "task", tags: {} },
+    ),
+    drift(
+      "aws_instance.bastion",
+      {
+        id: "i-123",
+        public_dns: "ec2-old.example.test",
+        public_ip: "198.51.100.10",
+      },
+      {
+        id: "i-123",
+        public_dns: "ec2-new.example.test",
+        public_ip: "198.51.100.20",
+      },
+    ),
+    drift(
+      "aws_s3_bucket_server_side_encryption_configuration.flow_logs",
+      { id: "logs", rule: encryptionRule(null) },
+      { id: "logs", rule: encryptionRule(false) },
+    ),
+  ];
+
+  const result = validate(candidate, "baseline");
+
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test("resource drift is rejected even when its address would be safe to update", () => {
@@ -843,6 +965,11 @@ test("only non-sensitive updates to the three expected operational outputs are a
       before_sensitive: true,
       after_sensitive: true,
     }),
+    analysis_worker_operacao: outputChange({
+      actions: ["no-op"],
+      before: { desired_count: 0 },
+      after: { desired_count: 0 },
+    }),
   };
   assert.equal(validate(accepted).status, 0);
 
@@ -851,8 +978,18 @@ test("only non-sensitive updates to the three expected operational outputs are a
   assert.equal(validate(omittedWhenEmpty).status, 0);
 
   for (const outputChanges of [
-    { grafana_senha: outputChange({ after_sensitive: true, after: "must-not-print" }) },
-    { ingestion_runbook: outputChange({ after_sensitive: true, after: "must-not-print" }) },
+    {
+      grafana_senha: outputChange({
+        after_sensitive: true,
+        after: "must-not-print",
+      }),
+    },
+    {
+      ingestion_runbook: outputChange({
+        after_sensitive: true,
+        after: "must-not-print",
+      }),
+    },
     { ingestion_runbook: outputChange({ after_sensitive: undefined }) },
     { output_injetado: outputChange({ actions: ["no-op"] }) },
     { ingestion_runbook: outputChange({ actions: ["delete"] }) },
@@ -867,12 +1004,62 @@ test("only non-sensitive updates to the three expected operational outputs are a
   }
 });
 
+test("the bastion output may refresh only the planned public IP", () => {
+  const candidate = plan("baseline");
+  candidate.planned_values.root_module.resources = [
+    {
+      address: "aws_instance.bastion",
+      values: { id: "i-0123456789abcdef0", public_ip: "203.0.113.20" },
+    },
+  ];
+  candidate.configuration.root_module.outputs = {
+    bastion_acesso: {
+      expression: {
+        references: [
+          "aws_instance.bastion.id",
+          "aws_instance.bastion.public_ip",
+          "var.regiao",
+        ],
+      },
+    },
+  };
+  candidate.output_changes = {
+    bastion_acesso: {
+      actions: ["update"],
+      before: {
+        instancia_id: "i-0123456789abcdef0",
+        ip_publico: "203.0.113.10",
+        sessao_ssm:
+          "aws ssm start-session --target i-0123456789abcdef0 --region us-east-1",
+        ssh: null,
+      },
+      after: {
+        instancia_id: "i-0123456789abcdef0",
+        ip_publico: "203.0.113.20",
+        sessao_ssm:
+          "aws ssm start-session --target i-0123456789abcdef0 --region us-east-1",
+        ssh: null,
+      },
+      after_unknown: {},
+      before_sensitive: false,
+      after_sensitive: false,
+    },
+  };
+
+  assert.equal(validate(candidate, "baseline").status, 0);
+
+  candidate.output_changes.bastion_acesso.after.sessao_ssm = "unsafe";
+  const rejected = validate(candidate, "baseline");
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stderr, /bastion public IP/i);
+});
+
 test("deferred changes, action invocations and unsafe plan status flags fail closed", () => {
   const cases = [
     { deferred_changes: [{ reason: "provider_config_unknown" }] },
     { deferred_action_invocations: [{ reason: "deferred_prereq" }] },
     { action_invocations: [{ address: "action.example" }] },
-    { applyable: false },
+    { applyable: "false" },
     { complete: false },
     { errored: true },
   ];
@@ -880,6 +1067,15 @@ test("deferred changes, action invocations and unsafe plan status flags fail clo
     const result = validate({ ...plan("baseline"), ...overrides }, "baseline");
     assert.notEqual(result.status, 0, JSON.stringify(overrides));
   }
+});
+
+test("a complete no-op plan is accepted when Terraform marks it non-applyable", () => {
+  const candidate = plan("baseline", [
+    resourceChange("aws_s3_bucket.ingestion", ["no-op"]),
+  ]);
+  candidate.applyable = false;
+
+  assert.equal(validate(candidate, "baseline").status, 0);
 });
 
 test("malformed known top-level structures fail closed", () => {

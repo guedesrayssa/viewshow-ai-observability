@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { onCLS, onFCP, onINP, onLCP, type Metric } from "web-vitals";
 
-import { normalizedPath, reportRum, type RumMetricName } from "@/lib/rum";
+import { reportRum, type RumMetricName } from "@/lib/rum";
+import { normalizePath, ROUTES } from "@/lib/routes";
 
 let webVitalsStarted = false;
 
@@ -24,6 +25,19 @@ function startWebVitals(): void {
   onCLS(reportWebVital("frontend_web_vitals_cls"));
 }
 
+export function isIncidentDiagnosisHref(href: string): boolean {
+  if (!href) return false;
+  try {
+    const url = new URL(href, "http://view-show.local");
+    return (
+      normalizePath(url.pathname) === ROUTES.incidentDetail &&
+      Boolean(url.searchParams.get("incidente"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function RumReporter() {
   useEffect(() => {
     startWebVitals();
@@ -33,11 +47,11 @@ export function RumReporter() {
     const onUnhandledRejection = () =>
       reportRum("frontend_client_errors_total", 1);
     const onClick = (event: MouseEvent) => {
-      if (normalizedPath() !== "/incidentes") return;
+      if (normalizePath(window.location.pathname) !== ROUTES.incidents) return;
       clicks += 1;
       const element = event.target instanceof Element ? event.target : null;
       const href = element?.closest("a")?.getAttribute("href") ?? "";
-      if (href.startsWith("/evidencias")) {
+      if (isIncidentDiagnosisHref(href)) {
         reportRum("operator_clicks_to_root_cause", clicks);
         clicks = 0;
       }

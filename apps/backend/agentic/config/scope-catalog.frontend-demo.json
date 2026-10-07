@@ -1,0 +1,112 @@
+[
+  {
+    "id": "canal-demo",
+    "source": "synthetic-qoe",
+    "entity": "canal-demo",
+    "priority": "P1",
+    "detectorMetrics": ["latency_ms_p95", "errors"],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_frontend_demo_latency_p95_15m",
+        "unit": "milliseconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_frontend_demo_errors_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_frontend_demo_sessions_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_frontend_demo_bufferratio_15m",
+        "unit": "ratio",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "affected_devices",
+        "seriesId": "ts_frontend_demo_affected_devices_15m",
+        "unit": "devices",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_a",
+        "seriesId": "ts_frontend_demo_model_a_errors_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_b",
+        "seriesId": "ts_frontend_demo_model_b_errors_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_c",
+        "seriesId": "ts_frontend_demo_model_c_errors_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "fixture-edge-b",
+    "source": "prometheus",
+    "entity": "edge-b",
+    "priority": "P2",
+    "detectorMetrics": ["latency_ms_p95"],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "latency",
+        "seriesId": "ts_fixture_edge_b_signal_latency_15m",
+        "unit": "milliseconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_fixture_edge_b_latency_p95_15m",
+        "unit": "milliseconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_fixture_edge_b_bufferratio_15m",
+        "unit": "ratio",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "affected_devices",
+        "seriesId": "ts_fixture_affected_devices_15m",
+        "unit": "devices",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_a",
+        "seriesId": "ts_fixture_model_a_errors_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_b",
+        "seriesId": "ts_fixture_model_b_errors_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_c",
+        "seriesId": "ts_fixture_model_c_errors_15m",
+        "unit": "count",
+        "grainSeconds": 900
+      }
+    ]
+  }
+]

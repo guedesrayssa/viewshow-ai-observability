@@ -91,6 +91,8 @@ const evidence: EvidenceDto = {
   eventId: event.id,
   incidentId: "inc_1",
   type: "argus_event_correlation",
+  title: null,
+  statement: null,
   relation: "context",
   hypothesisIds: [],
   strength: "moderate",
@@ -436,6 +438,28 @@ describe("incident, Event, and Evidence use cases", () => {
       itemType: "diagnosis",
       status: "ready",
       createdAt: "2026-01-01T11:41:05.000Z",
+      diagnosisProjection: {
+        impact: {
+          affectedDevices: {
+            value: 3,
+            observedThrough: "2026-01-01T11:45:00.000Z",
+            coverageRatio: 1,
+            source: "analysis-worker:frontend-demo:incident-start-bucket",
+          },
+        },
+        buffering: {
+          points: [
+            { timestamp: "2026-01-01T11:30:00.000Z", value: 0.8 },
+            { timestamp: "2026-01-01T11:45:00.000Z", value: 3.2 },
+          ],
+          marker: null,
+        },
+        concentrations: [
+          { label: "model-a", percentage: 75 },
+          { label: "model-b", percentage: 25 },
+        ],
+        concentrationNote: "Erros por modelo na última hora.",
+      },
     });
 
     const result = await useCases(storage).diagnosis("inc_1");
@@ -443,9 +467,68 @@ describe("incident, Event, and Evidence use cases", () => {
     expect(result.data.diagnosis.status).toBe("ready");
     expect(result.data.diagnosis.primaryHypothesisId).toBe("run1_hyp1");
     expect(result.data.diagnosis.confidence).toBe(0.8);
+    expect(result.data.incident.impact.affectedDevices).toEqual({
+      value: 3,
+      unit: "devices",
+      measurement: {
+        status: "measured",
+        source: "analysis-worker:frontend-demo:incident-start-bucket",
+        coverageRatio: 1,
+        observedThrough: "2026-01-01T11:45:00.000Z",
+      },
+    });
     expect(result.data.diagnosis.hypotheses).toMatchObject([
       { id: "run1_hyp1", rank: 1, probability: 0.8 },
       { id: "run1_hyp2", rank: 2, probability: null },
+    ]);
+    expect(result.data.charts).toEqual({
+      buffering: {
+        points: [
+          { timestamp: "2026-01-01T11:30:00.000Z", value: 0.8 },
+          { timestamp: "2026-01-01T11:45:00.000Z", value: 3.2 },
+        ],
+        marker: null,
+      },
+      concentrations: [
+        { label: "model-a", percentage: 75 },
+        { label: "model-b", percentage: 25 },
+      ],
+      concentrationNote: "Erros por modelo na última hora.",
+    });
+  });
+
+  it("links analytical facts to the worker hypotheses that cite them", async () => {
+    const storage = repository();
+    storage.listEvidence.mockResolvedValueOnce([
+      {
+        ...evidence,
+        id: "fact_1",
+        type: "analysis_fact",
+        title: "cdn_live_err_rate",
+        statement: "Erros de CDN cresceram no intervalo.",
+      },
+    ]);
+    storage.listHypotheses.mockResolvedValueOnce([
+      {
+        pk: incidentPk,
+        sk: "HYPOTHESIS#run1_hyp1",
+        itemType: "hypothesis",
+        id: "run1_hyp1",
+        statement: "Possível degradação na CDN",
+        supportingEvidenceIds: ["fact_1"],
+        contradictingEvidenceIds: [],
+        reviewStatus: "pending",
+      },
+    ]);
+
+    const result = await useCases(storage).diagnosis("inc_1");
+
+    expect(result.data.evidence).toEqual([
+      expect.objectContaining({
+        id: "fact_1",
+        relation: "supports",
+        hypothesisIds: ["run1_hyp1"],
+      }),
     ]);
   });
 
@@ -492,23 +575,28 @@ describe("incident, Event, and Evidence use cases", () => {
 
   it("fails closed when reanalysis targets an incident missing from the operational store", async () => {
     const storage = repository();
-    vi.mocked(storage.bundle).mockResolvedValueOnce({
-      incident: null,
-      children: [],
+    vi.mocked(storage.activeProjection).mockResolvedValueOnce({
+      observedThrough: "2026-01-01T11:45:00.000Z",
+      coverage: "complete",
+      incidents: [],
     });
 
     await expect(
       useCases(storage).reanalyze("inc_missing", "idem_1", "usr_1"),
-    ).rejects.toMatchObject({ status: 503, code: "DATA_UNAVAILABLE" });
+    ).rejects.toMatchObject({ status: 404, code: "RESOURCE_NOT_FOUND" });
   });
 
-  it("writes a hypothesis review keyed off the incident the worker recorded", async () => {
+  it("writes a hypothesis review in the active ingestion incident partition", async () => {
     const storage = repository();
 
     const result = await useCases(storage).review(
       "inc_1",
       "run1_hyp1",
-      { status: "confirmed", note: "Confirmado com o time de rede", expectedVersion: 0 },
+      {
+        status: "confirmed",
+        note: "Confirmado com o time de rede",
+        expectedVersion: 0,
+      },
       "usr_1",
     );
 
@@ -525,6 +613,7 @@ describe("incident, Event, and Evidence use cases", () => {
       hypothesisId: "run1_hyp1",
       review: { status: "confirmed", version: 1 },
     });
+    expect(storage.bundle).not.toHaveBeenCalled();
   });
 
   it("propagates a version conflict from a concurrent review", async () => {
@@ -546,11 +635,12 @@ describe("incident, Event, and Evidence use cases", () => {
     ).rejects.toMatchObject({ status: 409, code: "REVIEW_VERSION_CONFLICT" });
   });
 
-  it("fails closed when reviewing a hypothesis on an incident missing from the operational store", async () => {
+  it("fails closed when reviewing an incident missing from the active projection", async () => {
     const storage = repository();
-    vi.mocked(storage.bundle).mockResolvedValueOnce({
-      incident: null,
-      children: [],
+    vi.mocked(storage.activeProjection).mockResolvedValueOnce({
+      observedThrough: "2026-01-01T11:45:00.000Z",
+      coverage: "complete",
+      incidents: [],
     });
 
     await expect(
@@ -560,7 +650,8 @@ describe("incident, Event, and Evidence use cases", () => {
         { status: "confirmed", expectedVersion: 0 },
         "usr_1",
       ),
-    ).rejects.toMatchObject({ status: 503, code: "DATA_UNAVAILABLE" });
+    ).rejects.toMatchObject({ status: 404, code: "RESOURCE_NOT_FOUND" });
+    expect(storage.writeReview).not.toHaveBeenCalled();
   });
 
   it("serves canonical and Incident-scoped Event detail", async () => {

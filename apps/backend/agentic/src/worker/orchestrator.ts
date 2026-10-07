@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { analysisRunId, parseAnalysisEvent, type WindowedEvent } from "../contracts/analysis-event.js";
 import type { LlmProvider } from "../ports/llm-provider.js";
-import { cleanObservations, hash as digest, prepareContext } from "./facts.js";
+import { cleanObservations, hash as digest, prepareContext, prepareDiagnosisProjection } from "./facts.js";
 import { infer, type ModelBundle } from "./models.js";
 import { interpret } from "./interpret.js";
 import { AnalysisError, type AnalysisQueue, type AnalysisScope, type AnalysisStore, type Delivery, type Lease, type ObservationReader, type ScopeCheckpoint, type Telemetry } from "./types.js";
@@ -95,6 +95,7 @@ export class AnalysisWorker {
           const elevated = eligible && material ? result.signals.filter(s => s.score > s.threshold.value).sort((a, b) => b.score / b.threshold.value - a.score / a.threshold.value)[0] : undefined;
           checkpoint = { event: windowed, scope, result,
             context: elevated ? prepareContext(rows, windowed.payload.datasetVersion, scope, elevated, windowed.payload.window.end, 3600, 50000, windowed.payload.window.grainSeconds) : null,
+            presentation: prepareDiagnosisProjection(rows, windowed, scope),
             incidentId: resolved?.incidentId ?? null,
             predictionId: windowed.eventType === "QOE_FORECAST" && result.signals.length ? `pred_${digest({ runId, scope: scope.id }).slice(0, 32)}` : null };
           await store.saveCheckpoint(lease, scope.id, checkpoint);

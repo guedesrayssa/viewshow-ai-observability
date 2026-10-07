@@ -168,6 +168,7 @@ const OUTPUT_CHANGE_ALLOWLIST = new Set([
 const KNOWN_OUTPUTS = new Set([
   "api_url",
   "api_url_https",
+  "analysis_worker_operacao",
   "aviso_custo",
   "bastion_acesso",
   "cognito_client_id",
@@ -263,7 +264,8 @@ function expectedProvider(type) {
   if (type === "terraform_data") return "terraform.io/builtin/terraform";
   if (type === "archive_file") return "registry.terraform.io/hashicorp/archive";
   if (type.startsWith("aws_")) return "registry.terraform.io/hashicorp/aws";
-  if (type.startsWith("random_")) return "registry.terraform.io/hashicorp/random";
+  if (type.startsWith("random_"))
+    return "registry.terraform.io/hashicorp/random";
   return null;
 }
 
@@ -272,7 +274,12 @@ function isObject(value) {
 }
 
 function isProviderEmpty(value) {
-  if (value === null || value === undefined || value === false || value === "") {
+  if (
+    value === null ||
+    value === undefined ||
+    value === false ||
+    value === ""
+  ) {
     return true;
   }
   if (Array.isArray(value)) return value.every(isProviderEmpty);
@@ -333,7 +340,8 @@ function validatesProtectedTaskContract(change, address, preset) {
   }
   if (!Array.isArray(containers)) return false;
   const matching = containers.filter(
-    (container) => isObject(container) && container.name === contract.containerName,
+    (container) =>
+      isObject(container) && container.name === contract.containerName,
   );
   if (matching.length !== 1) return false;
   const environment = environmentMap(matching[0]);
@@ -343,7 +351,8 @@ function validatesProtectedTaskContract(change, address, preset) {
   const expectedEnvironment =
     address === "aws_ecs_task_definition.api"
       ? {
-          IMPORT_CANONICAL_FIRST_ENABLED: selected.import_canonical_first_enabled,
+          IMPORT_CANONICAL_FIRST_ENABLED:
+            selected.import_canonical_first_enabled,
           ...(selected.rate_limit_por_minuto
             ? { RATE_LIMIT_PER_MINUTE: selected.rate_limit_por_minuto }
             : {}),
@@ -413,9 +422,12 @@ function isExactCanonicalStagingRule(rule) {
     }) ||
     !Array.isArray(rule.abort_incomplete_multipart_upload) ||
     rule.abort_incomplete_multipart_upload.length !== 1 ||
-    !hasOnlyExpectedOrEmptyProperties(rule.abort_incomplete_multipart_upload[0], {
-      days_after_initiation: 1,
-    })
+    !hasOnlyExpectedOrEmptyProperties(
+      rule.abort_incomplete_multipart_upload[0],
+      {
+        days_after_initiation: 1,
+      },
+    )
   ) {
     return false;
   }
@@ -434,7 +446,11 @@ function isExactCanonicalStagingRule(rule) {
 }
 
 function lifecyclePrefix(rule) {
-  if (!isObject(rule) || !Array.isArray(rule.filter) || rule.filter.length !== 1) {
+  if (
+    !isObject(rule) ||
+    !Array.isArray(rule.filter) ||
+    rule.filter.length !== 1
+  ) {
     return null;
   }
   const prefix = rule.filter[0]?.prefix;
@@ -489,9 +505,12 @@ function isExactLegacyGlobalCleanupRule(rule) {
       rule.noncurrent_version_expiration.length === 0 &&
       Array.isArray(rule.abort_incomplete_multipart_upload) &&
       rule.abort_incomplete_multipart_upload.length === 1 &&
-      hasOnlyExpectedOrEmptyProperties(rule.abort_incomplete_multipart_upload[0], {
-        days_after_initiation: 1,
-      })
+      hasOnlyExpectedOrEmptyProperties(
+        rule.abort_incomplete_multipart_upload[0],
+        {
+          days_after_initiation: 1,
+        },
+      )
     );
   }
   if (rule.id === "expired-delete-markers") {
@@ -535,9 +554,12 @@ function isExactScopedCleanupRule(rule) {
         rule.expiration.length === 0 &&
         Array.isArray(rule.abort_incomplete_multipart_upload) &&
         rule.abort_incomplete_multipart_upload.length === 1 &&
-        hasOnlyExpectedOrEmptyProperties(rule.abort_incomplete_multipart_upload[0], {
-          days_after_initiation: 1,
-        })
+        hasOnlyExpectedOrEmptyProperties(
+          rule.abort_incomplete_multipart_upload[0],
+          {
+            days_after_initiation: 1,
+          },
+        )
       );
     }
     if (rule.id === `${baseId}-expired-delete-markers`) {
@@ -570,7 +592,10 @@ function ruleMap(rules) {
 function validatesScopedCanonicalLifecycleMigration(change) {
   if (!isDeepStrictEqual(change.actions, ["update"])) return false;
   if (!isObject(change.before) || !isObject(change.after)) return false;
-  if (Object.hasOwn(change, "after_unknown") && !isProviderEmpty(change.after_unknown)) {
+  if (
+    Object.hasOwn(change, "after_unknown") &&
+    !isProviderEmpty(change.after_unknown)
+  ) {
     return false;
   }
 
@@ -620,40 +645,91 @@ function validatesScopedCanonicalLifecycleMigration(change) {
     }
   }
   for (const rule of afterRules) {
-    if (!beforeById.has(rule.id) && !requiredAdditions.has(rule.id)) return false;
+    if (!beforeById.has(rule.id) && !requiredAdditions.has(rule.id))
+      return false;
   }
   return true;
 }
 
 function validatesSafeLifecycleState(change) {
-  if (!isObject(change.after) || !Array.isArray(change.after.rule)) return false;
-  if (Object.hasOwn(change, "after_unknown") && !isProviderEmpty(change.after_unknown)) {
+  if (!isObject(change.after) || !Array.isArray(change.after.rule))
+    return false;
+  if (
+    Object.hasOwn(change, "after_unknown") &&
+    !isProviderEmpty(change.after_unknown)
+  ) {
     return false;
   }
   const afterById = ruleMap(change.after.rule);
   if (
     afterById === null ||
-    change.after.rule.some((rule) => !lifecycleRuleIsolatedFromCanonical(rule)) ||
+    change.after.rule.some(
+      (rule) => !lifecycleRuleIsolatedFromCanonical(rule),
+    ) ||
     !isExactCanonicalStagingRule(afterById.get("staging-canonical-expiration"))
   ) {
     return false;
   }
   for (const baseId of Object.keys(MUTABLE_LIFECYCLE_PREFIXES)) {
     for (const suffix of ["abort-multipart", "expired-delete-markers"]) {
-      if (!isExactScopedCleanupRule(afterById.get(`${baseId}-${suffix}`))) return false;
+      if (!isExactScopedCleanupRule(afterById.get(`${baseId}-${suffix}`)))
+        return false;
     }
   }
   return true;
 }
 
-function validateOutputChanges(outputChanges) {
+function changedKeys(before = {}, after = {}) {
+  return [
+    ...new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]),
+  ].filter(
+    (key) => JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key]),
+  );
+}
+
+function containsUnknown(value) {
+  if (value === true) return true;
+  if (!value || typeof value !== "object") return false;
+  return Object.values(value).some(containsUnknown);
+}
+
+function validatesBastionPublicIpRefresh(plan, change) {
+  const expectedKeys = ["instancia_id", "ip_publico", "sessao_ssm", "ssh"];
+  const before = change.before;
+  const after = change.after;
+  const planned = plan?.planned_values?.root_module?.resources?.find(
+    (resource) => resource.address === "aws_instance.bastion",
+  )?.values;
+  const references =
+    plan?.configuration?.root_module?.outputs?.bastion_acesso?.expression
+      ?.references;
+  return (
+    change.actions?.join(",") === "update" &&
+    change.before_sensitive === false &&
+    change.after_sensitive === false &&
+    !containsUnknown(change.after_unknown) &&
+    isObject(before) &&
+    isObject(after) &&
+    isDeepStrictEqual(Object.keys(before).sort(), expectedKeys) &&
+    isDeepStrictEqual(Object.keys(after).sort(), expectedKeys) &&
+    changedKeys(before, after).join(",") === "ip_publico" &&
+    typeof after.ip_publico === "string" &&
+    after.instancia_id === planned?.id &&
+    after.ip_publico === planned?.public_ip &&
+    Array.isArray(references) &&
+    references.includes("aws_instance.bastion.public_ip")
+  );
+}
+
+function validateOutputChanges(plan) {
+  const outputChanges = plan.output_changes ?? {};
   if (!isObject(outputChanges)) {
     reject("invalid output_changes structure");
     return false;
   }
   for (const [name, change] of Object.entries(outputChanges)) {
     if (!isObject(change)) {
-      reject("unexpected output change");
+      reject("unexpected output change", name);
       return false;
     }
     if (
@@ -665,12 +741,19 @@ function validateOutputChanges(outputChanges) {
       return false;
     }
     if (!KNOWN_OUTPUTS.has(name)) {
-      reject("unexpected output change");
+      reject("unexpected output change", name);
       return false;
     }
     if (change.actions[0] === "no-op") continue;
+    if (name === "bastion_acesso") {
+      if (!validatesBastionPublicIpRefresh(plan, change)) {
+        reject("unsafe bastion public IP output refresh", name);
+        return false;
+      }
+      continue;
+    }
     if (!OUTPUT_CHANGE_ALLOWLIST.has(name)) {
-      reject("unexpected output change");
+      reject("unexpected output change", name);
       return false;
     }
     if (change.before_sensitive !== false || change.after_sensitive !== false) {
@@ -712,14 +795,75 @@ function onlyProviderEmptyDefaultsDrifted(resourceDrift) {
     if (!isObject(before) || !isObject(after)) return false;
 
     if (address === "aws_appautoscaling_target.api") {
-      if (before.tags !== null || !isObject(after.tags) || Object.keys(after.tags).length !== 0) {
+      if (
+        before.tags !== null ||
+        !isObject(after.tags) ||
+        Object.keys(after.tags).length !== 0
+      ) {
         return false;
       }
       before.tags = {};
+    } else if (
+      [
+        "aws_ecs_service.analysis_worker[0]",
+        "aws_ecs_task_definition.analysis_worker[0]",
+      ].includes(address)
+    ) {
+      if (
+        before.tags !== null ||
+        !isObject(after.tags) ||
+        Object.keys(after.tags).length !== 0
+      ) {
+        return false;
+      }
+      before.tags = {};
+    } else if (address === "aws_cognito_user_pool.principal") {
+      if (
+        !Number.isInteger(before.estimated_number_of_users) ||
+        before.estimated_number_of_users < 0 ||
+        !Number.isInteger(after.estimated_number_of_users) ||
+        after.estimated_number_of_users < 0
+      ) {
+        return false;
+      }
+      before.estimated_number_of_users = after.estimated_number_of_users;
+    } else if (address === "aws_instance.bastion") {
+      if (
+        typeof before.public_dns !== "string" ||
+        before.public_dns.length === 0 ||
+        typeof before.public_ip !== "string" ||
+        before.public_ip.length === 0 ||
+        typeof after.public_dns !== "string" ||
+        after.public_dns.length === 0 ||
+        typeof after.public_ip !== "string" ||
+        after.public_ip.length === 0
+      ) {
+        return false;
+      }
+      before.public_dns = after.public_dns;
+      before.public_ip = after.public_ip;
+    } else if (
+      address === "aws_s3_bucket_server_side_encryption_configuration.flow_logs"
+    ) {
+      const beforeRule = before.rule?.[0];
+      const afterRule = after.rule?.[0];
+      if (
+        before.rule?.length !== 1 ||
+        after.rule?.length !== 1 ||
+        beforeRule?.bucket_key_enabled !== null ||
+        afterRule?.bucket_key_enabled !== false
+      ) {
+        return false;
+      }
+      beforeRule.bucket_key_enabled = false;
     } else if (address === "aws_ecs_service.api") {
       if (before.desired_count !== 1 || after.desired_count !== 2) return false;
       before.desired_count = 2;
-    } else if (/^aws_cloudwatch_metric_alarm\.ingestion_resource_utilization\["(?:backfill|sync)-(?:cpu|memory|storage)"\]$/.test(address)) {
+    } else if (
+      /^aws_cloudwatch_metric_alarm\.ingestion_resource_utilization\["(?:backfill|sync)-(?:cpu|memory|storage)"\]$/.test(
+        address,
+      )
+    ) {
       const defaults = {
         alarm_actions: [],
         dimensions: {},
@@ -727,23 +871,37 @@ function onlyProviderEmptyDefaultsDrifted(resourceDrift) {
         ok_actions: [],
       };
       for (const [key, normalized] of Object.entries(defaults)) {
-        if (before[key] !== null || !isDeepStrictEqual(after[key], normalized)) return false;
+        if (before[key] !== null || !isDeepStrictEqual(after[key], normalized))
+          return false;
         before[key] = normalized;
       }
-      if (!Array.isArray(before.metric_query) || !Array.isArray(after.metric_query) || before.metric_query.length !== after.metric_query.length) {
+      if (
+        !Array.isArray(before.metric_query) ||
+        !Array.isArray(after.metric_query) ||
+        before.metric_query.length !== after.metric_query.length
+      ) {
         return false;
       }
       for (let index = 0; index < before.metric_query.length; index += 1) {
         if (
           before.metric_query[index]?.period !== null ||
           after.metric_query[index]?.period !== 0
-        ) return false;
+        )
+          return false;
         before.metric_query[index].period = 0;
       }
-    } else if (/^aws_scheduler_schedule\.ingestion_(?:sync|incremental_export|incremental_ingest)$/.test(address)) {
+    } else if (
+      /^aws_scheduler_schedule\.ingestion_(?:sync|incremental_export|incremental_ingest)$/.test(
+        address,
+      )
+    ) {
       const beforeTarget = before.target?.[0]?.ecs_parameters?.[0];
       const afterTarget = after.target?.[0]?.ecs_parameters?.[0];
-      if (beforeTarget?.tags !== null || !isObject(afterTarget?.tags) || Object.keys(afterTarget.tags).length !== 0) {
+      if (
+        beforeTarget?.tags !== null ||
+        !isObject(afterTarget?.tags) ||
+        Object.keys(afterTarget.tags).length !== 0
+      ) {
         return false;
       }
       beforeTarget.tags = {};
@@ -781,14 +939,17 @@ function validatePlanEnvelope(plan) {
     !isObject(plan.configuration) ||
     typeof plan.timestamp !== "string" ||
     Number.isNaN(Date.parse(plan.timestamp)) ||
-    plan.applyable !== true ||
+    typeof plan.applyable !== "boolean" ||
     plan.complete !== true ||
     plan.errored !== false
   ) {
     reject("invalid or unsafe plan structure");
     return false;
   }
-  if (Object.hasOwn(plan, "proposed_unknown") && !isObject(plan.proposed_unknown)) {
+  if (
+    Object.hasOwn(plan, "proposed_unknown") &&
+    !isObject(plan.proposed_unknown)
+  ) {
     reject("invalid proposed_unknown structure");
     return false;
   }
@@ -796,7 +957,9 @@ function validatePlanEnvelope(plan) {
     Object.hasOwn(plan, "resource_drift") &&
     !onlyProviderEmptyDefaultsDrifted(plan.resource_drift)
   ) {
-    reject("resource drift is not an approved provider empty-default normalization");
+    reject(
+      "resource drift is not an approved provider empty-default normalization",
+    );
     return false;
   }
   for (const category of [
@@ -829,7 +992,7 @@ function validatePlanEnvelope(plan) {
     reject("invalid or failed checks structure");
     return false;
   }
-  return validateOutputChanges(plan.output_changes ?? {});
+  return validateOutputChanges(plan);
 }
 
 function variablesMatch(plan, preset) {
@@ -888,7 +1051,11 @@ if (process.exitCode === undefined) {
     seen.add(address);
 
     const change = resourceChange.change;
-    if (change === null || typeof change !== "object" || Array.isArray(change)) {
+    if (
+      change === null ||
+      typeof change !== "object" ||
+      Array.isArray(change)
+    ) {
       reject("invalid change", address);
       break;
     }
@@ -910,15 +1077,15 @@ if (process.exitCode === undefined) {
       break;
     }
     const actions = change.actions;
-    if (!Array.isArray(actions) || actions.some((action) => typeof action !== "string")) {
+    if (
+      !Array.isArray(actions) ||
+      actions.some((action) => typeof action !== "string")
+    ) {
       reject("invalid actions", address);
       break;
     }
     if (resourceChange.mode === "data") {
-      if (
-        actions.length !== 1 ||
-        !["read", "no-op"].includes(actions[0])
-      ) {
+      if (actions.length !== 1 || !["read", "no-op"].includes(actions[0])) {
         reject("data action must be read or no-op", address);
         break;
       }
@@ -936,7 +1103,10 @@ if (process.exitCode === undefined) {
       Object.hasOwn(PROTECTED_TASK_CONTRACTS, address) &&
       !validatesProtectedTaskContract(change, address, preset)
     ) {
-      reject("task budget, flags, storage, or unknown values violate the rollout contract", address);
+      reject(
+        "task budget, flags, storage, or unknown values violate the rollout contract",
+        address,
+      );
       break;
     }
     if (actions.length === 1 && actions[0] === "no-op") {
@@ -944,7 +1114,10 @@ if (process.exitCode === undefined) {
         address === "aws_s3_bucket_lifecycle_configuration.ingestion" &&
         !validatesSafeLifecycleState(change)
       ) {
-        reject("lifecycle state contains a bucket-wide or canonical prefix", address);
+        reject(
+          "lifecycle state contains a bucket-wide or canonical prefix",
+          address,
+        );
         break;
       }
       continue;
@@ -955,15 +1128,15 @@ if (process.exitCode === undefined) {
     }
     if (address === "aws_s3_bucket_lifecycle_configuration.ingestion") {
       if (!validatesScopedCanonicalLifecycleMigration(change)) {
-        reject("lifecycle change must migrate exact global cleanup to scoped safe rules", address);
+        reject(
+          "lifecycle change must migrate exact global cleanup to scoped safe rules",
+          address,
+        );
         break;
       }
       continue;
     }
-    if (
-      actions.length === 1 &&
-      ["create", "update"].includes(actions[0])
-    ) {
+    if (actions.length === 1 && ["create", "update"].includes(actions[0])) {
       continue;
     }
     const replacement =
@@ -971,7 +1144,10 @@ if (process.exitCode === undefined) {
       actions.includes("create") &&
       actions.includes("delete");
     if (replacement && REPLACEMENT_ALLOWLIST.has(address)) continue;
-    reject(replacement ? "replacement is not allowed" : "unexpected actions", address);
+    reject(
+      replacement ? "replacement is not allowed" : "unexpected actions",
+      address,
+    );
     break;
   }
 }
