@@ -940,6 +940,8 @@ export interface EvidenceDto {
   readonly eventId: string;
   readonly incidentId: string;
   readonly type: string;
+  readonly title: string | null;
+  readonly statement: string | null;
   readonly relation: "supports" | "contradicts" | "context";
   readonly hypothesisIds: readonly string[];
   readonly strength: "strong" | "moderate" | "weak";
@@ -1233,6 +1235,8 @@ export const evidenceDtoSchema = z
     eventId: z.string().regex(/^evt_[a-z2-7]{26}$/),
     incidentId: z.string().min(1),
     type: z.string().min(1),
+    title: z.string().min(1).nullable(),
+    statement: z.string().min(1).nullable(),
     relation: z.enum(["supports", "contradicts", "context"]),
     hypothesisIds: z.array(z.string()),
     strength: z.enum(["strong", "moderate", "weak"]),

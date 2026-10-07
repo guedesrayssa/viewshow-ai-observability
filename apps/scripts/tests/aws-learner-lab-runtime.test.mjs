@@ -663,7 +663,7 @@ test("setup updates an existing Cognito user through private input files and con
   const runtime = fakeDeploymentRuntime();
   assert.equal((await runLearnerLabKubernetes({ ...runtime.options, argv: ["setup", "--yes"] })).status, 0);
   const calls = runtime.calls.filter(({ args }) => args[0] === "cognito-idp");
-  assert.deepEqual(calls.map(({ args }) => args[1]), ["admin-get-user", "admin-set-user-password", "admin-get-user"]);
+  assert.deepEqual(calls.map(({ args }) => args[1]), ["admin-get-user", "admin-set-user-password", "admin-get-user", "get-group", "admin-add-user-to-group"]);
   for (const { args } of calls) {
     assert.ok(args.includes("--cli-input-json"));
     assert.match(args[args.indexOf("--cli-input-json") + 1], /^file:\/\/\/private\/learner-lab-cognito-test\//);
@@ -698,7 +698,7 @@ test("setup creates a missing Cognito user with suppressed messaging before sett
   };
   assert.equal((await runLearnerLabKubernetes({ ...runtime.options, argv: ["setup", "--yes"] })).status, 0);
   const calls = runtime.calls.filter(({ args }) => args[0] === "cognito-idp");
-  assert.deepEqual(calls.map(({ args }) => args[1]), ["admin-get-user", "admin-create-user", "admin-set-user-password", "admin-get-user"]);
+  assert.deepEqual(calls.map(({ args }) => args[1]), ["admin-get-user", "admin-create-user", "admin-set-user-password", "admin-get-user", "get-group", "admin-add-user-to-group"]);
   const create = calls[1];
   assert.ok(create.args.includes("--message-action"));
   assert.equal(create.args[create.args.indexOf("--message-action") + 1], "SUPPRESS");
@@ -706,6 +706,40 @@ test("setup creates a missing Cognito user with suppressed messaging before sett
   assert.deepEqual(JSON.parse(payload.content).UserAttributes, [
     { Name: "email", Value: "learner@example.test" }, { Name: "email_verified", Value: "true" },
   ]);
+});
+
+test("setup creates the engineer group when missing and adds the initial user to it", async () => {
+  const runtime = fakeDeploymentRuntime();
+  const execute = runtime.options.execute;
+  runtime.options.execute = (program, args, options) => {
+    const result = execute(program, args, options);
+    if (args[1] === "get-group")
+      return { status: 254, stdout: "", stderr: "An error occurred (ResourceNotFoundException): group not found" };
+    return result;
+  };
+  assert.equal((await runLearnerLabKubernetes({ ...runtime.options, argv: ["setup", "--yes"] })).status, 0);
+  const calls = runtime.calls.filter(({ args }) => args[0] === "cognito-idp");
+  assert.deepEqual(calls.slice(-3).map(({ args }) => args[1]), ["get-group", "create-group", "admin-add-user-to-group"]);
+  const payloads = runtime.events
+    .filter(({ kind, target }) => kind === "write" && target.includes("cognito"))
+    .map(({ content }) => JSON.parse(content));
+  assert.deepEqual(payloads.at(-3), { UserPoolId: "us-east-1_pool", GroupName: "engineer" });
+  assert.equal(payloads.at(-2).GroupName, "engineer");
+  assert.deepEqual(payloads.at(-1), { UserPoolId: "us-east-1_pool", Username: "learner@example.test", GroupName: "engineer" });
+});
+
+test("an unexpected get-group failure stops setup without creating a group", async () => {
+  const runtime = fakeDeploymentRuntime();
+  const execute = runtime.options.execute;
+  runtime.options.execute = (program, args, options) => {
+    const result = execute(program, args, options);
+    if (args[1] === "get-group") return { status: 254, stdout: "", stderr: "AccessDeniedException" };
+    return result;
+  };
+  assert.equal((await runLearnerLabKubernetes({ ...runtime.options, argv: ["setup", "--yes"] })).status, 1);
+  const operations = runtime.calls.filter(({ args }) => args[0] === "cognito-idp").map(({ args }) => args[1]);
+  assert.equal(operations.includes("create-group"), false);
+  assert.equal(operations.includes("admin-add-user-to-group"), false);
 });
 
 test("Cognito failures stop setup, remain redacted, and clean the private input", async () => {

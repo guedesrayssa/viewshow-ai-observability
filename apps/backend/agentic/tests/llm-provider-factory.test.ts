@@ -50,6 +50,53 @@ test("none falha de forma permanente em qualquer ambiente, sem chamar modelo alg
   }
 });
 
+test("rules seleciona apenas candidatos ancorados nos fatos recebidos", async () => {
+  const provider = createLlmProvider({
+    kind: "rules",
+    modelId: "ignored",
+    environment: "production",
+  });
+  const response = await provider.generate({
+    systemPrompt: "ignored",
+    userPrompt: JSON.stringify({
+      context: {
+        facts: [
+          {
+            id: "fact_latency",
+            metric: "latency_ms_p95",
+            scopeId: "canal-demo",
+            direction: "increase",
+          },
+          {
+            id: "fact_unknown",
+            metric: "untrusted_metric",
+            scopeId: "canal-demo",
+            direction: "increase",
+          },
+        ],
+      },
+    }),
+  });
+  assert.equal(response.provider, "grounded-rules");
+  assert.deepEqual(JSON.parse(response.text), {
+    hypotheses: [
+      {
+        category: "delivery_instability",
+        supporting: [
+          {
+            factId: "fact_latency",
+            metric: "latency_ms_p95",
+            scopeId: "canal-demo",
+            direction: "increase",
+          },
+        ],
+        contradicting: [],
+      },
+    ],
+    nextChecks: ["network", "player"],
+  });
+});
+
 test("constrói ollama quando a configuração está completa", () => {
   const provider = createLlmProvider({
     kind: "ollama",

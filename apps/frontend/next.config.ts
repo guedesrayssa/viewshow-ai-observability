@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
    * `next/image`.
    */
   images: { unoptimized: true },
+
+  // Usa a API do compilador no build, mantendo a checagem de tipos sem abrir
+  // um subprocesso separado (indisponível em ambientes de build restritos).
+  experimental: { useTypeScriptCli: false },
 };
 
 export default nextConfig;

@@ -284,6 +284,8 @@ describe("versioned contracts", () => {
       eventId: event.id,
       incidentId: "inc_known",
       type: "argus_event_correlation",
+      title: null,
+      statement: null,
       relation: "context",
       hypothesisIds: [],
       strength: "moderate",

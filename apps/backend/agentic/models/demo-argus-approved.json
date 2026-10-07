@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "analysis-models-v1",
+  "name": "qoe-random-forest-demo",
+  "version": "demo-2026.09.28.1",
+  "approved": true,
+  "approval": {
+    "reference": "synthetic-demo-authorized-by-user-2026-09-28",
+    "sourceSha256": "47ec4235edf55ed07ccfa5ec6917bf5d027194e9eeeb3d792ef752306ba457e6",
+    "approvedAt": "2026-09-28T12:00:00.000Z"
+  },
+  "trainedThrough": "2026-09-14T23:45:00.000Z",
+  "datasetVersion": "dsv_9c534268841ba53fe0dd977d91a0f995b2124bcb7a176aa54b2cabbefd130697",
+  "features": [
+    "bufferratio_avg",
+    "lag_1h",
+    "lag_2h",
+    "lag_3h",
+    "roll_mean_3h",
+    "sessions",
+    "errors",
+    "startup_errors",
+    "hora_sin",
+    "hora_cos",
+    "dia_semana"
+  ],
+  "forecast": {
+    "trees": [
+      {
+        "left": [-1],
+        "right": [-1],
+        "feature": [-2],
+        "threshold": [-2],
+        "value": [0.82]
+      }
+    ],
+    "calibration": {
+      "x": [0, 1],
+      "y": [0, 1]
+    },
+    "valueThreshold": 0.5,
+    "riskThreshold": 0.4,
+    "highRiskThreshold": 0.7
+  },
+  "detection": {
+    "robustThreshold": 3.5,
+    "minHistoryDays": 3,
+    "minHistoryPoints": 96,
+    "scopes": {}
+  }
+}

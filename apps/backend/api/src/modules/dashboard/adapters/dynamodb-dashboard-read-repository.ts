@@ -7,6 +7,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import {
   datasetVersionSchema,
+  monitoringProjectionSchema,
   overviewProjectionSchema,
 } from "@view-show/contracts";
 import { z } from "zod";
@@ -85,6 +86,22 @@ const physicalProjectionSchema = z
   })
   .strict();
 
+const monitoringObservationPayloadSchema = z
+  .object({
+    projectionVersion: z.literal("1.0"),
+    formulaVersion: z.string().min(1),
+    inputWatermarks: z.record(z.string().min(1), timestampSchema),
+    observedThrough: timestampSchema,
+    coverage: z.enum(["complete", "partial", "unavailable"]),
+    qualityFlags: z.array(z.string()),
+    source: z.string().min(1),
+    observedAt: timestampSchema,
+    finishedAt: timestampSchema.nullable(),
+    rowsProcessed: z.number().nonnegative().nullable(),
+    durationSeconds: z.number().nonnegative().nullable(),
+  })
+  .strict();
+
 type OverviewPhysicalRead = z.infer<typeof overviewPayloadSchema> & {
   readonly sourceDataset: string;
 };
@@ -154,6 +171,182 @@ function toRead(item: PhysicalItem): ProjectionRead | null {
     observedThrough: text(item.observedThrough),
     coverageRatio: number(item.coverageRatio),
     source: text(item.source) ?? "argus",
+  };
+}
+
+function monitoringRead(
+  payloadValue: unknown,
+  expectedSource: string,
+): ProjectionRead | null {
+  const alreadyPublic = monitoringProjectionSchema.safeParse(payloadValue);
+  if (alreadyPublic.success) {
+    const observedThrough =
+      alreadyPublic.data.sources.reduce<string | null>((latest, source) => {
+        if (!source.observedThrough) return latest;
+        return !latest || source.observedThrough > latest
+          ? source.observedThrough
+          : latest;
+      }, null) ?? null;
+    return {
+      data: alreadyPublic.data,
+      observedThrough,
+      coverageRatio: null,
+      source: expectedSource,
+    };
+  }
+
+  const parsed = monitoringObservationPayloadSchema.safeParse(payloadValue);
+  if (!parsed.success || parsed.data.source !== expectedSource) return null;
+  const payload = parsed.data;
+  const coverageRatio =
+    payload.coverage === "complete"
+      ? 1
+      : payload.coverage === "unavailable"
+        ? 0
+        : null;
+  const observedThrough = payload.observedThrough;
+  const rows = payload.rowsProcessed;
+  const durationMs =
+    payload.durationSeconds === null ? null : payload.durationSeconds * 1_000;
+  const ingestionRate =
+    rows === null ||
+    payload.durationSeconds === null ||
+    payload.durationSeconds <= 0
+      ? null
+      : (rows / payload.durationSeconds) * 60;
+  const lagSeconds = Math.max(
+    0,
+    Math.round(
+      (Date.parse(observedThrough) - Date.parse(payload.observedAt)) / 1_000,
+    ),
+  );
+  const measured = (value: number | null, estimated = false) => ({
+    status:
+      value === null
+        ? ("unknown" as const)
+        : estimated
+          ? ("estimated" as const)
+          : ("measured" as const),
+    source: payload.source,
+    coverageRatio,
+    observedThrough,
+  });
+  const kpi = (value: number | null, unit: string, estimated = false) => ({
+    value,
+    unit,
+    status: value === null ? ("unknown" as const) : ("healthy" as const),
+    measurement: measured(value, estimated),
+  });
+  const unavailable = (unit: string) => kpi(null, unit);
+  const sourceStatus =
+    payload.coverage === "unavailable"
+      ? ("unavailable" as const)
+      : payload.coverage === "partial" || payload.qualityFlags.length > 0
+        ? ("partial" as const)
+        : lagSeconds > 1_800
+          ? ("delayed" as const)
+          : ("stable" as const);
+  const flowPoints =
+    durationMs === null
+      ? []
+      : [{ timestamp: payload.observedAt, value: durationMs }];
+  const data = monitoringProjectionSchema.parse({
+    capabilities: {
+      sourceQuality: {
+        status:
+          payload.coverage === "unavailable"
+            ? "unavailable"
+            : payload.coverage === "partial" || payload.qualityFlags.length > 0
+              ? "partial"
+              : "available",
+      },
+      pipelineRuntime: {
+        status:
+          ingestionRate === null && durationMs === null
+            ? "unavailable"
+            : "partial",
+        metrics: {
+          ingestionRate: ingestionRate === null ? "unavailable" : "available",
+          processingLatencyP95: "unavailable",
+          queueDepth: "unavailable",
+          deadLetterQueue: "unavailable",
+        },
+        reason: "ANALYSIS_QUEUE_METRICS_UNAVAILABLE",
+      },
+      geographicMetrics: { status: "unavailable", granularity: "state" },
+      filtering: {
+        status: "partial",
+        supportedDimensions: ["source", "flowMetric"],
+        supportedFilterSets: [[], ["source"], ["flowMetric"]],
+      },
+    },
+    kpis: {
+      ingestionRate: kpi(ingestionRate, "events_per_minute", true),
+      processingLatencyP95: unavailable("ms"),
+      queueDepth: unavailable("messages"),
+      deadLetterQueue: { ...unavailable("messages"), newInWindow: null },
+    },
+    flow: {
+      metric: "processing_latency",
+      unit: "ms",
+      bucketSeconds: 900,
+      measurement: measured(durationMs, true),
+      target: null,
+      series:
+        flowPoints.length === 0
+          ? []
+          : [
+              {
+                stage: "processing",
+                name: "Processamento",
+                points: flowPoints,
+              },
+            ],
+      peak:
+        durationMs === null
+          ? null
+          : {
+              timestamp: payload.observedAt,
+              stage: "processing",
+              value: durationMs,
+            },
+    },
+    sources: [
+      {
+        id: payload.source,
+        name: payload.source,
+        type: "batch",
+        workers: [payload.source],
+        lastRunAt: payload.observedAt,
+        lastSuccessfulRunAt: payload.finishedAt,
+        observedThrough,
+        lagSeconds,
+        state: sourceStatus,
+        records: {
+          read: rows ?? 0,
+          written: rows ?? 0,
+          rejected: 0,
+          measurement: measured(rows, true),
+        },
+        coverage: {
+          value: coverageRatio,
+          unit: "ratio",
+          measurement: measured(coverageRatio),
+        },
+      },
+    ],
+    geography: {
+      granularity: "state",
+      metrics: [],
+      areas: [],
+    },
+    facets: { sources: [payload.source] },
+  });
+  return {
+    data,
+    observedThrough,
+    coverageRatio,
+    source: payload.source,
   };
 }
 
@@ -439,21 +632,8 @@ export class DynamoDashboardReadRepository implements DashboardReadRepository {
         parsed.data.projectionKey !== `MONITORING#${source}`
       )
         continue;
-      const payload = parsed.data.payload;
-      if (
-        typeof payload !== "object" ||
-        payload === null ||
-        Array.isArray(payload)
-      )
-        continue;
-      return {
-        data: payload as PublicProjection,
-        observedThrough: text(
-          (payload as Record<string, unknown>).observedThrough,
-        ),
-        coverageRatio: null,
-        source,
-      };
+      const read = monitoringRead(parsed.data.payload, source);
+      if (read) return read;
     }
     return null;
   }

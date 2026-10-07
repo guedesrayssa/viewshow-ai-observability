@@ -1,0 +1,112 @@
+[
+  {
+    "id": "canal-demo",
+    "source": "synthetic-qoe",
+    "entity": "canal-demo",
+    "priority": "P1",
+    "detectorMetrics": ["latency_ms_p95", "errors"],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_a6d07ae4be0fb506eee170b5fec58b4b7b0dcaa031659e7e5b2f15fa7e6a6187",
+        "unit": "milliseconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors",
+        "seriesId": "ts_f8c2f04d4657dc32ce465cc4b8db83a313a09f2cc33bec1cb5682903c99a433f",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "sessions",
+        "seriesId": "ts_94d0e74ed1c4871fb66ae57df7e28ee10d0e375b36e3236d429595052eacbccf",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_1e71c9acd80e46a8218a4ced9a248f95cbdc5c9e4c1a43ae64bcd09df637de91",
+        "unit": "ratio",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "affected_devices",
+        "seriesId": "ts_7d19d1af14e01ae1fe9bee3c32d44704390559f6f999f0e455e5ffa55b01b5b8",
+        "unit": "devices",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_a",
+        "seriesId": "ts_87625a012462ea6c50d33d005da9fdfa888fb2da208232ce911269777c28df3a",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_b",
+        "seriesId": "ts_e028dbbc96f4f6dd1bcda53746dc0464f0538d0538b47e138397595fa752a601",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_c",
+        "seriesId": "ts_270c277aa2a5618b533dc44904eb3d399c7f699082e9b6890c4ad56a81655be1",
+        "unit": "count",
+        "grainSeconds": 900
+      }
+    ]
+  },
+  {
+    "id": "fixture-edge-b",
+    "source": "prometheus",
+    "entity": "edge-b",
+    "priority": "P2",
+    "detectorMetrics": ["latency_ms_p95"],
+    "episodeWindowSeconds": 7200,
+    "series": [
+      {
+        "metric": "latency",
+        "seriesId": "ts_4d523033a8422c4296fcd2b01ad122a9a47f0749fcd09538c8ad85abe1835c64",
+        "unit": "milliseconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "latency_ms_p95",
+        "seriesId": "ts_45ba611235c9f41baf4311a38dc601e556c5ad100cbff503db6abced8a4563a5",
+        "unit": "milliseconds",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "bufferratio_avg",
+        "seriesId": "ts_b03857eb85121be35670176b4f5671c52d5f16914981ce12af7ad2fc579aef90",
+        "unit": "ratio",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "affected_devices",
+        "seriesId": "ts_23341587921c54ddafc31a52907fbb3d7cce43c414636aded09bcf67b6988dea",
+        "unit": "devices",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_a",
+        "seriesId": "ts_7e2efa1488f4318036867c7002aa68b30f4eea0be37f166c04f524ad15b40a3f",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_b",
+        "seriesId": "ts_675f74a0007c7f0643c1eb550e3c7689900edce872f9789b5e82a4b9d69bdf62",
+        "unit": "count",
+        "grainSeconds": 900
+      },
+      {
+        "metric": "errors_model_c",
+        "seriesId": "ts_bc0715f5f5910dde0a934b2e6faee7cf269ebb185796d9a287bf9b4b2065a145",
+        "unit": "count",
+        "grainSeconds": 900
+      }
+    ]
+  }
+]

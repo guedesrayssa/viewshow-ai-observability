@@ -1,6 +1,7 @@
 import {
   ServiceError,
   assertNoPhysicalFields,
+  monitoringProjectionSchema,
   resolveWindow,
   type InternalResponse,
   type Warning,
@@ -86,7 +87,7 @@ export class DashboardQueries {
   constructor(
     private readonly repository: DashboardReadRepository,
     private readonly activeDataset: ActiveDatasetResolver,
-    _monitoringSources: readonly string[],
+    private readonly monitoringSources: readonly string[],
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
@@ -156,9 +157,87 @@ export class DashboardQueries {
       );
     }
 
-    await requireActiveDataset(this.activeDataset);
-    return dataUnavailable(
-      "A versão ativa ainda não contém uma projeção pública compatível para o monitoramento.",
+    const active = await requireActiveDataset(this.activeDataset);
+    if (active.projectionVersions.monitoring !== "1.0")
+      return dataUnavailable(
+        "A versão ativa ainda não contém uma projeção pública compatível para o monitoramento.",
+      );
+    if (
+      query.source !== undefined &&
+      !this.monitoringSources.includes(query.source)
+    )
+      throw new ServiceError(
+        422,
+        "UNSUPPORTED_FILTER_COMBINATION",
+        "A fonte solicitada não está habilitada para monitoramento.",
+      );
+    const window = resolveWindow(query.window, this.clock());
+    const sources = query.source ? [query.source] : this.monitoringSources;
+    const read = await this.repository.latestMonitoring(
+      active,
+      new Date(window.from),
+      new Date(window.to),
+      sources,
     );
+    if (!read)
+      return dataUnavailable(
+        "A projeção de monitoramento ainda não foi publicada pela ingestão.",
+      );
+    const parsed = monitoringProjectionSchema.parse(read.data);
+    const data =
+      query.flowMetric === "ingestion_rate"
+        ? monitoringProjectionSchema.parse({
+            ...parsed,
+            flow: {
+              metric: "ingestion_rate",
+              unit: parsed.kpis.ingestionRate.unit,
+              bucketSeconds: parsed.flow.bucketSeconds,
+              measurement: parsed.kpis.ingestionRate.measurement,
+              target: null,
+              series:
+                parsed.kpis.ingestionRate.value === null ||
+                parsed.kpis.ingestionRate.measurement.observedThrough === null
+                  ? []
+                  : [
+                      {
+                        stage: "ingestion",
+                        name: "Ingestão",
+                        points: [
+                          {
+                            timestamp:
+                              parsed.kpis.ingestionRate.measurement
+                                .observedThrough,
+                            value: parsed.kpis.ingestionRate.value,
+                          },
+                        ],
+                      },
+                    ],
+              peak:
+                parsed.kpis.ingestionRate.value === null ||
+                parsed.kpis.ingestionRate.measurement.observedThrough === null
+                  ? null
+                  : {
+                      timestamp:
+                        parsed.kpis.ingestionRate.measurement.observedThrough,
+                      stage: "ingestion",
+                      value: parsed.kpis.ingestionRate.value,
+                    },
+            },
+          })
+        : parsed;
+    assertNoPhysicalFields(data);
+    const warnings: Warning[] = [];
+    const reason = data.capabilities.pipelineRuntime.reason;
+    if (reason)
+      warnings.push({
+        code: reason,
+        message:
+          "A origem ainda não publicou as métricas da fila e da DLQ de análise.",
+      });
+    return {
+      data,
+      datasetVersion: active.datasetVersion,
+      quality: quality(read, window, warnings),
+    };
   }
 }

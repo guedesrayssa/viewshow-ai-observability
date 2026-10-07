@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { MlSignal } from "../domain/ml-result.js";
-import { AnalysisError, type AnalysisScope, type Fact, type Observation, type PreparedContext } from "./types.js";
+import { AnalysisError, type AnalysisScope, type DiagnosisProjection, type Fact, type Observation, type PreparedContext } from "./types.js";
 
 export const hash = (value: unknown): string => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export const mean = (values: number[]): number | null => values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
@@ -74,4 +74,77 @@ export function prepareContext(rows: Observation[], dataset: string, scope: Anal
   const base = { version: "a-prime-context-v1" as const, datasetVersion: dataset, scopeId: scope.id, cutoff, signal, facts, gaps };
   if (Buffer.byteLength(JSON.stringify(base)) > maxBytes) throw new AnalysisError("CONTEXT_BUDGET_EXCEEDED", true);
   return { ...base, hash: hash(base) };
+}
+
+/** Builds the incident cards only from persisted observations used by the run. */
+export function prepareDiagnosisProjection(
+  rows: Observation[],
+  event: import("../contracts/analysis-event.js").WindowedEvent,
+  scope: AnalysisScope,
+): DiagnosisProjection | null {
+  const quarterHourMetrics = new Set(scope.series
+    .filter(series => series.grainSeconds === 900)
+    .map(series => series.metric));
+  const inferredConcentrations = [
+    { metric: "cdn_live_err_rate", label: "CDN" },
+    { metric: "origin_live_err_rate", label: "Origem" },
+    { metric: "origin_cdn_live_err_rate", label: "Origem/CDN" },
+  ].filter(item => quarterHourMetrics.has(item.metric));
+  if (!inferredConcentrations.length) {
+    inferredConcentrations.push(...scope.series
+      .filter(series => series.grainSeconds === 900 && /^errors_[a-z0-9_]+$/i.test(series.metric))
+      .map(series => ({
+        metric: series.metric,
+        label: series.metric.replace(/^errors_/i, "").replaceAll("_", "-"),
+      })));
+  }
+  const bufferingMetric = scope.presentation?.bufferingMetric ??
+    (quarterHourMetrics.has("bufferratio_avg") ? "bufferratio_avg" : undefined);
+  const affectedDevicesMetric = scope.presentation?.affectedDevicesMetric ??
+    (quarterHourMetrics.has("affected_devices") ? "affected_devices" :
+      quarterHourMetrics.has("active_with_error") ? "active_with_error" : undefined);
+  const concentrationsConfig = scope.presentation?.concentrations ?? inferredConcentrations;
+  if (!bufferingMetric && !affectedDevicesMetric && !concentrationsConfig.length) return null;
+  const end = Date.parse(event.payload.window.end);
+  const inRange = (row: Observation, start: number) =>
+    row.grainSeconds === 900 && Date.parse(row.timestamp) >= start &&
+    Date.parse(row.timestamp) + row.grainSeconds * 1000 <= end && row.value !== null;
+  const bufferingRows = bufferingMetric
+    ? rows.filter(row => row.metric === bufferingMetric && inRange(row, end - 2 * 3600_000))
+    : [];
+  const bufferingDefinition = scope.series.find(series =>
+    series.metric === bufferingMetric && series.grainSeconds === 900);
+  const scale = scope.presentation?.bufferingScale ??
+    (bufferingDefinition?.unit === "percent" ? 1 : 100);
+  const buffering = bufferingRows.length ? {
+    points: bufferingRows.map(row => ({ timestamp: row.timestamp, value: row.value! * scale })),
+    marker: null,
+  } : null;
+  const totals = concentrationsConfig.map(item => ({
+    label: item.label,
+    value: rows.filter(row => row.metric === item.metric && inRange(row, end - 3600_000))
+      .reduce((sum, row) => sum + Math.max(0, row.value!), 0),
+  }));
+  const total = totals.reduce((sum, item) => sum + item.value, 0);
+  const concentrations = total > 0 ? totals
+    .filter(item => item.value > 0)
+    .map(item => ({ label: item.label, percentage: Math.round(item.value / total * 1000) / 10 })) : [];
+  const affectedDevicesRow = affectedDevicesMetric
+    ? rows.find(row => row.metric === affectedDevicesMetric && row.grainSeconds === 900 &&
+      Date.parse(row.timestamp) === Date.parse(event.payload.window.start) && row.value !== null && row.value >= 0)
+    : undefined;
+  return {
+    impact: {
+      affectedDevices: affectedDevicesRow ? {
+        value: Math.round(affectedDevicesRow.value!),
+        observedThrough: event.payload.window.end,
+        coverageRatio: 1,
+        source: `analysis-worker:${scope.id}:${affectedDevicesMetric}:incident-start-bucket`,
+      } : null,
+    },
+    buffering,
+    concentrations,
+    concentrationNote: scope.presentation?.concentrationNote ??
+      (concentrations.length ? "Participação relativa das métricas de erro na última hora analisada." : ""),
+  };
 }

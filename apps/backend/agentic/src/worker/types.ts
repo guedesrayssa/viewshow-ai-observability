@@ -10,6 +10,13 @@ export interface AnalysisScope {
   series: SeriesDefinition[]; detectorMetrics: string[];
   materiality?: { metric: string; minimum: number }[];
   episodeWindowSeconds?: number;
+  presentation?: {
+    bufferingMetric?: string;
+    bufferingScale?: number;
+    affectedDevicesMetric?: string;
+    concentrations?: { metric: string; label: string }[];
+    concentrationNote?: string;
+  };
 }
 export interface Observation {
   id: string; datasetVersion: string; scopeId: string; metric: string; unit: string;
@@ -34,6 +41,22 @@ export interface Interpretation {
   nextChecks: { question: string; requiredData: string[]; available: boolean }[];
   reasons: string[]; model: string | null; provider: string | null; promptVersion: string;
 }
+export interface DiagnosisProjection {
+  impact: {
+    affectedDevices: {
+      value: number;
+      observedThrough: string;
+      coverageRatio: number;
+      source: string;
+    } | null;
+  };
+  buffering: {
+    points: { timestamp: string; value: number }[];
+    marker: null;
+  } | null;
+  concentrations: { label: string; percentage: number }[];
+  concentrationNote: string;
+}
 export interface ModelResult {
   signals: MlSignal[]; reasons: string[]; historyDays: number; historyPoints: number;
   coverage: number; modelVersion: string;
@@ -41,6 +64,7 @@ export interface ModelResult {
 export interface ScopeCheckpoint {
   event: WindowedEvent; scope: AnalysisScope; result: ModelResult;
   context: PreparedContext | null; incidentId: string | null; predictionId: string | null;
+  presentation?: DiagnosisProjection | null;
   diagnosis?: Interpretation; diagnosticFailure?: string;
   episodeStarted?: boolean;
 }
@@ -51,7 +75,7 @@ export interface AnalysisStore {
   finish(lease: Lease, state: "SUCCEEDED" | "RETRY_PENDING" | "FAILED", now: number, code?: string): Promise<void>;
   checkpoint(lease: Lease, scopeId: string): Promise<ScopeCheckpoint | null>;
   saveCheckpoint(lease: Lease, scopeId: string, value: ScopeCheckpoint): Promise<void>;
-  resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string }>;
+  resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string; resolution: "meta" | "projection" }>;
   correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<{ incidentId: string; isNew: boolean }>;
   saveResult(lease: Lease, checkpoint: ScopeCheckpoint): Promise<void>;
   saveDiagnosis(lease: Lease, checkpoint: ScopeCheckpoint): Promise<void>;

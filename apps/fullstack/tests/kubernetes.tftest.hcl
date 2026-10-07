@@ -38,6 +38,10 @@ override_resource {
 run "kubernetes_runtime_preserves_data_contract" {
   command = plan
   assert {
+    condition     = !contains([for item in local.ingestion_import_environment : item.name], "ANALYSIS_FACT_CATALOG_LOCATION")
+    error_message = "Without a fact catalog the import must not receive ANALYSIS_FACT_CATALOG_LOCATION."
+  }
+  assert {
     condition     = aws_eks_cluster.principal.version == "1.35" && aws_eks_cluster.principal.access_config[0].authentication_mode == "API"
     error_message = "Cluster must support native sidecars and explicit access entries."
   }
@@ -75,9 +79,19 @@ run "production_requires_immutable_images_and_secrets" {
 run "analysis_runtime_enabled" {
   command = plan
   variables {
-    analysis_worker_habilitado  = true
-    analysis_model_file         = "tests/fixtures/analysis-model.json"
-    analysis_scope_catalog_file = "tests/fixtures/analysis-catalog.json"
+    analysis_worker_habilitado     = true
+    analysis_model_file            = "tests/fixtures/analysis-model.json"
+    analysis_scope_catalog_file    = "tests/fixtures/analysis-catalog.json"
+    analysis_llm_provider          = "rules"
+    analysis_fact_catalog_location = "s3://view-show-ingestion-test/analysis/catalogs/catalog.json"
+  }
+  assert {
+    condition     = contains([for item in local.workload_ingestion_import.containers[1].env : "${item.name}=${item.value}"], "ANALYSIS_FACT_CATALOG_LOCATION=s3://view-show-ingestion-test/analysis/catalogs/catalog.json")
+    error_message = "A configured fact catalog must reach the ingestion import."
+  }
+  assert {
+    condition     = contains([for item in local.workload_analysis_worker.containers[0].env : "${item.name}=${item.value}"], "LLM_PROVIDER=rules")
+    error_message = "The deterministic rules provider must reach the analysis worker."
   }
   assert {
     condition     = local.workload_analysis_worker.containers[0].name == "analysis-worker" && length(aws_s3_object.analysis_model) == 1

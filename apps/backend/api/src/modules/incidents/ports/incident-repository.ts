@@ -84,9 +84,14 @@ export interface IncidentRepository {
     eventId: string,
     incidentId: string | null,
   ): Promise<EventDto | null>;
+  /**
+   * Evidências do incidente. Com `analysisRunId`, os fatos A′ do worker ficam
+   * restritos aos dessa execução; as evidências da ingestão nunca são filtradas.
+   */
   listEvidence(
     active: ActiveDatasetSnapshot,
     incidentId: string,
+    analysisRunId?: string,
   ): Promise<readonly EvidenceDto[]>;
   listHypotheses(
     active: ActiveDatasetSnapshot,

@@ -26,8 +26,8 @@ class MemoryStore implements AnalysisStore {
   state=""; claim:"acquired"|"busy"|"complete"="acquired"; checkpointValue: ScopeCheckpoint|null=null; results=0; diagnoses=0; validations=0; correlation:{incidentId:string;isNew:boolean}|null=null;
   async acquire(){return this.claim} async renew(){} async finish(_l:Lease,state:string){this.state=state}
   async checkpoint(){return this.checkpointValue} async saveCheckpoint(_l:Lease,_s:string,v:ScopeCheckpoint){this.checkpointValue=structuredClone(v)}
-  async resolveIncident():Promise<never>{throw new Error("unused")} async correlate():Promise<{incidentId:string;isNew:boolean}>{if(!this.correlation)throw new Error("unexpected correlation");return this.correlation}
-  async saveResult(){this.results++} async saveDiagnosis(){this.diagnoses++} async validatePredictions(){this.validations++}
+  async resolveIncident():ReturnType<AnalysisStore["resolveIncident"]>{throw new Error("unused")} async correlate():Promise<{incidentId:string;isNew:boolean}>{if(!this.correlation)throw new Error("unexpected correlation");return this.correlation}
+  async saveResult(){this.results++} async saveDiagnosis(_l?:Lease,_c?:ScopeCheckpoint){this.diagnoses++} async validatePredictions(){this.validations++}
 }
 class MemoryQueue implements AnalysisQueue { ack=0; dlq=0; visibilityCalls:number[]=[]; async receive(){return []} async acknowledge(){this.ack++} async visibility(_r:string,s:number){this.visibilityCalls.push(s)} async deadLetter(){this.dlq++} }
 type LoggedEvent={name:string;fields:Record<string,string|number|boolean|null>};
@@ -114,4 +114,27 @@ test("quinta falha de dependência encerra a execução e envia à DLQ",async()=
   await worker.process({id:"m",receipt:"r",body:JSON.stringify(event),receives:5});
   assert.equal(store.state,"FAILED");assert.equal(queue.dlq,1);assert.equal(queue.ack,1);assert.deepEqual(queue.visibilityCalls,[]);
   assert.deepEqual(events.map(item=>item.name),["analysis_started","analysis_failed"]);assert.equal(events[1]?.fields.eventType,"QOE_FORECAST");assert.equal(events[1]?.fields.status,"failure");assert.equal(events[1]?.fields.terminal,true);
+});
+
+test("reanálise sem histórico suficiente publica falha explícita com a projeção de apresentação",async()=>{
+  const incidentScope:AnalysisScope={id:"canal-q",source:"argus",entity:"Canal Q",priority:"P2",detectorMetrics:["bufferratio_avg"],series:[
+    {metric:"bufferratio_avg",seriesId:"buffer-q",unit:"ratio",grainSeconds:900},{metric:"affected_devices",seriesId:"devices-q",unit:"devices",grainSeconds:900}]};
+  const windowed:WindowedEvent={eventId:"evt_reanalysis",eventType:"ANOMALY_DETECTION",schemaVersion:"1.0",idempotencyKey:"incident:inc_q",traceId:"inc_q",occurredAt:"2026-01-01T03:15:00Z",producedAt:"2026-01-01T03:15:00Z",source:"incident-projection",
+    payload:{window:{start:"2026-01-01T03:00:00Z",end:"2026-01-01T03:15:00Z",grainSeconds:900},inputWatermark:"2026-01-01T03:15:00Z",datasetVersion:"d1",scope:{kind:"incident",dimensions:{scopeId:"canal-q"}}}};
+  class ReanalysisStore extends MemoryStore{saved:ScopeCheckpoint[]=[];
+    override async resolveIncident(){return{event:windowed,scope:incidentScope,incidentId:"inc_q",resolution:"projection" as const}}
+    override async saveDiagnosis(_l?:Lease,checkpoint?:ScopeCheckpoint){this.diagnoses++;if(checkpoint)this.saved.push(structuredClone(checkpoint))}}
+  const store=new ReanalysisStore(),queue=new MemoryQueue(),events:LoggedEvent[]=[];let llmCalls=0;
+  const current:Observation[]=([["bufferratio_avg",.4,"ratio"],["affected_devices",7,"devices"]] as const).map(([metric,value,unit])=>
+    ({id:`${metric}-q`,datasetVersion:"d1",scopeId:"canal-q",metric,unit,timestamp:"2026-01-01T03:00:00.000Z",grainSeconds:900,value}));
+  const worker=new AnalysisWorker({store,queue,reader:{read:async()=>current},model,scopes:[incidentScope],llm:{generate:async()=>{llmCalls++;throw new Error("must not run")}},
+    telemetry:captureTelemetry(events),now:()=>Date.parse("2026-01-01T03:20:00Z")});
+  const request={eventId:"evt_req",eventType:"REANALYSIS_REQUESTED",schemaVersion:"1.0",idempotencyKey:"req-1",traceId:"trc_req",occurredAt:"2026-01-01T03:19:00Z",producedAt:"2026-01-01T03:19:00Z",source:"api",
+    payload:{incidentId:"inc_q",requestedBy:"usr_1",reason:"MANUAL_REQUEST"}};
+  await worker.process({id:"m",receipt:"r",body:JSON.stringify(request),receives:1});
+  assert.equal(store.state,"SUCCEEDED");assert.equal(queue.dlq,0);assert.equal(queue.ack,1);assert.equal(llmCalls,0);
+  assert.equal(store.diagnoses,1);assert.equal(store.saved[0]?.incidentId,"inc_q");assert.equal(store.saved[0]?.context,null);
+  assert.equal(store.saved[0]?.diagnosticFailure,"INSUFFICIENT_HISTORY");assert.equal(store.saved[0]?.presentation?.impact.affectedDevices?.value,7);
+  assert.deepEqual(events.map(item=>item.name),["analysis_started","analysis_incident_resolved","analysis_diagnosis_unavailable","analysis_completed"]);
+  assert.equal(events[1]?.fields.resolution,"projection");assert.equal(events[2]?.fields.reason,"INSUFFICIENT_HISTORY");assert.equal(events[3]?.fields.diagnoses,1);
 });
