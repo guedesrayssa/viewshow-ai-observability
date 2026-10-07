@@ -1,0 +1,116 @@
+{
+  "results": {
+    "A": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "execução p95",
+            "refId": "A",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     querya7dd050a070d46ad8445bd5544578e6d,\n\t\t}",
+              "executedQueryString": "REMOVE_EMPTY(SEARCH('Namespace=\"view-show/Ingestion\" MetricName=\"RunDurationMs\" \"command\"=\"import-dump\"', 'p95', 300))"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "execução p95 1 -",
+                  "command": "import-dump"
+                },
+                "config": {
+                  "displayNameFromDS": "execução p95",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22A%22%2C%22start%22%3A%222026-10-06T23%3A06%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A20%3A25Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%7B%22expression%22%3A%22REMOVE_EMPTY%28SEARCH%28%27Namespace%3D%5C%22view-show%2FIngestion%5C%22+MetricName%3D%5C%22RunDurationMs%5C%22+%5C%22command%5C%22%3D%5C%22import-dump%5C%22%27%2C+%27p95%27%2C+300%29%29%22%2C%22label%22%3A%22execu%C3%A7%C3%A3o+p95%22%2C%22id%22%3A%22a%22%7D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    },
+    "B": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "projeção máxima",
+            "refId": "B",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     query2ace2c6e9d2945fbb9eb0aafca05386b,\n\t\t}"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "projeção máxima",
+                  "command": "import-dump",
+                  "stage": "PROJECTING"
+                },
+                "config": {
+                  "displayNameFromDS": "projeção máxima",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22B%22%2C%22start%22%3A%222026-10-06T23%3A06%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A20%3A25Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%5B%22view-show%2FIngestion%22%2C%22StageDurationMs%22%2C%22command%22%2C%22import-dump%22%2C%22stage%22%2C%22PROJECTING%22%2C%7B%22stat%22%3A%22Maximum%22%2C%22period%22%3A300%2C%22label%22%3A%22proje%C3%A7%C3%A3o+m%C3%A1xima%22%7D%5D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [],
+              []
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

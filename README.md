@@ -34,6 +34,13 @@ Módulo 7, Engenharia de Software — Inteli
 
 ---
 
+## Testes não funcionais finais
+
+A [entrega consolidada de carga, resiliência e observabilidade](artefatos/testes-carga-finais.md)
+relaciona os três critérios de avaliação aos planos, arquivos de implementação,
+resultados e indicadores. O [índice de evidências](assets/testes-carga/README.md)
+identifica cada ambiente, período e limitação, preservando os resultados históricos.
+
 ## Descrição do projeto
 
 As plataformas de monitoração de mercado pressupõem protocolos modernos e um parque

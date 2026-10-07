@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-10-07T01:27:12.655158+00:00",
+  "measuredBaseRevision": "eca9de4350e4b546db378082186afc366ffb087f",
+  "latestDevelopRevision": "d5339f3de35a42d633f6b3de91e5c919b1c6d57c",
+  "integration": "fast-forward in isolated artifact branch; original checkout unchanged",
+  "change": "ECS runtime replaced by Kubernetes launchers/CronJobs; Python ingestion, k6 scenarios and Dockerfiles unchanged by upstream migration",
+  "awsAccount": "239162056821",
+  "region": "us-east-1",
+  "eksListClusters": {
+    "clusters": ["view-show-rnf-eks"]
+  },
+  "eksCluster": {
+    "name": "view-show-rnf-eks",
+    "status": "ACTIVE",
+    "region": "us-east-1",
+    "nodegroup": "rnf-workloads",
+    "nodesReady": 2,
+    "albDns": "view-show-rnf-eks-50088458.us-east-1.elb.amazonaws.com",
+    "scope": "dedicated cluster, ALB, DynamoDB, S3, SQS, Glue and Athena resources"
+  },
+  "eksLoadTest": "executed: API smoke/load/recovery, ingestion 1000 READY, nominal 150000 censored at PROCESSING, admission and Prometheus gates",
+  "awsLoadScope": "ECS baseline plus isolated EKS native measurements; image digests and evidence paths distinguish them",
+  "localLatestScope": "Kubernetes rendering/adapters offline plus latest API local battery",
+  "cleanup": "owned EKS resources were deleted after evidence capture; ECS baseline was not modified"
+}

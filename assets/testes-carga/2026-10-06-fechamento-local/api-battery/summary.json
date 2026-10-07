@@ -1,0 +1,263 @@
+{
+  "scope": "2,500 synthetic incidents; Node22 host + persistent DynamoDB Local; concurrent component workloads; no production capacity inference",
+  "runs": [
+    {
+      "profile": "api-baseline",
+      "start": "2026-10-06T23:23:59Z",
+      "end": "2026-10-06T23:24:29Z",
+      "exitCode": 0,
+      "requests": 35,
+      "unexpectedFailureRate": 0,
+      "droppedIterations": 0,
+      "p95SuccessfulResponseMs": 128.85764999999992,
+      "failedThresholds": []
+    },
+    {
+      "profile": "api-dynamodb-indisponivel",
+      "start": "2026-10-06T23:30:23Z",
+      "end": "2026-10-06T23:30:24Z",
+      "exitCode": 107,
+      "requests": 4,
+      "unexpectedFailureRate": 0.75,
+      "droppedIterations": 0,
+      "p95SuccessfulResponseMs": 3.401,
+      "failedThresholds": [
+        {
+          "metric": "http_req_failed",
+          "condition": "rate==0"
+        }
+      ]
+    },
+    {
+      "profile": "api-load-137",
+      "start": "2026-10-06T23:24:29Z",
+      "end": "2026-10-06T23:30:22Z",
+      "exitCode": 99,
+      "requests": 43169,
+      "unexpectedFailureRate": 0.526905881535361,
+      "droppedIterations": 1032,
+      "p95SuccessfulResponseMs": 7468.669349999999,
+      "failedThresholds": [
+        {
+          "metric": "http_req_duration{rota:monitoring_overview}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:monitoring_overview}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_failed{rota:incident_events}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{rota:rum_beacon}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:rum_beacon}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "dropped_iterations",
+          "condition": "count==0"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:dashboard_overview}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{rota:auth_session}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:auth_session}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:monitoring_overview}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_failed",
+          "condition": "rate<0.001"
+        },
+        {
+          "metric": "http_req_duration{rota:global_events}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:global_events}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_failed{rota:rum_beacon}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{status:200}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_duration{status:200}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:incident_events}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{rota:argus_integration}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:argus_integration}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_failed{rota:incident_diagnosis}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:incidents_chart}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{rota:incident_diagnosis}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:incident_diagnosis}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_duration{rota:incident_events}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:incident_events}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_failed{rota:monitoring_overview}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{rota:dashboard_overview}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:dashboard_overview}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_failed{rota:auth_session}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:global_events}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "front_api_contract_success_rate",
+          "condition": "rate>0.999"
+        },
+        {
+          "metric": "front_api_client_timeout_total",
+          "condition": "count==0"
+        },
+        {
+          "metric": "http_req_failed{rota:incidents_list}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_failed{rota:incidents_chart}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:incident_diagnosis}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:rum_beacon}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "checks",
+          "condition": "rate>0.999"
+        },
+        {
+          "metric": "http_req_failed{rota:dashboard_overview}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:auth_session}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:incidents_list}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{rota:incidents_chart}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "http_req_duration{rota:incidents_chart}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_failed{rota:argus_integration}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_duration{rota:incidents_list}",
+          "condition": "p(99)<5000"
+        },
+        {
+          "metric": "http_req_duration{rota:incidents_list}",
+          "condition": "p(95)<2000"
+        },
+        {
+          "metric": "front_api_contract_failed_rate{rota:argus_integration}",
+          "condition": "rate<0.02"
+        },
+        {
+          "metric": "http_req_failed{rota:global_events}",
+          "condition": "rate<0.02"
+        }
+      ]
+    },
+    {
+      "profile": "api-recuperacao",
+      "start": "2026-10-06T23:30:31Z",
+      "end": "2026-10-06T23:31:02Z",
+      "exitCode": 0,
+      "requests": 35,
+      "unexpectedFailureRate": 0,
+      "droppedIterations": 0,
+      "p95SuccessfulResponseMs": 176.8399999999999,
+      "failedThresholds": []
+    },
+    {
+      "profile": "api-soak-50",
+      "start": "2026-10-06T23:31:02Z",
+      "end": "2026-10-07T00:01:03Z",
+      "exitCode": 99,
+      "requests": 89928,
+      "unexpectedFailureRate": 0.0008006405124099279,
+      "droppedIterations": 76,
+      "p95SuccessfulResponseMs": 90.94069999999986,
+      "failedThresholds": [
+        {
+          "metric": "dropped_iterations",
+          "condition": "count==0"
+        },
+        {
+          "metric": "front_api_client_timeout_total",
+          "condition": "count==0"
+        }
+      ]
+    }
+  ]
+}

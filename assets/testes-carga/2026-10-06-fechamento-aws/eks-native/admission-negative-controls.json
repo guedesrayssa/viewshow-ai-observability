@@ -1,0 +1,72 @@
+{
+  "observedAt": "2026-10-07T02:11:49.214Z",
+  "context": "arn:aws:eks:us-east-1:239162056821:cluster/view-show-rnf-eks",
+  "actor": "system:serviceaccount:view-show-rnf:api",
+  "scope": "server dry-run; no Job, Pod, S3 object or data write",
+  "checks": [
+    {
+      "name": "valid template",
+      "expectedAllowed": true,
+      "allowed": true,
+      "deniedByPolicy": false,
+      "passed": true
+    },
+    {
+      "name": "different worker image",
+      "expectedAllowed": false,
+      "allowed": false,
+      "deniedByPolicy": true,
+      "passed": true,
+      "error": "The jobs \"import-01m4a2aaaaaaaaaaaaaaaaaaaa\" is invalid: : ValidatingAdmissionPolicy 'view-show-rnf-import-jobs' with binding 'view-show-rnf-import-jobs' denied request: Import worker container is invalid.\n"
+    },
+    {
+      "name": "arbitrary worker command",
+      "expectedAllowed": false,
+      "allowed": false,
+      "deniedByPolicy": true,
+      "passed": true,
+      "error": "The jobs \"import-01m4a2aaaaaaaaaaaaaaaaaaaa\" is invalid: : ValidatingAdmissionPolicy 'view-show-rnf-import-jobs' with binding 'view-show-rnf-import-jobs' denied request: Import worker container is invalid.\n"
+    },
+    {
+      "name": "injected environment",
+      "expectedAllowed": false,
+      "allowed": false,
+      "deniedByPolicy": true,
+      "passed": true,
+      "error": "The jobs \"import-01m4a2aaaaaaaaaaaaaaaaaaaa\" is invalid: : ValidatingAdmissionPolicy 'view-show-rnf-import-jobs' with binding 'view-show-rnf-import-jobs' denied request: Import worker container is invalid.\n"
+    },
+    {
+      "name": "hostPath volume",
+      "expectedAllowed": false,
+      "allowed": false,
+      "deniedByPolicy": true,
+      "passed": true,
+      "error": "Warning: would violate PodSecurity \"baseline:latest\": hostPath volumes (volume \"tmp\")\nThe jobs \"import-01m4a2aaaaaaaaaaaaaaaaaaaa\" is invalid: : ValidatingAdmissionPolicy 'view-show-rnf-import-jobs' with binding 'view-show-rnf-import-jobs' denied request: Import Job volumes are invalid.\n"
+    },
+    {
+      "name": "privileged worker",
+      "expectedAllowed": false,
+      "allowed": false,
+      "deniedByPolicy": true,
+      "passed": true,
+      "error": "Warning: would violate PodSecurity \"baseline:latest\": privileged (container \"ingestion\" must not set securityContext.privileged=true)\nThe jobs \"import-01m4a2aaaaaaaaaaaaaaaaaaaa\" is invalid: : ValidatingAdmissionPolicy 'view-show-rnf-import-jobs' with binding 'view-show-rnf-import-jobs' denied request: Import Job security context is invalid.\n"
+    },
+    {
+      "name": "different service account",
+      "expectedAllowed": false,
+      "allowed": false,
+      "deniedByPolicy": true,
+      "passed": true,
+      "error": "The jobs \"import-01m4a2aaaaaaaaaaaaaaaaaaaa\" is invalid: : ValidatingAdmissionPolicy 'view-show-rnf-import-jobs' with binding 'view-show-rnf-import-jobs' denied request: Import Job Pod identity is invalid.\n"
+    },
+    {
+      "name": "different MySQL probe",
+      "expectedAllowed": false,
+      "allowed": false,
+      "deniedByPolicy": true,
+      "passed": true,
+      "error": "The jobs \"import-01m4a2aaaaaaaaaaaaaaaaaaaa\" is invalid: : ValidatingAdmissionPolicy 'view-show-rnf-import-jobs' with binding 'view-show-rnf-import-jobs' denied request: Import MySQL sidecar is invalid.\n"
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,587 @@
+{
+  "uid": "rnf-fechamento-aws",
+  "title": "RNFs — API e worker AWS (CloudWatch + Prometheus)",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": [
+    "rnf",
+    "local",
+    "evidencia"
+  ],
+  "timezone": "utc",
+  "refresh": "5s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "API AWS — latência p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-local"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"rnf-api-aws\"}[30s])))",
+          "legendFormat": "API — latência p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "API AWS — throughput",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-local"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"rnf-api-aws\"}[30s]))",
+          "legendFormat": "API — throughput"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "API AWS — erros por segundo",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-local"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"rnf-api-aws\",status_code=~\"5..\"}[30s])) or vector(0)",
+          "legendFormat": "API — erros por segundo"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "API AWS — CPU do processo (1 núcleo)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-local"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * rate(view_show_process_cpu_seconds_total{job=\"rnf-api-aws\"}[30s])",
+          "legendFormat": "API — CPU do processo (1 núcleo)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "rnf-cloudwatch"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "command": "import-dump"
+          },
+          "label": "execução p95",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "RunDurationMs",
+          "namespace": "view-show/Ingestion",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "us-east-1",
+          "statistic": "p95"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "command": "import-dump",
+            "stage": [
+              "PROJECTING"
+            ]
+          },
+          "label": "projeção máxima",
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "StageDurationMs",
+          "namespace": "view-show/Ingestion",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "B",
+          "region": "us-east-1",
+          "statistic": "Maximum"
+        }
+      ],
+      "title": "Worker AWS — Latência — execução p95 e projeção máxima",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "rnf-cloudwatch"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "command": "import-dump"
+          },
+          "hide": true,
+          "id": "records_read",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "RecordsRead",
+          "namespace": "view-show/Ingestion",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "us-east-1",
+          "statistic": "Sum"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "command": "import-dump"
+          },
+          "hide": true,
+          "id": "records_written",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "RecordsWritten",
+          "namespace": "view-show/Ingestion",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "B",
+          "region": "us-east-1",
+          "statistic": "Sum"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "expression": "SUM(records_read)/300",
+          "id": "read_rate",
+          "label": "lidos/s",
+          "dimensions": {},
+          "metricName": "",
+          "namespace": "",
+          "period": "300",
+          "statistic": "Average",
+          "metricEditorMode": 1,
+          "metricQueryType": 0,
+          "queryMode": "Metrics",
+          "refId": "C",
+          "region": "us-east-1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "expression": "SUM(records_written)/300",
+          "id": "write_rate",
+          "label": "escritos/s",
+          "dimensions": {},
+          "metricName": "",
+          "namespace": "",
+          "period": "300",
+          "statistic": "Average",
+          "metricEditorMode": 1,
+          "metricQueryType": 0,
+          "queryMode": "Metrics",
+          "refId": "D",
+          "region": "us-east-1"
+        }
+      ],
+      "title": "Worker AWS — Throughput — registros/s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "rnf-cloudwatch"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 8
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "command": "import-dump",
+            "status": [
+              "FAILED"
+            ]
+          },
+          "hide": true,
+          "id": "failed_runs",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "Runs",
+          "namespace": "view-show/Ingestion",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "us-east-1",
+          "statistic": "Sum"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "command": "import-dump",
+            "status": [
+              "PARTIAL"
+            ]
+          },
+          "hide": true,
+          "id": "partial_runs",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "Runs",
+          "namespace": "view-show/Ingestion",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "B",
+          "region": "us-east-1",
+          "statistic": "Sum"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "command": "import-dump"
+          },
+          "hide": true,
+          "id": "rejected_records",
+          "matchExact": false,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "RecordsRejected",
+          "namespace": "view-show/Ingestion",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "C",
+          "region": "us-east-1",
+          "statistic": "Sum"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "expression": "(SUM(failed_runs)+SUM(partial_runs))/300",
+          "id": "error_rate",
+          "label": "execuções com erro/s",
+          "dimensions": {},
+          "metricName": "",
+          "namespace": "",
+          "period": "300",
+          "statistic": "Average",
+          "metricEditorMode": 1,
+          "metricQueryType": 0,
+          "queryMode": "Metrics",
+          "refId": "D",
+          "region": "us-east-1"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "expression": "SUM(rejected_records)/300",
+          "id": "rejection_rate",
+          "label": "registros rejeitados/s",
+          "dimensions": {},
+          "metricName": "",
+          "namespace": "",
+          "period": "300",
+          "statistic": "Average",
+          "metricEditorMode": 1,
+          "metricQueryType": 0,
+          "queryMode": "Metrics",
+          "refId": "E",
+          "region": "us-east-1"
+        }
+      ],
+      "title": "Worker AWS — Erros por segundo",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "rnf-cloudwatch"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 8
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": "view-show-ingestion-import"
+          },
+          "hide": true,
+          "id": "cpu_used",
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "CpuUtilized",
+          "namespace": "ECS/ContainerInsights",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "A",
+          "region": "us-east-1",
+          "statistic": "Average"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "dimensions": {
+            "ClusterName": [
+              "view-show-iac-cluster"
+            ],
+            "TaskDefinitionFamily": "view-show-ingestion-import"
+          },
+          "hide": true,
+          "id": "cpu_reserved",
+          "matchExact": true,
+          "metricEditorMode": 0,
+          "metricQueryType": 0,
+          "metricName": "CpuReserved",
+          "namespace": "ECS/ContainerInsights",
+          "period": "300",
+          "queryMode": "Metrics",
+          "refId": "B",
+          "region": "us-east-1",
+          "statistic": "Average"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "rnf-cloudwatch"
+          },
+          "expression": "100*cpu_used/cpu_reserved",
+          "id": "cpu_percent",
+          "label": "CPU utilizada",
+          "dimensions": {},
+          "metricName": "",
+          "namespace": "",
+          "period": "300",
+          "statistic": "Average",
+          "metricEditorMode": 1,
+          "metricQueryType": 0,
+          "queryMode": "Metrics",
+          "refId": "C",
+          "region": "us-east-1"
+        }
+      ],
+      "title": "Worker AWS — CPU da task — utilizada/reservada",
+      "type": "timeseries"
+    }
+  ],
+  "description": "Coleta da conta 239162056821, us-east-1. API: Prometheus; worker import-dump: CloudWatch. Ausência de amostra não é zero. CPU da API é por processo; CPU do worker é utilizada/reservada."
+}

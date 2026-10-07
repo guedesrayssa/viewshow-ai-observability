@@ -1,0 +1,30 @@
+java.lang.OutOfMemoryError: Java heap space: failed reallocation of scalar replaced objects
+
+Oct 06, 2026 11:52:10 PM com.almworks.sqlite4java.Internal log
+WARNING: [sqlite] SQLiteDBAccess$20@21964552: job exception
+java.lang.OutOfMemoryError: Java heap space: failed reallocation of scalar replaced objects
+
+Oct 06, 2026 11:52:16 PM com.almworks.sqlite4java.Internal log
+WARNING: [sqlite] SQLiteDBAccess$20@5590b633: job exception
+java.lang.OutOfMemoryError: Java heap space: failed reallocation of scalar replaced objects
+
+Oct 06, 2026 11:52:21 PM com.almworks.sqlite4java.Internal log
+WARNING: [sqlite] SQLiteDBAccess$20@206ea53d: job exception
+java.lang.OutOfMemoryError: Java heap space
+
+Oct 06, 2026 11:52:27 PM com.almworks.sqlite4java.Internal log
+WARNING: [sqlite] SQLiteDBAccess$20@5e9cbbcc: job exception
+java.lang.OutOfMemoryError: Java heap space
+
+Oct 06, 2026 11:52:36 PM com.almworks.sqlite4java.Internal log
+WARNING: [sqlite] SQLiteDBAccess$20@4d33d998: job exception
+java.lang.OutOfMemoryError: Java heap space
+
+Oct 06, 2026 11:52:47 PM com.almworks.sqlite4java.Internal log
+WARNING: [sqlite] SQLiteDBAccess$20@4850d6fb: job exception
+java.lang.OutOfMemoryError: Java heap space
+
+Oct 06, 2026 11:53:05 PM com.almworks.sqlite4java.Internal log
+WARNING: [sqlite] SQLiteDBAccess$20@73a946e6: job exception
+java.lang.OutOfMemoryError: Java heap space: failed reallocation of scalar replaced objects
+

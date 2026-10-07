@@ -1,0 +1,36 @@
+{
+  "scope": "moto SQS + production consumer/sync; existing fake source/state ports",
+  "datasets": [
+    "signal_bucket",
+    "live_qoe_hourly"
+  ],
+  "visibilityTimeoutSeconds": 0,
+  "maxReceiveCount": 5,
+  "results": [
+    {
+      "completed": 0,
+      "retryable": 2
+    },
+    {
+      "completed": 0,
+      "retryable": 2
+    },
+    {
+      "completed": 0,
+      "retryable": 2
+    },
+    {
+      "completed": 0,
+      "retryable": 2
+    },
+    {
+      "completed": 0,
+      "retryable": 2
+    }
+  ],
+  "dlqMessages": 2,
+  "persistedRecords": 0,
+  "riskReproduced": true,
+  "scenarioVerdict": "REPROVADO",
+  "interpretation": "Valid messages consume receive attempts while SYNC_GLOBAL is occupied; visibility renewal on the first group does not protect the other group."
+}

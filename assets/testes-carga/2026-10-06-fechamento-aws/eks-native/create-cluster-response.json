@@ -1,0 +1,7 @@
+{
+  "name": "view-show-rnf-eks",
+  "arn": "arn:aws:eks:us-east-1:239162056821:cluster/view-show-rnf-eks",
+  "version": "1.35",
+  "status": "CREATING",
+  "createdAt": "2026-10-06 22:34:36.707000-03:00"
+}

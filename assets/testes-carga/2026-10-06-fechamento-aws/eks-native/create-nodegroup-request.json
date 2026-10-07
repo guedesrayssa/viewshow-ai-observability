@@ -1,0 +1,28 @@
+{
+  "clusterName": "view-show-rnf-eks",
+  "nodegroupName": "rnf-workloads",
+  "subnets": [
+    "subnet-02da093a1c8e2e016",
+    "subnet-07105f364faaa389c"
+  ],
+  "nodeRole": "arn:aws:iam::239162056821:role/LabRole",
+  "instanceTypes": [
+    "i3.large"
+  ],
+  "amiType": "AL2023_x86_64_STANDARD",
+  "capacityType": "ON_DEMAND",
+  "scalingConfig": {
+    "minSize": 2,
+    "maxSize": 2,
+    "desiredSize": 2
+  },
+  "launchTemplate": {
+    "id": "lt-0b84fd196526adac8",
+    "version": "1"
+  },
+  "tags": {
+    "Projeto": "view-show",
+    "Purpose": "rnf-synthetic-tests",
+    "Owner": "g05-artifact"
+  }
+}

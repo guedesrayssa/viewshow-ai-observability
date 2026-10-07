@@ -1,0 +1,6 @@
+{
+    "taskArn": "arn:aws:ecs:us-east-1:239162056821:task/view-show-iac-cluster/8a76d00aca234ef3b7945936bef82fec",
+    "definition": "arn:aws:ecs:us-east-1:239162056821:task-definition/view-show-ingestion-import:1",
+    "status": "RUNNING",
+    "desired": "STOPPED"
+}

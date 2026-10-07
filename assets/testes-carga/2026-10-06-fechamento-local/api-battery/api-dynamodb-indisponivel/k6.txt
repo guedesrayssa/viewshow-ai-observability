@@ -1,0 +1,21 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /Users/marcossilva/.codex/worktrees/artefato-rnfs-final/g05/apps/backend/api/loadtest/k6/front-api.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 10 max VUs, 1m0s max duration (incl. graceful stop):
+              * frontend: 1.00 iterations/s for 30s (maxVUs: 2-10, gracefulStop: 30s)
+
+Carga da API consumida pelo frontend — modo smoke
+Nenhuma iteração foi executada: o setup() abortou (saúde, login ou pré-checagem). Veja o erro acima; os thresholds não se aplicam.
+
+Run        [ 100% ] setup()
+frontend   [   0% ]
+time="2026-10-06T20:30:24-03:00" level=error msg="Error: Pré-checagem falhou (PREFLIGHT=0 desliga):\n - GET /api/v1/incidents?window=24h devolveu status 503: seed ausente/envelhecido? (semeie imediatamente antes de cada rodada)\n - o incidente inc-000001 não existe nesta API (diagnosis=503); o script sorteia inc-000001..inc-002500 — ajuste INCIDENT_COUNT, semeie a massa sintética ou use INCIDENT_IDS=discover\n - o incidente inc-002500 não existe nesta API (diagnosis=503); o script sorteia inc-000001..inc-002500 — ajuste INCIDENT_COUNT, semeie a massa sintética ou use INCIDENT_IDS=discover\n\tat preflight (file:///Users/marcossilva/.codex/worktrees/artefato-rnfs-final/g05/apps/backend/api/loadtest/k6/front-api.js:504:11(191))\n\tat setup (file:///Users/marcossilva/.codex/worktrees/artefato-rnfs-final/g05/apps/backend/api/loadtest/k6/front-api.js:535:27(66))\n" hint="script exception" source=stacktrace

@@ -1,0 +1,17 @@
+{
+  "profile": "750000 concentrated synthetic events",
+  "capacityBudgetSeconds": 4500,
+  "censoring": "external controlled stop after the proportional budget was exceeded; original poll limit was10800s and raw threshold900s, neither rewritten",
+  "stopRequestedAt": "2026-10-07T00:36:21+00:00",
+  "elapsedFromRunnerStartAtCensoringSeconds": 5159.619,
+  "approximateUpperBoundEventsPerMinuteIfThePipelineHadCompleted": 8721.574209258473,
+  "observedTerminalState": "FAILED",
+  "workerExitCode": 137,
+  "processingUntilFailedSeconds": 5250.877,
+  "independentlyPersistedRecords": 750000,
+  "independentDatasets": 23,
+  "capacityVerdict": "REPROVADO",
+  "dataIntegrityScope": "independent hot-store count; full projection/archive completion not demonstrated",
+  "httpFailures": 0,
+  "limitation": "k6 throughput0 means no READY version, not0 persisted records; cancellation is operationally imposed, not a native server deadline"
+}

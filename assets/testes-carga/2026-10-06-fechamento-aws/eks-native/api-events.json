@@ -1,0 +1,2492 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6459",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:26Z",
+            "message": "Successfully assigned view-show-rnf/api-59cf78d5c4-22ksz to ip-10-0-10-82.ec2.internal",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d14a9f0a2c8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6463",
+                "uid": "79e5f785-8157-4293-93fb-603d3c64ea8f"
+            },
+            "reason": "Scheduled",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 7,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:12:22Z",
+            "message": "Container image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\" already present on machine and can be accessed by the pod",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d14ced81a19",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8835",
+                "uid": "7202a7a1-6cee-4860-acfd-c0febacc9ef3"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 7,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:27Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:12:23Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:27Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d14d049ada9",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8836",
+                "uid": "7d9bce44-998d-40d3-a6f7-9a06800ddc65"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:27Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:00Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:27Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d14dae72d17",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8170",
+                "uid": "6a39e40a-ec62-4ba4-94df-ff1cd31dcd78"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 2,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:29Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:20Z",
+            "message": "Startup probe failed: Get \"http://10.0.10.69:3000/health\": dial tcp 10.0.10.69:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:29Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d15703a9950",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6872",
+                "uid": "a9f7b1ab-7e0d-408b-9dc6-abc6b88b1dbc"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 16,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:40Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:07:04Z",
+            "message": "Readiness probe failed: Get \"http://10.0.10.69:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:40Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d180d3febbc",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "7161",
+                "uid": "63816499-2cab-4790-bd71-c6dbd132593f"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 16,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:44Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:29Z",
+            "message": "Liveness probe failed: Get \"http://10.0.10.69:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:44Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d18f0f73d5b",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8338",
+                "uid": "41facb3f-52b1-4c89-a430-10b1ed928bab"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:06:14Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:59Z",
+            "message": "Container api failed liveness probe, will be restarted",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:06:14Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d1fed1d2a8d",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8466",
+                "uid": "376a016c-da4e-4790-8781-24d13b2ba7f4"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:06:14Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:14Z",
+            "message": "Readiness probe failed: Get \"http://10.0.10.69:3000/health\": read tcp 10.0.10.82:54800-\u003e10.0.10.69:3000: read: connection reset by peer",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:06:14Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d1ffaaae54c",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6834",
+                "uid": "d2d84aef-5869-43fe-9e9f-a52281a2cd74"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:06:16Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:16Z",
+            "message": "Readiness probe failed: Get \"http://10.0.10.69:3000/health\": dial tcp 10.0.10.69:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:06:16Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1d20666d917d",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6849",
+                "uid": "27de6a24-26ef-4bff-9775-8dfa07363977"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-22ksz",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6462",
+                "uid": "2fe631d3-e840-47fa-acb0-2daad8ecf85e"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Stopping container api",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "api-59cf78d5c4-22ksz.18dc1db579e1ba6e",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "9988",
+                "uid": "d4eb9b1a-f5c4-4500-bc79-1ba287f2f9da"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6464",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:26Z",
+            "message": "Successfully assigned view-show-rnf/api-59cf78d5c4-2vdj7 to ip-10-0-11-155.ec2.internal",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d14aaa78115",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6468",
+                "uid": "8bd9a13b-f163-45e9-83d0-a85f51c03c51"
+            },
+            "reason": "Scheduled",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:15Z",
+            "message": "Container image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\" already present on machine and can be accessed by the pod",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d14ce8ceb83",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8255",
+                "uid": "7a624060-d344-4266-9ea3-0ee012877cac"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:27Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:15Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:27Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d14d0a54262",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8256",
+                "uid": "43b0a09f-9455-4ef1-8ef1-5a16c7820614"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:27Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:15Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:27Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d14dad0c4cd",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8258",
+                "uid": "a4e84a72-e355-4eee-85e5-d3e485daa151"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 2,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:29Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:20Z",
+            "message": "Startup probe failed: Get \"http://10.0.11.37:3000/health\": dial tcp 10.0.11.37:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:29Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d1570fceae1",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6873",
+                "uid": "1522db55-24f5-4f33-ae5e-8c83a4bb82ed"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 48,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:40Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:36Z",
+            "message": "Readiness probe failed: Get \"http://10.0.11.37:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:40Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d1804a423cb",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8367",
+                "uid": "c5e6d884-6cfc-47c2-a4ba-18bafc96a385"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 5,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:44Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:59Z",
+            "message": "Liveness probe failed: Get \"http://10.0.11.37:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:44Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d18f275ed00",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "7126",
+                "uid": "c5f14089-0019-4b54-a0dd-e9e7de5775fe"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 5,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:06:14Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:14Z",
+            "message": "Container api failed liveness probe, will be restarted",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:06:14Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d1fee08131e",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8250",
+                "uid": "40716d38-86fd-45fd-be1e-176f007e7f55"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:06:15Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:15Z",
+            "message": "Readiness probe failed: Get \"http://10.0.11.37:3000/health\": read tcp 10.0.11.155:45284-\u003e10.0.11.37:3000: read: connection reset by peer",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:06:15Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d201af20731",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6836",
+                "uid": "e0ad313c-367a-4f3a-99d7-61c49434a5fc"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:06:17Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:17Z",
+            "message": "Readiness probe failed: Get \"http://10.0.11.37:3000/health\": dial tcp 10.0.11.37:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:06:17Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1d2083345a80",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6854",
+                "uid": "3f3ecedc-e88b-4259-a65c-cc4110e33396"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:27Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-2vdj7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6466",
+                "uid": "b657b958-0d68-456e-81e1-601c75ac9e1b"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:27Z",
+            "message": "Stopping container api",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:27Z",
+                "name": "api-59cf78d5c4-2vdj7.18dc1dbc77e681a1",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10161",
+                "uid": "ae1852c0-978b-4963-ae20-8b6f692d7482"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:26Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5105",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:00:26Z",
+            "message": "Successfully assigned view-show-rnf/api-59cf78d5c4-bkbvf to ip-10-0-11-155.ec2.internal",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:26Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1ccec16fd9aa",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5111",
+                "uid": "ec39884a-e25f-42b9-9be1-ecf29f3495dc"
+            },
+            "reason": "Scheduled",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:26Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:00:26Z",
+            "message": "Pulling image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\"",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:26Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1ccee7c3cbd7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5116",
+                "uid": "b4ea91d7-5202-4297-89d9-5fdff0a69ce0"
+            },
+            "reason": "Pulling",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:33Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:00:33Z",
+            "message": "Successfully pulled image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\" in 6.718s (6.718s including waiting). Image size: 96066833 bytes.",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:33Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1cd0783efa32",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5148",
+                "uid": "44d89740-e785-45c9-9813-c155098dd585"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 7,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:33Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:11:51Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:33Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1cd0798c2d86",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8692",
+                "uid": "10708d6b-36b6-4005-a2d2-3299c9e630db"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:33Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:09:30Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:33Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1cd084ab9b80",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8016",
+                "uid": "8f33c16a-6ca6-453e-8e9f-211a577c5d37"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 3,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:35Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:35Z",
+            "message": "Startup probe failed: Get \"http://10.0.11.251:3000/health\": dial tcp 10.0.11.251:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:35Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1cd0ed3fe667",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6567",
+                "uid": "e598ecc9-bab0-4ef7-a780-40b53f52d782"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 5,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:59Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:14Z",
+            "message": "Liveness probe failed: Get \"http://10.0.11.251:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:59Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1d0e678f89fa",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6827",
+                "uid": "da9d20c1-0352-403c-99d2-0e5c69b5bd37"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 15,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:59Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:19Z",
+            "message": "Readiness probe failed: Get \"http://10.0.11.251:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:59Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1d0e68c3480d",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6867",
+                "uid": "e69e9b96-7838-4008-8128-aceec9b63474"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:29Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:29Z",
+            "message": "Container api failed liveness probe, will be restarted",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:29Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1d1563bb93cc",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8337",
+                "uid": "25949629-d0db-4613-bb3b-440a6f08df82"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:30Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:30Z",
+            "message": "Readiness probe failed: Get \"http://10.0.11.251:3000/health\": read tcp 10.0.11.155:40250-\u003e10.0.11.251:3000: read: connection reset by peer",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:30Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1d1588179f18",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6510",
+                "uid": "853b09c8-402b-44c7-b5f3-53ccad80e867"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:30Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:11:51Z",
+            "message": "Container image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\" already present on machine and can be accessed by the pod",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:30Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1d159751f27b",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8691",
+                "uid": "a3b2c52a-ebb2-43bf-8bac-40d6f930dd30"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 2,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:31Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:32Z",
+            "message": "Readiness probe failed: Get \"http://10.0.11.251:3000/health\": dial tcp 10.0.11.251:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:31Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1d15c56e5ad0",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6533",
+                "uid": "824124fa-b3a4-4d54-b2a5-694771ab48d3"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 3,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:10:29Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:11:42Z",
+            "message": "Back-off restarting failed container api in pod api-59cf78d5c4-bkbvf_view-show-rnf(9acdc1a8-b053-49e8-8d48-97c1d438ce57)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:11:42Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1d5b57a7c515",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8645",
+                "uid": "cfed7c2e-a508-418c-9481-2d180132922e"
+            },
+            "reason": "BackOff",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:27Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bkbvf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5109",
+                "uid": "9acdc1a8-b053-49e8-8d48-97c1d438ce57"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:27Z",
+            "message": "Stopping container api",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:27Z",
+                "name": "api-59cf78d5c4-bkbvf.18dc1dbc782956d4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10162",
+                "uid": "3fe89c26-ffbd-4ae0-a365-5e754e539b0d"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:40Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2631",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:40Z",
+            "message": "Successfully assigned view-show-rnf/api-59cf78d5c4-bq7v8 to ip-10-0-10-82.ec2.internal",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:40Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1c466454aa98",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2636",
+                "uid": "7c49ad91-d405-4241-ae55-395b2e6a09fb"
+            },
+            "reason": "Scheduled",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:41Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:41Z",
+            "message": "Pulling image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\"",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:41Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1c468cf62f62",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2645",
+                "uid": "ea9d2ee6-28e8-4561-9758-ab23e0b1bff3"
+            },
+            "reason": "Pulling",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:47Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:47Z",
+            "message": "Successfully pulled image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\" in 6.368s (6.368s including waiting). Image size: 96066833 bytes.",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:47Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1c48088fb0dd",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2705",
+                "uid": "bd112a0c-e472-430e-adbd-4696340a4033"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 7,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:47Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:11:36Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:47Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1c4809bbc748",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8615",
+                "uid": "2a866e26-72c5-4dee-8e55-7fd0caf54a77"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 7,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:47Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:11:36Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:47Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1c48121e35a4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8616",
+                "uid": "26c0f966-5b33-45ca-b717-c67157ad00e6"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 3,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:49Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:34Z",
+            "message": "Startup probe failed: Get \"http://10.0.10.148:3000/health\": dial tcp 10.0.10.148:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:49Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1c48908cd402",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6565",
+                "uid": "16b3ea19-6856-48cf-b782-685c8ac799b4"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:58Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:06:28Z",
+            "message": "Liveness probe failed: Get \"http://10.0.10.148:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:58Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1d0e3f4cf1cc",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6928",
+                "uid": "f26b45ed-e9c5-48a6-8759-0da71937d18d"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 50,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:04:58Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:03Z",
+            "message": "Readiness probe failed: Get \"http://10.0.10.148:3000/health\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:04:58Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1d0e4083ed22",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8196",
+                "uid": "aecd2918-b01b-413c-8b22-1b8106581653"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:28Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:10:13Z",
+            "message": "Container api failed liveness probe, will be restarted",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:28Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1d153b7c1eb0",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8247",
+                "uid": "fb608f4a-34f6-40d9-b4de-6831cf248c43"
+            },
+            "reason": "Killing",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:29Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:29Z",
+            "message": "Readiness probe failed: Get \"http://10.0.10.148:3000/health\": read tcp 10.0.10.82:39402-\u003e10.0.10.148:3000: read: connection reset by peer",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:29Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1d1560a55f1e",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6503",
+                "uid": "a684312b-e4e3-49c6-9aed-3a36736b64a1"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 6,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:30Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:11:35Z",
+            "message": "Container image \"239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c\" already present on machine and can be accessed by the pod",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:30Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1d1594a6f5bf",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "8614",
+                "uid": "2a43e1cc-2956-4d33-b7a1-359f543c15e3"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 2,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:30Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{api}",
+                "kind": "Pod",
+                "name": "api-59cf78d5c4-bq7v8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2632",
+                "uid": "45f70783-d34b-4500-bd43-9f294fcccff7"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:31Z",
+            "message": "Readiness probe failed: Get \"http://10.0.10.148:3000/health\": dial tcp 10.0.10.148:3000: connect: connection refused",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:30Z",
+                "name": "api-59cf78d5c4-bq7v8.18dc1d15a6ddf42f",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6528",
+                "uid": "509578ac-82c1-4869-8d26-b83b9a4a3bca"
+            },
+            "reason": "Unhealthy",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-10-82.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-10-82.ec2.internal"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:40Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "api-59cf78d5c4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2625",
+                "uid": "68150a05-f50e-426e-95c7-ddadd18654fd"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:40Z",
+            "message": "Created pod: api-59cf78d5c4-bq7v8",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:40Z",
+                "name": "api-59cf78d5c4.18dc1c4664048cc5",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2634",
+                "uid": "434f24ba-b1a4-4da6-976c-84850226f01e"
+            },
+            "reason": "SuccessfulCreate",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:26Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "api-59cf78d5c4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5101",
+                "uid": "68150a05-f50e-426e-95c7-ddadd18654fd"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:00:26Z",
+            "message": "Created pod: api-59cf78d5c4-bkbvf",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:26Z",
+                "name": "api-59cf78d5c4.18dc1ccec0d747c0",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5108",
+                "uid": "65709867-ad89-4bbf-a010-7f157e2c5ce2"
+            },
+            "reason": "SuccessfulCreate",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "api-59cf78d5c4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6454",
+                "uid": "68150a05-f50e-426e-95c7-ddadd18654fd"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:26Z",
+            "message": "Created pod: api-59cf78d5c4-22ksz",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api-59cf78d5c4.18dc1d14a97a9cae",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6460",
+                "uid": "3723c5bf-52f9-4b76-b0be-af418498259c"
+            },
+            "reason": "SuccessfulCreate",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "api-59cf78d5c4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6454",
+                "uid": "68150a05-f50e-426e-95c7-ddadd18654fd"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:26Z",
+            "message": "Created pod: api-59cf78d5c4-2vdj7",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api-59cf78d5c4.18dc1d14aa5d58da",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6465",
+                "uid": "7ae2b7fa-6b7d-41f5-8dbd-3ecd71dd9ee4"
+            },
+            "reason": "SuccessfulCreate",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "api-59cf78d5c4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "9978",
+                "uid": "68150a05-f50e-426e-95c7-ddadd18654fd"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Deleted pod: api-59cf78d5c4-22ksz",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "api-59cf78d5c4.18dc1db579ec6bb5",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "9987",
+                "uid": "82ac062d-c359-4c83-8868-389a2c18e992"
+            },
+            "reason": "SuccessfulDelete",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:27Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "api-59cf78d5c4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10148",
+                "uid": "68150a05-f50e-426e-95c7-ddadd18654fd"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:27Z",
+            "message": "Deleted pod: api-59cf78d5c4-2vdj7",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:27Z",
+                "name": "api-59cf78d5c4.18dc1dbc7797665c",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10153",
+                "uid": "783d1736-76ab-476b-8244-b97be70dba92"
+            },
+            "reason": "SuccessfulDelete",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:27Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "api-59cf78d5c4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10148",
+                "uid": "68150a05-f50e-426e-95c7-ddadd18654fd"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:27Z",
+            "message": "Deleted pod: api-59cf78d5c4-bkbvf",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:27Z",
+                "name": "api-59cf78d5c4.18dc1dbc77d41174",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10157",
+                "uid": "9cb1bd04-b156-4c0c-ba2e-0e2eafc22000"
+            },
+            "reason": "SuccessfulDelete",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 2,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:39Z",
+            "involvedObject": {
+                "apiVersion": "policy/v1",
+                "kind": "PodDisruptionBudget",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2599",
+                "uid": "7318babe-cacb-45c8-abde-531e074b6970"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:39Z",
+            "message": "No matching pods found",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:39Z",
+                "name": "api.18dc1c461e071a6e",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2602",
+                "uid": "8ff2f35f-8357-4f46-acaf-44c851d5841c"
+            },
+            "reason": "NoPods",
+            "reportingComponent": "controllermanager",
+            "reportingInstance": "",
+            "source": {
+                "component": "controllermanager"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:40Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2624",
+                "uid": "62f4fdf6-5aa2-4cc4-97f9-f5476b20f062"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:40Z",
+            "message": "Scaled up replica set api-59cf78d5c4 from 0 to 1",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:40Z",
+                "name": "api.18dc1c465cd362d0",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2627",
+                "uid": "1176c204-76df-4ddd-95b0-f878eb150c71"
+            },
+            "reason": "ScalingReplicaSet",
+            "reportingComponent": "deployment-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "deployment-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 66,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:41Z",
+            "involvedObject": {
+                "apiVersion": "elbv2.k8s.aws/v1beta1",
+                "kind": "TargetGroupBinding",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2654",
+                "uid": "cf39f406-f53b-4acc-a53a-5a41de9cd28d"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Successfully reconciled",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:41Z",
+                "name": "api.18dc1c46a128fc54",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10002",
+                "uid": "a4f008c7-6c30-4535-9d1b-a62f4db0efc0"
+            },
+            "reason": "SuccessfullyReconciled",
+            "reportingComponent": "targetGroupBinding",
+            "reportingInstance": "",
+            "source": {
+                "component": "targetGroupBinding"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:55Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2640",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:55Z",
+            "message": "failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:55Z",
+                "name": "api.18dc1c49ebeb5f1e",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2751",
+                "uid": "e562e6ee-9347-4b22-b4f4-d058ce77fc9e"
+            },
+            "reason": "FailedGetResourceMetric",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:55Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2640",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:55Z",
+            "message": "invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:55Z",
+                "name": "api.18dc1c49ec294a42",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2753",
+                "uid": "478b7ea2-4f99-40af-9f6f-1726c3fb10d3"
+            },
+            "reason": "FailedComputeMetricsReplicas",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 2,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:51:10Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2752",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:41Z",
+            "message": "failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:51:10Z",
+                "name": "api.18dc1c4d6ada45c7",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6616",
+                "uid": "4a901a91-ac4d-42b6-95b8-aaf505c5098f"
+            },
+            "reason": "FailedGetResourceMetric",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 2,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:51:10Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2752",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:41Z",
+            "message": "invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:51:10Z",
+                "name": "api.18dc1c4d6b1a39bb",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6617",
+                "uid": "a8ad9d98-d12e-4dbb-a5cd-c42c8cdf04ec"
+            },
+            "reason": "FailedComputeMetricsReplicas",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:26Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5029",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:00:26Z",
+            "message": "New size: 2; reason: cpu resource utilization (percentage of request) above target",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:26Z",
+                "name": "api.18dc1ccebf2131f8",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5100",
+                "uid": "0a271296-cc9f-412d-ad42-592c7622bc43"
+            },
+            "reason": "SuccessfulRescale",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:00:26Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5098",
+                "uid": "62f4fdf6-5aa2-4cc4-97f9-f5476b20f062"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:00:26Z",
+            "message": "Scaled up replica set api-59cf78d5c4 from 1 to 2",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:00:26Z",
+                "name": "api.18dc1ccebf928807",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "5102",
+                "uid": "d9c1a383-94d3-46f6-a3d7-6b68be93c179"
+            },
+            "reason": "ScalingReplicaSet",
+            "reportingComponent": "deployment-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "deployment-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6382",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:26Z",
+            "message": "New size: 4; reason: cpu resource utilization (percentage of request) above target",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api.18dc1d14a7fb0805",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6455",
+                "uid": "b98eef79-f845-467b-8518-3193e02bf253"
+            },
+            "reason": "SuccessfulRescale",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:05:26Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6452",
+                "uid": "62f4fdf6-5aa2-4cc4-97f9-f5476b20f062"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:05:26Z",
+            "message": "Scaled up replica set api-59cf78d5c4 from 2 to 4",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:05:26Z",
+                "name": "api.18dc1d14a864d20b",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "6457",
+                "uid": "829863d7-5df4-4643-8983-a8c453da6685"
+            },
+            "reason": "ScalingReplicaSet",
+            "reportingComponent": "deployment-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "deployment-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "9853",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "New size: 3; reason: All metrics below target",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "api.18dc1db578b8b096",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "9979",
+                "uid": "5a96883f-9ec1-4508-94d1-5951ed8d711e"
+            },
+            "reason": "SuccessfulRescale",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:16:57Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "9975",
+                "uid": "62f4fdf6-5aa2-4cc4-97f9-f5476b20f062"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:16:57Z",
+            "message": "Scaled down replica set api-59cf78d5c4 from 4 to 3",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:16:57Z",
+                "name": "api.18dc1db5793b1a4e",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "9980",
+                "uid": "242b0181-7088-4438-a4d5-610020114407"
+            },
+            "reason": "ScalingReplicaSet",
+            "reportingComponent": "deployment-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "deployment-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:27Z",
+            "involvedObject": {
+                "apiVersion": "autoscaling/v2",
+                "kind": "HorizontalPodAutoscaler",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10080",
+                "uid": "3051d5bc-fb9e-4aca-805b-94b6a7557276"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:27Z",
+            "message": "New size: 1; reason: All metrics below target",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:27Z",
+                "name": "api.18dc1dbc76ca2b6d",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10146",
+                "uid": "9a17ccdd-6184-4d49-aacf-300e275c4187"
+            },
+            "reason": "SuccessfulRescale",
+            "reportingComponent": "horizontal-pod-autoscaler",
+            "reportingInstance": "",
+            "source": {
+                "component": "horizontal-pod-autoscaler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T02:17:27Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "api",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10145",
+                "uid": "62f4fdf6-5aa2-4cc4-97f9-f5476b20f062"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T02:17:27Z",
+            "message": "Scaled down replica set api-59cf78d5c4 from 3 to 1",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T02:17:27Z",
+                "name": "api.18dc1dbc772d9f43",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "10149",
+                "uid": "67c32661-113e-4eb4-a240-9b14ed110de3"
+            },
+            "reason": "ScalingReplicaSet",
+            "reportingComponent": "deployment-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "deployment-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:45Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "name": "rnf-prometheus-fc5997954-g5fk4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2683",
+                "uid": "fc284682-e4d4-4e8a-bec2-7813451d1ada"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:45Z",
+            "message": "Successfully assigned view-show-rnf/rnf-prometheus-fc5997954-g5fk4 to ip-10-0-11-155.ec2.internal",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:45Z",
+                "name": "rnf-prometheus-fc5997954-g5fk4.18dc1c4781f35957",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2688",
+                "uid": "9ac02621-c828-4938-8ad4-05b5e6a928a5"
+            },
+            "reason": "Scheduled",
+            "reportingComponent": "default-scheduler",
+            "reportingInstance": "",
+            "source": {
+                "component": "default-scheduler"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:45Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{prometheus}",
+                "kind": "Pod",
+                "name": "rnf-prometheus-fc5997954-g5fk4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2684",
+                "uid": "fc284682-e4d4-4e8a-bec2-7813451d1ada"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:45Z",
+            "message": "Pulling image \"prom/prometheus:v3.14.0\"",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:45Z",
+                "name": "rnf-prometheus-fc5997954-g5fk4.18dc1c47a1924796",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2697",
+                "uid": "4e913e44-0dbf-4e0b-b8a7-81d616d76644"
+            },
+            "reason": "Pulling",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:48Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{prometheus}",
+                "kind": "Pod",
+                "name": "rnf-prometheus-fc5997954-g5fk4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2684",
+                "uid": "fc284682-e4d4-4e8a-bec2-7813451d1ada"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:48Z",
+            "message": "Successfully pulled image \"prom/prometheus:v3.14.0\" in 2.691s (2.691s including waiting). Image size: 109369379 bytes.",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:48Z",
+                "name": "rnf-prometheus-fc5997954-g5fk4.18dc1c4841fbafca",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2711",
+                "uid": "9f7b9fbb-b755-4680-936f-d18e682e0cac"
+            },
+            "reason": "Pulled",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:48Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{prometheus}",
+                "kind": "Pod",
+                "name": "rnf-prometheus-fc5997954-g5fk4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2684",
+                "uid": "fc284682-e4d4-4e8a-bec2-7813451d1ada"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:48Z",
+            "message": "Container created",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:48Z",
+                "name": "rnf-prometheus-fc5997954-g5fk4.18dc1c4842f71622",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2712",
+                "uid": "93a106a3-7678-44c0-ba26-cf2e90aa527d"
+            },
+            "reason": "Created",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:48Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{prometheus}",
+                "kind": "Pod",
+                "name": "rnf-prometheus-fc5997954-g5fk4",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2684",
+                "uid": "fc284682-e4d4-4e8a-bec2-7813451d1ada"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:48Z",
+            "message": "Container started",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:48Z",
+                "name": "rnf-prometheus-fc5997954-g5fk4.18dc1c4848188372",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2716",
+                "uid": "4a60f253-f091-4776-a478-9458e9ac2822"
+            },
+            "reason": "Started",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "ip-10-0-11-155.ec2.internal",
+            "source": {
+                "component": "kubelet",
+                "host": "ip-10-0-11-155.ec2.internal"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:45Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "ReplicaSet",
+                "name": "rnf-prometheus-fc5997954",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2680",
+                "uid": "03045ee2-060e-47d2-90c2-300674a00e51"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:45Z",
+            "message": "Created pod: rnf-prometheus-fc5997954-g5fk4",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:45Z",
+                "name": "rnf-prometheus-fc5997954.18dc1c4781b72973",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2685",
+                "uid": "26b74769-e968-42a1-812b-58600f974489"
+            },
+            "reason": "SuccessfulCreate",
+            "reportingComponent": "replicaset-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "replicaset-controller"
+            },
+            "type": "Normal"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 1,
+            "eventTime": null,
+            "firstTimestamp": "2026-10-07T01:50:45Z",
+            "involvedObject": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "rnf-prometheus",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2679",
+                "uid": "be6e30b7-063b-44d0-9381-0861a81529c2"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2026-10-07T01:50:45Z",
+            "message": "Scaled up replica set rnf-prometheus-fc5997954 from 0 to 1",
+            "metadata": {
+                "creationTimestamp": "2026-10-07T01:50:45Z",
+                "name": "rnf-prometheus.18dc1c4781234eae",
+                "namespace": "view-show-rnf",
+                "resourceVersion": "2682",
+                "uid": "44ba9fd9-e435-4ada-960e-ebcb40b8e1b2"
+            },
+            "reason": "ScalingReplicaSet",
+            "reportingComponent": "deployment-controller",
+            "reportingInstance": "",
+            "source": {
+                "component": "deployment-controller"
+            },
+            "type": "Normal"
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: RNF retrospectivo
+    folder: Evidências preservadas
+    type: file
+    disableDeletion: false
+    editable: false
+    options:
+      path: /etc/grafana/provisioning/dashboards

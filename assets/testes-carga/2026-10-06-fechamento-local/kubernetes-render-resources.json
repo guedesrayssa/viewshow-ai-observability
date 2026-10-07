@@ -1,0 +1,1543 @@
+{
+  "scope": "offline render; synthetic fixture account 123456789012, no AWS deployment",
+  "fixtureVariant": "fixtures.mjs with backfill container args corrected to [backfill] for documentation example",
+  "codeRevision": "d5339f3de35a42d633f6b3de91e5c919b1c6d57c",
+  "resources": [
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "view-show",
+        "labels": {
+          "pod-security.kubernetes.io/enforce": "baseline"
+        }
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "deny-ingress",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "podSelector": {},
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": []
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "view-show-imports",
+        "labels": {
+          "pod-security.kubernetes.io/enforce": "baseline"
+        }
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "deny-ingress",
+        "namespace": "view-show-imports"
+      },
+      "spec": {
+        "podSelector": {},
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": []
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "api",
+        "namespace": "view-show",
+        "annotations": {
+          "eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/api"
+        }
+      },
+      "automountServiceAccountToken": true
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "metadata": {
+        "name": "api-env",
+        "namespace": "view-show"
+      },
+      "type": "Opaque",
+      "stringData": {
+        "AUTH_COOKIE_SECRET": "test-cookie-secret"
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "api",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "api"
+          }
+        },
+        "strategy": {
+          "type": "RollingUpdate",
+          "rollingUpdate": {
+            "maxUnavailable": 0,
+            "maxSurge": 1
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "api"
+            },
+            "annotations": {
+              "view-show/config-hash": "fa643ce0794e22a637428b4d97cf444fe2478f9516c3730e82e5fc129811b10c"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "api",
+            "automountServiceAccountToken": true,
+            "restartPolicy": "Always",
+            "terminationGracePeriodSeconds": 60,
+            "securityContext": {
+              "fsGroup": 10001,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "api",
+                "image": "api:stable",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "AUTH_COOKIE_SECRET",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "api-env",
+                        "key": "AUTH_COOKIE_SECRET"
+                      }
+                    }
+                  },
+                  {
+                    "name": "AWS_REGION",
+                    "value": "us-east-1"
+                  },
+                  {
+                    "name": "AWS_EC2_METADATA_DISABLED",
+                    "value": "true"
+                  }
+                ],
+                "securityContext": {
+                  "runAsNonRoot": true,
+                  "runAsUser": 1000,
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "resources": {
+                  "requests": {
+                    "cpu": "500m",
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "1Gi"
+                  },
+                  "limits": {
+                    "cpu": "500m",
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "2Gi"
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  }
+                ],
+                "ports": [
+                  {
+                    "name": "http",
+                    "containerPort": 3000
+                  }
+                ],
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": "http"
+                  },
+                  "periodSeconds": 3,
+                  "failureThreshold": 30
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": "http"
+                  },
+                  "periodSeconds": 5,
+                  "timeoutSeconds": 3
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/health",
+                    "port": "http"
+                  },
+                  "periodSeconds": 15,
+                  "timeoutSeconds": 3
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "1Gi"
+                }
+              }
+            ],
+            "topologySpreadConstraints": [
+              {
+                "maxSkew": 1,
+                "topologyKey": "kubernetes.io/hostname",
+                "whenUnsatisfiable": "ScheduleAnyway",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "api"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "ingestion-import",
+        "namespace": "view-show-imports",
+        "annotations": {
+          "eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/ingestion-import"
+        }
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "metadata": {
+        "name": "ingestion-import-env",
+        "namespace": "view-show-imports"
+      },
+      "type": "Opaque",
+      "stringData": {
+        "MYSQL_ROOT_PASSWORD": "test-password",
+        "MYSQL_PASSWORD": "test-password"
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "name": "ingestion-import",
+        "namespace": "view-show-imports"
+      },
+      "spec": {
+        "schedule": "0 0 1 1 *",
+        "timeZone": "Etc/UTC",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": 300,
+        "successfulJobsHistoryLimit": 2,
+        "failedJobsHistoryLimit": 5,
+        "jobTemplate": {
+          "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 86400,
+            "ttlSecondsAfterFinished": 604800,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app.kubernetes.io/name": "ingestion-import"
+                },
+                "annotations": {
+                  "view-show/config-hash": "d287d09208f703363552c8f45423a6ada85c734b298b9f3fcfc77df96f173b08"
+                }
+              },
+              "spec": {
+                "serviceAccountName": "ingestion-import",
+                "automountServiceAccountToken": false,
+                "restartPolicy": "Never",
+                "terminationGracePeriodSeconds": 60,
+                "securityContext": {
+                  "fsGroup": 10001,
+                  "fsGroupChangePolicy": "OnRootMismatch",
+                  "seccompProfile": {
+                    "type": "RuntimeDefault"
+                  }
+                },
+                "containers": [
+                  {
+                    "name": "ingestion",
+                    "image": "ingestion@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": [
+                      "backfill"
+                    ],
+                    "env": [
+                      {
+                        "name": "ACTIVATE_CANDIDATE",
+                        "value": "false"
+                      },
+                      {
+                        "name": "MYSQL_PASSWORD",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "ingestion-import-env",
+                            "key": "MYSQL_PASSWORD"
+                          }
+                        }
+                      },
+                      {
+                        "name": "AWS_EC2_METADATA_DISABLED",
+                        "value": "true"
+                      }
+                    ],
+                    "securityContext": {
+                      "runAsNonRoot": true,
+                      "runAsUser": 10001,
+                      "readOnlyRootFilesystem": true,
+                      "allowPrivilegeEscalation": false,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "64Gi"
+                      },
+                      "limits": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "66Gi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      }
+                    ]
+                  }
+                ],
+                "initContainers": [
+                  {
+                    "name": "mysql-snapshot",
+                    "image": "mysql:8.4",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": [
+                      "mysqld"
+                    ],
+                    "env": [
+                      {
+                        "name": "MYSQL_DATABASE",
+                        "value": "argus"
+                      },
+                      {
+                        "name": "MYSQL_ROOT_PASSWORD",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "ingestion-import-env",
+                            "key": "MYSQL_ROOT_PASSWORD"
+                          }
+                        }
+                      },
+                      {
+                        "name": "AWS_EC2_METADATA_DISABLED",
+                        "value": "true"
+                      }
+                    ],
+                    "securityContext": {
+                      "allowPrivilegeEscalation": false,
+                      "runAsUser": 0,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ],
+                        "add": [
+                          "CHOWN",
+                          "SETUID",
+                          "SETGID",
+                          "DAC_OVERRIDE",
+                          "FOWNER"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "128Gi"
+                      },
+                      "limits": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "130Gi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      },
+                      {
+                        "name": "mysql-data",
+                        "mountPath": "/var/lib/mysql"
+                      },
+                      {
+                        "name": "mysql-run",
+                        "mountPath": "/var/run/mysqld"
+                      }
+                    ],
+                    "restartPolicy": "Always",
+                    "startupProbe": {
+                      "exec": {
+                        "command": [
+                          "sh",
+                          "-c",
+                          "MYSQL_PWD=\"$MYSQL_ROOT_PASSWORD\" mysqladmin ping --silent --protocol=TCP -h 127.0.0.1 -uroot"
+                        ]
+                      },
+                      "periodSeconds": 5,
+                      "timeoutSeconds": 3,
+                      "failureThreshold": 60
+                    }
+                  }
+                ],
+                "volumes": [
+                  {
+                    "name": "tmp",
+                    "emptyDir": {
+                      "sizeLimit": "64Gi"
+                    }
+                  },
+                  {
+                    "name": "mysql-data",
+                    "emptyDir": {
+                      "sizeLimit": "128Gi"
+                    }
+                  },
+                  {
+                    "name": "mysql-run",
+                    "emptyDir": {}
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "ingestion-backfill",
+        "namespace": "view-show",
+        "annotations": {
+          "eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/ingestion-backfill"
+        }
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "metadata": {
+        "name": "ingestion-backfill-env",
+        "namespace": "view-show"
+      },
+      "type": "Opaque",
+      "stringData": {
+        "MYSQL_ROOT_PASSWORD": "test-password",
+        "MYSQL_PASSWORD": "test-password"
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "name": "ingestion-backfill",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "schedule": "0 0 1 1 *",
+        "timeZone": "Etc/UTC",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": 300,
+        "successfulJobsHistoryLimit": 2,
+        "failedJobsHistoryLimit": 5,
+        "jobTemplate": {
+          "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 86400,
+            "ttlSecondsAfterFinished": 604800,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app.kubernetes.io/name": "ingestion-backfill"
+                },
+                "annotations": {
+                  "view-show/config-hash": "d287d09208f703363552c8f45423a6ada85c734b298b9f3fcfc77df96f173b08"
+                }
+              },
+              "spec": {
+                "serviceAccountName": "ingestion-backfill",
+                "automountServiceAccountToken": false,
+                "restartPolicy": "Never",
+                "terminationGracePeriodSeconds": 60,
+                "securityContext": {
+                  "fsGroup": 10001,
+                  "fsGroupChangePolicy": "OnRootMismatch",
+                  "seccompProfile": {
+                    "type": "RuntimeDefault"
+                  }
+                },
+                "containers": [
+                  {
+                    "name": "ingestion",
+                    "image": "ingestion@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": [
+                      "backfill"
+                    ],
+                    "env": [
+                      {
+                        "name": "ACTIVATE_CANDIDATE",
+                        "value": "false"
+                      },
+                      {
+                        "name": "MYSQL_PASSWORD",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "ingestion-backfill-env",
+                            "key": "MYSQL_PASSWORD"
+                          }
+                        }
+                      },
+                      {
+                        "name": "AWS_EC2_METADATA_DISABLED",
+                        "value": "true"
+                      }
+                    ],
+                    "securityContext": {
+                      "runAsNonRoot": true,
+                      "runAsUser": 10001,
+                      "readOnlyRootFilesystem": true,
+                      "allowPrivilegeEscalation": false,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "64Gi"
+                      },
+                      "limits": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "66Gi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      }
+                    ]
+                  }
+                ],
+                "initContainers": [
+                  {
+                    "name": "mysql-snapshot",
+                    "image": "mysql:8.4",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": [
+                      "mysqld"
+                    ],
+                    "env": [
+                      {
+                        "name": "MYSQL_DATABASE",
+                        "value": "argus"
+                      },
+                      {
+                        "name": "MYSQL_ROOT_PASSWORD",
+                        "valueFrom": {
+                          "secretKeyRef": {
+                            "name": "ingestion-backfill-env",
+                            "key": "MYSQL_ROOT_PASSWORD"
+                          }
+                        }
+                      },
+                      {
+                        "name": "AWS_EC2_METADATA_DISABLED",
+                        "value": "true"
+                      }
+                    ],
+                    "securityContext": {
+                      "allowPrivilegeEscalation": false,
+                      "runAsUser": 0,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ],
+                        "add": [
+                          "CHOWN",
+                          "SETUID",
+                          "SETGID",
+                          "DAC_OVERRIDE",
+                          "FOWNER"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "128Gi"
+                      },
+                      "limits": {
+                        "cpu": "1000m",
+                        "memory": "4096Mi",
+                        "ephemeral-storage": "130Gi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      },
+                      {
+                        "name": "mysql-data",
+                        "mountPath": "/var/lib/mysql"
+                      },
+                      {
+                        "name": "mysql-run",
+                        "mountPath": "/var/run/mysqld"
+                      }
+                    ],
+                    "restartPolicy": "Always",
+                    "startupProbe": {
+                      "exec": {
+                        "command": [
+                          "sh",
+                          "-c",
+                          "MYSQL_PWD=\"$MYSQL_ROOT_PASSWORD\" mysqladmin ping --silent --protocol=TCP -h 127.0.0.1 -uroot"
+                        ]
+                      },
+                      "periodSeconds": 5,
+                      "timeoutSeconds": 3,
+                      "failureThreshold": 60
+                    }
+                  }
+                ],
+                "volumes": [
+                  {
+                    "name": "tmp",
+                    "emptyDir": {
+                      "sizeLimit": "64Gi"
+                    }
+                  },
+                  {
+                    "name": "mysql-data",
+                    "emptyDir": {
+                      "sizeLimit": "128Gi"
+                    }
+                  },
+                  {
+                    "name": "mysql-run",
+                    "emptyDir": {}
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "ingestion-sync",
+        "namespace": "view-show",
+        "annotations": {
+          "eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/ingestion-sync"
+        }
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "name": "ingestion-sync",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "schedule": "*/15 * * * *",
+        "timeZone": "Etc/UTC",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": 300,
+        "successfulJobsHistoryLimit": 2,
+        "failedJobsHistoryLimit": 5,
+        "jobTemplate": {
+          "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 3600,
+            "ttlSecondsAfterFinished": 604800,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app.kubernetes.io/name": "ingestion-sync"
+                },
+                "annotations": {
+                  "view-show/config-hash": "0faef12059de717bcf1466990e7d73881e4a847be9bb79aa6ffee56c8d98b10e"
+                }
+              },
+              "spec": {
+                "serviceAccountName": "ingestion-sync",
+                "automountServiceAccountToken": false,
+                "restartPolicy": "Never",
+                "terminationGracePeriodSeconds": 60,
+                "securityContext": {
+                  "fsGroup": 10001,
+                  "fsGroupChangePolicy": "OnRootMismatch",
+                  "seccompProfile": {
+                    "type": "RuntimeDefault"
+                  }
+                },
+                "containers": [
+                  {
+                    "name": "ingestion",
+                    "image": "ingestion:stable",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": [
+                      "sync"
+                    ],
+                    "env": [
+                      {
+                        "name": "AWS_EC2_METADATA_DISABLED",
+                        "value": "true"
+                      }
+                    ],
+                    "securityContext": {
+                      "runAsNonRoot": true,
+                      "runAsUser": 10001,
+                      "readOnlyRootFilesystem": true,
+                      "allowPrivilegeEscalation": false,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "1000m",
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "1Gi"
+                      },
+                      "limits": {
+                        "cpu": "1000m",
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "20Gi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      }
+                    ]
+                  }
+                ],
+                "volumes": [
+                  {
+                    "name": "tmp",
+                    "emptyDir": {
+                      "sizeLimit": "16Gi"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "ingestion-incremental-export",
+        "namespace": "view-show",
+        "annotations": {
+          "eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/ingestion-incremental-export"
+        }
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "name": "ingestion-incremental-export",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "schedule": "*/15 * * * *",
+        "timeZone": "Etc/UTC",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": 300,
+        "successfulJobsHistoryLimit": 2,
+        "failedJobsHistoryLimit": 5,
+        "jobTemplate": {
+          "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 3600,
+            "ttlSecondsAfterFinished": 604800,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app.kubernetes.io/name": "ingestion-incremental-export"
+                },
+                "annotations": {
+                  "view-show/config-hash": "d6341d810ab430989f05200e59a0bef4c347d27976a531e679d7803ddd94c0b4"
+                }
+              },
+              "spec": {
+                "serviceAccountName": "ingestion-incremental-export",
+                "automountServiceAccountToken": false,
+                "restartPolicy": "Never",
+                "terminationGracePeriodSeconds": 60,
+                "securityContext": {
+                  "fsGroup": 10001,
+                  "fsGroupChangePolicy": "OnRootMismatch",
+                  "seccompProfile": {
+                    "type": "RuntimeDefault"
+                  }
+                },
+                "containers": [
+                  {
+                    "name": "ingestion",
+                    "image": "ingestion:stable",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": [
+                      "export-incremental"
+                    ],
+                    "env": [
+                      {
+                        "name": "AWS_EC2_METADATA_DISABLED",
+                        "value": "true"
+                      }
+                    ],
+                    "securityContext": {
+                      "runAsNonRoot": true,
+                      "runAsUser": 10001,
+                      "readOnlyRootFilesystem": true,
+                      "allowPrivilegeEscalation": false,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "1000m",
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "1Gi"
+                      },
+                      "limits": {
+                        "cpu": "1000m",
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "20Gi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      }
+                    ]
+                  }
+                ],
+                "volumes": [
+                  {
+                    "name": "tmp",
+                    "emptyDir": {
+                      "sizeLimit": "16Gi"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "ingestion-incremental-ingest",
+        "namespace": "view-show",
+        "annotations": {
+          "eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/ingestion-incremental-ingest"
+        }
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "CronJob",
+      "metadata": {
+        "name": "ingestion-incremental-ingest",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "schedule": "*/5 * * * *",
+        "timeZone": "Etc/UTC",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": 300,
+        "successfulJobsHistoryLimit": 2,
+        "failedJobsHistoryLimit": 5,
+        "jobTemplate": {
+          "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 3600,
+            "ttlSecondsAfterFinished": 604800,
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app.kubernetes.io/name": "ingestion-incremental-ingest"
+                },
+                "annotations": {
+                  "view-show/config-hash": "f863bb050a9d2d91fef4bc421769518ad9de3d953f73481134797569abf129c5"
+                }
+              },
+              "spec": {
+                "serviceAccountName": "ingestion-incremental-ingest",
+                "automountServiceAccountToken": false,
+                "restartPolicy": "Never",
+                "terminationGracePeriodSeconds": 60,
+                "securityContext": {
+                  "fsGroup": 10001,
+                  "fsGroupChangePolicy": "OnRootMismatch",
+                  "seccompProfile": {
+                    "type": "RuntimeDefault"
+                  }
+                },
+                "containers": [
+                  {
+                    "name": "ingestion",
+                    "image": "ingestion:stable",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": [
+                      "ingest-incremental",
+                      "--limit",
+                      "20"
+                    ],
+                    "env": [
+                      {
+                        "name": "AWS_EC2_METADATA_DISABLED",
+                        "value": "true"
+                      }
+                    ],
+                    "securityContext": {
+                      "runAsNonRoot": true,
+                      "runAsUser": 10001,
+                      "readOnlyRootFilesystem": true,
+                      "allowPrivilegeEscalation": false,
+                      "capabilities": {
+                        "drop": [
+                          "ALL"
+                        ]
+                      }
+                    },
+                    "resources": {
+                      "requests": {
+                        "cpu": "1000m",
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "1Gi"
+                      },
+                      "limits": {
+                        "cpu": "1000m",
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "20Gi"
+                      }
+                    },
+                    "volumeMounts": [
+                      {
+                        "name": "tmp",
+                        "mountPath": "/tmp"
+                      }
+                    ]
+                  }
+                ],
+                "volumes": [
+                  {
+                    "name": "tmp",
+                    "emptyDir": {
+                      "sizeLimit": "16Gi"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "analysis-worker",
+        "namespace": "view-show",
+        "annotations": {
+          "eks.amazonaws.com/role-arn": "arn:aws:iam::123456789012:role/analysis-worker"
+        }
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "analysis-worker",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "replicas": 0,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "analysis-worker"
+          }
+        },
+        "strategy": {
+          "type": "RollingUpdate",
+          "rollingUpdate": {
+            "maxUnavailable": 0,
+            "maxSurge": 1
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "analysis-worker"
+            },
+            "annotations": {
+              "view-show/config-hash": "34fececa90bab17b1cb29d55e5a14c77763df8bd2e00e3104db81d67ae429a28"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "analysis-worker",
+            "automountServiceAccountToken": false,
+            "restartPolicy": "Always",
+            "terminationGracePeriodSeconds": 120,
+            "securityContext": {
+              "fsGroup": 10001,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "analysis-worker",
+                "image": "analysis:stable",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "AWS_EC2_METADATA_DISABLED",
+                    "value": "true"
+                  }
+                ],
+                "securityContext": {
+                  "runAsNonRoot": true,
+                  "runAsUser": 1000,
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "resources": {
+                  "requests": {
+                    "cpu": "500m",
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "1Gi"
+                  },
+                  "limits": {
+                    "cpu": "500m",
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "2Gi"
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "1Gi"
+                }
+              }
+            ],
+            "topologySpreadConstraints": [
+              {
+                "maxSkew": 1,
+                "topologyKey": "kubernetes.io/hostname",
+                "whenUnsatisfiable": "ScheduleAnyway",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "analysis-worker"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "api",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app.kubernetes.io/name": "api"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 3000,
+            "targetPort": "http"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "api-ingress",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "api"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": [
+          {
+            "ports": [
+              {
+                "port": 3000,
+                "protocol": "TCP"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "elbv2.k8s.aws/v1beta1",
+      "kind": "TargetGroupBinding",
+      "metadata": {
+        "name": "api",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "targetGroupARN": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/api/1234567890abcdef",
+        "targetType": "ip",
+        "serviceRef": {
+          "name": "api",
+          "port": 3000
+        },
+        "networking": {
+          "ingress": [
+            {
+              "from": [
+                {
+                  "securityGroup": {
+                    "groupID": "sg-1234567890abcdef0"
+                  }
+                }
+              ],
+              "ports": [
+                {
+                  "protocol": "TCP",
+                  "port": 3000
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "autoscaling/v2",
+      "kind": "HorizontalPodAutoscaler",
+      "metadata": {
+        "name": "api",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "scaleTargetRef": {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "api"
+        },
+        "minReplicas": 1,
+        "maxReplicas": 4,
+        "metrics": [
+          {
+            "type": "Resource",
+            "resource": {
+              "name": "cpu",
+              "target": {
+                "type": "Utilization",
+                "averageUtilization": 60
+              }
+            }
+          }
+        ],
+        "behavior": {
+          "scaleDown": {
+            "stabilizationWindowSeconds": 300
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "policy/v1",
+      "kind": "PodDisruptionBudget",
+      "metadata": {
+        "name": "api",
+        "namespace": "view-show"
+      },
+      "spec": {
+        "maxUnavailable": 1,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "api"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "Role",
+      "metadata": {
+        "name": "argus-scheduler",
+        "namespace": "view-show"
+      },
+      "rules": [
+        {
+          "apiGroups": [
+            "batch"
+          ],
+          "resources": [
+            "cronjobs"
+          ],
+          "resourceNames": [
+            "ingestion-sync"
+          ],
+          "verbs": [
+            "get",
+            "patch"
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "RoleBinding",
+      "metadata": {
+        "name": "argus-scheduler",
+        "namespace": "view-show"
+      },
+      "roleRef": {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "Role",
+        "name": "argus-scheduler"
+      },
+      "subjects": [
+        {
+          "kind": "ServiceAccount",
+          "name": "api",
+          "namespace": "view-show"
+        }
+      ]
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "Role",
+      "metadata": {
+        "name": "import-launcher",
+        "namespace": "view-show-imports"
+      },
+      "rules": [
+        {
+          "apiGroups": [
+            "batch"
+          ],
+          "resources": [
+            "jobs"
+          ],
+          "verbs": [
+            "create",
+            "get"
+          ]
+        },
+        {
+          "apiGroups": [
+            "batch"
+          ],
+          "resources": [
+            "cronjobs"
+          ],
+          "resourceNames": [
+            "ingestion-import"
+          ],
+          "verbs": [
+            "get"
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "RoleBinding",
+      "metadata": {
+        "name": "import-launcher",
+        "namespace": "view-show-imports"
+      },
+      "roleRef": {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "Role",
+        "name": "import-launcher"
+      },
+      "subjects": [
+        {
+          "kind": "ServiceAccount",
+          "name": "api",
+          "namespace": "view-show"
+        }
+      ]
+    },
+    {
+      "apiVersion": "admissionregistration.k8s.io/v1",
+      "kind": "ValidatingAdmissionPolicy",
+      "metadata": {
+        "name": "view-show-import-jobs"
+      },
+      "spec": {
+        "failurePolicy": "Fail",
+        "matchConstraints": {
+          "resourceRules": [
+            {
+              "apiGroups": [
+                "batch"
+              ],
+              "apiVersions": [
+                "v1"
+              ],
+              "operations": [
+                "CREATE"
+              ],
+              "resources": [
+                "jobs"
+              ],
+              "scope": "Namespaced"
+            }
+          ]
+        },
+        "matchConditions": [
+          {
+            "name": "api-service-account",
+            "expression": "request.userInfo.username == \"system:serviceaccount:view-show:api\""
+          }
+        ],
+        "validations": [
+          {
+            "expression": "object.metadata.namespace == \"view-show-imports\" && object.metadata.name.matches('^import-[a-z0-9]+$')",
+            "message": "Import Job identity is invalid."
+          },
+          {
+            "expression": "object.metadata.labels['app.kubernetes.io/name'] == 'ingestion-import' && object.metadata.labels['view-show/import-id'].matches('^imp_[0-7][0-9A-HJKMNP-TV-Z]{25}$') && object.metadata.labels['view-show/pipeline'] in ['legacy-v1', 'canonical-v2']",
+            "message": "Import Job labels are invalid."
+          },
+          {
+            "expression": "object.spec.template.spec.serviceAccountName == 'ingestion-import' && !object.spec.template.spec.?automountServiceAccountToken.orValue(true) && (!has(object.spec.template.spec.hostNetwork) || !object.spec.template.spec.hostNetwork) && (!has(object.spec.template.spec.hostPID) || !object.spec.template.spec.hostPID) && (!has(object.spec.template.spec.hostIPC) || !object.spec.template.spec.hostIPC) && (!has(object.spec.template.spec.shareProcessNamespace) || !object.spec.template.spec.shareProcessNamespace) && object.spec.template.spec.restartPolicy == 'Never'",
+            "message": "Import Job Pod identity is invalid."
+          },
+          {
+            "expression": "object.spec.template.spec.containers.size() == 1 && object.spec.template.spec.containers[0].name == 'ingestion' && object.spec.template.spec.containers[0].image == \"ingestion@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" && object.spec.template.spec.containers[0].imagePullPolicy == \"IfNotPresent\" && object.spec.template.spec.containers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.containers[0].args == ['import-dump', '--import-id', object.metadata.labels['view-show/import-id']] && object.spec.template.spec.containers[0].?envFrom.orValue([]).size() == 0 && object.spec.template.spec.containers[0].env.size() == 5 && object.spec.template.spec.containers[0].env[0].name == \"ACTIVATE_CANDIDATE\" && object.spec.template.spec.containers[0].env[0].?value.orValue(\"\") == \"false\" && !has(object.spec.template.spec.containers[0].env[0].valueFrom) && object.spec.template.spec.containers[0].env[1].name == \"MYSQL_PASSWORD\" && object.spec.template.spec.containers[0].env[1].?value.orValue(\"\") == \"\" && object.spec.template.spec.containers[0].env[1].valueFrom == {\"secretKeyRef\":{\"name\":\"ingestion-import-env\",\"key\":\"MYSQL_PASSWORD\"}} && object.spec.template.spec.containers[0].env[2].name == \"AWS_EC2_METADATA_DISABLED\" && object.spec.template.spec.containers[0].env[2].?value.orValue(\"\") == \"true\" && !has(object.spec.template.spec.containers[0].env[2].valueFrom) && object.spec.template.spec.containers[0].env[3].name == \"IMPORT_ID\" && object.spec.template.spec.containers[0].env[3].?value.orValue(\"\") == object.metadata.labels['view-show/import-id'] && !has(object.spec.template.spec.containers[0].env[3].valueFrom) && object.spec.template.spec.containers[0].env[4].name == \"IMPORT_PIPELINE_VERSION\" && object.spec.template.spec.containers[0].env[4].?value.orValue(\"\") == object.metadata.labels['view-show/pipeline'] && !has(object.spec.template.spec.containers[0].env[4].valueFrom) && object.spec.template.spec.containers[0].volumeMounts == [{\"name\":\"tmp\",\"mountPath\":\"/tmp\"}] && !has(object.spec.template.spec.containers[0].lifecycle) && !has(object.spec.template.spec.containers[0].startupProbe) && !has(object.spec.template.spec.containers[0].readinessProbe) && !has(object.spec.template.spec.containers[0].livenessProbe)",
+            "message": "Import worker container is invalid."
+          },
+          {
+            "expression": "object.spec.template.spec.initContainers.size() == 1 && object.spec.template.spec.initContainers[0].name == 'mysql-snapshot' && object.spec.template.spec.initContainers[0].image == \"mysql:8.4\" && object.spec.template.spec.initContainers[0].imagePullPolicy == \"IfNotPresent\" && object.spec.template.spec.initContainers[0].restartPolicy == 'Always' && object.spec.template.spec.initContainers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.initContainers[0].args == [\"mysqld\"] && object.spec.template.spec.initContainers[0].?envFrom.orValue([]).size() == 0 && object.spec.template.spec.initContainers[0].env.size() == 3 && object.spec.template.spec.initContainers[0].env[0].name == \"MYSQL_DATABASE\" && object.spec.template.spec.initContainers[0].env[0].?value.orValue(\"\") == \"argus\" && !has(object.spec.template.spec.initContainers[0].env[0].valueFrom) && object.spec.template.spec.initContainers[0].env[1].name == \"MYSQL_ROOT_PASSWORD\" && object.spec.template.spec.initContainers[0].env[1].?value.orValue(\"\") == \"\" && object.spec.template.spec.initContainers[0].env[1].valueFrom == {\"secretKeyRef\":{\"name\":\"ingestion-import-env\",\"key\":\"MYSQL_ROOT_PASSWORD\"}} && object.spec.template.spec.initContainers[0].env[2].name == \"AWS_EC2_METADATA_DISABLED\" && object.spec.template.spec.initContainers[0].env[2].?value.orValue(\"\") == \"true\" && !has(object.spec.template.spec.initContainers[0].env[2].valueFrom) && object.spec.template.spec.initContainers[0].volumeMounts == [{\"name\":\"tmp\",\"mountPath\":\"/tmp\"},{\"name\":\"mysql-data\",\"mountPath\":\"/var/lib/mysql\"},{\"name\":\"mysql-run\",\"mountPath\":\"/var/run/mysqld\"}] && object.spec.template.spec.initContainers[0].startupProbe.exec.command == [\"sh\",\"-c\",\"MYSQL_PWD=\\\"$MYSQL_ROOT_PASSWORD\\\" mysqladmin ping --silent --protocol=TCP -h 127.0.0.1 -uroot\"] && object.spec.template.spec.initContainers[0].startupProbe.periodSeconds == 5 && object.spec.template.spec.initContainers[0].startupProbe.timeoutSeconds == 3 && object.spec.template.spec.initContainers[0].startupProbe.failureThreshold == 60 && object.spec.template.spec.initContainers[0].startupProbe.?successThreshold.orValue(1) == 1 && object.spec.template.spec.initContainers[0].startupProbe.?initialDelaySeconds.orValue(0) == 0 && !has(object.spec.template.spec.initContainers[0].startupProbe.httpGet) && !has(object.spec.template.spec.initContainers[0].startupProbe.tcpSocket) && !has(object.spec.template.spec.initContainers[0].startupProbe.grpc) && !has(object.spec.template.spec.initContainers[0].startupProbe.terminationGracePeriodSeconds) && !has(object.spec.template.spec.initContainers[0].lifecycle) && !has(object.spec.template.spec.initContainers[0].readinessProbe) && !has(object.spec.template.spec.initContainers[0].livenessProbe)",
+            "message": "Import MySQL sidecar is invalid."
+          },
+          {
+            "expression": "object.spec.template.spec.volumes == [{\"name\":\"tmp\",\"emptyDir\":{\"sizeLimit\":\"64Gi\"}},{\"name\":\"mysql-data\",\"emptyDir\":{\"sizeLimit\":\"128Gi\"}},{\"name\":\"mysql-run\",\"emptyDir\":{}}]",
+            "message": "Import Job volumes are invalid."
+          },
+          {
+            "expression": "object.spec.template.spec.securityContext == {\"fsGroup\":10001,\"fsGroupChangePolicy\":\"OnRootMismatch\",\"seccompProfile\":{\"type\":\"RuntimeDefault\"}} && object.spec.template.spec.containers[0].securityContext == {\"runAsNonRoot\":true,\"runAsUser\":10001,\"readOnlyRootFilesystem\":true,\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]}} && object.spec.template.spec.initContainers[0].securityContext == {\"allowPrivilegeEscalation\":false,\"runAsUser\":0,\"capabilities\":{\"drop\":[\"ALL\"],\"add\":[\"CHOWN\",\"SETUID\",\"SETGID\",\"DAC_OVERRIDE\",\"FOWNER\"]}}",
+            "message": "Import Job security context is invalid."
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "admissionregistration.k8s.io/v1",
+      "kind": "ValidatingAdmissionPolicyBinding",
+      "metadata": {
+        "name": "view-show-import-jobs"
+      },
+      "spec": {
+        "policyName": "view-show-import-jobs",
+        "validationActions": [
+          "Deny"
+        ],
+        "matchResources": {
+          "namespaceSelector": {
+            "matchLabels": {
+              "kubernetes.io/metadata.name": "view-show-imports"
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "admissionregistration.k8s.io/v1",
+      "kind": "ValidatingAdmissionPolicy",
+      "metadata": {
+        "name": "view-show-sync-suspend"
+      },
+      "spec": {
+        "failurePolicy": "Fail",
+        "matchConstraints": {
+          "resourceRules": [
+            {
+              "apiGroups": [
+                "batch"
+              ],
+              "apiVersions": [
+                "v1"
+              ],
+              "operations": [
+                "UPDATE"
+              ],
+              "resources": [
+                "cronjobs"
+              ],
+              "scope": "Namespaced"
+            }
+          ]
+        },
+        "matchConditions": [
+          {
+            "name": "api-service-account",
+            "expression": "request.userInfo.username == \"system:serviceaccount:view-show:api\""
+          }
+        ],
+        "validations": [
+          {
+            "expression": "object.metadata.namespace == \"view-show\" && oldObject.metadata.namespace == \"view-show\" && object.metadata.name == \"ingestion-sync\" && oldObject.metadata.name == \"ingestion-sync\"",
+            "message": "API may only suspend or resume the ingestion-sync CronJob."
+          },
+          {
+            "expression": "object.spec.jobTemplate == oldObject.spec.jobTemplate && object.spec.schedule == oldObject.spec.schedule && object.spec.?timeZone.orValue('') == oldObject.spec.?timeZone.orValue('') && object.spec.?startingDeadlineSeconds.orValue(-1) == oldObject.spec.?startingDeadlineSeconds.orValue(-1) && object.spec.?concurrencyPolicy.orValue('Allow') == oldObject.spec.?concurrencyPolicy.orValue('Allow') && object.spec.?successfulJobsHistoryLimit.orValue(3) == oldObject.spec.?successfulJobsHistoryLimit.orValue(3) && object.spec.?failedJobsHistoryLimit.orValue(1) == oldObject.spec.?failedJobsHistoryLimit.orValue(1)",
+            "message": "API sync patches must preserve the schedule and Job template."
+          },
+          {
+            "expression": "object.metadata.?labels.orValue({}) == oldObject.metadata.?labels.orValue({}) && object.metadata.?annotations.orValue({}) == oldObject.metadata.?annotations.orValue({}) && object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([]) && object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([]) && object.metadata.?generateName.orValue('') == oldObject.metadata.?generateName.orValue('')",
+            "message": "API sync patches must preserve CronJob metadata."
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "admissionregistration.k8s.io/v1",
+      "kind": "ValidatingAdmissionPolicyBinding",
+      "metadata": {
+        "name": "view-show-sync-suspend"
+      },
+      "spec": {
+        "policyName": "view-show-sync-suspend",
+        "validationActions": [
+          "Deny"
+        ],
+        "matchResources": {
+          "namespaceSelector": {
+            "matchLabels": {
+              "kubernetes.io/metadata.name": "view-show"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

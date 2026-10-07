@@ -1,0 +1,12 @@
+[
+  {
+    "importId": "imp_01M49QPYSQJRCKPPZB4W3W5Q58",
+    "state": "PROCESSING",
+    "phase": "PROJECTING",
+    "recordsRead": 750000,
+    "recordsWritten": 750000,
+    "recordsRejected": 0,
+    "candidateVersion": null,
+    "createdAt": "2026-10-06T23:10:22.007Z"
+  }
+]

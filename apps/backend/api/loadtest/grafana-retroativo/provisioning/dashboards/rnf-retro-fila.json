@@ -1,0 +1,236 @@
+{
+  "uid": "rnf-retro-fila",
+  "title": "Fila SQS — RS-01, três lotes e recuperação",
+  "description": "Cada mensagem representa lote de 150 mil eventos. SQS aproximado, amostras preservadas por minuto. DLQ zero observado, não valor preenchido.",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "utc",
+  "refresh": "",
+  "tags": [
+    "rnf",
+    "retrospectivo",
+    "dados-preservados"
+  ],
+  "time": {
+    "from": "2026-10-06T02:30:00Z",
+    "to": "2026-10-06T03:05:00Z"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Lotes visíveis / em processamento",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_fila_visiveis",
+          "legendFormat": "fila_visiveis",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "rnf_retro_fila_em_processamento",
+          "legendFormat": "fila_em_processamento",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Idade da mensagem mais antiga (s)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_fila_idade_mais_antiga",
+          "legendFormat": "fila_idade_mais_antiga",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:s",
+          "min": 0,
+          "custom": {
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Recebimentos / confirmações por bucket",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_fila_recebidas",
+          "legendFormat": "fila_recebidas",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "rnf_retro_fila_removidas",
+          "legendFormat": "fila_removidas",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Mensagens na DLQ",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-retro"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rnf_retro_dlq_visiveis",
+          "legendFormat": "dlq_visiveis",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      }
+    }
+  ]
+}

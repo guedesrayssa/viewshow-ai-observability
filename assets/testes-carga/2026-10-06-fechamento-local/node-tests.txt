@@ -1,0 +1,124 @@
+TAP version 13
+# Subtest: capacity budget preserves 10k/min across all planned volumes
+ok 1 - capacity budget preserves 10k/min across all planned volumes
+  ---
+  duration_ms: 0.584416
+  type: 'test'
+  ...
+# Subtest: unknown volume cannot receive an arbitrary passing budget
+ok 2 - unknown volume cannot receive an arbitrary passing budget
+  ---
+  duration_ms: 0.117292
+  type: 'test'
+  ...
+# Subtest: limiter fails when no throttling was observed and arrival-rate discards are checked
+ok 3 - limiter fails when no throttling was observed and arrival-rate discards are checked
+  ---
+  duration_ms: 5.307542
+  type: 'test'
+  ...
+# Subtest: both recognized and unknown 503 responses count against availability
+ok 4 - both recognized and unknown 503 responses count against availability
+  ---
+  duration_ms: 0.730041
+  type: 'test'
+  ...
+# Subtest: capacity test requires a known fresh volume and idempotent recovery a known version
+ok 5 - capacity test requires a known fresh volume and idempotent recovery a known version
+  ---
+  duration_ms: 3.966042
+  type: 'test'
+  ...
+# Subtest: cleanup never completes a preexisting import
+ok 6 - cleanup never completes a preexisting import
+  ---
+  duration_ms: 1.08175
+  type: 'test'
+  ...
+# Subtest: peak cleanup excludes uploads reserved by the same user before this run
+ok 7 - peak cleanup excludes uploads reserved by the same user before this run
+  ---
+  duration_ms: 1.430166
+  type: 'test'
+  ...
+# Subtest: summary records reproducible parameters while redacting the cookie
+ok 8 - summary records reproducible parameters while redacting the cookie
+  ---
+  duration_ms: 2.087959
+  type: 'test'
+  ...
+# Subtest: an unreadable bucket policy is never treated as a nonexistent policy
+ok 9 - an unreadable bucket policy is never treated as a nonexistent policy
+  ---
+  duration_ms: 886.89075
+  type: 'test'
+  ...
+# Subtest: a saved policy cannot be injected or restored against another bucket
+ok 10 - a saved policy cannot be injected or restored against another bucket
+  ---
+  duration_ms: 396.231625
+  type: 'test'
+  ...
+# Subtest: NoSuchBucketPolicy can be injected and restored only on its original bucket
+ok 11 - NoSuchBucketPolicy can be injected and restored only on its original bucket
+  ---
+  duration_ms: 813.467375
+  type: 'test'
+  ...
+# Subtest: conflict proves the active import rather than accepting any 409
+ok 12 - conflict proves the active import rather than accepting any 409
+  ---
+  duration_ms: 0.335542
+  type: 'test'
+  ...
+# Subtest: overload requires RATE_LIMITED and recovery rejects it
+ok 13 - overload requires RATE_LIMITED and recovery rejects it
+  ---
+  duration_ms: 0.058709
+  type: 'test'
+  ...
+# Subtest: a 401, 404 or 503 cannot pass the resilience scenario
+ok 14 - a 401, 404 or 503 cannot pass the resilience scenario
+  ---
+  duration_ms: 0.088167
+  type: 'test'
+  ...
+# Subtest: READY without complete counters cannot prove processing or integrity
+ok 15 - READY without complete counters cannot prove processing or integrity
+  ---
+  duration_ms: 0.05825
+  type: 'test'
+  ...
+# Subtest: hidden inputs cannot approve a missing displayed expression
+ok 16 - hidden inputs cannot approve a missing displayed expression
+  ---
+  duration_ms: 0.381792
+  type: 'test'
+  ...
+# Subtest: both displayed throughput series require real samples
+ok 17 - both displayed throughput series require real samples
+  ---
+  duration_ms: 0.056917
+  type: 'test'
+  ...
+# Subtest: collected zeros are valid; numeric-looking strings and timestamps are not
+ok 18 - collected zeros are valid; numeric-looking strings and timestamps are not
+  ---
+  duration_ms: 0.097666
+  type: 'test'
+  ...
+# Subtest: any datasource error rejects the panel even if a frame exists
+ok 19 - any datasource error rejects the panel even if a frame exists
+  ---
+  duration_ms: 0.04025
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2184.134667
