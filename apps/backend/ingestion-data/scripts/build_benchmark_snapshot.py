@@ -15,6 +15,9 @@ from collections.abc import Iterator, Mapping
 from datetime import date
 from pathlib import Path
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from domain.snapshot_provenance import parse_snapshot_extracted_on
 
 _IDENTIFIER = r"[A-Za-z_][A-Za-z0-9_]*"

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { render, secretSelector } from "../render.mjs";
+import { render, secretSelector, celLiteral } from "../render.mjs";
 import { snapshotJob } from "../run-job.mjs";
 import { config } from "./fixtures.mjs";
 const rendered = await render(config, async () => "test-password");
@@ -173,7 +173,7 @@ test("import admission pins exact rendered environment, mounts, volumes and secu
       "securityContext",
     ])
       assert.ok(
-        contract.includes(JSON.stringify(container[field])),
+        contract.includes(celLiteral(container[field])),
         `policy must pin ${container.name}/${field}`,
       );
   }
@@ -194,13 +194,13 @@ test("import admission pins exact rendered environment, mounts, volumes and secu
       assert.ok(
         contract.includes(
           variable.valueFrom
-            ? `${entry}.valueFrom == ${JSON.stringify(variable.valueFrom)}`
+            ? `dyn(${entry}.valueFrom) == ${JSON.stringify(variable.valueFrom)}`
             : `!has(${entry}.valueFrom)`,
         ),
       );
     }
-  assert.ok(contract.includes(JSON.stringify(pod.volumes)));
-  assert.ok(contract.includes(JSON.stringify(pod.securityContext)));
+  assert.ok(contract.includes(celLiteral(pod.volumes)));
+  assert.ok(contract.includes(celLiteral(pod.securityContext)));
   assert.ok(
     contract.includes(
       JSON.stringify(pod.initContainers[0].startupProbe.exec.command),
@@ -262,7 +262,7 @@ test("import admission normalizes empty static env values without weakening iden
     assert.ok(contract.includes(`!has(${path}.env[1].valueFrom)`));
     assert.ok(contract.includes(`${path}.env[2].?value.orValue("") == ""`));
     assert.ok(
-      contract.includes(`${path}.env[2].valueFrom == {"secretKeyRef":`),
+      contract.includes(`dyn(${path}.env[2].valueFrom) == {"secretKeyRef":`),
     );
   }
   assert.ok(

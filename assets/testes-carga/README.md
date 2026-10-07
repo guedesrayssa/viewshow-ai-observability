@@ -5,6 +5,8 @@ nos documentos de `artefatos/`; as pastas abaixo guardam só o que foi medido e 
 
 | Pasta | Data | O que é | Status | Documento |
 | --- | --- | --- | --- | --- |
+| [`2026-10-06-fechamento-aws/`](2026-10-06-fechamento-aws/README.md) | 06/10/2026 | Carga de 750 mil, Grafana com dados da mesma conta/janela e 18 Lighthouse autenticados com API real | Coleta de fechamento, alcance declarado | [Consolidado](../../artefatos/testes-carga-finais.md) |
+| [`2026-10-06-fechamento-local/`](2026-10-06-fechamento-local/README.md) | 06/10/2026 | Fluxo paced, timeout real MySQL, volume de leitura, dois grupos FIFO e carga/recuperação da API | Componentes locais; não capacidade AWS | [Consolidado](../../artefatos/testes-carga-finais.md) |
 | [`2026-10-06-frontend/`](2026-10-06-frontend/README.md) | 06/10/2026 | Conteúdo estático validado, seis Lighthouse sequenciais e recuperação nominal a 50 conexões | Vigente para o alvo local medido | [Frontend](../../artefatos/sprint5/testes-carga-finais-front.md) |
 | [`2026-10-05-frontend/`](2026-10-05-frontend/README.md) | 05/10/2026 | Primeira rodada estática e Lighthouse; auditorias concorrentes mantidas como históricas | Histórica | [Frontend](../../artefatos/sprint5/testes-carga-finais-front.md) |
 | [`2026-10-05-ingestao/`](2026-10-05-ingestao/README.md) | 05–06/10/2026 | RS-01 após o heartbeat: 2, 3 e 4 lotes drenados, com logs, contagens e séries SQS | Vigente para os cenários medidos | [Ingestão](../../artefatos/sprint5/testes-carga-ingestao.md) |

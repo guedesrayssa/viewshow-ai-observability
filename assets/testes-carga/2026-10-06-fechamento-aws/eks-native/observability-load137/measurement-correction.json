@@ -1,0 +1,6 @@
+{
+  "supersededCpuDefinition": true,
+  "reason": "up counts successfully scraped Pods, not all container CPU limits; a denominator based on up is invalid during probe failures/restarts",
+  "replacement": "100*sum(rate(container_cpu_usage_seconds_total)) over API containers; percent of one core, may exceed100 with replicas",
+  "sourceFramesPreserved": true
+}

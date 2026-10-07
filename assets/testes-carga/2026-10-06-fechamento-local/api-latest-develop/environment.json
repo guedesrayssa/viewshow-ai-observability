@@ -1,0 +1,9 @@
+{
+  "startedAt": "2026-10-07T01:26:05.178Z",
+  "codeRevision": "d5339f3de35a42d633f6b3de91e5c919b1c6d57c",
+  "runnerSha256": "515aefc158fef5ea5b8ad30c1239916dc7dc8255fb089eafe746b7fc26239dbe",
+  "node": "v22.23.2",
+  "scope": "host API against persistent DynamoDB Local; no Kubernetes control-plane calls validated",
+  "soakDuration": "2m",
+  "incidents": 2500
+}

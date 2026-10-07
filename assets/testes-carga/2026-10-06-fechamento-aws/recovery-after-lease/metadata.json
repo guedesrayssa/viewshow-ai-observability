@@ -1,0 +1,21 @@
+{
+  "account": "239162056821",
+  "region": "us-east-1",
+  "startedAt": "2026-10-07T00:43:37.838Z",
+  "baseUrl": "https://02vxi7ikcb.execute-api.us-east-1.amazonaws.com",
+  "taskDefinition": "arn:aws:ecs:us-east-1:239162056821:task-definition/view-show-iac-api-task:1",
+  "apiImage": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api:ab0f99a3c385",
+  "cpu": "256",
+  "memory": "512",
+  "scenario": "ingestao-batch.js",
+  "mode": "smoke",
+  "runLabel": "recovery-after-lease",
+  "auth": "signed session prepared in memory; Cognito login excluded",
+  "plannedRate": null,
+  "expectedEvents": "1000",
+  "processingBudgetSeconds": null,
+  "codeRevision": "eca9de4350e4b546db378082186afc366ffb087f",
+  "finishedAt": "2026-10-07T00:46:04.826Z",
+  "exitCode": 0,
+  "signal": null
+}

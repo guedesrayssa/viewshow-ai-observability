@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-10-06T23:08:15.545673+00:00",
+  "baselineRows": 3,
+  "readTimeoutSeconds": 1,
+  "maxAttempts": 2,
+  "injection": "LOCK TABLES signal_bucket WRITE on a separate real connection",
+  "failureType": "MySqlQueryRetriesExhausted",
+  "mysqlCode": 2013,
+  "attempts": 2,
+  "timedOut": true,
+  "failureSeconds": 2.017140916985227,
+  "recoverySeconds": 0.005865582992555574,
+  "recoveryRows": 3,
+  "sameRowsAfterRecovery": true,
+  "retryEvents": [
+    {
+      "operation": "page",
+      "dataset": "signal_bucket",
+      "mysql_code": 2013,
+      "attempt": 1,
+      "delay_seconds": 0.01
+    }
+  ],
+  "finishedAt": "2026-10-06T23:08:17.573500+00:00",
+  "scope": "production MySQL reader and retry wrapper; not the full ECS run state",
+  "passed": true
+}

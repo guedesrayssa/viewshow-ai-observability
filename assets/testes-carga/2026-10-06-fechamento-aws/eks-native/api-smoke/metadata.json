@@ -1,0 +1,31 @@
+{
+  "startedAt": "2026-10-07T02:03:07.052Z",
+  "account": "239162056821",
+  "region": "us-east-1",
+  "cluster": "view-show-rnf-eks",
+  "namespace": "view-show-rnf",
+  "importsNamespace": "view-show-rnf-imports",
+  "baseUrl": "http://view-show-rnf-eks-50088458.us-east-1.elb.amazonaws.com",
+  "networkScope": "dedicated ALB, HTTP, generator CIDR only; no Amplify/API Gateway migration",
+  "mode": "smoke",
+  "runLabel": "eks-api-smoke",
+  "scenario": "front-api.js",
+  "processingBudgetSeconds": null,
+  "expectedEvents": null,
+  "plannedRate": "1",
+  "codeRevision": "d5339f3de35a42d633f6b3de91e5c919b1c6d57c",
+  "images": {
+    "codeRevision": "d5339f3de35a42d633f6b3de91e5c919b1c6d57c",
+    "buildPlatform": "linux/amd64",
+    "apiImage": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c",
+    "workerImage": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6",
+    "mysqlImage": "mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad",
+    "runnerSha256": "a65497a55c7a1dac9e1707c94d4195a862e9eb5ebe9552c2f4aa6ee885971541",
+    "configurationScope": "dedicated EKS and data; production renderer/controller versions; all schedules suspended; no analysis/Bedrock; HTTP ALB excludes Amplify/API Gateway"
+  },
+  "auth": "synthetic signed session; Cognito login excluded",
+  "activation": "runner does not activate candidate",
+  "finishedAt": "2026-10-07T02:03:40.439Z",
+  "exitCode": 0,
+  "signal": null
+}

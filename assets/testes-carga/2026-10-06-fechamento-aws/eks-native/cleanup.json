@@ -1,0 +1,22 @@
+{
+  "cleanedAt": "2026-10-07T02:57:11Z",
+  "account": "239162056821",
+  "region": "us-east-1",
+  "ownership": {
+    "owner": "g05-artifact",
+    "purpose": "rnf-synthetic-tests"
+  },
+  "resources": [
+    "view-show-rnf-eks/rnf-workloads",
+    "view-show-rnf-eks",
+    "view-show-rnf-eks ALB and security group",
+    "view-show-rnf-eks DynamoDB table",
+    "view-show-rnf-eks-239162056821 S3 bucket",
+    "view_show_rnf_eks Glue database",
+    "view-show-rnf-eks Athena workgroup",
+    "view-show-rnf-eks analysis and incremental SQS queues",
+    "view-show-rnf-eks/mysql Secrets Manager secret"
+  ],
+  "scope": "only resources tagged for this synthetic experiment; ECS baseline and original storage were not modified",
+  "evidencePreserved": true
+}

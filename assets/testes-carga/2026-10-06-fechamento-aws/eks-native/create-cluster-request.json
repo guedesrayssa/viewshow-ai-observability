@@ -1,0 +1,25 @@
+{
+  "name": "view-show-rnf-eks",
+  "version": "1.35",
+  "roleArn": "arn:aws:iam::239162056821:role/c224230a5662598l17435846t1w239162-LabEksClusterRole-0mKWJdKB3yGO",
+  "resourcesVpcConfig": {
+    "subnetIds": [
+      "subnet-07105f364faaa389c",
+      "subnet-02da093a1c8e2e016"
+    ],
+    "endpointPrivateAccess": true,
+    "endpointPublicAccess": true,
+    "publicAccessCidrs": [
+      "177.92.77.170/32"
+    ]
+  },
+  "accessConfig": {
+    "authenticationMode": "API_AND_CONFIG_MAP",
+    "bootstrapClusterCreatorAdminPermissions": true
+  },
+  "tags": {
+    "Projeto": "view-show",
+    "Purpose": "rnf-synthetic-tests",
+    "Owner": "g05-artifact"
+  }
+}

@@ -22,14 +22,20 @@ function run(program, args, input, capture = false) {
   if (!capture && result.stdout) process.stdout.write(result.stdout);
   return result.stdout;
 }
-const config = JSON.parse(
-  run(
-    "terraform",
-    [`-chdir=${infra}`, "output", "-json", "kubernetes_deployment"],
-    undefined,
-    true,
-  ),
-);
+// An isolated test environment may supply the same contract without migrating
+// the existing Terraform-managed ECS stack. This file contains secrets.
+const config = process.env.KUBERNETES_CONFIG_FILE
+  ? JSON.parse(
+      readFileSync(resolve(process.env.KUBERNETES_CONFIG_FILE), "utf8"),
+    )
+  : JSON.parse(
+      run(
+        "terraform",
+        [`-chdir=${infra}`, "output", "-json", "kubernetes_deployment"],
+        undefined,
+        true,
+      ),
+    );
 const labIam = config.iam_mode === "learner-lab-existing";
 const secretCache = new Map();
 async function resolveSecret({ arn, key, optional }) {

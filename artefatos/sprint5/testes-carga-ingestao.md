@@ -1,5 +1,7 @@
 # Testes de Carga e Resiliência da Ingestão
 
+> **Complemento de fechamento:** as rodadas históricas abaixo preservam seus resultados. A [entrega consolidada](../testes-carga-finais.md) acrescenta timeout real MySQL, chegada contínua com persistência, reprodução de dois grupos FIFO e [Grafana com os quatro indicadores na janela da ingestão AWS](../../assets/testes-carga/2026-10-06-fechamento-aws/observability-ingestion/observability-validation.json). As limitações das capturas antigas não descrevem essa coleta nova.
+
 ## Visão Geral
 
 &emsp;Este documento aprimora os testes dos requisitos não funcionais realizados nas sprints passadas ([`testes-carga-inicial.md`](../sprint3/testes-carga-inicial.md)), agora com foco na **API de ingestão** do sistema ARGUS/View Show. Naquele momento, os cenários de ingestão (10 mil eventos/minuto, fila cheia e timeout) ficaram **bloqueados**, porque o adaptador de importação respondia `503 FEATURE_UNAVAILABLE` de forma incondicional. Depois disso, o pipeline passou a existir de ponta a ponta: upload multipart ao S3 pela API, task ECS `import-dump`, MySQL efêmero, normalização, publicação no DynamoDB e Parquet/Glue/Athena, outbox e filas SQS com DLQ. Com isso, os cenários que antes só podiam ser planejados passam a ser executáveis contra a stack real.
@@ -8,7 +10,11 @@
 
 &emsp;Os comandos de reprodução foram escritos para um terminal compatível com Bash. Dependendo do sistema operacional, a forma de definir variáveis de ambiente pode mudar.
 
-### Situação verificada em 06/10/2026
+### Situação histórica antes do fechamento complementar
+
+Esta tabela descreve as rodadas originais. O estado final da entrega é o da
+[entrega consolidada](../testes-carga-finais.md) e do fechamento ao final deste
+documento; os limites abaixo não anulam as evidências novas.
 
 | Item da entrega | Evidência disponível | Limitação restante |
 | --- | --- | --- |
