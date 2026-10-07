@@ -8,6 +8,8 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -17,12 +19,26 @@ def audit() -> dict:
     documents = [ROOT / 'artefatos/testes-carga-finais.md',
                  ROOT / 'artefatos/apoio/testes-carga-inventario.md',
                  ROOT / 'artefatos/apoio/revisao-integracao-observabilidade.md',
+                 ROOT / 'artefatos/apoio/revisao-feedback-sprint4.md',
+                 ROOT / 'artefatos/aplicacao-final.md',
+                 ROOT / 'artefatos/sprint5/aplicacao-final.md',
+                 ROOT / 'apps/kubernetes/RECUPERACAO.md',
                  ROOT / 'apps/backend/api/loadtest/lab/README.md',
                  ROOT / 'apps/backend/api/loadtest/grafana-retroativo/README.md']
-    evidence_directories = sorted(ROOT.glob('assets/testes-carga/2026-10-06-fechamento-*')) + [ROOT / 'assets/testes-carga/2026-10-07-revisao']
+    evidence_directories = sorted(ROOT.glob('assets/testes-carga/2026-10-06-fechamento-*')) + [ROOT / 'assets/testes-carga/2026-10-07-revisao', ROOT / 'assets/revisao-sprint5/2026-10-07']
     for directory in evidence_directories:
         documents.extend(directory.glob('README.md'))
     problems = []
+    reconciliation = subprocess.run(
+        [sys.executable, str(ROOT / 'apps/backend/api/loadtest/scripts/reconcile-evidence.py'), '--check'],
+        capture_output=True, text=True, check=False,
+    )
+    if reconciliation.returncode != 0:
+        problems.append({'error': 'Published k6 tables disagree with raw evidence'})
+    worker = (ROOT / 'apps/backend/agentic/Dockerfile').read_text()
+    bases = re.findall(r'^FROM (\S+)', worker, re.MULTILINE)
+    if len(bases) != 2 or bases[0] != bases[1] or not all(re.search(r'@sha256:[a-f0-9]{64}$', base) for base in bases):
+        problems.append({'error': 'Analysis build/runtime must share an immutable base'})
     links = 0
     implementation_files = 0
     for document in documents:

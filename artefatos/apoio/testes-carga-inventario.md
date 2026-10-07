@@ -62,7 +62,7 @@ parâmetros, sem atribuir uma configuração nova à execução antiga.
 | --- | --- | --- | --- |
 | `apps/backend/api/Dockerfile`, contexto `apps/backend/api` | Node 22.22.0 bookworm-slim por digest; npm ci instala Express 5.2.1, SDK AWS 3.1128.0, prom-client 15.1.3 e Zod 4.5.4; build TypeScript e contracts; prune omit=dev; runtime separado com dumb-init 1.2.5-2 | build: package.json, package-lock.json, contracts/package.json, tsconfig.json, tsconfig.workspaces.json, tsconfig.base.json, src/ e contracts/; runtime: package/lock, node_modules/, dist/, contracts/package.json e contracts/dist/; USER node; ENTRYPOINT dumb-init --; CMD node dist/index.js; EXPOSE 3000 e health check /health | `apps/backend/api/.dockerignore`: exclui node_modules, dist, testes, scripts, cobertura, .env, cache e .git; permite .env.example |
 | `apps/backend/ingestion-data/Dockerfile`, contexto `apps/backend/ingestion-data` | Python 3.12.11 slim-bookworm por digest; mysql-client 1.1.0; requirements com hashes: Boto3 1.40.0, PyMySQL 1.1.1, PyArrow 21.0.0 e jsonschema 4.25.1; uma etapa | requirements.txt, domain/application/ports/adapters/bootstrap/contracts/scripts; WORKDIR /app; UID 10001 ingestion; ENTRYPOINT python -m bootstrap; comando por task (import-dump, ingest-incremental etc.); /tmp gravável e rootfs read-only; sem porta HTTP | `apps/backend/ingestion-data/.dockerignore`: exclui env, venv, caches, testes, requisitos dev e dados temporários, SQLite, Parquet/spool; não exclui contracts/scripts do runtime |
-| `apps/backend/agentic/Dockerfile`, contexto `apps/backend/agentic` | Node 20 bookworm-slim em build/runtime; npm ci instala SDK AWS (Bedrock/DynamoDB/S3/SQS) 3.1128.0 e OpenTelemetry; TypeScript, prune omit=dev; base por tag, sem digest neste arquivo | build: package.json, package-lock.json, tsconfig.json e src/; runtime: package/lock, node_modules/ e dist/; WORKDIR /app; USER node; CMD node dist/src/bootstrap/analysis-worker.js; consumidor de fila, sem EXPOSE HTTP | `apps/backend/agentic/.dockerignore`: exclui node_modules, dist, testes, scripts, models, data e logs |
+| `apps/backend/agentic/Dockerfile`, contexto `apps/backend/agentic` | Node 20 bookworm-slim com digest multi-plataforma 2cf067cf… igual em build/runtime; npm ci instala SDK AWS (Bedrock/DynamoDB/S3/SQS) 3.1128.0 e OpenTelemetry; TypeScript, prune omit=dev; base fixada por digest após revisão da Sprint 4; não reatribuir às imagens históricas | build: package.json, package-lock.json, tsconfig.json e src/; runtime: package/lock, node_modules/ e dist/; WORKDIR /app; USER node; CMD node dist/src/bootstrap/analysis-worker.js; consumidor de fila, sem EXPOSE HTTP | `apps/backend/agentic/.dockerignore`: exclui node_modules, dist, testes, scripts, models, data e logs |
 
 A imagem MySQL do sidecar é separada da imagem Python. O laboratório MySQL é
 configurado em `apps/backend/ingestion-data/docker-compose.test.yml`, com porta
@@ -70,7 +70,7 @@ loopback 33077, schema/fixture montados e health check. A enumeração dessas ba
 não prova que todas foram usadas na mesma coleta: metadata registra a imagem
 real de cada execução AWS, e o laboratório declara execução da API compilada no host.
 
-## A.2 Configurações da revisão Kubernetes atual (`d5339f3`)
+## A.2 Configurações Kubernetes e revisão medida (`d5339f3`)
 
 A migração foi incorporada após as medições ECS começarem. O processamento Python,
 os Dockerfiles e os cenários k6 mantêm seus arquivos; o mecanismo de lançamento,
@@ -201,3 +201,5 @@ Comandos, endpoints e limites do leitor estão no
 
 O [registro da revisão](revisao-integracao-observabilidade.md) relaciona os
 achados às correções e identifica os limites dos checks locais.
+
+A revisão dos pareceres acrescenta `apps/backend/api/loadtest/scripts/reconcile-evidence.py` para conferir números/checks contra os JSON e `apps/kubernetes/RECUPERACAO.md` para a contingência operacional. A mudança de digest do worker requer nova imagem; os resultados da revisão medida continuam vinculados aos digests originais.

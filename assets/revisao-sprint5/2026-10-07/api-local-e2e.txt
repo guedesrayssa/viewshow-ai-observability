@@ -1,0 +1,50 @@
+
+> @view-show/api@2.0.0 test:e2e
+> node scripts/live-e2e-runtime.mjs && npm run build && RUN_LIVE_E2E=true vitest run tests/live-api.e2e.test.ts
+
+
+> @view-show/api@2.0.0 build
+> tsc -b tsconfig.workspaces.json
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.0 [39m[90m/repo/apps/backend/api[39m
+
+ [31m❯[39m tests/live-api.e2e.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 6532[2mms[22m[39m
+   [31m❯[39m compiled API against DynamoDB Local [2m(4)[22m
+     [32m✓[39m fails closed with DATA_UNAVAILABLE while no dataset version is ACTIVE[32m 188[2mms[22m[39m
+     [32m✓[39m keeps failing closed after a valid ACTIVE manifest, because no public projection exists yet[32m 80[2mms[22m[39m
+[31m     [31m×[31m answers FEATURE_UNAVAILABLE for writes the active physical contract does not support[39m[32m 103[2mms[22m[39m
+     [32m✓[39m propagates the request id on an unknown path[32m 1[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/live-api.e2e.test.ts[2m > [22mcompiled API against DynamoDB Local[2m > [22manswers FEATURE_UNAVAILABLE for writes the active physical contract does not support
+[31m[1mAssertionError[22m: expected 409 to be 503 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 503[39m
+[31m+ 409[39m
+
+[36m [2m❯[22m tests/live-api.e2e.test.ts:[2m307:29[22m[39m
+    [90m305|[39m         },
+    [90m306|[39m       );
+    [90m307|[39m       expect(review.status).toBe(503);
+    [90m   |[39m                             [31m^[39m
+    [90m308|[39m       expect(await review.json()).toMatchObject({
+    [90m309|[39m         error: { code: "FEATURE_UNAVAILABLE" },
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 04:44:35
+[2m   Duration [22m 7.05s[2m (tests 95%, import 3%, transform 1%)[22m
+
+npm notice
+npm notice New major version of npm available! 10.9.4 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

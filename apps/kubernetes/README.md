@@ -93,6 +93,10 @@ Rollback durante a janela: suspenda CronJobs e os Deployments Kubernetes, revert
 
 ## Operação
 
+O [runbook de recuperação](RECUPERACAO.md) detalha probes, sinais de progresso,
+retenção/visibilidade das filas e restauração com troca de tabela/reconciliação.
+Ele distingue mecanismos existentes de validações ainda pendentes.
+
 ```bash
 kubectl -n view-show get deployments,pods,hpa,cronjobs,jobs
 kubectl -n view-show-imports get jobs,pods

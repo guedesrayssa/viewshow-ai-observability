@@ -1,5 +1,11 @@
 stages: [validate, test, deploy]
 
+rnf-documentation:
+  stage: validate
+  image: python:3.12.11-slim-bookworm
+  script:
+    - python3 apps/backend/api/loadtest/scripts/verify-rnf-artifact.py
+
 api:
   stage: test
   image: node:22.22.0-bookworm-slim
