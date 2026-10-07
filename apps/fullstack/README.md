@@ -62,6 +62,76 @@ Para validar uma stack que já existe, incluindo pré-requisitos, state e output
 node apps/scripts/aws-learner-lab.mjs check
 ```
 
+## Subir a plataforma do zero (passo a passo)
+
+Roteiro completo para uma conta de lab nova, até o painel mostrar dados. Todos os comandos rodam na raiz do repositório.
+
+1. **Credenciais.** No AWS Academy, abra o Learner Lab, clique em **Start Lab** e, em **AWS Details**, clique em **Show** ao lado de **AWS CLI**. Com o bloco copiado, grave-o no arquivo de credenciais (isso substitui o conteúdo anterior) e confirme a conta. As credenciais expiram em cerca de 4 horas; ao expirar, cole um bloco novo e repita o comando que estava rodando.
+
+   ```bash
+   mkdir -p ~/.aws && pbpaste > ~/.aws/credentials && chmod 600 ~/.aws/credentials
+   aws sts get-caller-identity
+   ```
+
+   O `pbpaste` é do macOS; em outros sistemas, cole o bloco no arquivo com um editor.
+2. **State de outra conta.** O Learner Lab pode entregar uma conta diferente a cada sessão. Veja a que conta o state local pertence e, se não for a atual, mova-o para fora do repositório. Guarde-o: ele é necessário para desligar a stack antiga. Sem isso, o plano tenta reaproveitar recursos que não existem na conta nova.
+
+   ```bash
+   grep -o ':[0-9]\{12\}:' apps/fullstack/terraform.tfstate | sort -u
+   mkdir -p ~/backup-terraform && mv apps/fullstack/terraform.tfstate* ~/backup-terraform/
+   ```
+3. **Infraestrutura.** Com o Docker em execução:
+
+   ```bash
+   node apps/scripts/aws-learner-lab.mjs setup
+   ```
+
+   Confirme com `s` e informe o e-mail e a senha do painel. Leva de 10 a 20 minutos, porque constrói e publica duas imagens, e no fim imprime os links do painel e da API.
+4. **Dados.** Gere o dump reduzido (23 tabelas de fixture; prova o caminho de código, não volume ou capacidade), envie-o e rode o backfill sem ativar:
+
+   ```bash
+   node apps/scripts/aws-learner-lab.mjs build-snapshot
+   node apps/scripts/aws-learner-lab.mjs seed
+   ```
+
+   Para um dump real, use as opções de `seed` descritas no [README da ingestão](../backend/ingestion-data/README.md).
+5. **Ativação.** A API só lê o dataset depois de ativado; sem isso ela responde 503 e o painel fica vazio. É um passo separado e deliberado. Use um `--launch-attempt` novo a cada tentativa, porque repetir o mesmo valor reaproveita a task anterior (inclusive uma que falhou):
+
+   ```bash
+   apps/backend/ingestion-data/.venv/bin/python apps/backend/ingestion-data/scripts/run_task.py \
+     --terraform-output terraform-output.json \
+     --snapshot upload-result.json \
+     --launch-attempt activate-1 \
+     --activate
+   ```
+
+   No Windows, use `.venv\Scripts\python.exe`. Em cerca de dois minutos o manifesto ativo aparece:
+
+   ```bash
+   aws dynamodb get-item --table-name view-show-iac-operacional \
+     --key '{"pk":{"S":"CONTROL#DATASET"},"sk":{"S":"ACTIVE"}}' \
+     --query 'Item.activeDatasetVersion.S' --output text
+   ```
+6. **Conferência.** `node apps/scripts/aws-learner-lab.mjs check` valida stack, state e outputs, e `terraform -chdir=apps/fullstack output -raw painel_url` imprime o endereço do painel, onde você entra com o e-mail e a senha do passo 3.
+7. **Ao terminar**, remova a stack (seção [Destroy](#destroy)) para parar o consumo de crédito.
+
+### Problemas conhecidos
+
+- **`the create-only gate rejected the plan ... terraform_data.imagem: rejected action must be create or no-op`.** A publicação da imagem falhou no meio (a internet caiu ou ocorreu o erro do keychain abaixo) e o Terraform marcou o recurso como falho. Publique a imagem à mão e limpe a marca. A `TAG` são os 12 primeiros caracteres do `triggers_replace` do recurso, e o `REPO_URL` é o `repository_url` do repositório ECR:
+
+  ```bash
+  terraform -chdir=apps/fullstack state show 'terraform_data.imagem'
+  terraform -chdir=apps/fullstack state show 'aws_ecr_repository.api'
+  REGIAO=us-east-1 REPO_URL=<repository_url> TAG=<12 primeiros caracteres> CONTEXTO="$PWD/apps/backend/api" node apps/fullstack/scripts/publicar-imagem.mjs
+  terraform -chdir=apps/fullstack untaint 'terraform_data.imagem'
+  ```
+
+  Para a imagem da ingestão, troque por `terraform_data.ingestion_image[0]`, `aws_ecr_repository.ingestion` e `CONTEXTO="$PWD/apps/backend/ingestion-data"`. Depois repita o comando que falhou (`setup` ou `deploy`).
+- **`error saving credentials ... already exists in the keychain (-25299)` (macOS).** As imagens da API e da ingestão são publicadas em paralelo, e dois `docker login` simultâneos no mesmo registro do ECR colidem. Rode `docker logout <conta>.dkr.ecr.us-east-1.amazonaws.com`, siga o item anterior para a imagem que falhou e repita o comando.
+- **`AWS_REGION must be exactly us-east-1`** (ou erro parecido para `AWS_DEFAULT_REGION` e `AWS_DEFAULT_PROFILE`). O script recusa região ou profile diferentes na sessão do shell. Remova-os com `unset AWS_REGION AWS_DEFAULT_REGION AWS_DEFAULT_PROFILE` ou ajuste para `us-east-1` e `default`.
+- **`ExpiredToken`, `InvalidClientTokenId` ou "active AWS credentials" ausente.** As credenciais do lab expiraram (cerca de 4 horas) ou o lab foi reiniciado: repita o passo 1.
+- **`seed` termina com `container ingestion stopped with a non-zero exit code`.** Leia o log da task com `aws logs tail /ecs/view-show-ingestion-backfill --since 30m --region us-east-1`. Em stacks criadas antes da correção que trata as variáveis de análise vazias como desligadas (`bootstrap/config.py` da ingestão), o motivo é `ANALYSIS_FACT_CATALOG_LOCATION must be non-empty text without surrounding whitespace`, porque a imagem antiga recusava a variável vazia que o Terraform sempre declara. Refaça `destroy` e `setup` com a imagem atual.
+
 ## Worker de análise (opcional)
 
 O worker consome a fila de análise que a ingestão publica (uma única fila e uma única DLQ, `view-show-ingestion-analysis`), detecta anomalias, prevê o risco de QoE e grava incidentes e previsões que a API lê. Ele nasce desabilitado. Sem um model ID, `setup` e `deploy` preservam o modo sem LLM:
