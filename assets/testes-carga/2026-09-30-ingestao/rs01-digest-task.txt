@@ -1,0 +1,2 @@
+RUNNING	2026-09-30T17:24:59.082000-03:00	arn:aws:ecs:us-east-1:114388221188:task-definition/view-show-ingestion-incremental-ingest:6
+114388221188.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de	sha256:2d409c864b0b195bf09bb6b3246ebb9bd1ea5cf64188f6a28d855577d18ea1de

@@ -1,10 +1,8 @@
 // Integração da importação assíncrona. O loop vive no processo da API; este
 // arquivo não cria Lambda, Scheduler ou task contínua adicional.
 locals {
-  ingestion_bucket_arn                  = "arn:aws:s3:::${local.ingestion_bucket_name}"
-  ingestion_table_arn                   = aws_dynamodb_table.operacional.arn
-  ingestion_import_family_arn           = "arn:${data.aws_partition.current.partition}:ecs:${var.regiao}:${data.aws_caller_identity.atual.account_id}:task-definition/${local.ingestion_import_family}"
-  ingestion_import_revision_arn_pattern = "${local.ingestion_import_family_arn}:*"
+  ingestion_bucket_arn = "arn:aws:s3:::${local.ingestion_bucket_name}"
+  ingestion_table_arn  = aws_dynamodb_table.operacional.arn
 
   api_import_policy = jsonencode({
     Version = "2012-10-17"
@@ -104,77 +102,7 @@ locals {
         ]
         Resource = ["${local.ingestion_bucket_arn}/staging/imports/*"]
       },
-      {
-        Sid      = "RunImportWorker"
-        Effect   = "Allow"
-        Action   = ["ecs:RunTask"]
-        Resource = [local.ingestion_import_revision_arn_pattern]
-        Condition = {
-          ArnEquals = {
-            "ecs:cluster" = aws_ecs_cluster.principal.arn
-          }
-        }
-      },
-      // As roles production são fornecidas externamente. Estes denies tornam
-      // o teto de RunTask efetivo mesmo se outra policy anexada conceder ecs:*.
-      {
-        Sid         = "DenyOtherImportTasks"
-        Effect      = "Deny"
-        Action      = ["ecs:RunTask"]
-        NotResource = [local.ingestion_import_revision_arn_pattern]
-      },
-      {
-        Sid      = "DenyImportTaskOutsideCluster"
-        Effect   = "Deny"
-        Action   = ["ecs:RunTask"]
-        Resource = [local.ingestion_import_revision_arn_pattern]
-        Condition = {
-          ArnNotEquals = {
-            "ecs:cluster" = aws_ecs_cluster.principal.arn
-          }
-        }
-      },
-      {
-        Sid    = "DescribeImportWorker"
-        Effect = "Allow"
-        Action = ["ecs:DescribeTasks"]
-        Resource = [
-          "arn:aws:ecs:${data.aws_region.atual.name}:${data.aws_caller_identity.atual.account_id}:task/${aws_ecs_cluster.principal.name}/*",
-        ]
-        Condition = {
-          ArnEquals = {
-            "ecs:cluster" = aws_ecs_cluster.principal.arn
-          }
-        }
-      },
-      {
-        Sid      = "PassImportWorkerRoles"
-        Effect   = "Allow"
-        Action   = ["iam:PassRole"]
-        Resource = distinct([local.ingestion_ecs_execution_role_arn, local.ingestion_import_task_role_arn])
-        Condition = {
-          StringEquals = {
-            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
-          }
-        }
-      },
-      {
-        Sid         = "DenyOtherPassedRoles"
-        Effect      = "Deny"
-        Action      = ["iam:PassRole"]
-        NotResource = distinct([local.ingestion_ecs_execution_role_arn, local.ingestion_import_task_role_arn])
-      },
-      {
-        Sid      = "DenyImportRolesToOtherServices"
-        Effect   = "Deny"
-        Action   = ["iam:PassRole"]
-        Resource = distinct([local.ingestion_ecs_execution_role_arn, local.ingestion_import_task_role_arn])
-        Condition = {
-          StringNotEquals = {
-            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
-          }
-        }
-      },
+
     ]
   })
 
@@ -491,7 +419,7 @@ locals {
 }
 
 resource "aws_iam_role_policy" "api_import" {
-  count = local.ingestion_is_production ? 1 : 0
+  count = local.eks_manages_iam ? 1 : 0
 
   name   = "${var.deployment_namespace}-api-import"
   role   = local.api_task_role_name
@@ -499,7 +427,7 @@ resource "aws_iam_role_policy" "api_import" {
 }
 
 resource "aws_iam_role_policy" "ingestion_import" {
-  count = local.ingestion_is_production ? 1 : 0
+  count = local.eks_manages_iam ? 1 : 0
 
   name   = "${var.deployment_namespace}-ingestion-import"
   role   = local.ingestion_import_task_role_name
@@ -508,7 +436,7 @@ resource "aws_iam_role_policy" "ingestion_import" {
 
 resource "aws_cloudwatch_log_metric_filter" "import_reconciliation_failures" {
   name           = "${var.deployment_namespace}-import-reconciliation-failures"
-  log_group_name = aws_cloudwatch_log_group.api.name
+  log_group_name = aws_cloudwatch_log_group.kubernetes_application.name
   pattern        = "{ $.event = \"import_reconciliation_failed\" }"
 
   metric_transformation {
@@ -521,7 +449,7 @@ resource "aws_cloudwatch_log_metric_filter" "import_reconciliation_failures" {
 
 resource "aws_cloudwatch_log_metric_filter" "import_active_upload_age" {
   name           = "${var.deployment_namespace}-import-active-upload-age"
-  log_group_name = aws_cloudwatch_log_group.api.name
+  log_group_name = aws_cloudwatch_log_group.kubernetes_application.name
   pattern        = "{ $.event = \"import_active_upload_age\" && $.state = \"UPLOADING\" }"
 
   metric_transformation {

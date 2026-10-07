@@ -1,7 +1,7 @@
 import { trace } from "@opentelemetry/api";
 import { getLogContext } from "./log-context.js";
 import { getLokiTransport } from "./loki-transport.js";
-import { sanitizeFields } from "./redaction.js";
+import { sanitizeFields, scrubText } from "./redaction.js";
 import { resolveServiceMetadata } from "./service-metadata.js";
 
 export interface Logger {
@@ -69,7 +69,7 @@ export function createLogger(serviceName: string): Logger {
       service_version: metadata.version,
       ...(spanContext?.traceId ? { trace_id: spanContext.traceId } : {}),
       ...(spanContext?.spanId ? { span_id: spanContext.spanId } : {}),
-      message,
+      message: scrubText(message),
     });
     process.stdout.write(`${line}\n`);
     getLokiTransport()?.enqueue(

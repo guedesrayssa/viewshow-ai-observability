@@ -1,0 +1,12 @@
+# 28 eventos de log no grupo /ecs/view-show-ingestion-incremental-ingest entre 02:30Z e 03:05Z
+linhas de alerta (heartbeat failed / AccessDenied / InvalidParameterValue / ConditionalWriteError / batch processing failed / warning / error): 0
+179df344aa28 2026-10-06T02:41:21.948Z started {}
+f5f8fc899895 2026-10-06T02:46:20.159Z started {}
+f5f8fc899895 2026-10-06T02:46:40.383Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20223.832329000004, 'errorCode': None}
+28684349c17e 2026-10-06T02:51:19.970Z started {}
+28684349c17e 2026-10-06T02:51:40.188Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20217.875923000007, 'errorCode': None}
+64e28443e04d 2026-10-06T02:56:21.363Z started {}
+64e28443e04d 2026-10-06T02:56:41.576Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20213.03225700001, 'errorCode': None}
+0cc7f237cc50 2026-10-06T03:01:26.676Z started {}
+0cc7f237cc50 2026-10-06T03:01:46.894Z finished {'batchesCompleted': 0, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 20218.063156, 'errorCode': None}
+179df344aa28 2026-10-06T03:02:21.254Z finished {'batchesCompleted': 3, 'batchesRetryable': 0, 'batchesQuarantined': 0, 'status': 'SUCCEEDED', 'durationMs': 1259305.724171, 'errorCode': None}

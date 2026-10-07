@@ -1,0 +1,128 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /Users/marcossilva/.codex/worktrees/artefato-rnfs-final/g05/apps/backend/api/loadtest/k6/front-api.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 10 max VUs, 1m0s max duration (incl. graceful stop):
+              * frontend: 1.00 iterations/s for 30s (maxVUs: 2-10, gracefulStop: 30s)
+
+
+running (0m01.0s), 00/02 VUs, 1 complete and 0 interrupted iterations
+frontend   [   2% ] 00/02 VUs  00.5s/30s  1.00 iters/s
+
+running (0m02.0s), 00/02 VUs, 2 complete and 0 interrupted iterations
+frontend   [   5% ] 00/02 VUs  01.5s/30s  1.00 iters/s
+
+running (0m03.0s), 00/02 VUs, 3 complete and 0 interrupted iterations
+frontend   [   8% ] 00/02 VUs  02.5s/30s  1.00 iters/s
+
+running (0m04.0s), 00/02 VUs, 4 complete and 0 interrupted iterations
+frontend   [  12% ] 00/02 VUs  03.5s/30s  1.00 iters/s
+
+running (0m05.0s), 00/02 VUs, 5 complete and 0 interrupted iterations
+frontend   [  15% ] 00/02 VUs  04.5s/30s  1.00 iters/s
+
+running (0m06.0s), 00/02 VUs, 6 complete and 0 interrupted iterations
+frontend   [  18% ] 00/02 VUs  05.5s/30s  1.00 iters/s
+
+running (0m07.0s), 00/02 VUs, 7 complete and 0 interrupted iterations
+frontend   [  22% ] 00/02 VUs  06.5s/30s  1.00 iters/s
+
+running (0m08.0s), 00/02 VUs, 8 complete and 0 interrupted iterations
+frontend   [  25% ] 00/02 VUs  07.5s/30s  1.00 iters/s
+
+running (0m09.0s), 00/02 VUs, 9 complete and 0 interrupted iterations
+frontend   [  28% ] 00/02 VUs  08.5s/30s  1.00 iters/s
+
+running (0m10.0s), 00/02 VUs, 10 complete and 0 interrupted iterations
+frontend   [  32% ] 00/02 VUs  09.5s/30s  1.00 iters/s
+
+running (0m11.0s), 00/02 VUs, 11 complete and 0 interrupted iterations
+frontend   [  35% ] 00/02 VUs  10.5s/30s  1.00 iters/s
+
+running (0m12.0s), 00/02 VUs, 12 complete and 0 interrupted iterations
+frontend   [  38% ] 00/02 VUs  11.5s/30s  1.00 iters/s
+
+running (0m13.0s), 00/02 VUs, 13 complete and 0 interrupted iterations
+frontend   [  42% ] 00/02 VUs  12.5s/30s  1.00 iters/s
+
+running (0m14.0s), 00/02 VUs, 14 complete and 0 interrupted iterations
+frontend   [  45% ] 00/02 VUs  13.5s/30s  1.00 iters/s
+
+running (0m15.0s), 00/02 VUs, 15 complete and 0 interrupted iterations
+frontend   [  48% ] 00/02 VUs  14.5s/30s  1.00 iters/s
+
+running (0m16.0s), 00/02 VUs, 16 complete and 0 interrupted iterations
+frontend   [  52% ] 00/02 VUs  15.5s/30s  1.00 iters/s
+
+running (0m17.0s), 00/02 VUs, 17 complete and 0 interrupted iterations
+frontend   [  55% ] 00/02 VUs  16.5s/30s  1.00 iters/s
+
+running (0m18.0s), 00/02 VUs, 18 complete and 0 interrupted iterations
+frontend   [  58% ] 00/02 VUs  17.5s/30s  1.00 iters/s
+
+running (0m19.0s), 00/02 VUs, 19 complete and 0 interrupted iterations
+frontend   [  62% ] 00/02 VUs  18.5s/30s  1.00 iters/s
+
+running (0m20.0s), 00/02 VUs, 20 complete and 0 interrupted iterations
+frontend   [  65% ] 00/02 VUs  19.5s/30s  1.00 iters/s
+
+running (0m21.0s), 00/02 VUs, 21 complete and 0 interrupted iterations
+frontend   [  68% ] 00/02 VUs  20.5s/30s  1.00 iters/s
+
+running (0m22.0s), 00/02 VUs, 22 complete and 0 interrupted iterations
+frontend   [  72% ] 00/02 VUs  21.5s/30s  1.00 iters/s
+
+running (0m23.0s), 00/02 VUs, 23 complete and 0 interrupted iterations
+frontend   [  75% ] 00/02 VUs  22.5s/30s  1.00 iters/s
+
+running (0m24.0s), 00/02 VUs, 24 complete and 0 interrupted iterations
+frontend   [  78% ] 00/02 VUs  23.5s/30s  1.00 iters/s
+
+running (0m25.0s), 00/02 VUs, 25 complete and 0 interrupted iterations
+frontend   [  82% ] 00/02 VUs  24.5s/30s  1.00 iters/s
+
+running (0m26.0s), 00/02 VUs, 26 complete and 0 interrupted iterations
+frontend   [  85% ] 00/02 VUs  25.5s/30s  1.00 iters/s
+
+running (0m27.0s), 00/02 VUs, 27 complete and 0 interrupted iterations
+frontend   [  88% ] 00/02 VUs  26.5s/30s  1.00 iters/s
+
+running (0m28.0s), 00/02 VUs, 28 complete and 0 interrupted iterations
+frontend   [  92% ] 00/02 VUs  27.5s/30s  1.00 iters/s
+
+running (0m29.0s), 00/02 VUs, 29 complete and 0 interrupted iterations
+frontend   [  95% ] 00/02 VUs  28.5s/30s  1.00 iters/s
+
+running (0m30.0s), 00/02 VUs, 30 complete and 0 interrupted iterations
+frontend   [  98% ] 00/02 VUs  29.5s/30s  1.00 iters/s
+Carga da API consumida pelo frontend — modo smoke
+Taxa de chegada (iterações/s): base 1, pico 1; 31 iterações, 35 requisições, 1.0 iter/s médios
+429 (limite de taxa do gerador): 0; 503: 1; timeouts do cliente (>8000 ms): 0; iterações descartadas: 0
+Status HTTP (0 = timeout/erro de rede): 200=34  503=1
+
+THRESHOLDS: todos os 98 aprovados
+
+Por rota            req   falha%  contrato%   p50ms   p95ms   p99ms  parcial%
+incidents_list          14    0.00     100.00      47      68      70     100.0
+incidents_chart          2    0.00     100.00      47      47      47     100.0
+dashboard_overview       7    0.00     100.00      74      88      91       0.0
+incident_diagnosis       5    0.00     100.00      81     219     242     100.0
+incident_events          2    0.00     100.00      42      45      45     100.0
+monitoring_overview      1    0.00     100.00       7       7       7       0.0
+
+Observações:
+  - monitoring_overview: 1/1 respostas 503 DATA_UNAVAILABLE — a rota não está sendo exercitada (sem projeção)
+  - incidents_list: 14 respostas com hasMore=true e nextCursor=null — a API não pagina incidentes
+
+Resumo detalhado: /Users/marcossilva/.codex/worktrees/artefato-rnfs-final/g05/assets/testes-carga/2026-10-06-fechamento-local/api-latest-develop/api-smoke-1/resumo-front-api-smoke.json
+
+running (0m30.5s), 00/02 VUs, 31 complete and 0 interrupted iterations
+frontend ✓ [ 100% ] 00/02 VUs  30s  1.00 iters/s

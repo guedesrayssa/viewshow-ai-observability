@@ -1,0 +1,91 @@
+{
+  "status": "success",
+  "data": {
+    "activeTargets": [
+      {
+        "discoveredLabels": {
+          "__address__": "host.docker.internal:13000",
+          "__always_scrape_classic_histograms__": "false",
+          "__convert_classic_histograms_to_nhcb__": "false",
+          "__metrics_path__": "/metrics",
+          "__scheme__": "http",
+          "__scrape_interval__": "5s",
+          "__scrape_native_histograms__": "false",
+          "__scrape_timeout__": "4s",
+          "job": "rnf-api"
+        },
+        "labels": {
+          "instance": "host.docker.internal:13000",
+          "job": "rnf-api"
+        },
+        "scrapePool": "rnf-api",
+        "scrapeUrl": "http://host.docker.internal:13000/metrics",
+        "globalUrl": "http://host.docker.internal:13000/metrics",
+        "lastError": "",
+        "lastScrape": "2026-10-06T23:48:06.70924026Z",
+        "lastScrapeDuration": 0.002960125,
+        "health": "up",
+        "scrapeInterval": "5s",
+        "scrapeTimeout": "4s"
+      },
+      {
+        "discoveredLabels": {
+          "__address__": "02vxi7ikcb.execute-api.us-east-1.amazonaws.com:443",
+          "__always_scrape_classic_histograms__": "false",
+          "__convert_classic_histograms_to_nhcb__": "false",
+          "__metrics_path__": "/metrics",
+          "__scheme__": "https",
+          "__scrape_interval__": "5s",
+          "__scrape_native_histograms__": "false",
+          "__scrape_timeout__": "4s",
+          "job": "rnf-api-aws"
+        },
+        "labels": {
+          "instance": "02vxi7ikcb.execute-api.us-east-1.amazonaws.com:443",
+          "job": "rnf-api-aws"
+        },
+        "scrapePool": "rnf-api-aws",
+        "scrapeUrl": "https://02vxi7ikcb.execute-api.us-east-1.amazonaws.com:443/metrics",
+        "globalUrl": "https://02vxi7ikcb.execute-api.us-east-1.amazonaws.com:443/metrics",
+        "lastError": "",
+        "lastScrape": "2026-10-06T23:48:08.165492427Z",
+        "lastScrapeDuration": 0.694845417,
+        "health": "up",
+        "scrapeInterval": "5s",
+        "scrapeTimeout": "4s"
+      },
+      {
+        "discoveredLabels": {
+          "__address__": "host.docker.internal:19101",
+          "__always_scrape_classic_histograms__": "false",
+          "__convert_classic_histograms_to_nhcb__": "false",
+          "__metrics_path__": "/metrics",
+          "__scheme__": "http",
+          "__scrape_interval__": "5s",
+          "__scrape_native_histograms__": "false",
+          "__scrape_timeout__": "4s",
+          "job": "rnf-ingestion-lab"
+        },
+        "labels": {
+          "instance": "host.docker.internal:19101",
+          "job": "rnf-ingestion-lab"
+        },
+        "scrapePool": "rnf-ingestion-lab",
+        "scrapeUrl": "http://host.docker.internal:19101/metrics",
+        "globalUrl": "http://host.docker.internal:19101/metrics",
+        "lastError": "",
+        "lastScrape": "2026-10-06T23:48:08.264425969Z",
+        "lastScrapeDuration": 0.006601583,
+        "health": "up",
+        "scrapeInterval": "5s",
+        "scrapeTimeout": "4s"
+      }
+    ],
+    "droppedTargets": [],
+    "droppedTargetCounts": {
+      "rnf-api": 0,
+      "rnf-api-aws": 0,
+      "rnf-ingestion-lab": 0
+    }
+  }
+}

@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rnf-prometheus
+  namespace: view-show-rnf
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rnf-prometheus-pods
+  namespace: view-show-rnf
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rnf-prometheus-pods
+  namespace: view-show-rnf
+subjects:
+  - kind: ServiceAccount
+    name: rnf-prometheus
+    namespace: view-show-rnf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: rnf-prometheus-pods
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: g05-rnf-prometheus-nodes
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/proxy"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: g05-rnf-prometheus-nodes
+subjects:
+  - kind: ServiceAccount
+    name: rnf-prometheus
+    namespace: view-show-rnf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: g05-rnf-prometheus-nodes
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rnf-prometheus
+  namespace: view-show-rnf
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s
+      evaluation_interval: 5s
+    scrape_configs:
+      - job_name: rnf-api-eks
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [view-show-rnf]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: api
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: http
+          - source_labels: [__meta_kubernetes_pod_phase]
+            action: keep
+            regex: Running
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+      - job_name: rnf-kubelet-cadvisor
+        scheme: https
+        kubernetes_sd_configs:
+          - role: node
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        relabel_configs:
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rnf-prometheus
+  namespace: view-show-rnf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rnf-prometheus
+  template:
+    metadata:
+      labels:
+        app: rnf-prometheus
+    spec:
+      serviceAccountName: rnf-prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.14.0
+          args: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=4h"]
+          ports:
+            - name: http
+              containerPort: 9090
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+              readOnly: true
+            - name: data
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: rnf-prometheus
+        - name: data
+          emptyDir: {}

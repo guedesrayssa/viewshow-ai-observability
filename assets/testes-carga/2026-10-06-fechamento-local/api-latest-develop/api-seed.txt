@@ -1,0 +1,17 @@
+Limpando view-show-rnf-api em http://127.0.0.1:18001…
+  34304 itens removidos.
+Gerando 2500 incidentes (100/hora × 25 h) em view-show-rnf-api…
+  34290 itens gravados (incidentes + evidências + hipóteses + eventos).
+  10 itens de projeção gravados para /dashboard/overview e /monitoring/overview (fontes: argus).
+  4 itens do dataset versionado gravados (manifesto ACTIVE + projeções de incidentes, overview e resumo parcial de eventos).
+
+Pronto. Para o k6:
+  INCIDENT_COUNT=2500
+
+⚠️  Os buckets são relativos ao INSTANTE do seed.
+    Rode o teste logo em seguida: window=15m só inclui incidentes ainda dentro de 15 minutos.
+
+⚠️  /api/v1/dashboard/overview e /api/v1/monitoring/overview também envelhecem:
+    snapshots gravados com 1/20/45/300/1200 min de idade cobrem os presets
+    as janelas logo após o seed; depois a API mostra o último snapshot retido
+    com aviso STALE_SNAPSHOT, até o TTL removê-lo do DynamoDB.

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "profile": "smoke",
+  "target": "http://127.0.0.1:4173",
+  "startedAt": "2026-10-05T21:18:07.378Z",
+  "finishedAt": "2026-10-05T21:18:22.412Z",
+  "configuration": {
+    "connections": 2,
+    "duration": 15,
+    "pipelining": 1,
+    "timeoutSeconds": 8
+  },
+  "workload": {
+    "pages": [
+      "/login/",
+      "/visao-geral/",
+      "/incidentes/",
+      "/incidentes/detalhe/",
+      "/incidentes/feed-eventos/",
+      "/monitoramento/",
+      "/dados/importacoes/"
+    ],
+    "discoveredStaticResources": 24,
+    "totalRequestVariants": 31
+  },
+  "results": {
+    "requests": {
+      "average": 703.6,
+      "mean": 703.6,
+      "stddev": 246.08,
+      "min": 433,
+      "max": 1188,
+      "total": 10554,
+      "p0_001": 433,
+      "p0_01": 433,
+      "p0_1": 433,
+      "p1": 433,
+      "p2_5": 433,
+      "p10": 464,
+      "p25": 467,
+      "p50": 615,
+      "p75": 812,
+      "p90": 1123,
+      "p97_5": 1188,
+      "p99": 1188,
+      "p99_9": 1188,
+      "p99_99": 1188,
+      "p99_999": 1188,
+      "sent": 10556
+    },
+    "latency": {
+      "average": 2.39,
+      "mean": 2.39,
+      "stddev": 2.05,
+      "min": 1,
+      "max": 42,
+      "p0_001": 0,
+      "p0_01": 0,
+      "p0_1": 0,
+      "p1": 0,
+      "p2_5": 1,
+      "p10": 1,
+      "p25": 1,
+      "p50": 2,
+      "p75": 3,
+      "p90": 4,
+      "p97_5": 7,
+      "p99": 10,
+      "p99_9": 21,
+      "p99_99": 34,
+      "p99_999": 42,
+      "totalCount": 10554
+    },
+    "throughput": {
+      "average": 24033962.67,
+      "mean": 24033962.67,
+      "stddev": 8396614.27,
+      "min": 14795849,
+      "max": 40368179,
+      "total": 360520191,
+      "p0_001": 14802943,
+      "p0_01": 14802943,
+      "p0_1": 14802943,
+      "p1": 14802943,
+      "p2_5": 14802943,
+      "p10": 15769599,
+      "p25": 16015359,
+      "p50": 21118975,
+      "p75": 28065791,
+      "p90": 38338559,
+      "p97_5": 40370175,
+      "p99": 40370175,
+      "p99_9": 40370175,
+      "p99_99": 40370175,
+      "p99_999": 40370175
+    },
+    "statusCodeStats": {
+      "200": {
+        "count": 10554
+      }
+    },
+    "errors": 0,
+    "timeouts": 0,
+    "non2xx": 0,
+    "durationSeconds": 15.02
+  },
+  "thresholds": {
+    "noTransportErrors": true,
+    "noHttpErrors": true,
+    "latencyP97_5Below200ms": true
+  }
+}

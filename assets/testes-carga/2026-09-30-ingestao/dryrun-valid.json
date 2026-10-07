@@ -1,0 +1,14 @@
+[
+  {
+    "variant": "valid",
+    "batchId": "bat_c4ae16ab0c72a22aecd8ef54e6a941eb40504f8fa317a025a10213916340ace5",
+    "windowStart": "2026-09-30T09:00:00.000Z",
+    "windowEnd": "2026-09-30T09:15:00.000Z",
+    "rows": 150000,
+    "sizeBytes": 177684,
+    "sha256": "523e1f44daae9f22defe9f12f25e1fd081c6ef282a0222057e2ea58f75ac9148",
+    "schemaDifferences": [],
+    "publishedAt": "2026-09-30T10:12:16.960Z",
+    "dryRun": true
+  }
+]

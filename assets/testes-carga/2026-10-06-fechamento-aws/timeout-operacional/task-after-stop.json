@@ -1,0 +1,24 @@
+[
+    {
+        "status": "STOPPED",
+        "reason": "RNF CG05: synthetic 750k test exceeded proportional 4500s processing budget; controlled timeout and recovery experiment",
+        "stoppedAt": "2026-10-06T21:37:41.623000-03:00",
+        "containers": [
+            {
+                "name": "ingestion",
+                "exit": 137,
+                "status": "STOPPED"
+            },
+            {
+                "name": "mysql-snapshot",
+                "exit": 0,
+                "status": "STOPPED"
+            },
+            {
+                "name": "tmp-owner",
+                "exit": 0,
+                "status": "STOPPED"
+            }
+        ]
+    }
+]

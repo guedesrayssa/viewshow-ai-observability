@@ -1,0 +1,6 @@
+apiVersion: v2
+name: view-show
+version: 1.0.0
+description: API, análise e ingestão View Show em Kubernetes
+kubeVersion: ">=1.33.0-0"
+type: application

@@ -1,0 +1,47 @@
+{
+  "dashboard": "rnf-retro-api",
+  "window": {
+    "from": "2026-10-07T02:04:45Z",
+    "to": "2026-10-07T02:10:45Z"
+  },
+  "kind": "native Grafana rendering over preserved data; no new measurement",
+  "checks": [
+    {
+      "panelId": 1,
+      "refId": "A",
+      "expression": "rnf_retro_api_p95_seconds",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "refId": "A",
+      "expression": "rnf_retro_api_requests_per_second",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "refId": "A",
+      "expression": "rnf_retro_api_5xx_per_second",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 4,
+      "refId": "A",
+      "expression": "rnf_retro_api_cpu_core_percent",
+      "httpStatus": 200,
+      "samples": 73,
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "passed": true
+}

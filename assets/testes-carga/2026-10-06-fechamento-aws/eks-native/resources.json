@@ -1,0 +1,17 @@
+{
+  "createdAt": "2026-10-07T01:44:47.636855+00:00",
+  "account": "239162056821",
+  "region": "us-east-1",
+  "cluster": "view-show-rnf-eks",
+  "namespace": "view-show-rnf",
+  "importsNamespace": "view-show-rnf-imports",
+  "operationalTable": "view-show-rnf-eks",
+  "bucket": "view-show-rnf-eks-239162056821",
+  "glueDatabase": "view_show_rnf_eks",
+  "athenaWorkgroup": "view-show-rnf-eks",
+  "athenaOutput": "s3://view-show-rnf-eks-239162056821/athena/",
+  "analysisQueueUrl": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-analysis",
+  "scope": "separate test data; no ECS service, active dataset or original storage modified",
+  "incrementalQueueUrl": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-incremental.fifo",
+  "incrementalDlqUrl": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-incremental-dlq.fifo"
+}

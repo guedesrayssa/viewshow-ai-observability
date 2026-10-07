@@ -167,11 +167,11 @@ def test_claim_persists_only_safe_batch_control_metadata() -> None:
     repository(client).claim(manifest(), reference())
 
     assert client.item is not None
-    assert client.item["PK"] == f"BATCH#{BATCH_ID}"
-    assert client.item["SK"] == "META"
+    assert client.item["pk"] == f"BATCH#{BATCH_ID}"
+    assert client.item["sk"] == "META"
     assert set(client.item) == {
-        "PK",
-        "SK",
+        "pk",
+        "sk",
         "batchId",
         "manifestSha256",
         "reference",
@@ -181,7 +181,7 @@ def test_claim_persists_only_safe_batch_control_metadata() -> None:
         "updatedAt",
     }
     assert "rows" not in client.item
-    assert client.puts[0]["ConditionExpression"] == "attribute_not_exists(PK)"
+    assert client.puts[0]["ConditionExpression"] == "attribute_not_exists(pk)"
 
 
 def test_transition_requires_expected_state_and_version() -> None:

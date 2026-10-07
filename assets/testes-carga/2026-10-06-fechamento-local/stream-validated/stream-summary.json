@@ -1,0 +1,28 @@
+{
+  "scope": "production normalization and writer on persistent DynamoDB Local; excludes ECS, SQS, projection, archive and public API",
+  "startedAtApproximate": "2026-10-06T23:36:49.922910+00:00",
+  "configuredWindowSeconds": 900,
+  "nominalWindowEnd": "2026-10-06T23:51:49.922910+00:00",
+  "lastPersistedAt": "2026-10-06T23:51:44.888248+00:00",
+  "lastPersistedElapsedSeconds": 894.9654295409855,
+  "offered": 150000,
+  "writtenReported": 150000,
+  "independentCount": 150000,
+  "missing": 0,
+  "unexpected": 0,
+  "duplicates": 0,
+  "canonicalFieldMismatches": 0,
+  "batchLatencyP95Seconds": 1.1791681250033434,
+  "maxProducerScheduleLagSeconds": 0.27879416599171236,
+  "verificationSeconds": 37.87675791699439,
+  "verificationPages": 151,
+  "verificationMethod": "strongly consistent Query with Limit=1000; all canonical fields compared to deterministic input, including payloadHash",
+  "replay": {
+    "written": 0,
+    "unchanged": 1000
+  },
+  "table": "rnf-stream-20261006233649",
+  "verifiedAt": "2026-10-06T23:59:33.580428+00:00",
+  "verificationRecovery": "Unbounded verification query exceeded the emulator JVM heap; persisted data was retained and verified with bounded pages. No ingestion replay was required.",
+  "passed": true
+}

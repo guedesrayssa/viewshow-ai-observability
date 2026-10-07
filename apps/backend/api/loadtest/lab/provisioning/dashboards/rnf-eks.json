@@ -1,0 +1,185 @@
+{
+  "uid": "rnf-eks-native",
+  "title": "RNFs no EKS \u2014 API e Jobs nativos",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": [
+    "rnf",
+    "local",
+    "evidencia"
+  ],
+  "timezone": "utc",
+  "refresh": "5s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Lat\u00eancia API p95 (s)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-eks-prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"rnf-api-eks\"}[30s])))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "rnf-eks-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Throughput API (req/s)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-eks-prom"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"rnf-api-eks\"}[30s]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "rnf-eks-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Erros API (5xx/s)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-eks-prom"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"rnf-api-eks\",status_code=~\"5..\"}[30s]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "rnf-eks-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: erros/s",
+          "min": 0,
+          "custom": {
+            "axisSoftMax": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "rnf-eks-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100*sum(rate(container_cpu_usage_seconds_total{job=\"rnf-kubelet-cadvisor\",namespace=\"view-show-rnf\",container=\"api\"}[30s]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "rnf-eks-prom"
+          }
+        }
+      ],
+      "title": "CPU API agregada (% de 1 n\u00facleo)",
+      "type": "timeseries"
+    }
+  ],
+  "description": "CG-05 na conta 239162056821/us-east-1: HTTP das rotas /imports (lat\u00eancia, req/s e 5xx/s) e CPU da task import-dump (utilizada/reservada). Mesma janela UTC. N\u00e3o confundir req/s do controle com eventos/s do processamento. M\u00e9tricas terminais batch ficam no dashboard complementar."
+}

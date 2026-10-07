@@ -41,6 +41,25 @@ afterEach(() => {
 });
 
 describe("log redaction", () => {
+  it("scrubs credentials in the top-level log message as well as fields", () => {
+    const rows = captureStdout(() =>
+      createLogger("view-show-api").warn(
+        "upstream refused Bearer abcdefghijklmnop at /callback?code=SECRETCODE&state=PRIVATESTATE",
+        { event: "upstream.failure", password: "PRIVATEPASSWORD" },
+      ),
+    );
+    expect(rows).toHaveLength(1);
+    const serialized = JSON.stringify(rows[0]);
+    for (const secret of [
+      "abcdefghijklmnop",
+      "SECRETCODE",
+      "PRIVATESTATE",
+      "PRIVATEPASSWORD",
+    ])
+      expect(serialized).not.toContain(secret);
+    expect(rows[0].message).toContain("[REDACTED]");
+  });
+
   it("redacts credential-like keys at any depth and spelling", () => {
     const safe = sanitizeFields({
       password: "p1",

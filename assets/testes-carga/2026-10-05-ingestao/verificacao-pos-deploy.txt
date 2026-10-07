@@ -1,0 +1,91 @@
+Verificação pós-deploy — 2026-10-05T14:44:37Z (só leitura)
+
+## Task definitions de ingestão
+{
+    "familia": "view-show-ingestion-incremental-ingest",
+    "revisao": 2,
+    "status": "ACTIVE",
+    "imagens": [
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615",
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615"
+    ]
+}
+{
+    "familia": "view-show-ingestion-incremental-export",
+    "revisao": 2,
+    "status": "ACTIVE",
+    "imagens": [
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615",
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615"
+    ]
+}
+{
+    "familia": "view-show-ingestion-sync",
+    "revisao": 2,
+    "status": "ACTIVE",
+    "imagens": [
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615",
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615"
+    ]
+}
+{
+    "familia": "view-show-ingestion-import",
+    "revisao": 2,
+    "status": "ACTIVE",
+    "imagens": [
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615",
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615"
+    ]
+}
+{
+    "familia": "view-show-ingestion-backfill",
+    "revisao": 2,
+    "status": "ACTIVE",
+    "imagens": [
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615",
+        "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615"
+    ]
+}
+view-show-ingestion-incremental-ingest:1 -> INACTIVE
+
+## Agendamentos
+{
+    "nome": "view-show-ingestion-incremental-ingest",
+    "estado": "DISABLED",
+    "taskDefinition": "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2"
+}
+{
+    "nome": "view-show-ingestion-incremental-export",
+    "estado": "DISABLED",
+    "taskDefinition": "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-export:2"
+}
+{
+    "nome": "view-show-ingestion-sync",
+    "estado": "DISABLED",
+    "taskDefinition": "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-sync:2"
+}
+
+## Imagem no ECR
+{
+    "tag": "8be4568def6e",
+    "digest": "sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615",
+    "publicada": "2026-10-05T11:28:32.064000-03:00"
+}
+
+## terraform output ingestion_runbook (após o refresh-only)
+image.immutable_uri = 145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:08474aaaa70aff8668a5ac82926da7087dd20d4d66a257d82e8ccfb31f083615
+imports.task_definition_arn = arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:2
+incremental.ingest_task_arn = arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:2
+incremental.export_task_arn = arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-export:2
+incremental.ingest_schedule_state = DISABLED
+incremental.export_schedule_state = DISABLED
+runtime.sync_task_arn = arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-sync:2
+runtime.backfill_task_arn = arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-backfill:2
+
+## visibility_heartbeat.py: imagem x commit 1c0d9fa
+O build foi feito a partir do checkout no Windows (core.autocrlf=true), então os
+arquivos .py entram na imagem com CRLF. A comparação vale sem os CR:
+imagem :8be4568def6e  /app/application/visibility_heartbeat.py      sha256 bruto    d46b9e7673236fa9f925ad4e4e0a49d09190f22ed7bf029cba0961a988745121
+imagem :8be4568def6e  /app/application/visibility_heartbeat.py      sha256 sem CR   10a7e2c13cd8d77e2f7ee0df739396163d54a623e795ac167319c1cdbddd7cc2
+commit 1c0d9fa        application/visibility_heartbeat.py (blob)   sha256          10a7e2c13cd8d77e2f7ee0df739396163d54a623e795ac167319c1cdbddd7cc2
+git diff --quiet 1c0d9fa -- apps/backend/ingestion-data: sem diferença

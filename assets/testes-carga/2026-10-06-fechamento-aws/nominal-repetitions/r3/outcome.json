@@ -1,0 +1,52 @@
+{
+  "repetition": 3,
+  "startedAt": "2026-10-07T01:30:08.381Z",
+  "finishedClientAt": "2026-10-07T01:45:18.979Z",
+  "clientExitCode": 99,
+  "processingBudgetSeconds": 900,
+  "scope": "independent concentrated 150k mass, same runtime; correct budget is fixed before each run",
+  "beforeCleanup": {
+    "importId": "imp_01M49ZQ2FHWPN0E6ET2GR6KVE5",
+    "state": "PROCESSING",
+    "progress": {
+      "kind": "stage",
+      "stage": "PROJECTING",
+      "stageStartedAt": "2026-10-07T01:39:03.757Z",
+      "heartbeatAt": "2026-10-07T01:45:13.788Z",
+      "recordsRead": 150000,
+      "recordsWritten": 150000,
+      "recordsRejected": 0,
+      "recordsTotal": 150000,
+      "currentDataset": null,
+      "datasetsCompleted": 23,
+      "datasetsTotal": 23
+    },
+    "candidateVersion": null,
+    "createdAt": "2026-10-07T01:30:14.385Z",
+    "updatedAt": "2026-10-07T01:45:13.788Z"
+  },
+  "stopRequestedAt": "2026-10-07T01:45:21.513Z",
+  "taskArn": "arn:aws:ecs:us-east-1:239162056821:task/view-show-iac-cluster/e41e20a6f81048678520472e10e0f15e",
+  "terminal": {
+    "importId": "imp_01M49ZQ2FHWPN0E6ET2GR6KVE5",
+    "state": "FAILED",
+    "progress": {
+      "kind": "stage",
+      "stage": "PROJECTING",
+      "stageStartedAt": "2026-10-07T01:39:03.757Z",
+      "heartbeatAt": "2026-10-07T01:45:43.841Z",
+      "recordsRead": 150000,
+      "recordsWritten": 150000,
+      "recordsRejected": 0,
+      "recordsTotal": 150000,
+      "currentDataset": null,
+      "datasetsCompleted": 23,
+      "datasetsTotal": 23
+    },
+    "errorCode": "WORKER_STOPPED",
+    "candidateVersion": null,
+    "createdAt": "2026-10-07T01:30:14.385Z",
+    "updatedAt": "2026-10-07T01:46:51.247Z"
+  },
+  "completedAt": "2026-10-07T01:46:58.006Z"
+}

@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 4s
+  evaluation_interval: 5s
+scrape_configs:
+  - job_name: rnf-api
+    static_configs:
+      - targets: ["host.docker.internal:13000"]
+  - job_name: rnf-ingestion-lab
+    static_configs:
+      - targets: ["host.docker.internal:19101"]
+  - job_name: rnf-api-aws
+    scheme: https
+    static_configs:
+      - targets: ["02vxi7ikcb.execute-api.us-east-1.amazonaws.com:443"]

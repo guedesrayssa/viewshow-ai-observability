@@ -1,0 +1,212 @@
+{
+  "results": {
+    "A": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "CpuUtilized",
+            "refId": "A",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     cpu_used,\n\t\t}"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "ClusterName": "view-show-iac-cluster",
+                  "Series": "CpuUtilized",
+                  "TaskDefinitionFamily": "view-show-ingestion-import"
+                },
+                "config": {
+                  "displayNameFromDS": "CpuUtilized",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22A%22%2C%22start%22%3A%222026-10-06T23%3A10%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A42%3A00Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%5B%22ECS%2FContainerInsights%22%2C%22CpuUtilized%22%2C%22ClusterName%22%2C%22view-show-iac-cluster%22%2C%22TaskDefinitionFamily%22%2C%22view-show-ingestion-import%22%2C%7B%22stat%22%3A%22Average%22%2C%22period%22%3A300%7D%5D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [
+                1791328200000,
+                1791328500000,
+                1791328800000,
+                1791329100000,
+                1791329400000,
+                1791329700000,
+                1791330000000
+              ],
+              [
+                462.93292236328125,
+                483.79693253580734,
+                472.0155364583334,
+                489.4400078938802,
+                496.63265909830733,
+                497.9033616536459,
+                488.93044501410594
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    "B": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "CpuReserved",
+            "refId": "B",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     cpu_reserved,\n\t\t}"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "ClusterName": "view-show-iac-cluster",
+                  "Series": "CpuReserved",
+                  "TaskDefinitionFamily": "view-show-ingestion-import"
+                },
+                "config": {
+                  "displayNameFromDS": "CpuReserved",
+                  "links": [
+                    {
+                      "title": "View in CloudWatch console",
+                      "targetBlank": true,
+                      "url": "https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=%7B%22view%22%3A%22timeSeries%22%2C%22stacked%22%3Afalse%2C%22title%22%3A%22B%22%2C%22start%22%3A%222026-10-06T23%3A10%3A00Z%22%2C%22end%22%3A%222026-10-06T23%3A42%3A00Z%22%2C%22region%22%3A%22us-east-1%22%2C%22metrics%22%3A%5B%5B%22ECS%2FContainerInsights%22%2C%22CpuReserved%22%2C%22TaskDefinitionFamily%22%2C%22view-show-ingestion-import%22%2C%22ClusterName%22%2C%22view-show-iac-cluster%22%2C%7B%22stat%22%3A%22Average%22%2C%22period%22%3A300%7D%5D%5D%7D"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [
+                1791328200000,
+                1791328500000,
+                1791328800000,
+                1791329100000,
+                1791329400000,
+                1791329700000,
+                1791330000000
+              ],
+              [
+                2048,
+                2048,
+                2048,
+                2048,
+                2048,
+                2048,
+                2048
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    "C": {
+      "status": 200,
+      "frames": [
+        {
+          "schema": {
+            "name": "CPU utilizada",
+            "refId": "C",
+            "meta": {
+              "type": "timeseries-multi",
+              "typeVersion": [
+                0,
+                0
+              ],
+              "custom": "{\n\t\t\t\"period\": 300,\n\t\t\t\"id\":     cpu_percent,\n\t\t}",
+              "executedQueryString": "100*cpu_used/cpu_reserved"
+            },
+            "fields": [
+              {
+                "name": "Time",
+                "type": "time",
+                "typeInfo": {
+                  "frame": "time.Time"
+                }
+              },
+              {
+                "name": "Value",
+                "type": "number",
+                "typeInfo": {
+                  "frame": "float64"
+                },
+                "labels": {
+                  "Series": "CPU utilizada"
+                },
+                "config": {
+                  "displayNameFromDS": "CPU utilizada"
+                }
+              }
+            ]
+          },
+          "data": {
+            "values": [
+              [
+                1791328200000,
+                1791328500000,
+                1791328800000,
+                1791329100000,
+                1791329400000,
+                1791329700000,
+                1791330000000
+              ],
+              [
+                22.604146599769592,
+                23.62289709647497,
+                23.04763361612956,
+                23.898437885443368,
+                24.249641557534538,
+                24.31168758074443,
+                23.87355688545439
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

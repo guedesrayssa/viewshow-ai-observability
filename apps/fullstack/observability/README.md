@@ -7,7 +7,7 @@ a API do View Show localmente antes de levar métricas, logs e traces para a AWS
 A mesma stack também pode ser criada na AWS pelo Terraform de `apps/fullstack`.
 Na AWS ela roda em uma EC2 única, com volumes Docker persistentes durante a vida
 da instância, e acrescenta o CloudWatch como data source do Grafana. Assim as
-métricas de ECS, ALB e DynamoDB e os logs atuais da API ficam disponíveis desde
+métricas de EKS, ALB e DynamoDB e os logs atuais da API ficam disponíveis desde
 o primeiro deploy, sem substituir Prometheus, Loki ou Tempo.
 
 ## Subir e derrubar
@@ -82,8 +82,13 @@ Dashboards provisionados automaticamente em **Dashboards → View Show**:
 Na AWS, o dashboard **View Show — Ingestão** usa o data source CloudWatch para
 mostrar os mesmos indicadores de RED no contexto batch, além de duração por
 etapa, freshness, filas, DLQs, qualidade de dados e eventos operacionais. O
-seletor único `Operação` (`operation`) associa o texto do comando à família ECS
-correspondente, mantendo métricas da aplicação e CPU na mesma operação.
+seletor `Operação` filtra as métricas EMF pelo comando. Selecione também
+`Namespace` e `Pod da operação` para CPU e logs no EKS, na mesma janela da run.
+A CPU é `pod_cpu_utilization_over_pod_limit` de `ContainerInsights`, em % do
+limite do Pod (inclui o sidecar MySQL). A
+[referência AWS](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-metrics-EKS.html)
+define as dimensões ClusterName/Namespace/PodName; se algum container não tem
+limite, a métrica pode faltar. As capturas ECS históricas conservam suas unidades.
 
 O Grafana lê `grafana/provisioning/datasources/datasources.yml` a cada subida e
 sincroniza os três data sources. Eles ficam marcados como somente leitura: para
@@ -123,7 +128,7 @@ done
 
 Quando a aplicação completa ainda não estiver provisionada, use o script
 isolado abaixo no AWS CloudShell. Ele cria apenas a EC2 com Grafana, Prometheus,
-Loki, Tempo e Alloy; não cria ECS, ALB, DynamoDB ou Amplify.
+Loki, Tempo e Alloy; não cria EKS, ALB, DynamoDB ou Amplify.
 
 ```bash
 cd apps/fullstack/observability/aws
@@ -140,113 +145,22 @@ SSM.
 
 O CI renderiza o mesmo bootstrap sem acessar a AWS. Para repetir essa validação
 localmente, execute `./deploy-learner-lab.sh --validate-only` nesse diretório.
-O renderer `validate-user-data.sh` produz `user-data.sh` para inspeção da sintaxe
-e `user-data.sh.gz` como payload enviado à EC2. O modo `--validate-only` renderiza
-e empacota os cinco dashboards (AWS, ingestão, Agentic AWS, aplicação e API), verifica
-placeholders não substituídos no bootstrap, sintaxe shell e o limite de 16 KiB
-do payload comprimido. Esses arquivos são gerados no diretório temporário do
-script e removidos ao sair. A validação local não comprova aceite das consultas
-pelo CloudWatch, execução do bootstrap na EC2 ou saúde do Grafana na AWS.
 
-### Aplicação completa com Terraform
+### Aplicação completa com Kubernetes
 
-Pré-requisitos: Terraform, Node 22, AWS CLI v2, Session Manager plugin e uma
-sessão válida do AWS Academy. As credenciais temporárias são as mesmas usadas
-pela infraestrutura fullstack. A partir da raiz do repositório, use o fluxo
-protegido:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs grafana
-```
-
-Se a observabilidade estiver ausente, o comando gera e valida um plano salvo,
-confirma a conta Learner Lab e pede `PROVISION GRAFANA <account-id>` antes do
-`apply`. O plano cria uma EC2 `view-show-observabilidade` do tipo `t3.medium`
-com 30 GiB de gp3 criptografado, instala o Docker Compose e inicia os cinco
-componentes. Não é necessário clonar o
-repositório na instância: os arquivos versionados são compactados e enviados
-pelo `user_data`. O bootstrap leva alguns minutos depois que a EC2 aparece como
-`running`.
-
-Se a EC2 já existir, o comando não planeja nem aplica novamente: verifica por
-SSM o marcador do bootstrap, os cinco containers, a saúde do Grafana, o data
-source CloudWatch e os dashboards `view-show-ingestion` e
-`view-show-agentic-aws`. Uma instância existente que falhe nesses checks não é
-substituída automaticamente. Depois da validação, o script mostra a URL
-<http://localhost:3002>, o usuário `admin`, a senha apenas no terminal
-interativo e abre o túnel SSM até `Ctrl+C`.
-
-Ollama é opcional nesse fluxo. `Ollama/LLM: NOT_CONFIGURED` não falha o comando
-nem reduz a saúde da observabilidade; `CONFIGURED` confirma somente a presença
-da configuração local, não a conectividade. Para imprimir apenas a senha, sem
-provisionar nem abrir o túnel:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs grafana --senha
-```
-
-Enquanto a sessão estiver aberta, acesse <http://localhost:3002>. Os dashboards provisionados
-ficam em **Dashboards → View Show**: **View Show — AWS** cobre os serviços
-gerenciados, **View Show — API (RED, logs e traces)** cobre a API (métricas por rota,
-dependências, traces e logs) e **View Show — Application Observability** cobre frontend,
-alertas e workers. **View Show — Ingestão** cobre a saúde e o diagnóstico do pipeline batch
-diretamente no CloudWatch, e **View Show — Agentic AWS** cobre o worker de análise e seus logs.
-
-Para acompanhar o primeiro boot, abra outra sessão SSM e rode:
-
-```bash
-sudo tail -f /var/log/cloud-init-output.log
-sudo docker compose -f /opt/view-show-observability/docker-compose.yml ps
-```
-
-Se SSM não estiver disponível na conta, restrinja o acesso direto ao seu IP;
-jamais use `0.0.0.0/0` para o Grafana:
-
-```bash
-terraform apply -var='grafana_cidr_acesso=203.0.113.10/32'
-terraform output grafana_acesso
-```
-
-O IP público comum muda depois de parar e iniciar a EC2. Rode
-`terraform apply -refresh-only` para atualizar o output. Não foi criado Elastic
-IP porque ele adiciona custo contínuo e o acesso SSM não depende de endereço
-estável.
+Siga o [runbook EKS](../../kubernetes/README.md). `observabilidade_habilitada=true` mantém Grafana, Prometheus, Loki, Tempo e Alloy na EC2 privada existente; a API em Pods envia logs e traces para os mesmos endpoints e Prometheus coleta `/metrics` pelo ALB. CloudWatch Agent/Fluent Bit no cluster coletam logs/EMF e métricas EKS. O dashboard AWS usa `ContainerInsights` com cluster, namespace e PodName. Os logs ECS históricos são preservados na migração, sem receber novos eventos.
 
 ### O que chega a cada data source na AWS
 
 | Data source | Estado depois do apply |
 | --- | --- |
-| CloudWatch | ECS, ALB, DynamoDB e logs `/ecs/view-show-api` disponíveis imediatamente |
+| CloudWatch | EKS, ALB, DynamoDB e logs `/aws/containerinsights/<cluster>/application` após o deploy Kubernetes |
 | Prometheus | Auto-observação da stack e scrape de `/metrics` da API pelo ALB |
 | Loki | Logs dos containers da stack via Alloy e JSON correlacionado da API; CloudWatch permanece habilitado |
 | Tempo | Receptor OTLP/HTTP privado em `:4318`, restrito ao security group da API |
 | Alloy | Receptor OTLP/HTTP privado em `:4320` para métricas e traces dos workers |
 
-O Terraform injeta `OTEL_SERVICE_NAME=view-show-api` e o endereço privado do Tempo
-na task ECS somente quando o opt-in está ativo. A API TypeScript inicializa o
-SDK OpenTelemetry quando esse endpoint existe.
-
-Para habilitar o caminho OTLP opcional dos workers Python na AWS, as tasks devem
-ter acesso ao receptor pelo security group da aplicação e definir
-`OTEL_EXPORTER_OTLP_ENDPOINT` com o valor de
-`terraform output -raw observabilidade_otlp_workers_endpoint`. Os pacotes Python
-em `apps/backend/ingestion-data` e `apps/backend/agentic` fornecem hooks para esse
-caminho. A ingestão já possui CLI e tasks ECS; suas métricas batch no dashboard
-de ingestão usam EMF/CloudWatch, independentemente de habilitar OTLP.
-Os workers escrevem logs JSON em `stdout`; em ECS, mantenha o driver `awslogs`
-para enviá-los ao CloudWatch sem acoplar o processamento à disponibilidade do
-Loki.
-
-O dashboard de ingestão está versionado e teve aceite funcional na AWS em
-04/10/2026 após as correções do MR 90. Throughput usa duas séries distintas, `RecordsRead/300` e
-`RecordsWritten/300`, e erros/s usam o mesmo período CloudWatch fixo de 300 s.
-A versão corrigida foi implantada; sete painéis de métricas e um de logs foram
-validados pela API para as quatro operações, e o navegador executou as cinco
-expressões com dimensões interpoladas. O [JSON de validação](../../../assets/testes-carga/2026-10-04-ingestao/grafana-dashboard-validation.json)
-e a [captura sanitizada](../../../assets/testes-carga/2026-10-04-ingestao/grafana-ingestion.png)
-estão versionados. As métricas da ingestão sem amostras na janela histórica e
-os pontos esparsos de SQS não comprovam desempenho ou sucesso do benchmark;
-os logs foram validados em uma janela posterior à recriação dos grupos.
+A API recebe `OTEL_EXPORTER_OTLP_ENDPOINT` e `LOKI_PUSH_URL` quando a observabilidade está habilitada. Os logs JSON dos workers são coletados pelo Fluent Bit; a configuração mescla o JSON na raiz para preservar métricas EMF e filtros de log. A instrumentação e os alarmes de domínio continuam independentes do Loki. Use `kubectl logs` para inspeção imediata dos Jobs e CloudWatch para histórico.
 
 ### Operação e custo no Learner Lab
 
@@ -278,7 +192,7 @@ saudável. Na AWS, o alvo `view-show-api` aponta para o ALB criado pelo Terrafor
 | --- | --- | --- |
 | Métricas | `GET /metrics` em OpenMetrics (formato que carrega exemplares), coletado a cada 15 s | `METRICS_ENABLED` (padrão `true`) |
 | Traces | OTLP/HTTP direto ao Tempo (`:4318`), instrumentando HTTP, Express, AWS SDK e `fetch` | `OTEL_EXPORTER_OTLP_ENDPOINT`; vazio desliga |
-| Logs | JSON de uma linha em `stdout` (no Fargate, CloudWatch) **e** envio em lote ao Loki | `LOKI_PUSH_URL`; vazio desliga só o envio ao Loki |
+| Logs | JSON em `stdout`, Fluent Bit/CloudWatch no EKS **e** envio em lote ao Loki | `LOKI_PUSH_URL`; vazio desliga só o envio ao Loki |
 
 Os três usam a mesma identidade (`service_name`, `environment`, `service_version`),
 derivada de `OTEL_SERVICE_NAME`, `OTEL_DEPLOYMENT_ENVIRONMENT` e `OTEL_RESOURCE_ATTRIBUTES`.
@@ -297,7 +211,7 @@ linha por 30 s, com `suppressed_count`) e `process.started`. Todo campo passa po
 
 **Traces.** O span `SERVER` se chama `GET /api/v1/incidents` (template da rota), carrega
 `viewshow.request_id`, `viewshow.dataset_version` e `viewshow.error_code`, e a query string
-sai redigida (`code`, `state`, tokens). Chamadas ao DynamoDB, SQS, S3, ECS e Cognito viram
+sai redigida (`code`, `state`, tokens). Chamadas ao DynamoDB, SQS, S3 e Cognito viram
 spans `CLIENT`. A reconciliação de importações roda em segundo plano e tem raiz própria
 (`imports.reconcile`). Sondas `/health` e `/metrics` não geram trace. A API devolve
 `X-Request-Id` e `X-Trace-Id` (expostos ao navegador via CORS) e aceita `traceparent`.
@@ -361,26 +275,27 @@ túnel SSM, em vez de rodar na EC2, use `LOKI_URL`, `TEMPO_URL` e `PROMETHEUS_UR
 
 A API só exporta traces e logs para a EC2 quando `observabilidade_api_exportacao_habilitada` é
 `true`. O fluxo de criação da EC2 do Learner Lab a deixa `false` até o IP privado existir;
-depois, um `terraform apply` que a ligue altera só a task definition da API (as variáveis
-`OTEL_EXPORTER_OTLP_ENDPOINT` e `LOKI_PUSH_URL`) e o serviço ECS.
+depois, planeje a alteração e execute o deploy Kubernetes para que os Pods
+recebam `OTEL_EXPORTER_OTLP_ENDPOINT` e `LOKI_PUSH_URL`. Os comandos
+`grafana`, `update` e `analysis-*` da antiga CLI ECS foram retirados da entrada
+padrão; o [runbook EKS](../../kubernetes/README.md) é o fluxo atual.
+Os helpers Windows e gates da MR foram preservados no módulo
+`apps/scripts/aws-learner-lab-ecs-legacy.mjs`, sem reativar suas operações ECS.
 
 ## Coletar métricas dos workers Python
 
-Os hooks Python de ingestão e análise podem enviar métricas e traces por
-OTLP/HTTP, sem expor um servidor Prometheus dentro de processos batch. Para
-habilitar esse caminho opcional com a stack local no ar:
+Os serviços de ingestão e análise usam OTLP/HTTP em vez de expor um servidor
+Prometheus dentro de processos batch. Com a stack local no ar:
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4320
 export OTEL_SERVICE_NAME=view-show-ingestion # ou view-show-agentic
 ```
 
-O Alloy preserva `service.name` como label `service_name`. Os diretórios de
-ingestão e análise já contêm lógica de negócio; a biblioteca Python da camada
-agêntica fornece hooks para consumidores Python. Séries no Prometheus e traces
-no Tempo dependem da chamada desses hooks durante a execução e do exportador
-OTLP configurado. A existência do código ou do endpoint não comprova coleta;
-o dashboard de ingestão consulta as métricas EMF no CloudWatch.
+O Alloy preserva `service.name` como label `service_name`. Os workers Python
+emitem os sinais durante suas execuções batch; sem worker ativo na janela,
+os painéis podem não ter amostras. Logs/EMF no CloudWatch e métricas OTLP
+são caminhos complementares, com unidades e intervalos identificados.
 
 ## Limites da implantação
 
@@ -392,8 +307,19 @@ o dashboard de ingestão consulta as métricas EMF no CloudWatch.
   em vez de somar, e o script de boot usa caminhos relativos para poupar bytes. Para crescer de
   verdade, publique os arquivos em um bucket e baixe-os no boot.
 - **Coleta de `/metrics` na AWS.** O alvo `view-show-api` aponta para o ALB, que balanceia
-  entre as tasks: com mais de uma réplica, cada coleta cai em uma task diferente e os
-  contadores parecem oscilar. Para métricas por réplica, use descoberta de tasks ECS.
+  entre os Pods: com mais de uma réplica, cada coleta pode cair em um Pod diferente
+  e os contadores parecem oscilar. Para métricas por réplica, use descoberta de
+  Pods, como no laboratório EKS de testes de carga.
+
+## Integração com os testes de carga
+
+O [artefato consolidado](../../../artefatos/testes-carga-finais.md) liga as
+medições históricas às decisões de arquitetura. O
+[laboratório](../../../apps/backend/api/loadtest/lab/README.md) coleta métricas
+de carga e o [Grafana retrospectivo](../../../apps/backend/api/loadtest/grafana-retroativo/README.md)
+reabre os brutos sem nova carga. A telemetria deste MR complementa essas
+medições com request_id/trace_id, exemplares e saúde do envio de logs.
+A integração não reatribui os resultados coletados antes deste código à nova imagem.
 - **Aviso do Tempo.** O Tempo 3.0 registra `ignoring unknown metrics-generator processor
   local-blocks` a cada 10 s: ele mesmo reinjeta esse processador. É inofensivo.
 - **Amostragem.** Todo trace é gravado (`always_on`). Para reduzir volume, defina

@@ -17,7 +17,8 @@ como executar e como interpretar.
 | `../scripts/seed-carga.cjs` | Popula incidentes, evidências, hipóteses e projeções no DynamoDB | Em uso |
 | `k6/auth-check.js` | RNF04: controle de acesso rota a rota (uma iteração) | Roda; hoje reprova 14 de 37 checks, porque as rotas de leitura respondem sem sessão |
 | `k6/consultas.js`, `k6/rodadas.sh`, `k6/bateria.sh` | Suíte anterior (RNF14/RNF09, taxa alvo de 137 req/s) e seus runners | Legada; o cenário de monitoramento exige 200 e a rota hoje responde 503 |
-| `k6/ingestao-batch.js` | RNF01 a RNF03: drenagem de 10 mil eventos/min | Bloqueado: o adaptador de importação é fail-closed |
+| `k6/ingestao-batch.js` | RNF01, RNF02, RNF03 e RNF09: modos `smoke`, `drenagem`, `pico`, `limite` e `frescor` da Sprint 5 (upload multipart real até `READY`) | Em uso contra a stack da AWS (exige usuário Cognito e massa de dados) |
+| `k6/ingestao-falhas.sh` | Injeção e reversão das falhas RS-01 a RS-05, métricas SQS e geração do dump corrompido M-07 | Em uso, com sessão válida do Learner Lab |
 | `k6/lib/session.js`, `k6/lib/asserts.js` | Sessão (login real ou cookie forjado), `X-Request-Id` e checks de conteúdo | Compartilhados |
 
 ## O cenário principal
@@ -211,9 +212,25 @@ k6 run -e BASE_URL=http://localhost:3000 -e AUTH_COOKIE_SECRET=<segredo> auth-ch
 ```
 
 `consultas.js` aceita `RATE` (padrão 137), `INCIDENT_COUNT` (300) e `STRESS_MULTIPLIER` (3), e login real no lugar
-do cookie forjado. `auth-check.js` e `ingestao-batch.js` usam só cookie forjado. `ingestao-batch.js`
-(`EVENT_RATE`, `WINDOW_MINUTES`, `BACKLOG_BATCHES`, `POLL_TIMEOUT_S`) aborta no `setup()` enquanto o adaptador
-de importação for fail-closed e o contrato não expuser `upload.parts[].url`. `bateria.sh` roda uma
+do cookie forjado; `ingestao-batch.js` também aceita login real, e `auth-check.js` usa só cookie forjado.
+`ingestao-batch.js` aceita `MODE`, `DUMP` (arquivo `argus_dump.sql.gz` a enviar), `EXPECTED_EVENTS`, `RUN_LABEL`,
+`ACTIVATE`, `PEAK_RATE` (50), `BURST_RATE` (20), `COOLDOWN_S` (60), `POLL_TIMEOUT_S` (3600) e
+`T0`/`EXPECT_OBSERVED_THROUGH` (frescor). Ele não roda localmente: o upload usa URLs pré-assinadas do S3 e o
+processamento é uma task ECS. Só existe uma importação ativa por vez (`409 IMPORT_IN_PROGRESS`), então rode os
+modos em sequência. Como não há rota para cancelar uma importação, `pico` e `limite` concluem no teardown
+somente a importação identificada como criada pelo teste.
+
+A revisão do script exige `EXPECTED_EVENTS` em `MODE=drenagem` e um dump ainda não importado.
+`ALLOW_IDEMPOTENT=true` é destinado à recuperação e exige `EXPECTED_VERSION` da primeira importação.
+O limitador precisa gerar `429 RATE_LIMITED` na rajada; respostas 401/404, conflitos de outra importação,
+qualquer 5xx fora de injeção e iterações descartadas reprovam os checks pertinentes. A recuperação aceita
+GET 200 ou POST 409 com o mesmo `importId`, não qualquer status abaixo de 500.
+
+Valide sem acessar a AWS com `node --test loadtest/tests/*.test.mjs` a partir de `apps/backend/api`.
+Os gráficos do relatório podem ser regenerados, na raiz, por
+`python apps/backend/api/loadtest/scripts/render-ingestion-evidence.py` (requer matplotlib).
+O roteiro de cada teste está em
+[`testes-carga-ingestao.md`](../../../../artefatos/sprint5/testes-carga-ingestao.md), Seção 11. `bateria.sh` roda uma
 bateria de `consultas.js` gravando um `metadados-*.json` auditável em `assets/testes-carga/<data>-aws/`
 (formato das evidências de 11/09/2026).
 
@@ -235,6 +252,7 @@ A pilha Grafana do projeto (Prometheus, Loki, Tempo, Alloy) está em
 ## Documentos relacionados
 
 - [Testes de Carga da API](../../../../artefatos/sprint5/testes-de-carga-da-api.md): análise dos resultados.
+- [Testes de Carga e Resiliência da Ingestão](../../../../artefatos/sprint5/testes-carga-ingestao.md): `ingestao-batch.js` e `ingestao-falhas.sh`.
 - [Índice de evidências](../../../../assets/testes-carga/README.md)
 - [Testes de Carga e Observabilidade (Sprint 3)](../../../../artefatos/sprint3/testes-carga-inicial.md): RNFs e
   resultados da suíte anterior, mantido como registro histórico.

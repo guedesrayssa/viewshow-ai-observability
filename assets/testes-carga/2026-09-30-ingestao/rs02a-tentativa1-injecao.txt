@@ -1,0 +1,4 @@
+bucket sem política; s3-restaurar vai removê-la
+
+aws: [ERROR]: An error occurred (ParamValidation): Error parsing parameter '--policy': Unable to load paramfile file:///c/Users/Inteli/projetos/modulo7/g05/.artifacts/falhas-ingestao.politica-negada.json: [Errno 2] No such file or directory: '/c/Users/Inteli/projetos/modulo7/g05/.artifacts/falhas-ingestao.politica-negada.json'
+política do bucket view-show-ingestion-114388221188-us-east-1 restaurada

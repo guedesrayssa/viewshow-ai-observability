@@ -1,0 +1,164 @@
+{
+  "observedAt": "2026-10-07T01:33:48.368440+00:00",
+  "account": "239162056821",
+  "region": "us-east-1",
+  "scope": "read-only discovery; no EKS creation or IAM changes attempted",
+  "iamMode": "learner-lab-existing",
+  "clusterRole": {
+    "name": "c224230a5662598l17435846t1w239162-LabEksClusterRole-0mKWJdKB3yGO",
+    "arn": "arn:aws:iam::239162056821:role/c224230a5662598l17435846t1w239162-LabEksClusterRole-0mKWJdKB3yGO",
+    "trust": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "eks.amazonaws.com"
+          },
+          "Action": [
+            "sts:AssumeRole",
+            "sts:TagSession"
+          ]
+        }
+      ]
+    },
+    "attachedPolicies": [
+      {
+        "PolicyName": "AmazonEKSClusterPolicy",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+      },
+      {
+        "PolicyName": "AmazonEKSNetworkingPolicy",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSNetworkingPolicy"
+      },
+      {
+        "PolicyName": "AmazonEKSComputePolicy",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSComputePolicy"
+      },
+      {
+        "PolicyName": "AmazonEKSBlockStoragePolicy",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSBlockStoragePolicy"
+      },
+      {
+        "PolicyName": "AmazonEKSLoadBalancingPolicy",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSLoadBalancingPolicy"
+      }
+    ]
+  },
+  "nodeRole": {
+    "name": "LabRole",
+    "arn": "arn:aws:iam::239162056821:role/LabRole",
+    "trust": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": [
+              "lambda.amazonaws.com",
+              "application-autoscaling.amazonaws.com",
+              "ecs-tasks.amazonaws.com",
+              "sns.amazonaws.com",
+              "rekognition.amazonaws.com",
+              "iotanalytics.amazonaws.com",
+              "elasticfilesystem.amazonaws.com",
+              "dynamodb.amazonaws.com",
+              "elasticloadbalancing.amazonaws.com",
+              "iot.amazonaws.com",
+              "servicecatalog.amazonaws.com",
+              "credentials.iot.amazonaws.com",
+              "backup.amazonaws.com",
+              "databrew.amazonaws.com",
+              "pipes.amazonaws.com",
+              "eks.amazonaws.com",
+              "kinesis.amazonaws.com",
+              "ec2.amazonaws.com",
+              "rds.amazonaws.com",
+              "forecast.amazonaws.com",
+              "codedeploy.amazonaws.com",
+              "sqs.amazonaws.com",
+              "apigateway.amazonaws.com",
+              "kms.amazonaws.com",
+              "elasticbeanstalk.amazonaws.com",
+              "athena.amazonaws.com",
+              "ecs.amazonaws.com",
+              "ec2.application-autoscaling.amazonaws.com",
+              "elasticmapreduce.amazonaws.com",
+              "cloudformation.amazonaws.com",
+              "sagemaker.amazonaws.com",
+              "secretsmanager.amazonaws.com",
+              "scheduler.amazonaws.com",
+              "codewhisperer.amazonaws.com",
+              "batch.amazonaws.com",
+              "s3.amazonaws.com",
+              "redshift.amazonaws.com",
+              "resource-groups.amazonaws.com",
+              "eks-fargate-pods.amazonaws.com",
+              "ssm.amazonaws.com",
+              "autoscaling.amazonaws.com",
+              "cognito-idp.amazonaws.com",
+              "glue.amazonaws.com",
+              "kinesisanalytics.amazonaws.com",
+              "deepracer.amazonaws.com",
+              "states.amazonaws.com",
+              "events.amazonaws.com",
+              "cloudtrail.amazonaws.com",
+              "iotevents.amazonaws.com",
+              "logs.amazonaws.com",
+              "codecommit.amazonaws.com",
+              "firehose.amazonaws.com"
+            ],
+            "AWS": "arn:aws:iam::239162056821:role/LabRole"
+          },
+          "Action": "sts:AssumeRole"
+        }
+      ]
+    },
+    "attachedPolicies": [
+      {
+        "PolicyName": "c224230a5662598l17435846t1w239162056821-VocLabPolicy1-O2pouAEY0bIY",
+        "PolicyArn": "arn:aws:iam::239162056821:policy/c224230a5662598l17435846t1w239162056821-VocLabPolicy1-O2pouAEY0bIY"
+      },
+      {
+        "PolicyName": "c224230a5662598l17435846t1w239162056821-VocLabPolicy3-9A2PtCdD8y73",
+        "PolicyArn": "arn:aws:iam::239162056821:policy/c224230a5662598l17435846t1w239162056821-VocLabPolicy3-9A2PtCdD8y73"
+      },
+      {
+        "PolicyName": "c224230a5662598l17435846t1w239162056821-VocLabPolicy2-ZYB9GqesQbpu",
+        "PolicyArn": "arn:aws:iam::239162056821:policy/c224230a5662598l17435846t1w239162056821-VocLabPolicy2-ZYB9GqesQbpu"
+      },
+      {
+        "PolicyName": "AmazonSSMManagedInstanceCore",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      },
+      {
+        "PolicyName": "AmazonEKSClusterPolicy",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+      },
+      {
+        "PolicyName": "AmazonEC2ContainerRegistryReadOnly",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      },
+      {
+        "PolicyName": "AmazonEKSWorkerNodePolicy",
+        "PolicyArn": "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+      }
+    ]
+  },
+  "existingInstanceProfile": "LabInstanceProfile",
+  "createClusterPermission": "not proven by discovery",
+  "network": [
+    {
+      "SubnetId": "subnet-07105f364faaa389c",
+      "VpcId": "vpc-03c537123ea6cb09e",
+      "AvailabilityZone": "us-east-1b",
+      "CidrBlock": "10.0.11.0/24"
+    },
+    {
+      "SubnetId": "subnet-02da093a1c8e2e016",
+      "VpcId": "vpc-03c537123ea6cb09e",
+      "AvailabilityZone": "us-east-1a",
+      "CidrBlock": "10.0.10.0/24"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+contagem antes (publicado em 2026-10-05T15:38:48Z):
+DATASET#dsv_81253140c37194fe3256c429ebbcae8e77aafc96237129fbff463a68f6889965#FACT#TS#signal_bucket#20261005 0
+TOTAL 0
+2026-10-05T15:39:00Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:39:35Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:40:09Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:40:44Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:41:20Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:41:54Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:42:29Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:43:03Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:43:38Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:44:12Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:44:47Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:45:22Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:45:56Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0
+bat_45f768dcba28 AUSENTE
+bat_286f4cc37536 AUSENTE
+2026-10-05T15:46:31Z fila visiveis=2 em_processamento=0 | dlq visiveis=0 em_processamento=0

@@ -33,13 +33,12 @@ export CURSOR_SECRET="local-obs-cursor-secret-32-bytes-minimum"
 export IMPORT_CURSOR_SECRET="$CURSOR_SECRET"
 export IMPORT_BUCKET="local-obs-imports"
 export IMPORT_EXPECTED_BUCKET_OWNER=000000000000
-export IMPORT_INGESTION_CLUSTER_ARN="arn:aws:ecs:us-east-1:000000000000:cluster/local"
-export IMPORT_INGESTION_TASK_DEFINITION_ARN="arn:aws:ecs:us-east-1:000000000000:task-definition/local:1"
-export IMPORT_INGESTION_SUBNET_IDS=subnet-local
-export IMPORT_INGESTION_SECURITY_GROUP_ID=sg-local
+# Bootstrap atual: o verificador HTTP não lança Jobs nem modifica CronJobs.
+export IMPORT_KUBERNETES_NAMESPACE=view-show-local-imports
+export IMPORT_KUBERNETES_TEMPLATE=ingestion-import
 export IMPORT_INGESTION_CONTAINER_NAME=ingestion
-export INGESTION_SCHEDULER_GROUP_NAME=view-show-ingestion
-export INGESTION_SCHEDULER_NAME=view-show-ingestion-sync
+export KUBERNETES_NAMESPACE=view-show-local
+export INGESTION_CRONJOB_NAME=ingestion-sync
 export METRICS_ENABLED=true
 # 0.0.0.0: o Prometheus (em contêiner) coleta /metrics via host.docker.internal.
 export HOST=0.0.0.0 PORT="${API_PORT:-3000}" NODE_ENV=development

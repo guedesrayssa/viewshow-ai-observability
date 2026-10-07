@@ -1,0 +1,1174 @@
+aws_cloudwatch_log_group.ingestion_sync: Refreshing state... [id=/ecs/view-show-ingestion-sync]
+data.aws_region.atual: Reading...
+data.aws_iam_role.lab: Reading...
+aws_ecr_repository.ingestion: Refreshing state... [id=view-show-ingestion]
+aws_cloudwatch_log_group.ingestion_incremental_ingest: Refreshing state... [id=/ecs/view-show-ingestion-incremental-ingest]
+aws_cloudwatch_log_group.ingestion_backfill: Refreshing state... [id=/ecs/view-show-ingestion-backfill]
+aws_sqs_queue.analysis_dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis-dlq]
+aws_sqs_queue.incremental_batches_dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches-dlq.fifo]
+aws_glue_catalog_database.ingestion: Refreshing state... [id=145497513075:view_show_ingestion]
+data.aws_region.atual: Read complete after 0s [id=us-east-1]
+aws_dynamodb_table.operacional: Refreshing state... [id=view-show-iac-operacional]
+aws_apigatewayv2_api.tls: Refreshing state... [id=hk4ooeetbi]
+data.aws_iam_role.lab: Read complete after 1s [id=LabRole]
+aws_cloudwatch_log_group.ingestion_incremental_export: Refreshing state... [id=/ecs/view-show-ingestion-incremental-export]
+data.aws_caller_identity.atual: Reading...
+aws_secretsmanager_secret.snapshot_mysql[0]: Refreshing state... [id=arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/snapshot-mysql-UaMal8]
+aws_secretsmanager_secret.live_mysql[0]: Refreshing state... [id=arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD]
+aws_apigatewayv2_stage.default: Refreshing state... [id=$default]
+data.aws_caller_identity.atual: Read complete after 0s [id=145497513075]
+aws_sqs_queue.analysis: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis]
+terraform_data.ingestion_image[0]: Refreshing state... [id=910f2b52-c34c-6aa8-943c-c3b89ec27008]
+aws_sqs_queue.incremental_batches: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches.fifo]
+aws_amplify_app.painel: Refreshing state... [id=di2pd1m9dnag1]
+aws_ecs_task_definition.ingestion_incremental_ingest: Refreshing state... [id=view-show-ingestion-incremental-ingest]
+aws_ecs_task_definition.ingestion_incremental_export: Refreshing state... [id=view-show-ingestion-incremental-export]
+aws_ecs_task_definition.ingestion_sync: Refreshing state... [id=view-show-ingestion-sync]
+aws_amplify_branch.principal: Refreshing state... [id=di2pd1m9dnag1/producao]
+terraform_data.ingestion_bucket_learner_lab[0]: Refreshing state... [id=5b6020bd-90d5-3bc4-849e-5cffed4f5adc]
+aws_s3_bucket_public_access_block.ingestion: Refreshing state... [id=view-show-ingestion-145497513075-us-east-1]
+aws_s3_bucket_server_side_encryption_configuration.ingestion: Refreshing state... [id=view-show-ingestion-145497513075-us-east-1]
+aws_athena_workgroup.ingestion: Refreshing state... [id=view-show-ingestion]
+aws_ecs_task_definition.ingestion_import: Refreshing state... [id=view-show-ingestion-import]
+aws_ecs_task_definition.ingestion_backfill: Refreshing state... [id=view-show-ingestion-backfill]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+-/+ destroy and then create replacement
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # data.aws_ecr_image.ingestion[0] will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "aws_ecr_image" "ingestion" {
+      + id                  = (known after apply)
+      + image_digest        = (known after apply)
+      + image_pushed_at     = (known after apply)
+      + image_size_in_bytes = (known after apply)
+      + image_tag           = "8be4568def6e"
+      + image_tags          = (known after apply)
+      + image_uri           = (known after apply)
+      + registry_id         = (known after apply)
+      + repository_name     = "view-show-ingestion"
+    }
+
+  # aws_ecs_task_definition.ingestion_backfill must be replaced
+-/+ resource "aws_ecs_task_definition" "ingestion_backfill" {
+      ~ arn                      = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-backfill:1" -> (known after apply)
+      ~ arn_without_revision     = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-backfill" -> (known after apply)
+      ~ container_definitions    = jsonencode(
+            [
+              - {
+                  - command                = [
+                      - "backfill",
+                    ]
+                  - dependsOn              = [
+                      - {
+                          - condition     = "HEALTHY"
+                          - containerName = "mysql-snapshot"
+                        },
+                      - {
+                          - condition     = "SUCCESS"
+                          - containerName = "tmp-owner"
+                        },
+                    ]
+                  - environment            = [
+                      - {
+                          - name  = "ACTIVATE_CANDIDATE"
+                          - value = "false"
+                        },
+                      - {
+                          - name  = "ANALYSIS_QUEUE_URL"
+                          - value = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis"
+                        },
+                      - {
+                          - name  = "ARCHIVE_BUCKET"
+                          - value = "view-show-ingestion-145497513075-us-east-1"
+                        },
+                      - {
+                          - name  = "ARCHIVE_BUCKET_OWNER"
+                          - value = "145497513075"
+                        },
+                      - {
+                          - name  = "ARCHIVE_WORKDIR"
+                          - value = "/tmp/ingestion"
+                        },
+                      - {
+                          - name  = "ARGUS_SOURCE_MODE"
+                          - value = "snapshot"
+                        },
+                      - {
+                          - name  = "ATHENA_OUTPUT_LOCATION"
+                          - value = "s3://view-show-ingestion-145497513075-us-east-1/athena-results/"
+                        },
+                      - {
+                          - name  = "ATHENA_WORKGROUP"
+                          - value = "view-show-ingestion"
+                        },
+                      - {
+                          - name  = "AWS_REGION"
+                          - value = "us-east-1"
+                        },
+                      - {
+                          - name  = "GLUE_DATABASE"
+                          - value = "view_show_ingestion"
+                        },
+                      - {
+                          - name  = "IMPORT_HOT_MATERIALIZATION_ENABLED"
+                          - value = "false"
+                        },
+                      - {
+                          - name  = "INGESTION_DISK_BUDGET_BYTES"
+                          - value = "68719476736"
+                        },
+                      - {
+                          - name  = "INGESTION_ENVIRONMENT"
+                          - value = "learner-lab"
+                        },
+                      - {
+                          - name  = "LOG_SERVICE_NAME"
+                          - value = "view-show-ingestion"
+                        },
+                      - {
+                          - name  = "METRICS_NAMESPACE"
+                          - value = "view-show/Ingestion"
+                        },
+                      - {
+                          - name  = "MYSQL_CONNECT_TIMEOUT_SECONDS"
+                          - value = "10"
+                        },
+                      - {
+                          - name  = "MYSQL_DATABASE"
+                          - value = "argus"
+                        },
+                      - {
+                          - name  = "MYSQL_DDL_TIMEOUT_SECONDS"
+                          - value = "1800"
+                        },
+                      - {
+                          - name  = "MYSQL_HOST"
+                          - value = "127.0.0.1"
+                        },
+                      - {
+                          - name  = "MYSQL_PORT"
+                          - value = "3306"
+                        },
+                      - {
+                          - name  = "MYSQL_QUERY_MAX_ATTEMPTS"
+                          - value = "4"
+                        },
+                      - {
+                          - name  = "MYSQL_QUERY_RETRY_BASE_MS"
+                          - value = "250"
+                        },
+                      - {
+                          - name  = "MYSQL_QUERY_RETRY_MAX_MS"
+                          - value = "4000"
+                        },
+                      - {
+                          - name  = "MYSQL_READ_TIMEOUT_SECONDS"
+                          - value = "300"
+                        },
+                      - {
+                          - name  = "MYSQL_SNAPSHOT_PREPARE_ENABLED"
+                          - value = "false"
+                        },
+                      - {
+                          - name  = "MYSQL_USER"
+                          - value = "root"
+                        },
+                      - {
+                          - name  = "MYSQL_WRITE_TIMEOUT_SECONDS"
+                          - value = "300"
+                        },
+                      - {
+                          - name  = "OPERATIONAL_TABLE_NAME"
+                          - value = "view-show-iac-operacional"
+                        },
+                      - {
+                          - name  = "PAGE_SIZE"
+                          - value = "500"
+                        },
+                    ]
+                  - essential              = true
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-backfill"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "ingestion"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "ingestion"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - secrets                = [
+                      - {
+                          - name      = "MYSQL_PASSWORD"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/snapshot-mysql-UaMal8"
+                        },
+                    ]
+                  - systemControls         = []
+                  - volumesFrom            = []
+                },
+              - {
+                  - command                = [
+                      - "mysqld",
+                      - "--character-set-server=utf8mb4",
+                      - "--collation-server=utf8mb4_bin",
+                      - "--innodb-buffer-pool-size=3221225472",
+                      - "--innodb-redo-log-capacity=1073741824",
+                      - "--innodb-flush-log-at-trx-commit=2",
+                      - "--skip-log-bin",
+                      - "--sync-binlog=0",
+                      - "--max-allowed-packet=1073741824",
+                      - "--net-read-timeout=600",
+                      - "--net-write-timeout=600",
+                      - "--wait-timeout=600",
+                      - "--performance-schema=OFF",
+                    ]
+                  - environment            = [
+                      - {
+                          - name  = "MYSQL_DATABASE"
+                          - value = "argus"
+                        },
+                    ]
+                  - essential              = false
+                  - healthCheck            = {
+                      - command     = [
+                          - "CMD-SHELL",
+                          - "mysqladmin ping --silent --protocol=TCP -h 127.0.0.1 -uroot -p\"$MYSQL_ROOT_PASSWORD\"",
+                        ]
+                      - interval    = 6
+                      - retries     = 10
+                      - startPeriod = 20
+                      - timeout     = 3
+                    }
+                  - image                  = "mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-backfill"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "mysql"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/var/lib/mysql"
+                          - readOnly      = false
+                          - sourceVolume  = "mysql-data"
+                        },
+                    ]
+                  - name                   = "mysql-snapshot"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = false
+                  - secrets                = [
+                      - {
+                          - name      = "MYSQL_ROOT_PASSWORD"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/snapshot-mysql-UaMal8"
+                        },
+                    ]
+                  - systemControls         = []
+                  - volumesFrom            = []
+                },
+              - {
+                  - command                = [
+                      - "10001:10001",
+                      - "/tmp",
+                    ]
+                  - entryPoint             = [
+                      - "/usr/bin/chown",
+                    ]
+                  - environment            = []
+                  - essential              = false
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-backfill"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "tmp-owner"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "tmp-owner"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - systemControls         = []
+                  - user                   = "0"
+                  - volumesFrom            = []
+                },
+            ]
+        ) -> (known after apply) # forces replacement
+      ~ enable_fault_injection   = false -> (known after apply)
+      ~ id                       = "view-show-ingestion-backfill" -> (known after apply)
+      ~ revision                 = 1 -> (known after apply)
+        tags                     = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+            "Operacao"   = "backfill"
+        }
+        # (12 unchanged attributes hidden)
+
+      - volume {
+          - configure_at_launch = false -> null
+          - name                = "ingestion-tmp" -> null
+            # (1 unchanged attribute hidden)
+        }
+      - volume {
+          - configure_at_launch = false -> null
+          - name                = "mysql-data" -> null
+            # (1 unchanged attribute hidden)
+        }
+      + volume {
+          + configure_at_launch = (known after apply)
+          + name                = "ingestion-tmp"
+            # (1 unchanged attribute hidden)
+        }
+      + volume {
+          + configure_at_launch = (known after apply)
+          + name                = "mysql-data"
+            # (1 unchanged attribute hidden)
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+  # aws_ecs_task_definition.ingestion_import must be replaced
+-/+ resource "aws_ecs_task_definition" "ingestion_import" {
+      ~ arn                      = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import:1" -> (known after apply)
+      ~ arn_without_revision     = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-import" -> (known after apply)
+      ~ container_definitions    = jsonencode(
+            [
+              - {
+                  - command                = [
+                      - "import-dump",
+                    ]
+                  - dependsOn              = [
+                      - {
+                          - condition     = "HEALTHY"
+                          - containerName = "mysql-snapshot"
+                        },
+                      - {
+                          - condition     = "SUCCESS"
+                          - containerName = "tmp-owner"
+                        },
+                    ]
+                  - environment            = [
+                      - {
+                          - name  = "ACTIVATE_CANDIDATE"
+                          - value = "false"
+                        },
+                      - {
+                          - name  = "ANALYSIS_QUEUE_URL"
+                          - value = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis"
+                        },
+                      - {
+                          - name  = "ARCHIVE_BUCKET"
+                          - value = "view-show-ingestion-145497513075-us-east-1"
+                        },
+                      - {
+                          - name  = "ARCHIVE_BUCKET_OWNER"
+                          - value = "145497513075"
+                        },
+                      - {
+                          - name  = "ARCHIVE_WORKDIR"
+                          - value = "/tmp/ingestion"
+                        },
+                      - {
+                          - name  = "ARGUS_SOURCE_MODE"
+                          - value = "snapshot"
+                        },
+                      - {
+                          - name  = "ATHENA_OUTPUT_LOCATION"
+                          - value = "s3://view-show-ingestion-145497513075-us-east-1/athena-results/"
+                        },
+                      - {
+                          - name  = "ATHENA_WORKGROUP"
+                          - value = "view-show-ingestion"
+                        },
+                      - {
+                          - name  = "AWS_REGION"
+                          - value = "us-east-1"
+                        },
+                      - {
+                          - name  = "GLUE_DATABASE"
+                          - value = "view_show_ingestion"
+                        },
+                      - {
+                          - name  = "IMPORT_HOT_MATERIALIZATION_ENABLED"
+                          - value = "false"
+                        },
+                      - {
+                          - name  = "INGESTION_DISK_BUDGET_BYTES"
+                          - value = "68719476736"
+                        },
+                      - {
+                          - name  = "INGESTION_ENVIRONMENT"
+                          - value = "learner-lab"
+                        },
+                      - {
+                          - name  = "LOG_SERVICE_NAME"
+                          - value = "view-show-ingestion"
+                        },
+                      - {
+                          - name  = "METRICS_NAMESPACE"
+                          - value = "view-show/Ingestion"
+                        },
+                      - {
+                          - name  = "MYSQL_CONNECT_TIMEOUT_SECONDS"
+                          - value = "10"
+                        },
+                      - {
+                          - name  = "MYSQL_DATABASE"
+                          - value = "argus"
+                        },
+                      - {
+                          - name  = "MYSQL_DDL_TIMEOUT_SECONDS"
+                          - value = "1800"
+                        },
+                      - {
+                          - name  = "MYSQL_HOST"
+                          - value = "127.0.0.1"
+                        },
+                      - {
+                          - name  = "MYSQL_PORT"
+                          - value = "3306"
+                        },
+                      - {
+                          - name  = "MYSQL_QUERY_MAX_ATTEMPTS"
+                          - value = "4"
+                        },
+                      - {
+                          - name  = "MYSQL_QUERY_RETRY_BASE_MS"
+                          - value = "250"
+                        },
+                      - {
+                          - name  = "MYSQL_QUERY_RETRY_MAX_MS"
+                          - value = "4000"
+                        },
+                      - {
+                          - name  = "MYSQL_READ_TIMEOUT_SECONDS"
+                          - value = "300"
+                        },
+                      - {
+                          - name  = "MYSQL_SNAPSHOT_PREPARE_ENABLED"
+                          - value = "false"
+                        },
+                      - {
+                          - name  = "MYSQL_USER"
+                          - value = "root"
+                        },
+                      - {
+                          - name  = "MYSQL_WRITE_TIMEOUT_SECONDS"
+                          - value = "300"
+                        },
+                      - {
+                          - name  = "OPERATIONAL_TABLE_NAME"
+                          - value = "view-show-iac-operacional"
+                        },
+                      - {
+                          - name  = "PAGE_SIZE"
+                          - value = "500"
+                        },
+                    ]
+                  - essential              = true
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-backfill"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "ingestion"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "ingestion"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - secrets                = [
+                      - {
+                          - name      = "MYSQL_PASSWORD"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/snapshot-mysql-UaMal8"
+                        },
+                    ]
+                  - systemControls         = []
+                  - volumesFrom            = []
+                },
+              - {
+                  - command                = [
+                      - "mysqld",
+                      - "--character-set-server=utf8mb4",
+                      - "--collation-server=utf8mb4_bin",
+                      - "--innodb-buffer-pool-size=3221225472",
+                      - "--innodb-redo-log-capacity=1073741824",
+                      - "--innodb-flush-log-at-trx-commit=2",
+                      - "--skip-log-bin",
+                      - "--sync-binlog=0",
+                      - "--max-allowed-packet=1073741824",
+                      - "--net-read-timeout=600",
+                      - "--net-write-timeout=600",
+                      - "--wait-timeout=600",
+                      - "--performance-schema=OFF",
+                    ]
+                  - environment            = [
+                      - {
+                          - name  = "MYSQL_DATABASE"
+                          - value = "argus"
+                        },
+                    ]
+                  - essential              = false
+                  - healthCheck            = {
+                      - command     = [
+                          - "CMD-SHELL",
+                          - "mysqladmin ping --silent --protocol=TCP -h 127.0.0.1 -uroot -p\"$MYSQL_ROOT_PASSWORD\"",
+                        ]
+                      - interval    = 6
+                      - retries     = 10
+                      - startPeriod = 20
+                      - timeout     = 3
+                    }
+                  - image                  = "mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-backfill"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "mysql"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/var/lib/mysql"
+                          - readOnly      = false
+                          - sourceVolume  = "mysql-data"
+                        },
+                    ]
+                  - name                   = "mysql-snapshot"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = false
+                  - secrets                = [
+                      - {
+                          - name      = "MYSQL_ROOT_PASSWORD"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/snapshot-mysql-UaMal8"
+                        },
+                    ]
+                  - systemControls         = []
+                  - volumesFrom            = []
+                },
+              - {
+                  - command                = [
+                      - "10001:10001",
+                      - "/tmp",
+                    ]
+                  - entryPoint             = [
+                      - "/usr/bin/chown",
+                    ]
+                  - environment            = []
+                  - essential              = false
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-backfill"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "tmp-owner"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "tmp-owner"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - systemControls         = []
+                  - user                   = "0"
+                  - volumesFrom            = []
+                },
+            ]
+        ) -> (known after apply) # forces replacement
+      ~ enable_fault_injection   = false -> (known after apply)
+      ~ id                       = "view-show-ingestion-import" -> (known after apply)
+      ~ revision                 = 1 -> (known after apply)
+        tags                     = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+            "Operacao"   = "import-dump"
+        }
+        # (12 unchanged attributes hidden)
+
+      - volume {
+          - configure_at_launch = false -> null
+          - name                = "ingestion-tmp" -> null
+            # (1 unchanged attribute hidden)
+        }
+      - volume {
+          - configure_at_launch = false -> null
+          - name                = "mysql-data" -> null
+            # (1 unchanged attribute hidden)
+        }
+      + volume {
+          + configure_at_launch = (known after apply)
+          + name                = "ingestion-tmp"
+            # (1 unchanged attribute hidden)
+        }
+      + volume {
+          + configure_at_launch = (known after apply)
+          + name                = "mysql-data"
+            # (1 unchanged attribute hidden)
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+  # aws_ecs_task_definition.ingestion_incremental_export must be replaced
+-/+ resource "aws_ecs_task_definition" "ingestion_incremental_export" {
+      ~ arn                      = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-export:1" -> (known after apply)
+      ~ arn_without_revision     = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-export" -> (known after apply)
+      ~ container_definitions    = jsonencode(
+            [
+              - {
+                  - command                = [
+                      - "export-incremental",
+                    ]
+                  - dependsOn              = [
+                      - {
+                          - condition     = "SUCCESS"
+                          - containerName = "tmp-owner"
+                        },
+                    ]
+                  - environment            = [
+                      - {
+                          - name  = "ARCHIVE_WORKDIR"
+                          - value = "/tmp/ingestion"
+                        },
+                      - {
+                          - name  = "ARGUS_SOURCE_MODE"
+                          - value = "live"
+                        },
+                      - {
+                          - name  = "AWS_REGION"
+                          - value = "us-east-1"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_BUCKET"
+                          - value = "view-show-ingestion-145497513075-us-east-1"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_EXPECTED_BUCKET_OWNER"
+                          - value = "145497513075"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_PREFIX"
+                          - value = "raw/argus/incremental/"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_QUEUE_URL"
+                          - value = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches.fifo"
+                        },
+                      - {
+                          - name  = "INGESTION_DISK_BUDGET_BYTES"
+                          - value = "8589934592"
+                        },
+                      - {
+                          - name  = "INGESTION_ENVIRONMENT"
+                          - value = "learner-lab"
+                        },
+                      - {
+                          - name  = "LIVE_SYNC_ENABLED"
+                          - value = "false"
+                        },
+                      - {
+                          - name  = "LOG_SERVICE_NAME"
+                          - value = "view-show-ingestion"
+                        },
+                      - {
+                          - name  = "METRICS_NAMESPACE"
+                          - value = "view-show/Ingestion"
+                        },
+                      - {
+                          - name  = "OPERATIONAL_TABLE_NAME"
+                          - value = "view-show-iac-operacional"
+                        },
+                    ]
+                  - essential              = true
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-incremental-export"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "ingestion"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "ingestion"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - secrets                = [
+                      - {
+                          - name      = "LIVE_MYSQL_DATABASE"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:database::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_HOST"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:host::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_PASSWORD"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:password::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_PORT"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:port::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_USER"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:username::"
+                        },
+                    ]
+                  - systemControls         = []
+                  - volumesFrom            = []
+                },
+              - {
+                  - command                = [
+                      - "10001:10001",
+                      - "/tmp",
+                    ]
+                  - entryPoint             = [
+                      - "/usr/bin/chown",
+                    ]
+                  - environment            = []
+                  - essential              = false
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-incremental-export"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "tmp-owner"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "tmp-owner"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - systemControls         = []
+                  - user                   = "0"
+                  - volumesFrom            = []
+                },
+            ]
+        ) -> (known after apply) # forces replacement
+      ~ enable_fault_injection   = false -> (known after apply)
+      ~ id                       = "view-show-ingestion-incremental-export" -> (known after apply)
+      ~ revision                 = 1 -> (known after apply)
+        tags                     = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+            "Operacao"   = "export-incremental"
+        }
+        # (12 unchanged attributes hidden)
+
+      - volume {
+          - configure_at_launch = false -> null
+          - name                = "ingestion-tmp" -> null
+            # (1 unchanged attribute hidden)
+        }
+      + volume {
+          + configure_at_launch = (known after apply)
+          + name                = "ingestion-tmp"
+            # (1 unchanged attribute hidden)
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+  # aws_ecs_task_definition.ingestion_incremental_ingest must be replaced
+-/+ resource "aws_ecs_task_definition" "ingestion_incremental_ingest" {
+      ~ arn                      = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest:1" -> (known after apply)
+      ~ arn_without_revision     = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-incremental-ingest" -> (known after apply)
+      ~ container_definitions    = jsonencode(
+            [
+              - {
+                  - command                = [
+                      - "ingest-incremental",
+                      - "--limit",
+                      - "20",
+                    ]
+                  - dependsOn              = [
+                      - {
+                          - condition     = "SUCCESS"
+                          - containerName = "tmp-owner"
+                        },
+                    ]
+                  - environment            = [
+                      - {
+                          - name  = "ANALYSIS_QUEUE_URL"
+                          - value = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis"
+                        },
+                      - {
+                          - name  = "ARCHIVE_WORKDIR"
+                          - value = "/tmp/ingestion"
+                        },
+                      - {
+                          - name  = "AWS_REGION"
+                          - value = "us-east-1"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_BUCKET"
+                          - value = "view-show-ingestion-145497513075-us-east-1"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_EXPECTED_BUCKET_OWNER"
+                          - value = "145497513075"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_PREFIX"
+                          - value = "raw/argus/incremental/"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_BATCH_QUEUE_URL"
+                          - value = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-incremental-batches.fifo"
+                        },
+                      - {
+                          - name  = "INCREMENTAL_INGEST_LIMIT"
+                          - value = "20"
+                        },
+                      - {
+                          - name  = "INGESTION_DISK_BUDGET_BYTES"
+                          - value = "17179869184"
+                        },
+                      - {
+                          - name  = "INGESTION_ENVIRONMENT"
+                          - value = "learner-lab"
+                        },
+                      - {
+                          - name  = "LOG_SERVICE_NAME"
+                          - value = "view-show-ingestion"
+                        },
+                      - {
+                          - name  = "METRICS_NAMESPACE"
+                          - value = "view-show/Ingestion"
+                        },
+                      - {
+                          - name  = "OPERATIONAL_TABLE_NAME"
+                          - value = "view-show-iac-operacional"
+                        },
+                    ]
+                  - essential              = true
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-incremental-ingest"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "ingestion"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "ingestion"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - systemControls         = []
+                  - volumesFrom            = []
+                },
+              - {
+                  - command                = [
+                      - "10001:10001",
+                      - "/tmp",
+                    ]
+                  - entryPoint             = [
+                      - "/usr/bin/chown",
+                    ]
+                  - environment            = []
+                  - essential              = false
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-incremental-ingest"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "tmp-owner"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "tmp-owner"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - systemControls         = []
+                  - user                   = "0"
+                  - volumesFrom            = []
+                },
+            ]
+        ) -> (known after apply) # forces replacement
+      ~ enable_fault_injection   = false -> (known after apply)
+      ~ id                       = "view-show-ingestion-incremental-ingest" -> (known after apply)
+      ~ revision                 = 1 -> (known after apply)
+        tags                     = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+            "Operacao"   = "ingest-incremental"
+        }
+        # (12 unchanged attributes hidden)
+
+      - volume {
+          - configure_at_launch = false -> null
+          - name                = "ingestion-tmp" -> null
+            # (1 unchanged attribute hidden)
+        }
+      + volume {
+          + configure_at_launch = (known after apply)
+          + name                = "ingestion-tmp"
+            # (1 unchanged attribute hidden)
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+  # aws_ecs_task_definition.ingestion_sync must be replaced
+-/+ resource "aws_ecs_task_definition" "ingestion_sync" {
+      ~ arn                      = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-sync:1" -> (known after apply)
+      ~ arn_without_revision     = "arn:aws:ecs:us-east-1:145497513075:task-definition/view-show-ingestion-sync" -> (known after apply)
+      ~ container_definitions    = jsonencode(
+            [
+              - {
+                  - command                = [
+                      - "sync",
+                    ]
+                  - dependsOn              = [
+                      - {
+                          - condition     = "SUCCESS"
+                          - containerName = "tmp-owner"
+                        },
+                    ]
+                  - environment            = [
+                      - {
+                          - name  = "ANALYSIS_QUEUE_URL"
+                          - value = "https://sqs.us-east-1.amazonaws.com/145497513075/view-show-ingestion-analysis"
+                        },
+                      - {
+                          - name  = "ARCHIVE_WORKDIR"
+                          - value = "/tmp/ingestion"
+                        },
+                      - {
+                          - name  = "ARGUS_SOURCE_MODE"
+                          - value = "live"
+                        },
+                      - {
+                          - name  = "AWS_REGION"
+                          - value = "us-east-1"
+                        },
+                      - {
+                          - name  = "INGESTION_DISK_BUDGET_BYTES"
+                          - value = "8589934592"
+                        },
+                      - {
+                          - name  = "INGESTION_ENVIRONMENT"
+                          - value = "learner-lab"
+                        },
+                      - {
+                          - name  = "LOG_SERVICE_NAME"
+                          - value = "view-show-ingestion"
+                        },
+                      - {
+                          - name  = "METRICS_NAMESPACE"
+                          - value = "view-show/Ingestion"
+                        },
+                      - {
+                          - name  = "OPERATIONAL_TABLE_NAME"
+                          - value = "view-show-iac-operacional"
+                        },
+                      - {
+                          - name  = "SYNC_FINALIZATION_DELAY_SECONDS"
+                          - value = "900"
+                        },
+                      - {
+                          - name  = "SYNC_MAX_CATCHUP_WINDOWS"
+                          - value = "96"
+                        },
+                    ]
+                  - essential              = true
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-sync"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "ingestion"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "ingestion"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - secrets                = [
+                      - {
+                          - name      = "LIVE_MYSQL_DATABASE"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:database::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_HOST"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:host::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_PASSWORD"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:password::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_PORT"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:port::"
+                        },
+                      - {
+                          - name      = "LIVE_MYSQL_USER"
+                          - valueFrom = "arn:aws:secretsmanager:us-east-1:145497513075:secret:view-show-ingestion/live-mysql-ISOKoD:username::"
+                        },
+                    ]
+                  - systemControls         = []
+                  - volumesFrom            = []
+                },
+              - {
+                  - command                = [
+                      - "10001:10001",
+                      - "/tmp",
+                    ]
+                  - entryPoint             = [
+                      - "/usr/bin/chown",
+                    ]
+                  - environment            = []
+                  - essential              = false
+                  - image                  = "145497513075.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:90dcf1de30a96e665abc3266eba8581f5a9b96d6280aeeac028050e366a18a35"
+                  - logConfiguration       = {
+                      - logDriver = "awslogs"
+                      - options   = {
+                          - awslogs-group         = "/ecs/view-show-ingestion-sync"
+                          - awslogs-region        = "us-east-1"
+                          - awslogs-stream-prefix = "tmp-owner"
+                        }
+                    }
+                  - mountPoints            = [
+                      - {
+                          - containerPath = "/tmp"
+                          - readOnly      = false
+                          - sourceVolume  = "ingestion-tmp"
+                        },
+                    ]
+                  - name                   = "tmp-owner"
+                  - portMappings           = []
+                  - readonlyRootFilesystem = true
+                  - systemControls         = []
+                  - user                   = "0"
+                  - volumesFrom            = []
+                },
+            ]
+        ) -> (known after apply) # forces replacement
+      ~ enable_fault_injection   = false -> (known after apply)
+      ~ id                       = "view-show-ingestion-sync" -> (known after apply)
+      ~ revision                 = 1 -> (known after apply)
+        tags                     = {
+            "Ambiente"   = "learner-lab"
+            "Componente" = "ingestion"
+            "Operacao"   = "sync"
+        }
+        # (12 unchanged attributes hidden)
+
+      - volume {
+          - configure_at_launch = false -> null
+          - name                = "ingestion-tmp" -> null
+            # (1 unchanged attribute hidden)
+        }
+      + volume {
+          + configure_at_launch = (known after apply)
+          + name                = "ingestion-tmp"
+            # (1 unchanged attribute hidden)
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+  # terraform_data.ingestion_image[0] must be replaced
+-/+ resource "terraform_data" "ingestion_image" {
+      ~ id               = "910f2b52-c34c-6aa8-943c-c3b89ec27008" -> (known after apply)
+      ~ output           = {
+          - script_interpreter = "node"
+          - script_path        = "C:/Users/Inteli/projetos/modulo7/g05/apps/fullstack/scripts/publicar-imagem.mjs"
+        } -> (known after apply)
+      ~ triggers_replace = [
+          ~ "b2cdd607fd2d16870a8acfc1aca018fdc42784aca1d7af9581172581b591217b" -> "8be4568def6e3da38bdef90f84eee2cd63090e18d9d3b7faa5c20c0412bf3f31",
+        ]
+        # (1 unchanged attribute hidden)
+    }
+
+Plan: 6 to add, 0 to change, 6 to destroy.
+
+Warning: Resource targeting is in effect
+
+You are creating a plan with the -target option, which means that the result
+of this plan may not represent all of the changes requested by the current
+configuration.
+
+The -target option is not for routine use, and is provided only for
+exceptional situations such as recovering from errors or mistakes, or when
+Terraform specifically suggests to use it as part of an error message.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to: .terraform-artifacts/achado9-taskdefs.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply ".terraform-artifacts/achado9-taskdefs.tfplan"

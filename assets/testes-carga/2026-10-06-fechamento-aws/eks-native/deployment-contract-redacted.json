@@ -1,0 +1,775 @@
+{
+  "iam_mode": "learner-lab-existing",
+  "cluster_name": "view-show-rnf-eks",
+  "cluster_arn": "arn:aws:eks:us-east-1:239162056821:cluster/view-show-rnf-eks",
+  "region": "us-east-1",
+  "namespace": "view-show-rnf",
+  "vpc_id": "vpc-03c537123ea6cb09e",
+  "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:239162056821:targetgroup/view-show-rnf-eks-api/89c25e2f28a86b80",
+  "target_group_security_group": "sg-066a75e25e1596a57",
+  "node_security_group": "sg-0febd4db0261749b1",
+  "system_roles": {},
+  "workload_roles": {},
+  "api_min_replicas": 1,
+  "api_max_replicas": 4,
+  "api_replicas": 1,
+  "api_cpu_target": 50,
+  "analysis_enabled": false,
+  "analysis_replicas": 0,
+  "sync_enabled": false,
+  "incremental_enabled": false,
+  "snapshot_storage_gib": 192,
+  "log_retention_days": 7,
+  "observability": null,
+  "workloads": {
+    "api": {
+      "cpu": "256",
+      "memory": "512",
+      "containers": [
+        {
+          "name": "api",
+          "image": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-iac-api@sha256:9e27a035f6524b31312459f72bbc51a979e83d2572dd0e0cc1265d048106851c",
+          "args": [],
+          "env": [
+            {
+              "name": "ANALYSIS_QUEUE_URL",
+              "value": ""
+            },
+            {
+              "name": "RATE_LIMIT_PER_MINUTE",
+              "value": "1000000"
+            },
+            {
+              "name": "FRONTEND_ORIGIN",
+              "value": "https://producao.d1svpthoa1rnkp.amplifyapp.com"
+            },
+            {
+              "name": "IMPORT_CANONICAL_FIRST_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "IMPORT_BUCKET",
+              "value": "view-show-rnf-eks-239162056821"
+            },
+            {
+              "name": "BEDROCK_MODEL_ID",
+              "value": "anthropic.claude-3-haiku-20240307-v1:0"
+            },
+            {
+              "name": "COGNITO_CLIENT_ID",
+              "value": "24vv9u4hcinb4ir25gc0pgo87b"
+            },
+            {
+              "name": "IMPORT_CURSOR_SECRET",
+              "value": "[REDACTED]"
+            },
+            {
+              "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+              "value": ""
+            },
+            {
+              "name": "AWS_REGION",
+              "value": "us-east-1"
+            },
+            {
+              "name": "OPERATIONAL_TABLE_NAME",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "PORT",
+              "value": "3000"
+            },
+            {
+              "name": "OTEL_DEPLOYMENT_ENVIRONMENT",
+              "value": "aws"
+            },
+            {
+              "name": "LOKI_PUSH_URL",
+              "value": ""
+            },
+            {
+              "name": "AUTH_COOKIE_SECRET",
+              "value": "[REDACTED]"
+            },
+            {
+              "name": "CURSOR_SECRET",
+              "value": "[REDACTED]"
+            },
+            {
+              "name": "COGNITO_USER_POOL_ID",
+              "value": "us-east-1_xoJQCpoqN"
+            },
+            {
+              "name": "OTEL_SERVICE_NAME",
+              "value": "view-show-iac-api"
+            },
+            {
+              "name": "OTEL_RESOURCE_ATTRIBUTES",
+              "value": "deployment.environment=aws,service.version=ab0f99a3c385,cloud.region=us-east-1"
+            },
+            {
+              "name": "COGNITO_CLIENT_SECRET",
+              "value": "[REDACTED]"
+            },
+            {
+              "name": "GOLDEN_SET_TABLE_NAME",
+              "value": "view-show-iac-golden-set"
+            },
+            {
+              "name": "IMPORT_EXPECTED_BUCKET_OWNER",
+              "value": "239162056821"
+            },
+            {
+              "name": "BEDROCK_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "NODE_ENV",
+              "value": "production"
+            },
+            {
+              "name": "KUBERNETES_NAMESPACE",
+              "value": "view-show-rnf"
+            },
+            {
+              "name": "INGESTION_CRONJOB_NAME",
+              "value": "ingestion-sync"
+            },
+            {
+              "name": "IMPORT_KUBERNETES_NAMESPACE",
+              "value": "view-show-rnf-imports"
+            },
+            {
+              "name": "IMPORT_KUBERNETES_TEMPLATE",
+              "value": "ingestion-import"
+            },
+            {
+              "name": "IMPORT_INGESTION_CONTAINER_NAME",
+              "value": "ingestion"
+            },
+            {
+              "name": "METRICS_ENABLED",
+              "value": "true"
+            }
+          ],
+          "secrets": []
+        }
+      ]
+    },
+    "ingestion-import": {
+      "cpu": "2048",
+      "memory": "8192",
+      "containers": [
+        {
+          "name": "mysql-snapshot",
+          "image": "mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad",
+          "args": [
+            "mysqld",
+            "--character-set-server=utf8mb4",
+            "--collation-server=utf8mb4_bin",
+            "--innodb-buffer-pool-size=3221225472",
+            "--innodb-redo-log-capacity=1073741824",
+            "--innodb-flush-log-at-trx-commit=2",
+            "--skip-log-bin",
+            "--sync-binlog=0",
+            "--max-allowed-packet=1073741824",
+            "--net-read-timeout=600",
+            "--net-write-timeout=600",
+            "--wait-timeout=600",
+            "--performance-schema=OFF"
+          ],
+          "env": [
+            {
+              "name": "MYSQL_DATABASE",
+              "value": "argus"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "MYSQL_ROOT_PASSWORD",
+              "valueFrom": "arn:aws:secretsmanager:us-east-1:239162056821:secret:view-show-rnf-eks/mysql-z7EB1q"
+            }
+          ]
+        },
+        {
+          "name": "ingestion",
+          "image": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6",
+          "args": [
+            "import-dump"
+          ],
+          "env": [
+            {
+              "name": "ANALYSIS_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-analysis"
+            },
+            {
+              "name": "ARCHIVE_WORKDIR",
+              "value": "/tmp/ingestion"
+            },
+            {
+              "name": "INGESTION_ENVIRONMENT",
+              "value": "learner-lab"
+            },
+            {
+              "name": "GLUE_DATABASE",
+              "value": "view_show_rnf_eks"
+            },
+            {
+              "name": "MYSQL_DDL_TIMEOUT_SECONDS",
+              "value": "1800"
+            },
+            {
+              "name": "LOG_SERVICE_NAME",
+              "value": "view-show-ingestion"
+            },
+            {
+              "name": "ARCHIVE_BUCKET_OWNER",
+              "value": "239162056821"
+            },
+            {
+              "name": "MYSQL_HOST",
+              "value": "127.0.0.1"
+            },
+            {
+              "name": "MYSQL_READ_TIMEOUT_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MYSQL_PORT",
+              "value": "3306"
+            },
+            {
+              "name": "ARGUS_SOURCE_MODE",
+              "value": "snapshot"
+            },
+            {
+              "name": "MYSQL_QUERY_RETRY_BASE_MS",
+              "value": "250"
+            },
+            {
+              "name": "ACTIVATE_CANDIDATE",
+              "value": "false"
+            },
+            {
+              "name": "ATHENA_OUTPUT_LOCATION",
+              "value": "s3://view-show-rnf-eks-239162056821/athena/"
+            },
+            {
+              "name": "MYSQL_DATABASE",
+              "value": "argus"
+            },
+            {
+              "name": "AWS_REGION",
+              "value": "us-east-1"
+            },
+            {
+              "name": "OPERATIONAL_TABLE_NAME",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "MYSQL_QUERY_RETRY_MAX_MS",
+              "value": "4000"
+            },
+            {
+              "name": "MYSQL_USER",
+              "value": "root"
+            },
+            {
+              "name": "ATHENA_WORKGROUP",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "MYSQL_CONNECT_TIMEOUT_SECONDS",
+              "value": "10"
+            },
+            {
+              "name": "METRICS_NAMESPACE",
+              "value": "view-show/RNF_EKS"
+            },
+            {
+              "name": "INGESTION_DISK_BUDGET_BYTES",
+              "value": "68719476736"
+            },
+            {
+              "name": "ARCHIVE_BUCKET",
+              "value": "view-show-rnf-eks-239162056821"
+            },
+            {
+              "name": "IMPORT_HOT_MATERIALIZATION_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "MYSQL_QUERY_MAX_ATTEMPTS",
+              "value": "4"
+            },
+            {
+              "name": "MYSQL_SNAPSHOT_PREPARE_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "PAGE_SIZE",
+              "value": "500"
+            },
+            {
+              "name": "MYSQL_WRITE_TIMEOUT_SECONDS",
+              "value": "300"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "MYSQL_PASSWORD",
+              "valueFrom": "arn:aws:secretsmanager:us-east-1:239162056821:secret:view-show-rnf-eks/mysql-z7EB1q"
+            }
+          ]
+        }
+      ]
+    },
+    "ingestion-backfill": {
+      "cpu": "2048",
+      "memory": "8192",
+      "containers": [
+        {
+          "name": "mysql-snapshot",
+          "image": "mysql@sha256:902368b688a8aba1d9de3f59110e4b3cb1a5ea76d370c1c29fa64f724a110cad",
+          "args": [
+            "mysqld",
+            "--character-set-server=utf8mb4",
+            "--collation-server=utf8mb4_bin",
+            "--innodb-buffer-pool-size=3221225472",
+            "--innodb-redo-log-capacity=1073741824",
+            "--innodb-flush-log-at-trx-commit=2",
+            "--skip-log-bin",
+            "--sync-binlog=0",
+            "--max-allowed-packet=1073741824",
+            "--net-read-timeout=600",
+            "--net-write-timeout=600",
+            "--wait-timeout=600",
+            "--performance-schema=OFF"
+          ],
+          "env": [
+            {
+              "name": "MYSQL_DATABASE",
+              "value": "argus"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "MYSQL_ROOT_PASSWORD",
+              "valueFrom": "arn:aws:secretsmanager:us-east-1:239162056821:secret:view-show-rnf-eks/mysql-z7EB1q"
+            }
+          ]
+        },
+        {
+          "name": "ingestion",
+          "image": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6",
+          "args": [
+            "backfill"
+          ],
+          "env": [
+            {
+              "name": "ANALYSIS_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-analysis"
+            },
+            {
+              "name": "ARCHIVE_WORKDIR",
+              "value": "/tmp/ingestion"
+            },
+            {
+              "name": "INGESTION_ENVIRONMENT",
+              "value": "learner-lab"
+            },
+            {
+              "name": "GLUE_DATABASE",
+              "value": "view_show_rnf_eks"
+            },
+            {
+              "name": "MYSQL_DDL_TIMEOUT_SECONDS",
+              "value": "1800"
+            },
+            {
+              "name": "LOG_SERVICE_NAME",
+              "value": "view-show-ingestion"
+            },
+            {
+              "name": "ARCHIVE_BUCKET_OWNER",
+              "value": "239162056821"
+            },
+            {
+              "name": "MYSQL_HOST",
+              "value": "127.0.0.1"
+            },
+            {
+              "name": "MYSQL_READ_TIMEOUT_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MYSQL_PORT",
+              "value": "3306"
+            },
+            {
+              "name": "ARGUS_SOURCE_MODE",
+              "value": "snapshot"
+            },
+            {
+              "name": "MYSQL_QUERY_RETRY_BASE_MS",
+              "value": "250"
+            },
+            {
+              "name": "ACTIVATE_CANDIDATE",
+              "value": "false"
+            },
+            {
+              "name": "ATHENA_OUTPUT_LOCATION",
+              "value": "s3://view-show-rnf-eks-239162056821/athena/"
+            },
+            {
+              "name": "MYSQL_DATABASE",
+              "value": "argus"
+            },
+            {
+              "name": "AWS_REGION",
+              "value": "us-east-1"
+            },
+            {
+              "name": "OPERATIONAL_TABLE_NAME",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "MYSQL_QUERY_RETRY_MAX_MS",
+              "value": "4000"
+            },
+            {
+              "name": "MYSQL_USER",
+              "value": "root"
+            },
+            {
+              "name": "ATHENA_WORKGROUP",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "MYSQL_CONNECT_TIMEOUT_SECONDS",
+              "value": "10"
+            },
+            {
+              "name": "METRICS_NAMESPACE",
+              "value": "view-show/RNF_EKS"
+            },
+            {
+              "name": "INGESTION_DISK_BUDGET_BYTES",
+              "value": "68719476736"
+            },
+            {
+              "name": "ARCHIVE_BUCKET",
+              "value": "view-show-rnf-eks-239162056821"
+            },
+            {
+              "name": "IMPORT_HOT_MATERIALIZATION_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "MYSQL_QUERY_MAX_ATTEMPTS",
+              "value": "4"
+            },
+            {
+              "name": "MYSQL_SNAPSHOT_PREPARE_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "PAGE_SIZE",
+              "value": "500"
+            },
+            {
+              "name": "MYSQL_WRITE_TIMEOUT_SECONDS",
+              "value": "300"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "MYSQL_PASSWORD",
+              "valueFrom": "arn:aws:secretsmanager:us-east-1:239162056821:secret:view-show-rnf-eks/mysql-z7EB1q"
+            }
+          ]
+        }
+      ]
+    },
+    "ingestion-sync": {
+      "cpu": "1024",
+      "memory": "2048",
+      "containers": [
+        {
+          "name": "ingestion",
+          "image": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6",
+          "args": [
+            "sync"
+          ],
+          "env": [
+            {
+              "name": "ANALYSIS_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-analysis"
+            },
+            {
+              "name": "ARCHIVE_WORKDIR",
+              "value": "/tmp/ingestion"
+            },
+            {
+              "name": "INGESTION_ENVIRONMENT",
+              "value": "learner-lab"
+            },
+            {
+              "name": "GLUE_DATABASE",
+              "value": "view_show_rnf_eks"
+            },
+            {
+              "name": "LOG_SERVICE_NAME",
+              "value": "view-show-ingestion"
+            },
+            {
+              "name": "ARCHIVE_BUCKET_OWNER",
+              "value": "239162056821"
+            },
+            {
+              "name": "ACTIVATE_CANDIDATE",
+              "value": "false"
+            },
+            {
+              "name": "ATHENA_OUTPUT_LOCATION",
+              "value": "s3://view-show-rnf-eks-239162056821/athena/"
+            },
+            {
+              "name": "AWS_REGION",
+              "value": "us-east-1"
+            },
+            {
+              "name": "OPERATIONAL_TABLE_NAME",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "ATHENA_WORKGROUP",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "METRICS_NAMESPACE",
+              "value": "view-show/RNF_EKS"
+            },
+            {
+              "name": "ARCHIVE_BUCKET",
+              "value": "view-show-rnf-eks-239162056821"
+            },
+            {
+              "name": "IMPORT_HOT_MATERIALIZATION_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "PAGE_SIZE",
+              "value": "500"
+            },
+            {
+              "name": "INCREMENTAL_BATCH_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-incremental.fifo"
+            },
+            {
+              "name": "INGESTION_DISK_BUDGET_BYTES",
+              "value": "17179869184"
+            },
+            {
+              "name": "LIVE_SYNC_ENABLED",
+              "value": "false"
+            }
+          ],
+          "secrets": []
+        }
+      ]
+    },
+    "ingestion-incremental-export": {
+      "cpu": "1024",
+      "memory": "2048",
+      "containers": [
+        {
+          "name": "ingestion",
+          "image": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6",
+          "args": [
+            "export-incremental"
+          ],
+          "env": [
+            {
+              "name": "ANALYSIS_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-analysis"
+            },
+            {
+              "name": "ARCHIVE_WORKDIR",
+              "value": "/tmp/ingestion"
+            },
+            {
+              "name": "INGESTION_ENVIRONMENT",
+              "value": "learner-lab"
+            },
+            {
+              "name": "GLUE_DATABASE",
+              "value": "view_show_rnf_eks"
+            },
+            {
+              "name": "LOG_SERVICE_NAME",
+              "value": "view-show-ingestion"
+            },
+            {
+              "name": "ARCHIVE_BUCKET_OWNER",
+              "value": "239162056821"
+            },
+            {
+              "name": "ACTIVATE_CANDIDATE",
+              "value": "false"
+            },
+            {
+              "name": "ATHENA_OUTPUT_LOCATION",
+              "value": "s3://view-show-rnf-eks-239162056821/athena/"
+            },
+            {
+              "name": "AWS_REGION",
+              "value": "us-east-1"
+            },
+            {
+              "name": "OPERATIONAL_TABLE_NAME",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "ATHENA_WORKGROUP",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "METRICS_NAMESPACE",
+              "value": "view-show/RNF_EKS"
+            },
+            {
+              "name": "ARCHIVE_BUCKET",
+              "value": "view-show-rnf-eks-239162056821"
+            },
+            {
+              "name": "IMPORT_HOT_MATERIALIZATION_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "PAGE_SIZE",
+              "value": "500"
+            },
+            {
+              "name": "INCREMENTAL_BATCH_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-incremental.fifo"
+            },
+            {
+              "name": "INGESTION_DISK_BUDGET_BYTES",
+              "value": "17179869184"
+            },
+            {
+              "name": "LIVE_SYNC_ENABLED",
+              "value": "false"
+            }
+          ],
+          "secrets": []
+        }
+      ]
+    },
+    "ingestion-incremental-ingest": {
+      "cpu": "1024",
+      "memory": "2048",
+      "containers": [
+        {
+          "name": "ingestion",
+          "image": "239162056821.dkr.ecr.us-east-1.amazonaws.com/view-show-ingestion@sha256:899883cfa4fcdc954e04ab2a053249b1d7fa3f6544904ac14f20ac3519967ef6",
+          "args": [
+            "ingest-incremental",
+            "--limit",
+            "20"
+          ],
+          "env": [
+            {
+              "name": "ANALYSIS_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-analysis"
+            },
+            {
+              "name": "ARCHIVE_WORKDIR",
+              "value": "/tmp/ingestion"
+            },
+            {
+              "name": "INGESTION_ENVIRONMENT",
+              "value": "learner-lab"
+            },
+            {
+              "name": "GLUE_DATABASE",
+              "value": "view_show_rnf_eks"
+            },
+            {
+              "name": "LOG_SERVICE_NAME",
+              "value": "view-show-ingestion"
+            },
+            {
+              "name": "ARCHIVE_BUCKET_OWNER",
+              "value": "239162056821"
+            },
+            {
+              "name": "ACTIVATE_CANDIDATE",
+              "value": "false"
+            },
+            {
+              "name": "ATHENA_OUTPUT_LOCATION",
+              "value": "s3://view-show-rnf-eks-239162056821/athena/"
+            },
+            {
+              "name": "AWS_REGION",
+              "value": "us-east-1"
+            },
+            {
+              "name": "OPERATIONAL_TABLE_NAME",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "ATHENA_WORKGROUP",
+              "value": "view-show-rnf-eks"
+            },
+            {
+              "name": "METRICS_NAMESPACE",
+              "value": "view-show/RNF_EKS"
+            },
+            {
+              "name": "ARCHIVE_BUCKET",
+              "value": "view-show-rnf-eks-239162056821"
+            },
+            {
+              "name": "IMPORT_HOT_MATERIALIZATION_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "PAGE_SIZE",
+              "value": "500"
+            },
+            {
+              "name": "INCREMENTAL_BATCH_QUEUE_URL",
+              "value": "https://sqs.us-east-1.amazonaws.com/239162056821/view-show-rnf-eks-incremental.fifo"
+            },
+            {
+              "name": "INGESTION_DISK_BUDGET_BYTES",
+              "value": "17179869184"
+            },
+            {
+              "name": "LIVE_SYNC_ENABLED",
+              "value": "false"
+            }
+          ],
+          "secrets": []
+        }
+      ]
+    },
+    "analysis-worker": {
+      "cpu": "512",
+      "memory": "1024",
+      "containers": [
+        {
+          "name": "analysis-worker",
+          "image": "unused-disabled",
+          "args": [],
+          "env": [],
+          "secrets": []
+        }
+      ]
+    }
+  }
+}

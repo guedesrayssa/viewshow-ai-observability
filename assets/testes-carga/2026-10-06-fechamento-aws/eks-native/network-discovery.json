@@ -1,0 +1,263 @@
+{
+  "vpcId": "vpc-03c537123ea6cb09e",
+  "subnets": [
+    {
+      "SubnetId": "subnet-07105f364faaa389c",
+      "AvailabilityZone": "us-east-1b",
+      "CidrBlock": "10.0.11.0/24",
+      "MapPublicIpOnLaunch": false,
+      "Tags": [
+        {
+          "Key": "Stack",
+          "Value": "g05-sprint3-entrega"
+        },
+        {
+          "Key": "ManagedBy",
+          "Value": "terraform"
+        },
+        {
+          "Key": "Camada",
+          "Value": "privada"
+        },
+        {
+          "Key": "Name",
+          "Value": "view-show-private-b"
+        },
+        {
+          "Key": "Projeto",
+          "Value": "view-show"
+        }
+      ]
+    },
+    {
+      "SubnetId": "subnet-01295a6f1706924db",
+      "AvailabilityZone": "us-east-1a",
+      "CidrBlock": "10.0.0.0/24",
+      "MapPublicIpOnLaunch": true,
+      "Tags": [
+        {
+          "Key": "ManagedBy",
+          "Value": "terraform"
+        },
+        {
+          "Key": "Name",
+          "Value": "view-show-public-a"
+        },
+        {
+          "Key": "Projeto",
+          "Value": "view-show"
+        },
+        {
+          "Key": "Stack",
+          "Value": "g05-sprint3-entrega"
+        },
+        {
+          "Key": "Camada",
+          "Value": "publica"
+        }
+      ]
+    },
+    {
+      "SubnetId": "subnet-02da093a1c8e2e016",
+      "AvailabilityZone": "us-east-1a",
+      "CidrBlock": "10.0.10.0/24",
+      "MapPublicIpOnLaunch": false,
+      "Tags": [
+        {
+          "Key": "ManagedBy",
+          "Value": "terraform"
+        },
+        {
+          "Key": "Projeto",
+          "Value": "view-show"
+        },
+        {
+          "Key": "Stack",
+          "Value": "g05-sprint3-entrega"
+        },
+        {
+          "Key": "Camada",
+          "Value": "privada"
+        },
+        {
+          "Key": "Name",
+          "Value": "view-show-private-a"
+        }
+      ]
+    },
+    {
+      "SubnetId": "subnet-07bf4d06aaff2a0e2",
+      "AvailabilityZone": "us-east-1b",
+      "CidrBlock": "10.0.1.0/24",
+      "MapPublicIpOnLaunch": true,
+      "Tags": [
+        {
+          "Key": "Stack",
+          "Value": "g05-sprint3-entrega"
+        },
+        {
+          "Key": "ManagedBy",
+          "Value": "terraform"
+        },
+        {
+          "Key": "Camada",
+          "Value": "publica"
+        },
+        {
+          "Key": "Projeto",
+          "Value": "view-show"
+        },
+        {
+          "Key": "Name",
+          "Value": "view-show-public-b"
+        }
+      ]
+    }
+  ],
+  "routeTables": [
+    {
+      "RouteTableId": "rtb-0decebb448c3bc83a",
+      "Associations": [
+        {
+          "Main": false,
+          "RouteTableAssociationId": "rtbassoc-0779da997254eff5f",
+          "RouteTableId": "rtb-0decebb448c3bc83a",
+          "SubnetId": "subnet-07bf4d06aaff2a0e2",
+          "AssociationState": {
+            "State": "associated"
+          }
+        },
+        {
+          "Main": false,
+          "RouteTableAssociationId": "rtbassoc-08ef134351cf324e3",
+          "RouteTableId": "rtb-0decebb448c3bc83a",
+          "SubnetId": "subnet-01295a6f1706924db",
+          "AssociationState": {
+            "State": "associated"
+          }
+        }
+      ],
+      "Routes": [
+        {
+          "DestinationCidrBlock": "10.0.0.0/16",
+          "GatewayId": "local",
+          "Origin": "CreateRouteTable",
+          "State": "active"
+        },
+        {
+          "DestinationCidrBlock": "0.0.0.0/0",
+          "GatewayId": "igw-04e313cb2687b00b4",
+          "Origin": "CreateRoute",
+          "State": "active"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "view-show-public-rt"
+        },
+        {
+          "Key": "Projeto",
+          "Value": "view-show"
+        },
+        {
+          "Key": "Stack",
+          "Value": "g05-sprint3-entrega"
+        },
+        {
+          "Key": "ManagedBy",
+          "Value": "terraform"
+        }
+      ]
+    },
+    {
+      "RouteTableId": "rtb-08611bb290f7f79c5",
+      "Associations": [
+        {
+          "Main": false,
+          "RouteTableAssociationId": "rtbassoc-025aa1bc189338312",
+          "RouteTableId": "rtb-08611bb290f7f79c5",
+          "SubnetId": "subnet-07105f364faaa389c",
+          "AssociationState": {
+            "State": "associated"
+          }
+        },
+        {
+          "Main": false,
+          "RouteTableAssociationId": "rtbassoc-0a0cbf6a0b95a2dec",
+          "RouteTableId": "rtb-08611bb290f7f79c5",
+          "SubnetId": "subnet-02da093a1c8e2e016",
+          "AssociationState": {
+            "State": "associated"
+          }
+        }
+      ],
+      "Routes": [
+        {
+          "DestinationCidrBlock": "10.0.0.0/16",
+          "GatewayId": "local",
+          "Origin": "CreateRouteTable",
+          "State": "active"
+        },
+        {
+          "DestinationCidrBlock": "0.0.0.0/0",
+          "NatGatewayId": "nat-00a87b82132159ec4",
+          "Origin": "CreateRoute",
+          "State": "active"
+        },
+        {
+          "DestinationPrefixListId": "pl-02cd2c6b",
+          "GatewayId": "vpce-0e1b80cc2bc9b6f22",
+          "Origin": "CreateRoute",
+          "State": "active"
+        },
+        {
+          "DestinationPrefixListId": "pl-63a5400a",
+          "GatewayId": "vpce-00e2ae41eb4132556",
+          "Origin": "CreateRoute",
+          "State": "active"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "ManagedBy",
+          "Value": "terraform"
+        },
+        {
+          "Key": "Stack",
+          "Value": "g05-sprint3-entrega"
+        },
+        {
+          "Key": "Name",
+          "Value": "view-show-private-rt"
+        },
+        {
+          "Key": "Projeto",
+          "Value": "view-show"
+        }
+      ]
+    },
+    {
+      "RouteTableId": "rtb-06d50fa5a958bf8f9",
+      "Associations": [
+        {
+          "Main": true,
+          "RouteTableAssociationId": "rtbassoc-0d5047c63f1a5232c",
+          "RouteTableId": "rtb-06d50fa5a958bf8f9",
+          "AssociationState": {
+            "State": "associated"
+          }
+        }
+      ],
+      "Routes": [
+        {
+          "DestinationCidrBlock": "10.0.0.0/16",
+          "GatewayId": "local",
+          "Origin": "CreateRouteTable",
+          "State": "active"
+        }
+      ],
+      "Tags": []
+    }
+  ]
+}

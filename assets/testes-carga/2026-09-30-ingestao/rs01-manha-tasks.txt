@@ -1,0 +1,1 @@
+arn:aws:ecs:us-east-1:114388221188:task/view-show-iac-cluster/128a48cf85324b089f9c04e462506251

@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-10-07T01:24:36.935Z",
+  "importId": "imp_01M49YHAKQ34T7P0ACD2M0J1EH",
+  "state": "PROCESSING",
+  "progress": {
+    "kind": "stage",
+    "stage": "PROJECTING",
+    "stageStartedAt": "2026-10-07T01:18:11.422Z",
+    "heartbeatAt": "2026-10-07T01:24:17.967Z",
+    "recordsRead": 150000,
+    "recordsWritten": 150000,
+    "recordsRejected": 0,
+    "recordsTotal": 150000,
+    "currentDataset": null,
+    "datasetsCompleted": 23,
+    "datasetsTotal": 23
+  },
+  "candidateVersion": null,
+  "createdAt": "2026-10-07T01:09:37.527Z",
+  "updatedAt": "2026-10-07T01:24:17.967Z"
+}

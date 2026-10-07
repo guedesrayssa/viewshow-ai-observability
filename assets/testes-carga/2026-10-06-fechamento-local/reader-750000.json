@@ -1,0 +1,18 @@
+{
+  "duplicates": 0,
+  "durationSeconds": 14.320834,
+  "firstQuartileP99Ms": 47.016458,
+  "lastQuartileP99Ms": 40.745,
+  "missing": 0,
+  "pageSize": 1000,
+  "pipelineDiagnostics": null,
+  "preflightDurationSeconds": 6.761712,
+  "queryP50Ms": 16.095125,
+  "queryP95Ms": 34.758917,
+  "queryP99Ms": 50.855167,
+  "queryPages": 772,
+  "restoreDurationSeconds": 16.871067,
+  "retries": 1,
+  "rows": 750000,
+  "rowsPerSecond": 52371.252934
+}

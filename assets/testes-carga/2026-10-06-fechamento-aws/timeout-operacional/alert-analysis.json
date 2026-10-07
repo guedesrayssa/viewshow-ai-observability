@@ -1,0 +1,11 @@
+{
+  "alarm": "view-show-import-worker-failures",
+  "failedRun": "import-dump-8ae78fddf3ed4e1d831da44bdc944a08",
+  "causeType": "LeaseBusy",
+  "failureUtc": "2026-10-07T00:40:43.480000+00:00",
+  "alarmUtc": "2026-10-06T21:41:01.928000-03:00",
+  "latencySeconds": 18.448,
+  "criterionSeconds": 30,
+  "thisSamplePassed": true,
+  "scope": "one observable LeaseBusy failure; the killed750k worker did not emit its terminal metric; 300s period does not guarantee30s in all alignments"
+}

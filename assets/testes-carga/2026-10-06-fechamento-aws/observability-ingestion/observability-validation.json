@@ -1,0 +1,68 @@
+{
+  "start": "2026-10-06T23:10:00Z",
+  "end": "2026-10-06T23:42:00Z",
+  "dashboardUid": "rnf-ingestion-aws-control",
+  "checks": [
+    {
+      "panelId": 1,
+      "title": "Latência p95 — API",
+      "httpStatus": 200,
+      "samples": 376,
+      "displayedQueries": [
+        {
+          "refId": "A",
+          "samples": 376,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 2,
+      "title": "Throughput — API",
+      "httpStatus": 200,
+      "samples": 377,
+      "displayedQueries": [
+        {
+          "refId": "A",
+          "samples": 377,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 3,
+      "title": "Erros/s — API",
+      "httpStatus": 200,
+      "samples": 377,
+      "displayedQueries": [
+        {
+          "refId": "A",
+          "samples": 377,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": true
+    },
+    {
+      "panelId": 4,
+      "title": "CPU reservada — worker",
+      "httpStatus": 200,
+      "samples": 7,
+      "displayedQueries": [
+        {
+          "refId": "C",
+          "samples": 7,
+          "error": null
+        }
+      ],
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "passed": true
+}

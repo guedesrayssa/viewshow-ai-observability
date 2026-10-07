@@ -1,0 +1,46 @@
+name: view-show-rnf-lab
+services:
+  dynamodb:
+    platform: linux/amd64
+    user: root
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/home/dynamodblocal/data"]
+    volumes: ["api-state:/home/dynamodblocal/data"]
+    image: amazon/dynamodb-local:2.6.1@sha256:990211fe3cbb507c52512522b5e71538802f086393f5b0d009d03a18c8bc04a6
+    ports: ["127.0.0.1:18001:8000"]
+  stream-store:
+    platform: linux/amd64
+    image: amazon/dynamodb-local:2.6.1@sha256:990211fe3cbb507c52512522b5e71538802f086393f5b0d009d03a18c8bc04a6
+    ports: ["127.0.0.1:18002:8000"]
+  stream-persistent:
+    platform: linux/amd64
+    user: root
+    image: amazon/dynamodb-local:2.6.1@sha256:990211fe3cbb507c52512522b5e71538802f086393f5b0d009d03a18c8bc04a6
+    command: ["-Xmx512m", "-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/home/dynamodblocal/data"]
+    volumes: ["stream-state:/home/dynamodblocal/data"]
+    ports: ["127.0.0.1:18003:8000"]
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    ports: ["127.0.0.1:19090:9090"]
+    volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+  grafana:
+    image: grafana/grafana:13.2.1
+    ports: ["127.0.0.1:13002:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: lab
+      GF_SECURITY_ADMIN_PASSWORD: local-rnf-only
+      GF_RENDERING_SERVER_URL: http://renderer:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_RENDERING_RENDERER_TOKEN: local-rnf-renderer-only
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes: ["./provisioning:/etc/grafana/provisioning:ro"]
+
+  renderer:
+    image: grafana/grafana-image-renderer:3.12.9
+    environment:
+      AUTH_TOKEN: local-rnf-renderer-only
+
+volumes:
+  api-state:
+  stream-state:

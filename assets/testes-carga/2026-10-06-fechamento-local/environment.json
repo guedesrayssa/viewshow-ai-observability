@@ -1,0 +1,15 @@
+{
+  "baseCommit": "eca9de4350e4b546db378082186afc366ffb087f",
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "measurementScope": "Local components; no production capacity inference",
+  "dependencies": {
+    "python": "Python 3.12.14",
+    "node": "v22.23.2",
+    "k6": "k6 v2.2.0 (commit/devel, go1.26.5, darwin/arm64)"
+  },
+  "sourceAtCollection": {
+    "apps/backend/api/loadtest/lab/run-api.sh": "2cde3b418d0c3f16a1393fe5f29fb40ab58b4901cc96a1aa311b814aa48dd5a8",
+    "apps/backend/ingestion-data/scripts/rnf_local_evidence.py": "ad66baf0bdbcb4a94f8565586dcb00cabeafd438dbef63757a68043382a44515"
+  }
+}

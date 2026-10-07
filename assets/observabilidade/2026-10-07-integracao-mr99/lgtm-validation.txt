@@ -1,0 +1,50 @@
+
+Verificação verify-muxlcm6f
+
+1. Requisições de teste
+  ok    API devolve X-Request-Id igual ao enviado
+  ok    API devolve X-Trace-Id de 32 hex — 3001fbbebd47f050a7e974557e5e9ac9
+
+2. Logs no Loki
+  ok    linhas de acesso chegaram ao Loki — 5 linhas
+  ok    2xx em info
+  ok    4xx em warn (400 e 404)
+  ok    5xx em error, com error_code — FEATURE_UNAVAILABLE
+  ok    rota sem casamento vira 'unmatched'
+  ok    rota é o template, não o path
+  ok    linha de acesso carrega trace_id igual ao X-Trace-Id
+  ok    falha de login registra o motivo (insumo de RNF04) — unavailable
+  ok    /health e /metrics não geram log — 0 linhas
+  ok    trace_id e request_id NÃO são rótulos do Loki — container,environment,level,platform,service_name
+
+3. Traces no Tempo
+  ok    trace da requisição existe — 3 spans
+  ok    span SERVER nomeado pela rota — GET /api/v1/incidents
+  ok    span SERVER guarda o request_id
+  ok    trace enxuto (sem spans de middleware)
+  ok    span de erro tem status ERROR e código de negócio — FEATURE_UNAVAILABLE
+  ok    query do callback OIDC redigida no span — code=REDACTED&state=REDACTED
+  ok    TraceQL encontra o trace pelo request_id
+
+4. Correlação entre sinais
+  ok    trace → logs: filtrar o Loki pelo trace_id acha a requisição
+  ok    log → trace: o trace_id do log abre o mesmo trace
+  ok    métrica → trace: histograma de latência tem exemplar do trace
+  ok    métricas RED derivadas de trace separam as rotas
+  ok    tentativas de login recusadas viram métrica
+
+5. Nenhum segredo vaza
+  ok    senha digitada ausente dos logs
+  ok    code OIDC ausente dos logs
+  ok    e-mail do usuário ausente dos logs
+  ok    segredos ausentes dos traces
+
+6. Grafana
+  ok    data source prometheus saudável — Successfully queried the Prometheus API.
+  ok    data source loki saudável — Data source successfully connected.
+  ok    data source tempo saudável — Data source is working. Streaming test succeeded.
+  ok    dashboards View Show provisionados — View Show — Agentic LLM Observability | View Show — API (RED, logs e traces) | View Show — Application Observability
+  ok    toda query de todo painel executa sem erro — 41 queries
+  ok    painel 'Traces do ID' acha o trace pelo request_id
+
+34/34 verificações passaram.
