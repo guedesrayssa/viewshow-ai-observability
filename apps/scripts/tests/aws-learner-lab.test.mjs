@@ -76,6 +76,8 @@ function testEnvironment({
   gateAccepted = true,
   localTerraformFiles = [],
   venvExists = true,
+  ingestionPackageInstalled = true,
+  ingestionPackageInstallStatus = 0,
   pythonCommandVersions = {},
   planVariableOverrides = {},
   analysisDesiredCount = 0,
@@ -174,6 +176,7 @@ function testEnvironment({
   let cognitoUserCreated = cognitoUserExists;
   let snapshotSecretVersionCreated = snapshotSecretHasCurrentVersion;
   let analysisTaskStarted = false;
+  let packageInstalled = ingestionPackageInstalled;
   const execute = (command, args, options = {}) => {
     calls.push({ command, args, options });
     if (missing.includes(command)) return { status: 127, stdout: "", stderr: "not found" };
@@ -226,6 +229,19 @@ function testEnvironment({
     }
     if (command.includes(".venv") && args[0] === "--version" && venvVersion !== null) {
       return { status: 0, stdout: `${venvVersion}\n`, stderr: "" };
+    }
+    if (command.includes(".venv") && args[0] === "-I" && args.includes("-c")) {
+      return packageInstalled
+        ? { status: 0, stdout: "", stderr: "" }
+        : { status: 1, stdout: "", stderr: "ModuleNotFoundError: No module named 'domain'" };
+    }
+    if (command.includes(".venv") && args.includes("--editable")) {
+      if (ingestionPackageInstallStatus === 0) packageInstalled = true;
+      return {
+        status: ingestionPackageInstallStatus,
+        stdout: "",
+        stderr: ingestionPackageInstallStatus === 0 ? "" : "pip: no network",
+      };
     }
     if (command === "aws" && args[0] === "ec2" && args[1] === "describe-key-pairs") {
       return keyPairExists
@@ -1982,6 +1998,72 @@ test("an existing venv with the wrong Python version is never used silently", as
 
   assert.equal(result.status, 1);
   assert.match(a.logs.join("\n"), /python 3\.12/i);
+  assert.equal(
+    a.calls.some((c) => c.args.some((x) => String(x).includes("build_reduced_snapshot.py"))),
+    false,
+  );
+});
+
+const SERVICE_DIRECTORY = path.join(ROOT, "apps", "backend", "ingestion-data");
+const editableInstalls = (calls) => calls.filter((c) => c.args.includes("--editable"));
+
+test("a new venv gets the ingestion package after its dependencies", async () => {
+  const a = testEnvironment({ venvExists: false, ingestionPackageInstalled: false });
+
+  const result = await runLearnerLab({ ...a.options, step: "build-snapshot" });
+
+  assert.equal(result.status, 0);
+  const requirements = a.calls.findIndex((c) => c.args.includes("-r"));
+  const [install] = editableInstalls(a.calls);
+  assert.ok(install, "the ingestion package was never installed");
+  assert.deepEqual(install.args.slice(-4), ["--quiet", "--no-deps", "--editable", SERVICE_DIRECTORY]);
+  assert.ok(a.calls.indexOf(install) > requirements, "the package must follow the dependencies");
+});
+
+test("an existing venv without the ingestion package is repaired, not recreated", async () => {
+  const a = testEnvironment({ venvExists: true, ingestionPackageInstalled: false });
+
+  const result = await runLearnerLab({ ...a.options, step: "build-snapshot" });
+
+  assert.equal(result.status, 0);
+  assert.equal(editableInstalls(a.calls).length, 1);
+  assert.equal(
+    a.calls.some((c) => c.args.slice(0, 2).join(" ") === "-m venv"),
+    false,
+  );
+  assert.match(a.logs.join("\n"), /Installing the ingestion package/);
+});
+
+test("a venv that already has the ingestion package is left untouched", async () => {
+  const a = testEnvironment({ venvExists: true, ingestionPackageInstalled: true });
+
+  const result = await runLearnerLab({ ...a.options, step: "build-snapshot" });
+
+  assert.equal(result.status, 0);
+  assert.equal(editableInstalls(a.calls).length, 0);
+});
+
+test("the package probe ignores the current directory", async () => {
+  const a = testEnvironment({ venvExists: true });
+
+  await runLearnerLab({ ...a.options, step: "build-snapshot" });
+
+  const probe = a.calls.find((c) => c.command.includes(".venv") && c.args.includes("-c"));
+  assert.ok(probe, "the package probe never ran");
+  assert.equal(probe.args[0], "-I");
+});
+
+test("a failed package install stops before the snapshot is built", async () => {
+  const a = testEnvironment({
+    venvExists: true,
+    ingestionPackageInstalled: false,
+    ingestionPackageInstallStatus: 1,
+  });
+
+  const result = await runLearnerLab({ ...a.options, step: "build-snapshot" });
+
+  assert.equal(result.status, 1);
+  assert.match(a.logs.join("\n"), /could not install the ingestion package/);
   assert.equal(
     a.calls.some((c) => c.args.some((x) => String(x).includes("build_reduced_snapshot.py"))),
     false,
