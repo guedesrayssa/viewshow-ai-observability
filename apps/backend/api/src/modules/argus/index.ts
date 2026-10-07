@@ -1,5 +1,5 @@
 import { DynamoArgusLiveSyncControl } from "./adapters/dynamodb-argus-live-sync-control.js";
-import { EventBridgeArgusScheduler } from "./adapters/eventbridge-argus-scheduler.js";
+import { KubernetesArgusScheduler } from "./adapters/kubernetes-argus-scheduler.js";
 import { ArgusLiveSyncUseCases } from "./application/argus-live-sync-use-cases.js";
 import { loadConfig } from "./config.js";
 
@@ -16,10 +16,6 @@ export function createArgusModule(
       undefined,
       config.endpoint,
     ),
-    new EventBridgeArgusScheduler(
-      config.region,
-      config.schedulerGroupName,
-      config.schedulerName,
-    ),
+    new KubernetesArgusScheduler(config.namespace, config.cronJobName),
   );
 }

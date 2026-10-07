@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import {
   chmodSync,
@@ -23,10 +24,60 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Integration-style tests for the repository-level Learner Lab command.
-import { isExactConfirmation, runLearnerLab, validateOllamaBaseUrl } from "../aws-learner-lab.mjs";
+import { isExactConfirmation, runLearnerLab, validateOllamaBaseUrl } from "../aws-learner-lab-ecs-legacy.mjs";
+
+test("legacy ECS CLI permits only historical help before any subprocess", async (t) => {
+  const script = fileURLToPath(new URL("../aws-learner-lab-ecs-legacy.mjs", import.meta.url));
+  const directory = mkdtempSync(path.join(os.tmpdir(), "ecs-legacy-cli-"));
+  const calls = path.join(directory, "calls");
+  try {
+    for (const program of ["terraform", "aws", "node", "npm", "python3.12", "python3", "python", "kubectl", "helm"]) {
+      writeFileSync(path.join(directory, program), '#!/bin/sh\nprintf "%s\\n" "$0 $*" >> "$LEGACY_CALL_LOG"\nexit 1\n', { mode: 0o755 });
+    }
+    for (const command of [undefined, "help", "--help", "-h", "setup", "deploy", "destroy", "check", "evidence"]) {
+      await t.test(command ?? "default help", () => {
+        const result = spawnSync(process.execPath, [script, ...(command === undefined ? [] : [command])], {
+          encoding: "utf8",
+          env: { ...process.env, PATH: directory, LEGACY_CALL_LOG: calls },
+        });
+        if (command === undefined || ["help", "--help", "-h"].includes(command)) {
+          assert.equal(result.status, 0, command);
+          assert.match(result.stdout, /LEGADO ECS/);
+        } else {
+          assert.equal(result.status, 2, command);
+          assert.match(result.stderr, /Terraform ECS não está mais disponível/);
+        }
+        assert.equal(readdirSync(directory).includes("calls"), false, command);
+      });
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const ORIGINAL_ROOT = ROOT;
+test("imported historical setup resolves default terminal helpers without a TTY", () => {
+  const moduleUrl = new URL("../aws-learner-lab-ecs-legacy.mjs", import.meta.url).href;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    import { runLearnerLab } from ${JSON.stringify(moduleUrl)};
+    const result = await runLearnerLab({
+      step: "setup",
+      log: (message) => process.stderr.write(String(message) + "\\n"),
+    });
+    process.exitCode = result.status;
+  `], {
+    encoding: "utf8",
+    input: "admin@example.com\n",
+    timeout: 5000,
+  });
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /a TTY is required to read the import-canary password/);
+  assert.match(result.stdout, /Initial user email:/);
+  assert.doesNotMatch(result.stderr, /is not defined|ReferenceError/);
+});
+
 const SAFE_PLAN_VARIABLES = {
   deployment_namespace: "view-show",
   regiao: "us-east-1",
@@ -1270,7 +1321,7 @@ test("help commands print usage and perform no infrastructure work", async () =>
 
     assert.equal(result.status, 0, String(step));
     assert.deepEqual(a.calls, [], String(step));
-    assert.match(a.logs.join("\n"), /usage:.*aws-learner-lab\.mjs/i);
+    assert.match(a.logs.join("\n"), /usage:.*aws-learner-lab-ecs-legacy\.mjs/i);
     assert.match(a.logs.join("\n"), /check.*build-snapshot.*deploy.*seed.*evidence.*all/is);
   }
 });

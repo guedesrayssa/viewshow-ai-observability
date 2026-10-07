@@ -31,18 +31,6 @@ resource "aws_sqs_queue" "analysis" {
   }
 }
 
-resource "aws_sqs_queue" "ingestion_scheduler_dlq" {
-  name                      = local.ingestion_scheduler_dlq
-  fifo_queue                = false
-  message_retention_seconds = var.retencao_filas_ingestao_segundos
-  sqs_managed_sse_enabled   = true
-
-  tags = {
-    Componente = "ingestion"
-    Ambiente   = var.ambiente
-  }
-}
-
 resource "aws_sqs_queue" "incremental_batches_dlq" {
   name                        = local.ingestion_incremental_dlq
   fifo_queue                  = true
@@ -115,4 +103,17 @@ resource "aws_secretsmanager_secret" "live_mysql" {
     Componente = "ingestion"
     Ambiente   = var.ambiente
   }
+}
+
+// A shared password is sufficient for isolated import Pods; manual backfills use
+// their own per-Job Secret and never rotate this value while imports are active.
+resource "random_password" "snapshot_mysql" {
+  count   = local.ingestion_is_production ? 0 : 1
+  length  = 48
+  special = false
+}
+resource "aws_secretsmanager_secret_version" "snapshot_mysql" {
+  count         = local.ingestion_is_production ? 0 : 1
+  secret_id     = aws_secretsmanager_secret.snapshot_mysql[0].id
+  secret_string = random_password.snapshot_mysql[0].result
 }

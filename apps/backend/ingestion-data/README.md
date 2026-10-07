@@ -5,7 +5,7 @@
 Este componente é um worker batch Python finito: executa uma operação, registra
 seu resultado e termina. Não há servidor HTTP nem Flask aqui. A API do dashboard
 continua sendo a interface pública; o worker é acionado pela CLI ou por uma task
-ECS/Fargate.
+Kubernetes/EKS.
 
 ## Como o fluxo funciona
 
@@ -29,7 +29,7 @@ ports/        interfaces between application and infrastructure
 adapters/     MySQL, DynamoDB, S3, Glue, Athena, SQS and telemetry
 bootstrap/    configuration, dependency assembly and CLI
 contracts/    executable ARGUS 2.0 allowlist and normalizers
-scripts/      safe operator entry points for snapshot and ECS execution
+scripts/      safe operator entry points for snapshot and Kubernetes execution
 tests/        unit, contract, resilience, integration, CI and AWS checks
 ```
 
@@ -54,7 +54,7 @@ Cada camada tem uma responsabilidade deliberadamente limitada:
   Glue, Athena, SQS, MySQL e telemetria). Suas validações defensivas impedem
   que respostas externas malformadas atravessem a fronteira.
 - `scripts/` são entradas operacionais independentes para preparar snapshots
-  ou iniciar a task ECS; não devem concentrar regra de negócio do worker.
+  ou iniciar a Job Kubernetes; não devem concentrar regra de negócio do worker.
 
 As docstrings dos módulos explicam a responsabilidade e os limites de cada
 arquivo. Nas APIs públicas, as docstrings indicam o que é produzido ou
@@ -181,47 +181,7 @@ falha do SLO pode ser localizada sem aumentar concorrência por tentativa e
 erro. Use somente medições sanitizadas: não inclua URL assinada, chave física,
 credencial, cookie ou conteúdo de registro.
 
-Para o canário administrativo, `seed` continua aceitando a forma legada sem
-opções. Um dump explícito exige o conjunto completo abaixo; o timeout local usa
-relógio monotônico e não encerra a task ECS, deixando o ARN para retomada pelo
-comando `evidence`:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs seed \
-  --snapshot .artifacts/argus-benchmarks/100k/argus_dump.sql.gz \
-  --extracted-on 2026-09-01 \
-  --label phase1-100k \
-  --timeout-seconds 21600
-```
-
-O canário da fase 2 usa exatamente o fluxo público do painel: autentica na
-origem `painel_url`, retoma as partes já confirmadas e conclui o upload de 16
-MiB com no máximo três requisições concorrentes. Ele nunca chama a rota de
-ativação. O arquivo deve ser regular, não symlink, e ter basename exato
-`argus_dump.sql.gz`; senha é lida sem eco em TTY e senha, sessão, token e URLs
-assinadas permanecem somente em memória. A evidência sanitizada é gravada com
-modo `0600` em `.artifacts/argus-import-canary/`; ela inclui a identidade
-fechada `snapshotSha256`, `importId`, `runId`, `label`, `datasetVersion` e
-`completedAt`, sem bucket, chave, URL ou segredo:
-
-```bash
-AWS_PROFILE=default AWS_REGION=us-east-1 \
-node apps/scripts/aws-learner-lab.mjs import-canary \
-  --snapshot .artifacts/argus-benchmarks/100k/argus_dump.sql.gz \
-  --extracted-on 2026-09-01 \
-  --username operador@example.com \
-  --label phase2-100k \
-  --timeout-seconds 3600
-```
-
-Sem `--stop-at-stage`, atingir o deadline apenas falha a espera local: não há
-caminho que pare ECS. Para um ensaio deliberado, acrescente uma das etapas
-`EXTRACTING`, `ARCHIVING`, `PROJECTING` ou `FINALIZING_CANDIDATE`. O comando lê
-o import e o run por chaves exatas, descreve somente o ARN persistido e exige a
-confirmação literal `STOP <account-id> <import-id> <task-arn>`. Sucesso do
-ensaio significa container `STOPPED` não-zero, candidato ainda inativo, import
-`FAILED` retryable e lock `CONTROL#IMPORT/ACTIVE` liberado; só então a evidência
-recebe `faultInjected=true` e um recovery sequencial pode começar.
+O runtime de implantação usa Kubernetes. Backfill manual, importação pelo painel e coleta de evidência dos Jobs estão no [runbook Kubernetes](../../kubernetes/README.md). O benchmark local e os contratos de proveniência acima continuam disponíveis; os comandos antigos `seed` e `import-canary` do launcher ECS foram retirados.
 
 ## Comandos disponíveis
 
@@ -285,7 +245,7 @@ python -m bootstrap ingest-incremental --limit 20
 Os códigos de saída são `0` (sucesso), `1` (falha operacional ou resultado
 terminal `PARTIAL`), `2` (falha de configuração/argumentos) e `130`
 (interrupção). Com a integração desligada, `sync` e `reprocess` retornam
-`SKIPPED_DISABLED` antes de abrir a origem live. O Scheduler nasce desabilitado;
+`SKIPPED_DISABLED` antes de abrir a origem live. O CronJob nasce suspenso;
 habilite a integração pelo controle autenticado da plataforma somente após uma
 mudança operacional revisada e evidência de conectividade.
 
@@ -368,7 +328,7 @@ recrie uma mensagem manualmente nem altere o raw para “consertar” a evidênc
 
 ## Importação web assíncrona
 
-O comando operacional executado pela task ECS é:
+O comando operacional executado pela Job Kubernetes é:
 
 ```bash
 python -m bootstrap import-dump --import-id <imp_ULID>
@@ -501,126 +461,9 @@ Para validar apenas a interface da CLI:
 python -m bootstrap --help
 ```
 
-## Provisionamento no Learner Lab
+## Provisionamento e backfill em Kubernetes
 
-Na raiz do repositório, execute o comando oficial de provisionamento:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs deploy
-```
-
-O script verifica Terraform `>=1.7,<2.0`, Node.js 22, npm, Docker, AWS CLI v2,
-credenciais `voclabs` ativas e a key pair `vockey`. Ele exige o workspace
-Terraform `default`, salva o plano, aceita somente ações `create` ou `no-op` e
-valida o perfil econômico do Learner Lab no próprio plano. Antes do `apply`,
-mostra conta, região, state, tamanhos principais, acesso do bastion e recursos
-desabilitados. O provisionamento só continua depois da confirmação exata
-`APPLY view-show`.
-
-Remova `TF_VAR_*`, `TF_CLI_ARGS*`, `TF_WORKSPACE` e arquivos automáticos
-`terraform.tfvars`/`*.auto.tfvars` antes de usar essa CLI. O comando fixa
-Scheduler, live sync, Bedrock e a EC2 opcional de observabilidade como
-desabilitados. Em Linux e macOS, os artefatos operacionais recebem permissões
-restritas; no Windows, execute em um diretório privado do usuário, pois os
-arquivos herdam a ACL do worktree.
-
-Esse comando provisiona a stack fullstack, não apenas a ingestão. Os comandos
-Terraform detalhados ficam no [README da infraestrutura](../../fullstack/README.md)
-para diagnóstico e operação avançada.
-
-Comandos disponíveis:
-
-| Comando          | Finalidade                                                    |
-| ---------------- | ------------------------------------------------------------- |
-| `check`          | Valida o ambiente sem alterar a AWS.                          |
-| `build-snapshot` | Gera localmente o snapshot reduzido.                          |
-| `deploy`         | Planeja, valida, confirma e aplica a stack.                   |
-| `destroy`        | Remove integralmente a stack após confirmação irreversível.    |
-| `seed`           | Envia o snapshot e executa o backfill sem ativação.           |
-| `import-canary`  | Exercita o import público multipart sem ativar o candidato.   |
-| `evidence`       | Exibe os runs persistidos da ingestão.                        |
-| `all`            | Executa o fluxo completo na ordem segura.                     |
-
-Sem um comando, a CLI apenas mostra a ajuda.
-
-Para remover a stack do Learner Lab, inclusive objetos do bucket de ingestão e
-imagens do ECR, execute no checkout original que contém o mesmo state:
-
-```bash
-AWS_PROFILE=default AWS_REGION=us-east-1 \
-node apps/scripts/aws-learner-lab.mjs destroy
-```
-
-O comando só requer Terraform e AWS CLI com credenciais `voclabs` ativas. Ele
-gera um plano destrutivo salvo, mostra o escopo e exige a frase exata apresentada
-com a conta AWS antes de aplicar. `--yes` não é aceito e o comando nunca é
-executado por `setup`, `deploy` ou `all`.
-
-## Executar um backfill
-
-Para provisionar, gerar o snapshot, executar o backfill sem ativação e consultar
-as evidências em uma única operação, use:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs all
-```
-
-Para retomar etapas individualmente após uma interrupção:
-
-```bash
-node apps/scripts/aws-learner-lab.mjs check
-node apps/scripts/aws-learner-lab.mjs build-snapshot
-node apps/scripts/aws-learner-lab.mjs seed
-node apps/scripts/aws-learner-lab.mjs evidence
-```
-
-O script gera `terraform-output.json` e `upload-result.json`, espera a task ECS
-terminar e exige que o run durável finalize em `SUCCEEDED`. Ele nunca oferece
-uma opção de ativação.
-
-Somente após revisar logs, contagens, Glue/Athena e a candidata, faça a ativação
-separadamente:
-
-```bash
-ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
-python apps/backend/ingestion-data/scripts/run_task.py \
-  --terraform-output terraform-output.json \
-  --snapshot upload-result.json \
-  --launch-attempt "${ACTIVATION_LAUNCH_ATTEMPT}" \
-  --activate \
-  --confirm-production "production:${ACCOUNT_ID}"
-```
-
-`--activate` altera o dataset ativo e, portanto, é uma operação de produção.
-Quando o output Terraform declarar o ambiente `production`,
-`--confirm-production` exige exatamente `production:<account_id>` em ambas as
-execuções, inclusive com `--no-activate`; o exemplo usa
-`"production:${ACCOUNT_ID}"`, sem expor a conta.
-
-## Operação segura
-
-- Confirme a identidade AWS, o workspace e o state Terraform correto antes de
-  operar; use sempre esse mesmo state no plan, apply e operações posteriores.
-- Faça cada execução com um identificador não secreto e reproduzível; preserve a
-  evidência JSON do snapshot junto ao registro operacional.
-- Prefira `--no-activate` para validar uma candidata. Ative somente após revisar
-  qualidade, reconciliação e alarmes.
-- Reutilize `--launch-attempt` somente para retransmitir a mesma chamada
-  `RunTask` dentro da janela de idempotência do ECS. Após a task parar ou a janela
-  expirar, use um novo valor.
-- Não exponha segredos, ARN de segredo, tokens, credenciais ou valores de
-  configuração sensíveis em argumentos, logs, commits ou tickets.
-- Monitore logs de backfill/sync, alarmes de falha parcial, schema drift,
-  Athena, outbox, filas e DLQ. Interrompa e investigue antes de repetir uma
-  execução que tenha falhado parcialmente.
-- Não habilite o Scheduler sem revisão de mudança. Para o modo live, use o
-  controle autenticado da plataforma em **Configurações**; ele é persistido na
-  tabela operacional e não altera onde as credenciais são guardadas.
-- Não habilite `incremental_s3_enabled` antes de homologar conectividade, schema,
-  credenciais e capacidade contra o ARGUS real e validar alarmes/FIFO/DLQ.
-- Para remover a stack, use `node apps/scripts/aws-learner-lab.mjs destroy` somente de
-  forma deliberada, usando o mesmo state; ele alcança a stack fullstack completa,
-  não apenas a ingestão.
+Siga o [runbook Kubernetes](../../kubernetes/README.md). O upload seguro permanece em `scripts/upload_snapshot.py`; o novo `apps/kubernetes/run-job.mjs` valida a evidência do objeto S3, cria um Job com senha própria e preserva `ACTIVATE_CANDIDATE=false`. Importação web é lançada pela API e acompanhada pelo reconciliador, com Job e UID persistidos no campo histórico `taskArn`.
 
 ## Limitações atuais
 
@@ -629,7 +472,7 @@ para smoke e validação de caminho; não representa capacidade, volume, custo o
 tempo de uma carga completa. Os testes incrementais comprovam apenas uma fonte
 MySQL compatível e S3/SQS simulados; a rede, as credenciais, o schema observado e
 a capacidade do ARGUS real ainda exigem homologação externa. A arquitetura
-mantém todos os Schedulers live/incrementais desligados por padrão e exige opt-in
+mantém todos os CronJobs live/incrementais suspensos por padrão e exige opt-in
 explícito.
 
 ## Referências

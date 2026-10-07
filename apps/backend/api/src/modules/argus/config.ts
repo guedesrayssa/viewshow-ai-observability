@@ -6,8 +6,8 @@ const schema = z
   .object({
     AWS_REGION: requiredText,
     OPERATIONAL_TABLE_NAME: requiredText,
-    INGESTION_SCHEDULER_GROUP_NAME: requiredText,
-    INGESTION_SCHEDULER_NAME: requiredText,
+    KUBERNETES_NAMESPACE: requiredText,
+    INGESTION_CRONJOB_NAME: requiredText,
     DYNAMODB_ENDPOINT: z.url().optional(),
   })
   .passthrough();
@@ -15,8 +15,8 @@ const schema = z
 export interface ArgusConfig {
   readonly region: string;
   readonly tableName: string;
-  readonly schedulerGroupName: string;
-  readonly schedulerName: string;
+  readonly namespace: string;
+  readonly cronJobName: string;
   readonly endpoint: string | undefined;
 }
 
@@ -27,8 +27,8 @@ export function loadConfig(
   return {
     region: value.AWS_REGION,
     tableName: value.OPERATIONAL_TABLE_NAME,
-    schedulerGroupName: value.INGESTION_SCHEDULER_GROUP_NAME,
-    schedulerName: value.INGESTION_SCHEDULER_NAME,
+    namespace: value.KUBERNETES_NAMESPACE,
+    cronJobName: value.INGESTION_CRONJOB_NAME,
     endpoint: value.DYNAMODB_ENDPOINT,
   };
 }
