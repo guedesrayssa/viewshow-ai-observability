@@ -74,14 +74,14 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
   }
   async checkpoint(lease: Lease, scopeId: string): Promise<ScopeCheckpoint | null> { return (await this.get({ pk: runKey(lease.runId).pk, sk: `SCOPE#${scopeId}` }))?.checkpoint ?? null; }
   async saveCheckpoint(lease: Lease, scopeId: string, checkpoint: ScopeCheckpoint): Promise<void> { await this.write(lease, [{ pk: runKey(lease.runId).pk, sk: `SCOPE#${scopeId}`, checkpoint }]); }
-  async resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string }> {
+  async resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string; resolution: "meta" | "projection" }> {
     const item = await this.get({ pk: `ANALYSIS#INCIDENT#${id}`, sk: "META" });
     if (item) {
       // O META registra o escopo usado quando o incidente nasceu. Preferir a
       // versão atual do catálogo permite acrescentar projeções de apresentação
       // sem manter cada incidente preso para sempre à configuração antiga.
       const configuredScope = this.scopes.find((scope) => scope.id === item.scope?.id);
-      return { event: item.event, scope: configuredScope ?? item.scope, incidentId: id };
+      return { event: item.event, scope: configuredScope ?? item.scope, incidentId: id, resolution: "meta" };
     }
 
     // Incidentes materializados pela ingestão já existem na tela antes de o
@@ -155,7 +155,7 @@ export class DynamoAnalysisStore implements AnalysisStore, ObservationReader {
         scope: { kind: "incident", dimensions: { scopeId: resolved.scope.id } },
       },
     };
-    return { event, scope: resolved.scope, incidentId: id };
+    return { event, scope: resolved.scope, incidentId: id, resolution: "projection" };
   }
   async correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<{ incidentId: string; isNew: boolean }> {
     const key = { pk: `DATASET#${event.payload.datasetVersion}#CORRELATION#${scope.id}`, sk: "META" };

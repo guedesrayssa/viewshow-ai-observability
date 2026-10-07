@@ -18,6 +18,7 @@ from domain.analysis_facts import (
     series_id,
 )
 from tests.analysis_fact_support import (
+    AGENTIC,
     DATASET_VERSION,
     DELIVERY,
     FROZEN_FACT,
@@ -35,6 +36,31 @@ from tests.analysis_fact_support import (
 @pytest.fixture(scope="module")
 def catalog() -> AnalysisFactCatalog:
     return AnalysisFactCatalog.from_json(PILOT_CATALOG.read_bytes())
+
+
+# Os catálogos versionados do worker também podem ser entregues à importação como
+# ANALYSIS_FACT_CATALOG_LOCATION; um formato aceito só pelo worker derruba a importação.
+# O ``.example`` é um modelo com marcadores para substituir, não um catálogo implantável.
+DEPLOYABLE_CATALOGS = sorted(
+    path
+    for path in (AGENTIC / "config").glob("scope-catalog*.json")
+    if not path.name.endswith(".example.json")
+)
+
+
+@pytest.mark.parametrize("catalog_path", DEPLOYABLE_CATALOGS, ids=lambda path: path.name)
+def test_every_versioned_worker_catalog_is_accepted_by_the_ingestion(catalog_path: Any) -> None:
+    parsed = AnalysisFactCatalog.from_json(catalog_path.read_bytes())
+
+    assert parsed.series
+
+
+def test_versioned_worker_catalogs_are_discovered() -> None:
+    assert {path.name for path in DEPLOYABLE_CATALOGS} >= {
+        "scope-catalog.pilot.json",
+        "scope-catalog.frontend-demo.json",
+        "scope-catalog.demo.json",
+    }
 
 
 def test_pilot_catalog_series_ids_are_reproduced_by_the_ingestion_identity_rule() -> None:

@@ -2,13 +2,19 @@ import { createHash } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { BatchWriteCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { catalogSeriesIds, requireDemoSeedEnvironment } from "./demo-seed-support.mjs";
 
-const region = "us-east-1";
-const table = "view-show-iac-operacional";
-const queueUrl = "https://sqs.us-east-1.amazonaws.com/410685407336/view-show-ingestion-analysis";
-const datasetVersion = "dsv_9c534268841ba53fe0dd977d91a0f995b2124bcb7a176aa54b2cabbefd130697";
+const {
+  OPERATIONAL_TABLE_NAME: table,
+  ANALYSIS_QUEUE_URL: queueUrl,
+  DATASET_VERSION: datasetVersion,
+} = requireDemoSeedEnvironment(["OPERATIONAL_TABLE_NAME", "ANALYSIS_QUEUE_URL", "DATASET_VERSION"]);
+const region = process.env.AWS_REGION ?? "us-east-1";
 const scopeId = "canal-e2e-demo-agentico";
-const seriesId = "ts_demo_agentic_bufferratio_15m";
+const seriesId = catalogSeriesIds(
+  new URL("../config/scope-catalog.demo.json", import.meta.url),
+  scopeId,
+).bufferratio_avg;
 const windowStart = Date.parse("2026-09-28T17:00:00.000Z");
 const grainMs = 15 * 60 * 1000;
 

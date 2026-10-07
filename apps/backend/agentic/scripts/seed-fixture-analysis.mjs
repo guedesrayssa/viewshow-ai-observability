@@ -7,13 +7,19 @@ import {
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { catalogSeriesIds, requireDemoSeedEnvironment } from "./demo-seed-support.mjs";
 
+const {
+  OPERATIONAL_TABLE_NAME: table,
+  ANALYSIS_QUEUE_URL: queueUrl,
+  INCIDENT_ID: incidentId,
+} = requireDemoSeedEnvironment(["OPERATIONAL_TABLE_NAME", "ANALYSIS_QUEUE_URL", "INCIDENT_ID"]);
 const region = process.env.AWS_REGION ?? "us-east-1";
-const table = process.env.OPERATIONAL_TABLE_NAME ?? "view-show-iac-operacional";
-const queueUrl = process.env.ANALYSIS_QUEUE_URL ??
-  "https://sqs.us-east-1.amazonaws.com/410685407336/view-show-ingestion-analysis";
-const incidentId = process.env.INCIDENT_ID ?? "inc_32rewksgztyriiuenlgj3drbpx";
 const scopeId = "fixture-edge-b";
+const seriesIds = catalogSeriesIds(
+  new URL("../config/scope-catalog.frontend-demo.json", import.meta.url),
+  scopeId,
+);
 const trigger = {
   source: "prometheus",
   entity: "edge-b",
@@ -22,37 +28,37 @@ const trigger = {
 };
 const latencyDefinition = {
   metric: "latency_ms_p95",
-  seriesId: "ts_fixture_edge_b_latency_p95_15m",
+  seriesId: seriesIds.latency_ms_p95,
   unit: "milliseconds",
 };
 const presentationDefinitions = [
   {
     metric: "affected_devices",
-    seriesId: "ts_fixture_affected_devices_15m",
+    seriesId: seriesIds.affected_devices,
     unit: "devices",
     values: [1, 1, 1, 1, 2, 2, 3, 3],
   },
   {
     metric: "bufferratio_avg",
-    seriesId: "ts_fixture_edge_b_bufferratio_15m",
+    seriesId: seriesIds.bufferratio_avg,
     unit: "ratio",
     values: [0.008, 0.009, 0.011, 0.014, 0.021, 0.032, 0.04, 0.036],
   },
   {
     metric: "errors_model_a",
-    seriesId: "ts_fixture_model_a_errors_15m",
+    seriesId: seriesIds.errors_model_a,
     unit: "count",
     values: [4, 5, 6, 5, 12, 14, 16, 18],
   },
   {
     metric: "errors_model_b",
-    seriesId: "ts_fixture_model_b_errors_15m",
+    seriesId: seriesIds.errors_model_b,
     unit: "count",
     values: [2, 2, 3, 3, 6, 6, 7, 7],
   },
   {
     metric: "errors_model_c",
-    seriesId: "ts_fixture_model_c_errors_15m",
+    seriesId: seriesIds.errors_model_c,
     unit: "count",
     values: [1, 1, 1, 1, 2, 2, 2, 2],
   },

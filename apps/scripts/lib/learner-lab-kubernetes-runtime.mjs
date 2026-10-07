@@ -413,6 +413,19 @@ export async function ensureCognitoUser(context, outputs, email, password) {
       throw new Error("Invalid Cognito user status JSON.");
     }
     if (user?.UserStatus !== "CONFIRMED") throw new Error("Cognito user is not CONFIRMED.");
+    // O papel vem do grupo Cognito: sem `engineer`, o usuário inicial lê os
+    // diagnósticos, mas recebe 403 ao revisar hipóteses ou pedir reanálise.
+    const group = { UserPoolId: outputs.cognito_user_pool_id, GroupName: "engineer" };
+    const existingGroup = await call("get-group", group, { allowedStatuses: [0, 254] });
+    if (existingGroup.status !== 0) {
+      if (!/\(ResourceNotFoundException\)/.test(existingGroup.stderr)) throw new Error("Cognito get-group failed.");
+      await call("create-group", {
+        ...group,
+        Description: "Can review incident hypotheses and request reanalysis",
+        Precedence: 10,
+      });
+    }
+    await call("admin-add-user-to-group", { ...input, GroupName: "engineer" });
     return { UserStatus: "CONFIRMED" };
   }, () => removePrivateFiles(context, access, "Cognito input"));
 }

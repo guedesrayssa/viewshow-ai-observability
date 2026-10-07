@@ -721,6 +721,7 @@ export class DynamoIncidentRepository implements IncidentRepository {
   async listEvidence(
     active: ActiveDatasetSnapshot,
     incidentId: string,
+    analysisRunId?: string,
   ): Promise<readonly EvidenceDto[]> {
     const items = await this.queryAll({
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
@@ -733,8 +734,13 @@ export class DynamoIncidentRepository implements IncidentRepository {
     return items.flatMap((item) => {
       if (item.entityType === "EVIDENCE")
         return [evidenceDto(item, active.datasetVersion)];
-      if (item.itemType === "evidence")
+      if (item.itemType === "evidence") {
+        // Fatos A′ de execuções anteriores continuam gravados, mas o diagnóstico
+        // exibido cita só os da execução mais recente.
+        if (analysisRunId !== undefined && item.analysisRunId !== analysisRunId)
+          return [];
         return [workerEvidenceDto(item, incidentId)];
+      }
       return [];
     });
   }
@@ -765,14 +771,22 @@ export class DynamoIncidentRepository implements IncidentRepository {
     });
     return (
       [...items].sort((left, right) => {
-        const leftPublishedAt = typeof left.publishedAt === "string"
-          ? left.publishedAt
-          : typeof left.createdAt === "string" ? left.createdAt : "";
-        const rightPublishedAt = typeof right.publishedAt === "string"
-          ? right.publishedAt
-          : typeof right.createdAt === "string" ? right.createdAt : "";
-        return rightPublishedAt.localeCompare(leftPublishedAt) ||
-          String(right.sk ?? "").localeCompare(String(left.sk ?? ""));
+        const leftPublishedAt =
+          typeof left.publishedAt === "string"
+            ? left.publishedAt
+            : typeof left.createdAt === "string"
+              ? left.createdAt
+              : "";
+        const rightPublishedAt =
+          typeof right.publishedAt === "string"
+            ? right.publishedAt
+            : typeof right.createdAt === "string"
+              ? right.createdAt
+              : "";
+        return (
+          rightPublishedAt.localeCompare(leftPublishedAt) ||
+          String(right.sk ?? "").localeCompare(String(left.sk ?? ""))
+        );
       })[0] ?? null
     );
   }

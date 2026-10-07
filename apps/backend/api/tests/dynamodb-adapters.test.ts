@@ -35,20 +35,37 @@ describe("DynamoDB adapters", () => {
   it("selects the latest diagnosis by publication time", async () => {
     const send = vi.fn().mockResolvedValueOnce({
       Items: [
-        { pk: "incident", sk: "DIAGNOSIS#new", createdAt: "2026-01-01T00:00:00.000Z", publishedAt: "2026-01-02T00:00:00.000Z" },
-        { pk: "incident", sk: "DIAGNOSIS#old", createdAt: "2026-01-01T00:00:00.000Z", publishedAt: "2026-01-01T12:00:00.000Z" },
+        {
+          pk: "incident",
+          sk: "DIAGNOSIS#new",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          publishedAt: "2026-01-02T00:00:00.000Z",
+        },
+        {
+          pk: "incident",
+          sk: "DIAGNOSIS#old",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          publishedAt: "2026-01-01T12:00:00.000Z",
+        },
       ],
     });
     const client = { send } as unknown as DynamoDBDocumentClient;
-    const repository = new DynamoIncidentRepository("us-east-1", "table", client);
+    const repository = new DynamoIncidentRepository(
+      "us-east-1",
+      "table",
+      client,
+    );
 
-    const result = await repository.latestDiagnosis({
-      datasetVersion: `dsv_${"a".repeat(64)}`,
-      formulaVersions: {},
-      projectionVersions: {},
-      availableIntervals: {},
-      hotFrom: {},
-    }, "inc_1");
+    const result = await repository.latestDiagnosis(
+      {
+        datasetVersion: `dsv_${"a".repeat(64)}`,
+        formulaVersions: {},
+        projectionVersions: {},
+        availableIntervals: {},
+        hotFrom: {},
+      },
+      "inc_1",
+    );
 
     expect(result?.sk).toBe("DIAGNOSIS#new");
   });
@@ -700,5 +717,53 @@ describe("DynamoDB adapters", () => {
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     );
     expect(sources.join("\n")).not.toMatch(/ScanCommand|\.scan\s*\(/);
+  });
+});
+
+describe("worker analytical facts", () => {
+  it("keeps ingestion evidence and only the facts of the requested analysis run", async () => {
+    const datasetVersion = `dsv_${"e".repeat(64)}`;
+    const fact = (id: string, analysisRunId: string) => ({
+      pk: `DATASET#${datasetVersion}#INCIDENT#inc_1`,
+      sk: `EVIDENCE#${id}`,
+      itemType: "evidence",
+      id,
+      scopeId: "canal-globoplay",
+      metric: "cdn_live_err_rate",
+      unit: "ratio",
+      method: "mean",
+      start: "2026-01-01T10:00:00.000Z",
+      split: "2026-01-01T11:00:00.000Z",
+      end: "2026-01-01T12:00:00.000Z",
+      reference: 0.01,
+      current: 0.08,
+      referenceCount: 4,
+      currentCount: 4,
+      expectedPoints: 4,
+      direction: "increase",
+      sourceIds: ["fact_source_1"],
+      statement: "Erros de CDN cresceram no intervalo.",
+      analysisRunId,
+      createdAt: "2026-01-01T12:00:01.000Z",
+    });
+    const send = vi.fn(async () => ({
+      Items: [fact("fact_old", "run_1"), fact("fact_new", "run_2")],
+    }));
+    const repository = new DynamoIncidentRepository("us-east-1", "table", {
+      send,
+    } as unknown as DynamoDBDocumentClient);
+    const active = {
+      datasetVersion,
+      formulaVersions: { evidence: "1.0" },
+      projectionVersions: { evidence: "1.0" },
+      availableIntervals: {},
+      hotFrom: {},
+    };
+
+    const latest = await repository.listEvidence(active, "inc_1", "run_2");
+    const unfiltered = await repository.listEvidence(active, "inc_1");
+
+    expect(latest.map((item) => item.id)).toEqual(["fact_new"]);
+    expect(unfiltered.map((item) => item.id)).toEqual(["fact_old", "fact_new"]);
   });
 });

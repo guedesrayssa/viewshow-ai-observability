@@ -1,11 +1,16 @@
 import { createHash } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { requireDemoSeedEnvironment } from "./demo-seed-support.mjs";
 
-const region = "us-east-1";
-const table = "view-show-iac-operacional";
-const datasetVersion = "dsv_9c534268841ba53fe0dd977d91a0f995b2124bcb7a176aa54b2cabbefd130697";
-const incidentId = "inc_a229cf05afa6e42a1e99c53ab6e7b89d";
+// Edita a projeção ATIVA de incidentes que o frontend lê. Use somente em uma
+// stack de demonstração descartável, nunca sobre um dataset real.
+const {
+  OPERATIONAL_TABLE_NAME: table,
+  DATASET_VERSION: datasetVersion,
+  INCIDENT_ID: incidentId,
+} = requireDemoSeedEnvironment(["OPERATIONAL_TABLE_NAME", "DATASET_VERSION", "INCIDENT_ID"]);
+const region = process.env.AWS_REGION ?? "us-east-1";
 const key = {
   pk: `DATASET#${datasetVersion}#VIEW#INCIDENTS#ACTIVE`,
   sk: "CURRENT",

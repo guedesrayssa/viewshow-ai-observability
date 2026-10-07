@@ -75,7 +75,7 @@ export interface AnalysisStore {
   finish(lease: Lease, state: "SUCCEEDED" | "RETRY_PENDING" | "FAILED", now: number, code?: string): Promise<void>;
   checkpoint(lease: Lease, scopeId: string): Promise<ScopeCheckpoint | null>;
   saveCheckpoint(lease: Lease, scopeId: string, value: ScopeCheckpoint): Promise<void>;
-  resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string }>;
+  resolveIncident(id: string): Promise<{ event: WindowedEvent; scope: AnalysisScope; incidentId: string; resolution: "meta" | "projection" }>;
   correlate(lease: Lease, event: WindowedEvent, scope: AnalysisScope, correlationMs: number): Promise<{ incidentId: string; isNew: boolean }>;
   saveResult(lease: Lease, checkpoint: ScopeCheckpoint): Promise<void>;
   saveDiagnosis(lease: Lease, checkpoint: ScopeCheckpoint): Promise<void>;

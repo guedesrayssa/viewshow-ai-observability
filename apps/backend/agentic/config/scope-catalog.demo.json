@@ -9,7 +9,7 @@
     "series": [
       {
         "metric": "bufferratio_avg",
-        "seriesId": "ts_demo_agentic_bufferratio_15m",
+        "seriesId": "ts_3cd23fe0ba31998d71cd5ccfd9541d9ac850066e3f8e18853f8d9ef443a6d2c8",
         "unit": "ratio",
         "grainSeconds": 900
       }

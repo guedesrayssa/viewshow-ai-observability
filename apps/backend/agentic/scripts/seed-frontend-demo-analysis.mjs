@@ -6,33 +6,39 @@ import {
   GetCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { catalogSeriesIds, requireDemoSeedEnvironment } from "./demo-seed-support.mjs";
 
+const {
+  OPERATIONAL_TABLE_NAME: table,
+  ANALYSIS_QUEUE_URL: queueUrl,
+  INCIDENT_ID: incidentId,
+} = requireDemoSeedEnvironment(["OPERATIONAL_TABLE_NAME", "ANALYSIS_QUEUE_URL", "INCIDENT_ID"]);
 const region = process.env.AWS_REGION ?? "us-east-1";
-const table = process.env.OPERATIONAL_TABLE_NAME ?? "view-show-iac-operacional";
-const queueUrl = process.env.ANALYSIS_QUEUE_URL ??
-  "https://sqs.us-east-1.amazonaws.com/410685407336/view-show-ingestion-analysis";
-const incidentId = process.env.INCIDENT_ID ?? "inc_nrjxccdltjky63icamhhslzm7a";
 const scopeId = "canal-demo";
+const seriesIds = catalogSeriesIds(
+  new URL("../config/scope-catalog.frontend-demo.json", import.meta.url),
+  scopeId,
+);
 const cutoff = Date.parse("2026-09-28T18:00:00.000Z");
 const grainMs = 15 * 60 * 1000;
 const definitions = [
   {
     metric: "latency_ms_p95",
-    seriesId: "ts_frontend_demo_latency_p95_15m",
+    seriesId: seriesIds.latency_ms_p95,
     unit: "milliseconds",
     baseline: (point) => point % 2 ? 180 : 220,
     anomaly: [820, 855, 890, 925],
   },
   {
     metric: "errors",
-    seriesId: "ts_frontend_demo_errors_15m",
+    seriesId: seriesIds.errors,
     unit: "count",
     baseline: (point) => point % 2 ? 8 : 12,
     anomaly: [73, 77, 81, 65],
   },
   {
     metric: "sessions",
-    seriesId: "ts_frontend_demo_sessions_15m",
+    seriesId: seriesIds.sessions,
     unit: "count",
     baseline: (point) => 820 + (point % 6) * 18,
     anomaly: [868, 890, 912, 934],
@@ -41,31 +47,31 @@ const definitions = [
 const presentationDefinitions = [
   {
     metric: "affected_devices",
-    seriesId: "ts_frontend_demo_affected_devices_15m",
+    seriesId: seriesIds.affected_devices,
     unit: "devices",
     values: [2, 2, 2, 3, 3, 4, 5, 5],
   },
   {
     metric: "bufferratio_avg",
-    seriesId: "ts_frontend_demo_bufferratio_15m",
+    seriesId: seriesIds.bufferratio_avg,
     unit: "ratio",
     values: [0.007, 0.009, 0.012, 0.016, 0.024, 0.035, 0.046, 0.041],
   },
   {
     metric: "errors_model_a",
-    seriesId: "ts_frontend_demo_model_a_errors_15m",
+    seriesId: seriesIds.errors_model_a,
     unit: "count",
     values: [3, 4, 5, 5, 11, 14, 17, 19],
   },
   {
     metric: "errors_model_b",
-    seriesId: "ts_frontend_demo_model_b_errors_15m",
+    seriesId: seriesIds.errors_model_b,
     unit: "count",
     values: [2, 2, 2, 3, 5, 6, 7, 8],
   },
   {
     metric: "errors_model_c",
-    seriesId: "ts_frontend_demo_model_c_errors_15m",
+    seriesId: seriesIds.errors_model_c,
     unit: "count",
     values: [1, 1, 1, 1, 2, 2, 2, 3],
   },

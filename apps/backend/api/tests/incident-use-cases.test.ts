@@ -549,6 +549,28 @@ describe("incident, Event, and Evidence use cases", () => {
     expect(result.data.diagnosis.hypotheses).toEqual([]);
   });
 
+  it("reads analytical facts only from the latest diagnosis run", async () => {
+    const storage = repository();
+    vi.mocked(storage.latestDiagnosis).mockResolvedValueOnce({
+      pk: incidentPk,
+      sk: "DIAGNOSIS#run2",
+      itemType: "diagnosis",
+      analysisRunId: "run2",
+      status: "failed",
+      failureCode: "INSUFFICIENT_HISTORY",
+      createdAt: "2026-01-01T11:41:05.000Z",
+    });
+
+    const result = await useCases(storage).diagnosis("inc_1");
+
+    expect(storage.listEvidence).toHaveBeenCalledWith(
+      expect.anything(),
+      "inc_1",
+      "run2",
+    );
+    expect(result.data.diagnosis.status).toBe("failed");
+  });
+
   it("publishes a manual reanalysis for a known incident and fails closed without a publisher", async () => {
     const storage = repository();
     const publisher: ReanalysisPublisherPort = {

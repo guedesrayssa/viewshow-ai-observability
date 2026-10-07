@@ -579,18 +579,27 @@ export class IncidentUseCases {
         "A projeção de Evidências ainda não foi publicada pela ingestão.",
       );
     const incident = (await this.requiredIncident(active, incidentId)).dto;
-    const [rawEvidence, hypotheses, diagnosisItem] = await Promise.all([
-      this.repository.listEvidence(active, incidentId),
+    const diagnosisItem = await this.repository.latestDiagnosis(
+      active,
+      incidentId,
+    );
+    const analysisRunId =
+      typeof diagnosisItem?.analysisRunId === "string"
+        ? diagnosisItem.analysisRunId
+        : undefined;
+    const [rawEvidence, hypotheses] = await Promise.all([
+      this.repository.listEvidence(active, incidentId, analysisRunId),
       this.repository.listHypotheses(active, incidentId),
-      this.repository.latestDiagnosis(active, incidentId),
     ]);
     const evidence = linkAnalysisEvidence(rawEvidence, hypotheses);
     const presentation = diagnosisPresentation(diagnosisItem ?? {});
     const affectedDevices = diagnosisAffectedDevices(diagnosisItem ?? {});
-    const incidentWithImpact = affectedDevices ? {
-      ...incident,
-      impact: { ...incident.impact, affectedDevices },
-    } : incident;
+    const incidentWithImpact = affectedDevices
+      ? {
+          ...incident,
+          impact: { ...incident.impact, affectedDevices },
+        }
+      : incident;
     const data = diagnosisDataSchema.parse({
       incident: incidentWithImpact,
       diagnosis: {
