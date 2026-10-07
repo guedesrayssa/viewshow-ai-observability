@@ -24,12 +24,18 @@ export async function render(config, resolveSecret) {
     config.api_replicas <= config.api_max_replicas
   ))
     throw new Error("Invalid replica range.");
+  if (
+    !Number.isInteger(config.analysis_replicas) ||
+    config.analysis_replicas < 0 ||
+    config.analysis_replicas > 1
+  )
+    throw new Error("Invalid analysis replica count.");
   const resources = [];
   const add = (apiVersion, kind, name, spec, namespace = ns) => {
     const resource = {
       apiVersion,
       kind,
-      metadata: { name, namespace },
+      metadata: { name, ...(namespace === null ? {} : { namespace }) },
       ...spec,
     };
     resources.push(resource);
@@ -59,6 +65,7 @@ export async function render(config, resolveSecret) {
     "ingestion-incremental-export": "*/15 * * * *",
     "ingestion-incremental-ingest": "*/5 * * * *",
   };
+  let renderedImportTemplate;
   for (const [name, workload] of Object.entries(config.workloads)) {
     if (name === "analysis-worker" && !config.analysis_enabled) continue;
     const namespace = name === "ingestion-import" ? `${ns}-imports` : ns;
@@ -269,6 +276,8 @@ export async function render(config, resolveSecret) {
         ],
       },
     };
+    if (name === "ingestion-import")
+      renderedImportTemplate = structuredClone(template);
     if (name.startsWith("ingestion")) {
       const suspend =
         name === "ingestion-sync"
@@ -316,7 +325,8 @@ export async function render(config, resolveSecret) {
         name,
         {
           spec: {
-            replicas: name === "api" ? config.api_replicas : 1,
+            replicas:
+              name === "api" ? config.api_replicas : config.analysis_replicas,
             selector: { matchLabels: labels },
             strategy: {
               type: "RollingUpdate",
@@ -329,6 +339,41 @@ export async function render(config, resolveSecret) {
       );
     }
   }
+  const importWorker = renderedImportTemplate?.spec.containers.find(
+    (container) => container.name === "ingestion",
+  );
+  const importMysql = renderedImportTemplate?.spec.initContainers?.find(
+    (container) => container.name === "mysql-snapshot",
+  );
+  if (!renderedImportTemplate || !importWorker || !importMysql)
+    throw new Error("Invalid import admission configuration.");
+  const cel = (value) => JSON.stringify(value);
+  const staticEnvChecks = (path, env) => {
+    if (
+      env.some((variable) =>
+        ["IMPORT_ID", "IMPORT_PIPELINE_VERSION"].includes(variable.name),
+      )
+    )
+      throw new Error("Invalid import admission environment.");
+    return env
+      .map((variable, index) => {
+        const entry = `${path}[${index}]`;
+        const literalValue =
+          variable.valueFrom === undefined ? (variable.value ?? "") : "";
+        return `${entry}.name == ${cel(variable.name)} && ${entry}.?value.orValue("") == ${cel(literalValue)} && ${
+          variable.valueFrom === undefined
+            ? `!has(${entry}.valueFrom)`
+            : `${entry}.valueFrom == ${cel(variable.valueFrom)}`
+        }`;
+      })
+      .join(" && ");
+  };
+  const workerEnv = "object.spec.template.spec.containers[0].env";
+  const mysqlEnv = "object.spec.template.spec.initContainers[0].env";
+  const workerStaticEnvChecks = staticEnvChecks(workerEnv, importWorker.env);
+  const mysqlStaticEnvChecks = staticEnvChecks(mysqlEnv, importMysql.env);
+  const importIdEnv = `${workerEnv}[${importWorker.env.length}]`;
+  const pipelineEnv = `${workerEnv}[${importWorker.env.length + 1}]`;
   add("v1", "Service", "api", {
     spec: {
       type: "ClusterIP",
@@ -441,6 +486,152 @@ export async function render(config, resolveSecret) {
       subjects: apiSubject,
     },
     `${ns}-imports`,
+  );
+  add(
+    "admissionregistration.k8s.io/v1",
+    "ValidatingAdmissionPolicy",
+    `${ns}-import-jobs`,
+    {
+      spec: {
+        failurePolicy: "Fail",
+        matchConstraints: {
+          resourceRules: [
+            {
+              apiGroups: ["batch"],
+              apiVersions: ["v1"],
+              operations: ["CREATE"],
+              resources: ["jobs"],
+              scope: "Namespaced",
+            },
+          ],
+        },
+        matchConditions: [
+          {
+            name: "api-service-account",
+            expression: `request.userInfo.username == ${cel(`system:serviceaccount:${ns}:api`)}`,
+          },
+        ],
+        validations: [
+          {
+            expression: `object.metadata.namespace == ${cel(`${ns}-imports`)} && object.metadata.name.matches('^import-[a-z0-9]+$')`,
+            message: "Import Job identity is invalid.",
+          },
+          {
+            expression:
+              "object.metadata.labels['app.kubernetes.io/name'] == 'ingestion-import' && object.metadata.labels['view-show/import-id'].matches('^imp_[0-7][0-9A-HJKMNP-TV-Z]{25}$') && object.metadata.labels['view-show/pipeline'] in ['legacy-v1', 'canonical-v2']",
+            message: "Import Job labels are invalid.",
+          },
+          {
+            expression:
+              "object.spec.template.spec.serviceAccountName == 'ingestion-import' && !object.spec.template.spec.?automountServiceAccountToken.orValue(true) && (!has(object.spec.template.spec.hostNetwork) || !object.spec.template.spec.hostNetwork) && (!has(object.spec.template.spec.hostPID) || !object.spec.template.spec.hostPID) && (!has(object.spec.template.spec.hostIPC) || !object.spec.template.spec.hostIPC) && (!has(object.spec.template.spec.shareProcessNamespace) || !object.spec.template.spec.shareProcessNamespace) && object.spec.template.spec.restartPolicy == 'Never'",
+            message: "Import Job Pod identity is invalid.",
+          },
+          {
+            // Admission converts typed Jobs to maps, omitting empty repeated fields.
+            expression: `object.spec.template.spec.containers.size() == 1 && object.spec.template.spec.containers[0].name == 'ingestion' && object.spec.template.spec.containers[0].image == ${cel(importWorker.image)} && object.spec.template.spec.containers[0].imagePullPolicy == ${cel(importWorker.imagePullPolicy)} && object.spec.template.spec.containers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.containers[0].args == ['import-dump', '--import-id', object.metadata.labels['view-show/import-id']] && object.spec.template.spec.containers[0].?envFrom.orValue([]).size() == 0 && ${workerEnv}.size() == ${importWorker.env.length + 2} && ${workerStaticEnvChecks} && ${importIdEnv}.name == "IMPORT_ID" && ${importIdEnv}.?value.orValue("") == object.metadata.labels['view-show/import-id'] && !has(${importIdEnv}.valueFrom) && ${pipelineEnv}.name == "IMPORT_PIPELINE_VERSION" && ${pipelineEnv}.?value.orValue("") == object.metadata.labels['view-show/pipeline'] && !has(${pipelineEnv}.valueFrom) && object.spec.template.spec.containers[0].volumeMounts == ${cel(importWorker.volumeMounts)} && !has(object.spec.template.spec.containers[0].lifecycle) && !has(object.spec.template.spec.containers[0].startupProbe) && !has(object.spec.template.spec.containers[0].readinessProbe) && !has(object.spec.template.spec.containers[0].livenessProbe)`,
+            message: "Import worker container is invalid.",
+          },
+          {
+            // Pin the probe invariants while accepting Kubernetes' harmless defaults.
+            expression: `object.spec.template.spec.initContainers.size() == 1 && object.spec.template.spec.initContainers[0].name == 'mysql-snapshot' && object.spec.template.spec.initContainers[0].image == ${cel(importMysql.image)} && object.spec.template.spec.initContainers[0].imagePullPolicy == ${cel(importMysql.imagePullPolicy)} && object.spec.template.spec.initContainers[0].restartPolicy == 'Always' && object.spec.template.spec.initContainers[0].?command.orValue([]).size() == 0 && object.spec.template.spec.initContainers[0].args == ${cel(importMysql.args)} && object.spec.template.spec.initContainers[0].?envFrom.orValue([]).size() == 0 && ${mysqlEnv}.size() == ${importMysql.env.length} && ${mysqlStaticEnvChecks} && object.spec.template.spec.initContainers[0].volumeMounts == ${cel(importMysql.volumeMounts)} && object.spec.template.spec.initContainers[0].startupProbe.exec.command == ${cel(importMysql.startupProbe.exec.command)} && object.spec.template.spec.initContainers[0].startupProbe.periodSeconds == ${cel(importMysql.startupProbe.periodSeconds)} && object.spec.template.spec.initContainers[0].startupProbe.timeoutSeconds == ${cel(importMysql.startupProbe.timeoutSeconds)} && object.spec.template.spec.initContainers[0].startupProbe.failureThreshold == ${cel(importMysql.startupProbe.failureThreshold)} && object.spec.template.spec.initContainers[0].startupProbe.?successThreshold.orValue(1) == 1 && object.spec.template.spec.initContainers[0].startupProbe.?initialDelaySeconds.orValue(0) == 0 && !has(object.spec.template.spec.initContainers[0].startupProbe.httpGet) && !has(object.spec.template.spec.initContainers[0].startupProbe.tcpSocket) && !has(object.spec.template.spec.initContainers[0].startupProbe.grpc) && !has(object.spec.template.spec.initContainers[0].startupProbe.terminationGracePeriodSeconds) && !has(object.spec.template.spec.initContainers[0].lifecycle) && !has(object.spec.template.spec.initContainers[0].readinessProbe) && !has(object.spec.template.spec.initContainers[0].livenessProbe)`,
+            message: "Import MySQL sidecar is invalid.",
+          },
+          {
+            expression: `object.spec.template.spec.volumes == ${cel(renderedImportTemplate.spec.volumes)}`,
+            message: "Import Job volumes are invalid.",
+          },
+          {
+            expression: `object.spec.template.spec.securityContext == ${cel(renderedImportTemplate.spec.securityContext)} && object.spec.template.spec.containers[0].securityContext == ${cel(importWorker.securityContext)} && object.spec.template.spec.initContainers[0].securityContext == ${cel(importMysql.securityContext)}`,
+            message: "Import Job security context is invalid.",
+          },
+        ],
+      },
+    },
+    null,
+  );
+  add(
+    "admissionregistration.k8s.io/v1",
+    "ValidatingAdmissionPolicyBinding",
+    `${ns}-import-jobs`,
+    {
+      spec: {
+        policyName: `${ns}-import-jobs`,
+        validationActions: ["Deny"],
+        matchResources: {
+          namespaceSelector: {
+            matchLabels: { "kubernetes.io/metadata.name": `${ns}-imports` },
+          },
+        },
+      },
+    },
+    null,
+  );
+  add(
+    "admissionregistration.k8s.io/v1",
+    "ValidatingAdmissionPolicy",
+    `${ns}-sync-suspend`,
+    {
+      spec: {
+        failurePolicy: "Fail",
+        matchConstraints: {
+          resourceRules: [
+            {
+              apiGroups: ["batch"],
+              apiVersions: ["v1"],
+              operations: ["UPDATE"],
+              resources: ["cronjobs"],
+              scope: "Namespaced",
+            },
+          ],
+        },
+        matchConditions: [
+          {
+            name: "api-service-account",
+            expression: `request.userInfo.username == ${cel(`system:serviceaccount:${ns}:api`)}`,
+          },
+        ],
+        validations: [
+          {
+            expression: `object.metadata.namespace == ${cel(ns)} && oldObject.metadata.namespace == ${cel(ns)} && object.metadata.name == ${cel("ingestion-sync")} && oldObject.metadata.name == ${cel("ingestion-sync")}`,
+            message:
+              "API may only suspend or resume the ingestion-sync CronJob.",
+          },
+          {
+            // Both objects have API defaults. Compare the complete template and every
+            // CronJobSpec field except suspend, so controller-created Jobs cannot bypass
+            // the import admission policy through an API patch to the sync template.
+            expression:
+              "object.spec.jobTemplate == oldObject.spec.jobTemplate && object.spec.schedule == oldObject.spec.schedule && object.spec.?timeZone.orValue('') == oldObject.spec.?timeZone.orValue('') && object.spec.?startingDeadlineSeconds.orValue(-1) == oldObject.spec.?startingDeadlineSeconds.orValue(-1) && object.spec.?concurrencyPolicy.orValue('Allow') == oldObject.spec.?concurrencyPolicy.orValue('Allow') && object.spec.?successfulJobsHistoryLimit.orValue(3) == oldObject.spec.?successfulJobsHistoryLimit.orValue(3) && object.spec.?failedJobsHistoryLimit.orValue(1) == oldObject.spec.?failedJobsHistoryLimit.orValue(1)",
+            message:
+              "API sync patches must preserve the schedule and Job template.",
+          },
+          {
+            // generation/resourceVersion/managedFields are maintained by the API server.
+            expression:
+              "object.metadata.?labels.orValue({}) == oldObject.metadata.?labels.orValue({}) && object.metadata.?annotations.orValue({}) == oldObject.metadata.?annotations.orValue({}) && object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([]) && object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([]) && object.metadata.?generateName.orValue('') == oldObject.metadata.?generateName.orValue('')",
+            message: "API sync patches must preserve CronJob metadata.",
+          },
+        ],
+      },
+    },
+    null,
+  );
+  add(
+    "admissionregistration.k8s.io/v1",
+    "ValidatingAdmissionPolicyBinding",
+    `${ns}-sync-suspend`,
+    {
+      spec: {
+        policyName: `${ns}-sync-suspend`,
+        validationActions: ["Deny"],
+        matchResources: {
+          namespaceSelector: {
+            matchLabels: { "kubernetes.io/metadata.name": ns },
+          },
+        },
+      },
+    },
+    null,
   );
   return { resources };
 }

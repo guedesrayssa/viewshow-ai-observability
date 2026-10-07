@@ -6,6 +6,329 @@ import { config } from "./fixtures.mjs";
 const rendered = await render(config, async () => "test-password");
 const find = (kind, name) =>
   rendered.resources.find((r) => r.kind === kind && r.metadata.name === name);
+test("analysis worker honors the zero-to-one replica gate", async () => {
+  const gated = structuredClone(config);
+  gated.analysis_enabled = true;
+  for (const replicas of [0, 1]) {
+    gated.analysis_replicas = replicas;
+    const output = await render(gated, async () => "test-password");
+    assert.equal(
+      output.resources.find(
+        (resource) =>
+          resource.kind === "Deployment" &&
+          resource.metadata.name === "analysis-worker",
+      ).spec.replicas,
+      replicas,
+    );
+  }
+});
+test("analysis replica gate rejects missing, fractional and out-of-range counts", async () => {
+  for (const replicas of [undefined, -1, 2, 0.5, "1", null]) {
+    await assert.rejects(
+      render(
+        { ...config, analysis_replicas: replicas },
+        async () => "test-password",
+      ),
+      /Invalid analysis replica count/,
+    );
+  }
+});
+test("API-created import Jobs are constrained by a fail-closed admission policy", () => {
+  const policy = find("ValidatingAdmissionPolicy", "view-show-import-jobs");
+  const binding = find(
+    "ValidatingAdmissionPolicyBinding",
+    "view-show-import-jobs",
+  );
+  assert.ok(policy, "native import admission policy is required");
+  assert.ok(binding, "native import admission binding is required");
+  assert.equal(policy.metadata.namespace, undefined);
+  assert.equal(binding.metadata.namespace, undefined);
+  assert.equal(policy.spec.failurePolicy, "Fail");
+  assert.deepEqual(binding.spec.validationActions, ["Deny"]);
+  assert.equal(binding.spec.policyName, policy.metadata.name);
+  assert.equal(
+    binding.spec.matchResources.namespaceSelector.matchLabels[
+      "kubernetes.io/metadata.name"
+    ],
+    "view-show-imports",
+  );
+  assert.deepEqual(policy.spec.matchConstraints.resourceRules, [
+    {
+      apiGroups: ["batch"],
+      apiVersions: ["v1"],
+      operations: ["CREATE"],
+      resources: ["jobs"],
+      scope: "Namespaced",
+    },
+  ]);
+  const contract = policy.spec.validations
+    .map((validation) => validation.expression)
+    .join("\n");
+  for (const token of [
+    "serviceAccountName",
+    "ingestion-import",
+    "mysql-snapshot",
+    "import-dump",
+    "emptyDir",
+    "envFrom",
+    "IMPORT_ID",
+    "IMPORT_PIPELINE_VERSION",
+    "secretKeyRef",
+    "securityContext",
+    "hostNetwork",
+    "hostPID",
+    "hostIPC",
+    "shareProcessNamespace",
+  ])
+    assert.ok(contract.includes(token), `policy must constrain ${token}`);
+  assert.match(
+    policy.spec.matchConditions[0].expression,
+    /system:serviceaccount:view-show:api/,
+  );
+});
+
+test("API sync patches can only suspend or resume the exact CronJob", () => {
+  const policy = find("ValidatingAdmissionPolicy", "view-show-sync-suspend");
+  const binding = find(
+    "ValidatingAdmissionPolicyBinding",
+    "view-show-sync-suspend",
+  );
+  assert.ok(policy, "native sync admission policy is required");
+  assert.ok(binding, "native sync admission binding is required");
+  assert.equal(policy.metadata.namespace, undefined);
+  assert.equal(binding.metadata.namespace, undefined);
+  assert.equal(policy.spec.failurePolicy, "Fail");
+  assert.deepEqual(binding.spec.validationActions, ["Deny"]);
+  assert.equal(binding.spec.policyName, policy.metadata.name);
+  assert.equal(
+    binding.spec.matchResources.namespaceSelector.matchLabels[
+      "kubernetes.io/metadata.name"
+    ],
+    "view-show",
+  );
+  assert.deepEqual(policy.spec.matchConstraints.resourceRules, [
+    {
+      apiGroups: ["batch"],
+      apiVersions: ["v1"],
+      operations: ["UPDATE"],
+      resources: ["cronjobs"],
+      scope: "Namespaced",
+    },
+  ]);
+  assert.equal(
+    policy.spec.matchConditions[0].expression,
+    'request.userInfo.username == "system:serviceaccount:view-show:api"',
+  );
+  const contract = policy.spec.validations
+    .map((validation) => validation.expression)
+    .join("\n");
+  assert.ok(contract.includes('object.metadata.name == "ingestion-sync"'));
+  assert.ok(contract.includes('object.metadata.namespace == "view-show"'));
+  assert.ok(
+    contract.includes("object.spec.jobTemplate == oldObject.spec.jobTemplate"),
+  );
+  for (const field of [
+    "schedule",
+    "timeZone",
+    "startingDeadlineSeconds",
+    "concurrencyPolicy",
+    "successfulJobsHistoryLimit",
+    "failedJobsHistoryLimit",
+  ])
+    assert.ok(
+      contract.includes(`object.spec.${field}`) ||
+        contract.includes(`object.spec.?${field}`),
+      `sync admission must preserve ${field}`,
+    );
+  for (const field of [
+    "labels",
+    "annotations",
+    "ownerReferences",
+    "finalizers",
+    "generateName",
+  ])
+    assert.ok(
+      contract.includes(`object.metadata.?${field}`),
+      `sync admission must preserve ${field}`,
+    );
+  assert.equal(
+    contract.includes("object.spec.suspend == oldObject.spec.suspend"),
+    false,
+  );
+});
+
+test("import admission pins exact rendered environment, mounts, volumes and security contexts", () => {
+  const policy = find("ValidatingAdmissionPolicy", "view-show-import-jobs");
+  assert.ok(policy, "native import admission policy is required");
+  const pod = find("CronJob", "ingestion-import").spec.jobTemplate.spec.template
+    .spec;
+  const contract = policy.spec.validations
+    .map((validation) => validation.expression)
+    .join("\n");
+  for (const container of [pod.containers[0], pod.initContainers[0]]) {
+    for (const field of [
+      "image",
+      "imagePullPolicy",
+      "volumeMounts",
+      "securityContext",
+    ])
+      assert.ok(
+        contract.includes(JSON.stringify(container[field])),
+        `policy must pin ${container.name}/${field}`,
+      );
+  }
+  for (const [path, container] of [
+    ["object.spec.template.spec.containers[0]", pod.containers[0]],
+    ["object.spec.template.spec.initContainers[0]", pod.initContainers[0]],
+  ])
+    for (const [index, variable] of container.env.entries()) {
+      const entry = `${path}.env[${index}]`;
+      assert.ok(
+        contract.includes(`${entry}.name == ${JSON.stringify(variable.name)}`),
+      );
+      assert.ok(
+        contract.includes(
+          `${entry}.?value.orValue("") == ${JSON.stringify(variable.value ?? "")}`,
+        ),
+      );
+      assert.ok(
+        contract.includes(
+          variable.valueFrom
+            ? `${entry}.valueFrom == ${JSON.stringify(variable.valueFrom)}`
+            : `!has(${entry}.valueFrom)`,
+        ),
+      );
+    }
+  assert.ok(contract.includes(JSON.stringify(pod.volumes)));
+  assert.ok(contract.includes(JSON.stringify(pod.securityContext)));
+  assert.ok(
+    contract.includes(
+      JSON.stringify(pod.initContainers[0].startupProbe.exec.command),
+    ),
+  );
+  for (const field of ["periodSeconds", "timeoutSeconds", "failureThreshold"])
+    assert.ok(
+      contract.includes(
+        `startupProbe.${field} == ${pod.initContainers[0].startupProbe[field]}`,
+      ),
+    );
+  assert.match(contract, /startupProbe\.\?successThreshold\.orValue\(1\) == 1/);
+  assert.match(
+    contract,
+    /startupProbe\.\?initialDelaySeconds\.orValue\(0\) == 0/,
+  );
+  for (const handler of ["httpGet", "tcpSocket", "grpc"])
+    assert.ok(
+      contract.includes(
+        `!has(object.spec.template.spec.initContainers[0].startupProbe.${handler})`,
+      ),
+    );
+  assert.ok(contract.includes(".?command.orValue([]).size() == 0"));
+  assert.ok(contract.includes(".?envFrom.orValue([]).size() == 0"));
+  assert.ok(
+    contract.includes(
+      `env[${pod.containers[0].env.length}].name == "IMPORT_ID"`,
+    ),
+  );
+  assert.ok(
+    contract.includes(
+      `env[${pod.containers[0].env.length + 1}].name == "IMPORT_PIPELINE_VERSION"`,
+    ),
+  );
+});
+
+test("import admission normalizes empty static env values without weakening identities or Secret references", async () => {
+  const input = structuredClone(config);
+  for (const container of input.workloads["ingestion-import"].containers)
+    container.env.push({ name: "ANALYSIS_FACT_CATALOG_LOCATION", value: "" });
+  const output = await render(input, async () => "test-password");
+  const contract = output.resources
+    .find((resource) => resource.kind === "ValidatingAdmissionPolicy")
+    .spec.validations.map((validation) => validation.expression)
+    .join("\n");
+  for (const path of [
+    "object.spec.template.spec.containers[0]",
+    "object.spec.template.spec.initContainers[0]",
+  ]) {
+    assert.ok(
+      contract.includes(
+        `${path}.env[1].name == "ANALYSIS_FACT_CATALOG_LOCATION"`,
+      ),
+    );
+    assert.ok(
+      contract.includes(`${path}.env[1].?value.orValue("") == ""`),
+      "API omission of an empty value must remain valid",
+    );
+    assert.ok(contract.includes(`!has(${path}.env[1].valueFrom)`));
+    assert.ok(contract.includes(`${path}.env[2].?value.orValue("") == ""`));
+    assert.ok(
+      contract.includes(`${path}.env[2].valueFrom == {"secretKeyRef":`),
+    );
+  }
+  assert.ok(
+    contract.includes(
+      "object.spec.template.spec.containers[0].env.size() == 6",
+    ),
+  );
+  assert.ok(
+    contract.includes(
+      "object.spec.template.spec.initContainers[0].env.size() == 4",
+    ),
+  );
+  assert.ok(
+    contract.includes(
+      'object.spec.template.spec.containers[0].env[4].name == "IMPORT_ID"',
+    ),
+  );
+  assert.ok(
+    contract.includes(
+      'object.spec.template.spec.containers[0].env[5].name == "IMPORT_PIPELINE_VERSION"',
+    ),
+  );
+  for (const [index, label] of [
+    [4, "view-show/import-id"],
+    [5, "view-show/pipeline"],
+  ]) {
+    const entry = `object.spec.template.spec.containers[0].env[${index}]`;
+    assert.ok(
+      contract.includes(
+        `${entry}.?value.orValue("") == object.metadata.labels['${label}']`,
+      ),
+    );
+    assert.ok(contract.includes(`!has(${entry}.valueFrom)`));
+  }
+  assert.equal(contract.includes(".env.filter("), false);
+  assert.equal(contract.includes(".env.exists_one("), false);
+});
+
+test("import admission rejects reserved dynamic names in either static env list", async () => {
+  for (const containerName of ["ingestion", "mysql-snapshot"])
+    for (const name of ["IMPORT_ID", "IMPORT_PIPELINE_VERSION"]) {
+      const input = structuredClone(config);
+      input.workloads["ingestion-import"].containers
+        .find((container) => container.name === containerName)
+        .env.push({ name, value: "reserved" });
+      await assert.rejects(
+        render(input, async () => "test-password"),
+        /Invalid import admission environment/,
+      );
+    }
+});
+
+test("import admission refuses a missing template or MySQL sidecar", async () => {
+  for (const missing of ["template", "mysql"]) {
+    const input = structuredClone(config);
+    if (missing === "template") delete input.workloads["ingestion-import"];
+    else
+      input.workloads["ingestion-import"].containers = input.workloads[
+        "ingestion-import"
+      ].containers.filter((container) => container.name !== "mysql-snapshot");
+    await assert.rejects(
+      render(input, async () => "test-password"),
+      /Invalid import admission configuration/,
+    );
+  }
+});
 test("snapshot workers await MySQL and can complete independently of sidecar", () => {
   const pod = find("CronJob", "ingestion-import").spec.jobTemplate.spec.template
     .spec;

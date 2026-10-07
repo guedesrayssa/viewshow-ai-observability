@@ -57,6 +57,7 @@ export const config = {
   api_replicas: 1,
   api_cpu_target: 60,
   analysis_enabled: true,
+  analysis_replicas: 0,
   sync_enabled: false,
   incremental_enabled: false,
   workload_roles: Object.fromEntries(
