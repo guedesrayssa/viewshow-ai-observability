@@ -53,7 +53,9 @@ POISON_VERSION_ID = "k6-carga-versao-inexistente"
 def _parse_utc(value: str) -> datetime:
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
-        raise argparse.ArgumentTypeError("--window-start precisa de fuso (ex.: 2026-09-30T12:00:00Z)")
+        raise argparse.ArgumentTypeError(
+            "--window-start precisa de fuso (ex.: 2026-09-30T12:00:00Z)"
+        )
     return parsed.astimezone(UTC)
 
 
@@ -64,14 +66,20 @@ def _last_closed_window_start(now: datetime, grain_seconds: int) -> datetime:
 
 def _columns(registry: DatasetRegistry, variant: str) -> tuple[PhysicalColumn, ...]:
     descriptor = registry.require(DATASET)
-    names = [column for column in descriptor.columns if not (variant == "missing-column" and column.name == "value")]
+    names = [
+        column
+        for column in descriptor.columns
+        if not (variant == "missing-column" and column.name == "value")
+    ]
     return tuple(
         PhysicalColumn(column.name, column.sql_type, column.nullable, ordinal)
         for ordinal, column in enumerate(names, start=1)
     )
 
 
-def _rows(window: TimeWindow, count: int, columns: tuple[PhysicalColumn, ...]) -> Iterator[Mapping[str, object]]:
+def _rows(
+    window: TimeWindow, count: int, columns: tuple[PhysicalColumn, ...]
+) -> Iterator[Mapping[str, object]]:
     """Linhas distintas por `entity`, todas no bucket da janela."""
     bts = int(window.start.timestamp() * 1000)
     for index in range(count):
@@ -103,7 +111,9 @@ def _settings() -> tuple[str, str, str]:
     ]
     if missing:
         raise SystemExit(
-            "Defina " + ", ".join(missing) + " (terraform -chdir=apps/fullstack output -json ingestion_runbook)."
+            "Defina "
+            + ", ".join(missing)
+            + " (terraform -chdir=apps/fullstack output -json ingestion_runbook)."
         )
     return (
         os.environ["INCREMENTAL_BATCH_BUCKET"],
@@ -112,7 +122,9 @@ def _settings() -> tuple[str, str, str]:
     )
 
 
-def _schema_differences(registry: DatasetRegistry, columns: tuple[PhysicalColumn, ...]) -> list[str]:
+def _schema_differences(
+    registry: DatasetRegistry, columns: tuple[PhysicalColumn, ...]
+) -> list[str]:
     """Mesma regra de `_differences` em application/ingest_incremental.py, só para o dry-run."""
     observed = {column.name: (column.physical_type, column.nullable) for column in columns}
     differences = []
@@ -195,7 +207,9 @@ def publish_window(
     from adapters.messaging.incremental_sqs import SqsIncrementalBatchQueue
 
     bucket, owner, queue_url = _settings()
-    store = S3IncrementalBatchStore(boto3.client("s3"), bucket, expected_bucket_owner=owner, registry=registry)
+    store = S3IncrementalBatchStore(
+        boto3.client("s3"), bucket, expected_bucket_owner=owner, registry=registry
+    )
     reference = store.publish(definition, columns, encoded)
     SqsIncrementalBatchQueue(boto3.client("sqs"), queue_url).send(
         reference, batch_id=definition.batch_id, dataset=DATASET
@@ -205,10 +219,16 @@ def publish_window(
 
 
 def _parse_arguments(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--variant", choices=("valid", "missing-column", "poison"), default="valid")
-    parser.add_argument("--rows", type=int, default=150_000, help="linhas por janela (padrão: 150.000)")
-    parser.add_argument("--windows", type=int, default=1, help="janelas consecutivas a publicar (RS-01)")
+    parser.add_argument(
+        "--rows", type=int, default=150_000, help="linhas por janela (padrão: 150.000)"
+    )
+    parser.add_argument(
+        "--windows", type=int, default=1, help="janelas consecutivas a publicar (RS-01)"
+    )
     parser.add_argument(
         "--window-start",
         type=_parse_utc,
@@ -229,9 +249,9 @@ def main(argv: list[str] | None = None) -> int:
     if grain is None:
         raise SystemExit(f"{DATASET} não tem grão incremental configurado")
     # Sem --window-start, as N janelas terminam na última janela já fechada.
-    first = arguments.window_start or _last_closed_window_start(datetime.now(UTC), grain) - timedelta(
-        seconds=grain * (arguments.windows - 1)
-    )
+    first = arguments.window_start or _last_closed_window_start(
+        datetime.now(UTC), grain
+    ) - timedelta(seconds=grain * (arguments.windows - 1))
     evidences = []
     with tempfile.TemporaryDirectory(prefix="lote-incremental-") as workdir:
         for offset in range(arguments.windows):
@@ -252,7 +272,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(evidence, ensure_ascii=False), flush=True)
     if arguments.output:
         arguments.output.parent.mkdir(parents=True, exist_ok=True)
-        arguments.output.write_text(json.dumps(evidences, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        arguments.output.write_text(
+            json.dumps(evidences, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
     return 0
 
 

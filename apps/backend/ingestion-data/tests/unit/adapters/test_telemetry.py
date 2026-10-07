@@ -254,9 +254,7 @@ def test_emf_allowlists_mysql_resilience_metrics_with_exact_units(
 
     document = json.loads(output.getvalue())
     assert document[metric] == value
-    assert document["_aws"]["CloudWatchMetrics"][0]["Metrics"] == [
-        {"Name": metric, "Unit": unit}
-    ]
+    assert document["_aws"]["CloudWatchMetrics"][0]["Metrics"] == [{"Name": metric, "Unit": unit}]
     assert {key: document[key] for key in dimensions} == dimensions
 
 
@@ -321,9 +319,7 @@ def test_runtime_emits_incremental_export_lag_with_exact_alarm_dimensions() -> N
         "status": "SUCCEEDED",
         "dataset": "signal_bucket",
     }
-    assert lag["_aws"]["CloudWatchMetrics"][0]["Dimensions"] == [
-        ["command", "dataset", "status"]
-    ]
+    assert lag["_aws"]["CloudWatchMetrics"][0]["Dimensions"] == [["command", "dataset", "status"]]
     assert "source_mode" not in lag
     assert "batchId" not in lag
 
@@ -809,9 +805,7 @@ def test_disk_metrics_emit_bounded_inflight_thresholds_heartbeat_and_fatal(
         if "LocalDiskCurrentBytes" in document
     ]
     peak = [
-        document["LocalDiskPeakBytes"]
-        for document in documents
-        if "LocalDiskPeakBytes" in document
+        document["LocalDiskPeakBytes"] for document in documents if "LocalDiskPeakBytes" in document
     ]
     assert current == [10.0, 81.0, 85.0, 91.0, 101.0]
     assert peak == current

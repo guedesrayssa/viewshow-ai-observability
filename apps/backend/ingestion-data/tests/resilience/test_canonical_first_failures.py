@@ -121,11 +121,10 @@ def _retry_and_assert_reconciled(harness, request, store, suffix: str):  # type:
     assert marker.total_source_rows == result.records_read
     assert marker.total_accepted_rows == result.records_accepted
     assert marker.total_rejected_rows == result.records_rejected
-    assert sum(
-        partition.row_count
-        for dataset in marker.datasets
-        for partition in dataset.partitions
-    ) == marker.total_accepted_rows
+    assert (
+        sum(partition.row_count for dataset in marker.datasets for partition in dataset.partitions)
+        == marker.total_accepted_rows
+    )
     assert all(
         partition.state is ArchiveState.AVAILABLE
         for partition in harness.backend.archive_partitions.values()

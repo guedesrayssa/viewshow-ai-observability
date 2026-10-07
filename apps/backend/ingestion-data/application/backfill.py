@@ -2716,9 +2716,7 @@ class Backfill:
             observed_coverage = coverage[name].status.value.upper()
             intervals[name] = available
             coverage_values[name] = (
-                "PARTIAL"
-                if "SPARSE_INTERVALS_COMPACTED" in quality_flags
-                else observed_coverage
+                "PARTIAL" if "SPARSE_INTERVALS_COMPACTED" in quality_flags else observed_coverage
             )
             flags[name] = quality_flags
             if available:

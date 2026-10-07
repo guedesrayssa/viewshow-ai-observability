@@ -39,7 +39,9 @@ REGION = "us-east-1"
 SNAPSHOT_EXTRACTED_ON = date(2026, 8, 31)
 BUCKET = f"view-show-ingestion-{ACCOUNT_ID}-{REGION}"
 SNAPSHOT_SECRET_ARN = f"arn:aws:secretsmanager:{REGION}:{ACCOUNT_ID}:secret:snapshot"
-BACKFILL_TASK_ARN = f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:task-definition/view-show-ingestion-backfill:7"
+BACKFILL_TASK_ARN = (
+    f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:task-definition/view-show-ingestion-backfill:7"
+)
 SCHEDULE_ARN = (
     f"arn:aws:scheduler:{REGION}:{ACCOUNT_ID}:schedule/view-show-ingestion/view-show-ingestion-sync"
 )
@@ -255,7 +257,9 @@ class FakeEcs:
         return self.clock() >= expires_at
 
     def describe_clusters(self, **kwargs: object) -> Mapping[str, object]:
-        assert kwargs["clusters"] == [f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster"]
+        assert kwargs["clusters"] == [
+            f"arn:aws:ecs:{REGION}:{ACCOUNT_ID}:cluster/view-show-iac-cluster"
+        ]
         return {"clusters": [{"status": "ACTIVE"}], "failures": []}
 
     def describe_task_definition(self, **kwargs: object) -> Mapping[str, object]:
@@ -288,9 +292,7 @@ class FakeEcs:
                         "essential": True,
                         "image": "example/data@sha256:" + "a" * 64,
                         "command": ["backfill"],
-                        "dependsOn": [
-                            {"containerName": "mysql-snapshot", "condition": "HEALTHY"}
-                        ],
+                        "dependsOn": [{"containerName": "mysql-snapshot", "condition": "HEALTHY"}],
                         "portMappings": [],
                         "secrets": [
                             {
@@ -1696,7 +1698,10 @@ def test_run_task_rejects_scheduler_identity_other_than_the_declared_disabled_sc
 
     class WrongScheduler:
         def get_schedule(self, **kwargs: object) -> Mapping[str, object]:
-            assert kwargs == {"Name": "view-show-ingestion-sync", "GroupName": "view-show-ingestion"}
+            assert kwargs == {
+                "Name": "view-show-ingestion-sync",
+                "GroupName": "view-show-ingestion",
+            }
             return {
                 "Name": "different",
                 "GroupName": "view-show-ingestion",

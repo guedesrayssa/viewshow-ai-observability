@@ -104,9 +104,7 @@ class MemoryDynamoClient:
 
         serializer = TypeSerializer()
         return {
-            "Attributes": {
-                name: serializer.serialize(value) for name, value in self.item.items()
-            }
+            "Attributes": {name: serializer.serialize(value) for name, value in self.item.items()}
         }
 
 

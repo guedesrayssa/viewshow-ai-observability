@@ -254,9 +254,7 @@ def test_reprocess_runtime_writes_only_to_the_active_dataset_representation(
     snapshot = registry.snapshot
     checksum = "a" * 64
     version_factory = (
-        canonical_dataset_version
-        if pipeline is RunPipeline.CANONICAL_V2
-        else dataset_version
+        canonical_dataset_version if pipeline is RunPipeline.CANONICAL_V2 else dataset_version
     )
     version = version_factory(
         str(snapshot["sourceSystem"]),

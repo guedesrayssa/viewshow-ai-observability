@@ -542,9 +542,7 @@ def benchmark_snapshot_reader(
             restored_sha256 = _sha256_stream(snapshot_source)
             _assert_snapshot_identity(snapshot_source, snapshot_identity)
         except BenchmarkReaderError as error:
-            raise BenchmarkReaderError(
-                "snapshot changed while it was being restored"
-            ) from error
+            raise BenchmarkReaderError("snapshot changed while it was being restored") from error
         if restored_sha256 != snapshot_sha256:
             raise BenchmarkReaderError("snapshot changed while it was being restored")
 

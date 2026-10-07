@@ -247,9 +247,7 @@ def test_archive_exact_get_is_consistent_and_never_queries_the_catalog() -> None
             "partitionDate": "2026-09-01",
             "state": "STAGING",
             "metadata": expected.metadata,
-            "metadataFingerprint": hashlib.sha256(
-                canonical_bytes(expected.metadata)
-            ).hexdigest(),
+            "metadataFingerprint": hashlib.sha256(canonical_bytes(expected.metadata)).hexdigest(),
         }
     )
 
@@ -280,9 +278,7 @@ def test_archive_exact_get_is_consistent_and_never_queries_the_catalog() -> None
         {
             "TableName": "hot",
             "Key": {
-                "pk": {
-                    "S": "DATASET#dsv_a#INGESTION#ARCHIVE#signal_bucket#2026-09-01"
-                },
+                "pk": {"S": "DATASET#dsv_a#INGESTION#ARCHIVE#signal_bucket#2026-09-01"},
                 "sk": {"S": "META"},
             },
             "ConsistentRead": True,

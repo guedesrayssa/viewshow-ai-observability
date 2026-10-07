@@ -299,9 +299,7 @@ def test_s3_stage_accepts_deterministic_canonical_v2_key(tmp_path: Path) -> None
         "dsv_a", "app_error", PARTITION, partition.sha256, ordinal=2
     )
 
-    result = S3ArchiveStore(
-        client, "archive-bucket", expected_bucket_owner=OWNER
-    ).stage(
+    result = S3ArchiveStore(client, "archive-bucket", expected_bucket_owner=OWNER).stage(
         partition,
         key,
         expected_absent=True,

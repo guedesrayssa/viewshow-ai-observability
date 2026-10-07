@@ -35,9 +35,7 @@ _INCIDENT_FIELDS = (
     "impact_component_value",
 )
 _TECHNICAL_EVENT_FIELDS = frozenset({"source", "entity"})
-_COMPONENT_INCIDENT_FIELDS = frozenset(
-    {"business_service", "cmdb_ci", "impact_component_value"}
-)
+_COMPONENT_INCIDENT_FIELDS = frozenset({"business_service", "cmdb_ci", "impact_component_value"})
 _MIN_COMPONENT_TOKEN_LENGTH = 4
 
 type MatchedField = tuple[str, str, str]
@@ -124,10 +122,7 @@ def _matches(
                 event_field in _TECHNICAL_EVENT_FIELDS
                 and incident_field in _COMPONENT_INCIDENT_FIELDS
                 and len(incident_value) >= _MIN_COMPONENT_TOKEN_LENGTH
-                and re.search(
-                    rf"(?<!\w){re.escape(incident_value)}(?!\w)", event_value
-                )
-                is not None
+                and re.search(rf"(?<!\w){re.escape(incident_value)}(?!\w)", event_value) is not None
             ):
                 matches.append((event_field, incident_field, incident_value))
     return tuple(sorted(matches))

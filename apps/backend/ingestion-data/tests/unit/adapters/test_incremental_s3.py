@@ -216,9 +216,7 @@ def test_publish_derives_extra_columns_from_allowlisted_descriptor(tmp_path: Pat
     observed = (*columns(), PhysicalColumn("nova_coluna", "TEXT", True, 3))
     encoded = RawParquetCodec().encode(
         observed,
-        (
-            {"bucket_ts": 1, "sinal": "alpha", "nova_coluna": "preservada"},
-        ),
+        ({"bucket_ts": 1, "sinal": "alpha", "nova_coluna": "preservada"},),
         tmp_path / "with-extra.parquet",
     )
 

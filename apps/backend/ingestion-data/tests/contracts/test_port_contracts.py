@@ -1760,9 +1760,7 @@ def test_glue_and_athena_fakes_preserve_catalog_conditions_and_counts() -> None:
         idempotency_key="partition-signal-1",
     )
 
-    assert validator.validate_legacy_partition(
-        "signal_bucket", "dsv_new", "2026-09-01", 2
-    ) == 2
+    assert validator.validate_legacy_partition("signal_bucket", "dsv_new", "2026-09-01", 2) == 2
     with pytest.raises(ConditionalWriteError):
         catalog.register_legacy_partition(
             descriptor,

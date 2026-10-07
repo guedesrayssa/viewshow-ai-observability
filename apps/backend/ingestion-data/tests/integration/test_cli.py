@@ -22,8 +22,7 @@ def test_module_entrypoint_reports_only_batch_commands() -> None:
     assert completed.stderr == ""
     assert (
         "{validate,backfill,import-dump,sync,reprocess,rebuild-projections,"
-        "publish-outbox,export-incremental,ingest-incremental}"
-        in completed.stdout
+        "publish-outbox,export-incremental,ingest-incremental}" in completed.stdout
     )
     assert "serve" not in completed.stdout
     assert "http" not in completed.stdout.lower()

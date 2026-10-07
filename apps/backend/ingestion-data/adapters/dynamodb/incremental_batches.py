@@ -148,9 +148,7 @@ class DynamoIncrementalBatchRepository(IncrementalBatchRepository):
             ConsistentRead=True,
         )
         item = decode_get_item(response)
-        if item is not None and (
-            item.get("pk") != f"BATCH#{batch_id}" or item.get("sk") != "META"
-        ):
+        if item is not None and (item.get("pk") != f"BATCH#{batch_id}" or item.get("sk") != "META"):
             raise IncrementalBatchRepositoryError("DynamoDB returned a different batch key")
         return item
 

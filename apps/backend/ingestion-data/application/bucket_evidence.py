@@ -412,9 +412,7 @@ class BucketEvidence:
                 return True
         return False
 
-    def intervals(
-        self, dataset: str
-    ) -> tuple[list[dict[str, str]], str | None, tuple[str, ...]]:
+    def intervals(self, dataset: str) -> tuple[list[dict[str, str]], str | None, tuple[str, ...]]:
         """Executa a etapa interna ``intervals`` e devolve o resultado validado indicado pela
         assinatura.
 

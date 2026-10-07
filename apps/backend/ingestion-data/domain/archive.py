@@ -740,9 +740,10 @@ def validate_candidate_manifest(manifest: CandidateManifest) -> None:
         marker = _mapping(canonical_marker, "canonicalMarker")
         if set(marker) != _CANONICAL_MARKER_VALUE_FIELDS:
             raise ValueError("canonicalMarker has an invalid closed structure")
-        if _text(marker["schemaVersion"], "canonicalMarker.schemaVersion") != metadata[
-            "canonicalSchemaVersion"
-        ]:
+        if (
+            _text(marker["schemaVersion"], "canonicalMarker.schemaVersion")
+            != metadata["canonicalSchemaVersion"]
+        ):
             raise ValueError("canonicalMarker schemaVersion differs from the manifest")
         if _text(marker["objectKey"], "canonicalMarker.objectKey") != canonical_set_marker_key(
             manifest.dataset_version
