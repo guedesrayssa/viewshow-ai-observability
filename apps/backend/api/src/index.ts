@@ -3,6 +3,7 @@ import {
   createLogger,
   startTelemetry,
   stopTelemetry,
+  telemetryStatus,
 } from "@view-show/contracts";
 import { loadConfig } from "./config.js";
 import { stopApiServices } from "./api-lifecycle.js";
@@ -43,13 +44,21 @@ const server = createServer(
 
 server.listen(config.port, config.host, () => {
   importsModule.reconciler.start();
-  logger.info("api started", { host: config.host, port: config.port });
+  // Primeira linha de qualquer investigação: que versão roda e com quais sinais.
+  logger.info("api started", {
+    event: "process.started",
+    host: config.host,
+    port: config.port,
+    node_version: process.version,
+    metrics_enabled: config.metricsEnabled,
+    ...telemetryStatus(),
+  });
 });
 let closing = false;
 async function shutdown(signal: string) {
   if (closing) return;
   closing = true;
-  logger.info("api stopping", { signal });
+  logger.info("api stopping", { event: "process.stopping", signal });
   const closeResult = await stopApiServices({
     server,
     reconciler: importsModule.reconciler,

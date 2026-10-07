@@ -84,7 +84,8 @@ test("AWS cloud-init packages and validates the rendered agentic dashboard", () 
   const userData = fs.readFileSync(userDataPath, "utf8");
   const validator = fs.readFileSync(userDataValidatorPath, "utf8");
   assert.match(terraform, /view-show-agentic-aws\.json\.tftpl/);
-  assert.match(terraform, /analysis_worker_log_group\s*=\s*"\/ecs\/\$\{var\.deployment_namespace\}-analysis-worker"/);
+  assert.match(terraform, /analysis_worker_log_group\s*=\s*aws_cloudwatch_log_group\.kubernetes_application\.name/);
+  assert.doesNotMatch(terraform, /aws_ecs_(?:cluster|task_definition)/);
   assert.match(terraform, /agentic_dashboard_gzip\s*=\s*base64gzip\(local\.agentic_dashboard_aws\)/);
   assert.match(userData, /view-show-agentic-aws\.json/);
   assert.match(userData, /\$\{agentic_dashboard_gzip\}/);

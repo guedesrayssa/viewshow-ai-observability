@@ -13,7 +13,8 @@ kubernetes-contracts:
   stage: test
   image: node:22.22.0-bookworm-slim
   script:
-    - node --test apps/kubernetes/tests/*.test.mjs apps/scripts/tests/*.test.mjs
+    - apt-get update && apt-get install -y --no-install-recommends python3
+    - node --test apps/kubernetes/tests/*.test.mjs apps/scripts/tests/*.test.mjs apps/backend/api/loadtest/tests/*.test.mjs
 
 terraform:
   stage: validate

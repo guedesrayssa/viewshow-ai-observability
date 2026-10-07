@@ -28,6 +28,12 @@ metadados próprios. O [registro de proveniência](../assets/testes-carga/2026-1
 e os índices [AWS](../assets/testes-carga/2026-10-06-fechamento-aws/README.md) e
 [local](../assets/testes-carga/2026-10-06-fechamento-local/README.md) permitem conferir essas diferenças.
 
+A integração posterior do MR !99 acrescenta logs/traces correlacionados,
+exemplares e dashboards de produção compatíveis com EKS. A
+[revisão dessa integração](apoio/revisao-integracao-observabilidade.md) registra
+as correções e os checks. Os resultados de carga acima continuam identificados
+pela revisão e imagem medidas; a integração não é uma nova rodada de capacidade.
+
 | Item avaliado | Onde conferir |
 | --- | --- |
 | 1 — RNFs e planos (3 pontos) | Seções 2 e 3: critérios, perfis e catálogo de falhas |

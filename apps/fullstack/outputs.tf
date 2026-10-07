@@ -99,14 +99,16 @@ output "observabilidade_otlp_workers_endpoint" {
 output "analysis_worker_operacao" {
   description = "Identificadores não sensíveis para preparar, validar e ativar o worker de análise."
   value = var.analysis_worker_habilitado ? {
-    cluster_name       = aws_ecs_cluster.principal.name
-    task_definition    = aws_ecs_task_definition.analysis_worker[0].arn
-    task_family        = aws_ecs_task_definition.analysis_worker[0].family
+    backend            = "kubernetes"
+    cluster_name       = aws_eks_cluster.principal.name
+    namespace          = var.deployment_namespace
+    deployment_name    = "analysis-worker"
+    image              = local.workload_analysis_worker.containers[0].image
     container_name     = "analysis-worker"
     subnet_ids         = values(aws_subnet.privada)[*].id
     security_group_id  = aws_security_group.servico.id
     assign_public_ip   = false
-    log_group          = aws_cloudwatch_log_group.analysis_worker[0].name
+    log_group          = aws_cloudwatch_log_group.kubernetes_application.name
     analysis_queue_url = aws_sqs_queue.analysis.url
     operational_table  = aws_dynamodb_table.operacional.name
     desired_count      = var.analysis_worker_desired_count

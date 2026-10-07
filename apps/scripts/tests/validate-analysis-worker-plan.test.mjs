@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { validateAnalysisWorkerPlan } from "../terraform/validate-analysis-worker-plan.mjs";
 
 function transition(before, after, extra = {}) {
@@ -535,4 +537,43 @@ test("activation output may change only the mirrored desired count", () => {
   assert.equal(validateAnalysisWorkerPlan(plan, "activate"), true);
   plan.output_changes.analysis_worker_operacao.after.cluster_name = "other";
   assert.throws(() => validateAnalysisWorkerPlan(plan, "activate"), /protected operation output/);
+});
+
+// The CLI entrypoint must run on every platform: it was guarded by `file://${argv[1]}`, which never
+// matches on Windows, so the gate silently did nothing and exited 0 (accepting any plan).
+const gateScript = fileURLToPath(new URL("../terraform/validate-analysis-worker-plan.mjs", import.meta.url));
+
+function runGate(input, environment = { VIEW_SHOW_EXPECTED_AWS_ACCOUNT: "111122223333" }) {
+  return spawnSync(process.execPath, [gateScript, "--mode", "prepare"], {
+    input,
+    encoding: "utf8",
+    env: { ...process.env, VIEW_SHOW_EXPECTED_AWS_ACCOUNT: "", ...environment },
+  });
+}
+
+test("the gate CLI rejects an invalid plan instead of exiting 0 without output", () => {
+  const result = runGate(JSON.stringify({ not: "a plan" }));
+
+  assert.notEqual(result.status, 0);
+  assert.notEqual(result.stderr.trim(), "");
+  assert.doesNotMatch(result.stdout, /accepted/);
+});
+
+test("the gate CLI requires the expected AWS account", () => {
+  const result = runGate("{}", {});
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /VIEW_SHOW_EXPECTED_AWS_ACCOUNT is required/);
+});
+
+test("the gate CLI is not triggered by merely importing the module", () => {
+  const result = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", `await import(${JSON.stringify(pathToFileURL(gateScript).href)});`],
+    { encoding: "utf8", input: "" },
+  );
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  assert.equal(result.stdout, "");
 });

@@ -105,22 +105,17 @@ locals {
   dashboard_ingestion = var.observabilidade_habilitada ? templatefile(
     "${path.module}/observability/aws/view-show-ingestion.json.tftpl",
     {
-      account_id                     = data.aws_caller_identity.atual.account_id
-      aws_region                     = var.regiao
-      metrics_namespace              = local.ingestion_metrics_namespace
-      cluster_name                   = aws_ecs_cluster.principal.name
-      backfill_task_family           = aws_ecs_task_definition.ingestion_backfill.family
-      sync_task_family               = aws_ecs_task_definition.ingestion_sync.family
-      incremental_export_task_family = aws_ecs_task_definition.ingestion_incremental_export.family
-      incremental_ingest_task_family = aws_ecs_task_definition.ingestion_incremental_ingest.family
-      analysis_queue                 = aws_sqs_queue.analysis.name
-      analysis_dlq                   = aws_sqs_queue.analysis_dlq.name
-      incremental_queue              = aws_sqs_queue.incremental_batches.name
-      incremental_dlq                = aws_sqs_queue.incremental_batches_dlq.name
-      backfill_log_group             = aws_cloudwatch_log_group.ingestion_backfill.name
-      sync_log_group                 = aws_cloudwatch_log_group.ingestion_sync.name
-      incremental_export_log_group   = aws_cloudwatch_log_group.ingestion_incremental_export.name
-      incremental_ingest_log_group   = aws_cloudwatch_log_group.ingestion_incremental_ingest.name
+      account_id        = data.aws_caller_identity.atual.account_id
+      aws_region        = var.regiao
+      metrics_namespace = local.ingestion_metrics_namespace
+      cluster_name      = aws_eks_cluster.principal.name
+      namespace         = var.deployment_namespace
+      imports_namespace = "${var.deployment_namespace}-imports"
+      analysis_queue    = aws_sqs_queue.analysis.name
+      analysis_dlq      = aws_sqs_queue.analysis_dlq.name
+      incremental_queue = aws_sqs_queue.incremental_batches.name
+      incremental_dlq   = aws_sqs_queue.incremental_batches_dlq.name
+      log_group         = aws_cloudwatch_log_group.kubernetes_application.name
     }
   ) : ""
 
@@ -129,7 +124,7 @@ locals {
     {
       aws_account_id            = data.aws_caller_identity.atual.account_id
       aws_region                = var.regiao
-      analysis_worker_log_group = "/ecs/${var.deployment_namespace}-analysis-worker"
+      analysis_worker_log_group = aws_cloudwatch_log_group.kubernetes_application.name
     }
   ) : ""
 }

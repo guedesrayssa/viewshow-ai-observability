@@ -183,3 +183,21 @@ expressão, janela e amostras por painel.
 
 Comandos, endpoints e limites do leitor estão no
 [README retrospectivo](../../apps/backend/api/loadtest/grafana-retroativo/README.md).
+
+## A.5 Telemetria de produção integrada pelo MR !99
+
+| Arquivo | Conteúdo e relação com o diagnóstico de carga |
+| --- | --- |
+| `apps/backend/api/src/observability/http-observability.ts` | Contexto request_id, header trace_id, nível por status, log de abortos e exceções redigidas |
+| `apps/backend/api/src/observability/metrics.ts` | OpenMetrics, exemplares de latência, tentativas de login, build info e saúde do envio de logs |
+| `apps/backend/api/contracts/src/observability/logger.ts` | JSON de linha única, contexto/identidade dos sinais e redação de campos e mensagem principal |
+| `apps/backend/api/contracts/src/observability/redaction.ts` | Redação por chave/valor, limites de tamanho/profundidade e serialização segura de erros |
+| `apps/backend/api/contracts/src/observability/loki-transport.ts` | Envio em lote, buffer limitado, timeout e contadores de entrega/falha/descarte |
+| `apps/backend/api/contracts/src/observability/telemetry.ts` | SDK OTel, instrumentações usadas pela API, exclusão de probes e parâmetros sensíveis |
+| `apps/fullstack/observability/scripts/run-api-local.sh` | API e DynamoDB locais ligados à LGTM, usando configuração de bootstrap Kubernetes |
+| `apps/fullstack/observability/scripts/verify-api-observability.mjs` | Verificação de correlação, redação, exemplares, datasources e queries dos dashboards |
+| `apps/fullstack/observability/aws/validate-user-data.sh` | Renderização dos dashboards/bootstrap, validação de shell/placeholders e limite gzip de 16 KiB |
+| `apps/scripts/aws-learner-lab-ecs-legacy.mjs` | Preserva helpers/gates Windows históricos; execução direta continua bloqueando operações ECS |
+
+O [registro da revisão](revisao-integracao-observabilidade.md) relaciona os
+achados às correções e identifica os limites dos checks locais.

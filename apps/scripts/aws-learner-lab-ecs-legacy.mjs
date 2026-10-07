@@ -940,8 +940,62 @@ function assertDefaultWorkspace(context) {
   }
 }
 
-function restrictPermissions({ changeMode, platform }, target, mode) {
-  if (platform !== "win32") changeMode(target, mode);
+/**
+ * POSIX platforms get chmod. Windows has no equivalent mode bits, so files and directories under
+ * `.terraform-artifacts` get an ACL that only the current user can use (see restrictWindowsAcl);
+ * anything else keeps its inherited ACL, as before.
+ */
+function restrictPermissions(context, target, mode) {
+  if (context.platform !== "win32") {
+    context.changeMode(target, mode);
+    return;
+  }
+  const artifacts = path.join(context.root, "apps", "fullstack", ".terraform-artifacts");
+  const relative = path.relative(artifacts, path.resolve(target));
+  if (relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))) {
+    restrictWindowsAcl(context, target, mode);
+  }
+}
+
+/** Access rights icacls should grant for a chmod-style mode (directories carry the x bit here). */
+function windowsAccessRights(mode) {
+  const directory = (mode & 0o100) !== 0;
+  const writable = (mode & 0o200) !== 0;
+  if (directory) return `(OI)(CI)${writable ? "F" : "RX"}`;
+  return `(${writable ? "M" : "R"})`;
+}
+
+/**
+ * Windows system tools by absolute path: a bare name resolves through PATH, which can hold a
+ * different program (Git Bash puts GNU whoami first) or one planted by another user.
+ */
+function windowsSystemTool(context, ...segments) {
+  const systemRoot = context.environment.SystemRoot ?? context.environment.SYSTEMROOT ?? "C:\\Windows";
+  return path.win32.join(systemRoot, "System32", ...segments);
+}
+
+function currentWindowsSid(context) {
+  const result = context.execute(
+    windowsSystemTool(context, "whoami.exe"),
+    ["/user", "/fo", "csv", "/nh"],
+    { cwd: context.root },
+  );
+  const match = result.status === 0 ? /"(S-1-[0-9-]+)"\s*$/.exec(result.stdout.trim()) : null;
+  if (match === null) throw new Error("could not resolve the current Windows user");
+  return match[1];
+}
+
+/** Replace the ACL with a single entry for the current user, the Windows counterpart of chmod 0700/0600. */
+function restrictWindowsAcl(context, target, mode) {
+  const sid = currentWindowsSid(context);
+  const applied = context.execute(
+    windowsSystemTool(context, "icacls.exe"),
+    [target, "/inheritance:r", "/grant:r", `*${sid}:${windowsAccessRights(mode)}`],
+    { cwd: context.root },
+  );
+  if (applied.status !== 0) {
+    throw new Error("could not restrict the Terraform artifact to the current Windows user");
+  }
 }
 
 function artifactOwnedByCurrentUser(context, metadata) {
@@ -951,12 +1005,12 @@ function artifactOwnedByCurrentUser(context, metadata) {
 }
 
 function assertProtectedTerraformPlanPlatform(context) {
-  if (!["linux", "darwin"].includes(context.platform)) {
+  if (!["linux", "darwin", "win32"].includes(context.platform)) {
     throw new Error(`unsupported platform for protected Terraform plans: ${context.platform}`);
   }
 }
 
-function terraformPlanReference(context, descriptor) {
+function terraformPlanReference(context, descriptor, planPath) {
   assertProtectedTerraformPlanPlatform(context);
   if (context.platform === "linux") {
     return { path: "/proc/self/fd/3", stdioDescriptor: descriptor };
@@ -964,6 +1018,76 @@ function terraformPlanReference(context, descriptor) {
   if (context.platform === "darwin") {
     return { path: "/dev/fd/3", stdioDescriptor: descriptor };
   }
+  // Windows cannot hand Terraform an inherited descriptor, so it reads the file by path while
+  // holdPlanFile keeps the kernel from letting anyone modify, replace or delete it.
+  return { path: planPath, stdioDescriptor: null };
+}
+
+const PLAN_LOCK_STARTUP_MILLISECONDS = 30_000;
+const PLAN_LOCK_RELEASE_MILLISECONDS = 10_000;
+// FileShare.Read lets Terraform read the plan but denies write, delete and rename to everyone else.
+const PLAN_LOCK_SCRIPT = [
+  "$ErrorActionPreference = 'Stop'",
+  "$stream = [System.IO.File]::Open($env:VIEW_SHOW_PLAN_LOCK, 'Open', 'Read', 'Read')",
+  "[Console]::Out.WriteLine('LOCKED')",
+  "[Console]::Out.Flush()",
+  "[void][Console]::In.ReadLine()",
+  "$stream.Dispose()",
+].join("; ");
+
+/**
+ * Windows counterpart of keeping the validated plan open as a descriptor: a helper process holds
+ * the file open with a share mode that forbids writes, deletes and renames until released. The
+ * helper also exits, releasing the lock, if this process dies (its stdin closes).
+ */
+export function holdPlanFileOnWindows(context, planPath) {
+  return new Promise((resolve, reject) => {
+    const child = context.spawnProcess(
+      windowsSystemTool(context, "WindowsPowerShell", "v1.0", "powershell.exe"),
+      ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", PLAN_LOCK_SCRIPT],
+      {
+        env: { ...context.environment, VIEW_SHOW_PLAN_LOCK: planPath },
+        stdio: ["pipe", "pipe", "pipe"],
+        windowsHide: true,
+      },
+    );
+    let settled = false;
+    let output = "";
+    const exited = new Promise((done) => child.once("close", done));
+    const fail = (message) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      child.kill();
+      reject(new Error(message));
+    };
+    const timer = setTimeout(
+      () => fail("the validated Terraform plan could not be locked in time"),
+      PLAN_LOCK_STARTUP_MILLISECONDS,
+    );
+    child.once("error", () => fail("the validated Terraform plan could not be locked"));
+    child.once("close", () => fail("the validated Terraform plan could not be locked"));
+    // Writing to a helper that already exited must not surface as an unhandled stream error.
+    child.stdin.on("error", () => {});
+    child.stdout.on("data", (chunk) => {
+      output += String(chunk);
+      if (settled || !output.includes("LOCKED")) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        async release() {
+          child.stdin.end();
+          const killer = setTimeout(() => child.kill(), PLAN_LOCK_RELEASE_MILLISECONDS);
+          await exited;
+          clearTimeout(killer);
+        },
+      });
+    });
+  });
+}
+
+async function holdPlanFile(context, planPath) {
+  return context.platform === "win32" ? context.lockPlanFile(context, planPath) : null;
 }
 
 function terraformPlanStdio(standardStreams, reference) {
@@ -1206,6 +1330,9 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
     }
     return { path: target, ...artifactIdentity(metadata) };
   }
+  if (context.platform === "win32") {
+    return copyStateBackupOnWindows(context, source, directory, target);
+  }
   if (
     context.platform !== "linux" ||
     !Number.isInteger(fsConstants.O_NOFOLLOW) ||
@@ -1309,6 +1436,99 @@ function copyStateBackupThroughDescriptors(context, source, directory, target) {
   }
 }
 
+/**
+ * Windows counterpart of the Linux descriptor-anchored copy. Windows has neither O_NOFOLLOW nor
+ * `/proc/self/fd`, so the destination is created exclusively by path inside a directory that is
+ * ACL-private to the current user, and the directory, source and destination identities are
+ * verified before and after the copy.
+ */
+function copyStateBackupOnWindows(context, source, directory, target) {
+  let sourceDescriptor = null;
+  let destinationDescriptor = null;
+  let primaryError = null;
+  try {
+    sourceDescriptor = context.openBackupPath(source.path, fsConstants.O_RDONLY);
+    const sourceMetadata = context.inspectBackupFile(sourceDescriptor);
+    if (
+      !sourceMetadata.isFile() ||
+      sourceMetadata.isSymbolicLink?.() === true ||
+      sourceMetadata.nlink !== 1 ||
+      !identityMatches(sourceMetadata, source)
+    ) {
+      throw new Error("the protected Terraform state descriptor changed identity");
+    }
+    assertBackupDirectoryUnchanged(context, directory);
+
+    destinationDescriptor = context.openBackupPath(
+      target,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
+      0o600,
+    );
+    const destinationMetadata = context.inspectBackupFile(destinationDescriptor);
+    if (
+      !destinationMetadata.isFile() ||
+      destinationMetadata.isSymbolicLink?.() === true ||
+      destinationMetadata.nlink !== 1
+    ) {
+      throw new Error("the Terraform state backup descriptor is not a private regular file");
+    }
+    const destinationIdentity = artifactIdentity(destinationMetadata);
+
+    const contents = context.readBackupFile(sourceDescriptor);
+    if (!(typeof contents === "string" || ArrayBuffer.isView(contents))) {
+      throw new Error("the protected Terraform state descriptor could not be read");
+    }
+    const sourceSnapshot = parseStateSnapshot(
+      Buffer.from(contents).toString("utf8"),
+      "Terraform state backup source",
+    );
+    if (sourceSnapshot.lineage !== source.lineage || sourceSnapshot.serial !== source.serial) {
+      throw new Error("the protected Terraform state changed before backup");
+    }
+    if (!identityMatches(context.inspectBackupFile(sourceDescriptor), source)) {
+      throw new Error("the protected Terraform state descriptor changed while reading");
+    }
+    context.writeBackupFile(destinationDescriptor, contents);
+    if (!identityMatches(context.inspectBackupFile(destinationDescriptor), destinationIdentity)) {
+      throw new Error("the Terraform state backup descriptor changed while writing");
+    }
+    assertBackupDirectoryUnchanged(context, directory);
+    return { path: target, ...destinationIdentity };
+  } catch (error) {
+    primaryError = error;
+    throw error;
+  } finally {
+    let closeError = null;
+    for (const descriptor of [destinationDescriptor, sourceDescriptor]) {
+      if (!Number.isInteger(descriptor)) continue;
+      try {
+        context.closeBackupFile(descriptor);
+      } catch (error) {
+        closeError ??= error;
+      }
+    }
+    if (primaryError === null && closeError !== null) {
+      throw new Error("a secure Terraform state backup descriptor could not be closed");
+    }
+  }
+}
+
+function assertBackupDirectoryUnchanged(context, directory) {
+  let metadata;
+  try {
+    metadata = context.inspectArtifactPath(directory.path);
+  } catch {
+    throw new Error("the Terraform state backup directory could not be verified");
+  }
+  if (
+    !metadata.isDirectory() ||
+    metadata.isSymbolicLink() ||
+    !identityMatches(metadata, directory)
+  ) {
+    throw new Error("the Terraform state backup directory descriptor changed identity");
+  }
+}
+
 function assertPrivateDirectory(context, target, expectedIdentity) {
   const metadata = inspectArtifactIfPresent(context, target, "update directory");
   if (metadata === null) return null;
@@ -1405,6 +1625,9 @@ function cleanupExclusiveUpdatePlan(context, artifact, validatedSnapshot) {
     }
     assertArtifactParentUnchanged(context, artifact.parent);
     assertPrivateDirectory(context, artifact.directory, artifact);
+    // On POSIX unlinking needs only the directory. Windows opens the file with DELETE access,
+    // which the read-only ACL given to the validated plan withholds (EPERM), so give it back.
+    if (context.platform === "win32") restrictPermissions(context, artifact.plan, 0o600);
     const planBeforeUnlink = inspectArtifactIfPresent(context, artifact.plan, "plan file");
     if (
       planBeforeUnlink === null ||
@@ -2248,6 +2471,17 @@ function secretHasCurrentVersion(context, secretArn) {
   );
 }
 
+/**
+ * Value for an AWS CLI parameter that loads its content from a local file.
+ *
+ * The CLI treats everything after `file://` as the path. `pathToFileURL` does not fit: it
+ * percent-encodes spaces and non-ASCII characters, which the CLI never decodes, and on Windows
+ * it yields `file:///C:/...`, which the CLI rejects (it expects `file://C:/...`).
+ */
+export function awsFileArgument(filePath, platform = process.platform) {
+  return `file://${platform === "win32" ? filePath.replaceAll("\\", "/") : filePath}`;
+}
+
 function ensureInternalIngestionCredential(context, runbook) {
   const secretArn = snapshotSecretArn(runbook);
   if (secretHasCurrentVersion(context, secretArn)) {
@@ -2275,7 +2509,7 @@ function ensureInternalIngestionCredential(context, runbook) {
         "--secret-id",
         secretArn,
         "--secret-string",
-        pathToFileURL(sensitiveFile).href,
+        awsFileArgument(sensitiveFile, context.platform),
         "--client-request-token",
         context.generateRandomBytes(24).toString("base64url"),
       ]),
@@ -2370,7 +2604,7 @@ function provisionInitialCognitoUser(context, outputs, email, password) {
         "cognito-idp",
         "admin-set-user-password",
         "--cli-input-json",
-        pathToFileURL(sensitiveFile).href,
+        awsFileArgument(sensitiveFile, context.platform),
       ]),
       { cwd: context.root },
     );
@@ -2939,6 +3173,7 @@ async function updateExistingStack(context, existingStack) {
   const plan = updateArtifact.plan;
   let validatedPlanSnapshot = null;
   let planDescriptor = null;
+  let planLock = null;
   let primaryError = null;
   let descriptorCloseFailed = false;
 
@@ -2959,7 +3194,9 @@ async function updateExistingStack(context, existingStack) {
     restrictPermissions(context, plan, 0o400);
     validatedPlanSnapshot = readPlanSnapshot(context, plan);
     planDescriptor = openValidatedPlan(context, plan, validatedPlanSnapshot);
-    const planReference = terraformPlanReference(context, planDescriptor);
+    planLock = await holdPlanFile(context, plan);
+    if (planLock !== null) assertPlanUnchanged(context, plan, validatedPlanSnapshot);
+    const planReference = terraformPlanReference(context, planDescriptor, plan);
 
     const shown = execute(
       "terraform",
@@ -2979,7 +3216,8 @@ async function updateExistingStack(context, existingStack) {
       ],
       { cwd: root, input: shown.stdout },
     );
-    if (validated.status !== 0) {
+    // Acceptance must be affirmative: a gate that exits 0 without saying so did not run.
+    if (validated.status !== 0 || !validated.stdout.includes("update plan accepted")) {
       throw new Error(`the Learner Lab update gate rejected the plan: ${validated.stderr}`);
     }
     const expectedPlanImages = expectedTaskImagesFromPlan(planJson, identity.account);
@@ -3079,6 +3317,13 @@ async function updateExistingStack(context, existingStack) {
     throw error;
   } finally {
     let closeError = descriptorCloseFailed ? primaryError : null;
+    if (planLock !== null) {
+      try {
+        await planLock.release();
+      } catch (error) {
+        closeError = error;
+      }
+    }
     if (Number.isInteger(planDescriptor)) {
       try {
         context.closePlanFile(planDescriptor);
@@ -5157,6 +5402,7 @@ async function applyAnalysisPlan(context, identity, mode, worker, variables, opt
   const artifact = createExclusiveUpdatePlan(context, artifactParent, `analysis-${mode}`);
   let validatedPlanSnapshot = null;
   let planDescriptor = null;
+  let planLock = null;
   let primaryError = null;
   let descriptorCloseFailed = false;
 
@@ -5173,9 +5419,12 @@ async function applyAnalysisPlan(context, identity, mode, worker, variables, opt
     restrictPermissions(context, artifact.plan, 0o400);
     validatedPlanSnapshot = readPlanSnapshot(context, artifact.plan);
     planDescriptor = openValidatedPlan(context, artifact.plan, validatedPlanSnapshot);
+    planLock = await holdPlanFile(context, artifact.plan);
+    if (planLock !== null) assertPlanUnchanged(context, artifact.plan, validatedPlanSnapshot);
     const planReference = terraformPlanReference(
       context,
       planDescriptor,
+      artifact.plan,
     );
     const shown = context.execute(
       "terraform",
@@ -5195,7 +5444,10 @@ async function applyAnalysisPlan(context, identity, mode, worker, variables, opt
         env: { ...context.environment, VIEW_SHOW_EXPECTED_AWS_ACCOUNT: identity.account },
       },
     );
-    if (gate.status !== 0) throw new Error(`analysis ${mode} plan rejected`);
+    // Acceptance must be affirmative: a gate that exits 0 without saying so did not run.
+    if (gate.status !== 0 || !gate.stdout.includes(`analysis worker ${mode} plan accepted`)) {
+      throw new Error(`analysis ${mode} plan rejected`);
+    }
     restrictPermissions(context, artifact.directory, 0o500);
     const phrase = options.confirmationPhrase ?? `${mode.toUpperCase()} ANALYSIS ${identity.account}`;
     if (!(await context.confirm(phrase))) return false;
@@ -5220,6 +5472,13 @@ async function applyAnalysisPlan(context, identity, mode, worker, variables, opt
     throw error;
   } finally {
     let closeError = descriptorCloseFailed ? primaryError : null;
+    if (planLock !== null) {
+      try {
+        await planLock.release();
+      } catch (error) {
+        closeError = error;
+      }
+    }
     if (Number.isInteger(planDescriptor)) {
       try {
         context.closePlanFile(planDescriptor);
@@ -5284,6 +5543,7 @@ export async function runLearnerLab(options = {}) {
     openPlanFile = openSync,
     inspectPlanFile = fstatSync,
     closePlanFile = closeSync,
+    lockPlanFile = holdPlanFileOnWindows,
     openBackupPath = openSync,
     inspectBackupFile = fstatSync,
     readBackupFile = readFileSync,
@@ -5496,6 +5756,7 @@ export async function runLearnerLab(options = {}) {
     openPlanFile,
     inspectPlanFile,
     closePlanFile,
+    lockPlanFile,
     openBackupPath,
     inspectBackupFile,
     readBackupFile,

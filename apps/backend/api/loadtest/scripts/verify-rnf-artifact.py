@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[5]
 def audit() -> dict:
     documents = [ROOT / 'artefatos/testes-carga-finais.md',
                  ROOT / 'artefatos/apoio/testes-carga-inventario.md',
+                 ROOT / 'artefatos/apoio/revisao-integracao-observabilidade.md',
                  ROOT / 'apps/backend/api/loadtest/lab/README.md',
                  ROOT / 'apps/backend/api/loadtest/grafana-retroativo/README.md']
     evidence_directories = sorted(ROOT.glob('assets/testes-carga/2026-10-06-fechamento-*')) + [ROOT / 'assets/testes-carga/2026-10-07-revisao']
@@ -45,7 +46,7 @@ def audit() -> dict:
             if int(number) != parent or int(child or 0) != subheading + 1:
                 problems.append({'error': 'Subsection belongs to another section or is out of order', 'subsection': f'{number}.{child}'})
             subheading = int(child or 0)
-    names = set(re.findall(r"apps/[A-Za-z0-9_./-]+(?:\.(?:mjs|js|py|tf|ya?ml|json|tftpl)|Dockerfile|\.dockerignore)(?![A-Za-z0-9_.])", main + inventory))
+    names = set(re.findall(r"apps/[A-Za-z0-9_./-]+(?:\.(?:mjs|cjs|js|ts|sh|py|tf|ya?ml|json|tftpl)|Dockerfile|\.dockerignore)(?![A-Za-z0-9_.])", main + inventory))
     for name in sorted(names):
         implementation_files += 1
         if not (ROOT / name).is_file():

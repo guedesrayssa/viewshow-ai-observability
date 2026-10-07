@@ -123,10 +123,9 @@ function nextRequestId(prefix) {
  * de gerar um próprio) e grava em `request_id` no log JSON estruturado de
  * cada requisição (`src/app.ts`) — filtrável hoje na saída padrão do
  * processo da API por prefixo (`k6-consultas`, `k6-authcheck`,
- * `k6-ingestao`). Ainda NÃO chega a Loki: a stack de observabilidade local
- * não tem coletor de logs configurado (ver seção Observabilidade do
- * README). Uma vez que esse coletor existir, o mesmo campo já seria
- * suficiente para filtrar lá também, sem mudar nada aqui.
+ * `k6-ingestao`). Com `LOKI_PUSH_URL` definido na API as linhas chegam ao Loki,
+ * e o mesmo ID leva ao trace no Grafana (atributo `viewshow.request_id` do span;
+ * busca TraceQL `{ span.viewshow.request_id = "<id>" }`).
  */
 export function requestIdHeader(prefix = "k6") {
   return { "X-Request-Id": nextRequestId(prefix) };

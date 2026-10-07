@@ -29,7 +29,7 @@ function response(enabled: boolean): InternalResponse<{ enabled: boolean }> {
   };
 }
 
-const defaultLogger = createLogger("api");
+const defaultLogger = createLogger("view-show-api");
 
 type TransitionStep =
   | "read_gate"

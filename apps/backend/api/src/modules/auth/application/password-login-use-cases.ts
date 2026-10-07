@@ -1,4 +1,9 @@
-import { ServiceError, type AuthenticatedIdentity } from "@view-show/contracts";
+import {
+  ServiceError,
+  createLogger,
+  type AuthenticatedIdentity,
+  type Logger,
+} from "@view-show/contracts";
 import type {
   IssuedTokens,
   PasswordAuthenticatorPort,
@@ -14,7 +19,10 @@ export interface PasswordLoginResult {
  * falha num `ServiceError` com o status certo, em vez de repassar o erro cru.
  */
 export class PasswordLoginUseCases {
-  constructor(private readonly authenticator: PasswordAuthenticatorPort) {}
+  constructor(
+    private readonly authenticator: PasswordAuthenticatorPort,
+    private readonly logger: Logger = createLogger("view-show-api"),
+  ) {}
 
   async login(
     username: string,
@@ -25,8 +33,19 @@ export class PasswordLoginUseCases {
       password,
     });
     if (outcome.ok) {
+      // user_id é o sub do Cognito (opaco). Nem e-mail nem senha entram no log.
+      this.logger.info("password login succeeded", {
+        event: "auth.login.succeeded",
+        user_id: outcome.identity.id,
+      });
       return { identity: outcome.identity, tokens: outcome.tokens };
     }
+    // Insumo do alerta de força bruta (RNF04): uma linha por recusa, com o
+    // motivo e sem o usuário digitado.
+    this.logger.warn("password login rejected", {
+      event: "auth.login.failed",
+      reason: outcome.reason,
+    });
 
     switch (outcome.reason) {
       case "invalid_credentials":

@@ -5,7 +5,6 @@ import express, {
   type Response,
 } from "express";
 import helmet from "helmet";
-import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { z } from "zod";
 import {
   ServiceError,
@@ -26,7 +25,6 @@ import {
   monitoringQuerySchema,
   opaqueIdSchema,
   overviewQuerySchema,
-  requestId,
   rumTelemetrySchema,
   reviewBodySchema,
   startImportBodySchema,
@@ -41,7 +39,11 @@ import type { DashboardQueries } from "./modules/dashboard/index.js";
 import type { IncidentUseCases } from "./modules/incidents/index.js";
 import type { ArgusLiveSyncUseCases } from "./modules/argus/index.js";
 import type { ImportControlPort } from "./modules/imports/index.js";
-import { Metrics } from "./observability/metrics.js";
+import {
+  recordRequestFailure,
+  requestObservability,
+} from "./observability/http-observability.js";
+import { Metrics, type LoginOutcome } from "./observability/metrics.js";
 import { PUBLIC_ROUTES } from "./http/public-routes.js";
 
 const SERVICE_NAME = process.env.OTEL_SERVICE_NAME ?? "view-show-api";
@@ -56,11 +58,21 @@ export interface AppDependencies {
   readonly auth: AuthModule;
 }
 
-function requestIdentifier(request: Request): string {
-  const candidate = request.header("x-request-id");
-  return candidate && /^[A-Za-z0-9_.:-]{1,128}$/.test(candidate)
-    ? candidate
-    : requestId();
+/** Resultado da tentativa de login a partir do erro já traduzido pelo caso de uso. */
+function loginOutcome(error: unknown): LoginOutcome {
+  if (!(error instanceof ServiceError)) return "error";
+  switch (error.code) {
+    case "UNAUTHENTICATED":
+      return "invalid_credentials";
+    case "FORBIDDEN":
+      return "blocked";
+    case "RATE_LIMITED":
+      return "rate_limited";
+    case "FEATURE_UNAVAILABLE":
+      return "unavailable";
+    default:
+      return "error";
+  }
 }
 
 function opaqueId(value: string): string {
@@ -142,21 +154,7 @@ export function createApp(deps: AppDependencies) {
 
   app.disable("x-powered-by");
   if (auth.nodeEnv === "production") app.set("trust proxy", 1);
-  app.use((request, response, next) => {
-    response.locals.requestId = requestIdentifier(request);
-    response.setHeader("x-request-id", response.locals.requestId as string);
-    const started = process.hrtime.bigint();
-    response.once("finish", () =>
-      logger.info("request completed", {
-        request_id: response.locals.requestId,
-        method: request.method,
-        route: `${request.baseUrl}${typeof request.route?.path === "string" ? request.route.path : request.path}`,
-        status: response.statusCode,
-        duration_ms: Number(process.hrtime.bigint() - started) / 1_000_000,
-      }),
-    );
-    next();
-  });
+  app.use(requestObservability(logger));
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(
     cors({
@@ -175,7 +173,11 @@ export function createApp(deps: AppDependencies) {
         "Content-Type",
         "Idempotency-Key",
         "X-Request-Id",
+        // Contexto W3C: permite ao painel continuar o trace na API.
+        "traceparent",
+        "tracestate",
       ],
+      exposedHeaders: ["X-Request-Id", "X-Trace-Id"],
     }),
   );
   // A 10 GiB ZIP has 640 parts. At 1024 ETag characters with six-byte JSON
@@ -256,6 +258,7 @@ export function createApp(deps: AppDependencies) {
           parsed.data.username,
           parsed.data.password,
         );
+        metrics.observeLogin("success");
         issueSession(response, identity);
         response.json(
           successEnvelope(
@@ -281,6 +284,10 @@ export function createApp(deps: AppDependencies) {
           ),
         );
       } catch (error) {
+        // Só falhas do provedor/credencial contam; o corpo inválido (400) já
+        // aparece em http_requests_total e não é tentativa de autenticação.
+        if (!(error instanceof ServiceError) || error.status !== 400)
+          metrics.observeLogin(loginOutcome(error));
         next(error);
       }
     },
@@ -386,11 +393,14 @@ export function createApp(deps: AppDependencies) {
         );
         if (!actor)
           throw new ServiceError(401, "UNAUTHENTICATED", "Sessão inválida.");
+        const integration = await argus.set(parsed.data.enabled);
+        logger.info("argus live sync updated", {
+          event: "argus.live_sync.updated",
+          enabled: parsed.data.enabled,
+          updated_by: actor.id,
+        });
         response.json(
-          successEnvelope(
-            await argus.set(parsed.data.enabled),
-            response.locals.requestId as string,
-          ),
+          successEnvelope(integration, response.locals.requestId as string),
         );
       } catch (error) {
         next(error);
@@ -548,6 +558,14 @@ export function createApp(deps: AppDependencies) {
         actor.id,
       );
       metrics.observeHypothesisReview(parsed.data.status);
+      // Auditoria: a revisão humana é o único caminho de escrita no veredito.
+      logger.info("hypothesis review submitted", {
+        event: "hypothesis.review.submitted",
+        incident_id: incidentId,
+        hypothesis_id: hypothesisId,
+        status: parsed.data.status,
+        reviewer_id: actor.id,
+      });
       assertNoPhysicalFields(result.data);
       response.json(
         successEnvelope(result, response.locals.requestId as string),
@@ -590,6 +608,11 @@ export function createApp(deps: AppDependencies) {
           idempotencyKey.data,
           actor.id,
         );
+        logger.info("reanalysis requested", {
+          event: "reanalysis.requested",
+          incident_id: incidentId.data,
+          requested_by: actor.id,
+        });
         response.status(202).end();
       } catch (error) {
         next(error);
@@ -796,7 +819,7 @@ export function createApp(deps: AppDependencies) {
   app.use(
     (
       error: unknown,
-      _request: Request,
+      request: Request,
       response: Response,
       _next: NextFunction,
     ) => {
@@ -843,25 +866,18 @@ export function createApp(deps: AppDependencies) {
                     "INTERNAL_ERROR",
                     "Falha interna na API.",
                   );
-      if (
-        !(error instanceof ServiceError) &&
-        !payloadTooLarge &&
-        !malformedJson &&
-        !malformedPathParameter
-      ) {
-        const activeSpan = trace.getActiveSpan();
-        if (activeSpan) {
-          if (error instanceof Error) activeSpan.recordException(error);
-          activeSpan.setStatus({
-            code: SpanStatusCode.ERROR,
-            message: error instanceof Error ? error.message : "unknown error",
-          });
-        }
-        logger.error("unhandled request error", {
-          request_id: response.locals.requestId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+      recordRequestFailure(
+        logger,
+        request,
+        response,
+        error,
+        serviceError,
+        (!(error instanceof ServiceError) &&
+          !payloadTooLarge &&
+          !malformedJson &&
+          !malformedPathParameter) ||
+          serviceError.status === 500,
+      );
       response
         .status(serviceError.status)
         .json(errorEnvelope(serviceError, response.locals.requestId as string));
